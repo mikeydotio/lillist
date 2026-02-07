@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(curl:*)",
+      "Bash(TESTDIR=\"/private/tmp/claude-501/-Volumes-Code-mikeyward-Lillist/02f33b45-023e-4a8f-9f4b-4c32b35c7595/scratchpad/gitignore-tests\")",
+      "Bash(python3:*)"
+    ]
+  }
+}
