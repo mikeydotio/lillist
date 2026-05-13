@@ -216,3 +216,76 @@ extension SmartFilterStore {
         }
     }
 }
+
+extension SmartFilterStore {
+    /// Evaluate a saved filter and return matching `TaskStore.TaskRecord`s,
+    /// sorted by the filter's `sortField` / `sortAscending`. Trash exclusion
+    /// is applied implicitly by the compiler unless the predicate explicitly
+    /// references `inTrash`.
+    public func evaluate(
+        id: UUID,
+        now: Date = Date(),
+        calendar: Calendar = .current
+    ) async throws -> [TaskStore.TaskRecord] {
+        let rec = try await fetch(id: id)
+        return try await context.perform { [self] in
+            let req = NSFetchRequest<LillistTask>(entityName: "LillistTask")
+            req.predicate = NSPredicateCompiler.compile(rec.group, now: now, calendar: calendar)
+            req.sortDescriptors = Self.sortDescriptors(field: rec.sortField, ascending: rec.sortAscending)
+            let tasks = try context.fetch(req)
+            return tasks.map { Self.record(from: $0) }
+        }
+    }
+
+    /// Count matching tasks without materializing records — for badge counts.
+    public func count(
+        id: UUID,
+        now: Date = Date(),
+        calendar: Calendar = .current
+    ) async throws -> Int {
+        let rec = try await fetch(id: id)
+        return try await context.perform { [self] in
+            let req = NSFetchRequest<LillistTask>(entityName: "LillistTask")
+            req.predicate = NSPredicateCompiler.compile(rec.group, now: now, calendar: calendar)
+            return try context.count(for: req)
+        }
+    }
+
+    static func sortDescriptors(field: SortField, ascending: Bool) -> [NSSortDescriptor] {
+        let primaryKey: String
+        switch field {
+        case .manualPosition, .deadline: primaryKey = "deadline"
+        case .start: primaryKey = "start"
+        case .title: primaryKey = "title"
+        case .createdAt: primaryKey = "createdAt"
+        case .modifiedAt: primaryKey = "modifiedAt"
+        case .closedAt: primaryKey = "closedAt"
+        case .status: primaryKey = "statusRaw"
+        }
+        return [
+            NSSortDescriptor(key: primaryKey, ascending: ascending),
+            NSSortDescriptor(key: "createdAt", ascending: true),
+            NSSortDescriptor(key: "id", ascending: true)
+        ]
+    }
+
+    static func record(from m: LillistTask) -> TaskStore.TaskRecord {
+        TaskStore.TaskRecord(
+            id: m.id ?? UUID(),
+            title: m.title ?? "",
+            notes: m.notes ?? "",
+            status: m.status,
+            start: m.start,
+            startHasTime: m.startHasTime,
+            deadline: m.deadline,
+            deadlineHasTime: m.deadlineHasTime,
+            position: m.position,
+            isPinned: m.isPinned,
+            parentID: m.parent?.id,
+            createdAt: m.createdAt,
+            modifiedAt: m.modifiedAt,
+            closedAt: m.closedAt,
+            deletedAt: m.deletedAt
+        )
+    }
+}

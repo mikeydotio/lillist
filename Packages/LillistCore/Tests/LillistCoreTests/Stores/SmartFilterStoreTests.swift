@@ -136,3 +136,63 @@ struct SmartFilterStorePinReorderTests {
         #expect(try await store.list().map(\.id) == [a, b, c])
     }
 }
+
+@Suite("SmartFilterStore — evaluate and count")
+struct SmartFilterStoreEvaluateTests {
+    @Test("evaluate returns TaskRecord ids matching the filter")
+    func evaluate() async throws {
+        let controller = try await TestStore.make()
+        let smartStore = SmartFilterStore(persistence: controller)
+        let taskStore = TaskStore(persistence: controller)
+        let t1 = try await taskStore.create(title: "Design review")
+        let t2 = try await taskStore.create(title: "Write spec")
+        let group = PredicateGroup(combinator: .all, predicates: [
+            .leaf(.init(field: .title, op: .contains, value: .string("design")))
+        ])
+        let fid = try await smartStore.create(name: "Design", group: group)
+        let results = try await smartStore.evaluate(id: fid)
+        let ids = Set(results.map(\.id))
+        #expect(ids.contains(t1))
+        #expect(!ids.contains(t2))
+    }
+
+    @Test("count returns number of matches")
+    func count() async throws {
+        let controller = try await TestStore.make()
+        let smartStore = SmartFilterStore(persistence: controller)
+        let taskStore = TaskStore(persistence: controller)
+        _ = try await taskStore.create(title: "Design 1")
+        _ = try await taskStore.create(title: "Design 2")
+        _ = try await taskStore.create(title: "Other")
+        let fid = try await smartStore.create(
+            name: "Design",
+            group: .init(combinator: .all, predicates: [
+                .leaf(.init(field: .title, op: .contains, value: .string("Design")))
+            ])
+        )
+        #expect(try await smartStore.count(id: fid) == 2)
+    }
+
+    @Test("evaluate respects sort field and direction")
+    func evaluateSort() async throws {
+        let controller = try await TestStore.make()
+        let smartStore = SmartFilterStore(persistence: controller)
+        let taskStore = TaskStore(persistence: controller)
+        let cal = Calendar.current
+        let now = Date()
+        let t1 = try await taskStore.create(title: "B")
+        let t2 = try await taskStore.create(title: "A")
+        try await taskStore.update(id: t1) { d in d.deadline = cal.date(byAdding: .day, value: 1, to: now) }
+        try await taskStore.update(id: t2) { d in d.deadline = cal.date(byAdding: .day, value: 2, to: now) }
+        let fid = try await smartStore.create(
+            name: "Deadline asc",
+            group: .init(combinator: .all, predicates: [
+                .leaf(.init(field: .deadline, op: .isSet, value: .bool(true)))
+            ]),
+            sortField: .deadline,
+            sortAscending: true
+        )
+        let results = try await smartStore.evaluate(id: fid)
+        #expect(results.map(\.id) == [t1, t2])
+    }
+}
