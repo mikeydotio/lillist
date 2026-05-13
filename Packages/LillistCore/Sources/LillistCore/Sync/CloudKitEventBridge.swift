@@ -78,7 +78,10 @@ public actor CloudKitEventBridge {
             let translated = Self.translate(ckEvent)
             Task { await self.recordEvent(translated) }
         }
-        Task { await self.setObserverToken(token) }
+        // This Task is created inside actor-isolated `attach(to:)` and
+        // inherits the actor's isolation, so `setObserverToken` is
+        // same-actor — no `await` needed.
+        Task { self.setObserverToken(token) }
     }
 
     private func setObserverToken(_ token: NSObjectProtocol) {
