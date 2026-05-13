@@ -192,6 +192,35 @@ public final class TaskStore: @unchecked Sendable {
         }
     }
 
+    // MARK: - Status transitions
+
+    public func transition(id: UUID, to newStatus: Status) async throws {
+        try await context.perform { [self] in
+            let m = try fetchManagedObject(id: id, in: context)
+            let oldStatus = m.status
+            guard oldStatus != newStatus else { return }
+            m.status = newStatus
+            m.modifiedAt = Date()
+            if newStatus == .closed {
+                m.closedAt = m.modifiedAt
+            } else if oldStatus == .closed {
+                m.closedAt = nil
+            }
+
+            // System journal entry for the transition.
+            let entry = JournalEntry(context: context)
+            entry.id = UUID()
+            entry.task = m
+            entry.kind = .statusChange
+            entry.createdAt = m.modifiedAt
+            entry.body = "\(oldStatus) → \(newStatus)"
+            let payload: [String: Int] = ["from": oldStatus.rawValue, "to": newStatus.rawValue]
+            entry.payload = try JSONSerialization.data(withJSONObject: payload)
+
+            try context.save()
+        }
+    }
+
     // MARK: - Helpers
 
     func fetchManagedObject(id: UUID, in ctx: NSManagedObjectContext) throws -> LillistTask {
