@@ -1,5 +1,6 @@
 import Testing
 import Foundation
+import CoreData
 @testable import LillistCore
 
 @Suite("SwiftEvaluator — scalar/string slice")
@@ -267,5 +268,66 @@ struct SwiftEvaluatorRelationalTests {
         #expect(SwiftEvaluator.evaluate(group: any, against: snap(attachmentKinds: [])) == false)
         #expect(SwiftEvaluator.evaluate(group: image, against: snap(attachmentKinds: [.file])) == false)
         #expect(SwiftEvaluator.evaluate(group: image, against: snap(attachmentKinds: [.file, .image])) == true)
+    }
+}
+
+@Suite("SwiftEvaluator.TaskSnapshot.from(managedObject:)")
+struct SwiftEvaluatorSnapshotBuilderTests {
+    @Test("Snapshot reflects every interesting attribute of the managed object")
+    func builderRoundTrips() async throws {
+        let controller = try await TestStore.make()
+        let ctx = controller.container.viewContext
+        let id = UUID()
+        let parentID = UUID()
+        try await ctx.perform {
+            let parent = LillistTask(context: ctx)
+            parent.id = parentID
+            parent.title = "Parent"
+            parent.notes = ""
+            parent.status = .todo
+            parent.createdAt = Date(); parent.modifiedAt = Date()
+
+            let child = LillistTask(context: ctx)
+            child.id = id
+            child.title = "Child"
+            child.notes = "n"
+            child.status = .started
+            child.isPinned = true
+            child.createdAt = Date(); child.modifiedAt = Date()
+            child.parent = parent
+
+            let tag = Tag(context: ctx)
+            tag.id = UUID(); tag.name = "work"; tag.tintColor = "#888888"
+            child.addToTags(tag)
+
+            let j = JournalEntry(context: ctx)
+            j.id = UUID(); j.kind = .note; j.body = "note body"
+            j.createdAt = Date()
+            j.task = child
+
+            let att = Attachment(context: ctx)
+            att.id = UUID(); att.kind = .image
+            att.filename = "f"; att.uti = "public.image"
+            att.byteSize = 0
+            att.task = child
+            att.journalEntry = j
+
+            try ctx.save()
+        }
+
+        let snap = try await ctx.perform { () throws -> SwiftEvaluator.TaskSnapshot in
+            let req = NSFetchRequest<LillistTask>(entityName: "LillistTask")
+            req.predicate = NSPredicate(format: "id == %@", id as CVarArg)
+            let m = try ctx.fetch(req).first!
+            return SwiftEvaluator.TaskSnapshot.from(managedObject: m)
+        }
+
+        #expect(snap.title == "Child")
+        #expect(snap.status == .started)
+        #expect(snap.isPinned == true)
+        #expect(snap.ancestorIDs.contains(parentID))
+        #expect(snap.tagIDs.count == 1)
+        #expect(snap.journalNoteBodies == ["note body"])
+        #expect(snap.attachmentKinds == [.image])
     }
 }

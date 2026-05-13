@@ -1,4 +1,5 @@
 import Foundation
+import CoreData
 
 /// Pure-Swift evaluator for a `PredicateGroup`. Operates on a denormalized
 /// snapshot so callers can prepare the per-task data however they like
@@ -268,5 +269,61 @@ public enum SwiftEvaluator {
     static func matchBool(_ actual: Bool, op: Op, value: Value) -> Bool {
         guard case .bool(let target) = value, op == .is else { return false }
         return actual == target
+    }
+}
+
+extension SwiftEvaluator.TaskSnapshot {
+    /// Build a snapshot from a fetched `LillistTask`. Caller must invoke
+    /// inside the managed object's context (via `context.perform`) to
+    /// safely touch relationships.
+    public static func from(managedObject m: LillistTask) -> SwiftEvaluator.TaskSnapshot {
+        // Tag ids
+        let tagIDs: Set<UUID> = {
+            guard let tags = m.tags as? Set<Tag> else { return [] }
+            return Set(tags.compactMap { $0.id })
+        }()
+        // Ancestor chain (depth-bounded at 32 to match the compiler's safe ceiling)
+        var ancestorIDs: Set<UUID> = []
+        var cursor: LillistTask? = m.parent
+        var depth = 0
+        while let p = cursor, depth < 32 {
+            if let pid = p.id { ancestorIDs.insert(pid) }
+            cursor = p.parent
+            depth += 1
+        }
+        // Journal note bodies
+        let noteBodies: [String] = {
+            guard let entries = m.journalEntries as? Set<JournalEntry> else { return [] }
+            return entries
+                .filter { $0.kind == .note }
+                .compactMap { $0.body }
+        }()
+        // Attachment kinds
+        let kinds: [AttachmentKind] = {
+            guard let attachments = m.attachments as? Set<Attachment> else { return [] }
+            return attachments.map { $0.kind }
+        }()
+        let childCount: Int = (m.children as? Set<LillistTask>)?.count ?? 0
+        return SwiftEvaluator.TaskSnapshot(
+            id: m.id ?? UUID(),
+            title: m.title ?? "",
+            notes: m.notes ?? "",
+            status: m.status,
+            start: m.start, startHasTime: m.startHasTime,
+            deadline: m.deadline, deadlineHasTime: m.deadlineHasTime,
+            createdAt: m.createdAt ?? Date(),
+            modifiedAt: m.modifiedAt ?? Date(),
+            closedAt: m.closedAt,
+            isPinned: m.isPinned,
+            inTrash: m.deletedAt != nil,
+            hasChildren: childCount > 0,
+            childCount: childCount,
+            tagIDs: tagIDs,
+            ancestorIDs: ancestorIDs,
+            journalNoteBodies: noteBodies,
+            attachmentKinds: kinds,
+            hasNudges: false,     // Plan 4
+            isRecurring: false    // Plan 5
+        )
     }
 }
