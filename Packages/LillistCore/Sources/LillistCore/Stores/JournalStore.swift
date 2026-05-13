@@ -19,6 +19,32 @@ public final class JournalStore: @unchecked Sendable {
         public var editedAt: Date?
     }
 
+    // MARK: - Append
+
+    @discardableResult
+    public func appendNote(taskID: UUID, body: String) async throws -> UUID {
+        try await context.perform { [self] in
+            let task = try fetchTask(id: taskID, in: context)
+            let entry = JournalEntry(context: context)
+            entry.id = UUID()
+            entry.task = task
+            entry.kind = .note
+            entry.body = body
+            entry.createdAt = Date()
+            try context.save()
+            return entry.id!
+        }
+    }
+
+    // MARK: - Read
+
+    public func fetch(id: UUID) async throws -> JournalRecord {
+        try await context.perform { [self] in
+            let m = try fetchManagedObject(id: id, in: context)
+            return Self.record(from: m)
+        }
+    }
+
     public func entries(forTask taskID: UUID) async throws -> [JournalRecord] {
         try await context.perform { [self] in
             let req = NSFetchRequest<JournalEntry>(entityName: "JournalEntry")
@@ -26,6 +52,55 @@ public final class JournalStore: @unchecked Sendable {
             req.sortDescriptors = [NSSortDescriptor(key: "createdAt", ascending: true)]
             return try context.fetch(req).map(Self.record(from:))
         }
+    }
+
+    // MARK: - Edit
+
+    public func editNote(id: UUID, body: String) async throws {
+        try await context.perform { [self] in
+            let m = try fetchManagedObject(id: id, in: context)
+            guard m.kind.isUserEditable else {
+                throw LillistError.validationFailed([
+                    .init(field: "kind", message: "system journal entries cannot be edited")
+                ])
+            }
+            m.body = body
+            m.editedAt = Date()
+            try context.save()
+        }
+    }
+
+    // MARK: - Delete
+
+    public func delete(id: UUID) async throws {
+        try await context.perform { [self] in
+            let m = try fetchManagedObject(id: id, in: context)
+            guard m.kind.isUserEditable else {
+                throw LillistError.validationFailed([
+                    .init(field: "kind", message: "system journal entries cannot be deleted")
+                ])
+            }
+            context.delete(m)
+            try context.save()
+        }
+    }
+
+    // MARK: - Helpers
+
+    private func fetchManagedObject(id: UUID, in ctx: NSManagedObjectContext) throws -> JournalEntry {
+        let req = NSFetchRequest<JournalEntry>(entityName: "JournalEntry")
+        req.predicate = NSPredicate(format: "id == %@", id as CVarArg)
+        req.fetchLimit = 1
+        guard let m = try ctx.fetch(req).first else { throw LillistError.notFound }
+        return m
+    }
+
+    private func fetchTask(id: UUID, in ctx: NSManagedObjectContext) throws -> LillistTask {
+        let req = NSFetchRequest<LillistTask>(entityName: "LillistTask")
+        req.predicate = NSPredicate(format: "id == %@", id as CVarArg)
+        req.fetchLimit = 1
+        guard let m = try ctx.fetch(req).first else { throw LillistError.notFound }
+        return m
     }
 
     static func record(from m: JournalEntry) -> JournalRecord {
