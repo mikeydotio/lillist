@@ -134,8 +134,66 @@ public enum SwiftEvaluator {
         case .hasChildren: return matchBool(s.hasChildren, op: leaf.op, value: leaf.value)
         case .hasNudges: return matchBool(s.hasNudges, op: leaf.op, value: leaf.value)
         case .recurrence: return matchBool(s.isRecurring, op: leaf.op, value: leaf.value)
-        // Slice 2 fills the remaining fields.
+        case .start: return matchDate(s.start, otherDate: nil, op: leaf.op, value: leaf.value, now: now, calendar: calendar)
+        case .deadline: return matchDate(s.deadline, otherDate: nil, op: leaf.op, value: leaf.value, now: now, calendar: calendar)
+        case .createdAt: return matchDate(s.createdAt, otherDate: s.modifiedAt, op: leaf.op, value: leaf.value, now: now, calendar: calendar)
+        case .modifiedAt: return matchDate(s.modifiedAt, otherDate: nil, op: leaf.op, value: leaf.value, now: now, calendar: calendar)
+        case .closedAt: return matchDate(s.closedAt, otherDate: nil, op: leaf.op, value: leaf.value, now: now, calendar: calendar)
+        // Slice 3 fills the relational fields.
         default: return false
+        }
+    }
+
+    // MARK: - Date matcher
+
+    static func matchDate(
+        _ date: Date?,
+        otherDate: Date?,
+        op: Op,
+        value: Value,
+        now: Date,
+        calendar: Calendar
+    ) -> Bool {
+        switch op {
+        case .isSet: return date != nil
+        case .isUnset: return date == nil
+        case .equalsModifiedAt:
+            guard let a = date, let b = otherDate else { return false }
+            return a == b
+        case .before, .after, .on:
+            guard let actual = date,
+                  let target = resolveAbsolute(value, now: now, calendar: calendar) else {
+                return false
+            }
+            switch op {
+            case .before: return actual < target
+            case .after: return actual > target
+            case .on:
+                let startOfDay = calendar.startOfDay(for: target)
+                let endOfDay = RelativeDateResolver.endOfDay(for: startOfDay, calendar: calendar)
+                return actual >= startOfDay && actual <= endOfDay
+            default: return false
+            }
+        case .withinLastDays:
+            guard let actual = date, case .dayCount(let n) = value else { return false }
+            let startOfToday = calendar.startOfDay(for: now)
+            let cutoff = calendar.date(byAdding: .day, value: -n, to: startOfToday) ?? startOfToday
+            return actual >= cutoff && actual <= now
+        case .withinNextDays:
+            guard let actual = date, case .dayCount(let n) = value else { return false }
+            let startOfToday = calendar.startOfDay(for: now)
+            let horizon = calendar.date(byAdding: .day, value: n, to: startOfToday) ?? startOfToday
+            let horizonEnd = RelativeDateResolver.endOfDay(for: horizon, calendar: calendar)
+            return actual >= now && actual <= horizonEnd
+        default: return false
+        }
+    }
+
+    static func resolveAbsolute(_ value: Value, now: Date, calendar: Calendar) -> Date? {
+        switch value {
+        case .absoluteDate(let d): return d
+        case .relativeDate(let r): return RelativeDateResolver.resolve(r, now: now, calendar: calendar)
+        default: return nil
         }
     }
 
