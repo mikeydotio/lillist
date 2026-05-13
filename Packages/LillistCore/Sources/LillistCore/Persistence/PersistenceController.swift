@@ -13,7 +13,7 @@ public final class PersistenceController: @unchecked Sendable {
         let container = NSPersistentContainer(name: "LillistModel", managedObjectModel: model)
 
         let description: NSPersistentStoreDescription
-        switch configuration {
+        switch configuration.storeKind {
         case .inMemory:
             description = NSPersistentStoreDescription(url: URL(fileURLWithPath: "/dev/null"))
             description.type = NSSQLiteStoreType
