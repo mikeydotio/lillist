@@ -59,4 +59,42 @@ struct TaskStoreCRUDTests {
             _ = try await store.fetch(id: id)
         }
     }
+
+    @Test("Assign tag to task")
+    func assignTag() async throws {
+        let p = try await TestStore.make()
+        let tasks = TaskStore(persistence: p)
+        let tags = TagStore(persistence: p)
+        let taskID = try await tasks.create(title: "T")
+        let tagID = try await tags.create(name: "Work")
+        try await tasks.assignTag(taskID: taskID, tagID: tagID)
+        let tagIDs = try await tasks.tagIDs(forTask: taskID)
+        #expect(tagIDs.contains(tagID))
+    }
+
+    @Test("Unassign tag from task")
+    func unassignTag() async throws {
+        let p = try await TestStore.make()
+        let tasks = TaskStore(persistence: p)
+        let tags = TagStore(persistence: p)
+        let taskID = try await tasks.create(title: "T")
+        let tagID = try await tags.create(name: "Work")
+        try await tasks.assignTag(taskID: taskID, tagID: tagID)
+        try await tasks.unassignTag(taskID: taskID, tagID: tagID)
+        let tagIDs = try await tasks.tagIDs(forTask: taskID)
+        #expect(tagIDs.contains(tagID) == false)
+    }
+
+    @Test("Re-assigning the same tag is idempotent")
+    func reassignIdempotent() async throws {
+        let p = try await TestStore.make()
+        let tasks = TaskStore(persistence: p)
+        let tags = TagStore(persistence: p)
+        let taskID = try await tasks.create(title: "T")
+        let tagID = try await tags.create(name: "Work")
+        try await tasks.assignTag(taskID: taskID, tagID: tagID)
+        try await tasks.assignTag(taskID: taskID, tagID: tagID)
+        let tagIDs = try await tasks.tagIDs(forTask: taskID)
+        #expect(tagIDs.filter { $0 == tagID }.count == 1)
+    }
 }

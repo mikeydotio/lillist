@@ -270,6 +270,46 @@ public final class TaskStore: @unchecked Sendable {
         }
     }
 
+    // MARK: - Tags
+
+    public func assignTag(taskID: UUID, tagID: UUID) async throws {
+        try await context.perform { [self] in
+            let task = try fetchManagedObject(id: taskID, in: context)
+            let tag = try fetchTag(id: tagID, in: context)
+            let existing = task.tags as? Set<Tag> ?? []
+            if existing.contains(tag) { return }
+            task.addToTags(tag)
+            task.modifiedAt = Date()
+            try context.save()
+        }
+    }
+
+    public func unassignTag(taskID: UUID, tagID: UUID) async throws {
+        try await context.perform { [self] in
+            let task = try fetchManagedObject(id: taskID, in: context)
+            let tag = try fetchTag(id: tagID, in: context)
+            task.removeFromTags(tag)
+            task.modifiedAt = Date()
+            try context.save()
+        }
+    }
+
+    public func tagIDs(forTask taskID: UUID) async throws -> [UUID] {
+        try await context.perform { [self] in
+            let task = try fetchManagedObject(id: taskID, in: context)
+            let tags = (task.tags as? Set<Tag>) ?? []
+            return tags.compactMap(\.id)
+        }
+    }
+
+    private func fetchTag(id: UUID, in ctx: NSManagedObjectContext) throws -> Tag {
+        let req = NSFetchRequest<Tag>(entityName: "Tag")
+        req.predicate = NSPredicate(format: "id == %@", id as CVarArg)
+        req.fetchLimit = 1
+        guard let m = try ctx.fetch(req).first else { throw LillistError.notFound }
+        return m
+    }
+
     // MARK: - Helpers
 
     func fetchManagedObject(id: UUID, in ctx: NSManagedObjectContext) throws -> LillistTask {
