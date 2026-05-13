@@ -8,6 +8,8 @@
 
 **Tech Stack:** Swift 6 strict concurrency, Swift Testing for unit tests, XCTest + `pointfreeco/swift-snapshot-testing` for SwiftUI snapshot tests (already added in Plan 7), `OSLog` / `OSLogStore` for log retrieval, `MessageUI` for iOS mail, `NSWorkspace` for macOS mail, Foundation for file I/O and regex redaction. All work hangs off existing `LillistCore` and `LillistUI` packages plus the three app targets.
 
+> **Plan 3 deviation baked in:** Plan 3 renamed the `LillistCore` package's namespace enum to `LillistCoreInfo` so the module name no longer shadows it. Read the build version as **`LillistCoreInfo.version`** (not `LillistCore.version`) — already updated in the `CrashReport` snippets below.
+
 ---
 
 ## File Structure
@@ -2727,7 +2729,7 @@ import LillistCore
 private let cliReporter: CrashReporter = {
     let r = CrashReporter(
         canaryFile: CanaryFile(url: CanaryFile.defaultURL(for: .macOSCLI)),
-        buildVersion: LillistCore.version,
+        buildVersion: LillistCoreInfo.version,
         osVersion: ProcessInfo.processInfo.operatingSystemVersionString,
         deviceModel: Host.current().localizedName ?? "Mac",
         hostname: Host.current().localizedName ?? "Mac",
@@ -2807,7 +2809,7 @@ struct ReportCrash: AsyncParsableCommand {
 
         let reporter = CrashReporter(
             canaryFile: canaryFile,
-            buildVersion: LillistCore.version,
+            buildVersion: LillistCoreInfo.version,
             osVersion: ProcessInfo.processInfo.operatingSystemVersionString,
             deviceModel: Host.current().localizedName ?? "Mac",
             hostname: Host.current().localizedName ?? "Mac",
@@ -2819,7 +2821,7 @@ struct ReportCrash: AsyncParsableCommand {
         // Print the redacted payload first so the user can see what
         // they're agreeing to send.
         let preview = CrashReport(
-            buildVersion: LillistCore.version,
+            buildVersion: LillistCoreInfo.version,
             osVersion: ProcessInfo.processInfo.operatingSystemVersionString,
             deviceModel: Host.current().localizedName ?? "Mac",
             canary: pending,
