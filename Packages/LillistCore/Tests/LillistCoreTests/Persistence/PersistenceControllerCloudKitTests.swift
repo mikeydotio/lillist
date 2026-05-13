@@ -54,6 +54,12 @@ struct PersistenceControllerCloudKitTests {
                 policy?.mergeType == .mergeByPropertyObjectTrumpMergePolicyType)
     }
 
+    @Test("PersistenceController exposes a CloudKitEventBridge")
+    func bridgeExposed() async throws {
+        let controller = try await PersistenceController(configuration: .inMemory)
+        _ = controller.cloudKitEventBridge
+    }
+
     @Test("Attachment.data attribute keeps allowsExternalBinaryDataStorage so CloudKit converts to CKAsset")
     func externalStorageFlagPreserved() async throws {
         let controller = try await PersistenceController(configuration: .inMemory)

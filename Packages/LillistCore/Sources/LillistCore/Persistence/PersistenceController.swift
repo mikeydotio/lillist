@@ -17,6 +17,12 @@ import CloudKit
 public final class PersistenceController: @unchecked Sendable {
     public let container: NSPersistentContainer
     public let configuration: StoreConfiguration
+    /// The event bridge that translates
+    /// `NSPersistentCloudKitContainer.eventChangedNotification` into a
+    /// testable async stream. Attached automatically after the persistent
+    /// stores load. Always non-nil; the bridge is harmless when the
+    /// underlying container is plain (no events ever fire).
+    public let cloudKitEventBridge: CloudKitEventBridge
 
     public init(configuration: StoreConfiguration) async throws {
         self.configuration = configuration
@@ -38,6 +44,12 @@ public final class PersistenceController: @unchecked Sendable {
         container.viewContext.mergePolicy = NSMergePolicy(merge: .mergeByPropertyObjectTrumpMergePolicyType)
 
         self.container = container
+
+        let bridge = CloudKitEventBridge()
+        if let ckContainer = container as? NSPersistentCloudKitContainer {
+            await bridge.attach(to: ckContainer)
+        }
+        self.cloudKitEventBridge = bridge
     }
 
     /// Build the `NSPersistentContainer` (or `NSPersistentCloudKitContainer`)
