@@ -100,6 +100,30 @@ public final class AttachmentStore: @unchecked Sendable {
         }
     }
 
+    /// Explicitly request the binary bytes for an attachment.
+    ///
+    /// CloudKit auto-downloads small assets, but larger ones may need an
+    /// explicit fetch on iOS/iPadOS (design Section 3 — "lazy download.
+    /// Metadata available immediately; bytes load on first access").
+    /// Accessing `.data` triggers `NSPersistentCloudKitContainer`'s asset
+    /// materialization for any pending download.
+    ///
+    /// - Throws: `LillistError.notFound` if the attachment row doesn't exist.
+    /// - Throws: `LillistError.attachmentFetchFailed` if the row exists but
+    ///   has no data bytes (e.g. a link-preview row, or a CKAsset that
+    ///   couldn't be downloaded).
+    public func downloadData(id: UUID) async throws -> Data {
+        try await context.perform { [self] in
+            let m = try fetchManagedObject(id: id, in: context)
+            // Touching `m.data` is what causes the asset materialization.
+            guard let bytes = m.data else {
+                let placeholder = URL(string: "lillist://attachment/\(id.uuidString)")!
+                throw LillistError.attachmentFetchFailed(url: placeholder)
+            }
+            return bytes
+        }
+    }
+
     public func attachments(forTask taskID: UUID) async throws -> [AttachmentRecord] {
         try await context.perform { [self] in
             let req = NSFetchRequest<Attachment>(entityName: "Attachment")
