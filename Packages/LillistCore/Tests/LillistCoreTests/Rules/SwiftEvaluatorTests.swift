@@ -183,3 +183,89 @@ struct SwiftEvaluatorDateTests {
         #expect(SwiftEvaluator.evaluate(group: g, against: snap(start: t), now: SwiftEvaluatorDateTests.now, calendar: SwiftEvaluatorDateTests.cal) == true)
     }
 }
+
+@Suite("SwiftEvaluator — relational slice")
+struct SwiftEvaluatorRelationalTests {
+    private func snap(
+        tagIDs: Set<UUID> = [],
+        ancestorIDs: Set<UUID> = [],
+        journalNoteBodies: [String] = [],
+        attachmentKinds: [AttachmentKind] = []
+    ) -> SwiftEvaluator.TaskSnapshot {
+        SwiftEvaluator.TaskSnapshot(
+            id: UUID(), title: "t", notes: "", status: .todo,
+            start: nil, startHasTime: false,
+            deadline: nil, deadlineHasTime: false,
+            createdAt: Date(), modifiedAt: Date(), closedAt: nil,
+            isPinned: false, inTrash: false,
+            hasChildren: false, childCount: 0,
+            tagIDs: tagIDs, ancestorIDs: ancestorIDs,
+            journalNoteBodies: journalNoteBodies, attachmentKinds: attachmentKinds,
+            hasNudges: false, isRecurring: false
+        )
+    }
+
+    @Test("tag includesAny")
+    func tagIncludesAny() {
+        let a = UUID(); let b = UUID(); let c = UUID()
+        let g = PredicateGroup(combinator: .all, predicates: [
+            .leaf(.init(field: .tag, op: .includesAny, value: .uuidSet([a, b])))
+        ])
+        #expect(SwiftEvaluator.evaluate(group: g, against: snap(tagIDs: [a])) == true)
+        #expect(SwiftEvaluator.evaluate(group: g, against: snap(tagIDs: [c])) == false)
+    }
+
+    @Test("tag includesAll")
+    func tagIncludesAll() {
+        let a = UUID(); let b = UUID()
+        let g = PredicateGroup(combinator: .all, predicates: [
+            .leaf(.init(field: .tag, op: .includesAll, value: .uuidSet([a, b])))
+        ])
+        #expect(SwiftEvaluator.evaluate(group: g, against: snap(tagIDs: [a, b])) == true)
+        #expect(SwiftEvaluator.evaluate(group: g, against: snap(tagIDs: [a])) == false)
+    }
+
+    @Test("tag excludesAll")
+    func tagExcludesAll() {
+        let a = UUID(); let b = UUID()
+        let g = PredicateGroup(combinator: .all, predicates: [
+            .leaf(.init(field: .tag, op: .excludesAll, value: .uuidSet([a, b])))
+        ])
+        #expect(SwiftEvaluator.evaluate(group: g, against: snap(tagIDs: [])) == true)
+        #expect(SwiftEvaluator.evaluate(group: g, against: snap(tagIDs: [a])) == false)
+    }
+
+    @Test("ancestor isDescendantOf")
+    func descendantOf() {
+        let root = UUID()
+        let other = UUID()
+        let g = PredicateGroup(combinator: .all, predicates: [
+            .leaf(.init(field: .ancestor, op: .isDescendantOf, value: .uuidSet([root])))
+        ])
+        #expect(SwiftEvaluator.evaluate(group: g, against: snap(ancestorIDs: [root])) == true)
+        #expect(SwiftEvaluator.evaluate(group: g, against: snap(ancestorIDs: [other])) == false)
+    }
+
+    @Test("journalText contains")
+    func journalText() {
+        let g = PredicateGroup(combinator: .all, predicates: [
+            .leaf(.init(field: .journalText, op: .contains, value: .string("blocker")))
+        ])
+        #expect(SwiftEvaluator.evaluate(group: g, against: snap(journalNoteBodies: ["fixed blocker today"])) == true)
+        #expect(SwiftEvaluator.evaluate(group: g, against: snap(journalNoteBodies: ["all good"])) == false)
+    }
+
+    @Test("hasAttachments any vs of kind")
+    func hasAttachments() {
+        let any = PredicateGroup(combinator: .all, predicates: [
+            .leaf(.init(field: .hasAttachments, op: .is, value: .attachmentKind(.init(present: true))))
+        ])
+        let image = PredicateGroup(combinator: .all, predicates: [
+            .leaf(.init(field: .hasAttachments, op: .is, value: .attachmentKind(.init(present: true, kind: .image))))
+        ])
+        #expect(SwiftEvaluator.evaluate(group: any, against: snap(attachmentKinds: [.file])) == true)
+        #expect(SwiftEvaluator.evaluate(group: any, against: snap(attachmentKinds: [])) == false)
+        #expect(SwiftEvaluator.evaluate(group: image, against: snap(attachmentKinds: [.file])) == false)
+        #expect(SwiftEvaluator.evaluate(group: image, against: snap(attachmentKinds: [.file, .image])) == true)
+    }
+}

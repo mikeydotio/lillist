@@ -139,9 +139,55 @@ public enum SwiftEvaluator {
         case .createdAt: return matchDate(s.createdAt, otherDate: s.modifiedAt, op: leaf.op, value: leaf.value, now: now, calendar: calendar)
         case .modifiedAt: return matchDate(s.modifiedAt, otherDate: nil, op: leaf.op, value: leaf.value, now: now, calendar: calendar)
         case .closedAt: return matchDate(s.closedAt, otherDate: nil, op: leaf.op, value: leaf.value, now: now, calendar: calendar)
-        // Slice 3 fills the relational fields.
+        case .tag: return matchTag(s.tagIDs, op: leaf.op, value: leaf.value)
+        case .ancestor: return matchAncestor(s.ancestorIDs, op: leaf.op, value: leaf.value)
+        case .journalText: return matchJournalText(s.journalNoteBodies, op: leaf.op, value: leaf.value)
+        case .hasAttachments: return matchHasAttachments(s.attachmentKinds, op: leaf.op, value: leaf.value)
+        }
+    }
+
+    // MARK: - Relational matchers
+
+    static func matchTag(_ tagIDs: Set<UUID>, op: Op, value: Value) -> Bool {
+        guard case .uuidSet(let ids) = value else { return false }
+        switch op {
+        case .includesAny: return !tagIDs.isDisjoint(with: ids)
+        case .includesAll: return ids.isSubset(of: tagIDs)
+        case .excludesAll: return tagIDs.isDisjoint(with: ids)
         default: return false
         }
+    }
+
+    static func matchAncestor(_ ancestorIDs: Set<UUID>, op: Op, value: Value) -> Bool {
+        guard case .uuidSet(let ids) = value else { return false }
+        switch op {
+        case .isDescendantOf: return !ancestorIDs.isDisjoint(with: ids)
+        case .isAncestorOf:
+            // Symmetry: a snapshot of an ancestor task has the descendant ids
+            // in `ancestorIDs`? No — `isAncestorOf` asks "is THIS task an
+            // ancestor of any of the given ids?" That requires the caller
+            // to supply descendant-id reachability; not represented in the
+            // snapshot today. Return false; the parity suite excludes this
+            // op for SwiftEvaluator until a snapshot extension is added.
+            return false
+        default: return false
+        }
+    }
+
+    static func matchJournalText(_ bodies: [String], op: Op, value: Value) -> Bool {
+        guard op == .contains, case .string(let needle) = value else { return false }
+        return bodies.contains { $0.localizedStandardContains(needle) }
+    }
+
+    static func matchHasAttachments(_ kinds: [AttachmentKind], op: Op, value: Value) -> Bool {
+        guard op == .is, case .attachmentKind(let match) = value else { return false }
+        let pool: [AttachmentKind]
+        if let kindFilter = match.kind {
+            pool = kinds.filter { $0 == kindFilter }
+        } else {
+            pool = kinds
+        }
+        return match.present ? !pool.isEmpty : pool.isEmpty
     }
 
     // MARK: - Date matcher
