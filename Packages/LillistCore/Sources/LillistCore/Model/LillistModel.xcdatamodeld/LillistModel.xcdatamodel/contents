@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <model type="com.apple.IDECoreDataModeler.DataModel" documentVersion="1.0" lastSavedToolsVersion="22112" systemVersion="24A0" minimumToolsVersion="Automatic" sourceLanguage="Swift" usedWithCloudKit="YES" userDefinedModelVersionIdentifier="">
-    <entity name="LillistTask" representedClassName="LillistTask" syncable="YES">
+    <entity name="LillistTask" representedClassName="LillistTask" syncable="YES" codeGenerationType="manual/none">
         <attribute name="id" optional="YES" attributeType="UUID" usesScalarValueType="NO"/>
         <attribute name="title" optional="YES" attributeType="String"/>
         <attribute name="notes" optional="YES" attributeType="String"/>
@@ -21,7 +21,7 @@
         <relationship name="journalEntries" optional="YES" toMany="YES" deletionRule="Cascade" destinationEntity="JournalEntry" inverseName="task" inverseEntity="JournalEntry"/>
         <relationship name="attachments" optional="YES" toMany="YES" deletionRule="Cascade" destinationEntity="Attachment" inverseName="task" inverseEntity="Attachment"/>
     </entity>
-    <entity name="Tag" representedClassName="Tag" syncable="YES">
+    <entity name="Tag" representedClassName="Tag" syncable="YES" codeGenerationType="manual/none">
         <attribute name="id" optional="YES" attributeType="UUID" usesScalarValueType="NO"/>
         <attribute name="name" optional="YES" attributeType="String"/>
         <attribute name="tintColor" optional="YES" attributeType="String"/>
@@ -30,7 +30,7 @@
         <relationship name="children" optional="YES" toMany="YES" deletionRule="Cascade" destinationEntity="Tag" inverseName="parent" inverseEntity="Tag"/>
         <relationship name="tasks" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="LillistTask" inverseName="tags" inverseEntity="LillistTask"/>
     </entity>
-    <entity name="JournalEntry" representedClassName="JournalEntry" syncable="YES">
+    <entity name="JournalEntry" representedClassName="JournalEntry" syncable="YES" codeGenerationType="manual/none">
         <attribute name="id" optional="YES" attributeType="UUID" usesScalarValueType="NO"/>
         <attribute name="kindRaw" optional="YES" attributeType="Integer 16" defaultValueString="0" usesScalarValueType="YES"/>
         <attribute name="body" optional="YES" attributeType="String"/>
@@ -40,7 +40,7 @@
         <relationship name="task" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="LillistTask" inverseName="journalEntries" inverseEntity="LillistTask"/>
         <relationship name="attachments" optional="YES" toMany="YES" deletionRule="Cascade" destinationEntity="Attachment" inverseName="journalEntry" inverseEntity="Attachment"/>
     </entity>
-    <entity name="Attachment" representedClassName="Attachment" syncable="YES">
+    <entity name="Attachment" representedClassName="Attachment" syncable="YES" codeGenerationType="manual/none">
         <attribute name="id" optional="YES" attributeType="UUID" usesScalarValueType="NO"/>
         <attribute name="kindRaw" optional="YES" attributeType="Integer 16" defaultValueString="0" usesScalarValueType="YES"/>
         <attribute name="filename" optional="YES" attributeType="String"/>
@@ -52,7 +52,7 @@
         <relationship name="task" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="LillistTask" inverseName="attachments" inverseEntity="LillistTask"/>
         <relationship name="journalEntry" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="JournalEntry" inverseName="attachments" inverseEntity="JournalEntry"/>
     </entity>
-    <entity name="AppPreferences" representedClassName="AppPreferences" syncable="YES">
+    <entity name="AppPreferences" representedClassName="AppPreferences" syncable="YES" codeGenerationType="manual/none">
         <attribute name="id" optional="YES" attributeType="UUID" usesScalarValueType="NO"/>
         <attribute name="defaultAllDayNotificationHour" optional="YES" attributeType="Integer 16" defaultValueString="9" usesScalarValueType="YES"/>
         <attribute name="defaultAllDayNotificationMinute" optional="YES" attributeType="Integer 16" defaultValueString="0" usesScalarValueType="YES"/>
