@@ -221,6 +221,55 @@ public final class TaskStore: @unchecked Sendable {
         }
     }
 
+    // MARK: - Soft delete
+
+    public func softDelete(id: UUID) async throws {
+        try await context.perform { [self] in
+            let m = try fetchManagedObject(id: id, in: context)
+            let now = Date()
+            applySoftDelete(to: m, at: now)
+            try context.save()
+        }
+    }
+
+    public func restore(id: UUID) async throws {
+        try await context.perform { [self] in
+            let m = try fetchManagedObject(id: id, in: context)
+            guard let deletedAt = m.deletedAt else { return }
+            clearSoftDelete(from: m, matchingDeletedAt: deletedAt)
+            try context.save()
+        }
+    }
+
+    public func trashed() async throws -> [TaskRecord] {
+        try await context.perform { [self] in
+            let req = NSFetchRequest<LillistTask>(entityName: "LillistTask")
+            req.predicate = NSPredicate(format: "deletedAt != nil")
+            req.sortDescriptors = [NSSortDescriptor(key: "deletedAt", ascending: false)]
+            return try context.fetch(req).map(record(from:))
+        }
+    }
+
+    private func applySoftDelete(to m: LillistTask, at now: Date) {
+        m.deletedAt = now
+        m.modifiedAt = now
+        if let children = m.children as? Set<LillistTask> {
+            for child in children where child.deletedAt == nil {
+                applySoftDelete(to: child, at: now)
+            }
+        }
+    }
+
+    private func clearSoftDelete(from m: LillistTask, matchingDeletedAt: Date) {
+        m.deletedAt = nil
+        m.modifiedAt = Date()
+        if let children = m.children as? Set<LillistTask> {
+            for child in children where child.deletedAt == matchingDeletedAt {
+                clearSoftDelete(from: child, matchingDeletedAt: matchingDeletedAt)
+            }
+        }
+    }
+
     // MARK: - Helpers
 
     func fetchManagedObject(id: UUID, in ctx: NSManagedObjectContext) throws -> LillistTask {
