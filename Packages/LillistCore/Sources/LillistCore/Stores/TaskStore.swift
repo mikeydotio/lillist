@@ -217,6 +217,13 @@ public final class TaskStore: @unchecked Sendable {
             let payload: [String: Int] = ["from": oldStatus.rawValue, "to": newStatus.rawValue]
             entry.payload = try JSONSerialization.data(withJSONObject: payload)
 
+            // Recurrence: spawn next instance ONLY on transition-to-closed.
+            // Re-opening (oldStatus == .closed) does NOT undo the spawn,
+            // per design Section 8.
+            if newStatus == .closed {
+                RecurrenceSpawner.spawnIfNeeded(forClosedTask: m, in: context)
+            }
+
             try context.save()
         }
     }
