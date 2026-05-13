@@ -20,6 +20,8 @@
         <relationship name="tags" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="Tag" inverseName="tasks" inverseEntity="Tag"/>
         <relationship name="journalEntries" optional="YES" toMany="YES" deletionRule="Cascade" destinationEntity="JournalEntry" inverseName="task" inverseEntity="JournalEntry"/>
         <relationship name="attachments" optional="YES" toMany="YES" deletionRule="Cascade" destinationEntity="Attachment" inverseName="task" inverseEntity="Attachment"/>
+        <relationship name="series" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="Series" inverseName="instances" inverseEntity="Series"/>
+        <relationship name="seriesAsSeed" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="Series" inverseName="seedTask" inverseEntity="Series"/>
     </entity>
     <entity name="Tag" representedClassName="Tag" syncable="YES">
         <attribute name="id" optional="YES" attributeType="UUID" usesScalarValueType="NO"/>
@@ -73,5 +75,12 @@
         <attribute name="position" optional="YES" attributeType="Double" defaultValueString="0" usesScalarValueType="YES"/>
         <attribute name="createdAt" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
         <attribute name="modifiedAt" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
+    </entity>
+    <entity name="Series" representedClassName="Series" syncable="YES">
+        <attribute name="id" optional="YES" attributeType="UUID" usesScalarValueType="NO"/>
+        <attribute name="ruleJSON" optional="YES" attributeType="String"/>
+        <attribute name="nextOccurrenceAfter" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
+        <relationship name="seedTask" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="LillistTask" inverseName="seriesAsSeed" inverseEntity="LillistTask"/>
+        <relationship name="instances" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="LillistTask" inverseName="series" inverseEntity="LillistTask"/>
     </entity>
 </model>

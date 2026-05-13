@@ -23,6 +23,8 @@ public final class LillistTask: NSManagedObject {
     @NSManaged public var tags: NSSet?
     @NSManaged public var journalEntries: NSSet?
     @NSManaged public var attachments: NSSet?
+    @NSManaged public var series: Series?
+    @NSManaged public var seriesAsSeed: Series?
 }
 
 extension LillistTask {
