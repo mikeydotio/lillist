@@ -216,18 +216,70 @@ public enum NSPredicateCompiler {
         }
     }
 
-    // MARK: - Journal text (Task 12 wires up subquery shape)
+    // MARK: - Journal text
 
     static func compileJournalText(op: Op, value: Value) -> NSPredicate {
-        return NSPredicate(value: false)
+        guard op == .contains, case .string(let s) = value else {
+            return NSPredicate(value: false)
+        }
+        let noteKindRaw = Int16(JournalEntryKind.note.rawValue)
+        // Find tasks whose `journalEntries` include at least one note-kind
+        // entry whose body contains the search string.
+        return NSPredicate(
+            format: "SUBQUERY(journalEntries, $j, $j.kindRaw == %d AND $j.body CONTAINS[cd] %@).@count > 0",
+            noteKindRaw,
+            s
+        )
     }
+
+    // MARK: - Tags
 
     static func compileTag(op: Op, value: Value) -> NSPredicate {
-        return NSPredicate(value: false)
+        guard case .uuidSet(let ids) = value else { return NSPredicate(value: false) }
+        let idArr = Array(ids)
+        switch op {
+        case .includesAny:
+            return NSPredicate(format: "SUBQUERY(tags, $t, $t.id IN %@).@count > 0", idArr)
+        case .includesAll:
+            // The task must have at least one matching tag per id.
+            let subs: [NSPredicate] = idArr.map { id in
+                NSPredicate(format: "SUBQUERY(tags, $t, $t.id == %@).@count > 0", id as CVarArg)
+            }
+            return NSCompoundPredicate(andPredicateWithSubpredicates: subs)
+        case .excludesAll:
+            return NSPredicate(format: "SUBQUERY(tags, $t, $t.id IN %@).@count == 0", idArr)
+        default:
+            return NSPredicate(value: false)
+        }
     }
 
+    // MARK: - Ancestor
+
     static func compileAncestor(op: Op, value: Value) -> NSPredicate {
-        return NSPredicate(value: false)
+        guard case .uuidSet(let ids) = value else { return NSPredicate(value: false) }
+        switch op {
+        case .isDescendantOf:
+            // Task whose parent (or transitive ancestor) is one of the ids.
+            // Core Data does not expose transitive closure in predicate format,
+            // so we OR a fixed depth of parent.id checks. v1 supports depth ≤ 8.
+            let depths = (1...8).map { depth -> NSPredicate in
+                let keyPath = (0..<depth).map { _ in "parent" }.joined(separator: ".") + ".id"
+                return NSPredicate(format: "%K IN %@", keyPath, Array(ids))
+            }
+            return NSCompoundPredicate(orPredicateWithSubpredicates: depths)
+        case .isAncestorOf:
+            // Task whose `id` is the parent (or transitive ancestor) of one of
+            // the given task ids. Without a reverse traversal helper this
+            // would require a fetch — we fall back to a runtime SUBQUERY over
+            // `children`, again bounded to depth 8.
+            let depths = (1...8).map { depth -> NSPredicate in
+                let keyPath = (0..<depth).map { _ in "children" }.joined(separator: ".") + ".id"
+                return NSPredicate(format: "ANY %K IN %@", keyPath, Array(ids))
+            }
+            return NSCompoundPredicate(orPredicateWithSubpredicates: depths)
+        default:
+            return NSPredicate(value: false)
+        }
     }
 
     // MARK: - Field-presence check (for implicit trash rule)

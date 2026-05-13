@@ -144,3 +144,91 @@ struct NSPredicateCompilerDateTests {
         #expect(p.predicateFormat.contains("kindRaw"))
     }
 }
+
+@Suite("NSPredicateCompiler — subquery slice")
+struct NSPredicateCompilerSubqueryTests {
+    @Test("journalText contains compiles to SUBQUERY over note-kind journal entries")
+    func journalTextContains() {
+        let group = PredicateGroup(combinator: .all, predicates: [
+            .leaf(.init(field: .journalText, op: .contains, value: .string("blocker")))
+        ])
+        let p = NSPredicateCompiler.compile(group)
+        let f = p.predicateFormat.uppercased()
+        #expect(f.contains("SUBQUERY"))
+        #expect(p.predicateFormat.contains("journalEntries"))
+        #expect(p.predicateFormat.contains("body"))
+    }
+
+    @Test("tag includesAny compiles to ANY tags.id IN <set>")
+    func tagIncludesAny() {
+        let a = UUID(); let b = UUID()
+        let group = PredicateGroup(combinator: .all, predicates: [
+            .leaf(.init(field: .tag, op: .includesAny, value: .uuidSet([a, b])))
+        ])
+        let p = NSPredicateCompiler.compile(group)
+        #expect(p.predicateFormat.uppercased().contains("ANY") || p.predicateFormat.uppercased().contains("SUBQUERY"))
+        #expect(p.predicateFormat.contains("tags"))
+    }
+
+    @Test("tag includesAll compiles to per-id SUBQUERY count == n")
+    func tagIncludesAll() {
+        let a = UUID(); let b = UUID()
+        let group = PredicateGroup(combinator: .all, predicates: [
+            .leaf(.init(field: .tag, op: .includesAll, value: .uuidSet([a, b])))
+        ])
+        let p = NSPredicateCompiler.compile(group)
+        #expect(p.predicateFormat.uppercased().contains("SUBQUERY"))
+        #expect(p.predicateFormat.contains("tags"))
+    }
+
+    @Test("tag excludesAll compiles to NONE form")
+    func tagExcludesAll() {
+        let a = UUID()
+        let group = PredicateGroup(combinator: .all, predicates: [
+            .leaf(.init(field: .tag, op: .excludesAll, value: .uuidSet([a])))
+        ])
+        let p = NSPredicateCompiler.compile(group)
+        let f = p.predicateFormat.uppercased()
+        #expect(f.contains("NONE") || f.contains("NOT") || f.contains("== 0"))
+    }
+
+    @Test("ancestor isDescendantOf uses parent traversal predicate")
+    func ancestorIsDescendantOf() {
+        let id = UUID()
+        let group = PredicateGroup(combinator: .all, predicates: [
+            .leaf(.init(field: .ancestor, op: .isDescendantOf, value: .uuidSet([id])))
+        ])
+        let p = NSPredicateCompiler.compile(group)
+        #expect(p.predicateFormat.contains("parent"))
+    }
+
+    @Test("End-to-end: journalText subquery returns the right task")
+    func journalTextEndToEnd() async throws {
+        let controller = try await TestStore.make()
+        let ctx = controller.container.viewContext
+        let id = UUID()
+        try await ctx.perform {
+            let t = LillistTask(context: ctx)
+            t.id = id
+            t.title = "T"
+            t.notes = ""
+            t.status = .todo
+            t.createdAt = Date(); t.modifiedAt = Date()
+            let j = JournalEntry(context: ctx)
+            j.id = UUID()
+            j.kind = .note
+            j.body = "Blocked by external dependency"
+            j.createdAt = Date()
+            j.task = t
+            try ctx.save()
+        }
+        let group = PredicateGroup(combinator: .all, predicates: [
+            .leaf(.init(field: .journalText, op: .contains, value: .string("dependency")))
+        ])
+        let req = NSFetchRequest<LillistTask>(entityName: "LillistTask")
+        req.predicate = NSPredicateCompiler.compile(group)
+        let results = try await ctx.perform { try ctx.fetch(req) }
+        #expect(results.count == 1)
+        #expect(results.first?.id == id)
+    }
+}
