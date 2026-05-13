@@ -66,9 +66,24 @@ public enum NSPredicateCompiler {
         case .isPinned: return compileBool(keyPath: "isPinned", op: leaf.op, value: leaf.value)
         case .inTrash: return compileInTrash(op: leaf.op, value: leaf.value)
         case .hasChildren: return compileHasChildren(op: leaf.op, value: leaf.value)
-        // Slices 2 and 3 add the remaining fields.
-        default:
-            // Unreachable until later slices wire in remaining fields.
+
+        case .start, .deadline, .createdAt, .modifiedAt, .closedAt:
+            return compileDate(field: leaf.field, op: leaf.op, value: leaf.value, now: now, calendar: calendar)
+
+        case .hasAttachments:
+            return compileHasAttachments(op: leaf.op, value: leaf.value)
+
+        case .journalText:
+            return compileJournalText(op: leaf.op, value: leaf.value)
+
+        case .tag:
+            return compileTag(op: leaf.op, value: leaf.value)
+
+        case .ancestor:
+            return compileAncestor(op: leaf.op, value: leaf.value)
+
+        case .hasNudges, .recurrence:
+            // Wired up by Plans 4 and 5 respectively.
             return NSPredicate(value: false)
         }
     }
@@ -124,6 +139,95 @@ public enum NSPredicateCompiler {
         return b
             ? NSPredicate(format: "children.@count > 0")
             : NSPredicate(format: "children.@count == 0")
+    }
+
+    // MARK: - Dates
+
+    static func compileDate(
+        field: Field,
+        op: Op,
+        value: Value,
+        now: Date,
+        calendar: Calendar
+    ) -> NSPredicate {
+        let keyPath = field.rawValue // matches Core Data attribute name
+        switch op {
+        case .before:
+            guard let d = resolveAbsolute(value, now: now, calendar: calendar) else {
+                return NSPredicate(value: false)
+            }
+            return NSPredicate(format: "%K < %@", keyPath, d as NSDate)
+        case .after:
+            guard let d = resolveAbsolute(value, now: now, calendar: calendar) else {
+                return NSPredicate(value: false)
+            }
+            return NSPredicate(format: "%K > %@", keyPath, d as NSDate)
+        case .on:
+            guard let d = resolveAbsolute(value, now: now, calendar: calendar) else {
+                return NSPredicate(value: false)
+            }
+            let startOfDay = calendar.startOfDay(for: d)
+            let endOfDay = RelativeDateResolver.endOfDay(for: startOfDay, calendar: calendar)
+            return NSPredicate(format: "%K >= %@ AND %K <= %@", keyPath, startOfDay as NSDate, keyPath, endOfDay as NSDate)
+        case .withinLastDays:
+            guard case .dayCount(let n) = value else { return NSPredicate(value: false) }
+            let startOfToday = calendar.startOfDay(for: now)
+            let cutoff = calendar.date(byAdding: .day, value: -n, to: startOfToday) ?? startOfToday
+            return NSPredicate(format: "%K >= %@ AND %K <= %@", keyPath, cutoff as NSDate, keyPath, now as NSDate)
+        case .withinNextDays:
+            guard case .dayCount(let n) = value else { return NSPredicate(value: false) }
+            let startOfToday = calendar.startOfDay(for: now)
+            let horizon = calendar.date(byAdding: .day, value: n, to: startOfToday) ?? startOfToday
+            let horizonEnd = RelativeDateResolver.endOfDay(for: horizon, calendar: calendar)
+            return NSPredicate(format: "%K >= %@ AND %K <= %@", keyPath, now as NSDate, keyPath, horizonEnd as NSDate)
+        case .isSet:
+            return NSPredicate(format: "%K != nil", keyPath)
+        case .isUnset:
+            return NSPredicate(format: "%K == nil", keyPath)
+        case .equalsModifiedAt where field == .createdAt:
+            return NSPredicate(format: "createdAt == modifiedAt")
+        default:
+            return NSPredicate(value: false)
+        }
+    }
+
+    static func resolveAbsolute(_ value: Value, now: Date, calendar: Calendar) -> Date? {
+        switch value {
+        case .absoluteDate(let d): return d
+        case .relativeDate(let r): return RelativeDateResolver.resolve(r, now: now, calendar: calendar)
+        default: return nil
+        }
+    }
+
+    // MARK: - Attachments
+
+    static func compileHasAttachments(op: Op, value: Value) -> NSPredicate {
+        guard case .attachmentKind(let match) = value, op == .is else {
+            return NSPredicate(value: false)
+        }
+        if let kind = match.kind {
+            let kindRaw = Int16(kind.rawValue)
+            let sub = NSPredicate(format: "SUBQUERY(attachments, $a, $a.kindRaw == %d).@count > 0", kindRaw)
+            return match.present ? sub : NSCompoundPredicate(notPredicateWithSubpredicate: sub)
+        } else {
+            return match.present
+                ? NSPredicate(format: "attachments.@count > 0")
+                : NSPredicate(format: "attachments.@count == 0")
+        }
+    }
+
+    // MARK: - Journal text (Task 12 wires up subquery shape)
+
+    static func compileJournalText(op: Op, value: Value) -> NSPredicate {
+        return NSPredicate(value: false)
+    }
+
+    static func compileTag(op: Op, value: Value) -> NSPredicate {
+        return NSPredicate(value: false)
+    }
+
+    static func compileAncestor(op: Op, value: Value) -> NSPredicate {
+        return NSPredicate(value: false)
     }
 
     // MARK: - Field-presence check (for implicit trash rule)

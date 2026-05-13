@@ -79,3 +79,68 @@ struct NSPredicateCompilerTests {
         #expect(results.count == 1)
     }
 }
+
+@Suite("NSPredicateCompiler — date/attachment slice")
+struct NSPredicateCompilerDateTests {
+    @Test("deadline before absoluteDate")
+    func deadlineBeforeAbsolute() {
+        let d = Date()
+        let group = PredicateGroup(combinator: .all, predicates: [
+            .leaf(.init(field: .deadline, op: .before, value: .absoluteDate(d)))
+        ])
+        let p = NSPredicateCompiler.compile(group)
+        #expect(p.predicateFormat.contains("deadline"))
+        #expect(p.predicateFormat.contains("<"))
+    }
+
+    @Test("start withinNextDays(7) resolves at compile time")
+    func startWithinNextDays() {
+        let now = Date(timeIntervalSince1970: 1_715_500_000)
+        let group = PredicateGroup(combinator: .all, predicates: [
+            .leaf(.init(field: .start, op: .withinNextDays, value: .dayCount(7)))
+        ])
+        let p = NSPredicateCompiler.compile(group, now: now, calendar: .current)
+        #expect(p.predicateFormat.contains("start"))
+    }
+
+    @Test("deadline isSet vs isUnset")
+    func deadlineIsSet() {
+        let setGroup = PredicateGroup(combinator: .all, predicates: [
+            .leaf(.init(field: .deadline, op: .isSet, value: .bool(true)))
+        ])
+        let unsetGroup = PredicateGroup(combinator: .all, predicates: [
+            .leaf(.init(field: .deadline, op: .isUnset, value: .bool(true)))
+        ])
+        #expect(NSPredicateCompiler.compile(setGroup).predicateFormat.contains("!= nil"))
+        #expect(NSPredicateCompiler.compile(unsetGroup).predicateFormat.contains("== nil"))
+    }
+
+    @Test("createdAt equalsModifiedAt")
+    func createdEqualsModified() {
+        let group = PredicateGroup(combinator: .all, predicates: [
+            .leaf(.init(field: .createdAt, op: .equalsModifiedAt, value: .bool(true)))
+        ])
+        let p = NSPredicateCompiler.compile(group)
+        let f = p.predicateFormat
+        #expect(f.contains("createdAt"))
+        #expect(f.contains("modifiedAt"))
+    }
+
+    @Test("hasAttachments is bool(true) with no ofKind")
+    func hasAttachmentsAny() {
+        let group = PredicateGroup(combinator: .all, predicates: [
+            .leaf(.init(field: .hasAttachments, op: .is, value: .attachmentKind(.init(present: true))))
+        ])
+        let p = NSPredicateCompiler.compile(group)
+        #expect(p.predicateFormat.contains("attachments"))
+    }
+
+    @Test("hasAttachments is bool(true) with ofKind = image")
+    func hasAttachmentsImage() {
+        let group = PredicateGroup(combinator: .all, predicates: [
+            .leaf(.init(field: .hasAttachments, op: .is, value: .attachmentKind(.init(present: true, kind: .image))))
+        ])
+        let p = NSPredicateCompiler.compile(group)
+        #expect(p.predicateFormat.contains("kindRaw"))
+    }
+}
