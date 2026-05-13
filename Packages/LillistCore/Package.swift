@@ -11,11 +11,19 @@ let package = Package(
         .library(name: "LillistCore", targets: ["LillistCore"])
     ],
     targets: [
+        .plugin(
+            name: "CompileCoreDataModel",
+            capability: .buildTool()
+        ),
         .target(
             name: "LillistCore",
+            resources: [
+                .process("Model/LillistModel.xcdatamodeld")
+            ],
             swiftSettings: [
                 .enableExperimentalFeature("StrictConcurrency")
-            ]
+            ],
+            plugins: ["CompileCoreDataModel"]
         ),
         .testTarget(
             name: "LillistCoreTests",
