@@ -187,3 +187,32 @@ public final class SmartFilterStore: @unchecked Sendable {
         return try JSONDecoder().decode(PredicateGroup.self, from: data)
     }
 }
+
+extension SmartFilterStore {
+    public func setPinned(id: UUID, pinned: Bool) async throws {
+        try await context.perform { [self] in
+            let m = try fetchManagedObject(id: id, in: context)
+            m.isPinned = pinned
+            m.modifiedAt = Date()
+            try context.save()
+        }
+    }
+
+    /// Place `id` immediately between `after` and `before` (either may be nil).
+    /// Uses `FractionalPosition` for gap-based insertion.
+    public func reorder(id: UUID, after: UUID?, before: UUID?) async throws {
+        try await context.perform { [self] in
+            let target = try fetchManagedObject(id: id, in: context)
+            let afterPos: Double? = try after.map { try fetchManagedObject(id: $0, in: context).position }
+            let beforePos: Double? = try before.map { try fetchManagedObject(id: $0, in: context).position }
+            if let a = afterPos, let b = beforePos, a >= b {
+                throw LillistError.validationFailed([
+                    .init(field: "reorder", message: "anchors out of order: after=\(a) before=\(b)")
+                ])
+            }
+            target.position = FractionalPosition.position(after: afterPos, before: beforePos)
+            target.modifiedAt = Date()
+            try context.save()
+        }
+    }
+}
