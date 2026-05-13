@@ -86,7 +86,26 @@ Lillist/
 
 **Onboarding gates.** Onboarding only appears when `hasCompletedOnboarding == false`. After Step 4 of the onboarding sheet, we flip the flag *and* invoke `DefaultsInstaller.installIfNeeded()`. Crash between flag-write and installer-run is harmless: installer is idempotent and may also run from `LillistMacApp.init` (background `Task`) as a safety net.
 
-**iCloud-required gate.** When `AccountStateMonitor.state` is `.unavailable` (no account, restricted, etc.), the onboarding sheet content is replaced with the iCloud-required screen (design Section 8). Onboarding cannot complete until iCloud is available again. We *do* let the user dismiss the iCloud screen with "Try again" and "Open Settings" affordances; we don't trap them.
+**iCloud-required gate.** When iCloud is not usable, the onboarding sheet content is replaced with the iCloud-required screen (design Section 8). Onboarding cannot complete until iCloud is available again. We *do* let the user dismiss the iCloud screen with "Try again" and "Open Settings" affordances; we don't trap them.
+
+> **Plan 2 deviation note (added retroactively).** The shipped Plan 2 API does
+> **not** include `AccountStateMonitor.state` or an `iCloudAccountState.unavailable`
+> case. The real shape is:
+>
+> - Property is `currentState: iCloudAccountState` (read off the actor with
+>   `await accountMonitor.currentState`).
+> - Cases are `.available`, `.noAccount`, `.restricted`, `.accountChanged`.
+> - "iCloud unusable" = `currentState == .noAccount || currentState == .restricted`.
+>   `.accountChanged` is a separate flow that goes through `QuarantineManager`
+>   (design Section 8), not the same screen.
+>
+> When implementing the gate, treat `.noAccount` and `.restricted` as the
+> conditions that show the iCloud-required screen. Subscribe via
+> `accountMonitor.stateStream` for live updates (the stream replays the
+> current state on subscription so initial state shows immediately).
+>
+> `AccountStateMonitor` requires explicit provider injection:
+> `AccountStateMonitor(provider: CloudKitAccountStatusProvider(container: CKContainer.default()))`.
 
 **Notification permission is non-blocking.** The intro screen has two buttons: "Set up notifications" (calls `NotificationPermissions.requestAuthorization()` inline, then updates a `@State` indicator) and "Get started" (proceeds regardless of permission state). If the request returns `.denied`, we show a Settings deep-link affordance ("Open Settings") and a one-line explanation — but the user can still complete onboarding.
 
