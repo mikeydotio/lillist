@@ -51,7 +51,11 @@ public actor AccountStateMonitor {
     public var stateStream: AsyncStream<iCloudAccountState> {
         AsyncStream { continuation in
             let id = UUID()
-            Task { await self.register(id: id, continuation: continuation) }
+            // Outer Task inherits this actor's isolation, so the call is
+            // same-actor and synchronous — no `await` needed. The Task
+            // inside `onTermination` (a @Sendable closure) does NOT inherit
+            // isolation and must keep its `await`.
+            Task { self.register(id: id, continuation: continuation) }
             continuation.onTermination = { _ in
                 Task { await self.unregister(id: id) }
             }
