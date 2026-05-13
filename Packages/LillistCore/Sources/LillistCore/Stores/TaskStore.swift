@@ -158,6 +158,40 @@ public final class TaskStore: @unchecked Sendable {
         }
     }
 
+    // MARK: - Reorder
+
+    public func reorder(id: UUID, after afterID: UUID?, before beforeID: UUID?) async throws {
+        try await context.perform { [self] in
+            let m = try fetchManagedObject(id: id, in: context)
+            let afterTask = try afterID.map { try fetchManagedObject(id: $0, in: context) }
+            let beforeTask = try beforeID.map { try fetchManagedObject(id: $0, in: context) }
+
+            let afterParent = afterTask?.parent
+            let beforeParent = beforeTask?.parent
+            if let a = afterTask, let b = beforeTask, a.parent?.objectID != b.parent?.objectID {
+                throw LillistError.validationFailed([
+                    .init(field: "neighbors", message: "must share the same parent")
+                ])
+            }
+            let newParent = afterParent ?? beforeParent ?? m.parent
+
+            if m.parent?.objectID != newParent?.objectID {
+                if Validators.wouldCreateCycle(candidate: m, newParent: newParent) {
+                    throw LillistError.validationFailed([
+                        .init(field: "parent", message: "would create a cycle")
+                    ])
+                }
+                m.parent = newParent
+            }
+            m.position = FractionalPosition.position(
+                after: afterTask?.position,
+                before: beforeTask?.position
+            )
+            m.modifiedAt = Date()
+            try context.save()
+        }
+    }
+
     // MARK: - Helpers
 
     func fetchManagedObject(id: UUID, in ctx: NSManagedObjectContext) throws -> LillistTask {
