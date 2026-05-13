@@ -35,5 +35,26 @@ struct PersistenceControllerTests {
         #expect(names.contains("JournalEntry"))
         #expect(names.contains("Attachment"))
         #expect(names.contains("AppPreferences"))
+        #expect(names.contains("SmartFilter"))
+    }
+
+    @Test("Model contains SmartFilter entity with expected attributes")
+    func smartFilterEntityShape() async throws {
+        let controller = try await PersistenceController(configuration: .inMemory)
+        let model = controller.container.managedObjectModel
+        guard let entity = model.entitiesByName["SmartFilter"] else {
+            Issue.record("SmartFilter entity missing")
+            return
+        }
+        let attrs = Set(entity.attributesByName.keys)
+        for required in ["id", "name", "predicateGroupJSON", "tintColor",
+                         "sortFieldRaw", "sortAscending", "isPinned", "position",
+                         "createdAt", "modifiedAt"] {
+            #expect(attrs.contains(required), "missing attribute \(required)")
+        }
+        // CloudKit rule: every attribute must be optional at the schema level.
+        for (_, attr) in entity.attributesByName {
+            #expect(attr.isOptional == true, "\(attr.name) must be optional")
+        }
     }
 }

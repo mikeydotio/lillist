@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <model type="com.apple.IDECoreDataModeler.DataModel" documentVersion="1.0" lastSavedToolsVersion="22112" systemVersion="24A0" minimumToolsVersion="Automatic" sourceLanguage="Swift" usedWithCloudKit="YES" userDefinedModelVersionIdentifier="">
-    <entity name="LillistTask" representedClassName="LillistTask" syncable="YES" codeGenerationType="manual/none">
+    <entity name="LillistTask" representedClassName="LillistTask" syncable="YES">
         <attribute name="id" optional="YES" attributeType="UUID" usesScalarValueType="NO"/>
         <attribute name="title" optional="YES" attributeType="String"/>
         <attribute name="notes" optional="YES" attributeType="String"/>
@@ -21,7 +21,7 @@
         <relationship name="journalEntries" optional="YES" toMany="YES" deletionRule="Cascade" destinationEntity="JournalEntry" inverseName="task" inverseEntity="JournalEntry"/>
         <relationship name="attachments" optional="YES" toMany="YES" deletionRule="Cascade" destinationEntity="Attachment" inverseName="task" inverseEntity="Attachment"/>
     </entity>
-    <entity name="Tag" representedClassName="Tag" syncable="YES" codeGenerationType="manual/none">
+    <entity name="Tag" representedClassName="Tag" syncable="YES">
         <attribute name="id" optional="YES" attributeType="UUID" usesScalarValueType="NO"/>
         <attribute name="name" optional="YES" attributeType="String"/>
         <attribute name="tintColor" optional="YES" attributeType="String"/>
@@ -30,7 +30,7 @@
         <relationship name="children" optional="YES" toMany="YES" deletionRule="Cascade" destinationEntity="Tag" inverseName="parent" inverseEntity="Tag"/>
         <relationship name="tasks" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="LillistTask" inverseName="tags" inverseEntity="LillistTask"/>
     </entity>
-    <entity name="JournalEntry" representedClassName="JournalEntry" syncable="YES" codeGenerationType="manual/none">
+    <entity name="JournalEntry" representedClassName="JournalEntry" syncable="YES">
         <attribute name="id" optional="YES" attributeType="UUID" usesScalarValueType="NO"/>
         <attribute name="kindRaw" optional="YES" attributeType="Integer 16" defaultValueString="0" usesScalarValueType="YES"/>
         <attribute name="body" optional="YES" attributeType="String"/>
@@ -40,7 +40,7 @@
         <relationship name="task" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="LillistTask" inverseName="journalEntries" inverseEntity="LillistTask"/>
         <relationship name="attachments" optional="YES" toMany="YES" deletionRule="Cascade" destinationEntity="Attachment" inverseName="journalEntry" inverseEntity="Attachment"/>
     </entity>
-    <entity name="Attachment" representedClassName="Attachment" syncable="YES" codeGenerationType="manual/none">
+    <entity name="Attachment" representedClassName="Attachment" syncable="YES">
         <attribute name="id" optional="YES" attributeType="UUID" usesScalarValueType="NO"/>
         <attribute name="kindRaw" optional="YES" attributeType="Integer 16" defaultValueString="0" usesScalarValueType="YES"/>
         <attribute name="filename" optional="YES" attributeType="String"/>
@@ -52,7 +52,7 @@
         <relationship name="task" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="LillistTask" inverseName="attachments" inverseEntity="LillistTask"/>
         <relationship name="journalEntry" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="JournalEntry" inverseName="attachments" inverseEntity="JournalEntry"/>
     </entity>
-    <entity name="AppPreferences" representedClassName="AppPreferences" syncable="YES" codeGenerationType="manual/none">
+    <entity name="AppPreferences" representedClassName="AppPreferences" syncable="YES">
         <attribute name="id" optional="YES" attributeType="UUID" usesScalarValueType="NO"/>
         <attribute name="defaultAllDayNotificationHour" optional="YES" attributeType="Integer 16" defaultValueString="9" usesScalarValueType="YES"/>
         <attribute name="defaultAllDayNotificationMinute" optional="YES" attributeType="Integer 16" defaultValueString="0" usesScalarValueType="YES"/>
@@ -61,5 +61,17 @@
         <attribute name="morningSummaryMinute" optional="YES" attributeType="Integer 16" defaultValueString="0" usesScalarValueType="YES"/>
         <attribute name="trashRetentionDays" optional="YES" attributeType="Integer 16" defaultValueString="30" usesScalarValueType="YES"/>
         <attribute name="defaultTaskListSortRaw" optional="YES" attributeType="String" defaultValueString="manualPosition"/>
+    </entity>
+    <entity name="SmartFilter" representedClassName="SmartFilter" syncable="YES">
+        <attribute name="id" optional="YES" attributeType="UUID" usesScalarValueType="NO"/>
+        <attribute name="name" optional="YES" attributeType="String"/>
+        <attribute name="predicateGroupJSON" optional="YES" attributeType="String"/>
+        <attribute name="tintColor" optional="YES" attributeType="String"/>
+        <attribute name="sortFieldRaw" optional="YES" attributeType="String" defaultValueString="deadline"/>
+        <attribute name="sortAscending" optional="YES" attributeType="Boolean" defaultValueString="YES" usesScalarValueType="YES"/>
+        <attribute name="isPinned" optional="YES" attributeType="Boolean" defaultValueString="NO" usesScalarValueType="YES"/>
+        <attribute name="position" optional="YES" attributeType="Double" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="createdAt" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="modifiedAt" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
     </entity>
 </model>
