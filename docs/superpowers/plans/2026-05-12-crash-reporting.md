@@ -118,6 +118,15 @@ Tests inject a synthetic `URL` via a test-only initializer; tests never touch re
 
 **`AppPreferences.crashPromptsEnabled`.** Plan 1 defined `AppPreferences` with several stored attributes. Plan 9 adds one more via a Core Data lightweight migration step (Task 11). Default is `true`. When `false`, `CrashReporter` still writes/deletes the canary (no behavior change there) but suppresses the sheet on next launch.
 
+**Managed-object class generation — hand-written, not auto-generated.** `AppPreferences+CoreData.swift` is a hand-written `@NSManaged` subclass (see Plan 1, and the same convention applied in Plans 3/4). When you add the new `crashPromptsEnabled` attribute in Task 10, you must add a matching `@NSManaged public var crashPromptsEnabled: Bool` line to that file — the model XML change alone won't expose the property to Swift. Step 3 of Task 10 has been updated to include this.
+
+**Build-plugin caching gotcha.** SwiftPM's `CompileCoreDataModel` plugin keys on the `.xcdatamodeld` directory's mtime, not on the inner `LillistModel.xcdatamodel/contents` file. After editing `contents`, `swift build` will reuse the stale compiled `.momd` and reads of the new attribute will return the default value (Bool defaults to `false`, masking the `defaultValueString="YES"` from the model). Run this after the XML edit, before `swift build` / `swift test`:
+
+```bash
+touch Packages/LillistCore/Sources/LillistCore/Model/LillistModel.xcdatamodeld/LillistModel.xcdatamodel/ \
+      Packages/LillistCore/Sources/LillistCore/Model/LillistModel.xcdatamodeld/
+```
+
 **Commits.** Same conventional-commit prefixes used in Plan 1: `feat:`, `test:`, `chore:`, `fix:`, `refactor:`, `docs:`.
 
 **Verification commands throughout:**
@@ -1786,6 +1795,19 @@ Edit `Packages/LillistCore/Sources/LillistCore/Model/LillistModel.xcdatamodeld/L
 ```
 
 (This is a CloudKit-compatible additive change per design Section 3.)
+
+Then open `Packages/LillistCore/Sources/LillistCore/ManagedObjects/AppPreferences+CoreData.swift` and add the matching `@NSManaged` property to the hand-written class declaration (this codebase does not use Core Data class codegen — see Plan 1 Task 8):
+
+```swift
+@NSManaged public var crashPromptsEnabled: Bool
+```
+
+Finally, force the build plugin to pick up the model change (see the "Build-plugin caching gotcha" note in the preamble):
+
+```bash
+touch Packages/LillistCore/Sources/LillistCore/Model/LillistModel.xcdatamodeld/LillistModel.xcdatamodel/ \
+      Packages/LillistCore/Sources/LillistCore/Model/LillistModel.xcdatamodeld/
+```
 
 - [ ] **Step 4: Expose the value in `PreferencesStore`**
 

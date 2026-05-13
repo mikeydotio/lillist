@@ -117,6 +117,15 @@ Lillist/
 
 **Empty tag tree is explicit.** Nowhere in this plan do we create default tags. The implementer should grep the diff for "default tag" and verify there are zero matches.
 
+**Managed-object class generation — hand-written, not auto-generated.** `AppPreferences+CoreData.swift` is a hand-written `@NSManaged` subclass (see Plan 1 Task 8 and the same convention applied in Plans 3/4). When you add the six new attributes in Task 1, you must add a matching `@NSManaged` line per attribute to that file — the model XML change alone won't expose the properties to Swift, and Task 2's `PreferencesStore` updates won't compile without them. Task 1 below has been updated to include this step.
+
+**Build-plugin caching gotcha.** SwiftPM's `CompileCoreDataModel` plugin keys on the `.xcdatamodeld` directory's mtime, not on the inner `LillistModel.xcdatamodel/contents` file. After editing `contents`, `swift build` will reuse the stale compiled `.momd` and reads of the new attributes will return default zero values instead of the `defaultValueString` from the model — silently masking onboarding-complete flags as `false` etc. Run this after every model edit, before `swift build` / `swift test`:
+
+```bash
+touch Packages/LillistCore/Sources/LillistCore/Model/LillistModel.xcdatamodeld/LillistModel.xcdatamodel/ \
+      Packages/LillistCore/Sources/LillistCore/Model/LillistModel.xcdatamodeld/
+```
+
 **Commits.** Each task ends with a conventional-commit prefix: `feat:`, `test:`, `chore:`, `fix:`, `refactor:`, `docs:`.
 
 **Verification command throughout:**
@@ -160,15 +169,37 @@ Edit `Packages/LillistCore/Sources/LillistCore/Model/LillistModel.xcdatamodeld/L
 
 This is an additive, lightweight migration; Core Data infers it.
 
-- [ ] **Step 3: Build to confirm**
+> **Heads-up: `showPostCrashPrompt` may already exist.** Plan 9 Task 10 adds `crashPromptsEnabled` (singular, default `YES`). The field above is named `showPostCrashPrompt` and defaults to `YES`. These are *not* the same attribute. If Plan 9 has landed, decide which name wins and reconcile here — duplicating the underlying setting under two attribute names will confuse the Settings UI in Task 6+. The preferred resolution is to standardize on Plan 9's `crashPromptsEnabled` and drop `showPostCrashPrompt` from this plan; update Task 6's checklist accordingly.
 
-Run: `cd Packages/LillistCore && swift build`
-Expected: build succeeds. Auto-generated `AppPreferences` class now has the new properties.
+- [ ] **Step 3: Add matching `@NSManaged` properties to the hand-written `AppPreferences` class**
 
-- [ ] **Step 4: Commit**
+Open `Packages/LillistCore/Sources/LillistCore/ManagedObjects/AppPreferences+CoreData.swift`. Inside the `AppPreferences` class body, append:
+
+```swift
+@NSManaged public var hasCompletedOnboarding: Bool
+@NSManaged public var quickCaptureEnabled: Bool
+@NSManaged public var quickCaptureHotkey: String?
+@NSManaged public var statusBarItemVisible: Bool
+@NSManaged public var showPostCrashPrompt: Bool   // (Skip this line if reconciling with Plan 9's crashPromptsEnabled — see note above.)
+@NSManaged public var defaultTagTintHex: String?
+```
+
+This codebase does not use Core Data's class codegen — see Plan 1 Task 8 for the convention. The XML edit alone won't expose these properties to Swift; the `PreferencesStore` updates in Task 2 will fail to compile until these lines exist.
+
+- [ ] **Step 4: Force the build plugin to pick up the model edit, then build**
 
 ```bash
-git add Packages/LillistCore/Sources/LillistCore/Model/LillistModel.xcdatamodeld
+touch Packages/LillistCore/Sources/LillistCore/Model/LillistModel.xcdatamodeld/LillistModel.xcdatamodel/ \
+      Packages/LillistCore/Sources/LillistCore/Model/LillistModel.xcdatamodeld/
+cd Packages/LillistCore && swift build
+```
+Expected: build succeeds. (Skip the `touch` and the new attributes will silently read as default zero values — see "Build-plugin caching gotcha" in the preamble.)
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add Packages/LillistCore/Sources/LillistCore/Model/LillistModel.xcdatamodeld \
+        Packages/LillistCore/Sources/LillistCore/ManagedObjects/AppPreferences+CoreData.swift
 git commit -m "feat: extend AppPreferences with onboarding, quick-capture, crash-prompt prefs"
 ```
 

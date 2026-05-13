@@ -78,6 +78,16 @@ Packages/LillistCore/
 
 **CloudKit-compatible schema (same as Plan 1).** Every new attribute on `NotificationSpec` is optional at the schema level; required-ness is enforced in `NotificationSpecStore`. The `task` relationship has an inverse (`LillistTask.notificationSpecs`) and uses `Cascade` deletion from task to spec, `Nullify` on the reverse. No `Deny` rules.
 
+**Managed-object class generation — hand-written, not auto-generated.** Plan 1 codified the convention that every Core Data entity has a hand-written `@objc(Name) public final class Name: NSManagedObject { @NSManaged … }` subclass (see `Tag+CoreData.swift`, `LillistTask+CoreData.swift`, `AppPreferences+CoreData.swift`, `Series+CoreData.swift`). Plan 5 follows the same convention — Task 1 below adds the `@NSManaged` properties on `LillistTask`, and Task 3 declares the `NotificationSpec` class itself (not just an extension). Do not rely on Core Data's class-codegen.
+
+**Build-plugin caching gotcha.** SwiftPM's `CompileCoreDataModel` plugin keys on the `.xcdatamodeld` directory's mtime, not on the inner `LillistModel.xcdatamodel/contents` file. After editing `contents`, `swift build` will reuse the stale compiled `.momd` and the new entity/attributes will be missing at runtime — tests crash with `NSInvalidArgumentException: An NSManagedObject of class 'NotificationSpec' must have a valid NSEntityDescription.`. Workaround until the plugin is fixed:
+
+```bash
+touch Packages/LillistCore/Sources/LillistCore/Model/LillistModel.xcdatamodeld/LillistModel.xcdatamodel/ \
+      Packages/LillistCore/Sources/LillistCore/Model/LillistModel.xcdatamodeld/
+```
+Run this after any model edit, before `swift build` / `swift test`.
+
 **Concurrency.** All public-facing types either run on `viewContext.perform` (the stores) or are actors (`NotificationScheduler`, `SnoozeRegistry`, `NotificationPermissions`). `SnoozeAction.compute` is a `@Sendable` closure. `UNUserNotificationCenter` itself is not `Sendable`-checked in current SDKs — the protocol wrapper crosses the actor boundary as `any UNUserNotificationCenterProtocol` and the production impl is a thin `final class` that synchronizes via the underlying framework's own concurrency model. We do not allow `UNUserNotificationCenter` instances to escape into stored properties on Sendable types except through the protocol.
 
 **Reconciliation contract.** `NotificationScheduler.reconcile(taskID:)` is the single entry point. Every code path that affects scheduling (`TaskStore.update`, `TaskStore.transition`, `TaskStore.softDelete`, `TaskStore.restore`, `NotificationSpecStore.add/update/delete`, recurrence spawn from Plan 4, snooze handler) calls `reconcile(taskID:)` after its own `save`. Reconciliation is *idempotent* — calling it twice with no underlying change leaves the pending set untouched.
@@ -124,15 +134,46 @@ In `Packages/LillistCore/Sources/LillistCore/Model/LillistModel.xcdatamodeld/Lil
     </entity>
 ```
 
-- [ ] **Step 3: Build and run the full existing test suite to confirm the model still loads**
+- [ ] **Step 3: Add the `notificationSpecs` relationship to `LillistTask`'s hand-written class**
 
-Run: `cd Packages/LillistCore && swift test`
-Expected: all previously-passing tests still pass; no new tests yet.
+Open `Packages/LillistCore/Sources/LillistCore/ManagedObjects/LillistTask+CoreData.swift`. Inside the `LillistTask` class body, alongside the existing `@NSManaged public var series: Series?` / `seriesAsSeed` properties, add:
 
-- [ ] **Step 4: Commit**
+```swift
+    @NSManaged public var notificationSpecs: NSSet?
+```
+
+Then, inside the existing `extension LillistTask { … }` that contains the `addToSeries…` style accessors, append:
+
+```swift
+    @objc(addNotificationSpecsObject:)
+    @NSManaged public func addToNotificationSpecs(_ value: NotificationSpec)
+
+    @objc(removeNotificationSpecsObject:)
+    @NSManaged public func removeFromNotificationSpecs(_ value: NotificationSpec)
+
+    @objc(addNotificationSpecs:)
+    @NSManaged public func addToNotificationSpecs(_ values: NSSet)
+
+    @objc(removeNotificationSpecs:)
+    @NSManaged public func removeFromNotificationSpecs(_ values: NSSet)
+```
+
+(The class declaration for `NotificationSpec` itself lands in Task 3.)
+
+- [ ] **Step 4: Force the model plugin to rebuild and confirm the existing suite still passes**
 
 ```bash
-git add Packages/LillistCore/Sources/LillistCore/Model/LillistModel.xcdatamodeld/
+touch Packages/LillistCore/Sources/LillistCore/Model/LillistModel.xcdatamodeld/LillistModel.xcdatamodel/ \
+      Packages/LillistCore/Sources/LillistCore/Model/LillistModel.xcdatamodeld/
+cd Packages/LillistCore && swift test
+```
+Expected: all previously-passing tests still pass; no new tests yet. (Skip the `touch` and you'll get the `NSInvalidArgumentException` described in "Notes for the Implementer".)
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add Packages/LillistCore/Sources/LillistCore/Model/LillistModel.xcdatamodeld/ \
+        Packages/LillistCore/Sources/LillistCore/ManagedObjects/LillistTask+CoreData.swift
 git commit -m "feat: add NotificationSpec entity to Core Data model"
 ```
 
@@ -260,20 +301,33 @@ git commit -m "feat: add NotificationKind enum with anchor classification"
 
 ---
 
-## Task 3: Typed accessors on `NotificationSpec` managed object
+## Task 3: Define `NotificationSpec` managed-object class + typed accessor
 
 **Files:**
 - Create: `Packages/LillistCore/Sources/LillistCore/ManagedObjects/NotificationSpec+CoreData.swift`
 
-Mirrors the pattern from Plan 1 Task 8 — bridge `kindRaw: Int16` to `NotificationKind`.
+Mirrors the pattern from Plan 1 Task 8: hand-write the `@NSManaged` subclass (this codebase does not use Core Data's class codegen — see Plan 1's `Tag+CoreData.swift`, `AppPreferences+CoreData.swift`, etc.) and bridge `kindRaw: Int16` to `NotificationKind`.
 
-- [ ] **Step 1: Write the extension**
+- [ ] **Step 1: Write the class declaration + typed accessor**
 
 Write `Packages/LillistCore/Sources/LillistCore/ManagedObjects/NotificationSpec+CoreData.swift`:
 
 ```swift
 import Foundation
 import CoreData
+
+@objc(NotificationSpec)
+public final class NotificationSpec: NSManagedObject {
+    @NSManaged public var id: UUID?
+    @NSManaged public var kindRaw: Int16
+    @NSManaged public var offsetMinutes: NSNumber?
+    @NSManaged public var fireDate: Date?
+    @NSManaged public var lastFiredAt: Date?
+    @NSManaged public var snoozedUntil: Date?
+    @NSManaged public var createdAt: Date?
+
+    @NSManaged public var task: LillistTask?
+}
 
 extension NotificationSpec {
     /// Typed accessor over `kindRaw`.
@@ -283,6 +337,8 @@ extension NotificationSpec {
     }
 }
 ```
+
+Note `offsetMinutes` is declared as `NSNumber?` (rather than scalar `Int32`) because the model XML uses `usesScalarValueType="NO"` so the attribute can be `nil` (only the offset variants of `NotificationKind` carry it). All other optional attributes follow the same pattern as Plan 1's hand-written classes.
 
 - [ ] **Step 2: Build to confirm no compile errors**
 
@@ -2518,11 +2574,81 @@ struct NotificationSchedulerStatusTransitionsTests {
 Run: `cd Packages/LillistCore && swift test --filter NotificationSchedulerStatusTransitionsTests`
 Expected: PASS, 4 tests (the behavior is already implemented; this task pins it).
 
-- [ ] **Step 3: Commit**
+- [ ] **Step 3: Hook reconcile into `RecurrenceSpawner` (Plan 4 integration)**
+
+Plan 4 landed `RecurrenceSpawner.spawnIfNeeded(forClosedTask:in:)`, invoked from `TaskStore.transition` on transition-to-closed. The spawner creates a brand-new `LillistTask` instance with fresh `start`/`deadline` and adds it to the same `Series`. Without a reconcile call, the spawn has zero scheduled notifications until something else mutates it. Per the **Reconciliation contract** in the preamble, the spawn site must call `reconcile(taskID:)` for the spawned task after save.
+
+Because `RecurrenceSpawner` is internal to `LillistCore` and the spawner runs synchronously inside `TaskStore.transition`'s `viewContext.perform` block, the cleanest hook is in `TaskStore.transition` itself, _after_ `context.save()` returns. Modify `TaskStore.transition` to capture the spawned task ID (if any) and reconcile both IDs:
+
+```swift
+public func transition(id: UUID, to newStatus: Status) async throws {
+    var spawnedID: UUID? = nil
+    try await context.perform { [self] in
+        // … existing body unchanged through the spawner call …
+        if newStatus == .closed {
+            spawnedID = RecurrenceSpawner.spawnIfNeeded(forClosedTask: m, in: context)
+        }
+        try context.save()
+    }
+    // Reconcile *after* the save so the persistent store reflects the new instance.
+    if let scheduler = NotificationSchedulerHolder.shared {
+        await scheduler.reconcile(taskID: id)
+        if let spawnedID { await scheduler.reconcile(taskID: spawnedID) }
+    }
+}
+```
+
+This requires two complementary changes:
+1. Modify `RecurrenceSpawner.spawnIfNeeded` to return the spawned task's `UUID?` (currently `Void`). The change is mechanical — capture `spawn.id` and return it; existing call sites that ignore the result are unaffected.
+2. Introduce a `NotificationSchedulerHolder` (or pass the scheduler through `TaskStore`'s init) so the store can find the live scheduler instance. The exact shape is a Plan 5 design call — the simplest version is an `actor` singleton-style holder that the app's composition root populates on launch and tests populate inside their setup. Either way: `TaskStore` must not statically import the scheduler type if it would create a circular dep — keep the dep via protocol (`any NotificationReconciling`) and inject it.
+
+Add a test that closing a recurring instance results in the spawn receiving its `defaultStart`/`defaultDeadline` request:
+
+```swift
+@Test("Closing a recurring instance schedules notifications on the spawn")
+func recurringSpawnGetsReconciled() async throws {
+    let p = try await TestStore.make()
+    let tasks = TaskStore(persistence: p)
+    let series = SeriesStore(persistence: p)
+    let specs = NotificationSpecStore(persistence: p)
+    let fake = FakeUserNotificationCenter()
+    let scheduler = makeScheduler(p, fake: fake, specs: specs)
+    NotificationSchedulerHolder.shared = scheduler   // or however injection lands
+
+    let seedID = try await tasks.create(title: "Daily standup")
+    try await tasks.update(id: seedID) { d in
+        d.start = Date().addingTimeInterval(3600); d.startHasTime = true
+    }
+    _ = try await series.create(
+        fromSeedTask: seedID,
+        rule: .calendar(.init(freq: .daily, interval: 1))
+    )
+    await fake.reset()
+
+    try await tasks.transition(id: seedID, to: .closed)
+
+    // Spawn has been created and reconciled — pending requests include one
+    // for the spawn's defaultStart, but none for the closed seed.
+    let pending = await fake.pendingNotificationRequests()
+    let roots = try await tasks.children(of: nil)
+    let spawn = roots.first { $0.id != seedID && $0.title == "Daily standup" }!
+    #expect(pending.contains { $0.identifier.hasPrefix("\(spawn.id.uuidString)") })
+    #expect(pending.contains { $0.identifier.hasPrefix("\(seedID.uuidString)") } == false)
+}
+```
+
+- [ ] **Step 4: Run the tests**
+
+Run: `cd Packages/LillistCore && swift test --filter NotificationSchedulerStatusTransitionsTests`
+Expected: PASS, 5 tests (4 original + 1 spawn-reconcile).
+
+- [ ] **Step 5: Commit**
 
 ```bash
-git add Packages/LillistCore/Tests/LillistCoreTests/Notifications/NotificationSchedulerStatusTransitionsTests.swift
-git commit -m "test: pin status-transition reconciliation behavior (closed cancels, re-open re-registers, blocked stays)"
+git add Packages/LillistCore/Tests/LillistCoreTests/Notifications/NotificationSchedulerStatusTransitionsTests.swift \
+        Packages/LillistCore/Sources/LillistCore/Stores/TaskStore.swift \
+        Packages/LillistCore/Sources/LillistCore/Recurrence/RecurrenceSpawner.swift
+git commit -m "feat: reconcile notifications for recurrence spawns; pin status-transition behavior"
 ```
 
 ---
