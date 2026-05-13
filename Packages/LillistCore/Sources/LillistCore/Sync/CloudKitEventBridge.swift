@@ -52,7 +52,9 @@ public actor CloudKitEventBridge {
     public var eventStream: AsyncStream<CloudKitSyncEvent> {
         AsyncStream { continuation in
             let id = UUID()
-            Task { await self.register(id: id, continuation: continuation) }
+            // Outer Task inherits this actor's isolation; the inner
+            // onTermination closure does not and must keep its `await`.
+            Task { self.register(id: id, continuation: continuation) }
             continuation.onTermination = { _ in
                 Task { await self.unregister(id: id) }
             }
