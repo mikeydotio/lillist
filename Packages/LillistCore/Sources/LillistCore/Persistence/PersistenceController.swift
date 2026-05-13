@@ -41,7 +41,7 @@ public final class PersistenceController: @unchecked Sendable {
         self.container = container
     }
 
-    private static func loadModel() -> NSManagedObjectModel {
+    nonisolated(unsafe) private static let sharedModel: NSManagedObjectModel = {
         guard let url = Bundle.module.url(forResource: "LillistModel", withExtension: "momd") else {
             preconditionFailure("LillistModel.momd not found in bundle")
         }
@@ -49,5 +49,9 @@ public final class PersistenceController: @unchecked Sendable {
             preconditionFailure("Failed to load NSManagedObjectModel from \(url)")
         }
         return model
+    }()
+
+    private static func loadModel() -> NSManagedObjectModel {
+        sharedModel
     }
 }

@@ -117,6 +117,47 @@ public final class TaskStore: @unchecked Sendable {
         }
     }
 
+    // MARK: - Hierarchy
+
+    public func children(of parentID: UUID?) async throws -> [TaskRecord] {
+        try await context.perform { [self] in
+            let req = NSFetchRequest<LillistTask>(entityName: "LillistTask")
+            if let parentID {
+                let parent = try fetchManagedObject(id: parentID, in: context)
+                req.predicate = NSPredicate(format: "parent == %@ AND deletedAt == nil", parent)
+            } else {
+                req.predicate = NSPredicate(format: "parent == nil AND deletedAt == nil")
+            }
+            req.sortDescriptors = [
+                NSSortDescriptor(key: "position", ascending: true),
+                NSSortDescriptor(key: "createdAt", ascending: true)
+            ]
+            return try context.fetch(req).map(record(from:))
+        }
+    }
+
+    public func reparent(id: UUID, newParent newParentID: UUID?) async throws {
+        try await context.perform { [self] in
+            let m = try fetchManagedObject(id: id, in: context)
+            let newParent: LillistTask?
+            if let newParentID {
+                let candidate = try fetchManagedObject(id: newParentID, in: context)
+                if Validators.wouldCreateCycle(candidate: m, newParent: candidate) {
+                    throw LillistError.validationFailed([
+                        .init(field: "parent", message: "would create a cycle")
+                    ])
+                }
+                newParent = candidate
+            } else {
+                newParent = nil
+            }
+            m.parent = newParent
+            m.position = try nextPosition(forParent: newParent)
+            m.modifiedAt = Date()
+            try context.save()
+        }
+    }
+
     // MARK: - Helpers
 
     func fetchManagedObject(id: UUID, in ctx: NSManagedObjectContext) throws -> LillistTask {
