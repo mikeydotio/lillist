@@ -5,6 +5,6 @@ import Testing
 struct SmokeTests {
     @Test("Package builds and version is set")
     func versionExists() {
-        #expect(LillistCore.version == "0.2.0")
+        #expect(LillistCoreInfo.version == "0.2.0")
     }
 }

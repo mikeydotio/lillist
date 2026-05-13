@@ -1,7 +1,5 @@
 import Testing
-import class Foundation.JSONEncoder
-import class Foundation.JSONDecoder
-import struct Foundation.Data
+import Foundation
 @testable import LillistCore
 
 @Suite("Predicate Codable")
@@ -28,7 +26,7 @@ struct PredicateCodableTests {
 
     @Test("Predicate with nested group round-trips")
     func nestedGroupRoundTrip() throws {
-        let p: Predicate = .group(.init(combinator: .all, predicates: [
+        let p: LillistCore.Predicate = .group(.init(combinator: .all, predicates: [
             .leaf(.init(field: .title, op: .contains, value: .string("a"))),
             .group(.init(combinator: .any, predicates: [
                 .leaf(.init(field: .status, op: .is, value: .statusSet([.todo]))),
@@ -36,7 +34,7 @@ struct PredicateCodableTests {
             ]))
         ]))
         let data = try JSONEncoder().encode(p)
-        let decoded = try JSONDecoder().decode(Predicate.self, from: data)
+        let decoded = try JSONDecoder().decode(LillistCore.Predicate.self, from: data)
         if case .group(let g) = decoded {
             #expect(g.predicates.count == 2)
             if case .group(let inner) = g.predicates[1] {
@@ -52,7 +50,7 @@ struct PredicateCodableTests {
 
     @Test("Predicate JSON uses 'type' discriminator")
     func discriminator() throws {
-        let p: Predicate = .leaf(.init(field: .title, op: .contains, value: .string("x")))
+        let p: LillistCore.Predicate = .leaf(.init(field: .title, op: .contains, value: .string("x")))
         let data = try JSONEncoder().encode(p)
         let json = String(data: data, encoding: .utf8) ?? ""
         #expect(json.contains("\"type\""))
@@ -63,7 +61,7 @@ struct PredicateCodableTests {
     func unknownType() {
         let bogus = #"{"type":"sandwich","payload":{}}"#.data(using: .utf8)!
         #expect(throws: DecodingError.self) {
-            _ = try JSONDecoder().decode(Predicate.self, from: bogus)
+            _ = try JSONDecoder().decode(LillistCore.Predicate.self, from: bogus)
         }
     }
 }
