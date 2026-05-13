@@ -81,7 +81,7 @@ public final class TaskStore: @unchecked Sendable {
 
     // MARK: - Update
 
-    public func update(id: UUID, _ block: @escaping (inout TaskDraft) -> Void) async throws {
+    public func update(id: UUID, _ block: @escaping @Sendable (inout TaskDraft) -> Void) async throws {
         try await context.perform { [self] in
             let m = try fetchManagedObject(id: id, in: context)
             var draft = TaskDraft(

@@ -34,7 +34,7 @@ public final class PreferencesStore: @unchecked Sendable {
         }
     }
 
-    public func update(_ block: @escaping (inout Prefs) -> Void) async throws {
+    public func update(_ block: @escaping @Sendable (inout Prefs) -> Void) async throws {
         try await context.perform { [self] in
             let row = try fetchOrCreateSingleton(in: context)
             var prefs = Prefs(
