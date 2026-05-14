@@ -2,6 +2,12 @@ import SwiftUI
 import LillistCore
 import LillistUI
 
+// MARK: - Accessibility audit (Plan 8, Task 26)
+// - Tag rows use Label(name, systemImage: "tag") — the text is the label.
+// - Tree expansion uses List(children:) which exposes disclosure via
+//   VoiceOver as "expanded/collapsed" automatically.
+// - No fixed font sizes; semantic colors only.
+
 /// Drawer of the tag tree. Tap a tag to navigate to its task list.
 /// Design Section 7 iOS subsection — "All opens the tag-tree drawer".
 struct AllTagsView: View {

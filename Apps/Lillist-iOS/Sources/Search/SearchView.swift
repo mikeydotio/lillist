@@ -2,6 +2,12 @@ import SwiftUI
 import LillistCore
 import LillistUI
 
+// MARK: - Accessibility audit (Plan 8, Task 26)
+// - `.searchable` produces a standard VoiceOver-labeled search field.
+// - Result rows use SearchResultRow → TaskRowView which has a combined
+//   accessibility element with status spelled out.
+// - No fixed font sizes; semantic colors only.
+
 /// Full-screen search. The query string is treated as a title-substring
 /// match against non-trashed tasks (sorted by most-recently-modified).
 ///

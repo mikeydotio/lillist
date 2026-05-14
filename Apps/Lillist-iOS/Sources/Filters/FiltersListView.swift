@@ -2,6 +2,11 @@ import SwiftUI
 import LillistCore
 import LillistUI
 
+// MARK: - Accessibility audit (Plan 8, Task 26)
+// - Filter rows use Label(name, systemImage:) — text is the accessibility label.
+// - Sections (Pinned / All Filters) become VoiceOver headers automatically.
+// - No fixed font sizes; semantic colors only.
+
 /// Saved smart filters, pinned-first per design Section 7's iOS subsection.
 struct FiltersListView: View {
     @Environment(AppEnvironment.self) private var env

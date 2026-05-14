@@ -2,6 +2,14 @@ import SwiftUI
 import LillistCore
 import LillistUI
 
+// MARK: - Accessibility audit (Plan 8, Task 26)
+// - Interactive elements use TaskRowView (already accessibilityElement-combined
+//   with a status-spelled-out label and trait) and ContentUnavailableView
+//   (system-provided VoiceOver labels).
+// - No fixed font sizes; relies on system text styles (Dynamic Type).
+// - Sync indicator badge exposes localized state via SyncStatusBadge.
+// - No `preferredColorScheme` override; semantic colors only.
+
 /// Built-in "Today" smart-filter surface. Fetches the user's "Today" filter
 /// (installed by `DefaultSmartFiltersInstaller`) and renders its results
 /// with the shared `TaskRowView`. Design Section 7 iOS subsection.

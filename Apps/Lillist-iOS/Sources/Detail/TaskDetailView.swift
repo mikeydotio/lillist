@@ -2,6 +2,13 @@ import SwiftUI
 import LillistCore
 import LillistUI
 
+// MARK: - Accessibility audit (Plan 8, Task 26)
+// - Detail header uses `accessibilityElement(children: .combine)` so VoiceOver
+//   reads title + status + deadline as one element with `.isHeader` trait.
+// - Each tab body sets `.accessibilityLabel("…")` on its container.
+// - TabView(.page) exposes page-index dots; the system labels them.
+// - No fixed font sizes; semantic colors only.
+
 /// Task detail surface. Notes / Subtasks / Journal / Attachments are tabs
 /// in a `TabView(.page)` to keep the navigation stack shallow.
 /// Design Section 7 iOS subsection.
