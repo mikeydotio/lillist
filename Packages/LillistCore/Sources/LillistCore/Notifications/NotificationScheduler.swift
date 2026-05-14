@@ -310,4 +310,39 @@ public actor NotificationScheduler {
         await reconcile(taskID: taskID)
         return id
     }
+
+    // MARK: - Snooze handling
+
+    /// Apply a snooze action to a spec. Writes `snoozedUntil` and reconciles.
+    /// Call from your `UNUserNotificationCenterDelegate` `didReceive` handler.
+    public func handleSnoozeAction(
+        actionID: String,
+        specID: UUID,
+        deliveredAt: Date
+    ) async throws {
+        guard let action = await snoozeRegistry.action(id: actionID) else {
+            throw LillistError.validationFailed([
+                .init(field: "actionID", message: "unknown snooze action: \(actionID)")
+            ])
+        }
+        let spec = try await specStore.fetch(id: specID)
+        let until = action.compute(spec, deliveredAt)
+        try await specStore.update(id: specID) { d in
+            d.snoozedUntil = until
+        }
+        await reconcile(taskID: spec.taskID)
+    }
+
+    // MARK: - Fired-handler
+
+    /// Record that a notification fired on this device. Call from your
+    /// `UNUserNotificationCenterDelegate` `willPresent` handler. Other
+    /// devices observe the change via CloudKit and remove their matching
+    /// pending request (design Section 4 cross-device de-dup).
+    public func recordFired(specID: UUID, at date: Date = Date()) async {
+        try? await specStore.recordLastFired(id: specID, at: date)
+        if let spec = try? await specStore.fetch(id: specID) {
+            await reconcile(taskID: spec.taskID)
+        }
+    }
 }
