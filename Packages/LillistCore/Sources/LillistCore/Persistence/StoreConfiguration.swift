@@ -51,6 +51,19 @@ public struct StoreConfiguration: Sendable {
         }
     }
 
+    /// On-disk SQLite store inside the App Group's shared container. Use
+    /// when the main app and its extensions (Share / App Intents) need to
+    /// see the same store. Returns `nil` if the group container is not
+    /// reachable (entitlement missing or running outside a signed sandbox).
+    public static func appGroupOnDisk(groupID: String) -> StoreConfiguration? {
+        guard let container = FileManager.default
+            .containerURL(forSecurityApplicationGroupIdentifier: groupID)
+        else { return nil }
+        let dir = container.appendingPathComponent("Lillist", isDirectory: true)
+        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        return .onDisk(url: dir.appendingPathComponent("Lillist.sqlite"))
+    }
+
     /// Returns a copy with the given CloudKit container identifier substituted in.
     public func withCloudKitContainer(_ identifier: String) -> StoreConfiguration {
         StoreConfiguration(storeKind: storeKind, cloudKitContainerIdentifier: identifier)

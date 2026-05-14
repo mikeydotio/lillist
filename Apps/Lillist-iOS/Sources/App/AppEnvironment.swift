@@ -68,10 +68,18 @@ final class AppEnvironment {
         self.syncMonitor = IdleSyncIndicatorMonitor()
     }
 
-    /// Async-friendly constructor. Loads the Core Data store and wires up
-    /// every store / scheduler used by the SwiftUI hierarchy.
+    /// App Group identifier shared between the main app, Share Extension,
+    /// and Shortcuts (App Intents) extension. Matches the entitlement on
+    /// every target.
+    static let appGroupID = "group.io.mikeydotio.Lillist"
+
+    /// Async-friendly constructor. Loads the Core Data store inside the
+    /// App Group's shared container so the Share Extension and App
+    /// Intents extension see the same data.
     static func make() async throws -> AppEnvironment {
-        let persistence = try await PersistenceController(configuration: .defaultOnDisk)
+        let config = StoreConfiguration.appGroupOnDisk(groupID: appGroupID)
+            ?? (try .defaultOnDisk)
+        let persistence = try await PersistenceController(configuration: config)
         return AppEnvironment(persistence: persistence)
     }
 

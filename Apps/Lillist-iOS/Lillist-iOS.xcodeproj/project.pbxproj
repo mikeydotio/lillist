@@ -13,6 +13,7 @@
 		1F88713EE31954520467B3CB /* LillistUI in Frameworks */ = {isa = PBXBuildFile; productRef = 632F42FE2460074A366178DF /* LillistUI */; };
 		2001164CDA5863CF6F20A39B /* FloatingPlusOverlay.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2451C017B338C99A72811F7E /* FloatingPlusOverlay.swift */; };
 		2DADFF6343511363B623E9F4 /* SplitShell.swift in Sources */ = {isa = PBXBuildFile; fileRef = 262D045DF7FC19BD936381F6 /* SplitShell.swift */; };
+		34376E8334E842553856720B /* ShareRootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BF7C0CBC7BB61226C9ABECE1 /* ShareRootView.swift */; };
 		379E3FE8AFB068E832A2617E /* LillistUI in Frameworks */ = {isa = PBXBuildFile; productRef = 2ABD72EED49C2E40D19B1F5F /* LillistUI */; };
 		3A2760F631CB59A9344DC2EF /* QuickCaptureFlowTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CEE1AA15CD7EEB68E16E53D8 /* QuickCaptureFlowTests.swift */; };
 		3C197827BB6E072E187327F3 /* DefaultSmartFiltersInstallerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5D9EA074A9D3F9A86933CEA3 /* DefaultSmartFiltersInstallerTests.swift */; };
@@ -27,17 +28,19 @@
 		70EFAEC895F77C3746EC9826 /* ShortcutsActions.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 3662AC54EFB61DCAB491C63C /* ShortcutsActions.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		736D7D381C885A085BE6C3C6 /* LillistCore in Frameworks */ = {isa = PBXBuildFile; productRef = 8DB8540AD27AC6302E455EF9 /* LillistCore */; };
 		7A6D0D29236C8CF6E2FD5EDE /* LillistCore in Frameworks */ = {isa = PBXBuildFile; productRef = 9ED0B06375B70267A31FB5CA /* LillistCore */; };
-		8037DA38276D97C41CDF3CD9 /* ShareExtensionPlaceholder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98D7023A4EE734E604ACC0DC /* ShareExtensionPlaceholder.swift */; };
 		8189623B012D1E3D79C2EC4B /* LillistCore in Frameworks */ = {isa = PBXBuildFile; productRef = 8CDB023B81A1C3EA772D3534 /* LillistCore */; };
 		8ED796B233C11810C84BB4DB /* FiltersListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00051882E988E14985F0D4D1 /* FiltersListView.swift */; };
 		901C7E98FDF9DA6C070A641A /* TaskSubtasksTab.swift in Sources */ = {isa = PBXBuildFile; fileRef = 29C684CCD22ABED2078AE9FA /* TaskSubtasksTab.swift */; };
 		92FB9F599E4AE68D4C2E5151 /* ShareExtension-iOS.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 940380DB2F7305D2993DCD30 /* ShareExtension-iOS.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		9978784936A13783F1BF8E35 /* SharePayload.swift in Sources */ = {isa = PBXBuildFile; fileRef = D2F899010F7F794421F9DB2A /* SharePayload.swift */; };
 		9A614EB7763D94FE9D1D032D /* TabShell.swift in Sources */ = {isa = PBXBuildFile; fileRef = CDF66890A34B8871D4E2278B /* TabShell.swift */; };
 		AD0144EC54CC3FA76CD3D1D0 /* AllTagsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7AE05D83958BE1618EC00B27 /* AllTagsView.swift */; };
 		C1FEEAB56AFC2EFD9C108C47 /* TaskJournalTab.swift in Sources */ = {isa = PBXBuildFile; fileRef = F6C4BEE444B84DDF5F88ABF3 /* TaskJournalTab.swift */; };
 		CA4034D690255FE0554C7DE2 /* RootShell.swift in Sources */ = {isa = PBXBuildFile; fileRef = 03C3319AED08244B047F88E4 /* RootShell.swift */; };
 		CEE10BDC98205D724AA29DCD /* FilterResultsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2A651BD41829D553D469EC3 /* FilterResultsView.swift */; };
+		DD83C4577F076A2042F05E6E /* KeyboardShortcuts.swift in Sources */ = {isa = PBXBuildFile; fileRef = A51D139E432B20E90E93549D /* KeyboardShortcuts.swift */; };
 		E01B4AB3BC5C4E7EE9093B74 /* LillistApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1CF1EBE004127B957F4AB99 /* LillistApp.swift */; };
+		ED3F0012AFC75791B7432CB6 /* ShareViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3013CF9707368DFFA43E4C72 /* ShareViewController.swift */; };
 		F77B7FA0960260C3C222F792 /* TaskAttachmentsTab.swift in Sources */ = {isa = PBXBuildFile; fileRef = 737996A9942CE2D095EAA6AB /* TaskAttachmentsTab.swift */; };
 		F85E96DD9CD8A9EC48C58105 /* DefaultSmartFiltersInstaller.swift in Sources */ = {isa = PBXBuildFile; fileRef = 877582BCF5CA2C44CB3C90FE /* DefaultSmartFiltersInstaller.swift */; };
 /* End PBXBuildFile section */
@@ -83,6 +86,7 @@
 		262D045DF7FC19BD936381F6 /* SplitShell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SplitShell.swift; sourceTree = "<group>"; };
 		297211E1BF6A9D0C7890E078 /* AppEnvironment.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppEnvironment.swift; sourceTree = "<group>"; };
 		29C684CCD22ABED2078AE9FA /* TaskSubtasksTab.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TaskSubtasksTab.swift; sourceTree = "<group>"; };
+		3013CF9707368DFFA43E4C72 /* ShareViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShareViewController.swift; sourceTree = "<group>"; };
 		3662AC54EFB61DCAB491C63C /* ShortcutsActions.appex */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = "wrapper.app-extension"; path = ShortcutsActions.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		448E26B3838FE07DB2DF0357 /* SearchResultRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SearchResultRow.swift; sourceTree = "<group>"; };
 		54441E810591AED5EFAECF6F /* SearchView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SearchView.swift; sourceTree = "<group>"; };
@@ -96,13 +100,15 @@
 		877582BCF5CA2C44CB3C90FE /* DefaultSmartFiltersInstaller.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DefaultSmartFiltersInstaller.swift; sourceTree = "<group>"; };
 		8E53A86D921898A0FB836C9A /* TaskDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TaskDetailView.swift; sourceTree = "<group>"; };
 		940380DB2F7305D2993DCD30 /* ShareExtension-iOS.appex */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = "wrapper.app-extension"; path = "ShareExtension-iOS.appex"; sourceTree = BUILT_PRODUCTS_DIR; };
-		98D7023A4EE734E604ACC0DC /* ShareExtensionPlaceholder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShareExtensionPlaceholder.swift; sourceTree = "<group>"; };
+		A51D139E432B20E90E93549D /* KeyboardShortcuts.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyboardShortcuts.swift; sourceTree = "<group>"; };
 		A8F22116451755349886D09A /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		B1CF1EBE004127B957F4AB99 /* LillistApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LillistApp.swift; sourceTree = "<group>"; };
 		B3C5475FEB9C980491DF8B93 /* LillistUI */ = {isa = PBXFileReference; lastKnownFileType = folder; name = LillistUI; path = ../../Packages/LillistUI; sourceTree = SOURCE_ROOT; };
+		BF7C0CBC7BB61226C9ABECE1 /* ShareRootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShareRootView.swift; sourceTree = "<group>"; };
 		C01EA0AAA388BBCF9B11BDED /* Lillist-iOSTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = "Lillist-iOSTests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
 		CDF66890A34B8871D4E2278B /* TabShell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TabShell.swift; sourceTree = "<group>"; };
 		CEE1AA15CD7EEB68E16E53D8 /* QuickCaptureFlowTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuickCaptureFlowTests.swift; sourceTree = "<group>"; };
+		D2F899010F7F794421F9DB2A /* SharePayload.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SharePayload.swift; sourceTree = "<group>"; };
 		F23FBC5D0477DD491DCDF6FC /* QuickCaptureSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuickCaptureSheet.swift; sourceTree = "<group>"; };
 		F2A651BD41829D553D469EC3 /* FilterResultsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FilterResultsView.swift; sourceTree = "<group>"; };
 		F6C4BEE444B84DDF5F88ABF3 /* TaskJournalTab.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TaskJournalTab.swift; sourceTree = "<group>"; };
@@ -290,6 +296,7 @@
 			isa = PBXGroup;
 			children = (
 				2451C017B338C99A72811F7E /* FloatingPlusOverlay.swift */,
+				A51D139E432B20E90E93549D /* KeyboardShortcuts.swift */,
 			);
 			path = Common;
 			sourceTree = "<group>";
@@ -339,7 +346,9 @@
 		F8D3A65199D58FD2F0525B35 /* ShareExtension-iOS */ = {
 			isa = PBXGroup;
 			children = (
-				98D7023A4EE734E604ACC0DC /* ShareExtensionPlaceholder.swift */,
+				D2F899010F7F794421F9DB2A /* SharePayload.swift */,
+				BF7C0CBC7BB61226C9ABECE1 /* ShareRootView.swift */,
+				3013CF9707368DFFA43E4C72 /* ShareViewController.swift */,
 			);
 			path = "ShareExtension-iOS";
 			sourceTree = "<group>";
@@ -520,6 +529,7 @@
 				CEE10BDC98205D724AA29DCD /* FilterResultsView.swift in Sources */,
 				8ED796B233C11810C84BB4DB /* FiltersListView.swift in Sources */,
 				2001164CDA5863CF6F20A39B /* FloatingPlusOverlay.swift in Sources */,
+				DD83C4577F076A2042F05E6E /* KeyboardShortcuts.swift in Sources */,
 				E01B4AB3BC5C4E7EE9093B74 /* LillistApp.swift in Sources */,
 				652545A8D47A8D082D04EE75 /* QuickCaptureSheet.swift in Sources */,
 				CA4034D690255FE0554C7DE2 /* RootShell.swift in Sources */,
@@ -541,7 +551,9 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				8037DA38276D97C41CDF3CD9 /* ShareExtensionPlaceholder.swift in Sources */,
+				9978784936A13783F1BF8E35 /* SharePayload.swift in Sources */,
+				34376E8334E842553856720B /* ShareRootView.swift in Sources */,
+				ED3F0012AFC75791B7432CB6 /* ShareViewController.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
