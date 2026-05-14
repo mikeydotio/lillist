@@ -4,6 +4,115 @@ Append-only log of cross-cutting engineering lessons learned while building
 Lillist. Each entry captures a non-obvious gotcha — usually one that took real
 investigation to find — so future work doesn't re-learn it the hard way.
 
+## 2026-05-14 — Plan 10 onboarding + preferences: SwiftUI `.sheet` and `.fullScreenCover` content can't rely on `@Environment(AppEnvironment.self)`; `UNAuthorizationStatus.ephemeral` is `@available(macOS, unavailable)`; SwiftFilterStore has no `rename` or `create(... isPinned:)`; bootstrapping AccountStateMonitor needs an explicit `Task` to bridge actor → `@Observable` mirror
+
+**Context.** Plan 10 wired the first-launch onboarding sheet/cover and
+the cross-platform Preferences/Settings UI on top of Plans 1-9. Five
+realities the plan didn't anticipate showed up during implementation:
+
+1. **`.sheet` / `.fullScreenCover` content lives in its own SwiftUI
+   environment chain.** The presenting view's `@Environment(AppEnvironment.self)`
+   is NOT inherited automatically — looking it up inside the sheet
+   produces a runtime crash with a confusing stack frame. The Plan 10
+   panel's unanimous fix: pass the env-derived dependencies in via
+   explicit constructor arguments to the sheet's root view, then
+   re-inject inside that root with `.environment(env)` so descendants
+   can resume the `@Environment` lookup pattern. Plan 10 commits use
+   `OnboardingSheet(onboardingState:, installer:, notificationPermissions:, onCompleted:)`
+   as the canonical four-arg shape.
+
+2. **`UNAuthorizationStatus.ephemeral` is iOS-only.** Plan 10 Task 0
+   added a `currentStatus()` accessor to `NotificationPermissions`
+   that folds `.provisional` and `.ephemeral` into `.authorized` for
+   UI purposes. Writing a single test that exercises both cases trips
+   `'ephemeral' is unavailable in macOS` because Apple marks the case
+   `@available(macOS, unavailable)`. Stop at `.provisional` in the
+   shared LillistCore test; document that the same switch arm covers
+   `.ephemeral` at runtime on iOS.
+
+3. **SmartFilterStore exposes `update(id:_:)`, not `rename(id:to:)`,
+   and `create` does not take `isPinned`.** The plan's
+   `DefaultsInstallerTests."Renamed default is treated as a user filter"`
+   originally called `filters.rename(id: today.id, to: "My Today")`,
+   which doesn't compile. Rename via the closure shape:
+   `filters.update(id: today.id) { $0.name = "My Today" }`. Likewise,
+   pinning is a separate call: `filters.setPinned(id:, pinned:)` after
+   `create(...)`. This matters because Plan 10's `DefaultsInstaller`
+   delegates to Plan 7's `SmartFilterStore.installDefaultsIfNeeded()`
+   (the existing canonical installer), so the plan's "reimplement the
+   five filter specs" never had to happen — the wrapper is a one-line
+   delegate.
+
+4. **`AccountStateMonitor` is an `actor`; views need a `@Observable`
+   mirror to react to state-stream changes.** The `AppEnvironment.make()`
+   path can `await accountStateMonitor.currentState` once to seed the
+   mirror, but views observing future changes need a `Task { for await
+   state in await monitor.stateStream { … } }` started during
+   `bootstrap()`. Plan 10's `startObservingAccountState()` is the
+   reference pattern (with a `[weak self]` capture so the env can
+   dealloc cleanly if the app ever shut down before the stream ends).
+   Without this, the iCloud-required cover never auto-dismisses when
+   the user fixes their account state in the Settings app.
+
+5. **First-launch notification prompt belongs to onboarding, not the
+   bootstrap path.** Plan 8 had iOS `LillistApp.loadEnvironmentIfNeeded()`
+   call `await env.notificationPermissions.requestAuthorization()`
+   unconditionally on every cold launch. Plan 10's design moves that
+   prompt into the OnboardingScreen's "Set up notifications" button,
+   so the user reads the explanation first. Removing the bootstrap
+   call is non-obvious because of the dual concern: don't re-prompt
+   returning users, but also don't silently lose permission-state
+   visibility. The fix is simply to delete the bootstrap call;
+   returning users have already responded, and `currentStatus()` can
+   query the state without prompting whenever a UI surface needs to
+   render the current authorization state.
+
+**Rule.**
+
+- For SwiftUI `.sheet` and `.fullScreenCover` content, design the
+  root view to receive its dependencies via init arguments. Inject
+  the parent's environment back via `.environment(env)` if descendants
+  want to keep using `@Environment`. Never rely on environment
+  propagation across presentations.
+- For `NotificationPermissions`-shaped APIs that distinguish
+  "never asked" from "user declined," add an explicit `notDetermined`
+  state and a non-prompting accessor. The UI's first-launch copy is
+  user-facing critical: "Tap to enable" reads very differently from
+  "Go to Settings and enable" if you've already asked.
+- When wrapping an actor's `AsyncStream` for `@Observable` use, kick
+  off a `Task` during the env's `bootstrap()` and bridge the stream's
+  values into a `@MainActor` property write. Don't rely on getter
+  calls to refresh — actor properties don't fire change notifications.
+- When the plan's API calls don't match reality, the right fix is
+  almost always to adapt the test calls, not to change the test
+  expectations or shape the production code around fictional helpers.
+- When the existing implementation already covers a "Plan 10 follow-up"
+  (here: `Field.tag` + `Op.isUnset` already expresses "task has no
+  tags"), document the no-op in the wrapping code and skip the
+  duplicate-work commit rather than introducing parallel APIs.
+
+**Three-agent panel ruling.** The architect / QA / UX panel
+unanimously chose: keep the existing `@Observable AppEnvironment`
+injection (do not switch to `AppServices.shared`); wire
+`AccountStateMonitor` into both apps' env; thin `DefaultsInstaller`
+that delegates to `SmartFilterStore.installDefaultsIfNeeded()`; skip
+snapshot tests for Plan 10 (functional permission-flow tests cover
+the contract; visual snapshots are a Plan 11 candidate). The ruling
+is captured in the Plan 10 task commits and applied to every
+deviation in this entry.
+
+**Evidence.** Plan 10 commits `43fb891` (NotificationPermissions
+extension + UNAuthorizationStatus iOS-only handling), `024c847`
+(PreferencesStore.Prefs extension), `d8d04e9` (OnboardingState),
+`31392c5` (DefaultsInstaller — note the SmartFilterStore API
+adaptation), `5d0ebbb` (OnboardingSheet — constructor injection
+pattern), `eadab0a` (AppEnvironment wiring of accountStateMonitor +
+preferencesStore + onboardingState), `581d17c` (mocked permission
+flow test pattern that the iOS version `9fd3c48` reuses).
+
+---
+
+
 Scope:
 - **Belongs here:** framework shape, concurrency invariants, build-system
   surprises, type-system gotchas — anything where the "right answer" isn't
