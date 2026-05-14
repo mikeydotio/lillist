@@ -15,7 +15,7 @@ public struct Lillist: AsyncParsableCommand {
             TagCommand.self, PinCommand.self, UnpinCommand.self,
             MoveCommand.self, DeleteCommand.self, RestoreCommand.self, PurgeCommand.self,
             AttachCommand.self, LinkCommand.self, NudgeCommand.self,
-            TagsCommand.self
+            TagsCommand.self, FiltersCommand.self
         ],
         defaultSubcommand: nil
     )
