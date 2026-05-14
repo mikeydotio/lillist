@@ -16,17 +16,23 @@ enum RecurrenceSpawner {
     ///
     /// Pre: called inside `context.perform { … }`. Caller is responsible
     /// for `context.save()` afterward.
+    ///
+    /// - Returns: The spawned task's `UUID` if a new instance was created,
+    ///   or `nil` otherwise. Plan 5 callers use this to reconcile
+    ///   notifications for the spawn after save.
+    @discardableResult
     static func spawnIfNeeded(
         forClosedTask closed: LillistTask,
         in context: NSManagedObjectContext
-    ) {
-        guard let series = closed.series else { return }
-        guard let rule = series.rule else { return }
-        guard let nextDate = series.nextOccurrenceAfter else { return }
+    ) -> UUID? {
+        guard let series = closed.series else { return nil }
+        guard let rule = series.rule else { return nil }
+        guard let nextDate = series.nextOccurrenceAfter else { return nil }
 
         let seed = series.seedTask ?? closed
         let spawn = LillistTask(context: context)
-        spawn.id = UUID()
+        let spawnID = UUID()
+        spawn.id = spawnID
         spawn.title = seed.title
         spawn.notes = seed.notes
         spawn.statusRaw = Int16(Status.todo.rawValue)
@@ -58,6 +64,7 @@ enum RecurrenceSpawner {
         let advanced = advance(rule: rule, lastOccurrence: nextDate, completedAt: closed.closedAt ?? Date())
         let countLimited = countReached(series: series, rule: rule)
         series.nextOccurrenceAfter = countLimited ? nil : advanced
+        return spawnID
     }
 
     private static func deepCopy(

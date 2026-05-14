@@ -2,8 +2,17 @@ import Foundation
 import CoreData
 
 public final class TaskStore: @unchecked Sendable {
-    private let persistence: PersistenceController
+    let persistence: PersistenceController
     private var context: NSManagedObjectContext { persistence.container.viewContext }
+
+    /// Notification reconciler. Set by the app's composition root; left
+    /// `nil` in tests that don't care about notifications, in which case
+    /// the reconcile calls in mutation methods are no-ops.
+    ///
+    /// Property-injected (rather than init-injected) so the 100+ existing
+    /// `TaskStore(persistence:)` test call sites continue to work without
+    /// modification.
+    public var notificationScheduler: (any NotificationReconciling)?
 
     public init(persistence: PersistenceController) {
         self.persistence = persistence
@@ -105,6 +114,11 @@ public final class TaskStore: @unchecked Sendable {
             m.modifiedAt = Date()
             try context.save()
         }
+        // Anchor fields (start/deadline) and their time flags affect
+        // notification scheduling. Reconcile after save.
+        if let scheduler = notificationScheduler {
+            await scheduler.reconcile(taskID: id)
+        }
     }
 
     // MARK: - Hard delete
@@ -195,10 +209,10 @@ public final class TaskStore: @unchecked Sendable {
     // MARK: - Status transitions
 
     public func transition(id: UUID, to newStatus: Status) async throws {
-        try await context.perform { [self] in
+        let spawnedID: UUID? = try await context.perform { [self] in
             let m = try fetchManagedObject(id: id, in: context)
             let oldStatus = m.status
-            guard oldStatus != newStatus else { return }
+            guard oldStatus != newStatus else { return nil }
             m.status = newStatus
             m.modifiedAt = Date()
             if newStatus == .closed {
@@ -220,11 +234,22 @@ public final class TaskStore: @unchecked Sendable {
             // Recurrence: spawn next instance ONLY on transition-to-closed.
             // Re-opening (oldStatus == .closed) does NOT undo the spawn,
             // per design Section 8.
+            var spawnedID: UUID? = nil
             if newStatus == .closed {
-                RecurrenceSpawner.spawnIfNeeded(forClosedTask: m, in: context)
+                spawnedID = RecurrenceSpawner.spawnIfNeeded(forClosedTask: m, in: context)
             }
 
             try context.save()
+            return spawnedID
+        }
+        // Reconcile *after* the save so the persistent store reflects the
+        // new state. The scheduler is property-injected; absent in tests
+        // that don't care about notifications.
+        if let scheduler = notificationScheduler {
+            await scheduler.reconcile(taskID: id)
+            if let spawnedID {
+                await scheduler.reconcile(taskID: spawnedID)
+            }
         }
     }
 
@@ -237,6 +262,9 @@ public final class TaskStore: @unchecked Sendable {
             applySoftDelete(to: m, at: now)
             try context.save()
         }
+        if let scheduler = notificationScheduler {
+            await scheduler.reconcile(taskID: id)
+        }
     }
 
     public func restore(id: UUID) async throws {
@@ -245,6 +273,9 @@ public final class TaskStore: @unchecked Sendable {
             guard let deletedAt = m.deletedAt else { return }
             clearSoftDelete(from: m, matchingDeletedAt: deletedAt)
             try context.save()
+        }
+        if let scheduler = notificationScheduler {
+            await scheduler.reconcile(taskID: id)
         }
     }
 

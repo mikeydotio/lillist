@@ -11,7 +11,7 @@ import CoreData
 ///
 /// Identifier format (design Section 4 cross-device de-dup):
 /// `"\(specID)#\(deviceFingerprint)"`.
-public actor NotificationScheduler {
+public actor NotificationScheduler: NotificationReconciling {
     private let persistence: PersistenceController
     private let specStore: NotificationSpecStore
     private let center: any UNUserNotificationCenterProtocol
@@ -117,15 +117,20 @@ public actor NotificationScheduler {
         let existingDefaultStart = existing.first { $0.kind == .defaultStart }
         let existingDefaultDeadline = existing.first { $0.kind == .defaultDeadline }
 
-        // Default start: present iff task.start != nil and not soft-deleted and not closed.
-        let needsStart = task.start != nil && task.deletedAt == nil && task.status != .closed
+        // Default specs exist iff their anchor field is present. Closed
+        // and soft-deleted status is handled separately in
+        // `computeDesiredRequests` so that spec rows are *preserved*
+        // across status transitions — design Section 4: "→ Closed:
+        // cancel all pending (spec rows preserved for history)". On
+        // re-open, the still-present spec is re-registered.
+        let needsStart = task.start != nil
         if needsStart && existingDefaultStart == nil {
             _ = try await specStore.add(taskID: task.id, kind: .defaultStart, offsetMinutes: nil, fireDate: nil)
         } else if needsStart == false, let s = existingDefaultStart {
             try await specStore.delete(id: s.id)
         }
 
-        let needsDeadline = task.deadline != nil && task.deletedAt == nil && task.status != .closed
+        let needsDeadline = task.deadline != nil
         if needsDeadline && existingDefaultDeadline == nil {
             _ = try await specStore.add(taskID: task.id, kind: .defaultDeadline, offsetMinutes: nil, fireDate: nil)
         } else if needsDeadline == false, let s = existingDefaultDeadline {
