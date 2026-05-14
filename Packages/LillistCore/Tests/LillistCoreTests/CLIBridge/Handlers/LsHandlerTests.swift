@@ -77,4 +77,23 @@ struct LsHandlerTests {
         )
         #expect(results.map(\.title) == ["A", "B", "C"])
     }
+
+    @Test("Ls JSON round-trips byte-for-byte")
+    func lsJSONRoundtrip() async throws {
+        let p = try await TestStore.make()
+        _ = try await TaskStore(persistence: p).create(title: "A")
+        let records = try await CLIBridge.LsHandler.run(
+            flags: CLIBridge.FilterFlags(), savedFilterName: nil, sort: .createdAt,
+            persistence: p, now: Date(), calendar: .current
+        )
+        let json = try CLIBridge.TaskRenderer.json(records)
+        let dec = JSONDecoder()
+        dec.dateDecodingStrategy = .iso8601
+        let dtos = try dec.decode([CLIBridge.TaskRenderer.TaskDTO].self, from: json)
+        let enc = JSONEncoder()
+        enc.outputFormatting = [.sortedKeys, .prettyPrinted]
+        enc.dateEncodingStrategy = .iso8601
+        let again = try enc.encode(dtos)
+        #expect(json == again)
+    }
 }

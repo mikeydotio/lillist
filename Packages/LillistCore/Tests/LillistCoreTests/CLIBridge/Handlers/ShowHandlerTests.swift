@@ -30,4 +30,17 @@ struct ShowHandlerTests {
         )
         #expect(result.pickedSilently == true)
     }
+
+    @Test("Show JSON round-trips for a single task")
+    func showJSONRoundtrip() async throws {
+        let p = try await TestStore.make()
+        let id = try await TaskStore(persistence: p).create(title: "Solo")
+        let result = try await CLIBridge.ShowHandler.run(token: id.uuidString, persistence: p)
+        let json = try CLIBridge.TaskRenderer.json([result.task])
+        let dec = JSONDecoder()
+        dec.dateDecodingStrategy = .iso8601
+        let dtos = try dec.decode([CLIBridge.TaskRenderer.TaskDTO].self, from: json)
+        #expect(dtos.count == 1)
+        #expect(dtos[0].title == "Solo")
+    }
 }
