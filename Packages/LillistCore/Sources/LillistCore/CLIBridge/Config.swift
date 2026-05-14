@@ -54,7 +54,12 @@ extension CLIBridge {
         }
 
         public static func defaultLocation() -> URL {
-            let home = FileManager.default.homeDirectoryForCurrentUser
+            // `FileManager.homeDirectoryForCurrentUser` is unavailable on iOS;
+            // `NSHomeDirectory()` is portable. On iOS this resolves to the
+            // app sandbox container — meaningless for CLI use but harmless
+            // because the iOS app never invokes `Config.read(from:)` against
+            // this path. The CLI target is the only real caller.
+            let home = URL(fileURLWithPath: NSHomeDirectory(), isDirectory: true)
             return home
                 .appendingPathComponent(".config", isDirectory: true)
                 .appendingPathComponent("lillist", isDirectory: true)

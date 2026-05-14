@@ -1,0 +1,137 @@
+name: Lillist-iOS
+options:
+  bundleIdPrefix: io.mikeydotio
+  deploymentTarget:
+    iOS: "18.0"
+  developmentLanguage: en
+  createIntermediateGroups: true
+  groupSortPosition: top
+  generateEmptyDirectories: true
+
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    SWIFT_STRICT_CONCURRENCY: complete
+    DEVELOPMENT_TEAM: ""
+    ENABLE_USER_SCRIPT_SANDBOXING: YES
+    GENERATE_INFOPLIST_FILE: NO
+    CURRENT_PROJECT_VERSION: "1"
+    MARKETING_VERSION: "0.1.0"
+    DEAD_CODE_STRIPPING: YES
+
+packages:
+  LillistCore:
+    path: ../../Packages/LillistCore
+  LillistUI:
+    path: ../../Packages/LillistUI
+
+targets:
+  Lillist-iOS:
+    type: application
+    platform: iOS
+    deploymentTarget: "18.0"
+    sources:
+      - path: Sources
+      - path: Resources
+        buildPhase: resources
+    dependencies:
+      - package: LillistCore
+        product: LillistCore
+      - package: LillistUI
+        product: LillistUI
+      - target: ShareExtension-iOS
+        embed: true
+      - target: ShortcutsActions
+        embed: true
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: io.mikeydotio.Lillist
+        PRODUCT_NAME: Lillist
+        IPHONEOS_DEPLOYMENT_TARGET: "18.0"
+        TARGETED_DEVICE_FAMILY: "1,2"
+        CODE_SIGN_ENTITLEMENTS: Lillist.entitlements
+        CODE_SIGN_STYLE: Automatic
+        INFOPLIST_FILE: Info.plist
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+
+  ShareExtension-iOS:
+    type: app-extension
+    platform: iOS
+    deploymentTarget: "18.0"
+    sources:
+      - path: ../../Extensions/ShareExtension-iOS
+        excludes:
+          - "Info.plist"
+          - "Lillist.entitlements"
+          - "Tests/**"
+    dependencies:
+      - package: LillistCore
+        product: LillistCore
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: io.mikeydotio.Lillist.Share
+        IPHONEOS_DEPLOYMENT_TARGET: "18.0"
+        TARGETED_DEVICE_FAMILY: "1,2"
+        CODE_SIGN_ENTITLEMENTS: ../../Extensions/ShareExtension-iOS/Lillist.entitlements
+        CODE_SIGN_STYLE: Automatic
+        INFOPLIST_FILE: ../../Extensions/ShareExtension-iOS/Info.plist
+
+  ShortcutsActions:
+    type: app-extension
+    platform: iOS
+    deploymentTarget: "18.0"
+    sources:
+      - path: ../../Extensions/ShortcutsActions
+        excludes:
+          - "Info.plist"
+          - "Lillist.entitlements"
+          - "Tests/**"
+    dependencies:
+      - package: LillistCore
+        product: LillistCore
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: io.mikeydotio.Lillist.Shortcuts
+        IPHONEOS_DEPLOYMENT_TARGET: "18.0"
+        TARGETED_DEVICE_FAMILY: "1,2"
+        CODE_SIGN_ENTITLEMENTS: ../../Extensions/ShortcutsActions/Lillist.entitlements
+        CODE_SIGN_STYLE: Automatic
+        INFOPLIST_FILE: ../../Extensions/ShortcutsActions/Info.plist
+
+  Lillist-iOSTests:
+    type: bundle.unit-test
+    platform: iOS
+    deploymentTarget: "18.0"
+    sources:
+      - path: Tests
+    dependencies:
+      - package: LillistCore
+        product: LillistCore
+      - package: LillistUI
+        product: LillistUI
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: io.mikeydotio.Lillist.tests
+        IPHONEOS_DEPLOYMENT_TARGET: "18.0"
+        TARGETED_DEVICE_FAMILY: "1,2"
+        # Standalone test bundle — no app test host, so headless xcodebuild
+        # test works without a development signing identity. Mirrors Plan 7's
+        # macOS test target choice and its lesson about iCloud / app-group
+        # entitlements gating signed builds.
+        TEST_HOST: ""
+        BUNDLE_LOADER: ""
+
+schemes:
+  Lillist-iOS:
+    build:
+      targets:
+        Lillist-iOS: all
+        ShareExtension-iOS: all
+        ShortcutsActions: all
+        Lillist-iOSTests: [test]
+    run:
+      config: Debug
+    test:
+      config: Debug
+      targets:
+        - Lillist-iOSTests
