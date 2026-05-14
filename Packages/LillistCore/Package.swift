@@ -49,6 +49,9 @@ let package = Package(
                 "lillist-cli",
                 "LillistCore",
                 .product(name: "ArgumentParser", package: "swift-argument-parser")
+            ],
+            resources: [
+                .copy("Fixtures/snapshots")
             ]
         )
     ]
