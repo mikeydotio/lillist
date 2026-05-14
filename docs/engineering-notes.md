@@ -18,6 +18,65 @@ artifact, test).
 
 ---
 
+## 2026-05-14 — Swift 6 strict concurrency in the test target; `@preconcurrency import UserNotifications`; `OSAllocatedUnfairLock`
+
+**Context.** Plan 5 (notifications layer) needed an `actor`-based
+`FakeUserNotificationCenter` per its written code. Three concrete
+strict-concurrency surprises came up:
+
+1. **The test target IS strict in Swift 6 mode.** The earlier project
+   note "the test target is not strict, so concurrency bugs surface at
+   runtime" was wrong. With `swift-tools-version: 6.0`, Swift 6 language
+   mode is on for the whole package; the `-enable-experimental-feature
+   StrictConcurrency` flag on the source target is redundant on Swift 6
+   and the test target inherits strict checking.
+2. **`@preconcurrency import UserNotifications` only relaxes individual
+   `UN*` arguments, not collection-typed ones.** It fixes
+   `func add(_ request: UNNotificationRequest)` crossing an actor, but
+   returning `[UNNotificationRequest]` or `Set<UNNotificationCategory>`
+   from an actor method still trips `non-Sendable result can not be
+   returned from actor-isolated instance method to nonisolated context`.
+   For a fake that owns a list of `UN*` values, the cleanest shape is a
+   `final class @unchecked Sendable` backed by
+   `OSAllocatedUnfairLock<State>` — see Plan 5 commit
+   `01f47a2` and the architect/QA/UX panel ruling captured in the commit
+   message.
+3. **`NSLock.lock()/unlock()` is unavailable from async contexts in
+   modern SDKs.** The async-safe alternative is `OSAllocatedUnfairLock<State>`
+   with `state.withLock { ... }`. Stored properties on a `final class
+   @unchecked Sendable` become `private let state =
+   OSAllocatedUnfairLock<State>(initialState: State())`, mutated only
+   inside the closure.
+4. **Capturing actor-isolated dictionaries into non-async closures
+   (`compactMap`, `filter`, …) triggers `SendingRisksDataRace`.** Even
+   when the enclosing function is on the actor and the closure is
+   non-`@Sendable`, the compiler diagnoses possible concurrent access.
+   The mechanical fix is to rewrite the closure-based code as a
+   `for ... in` loop in the actor-isolated function body — no closure,
+   no capture, no diagnostic.
+
+**Rule.**
+
+- For test doubles of `UserNotifications`-like APIs, prefer
+  `final class @unchecked Sendable` + `OSAllocatedUnfairLock<State>`
+  over `actor + nonisolated func X() async { await self._X() }`. Expose
+  inspection state through `async` accessor methods that return Sendable
+  snapshots (e.g. `func addedRequests() async -> [UNNotificationRequest]`).
+- Reach for `@preconcurrency import` first when an external-framework
+  type without `Sendable` conformance crosses an isolation boundary,
+  but be prepared to fall back to `@unchecked Sendable` wrappers if a
+  collection of those types needs to flow.
+- If the compiler complains about `SendingRisksDataRace` in
+  `compactMap`/`filter`/`map` over an actor-isolated dictionary,
+  un-functional-ize the loop. The performance cost is nil; the
+  diagnostic disappears.
+
+**Evidence.** Plan 5 commits `01f47a2`, `ef16409`, `bb38508`.
+`Packages/LillistCore/Tests/LillistCoreTests/Helpers/FakeUserNotificationCenter.swift`
+is the canonical example of the lock-based fake shape.
+
+---
+
 ## 2026-05-14 — `Task { same-actor-method() }` is almost always wrong; `Task.yield()` is not a barrier
 
 **Context.** While running Plan 4 implementation, the test
