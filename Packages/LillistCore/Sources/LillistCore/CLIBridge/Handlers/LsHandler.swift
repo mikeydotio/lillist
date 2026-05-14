@@ -20,11 +20,13 @@ extension CLIBridge {
                 group = try await flags.toPredicateGroup(persistence: persistence, now: now, calendar: calendar)
             }
 
-            let predicate = NSPredicateCompiler.compile(group, now: now, calendar: calendar)
             let ctx = persistence.container.viewContext
+            // NSPredicate is not `Sendable`, so we build it inside the
+            // `context.perform` closure rather than capturing it from the
+            // outer scope. `group` is `Sendable`.
             let matched: [TaskStore.TaskRecord] = try await ctx.perform {
                 let req = NSFetchRequest<LillistTask>(entityName: "LillistTask")
-                req.predicate = predicate
+                req.predicate = NSPredicateCompiler.compile(group, now: now, calendar: calendar)
                 let mos = try ctx.fetch(req)
                 return mos.map { Self.record(from: $0) }
             }

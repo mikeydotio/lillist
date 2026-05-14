@@ -18,11 +18,12 @@ extension CLIBridge {
             } catch {
                 throw LillistError.validationFailed([.init(field: "predicate", message: "invalid predicate JSON: \(error.localizedDescription)")])
             }
-            let predicate = NSPredicateCompiler.compile(group, now: now, calendar: calendar)
             let ctx = persistence.container.viewContext
+            // Build the NSPredicate inside `perform` — NSPredicate is not
+            // Sendable so it cannot be captured into the perform closure.
             return try await ctx.perform {
                 let req = NSFetchRequest<LillistTask>(entityName: "LillistTask")
-                req.predicate = predicate
+                req.predicate = NSPredicateCompiler.compile(group, now: now, calendar: calendar)
                 return try ctx.fetch(req).map { LsHandler.record(from: $0) }
             }
         }
