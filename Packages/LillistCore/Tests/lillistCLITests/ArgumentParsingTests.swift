@@ -24,4 +24,19 @@ struct ArgumentParsingTests {
             _ = try AddCommand.parse([])
         }
     }
+
+    @Test("`ls` parses filter flags")
+    func lsParses() throws {
+        let cmd = try LsCommand.parse(["--tag", "Work", "--status", "todo", "--deadline-before", "+7d", "--sort", "deadline"])
+        #expect(cmd.tag == ["Work"])
+        #expect(cmd.status == ["todo"])
+        #expect(cmd.deadlineBefore == "+7d")
+        #expect(cmd.sort == "deadline")
+    }
+
+    @Test("`ls --json` flag")
+    func lsJSON() throws {
+        let cmd = try LsCommand.parse(["--json"])
+        #expect(cmd.globals.json == true)
+    }
 }

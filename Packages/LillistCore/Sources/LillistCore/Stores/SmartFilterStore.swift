@@ -189,6 +189,24 @@ public final class SmartFilterStore: @unchecked Sendable {
 }
 
 extension SmartFilterStore {
+    /// Fetch the saved filter with this exact name. Throws `notFound` when no
+    /// row matches and `ambiguous` if multiple rows share the name.
+    public func fetch(byName name: String) async throws -> SmartFilterRecord {
+        let all = try await list()
+        let matches = all.filter { $0.name == name }
+        if matches.isEmpty { throw LillistError.notFound }
+        if matches.count > 1 { throw LillistError.ambiguous(matches.map(\.id)) }
+        return matches[0]
+    }
+
+    /// Delete the saved filter with this exact name.
+    public func delete(byName name: String) async throws {
+        let rec = try await fetch(byName: name)
+        try await delete(id: rec.id)
+    }
+}
+
+extension SmartFilterStore {
     public func setPinned(id: UUID, pinned: Bool) async throws {
         try await context.perform { [self] in
             let m = try fetchManagedObject(id: id, in: context)
