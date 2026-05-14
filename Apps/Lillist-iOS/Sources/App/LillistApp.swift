@@ -17,8 +17,17 @@ struct LillistApp: App {
     @ViewBuilder
     private var content: some View {
         if let environment {
-            RootShell()
-                .environment(environment)
+            CrashReporterHost(
+                reporter: environment.crashReporter,
+                mailTransport: environment.mailTransport,
+                buildVersion: environment.buildVersion,
+                osVersion: environment.osVersion,
+                deviceModel: environment.deviceModel,
+                crashPromptsEnabled: environment.crashPromptsEnabled
+            ) {
+                RootShell()
+                    .environment(environment)
+            }
         } else if let loadError {
             VStack(spacing: 12) {
                 Image(systemName: "exclamationmark.triangle")
