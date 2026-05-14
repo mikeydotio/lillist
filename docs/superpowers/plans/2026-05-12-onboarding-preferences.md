@@ -125,7 +125,14 @@ Lillist/
 
 **Managed-object class generation — hand-written, not auto-generated.** `AppPreferences+CoreData.swift` is a hand-written `@NSManaged` subclass (see Plan 1 Task 8 and the same convention applied in Plans 3/4). When you add the six new attributes in Task 1, you must add a matching `@NSManaged` line per attribute to that file — the model XML change alone won't expose the properties to Swift, and Task 2's `PreferencesStore` updates won't compile without them. Task 1 below has been updated to include this step.
 
-**Build-plugin caching gotcha.** SwiftPM's `CompileCoreDataModel` plugin keys on the `.xcdatamodeld` directory's mtime, not on the inner `LillistModel.xcdatamodel/contents` file. After editing `contents`, `swift build` will reuse the stale compiled `.momd` and reads of the new attributes will return default zero values instead of the `defaultValueString` from the model — silently masking onboarding-complete flags as `false` etc. Run this after every model edit, before `swift build` / `swift test`:
+**Build-plugin caching gotcha.** Plan 7 removed the
+`CompileCoreDataModel` SwiftPM build-tool plugin from
+`Packages/LillistCore/Package.swift`. Swift 6 / Xcode 17 compile
+`.xcdatamodeld` natively via `.process(...)`. The stale-`.momd` failure
+mode can still appear when SwiftPM caches by directory mtime — the
+`touch` workaround below remains the right fix after any model edit
+(silently-masked onboarding flags as `false`, the original symptom,
+is still possible):
 
 ```bash
 touch Packages/LillistCore/Sources/LillistCore/Model/LillistModel.xcdatamodeld/LillistModel.xcdatamodel/ \
@@ -133,6 +140,50 @@ touch Packages/LillistCore/Sources/LillistCore/Model/LillistModel.xcdatamodeld/L
 ```
 
 **Commits.** Each task ends with a conventional-commit prefix: `feat:`, `test:`, `chore:`, `fix:`, `refactor:`, `docs:`.
+
+> **Plan 7 deviation notes (added retroactively).** Plan 7 established
+> conventions and surfaced API realities this plan needs to honor:
+>
+> - **`PreferencesStore` API**: the actual public surface is
+>   `.read() async throws -> Prefs` and `.update { (inout Prefs) -> Void }`.
+>   There is no `.fetch()` method. The `Prefs` struct fields are
+>   `defaultAllDayHour: Int16`, `defaultAllDayMinute: Int16`,
+>   `morningSummaryEnabled: Bool`, `morningSummaryHour: Int16`,
+>   `morningSummaryMinute: Int16`, `trashRetentionDays: Int16`,
+>   `defaultTaskListSort: SortField`. New onboarding attributes added
+>   in Task 1 need matching `@NSManaged` lines in
+>   `AppPreferences+CoreData.swift` AND new fields on `Prefs` AND new
+>   read/write paths in `PreferencesStore`.
+> - **Default smart-filter installer already exists.** Plan 7's
+>   `SmartFilterStore.installDefaultsIfNeeded()` (commit `20e7f39`)
+>   atomically installs the five Section-7 defaults by name and is
+>   idempotent across launches. Plan 10's `DefaultsInstaller` should
+>   call into that, not reimplement the predicates. The Plan 7 macOS
+>   app already has `Apps/Lillist-macOS/Sources/Defaults/DefaultSmartFiltersInstaller.swift`
+>   as the UserDefaults-gated wrapper; mirror that on iOS.
+> - **macOS `AppEnvironment` is async**: `static func make() async throws`
+>   constructed in `LillistApp`'s `.task` block. Plan 10's onboarding
+>   sheet gate keys off `env.preferencesStore.read().hasCompletedOnboarding`,
+>   and the env is already loaded by the time the gate evaluates.
+> - **macOS `SyncStatusMonitor` collision**: the UI-facing protocol is
+>   `LillistUI.SyncIndicatorMonitor` (with stub `IdleSyncIndicatorMonitor`).
+>   Plan 10 doesn't touch sync state directly, but anywhere this plan
+>   says "SyncStatusMonitor" in the macOS context, it likely means the
+>   UI protocol.
+> - **Standalone macOS test target**: `Apps/Lillist-macOS/Tests/` is a
+>   standalone bundle with `TEST_HOST=""` (no app host). Onboarding /
+>   preferences tests in that target must NOT `@testable import
+>   Lillist_macOS` — exercise `LillistCore` directly. The same applies
+>   to any new iOS test bundle Plan 8 lands.
+> - **macOS snapshot tests** wrap SwiftUI views in `NSHostingView` via
+>   `makeHostingView(_:size:)` in
+>   `Packages/LillistUI/Tests/LillistUITests/Helpers/SnapshotEnvironment.swift`.
+>   `swift-snapshot-testing` 1.17 has no macOS SwiftUI `View` strategy.
+> - **`XCTAssert` autoclosures don't accept `try await`**: bind to a
+>   local first.
+> - **`PersistenceController` init is `async throws`** and there is no
+>   `.shared`. The macOS `AppEnvironment.make()` produces one; never
+>   construct one directly from a view.
 
 **Verification command throughout:**
 - For `LillistCore` changes: `cd Packages/LillistCore && swift test`

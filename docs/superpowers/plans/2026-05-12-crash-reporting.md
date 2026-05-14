@@ -120,12 +120,43 @@ Tests inject a synthetic `URL` via a test-only initializer; tests never touch re
 
 **Managed-object class generation — hand-written, not auto-generated.** `AppPreferences+CoreData.swift` is a hand-written `@NSManaged` subclass (see Plan 1, and the same convention applied in Plans 3/4). When you add the new `crashPromptsEnabled` attribute in Task 10, you must add a matching `@NSManaged public var crashPromptsEnabled: Bool` line to that file — the model XML change alone won't expose the property to Swift. Step 3 of Task 10 has been updated to include this.
 
-**Build-plugin caching gotcha.** SwiftPM's `CompileCoreDataModel` plugin keys on the `.xcdatamodeld` directory's mtime, not on the inner `LillistModel.xcdatamodel/contents` file. After editing `contents`, `swift build` will reuse the stale compiled `.momd` and reads of the new attribute will return the default value (Bool defaults to `false`, masking the `defaultValueString="YES"` from the model). Run this after the XML edit, before `swift build` / `swift test`:
+**Build-plugin caching gotcha.** Plan 7 removed the
+`CompileCoreDataModel` SwiftPM build-tool plugin from
+`Packages/LillistCore/Package.swift`. Swift 6 / Xcode 17 compile
+`.xcdatamodeld` natively via `.process(...)`. The stale-`.momd` failure
+mode can still happen on tooling that caches by directory mtime — the
+`touch` workaround below remains the right fix after any model edit:
 
 ```bash
 touch Packages/LillistCore/Sources/LillistCore/Model/LillistModel.xcdatamodeld/LillistModel.xcdatamodel/ \
       Packages/LillistCore/Sources/LillistCore/Model/LillistModel.xcdatamodeld/
 ```
+
+> **Plan 7 deviation notes (added retroactively).** Plan 7 established
+> conventions that this plan should honor when wiring crash-reporting
+> hooks into the app shells. Mirror these:
+>
+> - **App env wiring**: macOS `LillistApp` uses an async loading state
+>   driven by `AppEnvironment.make()`; the `CrashReporter.start(...)`
+>   call belongs in the same `.task` block that bootstraps the env,
+>   *before* the `RootSplitView` renders. There is no
+>   `PersistenceController.shared` to grab in `App.init`.
+> - **macOS snapshot tests**: `swift-snapshot-testing` 1.17 only ships
+>   `NSView` / `NSViewController` strategies on macOS. The crash
+>   reporting sheet's macOS snapshots must wrap each SwiftUI view in
+>   `NSHostingView` via Plan 7's `makeHostingView(_:size:)` helper at
+>   `Packages/LillistUI/Tests/LillistUITests/Helpers/SnapshotEnvironment.swift`.
+> - **macOS test target shape**: `Apps/Lillist-macOS/Tests/` is a
+>   standalone bundle with `TEST_HOST=""` (no app host) so headless
+>   `xcodebuild test` works without a development cert. Any new
+>   crash-reporting tests in that bundle must NOT `@testable import
+>   Lillist_macOS` — exercise `LillistCore` / `LillistUI` directly.
+> - **`XCTAssert` + `try await`**: bind to a local before asserting.
+> - **`AppPreferences` access**: the actual API is
+>   `PreferencesStore.read()` / `.update { ... }`, not `.fetch()`.
+>
+> See `docs/engineering-notes.md` 2026-05-14 entries for the
+> investigation trails.
 
 **Commits.** Same conventional-commit prefixes used in Plan 1: `feat:`, `test:`, `chore:`, `fix:`, `refactor:`, `docs:`.
 
