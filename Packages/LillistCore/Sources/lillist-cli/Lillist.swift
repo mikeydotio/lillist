@@ -9,7 +9,7 @@ public struct Lillist: AsyncParsableCommand {
         commandName: "lillist",
         abstract: "Lillist — task management from the command line.",
         version: LillistCoreInfo.version,
-        subcommands: [],
+        subcommands: [AddCommand.self],
         defaultSubcommand: nil
     )
 
