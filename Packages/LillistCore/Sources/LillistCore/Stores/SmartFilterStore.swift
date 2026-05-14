@@ -255,6 +255,26 @@ extension SmartFilterStore {
         }
     }
 
+    /// Evaluate an ad-hoc `PredicateGroup` (one that hasn't been persisted as
+    /// a `SmartFilter`) and return matching `TaskStore.TaskRecord`s. Used by
+    /// iOS Search and any caller that needs to run a filter without first
+    /// saving it.
+    public func evaluate(
+        group: PredicateGroup,
+        sort: SortField = .modifiedAt,
+        ascending: Bool = false,
+        now: Date = Date(),
+        calendar: Calendar = .current
+    ) async throws -> [TaskStore.TaskRecord] {
+        try await context.perform { [self] in
+            let req = NSFetchRequest<LillistTask>(entityName: "LillistTask")
+            req.predicate = NSPredicateCompiler.compile(group, now: now, calendar: calendar)
+            req.sortDescriptors = Self.sortDescriptors(field: sort, ascending: ascending)
+            let tasks = try context.fetch(req)
+            return tasks.map { Self.record(from: $0) }
+        }
+    }
+
     /// Count matching tasks without materializing records — for badge counts.
     public func count(
         id: UUID,
