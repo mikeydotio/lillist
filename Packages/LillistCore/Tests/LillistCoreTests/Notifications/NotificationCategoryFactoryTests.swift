@@ -40,4 +40,26 @@ struct NotificationCategoryFactoryTests {
             #expect(actionIDs.contains("snooze.custom"))
         }
     }
+
+    @Test("Scheduler.bootstrap publishes categories to the center")
+    func bootstrapPublishesCategories() async throws {
+        let p = try await TestStore.make()
+        let specs = NotificationSpecStore(persistence: p)
+        let fake = FakeUserNotificationCenter()
+        let registry = SnoozeRegistry(defaultAllDayHour: 9, defaultAllDayMinute: 0, timeZone: .current)
+        let scheduler = NotificationScheduler(
+            persistence: p, specs: specs, center: fake,
+            snoozeRegistry: registry, deviceFingerprint: "devA",
+            defaultAllDayHour: 9, defaultAllDayMinute: 0,
+            timeZone: .current
+        )
+        await scheduler.bootstrap()
+        let categoryIDs = await fake.categoryIdentifiers()
+        #expect(categoryIDs.contains("lillist.defaultStart"))
+        #expect(categoryIDs.contains("lillist.defaultDeadline"))
+        #expect(categoryIDs.contains("lillist.offsetStart"))
+        #expect(categoryIDs.contains("lillist.offsetDeadline"))
+        #expect(categoryIDs.contains("lillist.nudge"))
+        #expect(categoryIDs.contains(MorningSummary.categoryID))
+    }
 }

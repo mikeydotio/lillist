@@ -289,6 +289,16 @@ public actor NotificationScheduler: NotificationReconciling {
         return taskIDString == taskID.uuidString
     }
 
+    // MARK: - Bootstrap
+
+    /// Call once on app launch. Publishes the notification categories
+    /// (one per `NotificationKind`, plus the morning summary category)
+    /// so that the system can dispatch action taps to the app.
+    public func bootstrap() async {
+        let categories = await NotificationCategoryFactory.makeCategories(registry: snoozeRegistry)
+        await center.setNotificationCategories(categories)
+    }
+
     // MARK: - Preference change
 
     /// Update the default all-day notification time. Reconciles every task
