@@ -2,8 +2,8 @@ import Foundation
 import CoreData
 
 public final class TagStore: @unchecked Sendable {
-    private let persistence: PersistenceController
-    private var context: NSManagedObjectContext { persistence.container.viewContext }
+    let persistence: PersistenceController
+    var context: NSManagedObjectContext { persistence.container.viewContext }
 
     public init(persistence: PersistenceController) {
         self.persistence = persistence
@@ -122,7 +122,7 @@ public final class TagStore: @unchecked Sendable {
 
     // MARK: - Helpers
 
-    private func fetchManagedObject(id: UUID, in ctx: NSManagedObjectContext) throws -> Tag {
+    func fetchManagedObject(id: UUID, in ctx: NSManagedObjectContext) throws -> Tag {
         let req = NSFetchRequest<Tag>(entityName: "Tag")
         req.predicate = NSPredicate(format: "id == %@", id as CVarArg)
         req.fetchLimit = 1
@@ -130,7 +130,7 @@ public final class TagStore: @unchecked Sendable {
         return m
     }
 
-    private func nextPosition(forParent parent: Tag?) throws -> Double {
+    func nextPosition(forParent parent: Tag?) throws -> Double {
         let req = NSFetchRequest<Tag>(entityName: "Tag")
         if let parent {
             req.predicate = NSPredicate(format: "parent == %@", parent)
@@ -167,7 +167,7 @@ public final class TagStore: @unchecked Sendable {
         return false
     }
 
-    private func validateName(_ name: String) throws {
+    func validateName(_ name: String) throws {
         if name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
             throw LillistError.validationFailed([
                 .init(field: "name", message: "must not be empty")
