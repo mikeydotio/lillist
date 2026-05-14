@@ -185,6 +185,79 @@ touch Packages/LillistCore/Sources/LillistCore/Model/LillistModel.xcdatamodeld/L
 >   `.shared`. The macOS `AppEnvironment.make()` produces one; never
 >   construct one directly from a view.
 
+> **Plan 8 deviation notes (added retroactively).** Plan 8 landed the
+> iOS app, Share Extension, and App Intents extension; the iOS portion
+> of this plan needs to honor the realities Plan 8 introduced:
+>
+> - **The iOS `DefaultSmartFiltersInstaller` already exists.** Plan 8
+>   shipped `Apps/Lillist-iOS/Sources/App/DefaultSmartFiltersInstaller.swift`
+>   as the UserDefaults-gated wrapper (mirroring the macOS file at
+>   `Apps/Lillist-macOS/Sources/Defaults/`). It's called from
+>   `LillistApp.loadEnvironmentIfNeeded()` on every cold launch. Plan
+>   10's `DefaultsInstaller` task should either reuse the existing iOS
+>   wrapper or, if a unified cross-platform installer makes more sense,
+>   replace both wrappers — do not introduce a third one. Plan 10's
+>   "invoke from onboarding completion" hook should call the same
+>   installer the app calls, never reimplement the predicates.
+> - **The iOS test target is standalone**: `Apps/Lillist-iOS/Tests/`
+>   uses `TEST_HOST="" / BUNDLE_LOADER=""`. Onboarding / preferences
+>   tests there must NOT `@testable import Lillist_iOS`. Exercise
+>   `LillistCore.PreferencesStore` and `LillistCore.SmartFilterStore`
+>   directly; for any pure iOS-app source file that needs coverage
+>   and has no UIKit-only deps, co-compile it into the test bundle via
+>   a `sources: - path: ../path/to/X.swift` entry in
+>   `Apps/Lillist-iOS/project.yml` (Plan 8 uses this for
+>   `SharePayload.swift`).
+> - **iOS uses the App Group container for its store.**
+>   `AppEnvironment.make()` constructs `PersistenceController` via
+>   `StoreConfiguration.appGroupOnDisk(groupID:)` so the Share
+>   Extension and App Intents extension see the same data. Onboarding
+>   that writes to `PreferencesStore` therefore writes once and is
+>   immediately visible to extensions — no per-target sync wait.
+> - **iOS `AppEnvironment` is `internal`** with two stores beyond what
+>   macOS has: `attachmentStore` and `preferencesStore`. Onboarding
+>   pulls `env.preferencesStore` directly; the env is already loaded by
+>   the time the onboarding gate evaluates (same `.task` block).
+> - **iOS already has hardware keyboard shortcuts.** Plan 8 Task 16
+>   landed `LillistKeyboardShortcuts` (⌘N / ⌘1-4 / ⌘⇧F) applied to
+>   both `TabShell` and `SplitShell`. The Settings UI's "Keyboard
+>   Shortcuts" pane (if Plan 10 adds one) should read these as
+>   fixed-for-now bindings on iOS — no user customization without a
+>   new module — and offer customization only on macOS.
+> - **iOS QuickCapture is wired up.** Plan 8's `QuickCaptureSheet`
+>   uses `LillistUI.QuickCaptureParser` / `QuickCaptureField`. If
+>   Plan 10 adds a "Quick Capture preferences" pane (e.g. tag
+>   suggestions, default tint), it should bind into `Prefs` via
+>   `PreferencesStore.update { ... }` and the sheet picks up the new
+>   values on next render — no extra wiring needed.
+> - **`SmartFilterStore.evaluate(group:sort:ascending:)` exists.** If
+>   the Settings UI needs to preview a smart-filter result (e.g.
+>   showing how many tasks match a default before installing it), use
+>   this method against an ad-hoc `PredicateGroup` — don't reach into
+>   `NSPredicateCompiler` directly.
+> - **AppIntent metadata is `static let`, not `static var`.** If
+>   Plan 10's Settings pane surfaces a Shortcut action for any
+>   preferences toggle, every `title` / `description` /
+>   `openAppWhenRun` / `isDiscoverable` /
+>   `typeDisplayRepresentation` / `defaultQuery` on the intent or
+>   entity must be `static let` under Swift 6 strict concurrency.
+>   `@Parameter`-wrapped properties can't be set via custom init;
+>   use the helper pattern from `Extensions/ShortcutsActions/OpenTaskIntent.swift`.
+> - **`SizeClassRouter` lives in `LillistUI/iOS/`.** If Plan 10's
+>   onboarding flow is adaptive (different layout on iPhone vs iPad),
+>   reuse `SizeClassRouter.layout(for:)` rather than reading
+>   `horizontalSizeClass` directly.
+> - **iOS-only LillistUI atoms live under
+>   `Packages/LillistUI/Sources/LillistUI/iOS/`.** Reuse
+>   `FloatingAddButton`, `SyncStatusBadge`, `QuickCaptureField`
+>   where they fit; add new iOS-only Settings / Onboarding atoms
+>   beside them, guarded with `#if os(iOS)`.
+> - **`CLIBridge.AddHandler` tag matcher is case-insensitive now.**
+>   Plan 8 fixed the case-sensitivity divergence with
+>   `TagStore.findOrCreate`. If Plan 10's onboarding includes a
+>   "create your first tags" prompt, calling `findOrCreate` or
+>   `AddHandler.run` on the same name produces the same row.
+
 **Verification command throughout:**
 - For `LillistCore` changes: `cd Packages/LillistCore && swift test`
 - For macOS app: `xcodebuild test -workspace Lillist.xcworkspace -scheme Lillist-macOS -destination 'platform=macOS'`

@@ -158,6 +158,74 @@ touch Packages/LillistCore/Sources/LillistCore/Model/LillistModel.xcdatamodeld/L
 > See `docs/engineering-notes.md` 2026-05-14 entries for the
 > investigation trails.
 
+> **Plan 8 deviation notes (added retroactively).** Plan 8 landed the
+> iOS app, Share Extension, and App Intents extension; the following
+> realities affect Plan 9's iOS surfaces:
+>
+> - **iOS test target is standalone too.** `Apps/Lillist-iOS/Tests/`
+>   uses `TEST_HOST="" / BUNDLE_LOADER=""` so headless `xcodebuild
+>   test` works without a signing identity. Any new CrashReporting iOS
+>   tests in that bundle must NOT `@testable import Lillist_iOS` —
+>   exercise `LillistCore` directly (the crash reporting code lives in
+>   `LillistCore.CrashReporting` anyway, so this is natural). If a
+>   pure source file needs coverage and has no UIKit-only deps, you
+>   can co-compile it into the test bundle via a
+>   `sources: - path: ../path/to/X.swift` entry in
+>   `Apps/Lillist-iOS/project.yml` — Plan 8 uses this pattern for
+>   `SharePayload.swift`.
+> - **`CanaryFile.url(for: .iOSApp)` should reach the App Group
+>   container, not the per-app sandbox.** Plan 8 added
+>   `StoreConfiguration.appGroupOnDisk(groupID:)` for the SQLite store;
+>   the canary file belongs in the same container so both the main
+>   app and any future extension surface that needs to record exit
+>   state can reach it. Resolve via:
+>   ```swift
+>   FileManager.default.containerURL(
+>       forSecurityApplicationGroupIdentifier: "group.io.mikeydotio.Lillist"
+>   )?.appendingPathComponent("launch.canary")
+>   ```
+>   Falling back to `NSHomeDirectory()` produces a per-app path that
+>   the extension can't see; the canary detection model assumes a
+>   single shared file.
+> - **iOS `AppEnvironment` is `internal`, not `public`.** Same shape
+>   as macOS but with two additional iOS stores (`attachmentStore`,
+>   `preferencesStore`). The `LillistApp` `.task` block that bootstraps
+>   the env is where `CrashReporter.start(platform: .iOSApp)` belongs
+>   — same pattern as macOS.
+> - **Swift 6 strict concurrency: signal handlers and the canary file
+>   are async-from-MainActor.** The crash signal handler can't capture
+>   `MainActor`-isolated state directly; write through a
+>   `final class @unchecked Sendable` wrapper with an
+>   `OSAllocatedUnfairLock<State>` (see engineering-notes
+>   2026-05-14 Plan 5 entry for the canonical shape) and only the
+>   file-write call goes through it. The main-actor `CrashReporter`
+>   delegates to that wrapper for any cross-isolation work.
+> - **iOS Share Extension and App Intents extension also need
+>   canary-file write capability** if Plan 9 wants to detect a crash
+>   inside an extension. Both extensions already have the App Group
+>   entitlement; both call `IntentSupport.makePersistence()` (App
+>   Intents) or construct a `PersistenceController` directly (Share)
+>   against the App Group container. The simplest path: have each
+>   extension call `CrashReporter.start(platform: .iOSAppExtension)`
+>   at its UIKit/SwiftUI entry point and `markCleanExit()` on
+>   completion. This requires a new `Platform.iOSAppExtension` case
+>   (per-extension canary filename suffix) or relaxing the canary
+>   filename to include the bundle ID. Either way, expand Section 8's
+>   "Lifecycle hooks" to cover the two extensions before shipping.
+> - **Pre-installed defaults already exist on iOS too.** Plan 8 added
+>   `Apps/Lillist-iOS/Sources/App/DefaultSmartFiltersInstaller.swift`
+>   (matches the macOS file). If crash reporting needs a "did we
+>   install defaults?" sanity check (e.g. "post-crash, the user has
+>   five filters" smoke), call `SmartFilterStore.installDefaultsIfNeeded()`
+>   directly — it's idempotent.
+> - **iOS AppIntent metadata is `static let`, not `static var`.** If
+>   crash reporting ever surfaces a Shortcut action to e.g. "Send
+>   crash report" or "Toggle crash prompts", every `title` /
+>   `description` / `openAppWhenRun` / `isDiscoverable` /
+>   `typeDisplayRepresentation` / `defaultQuery` declaration on the
+>   intent or entity must be `static let` under Swift 6 strict
+>   concurrency. See engineering-notes 2026-05-14 Plan 8 entry.
+
 **Commits.** Same conventional-commit prefixes used in Plan 1: `feat:`, `test:`, `chore:`, `fix:`, `refactor:`, `docs:`.
 
 **Verification commands throughout:**
