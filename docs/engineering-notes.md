@@ -18,6 +18,94 @@ artifact, test).
 
 ---
 
+## 2026-05-14 — Plan 9 crash reporting: `.process("…xcdatamodeld")` does NOT compile Core Data models under Swift 6.2.4 / SPM CLI; the workaround is to keep the `CompileCoreDataModel` plugin AND rename its output so it doesn't collide with Xcode's auto-DataModelCompile; ISO8601 date round-trips lose sub-second precision
+
+**Context.** Plan 9 needed Core Data tests to pass against the
+LillistCore SPM target via `swift test`. After cleaning `.build`, all
+Core Data tests started crashing with `LillistModel.momd not found in
+bundle`. Three concrete realities surfaced:
+
+1. **`.process("…xcdatamodeld")` does not compile the model.** Plan 7's
+   engineering note claimed that "SwiftPM 6 now compiles `.xcdatamodeld`
+   natively via `.process(...)`". On this toolchain
+   (`swift-driver 1.127.15`, Swift 6.2.4) the resource pipeline copies
+   the `.xcdatamodeld` directory into the bundle as-is — no `.momd` is
+   produced. Plan 7's evidence was tainted by stale `.momd` artifacts
+   left in `.build` from before the plugin removal; a fresh build would
+   have failed.
+
+2. **Re-applying the plugin re-introduces the duplicate-output error in
+   workspace builds.** With the plugin back on the LillistCore target,
+   `swift test` succeeds (plugin produces `LillistModel.momd`) but
+   `xcodebuild` fails: Xcode's SPM integration *also* applies its
+   built-in `DataModelCompile` rule to any `.xcdatamodeld` it finds in
+   the source tree, and both copy commands target the same bundle path
+   (`…/LillistCore_LillistCore.bundle/Contents/Resources/LillistModel.momd`).
+
+3. **The escape hatch is to rename the plugin's output.** Change the
+   plugin to write `LillistModel.spm.momd` instead of
+   `LillistModel.momd`. Both producers now write distinct filenames into
+   the bundle; no collision. `PersistenceController.sharedModel` falls
+   back from `LillistModel.momd` (preferred — what `xcodebuild` produces
+   via DataModelCompile) to `LillistModel.spm.momd` (what the plugin
+   produces in `swift test` / `swift build`). Both code paths load the
+   same model and tests pass in both contexts.
+
+4. **`Date` ISO8601 round-trips drop sub-second precision.** The
+   crash-canary file uses `JSONEncoder` with
+   `dateEncodingStrategy = .iso8601`, which serializes only to
+   second-granularity (e.g. `"2026-05-14T20:28:24Z"`). Comparing a
+   `Date(timeIntervalSinceNow: 0)` to its decoded equivalent
+   `XCTAssertEqual`s as not-equal because the original has nanoseconds
+   and the decoded does not — and Swift's default `Date.description`
+   formats both identically, making the failure look like the assertion
+   library is broken. Tests that round-trip a `Date` through ISO8601
+   should pin fixtures to whole-second timestamps:
+   `Date(timeIntervalSince1970: 1_500_000)`.
+
+5. **`LogRedactor` path passes need a lookahead to handle macOS paths
+   with literal spaces.** The naïve `~/[^\s]*` stops at the first space,
+   so `~/Library/Application Support/Lillist` only redacts to
+   `<path> Support/Lillist` — leaving a real path fragment in the
+   "preview what will be sent" sheet. The fix is to allow a literal
+   space inside the path *if* the next character is a capitalized
+   letter: `~/(?:[^\s]|\s(?=[A-Z][a-z]))*`. Apply symmetrically to the
+   `/Users/<name>/...` and `/var/mobile/Containers/...` patterns. Risk:
+   over-redacts capitalized-word-after-path-prefix text like
+   `~/Foo Bar baz` → `<path> baz` (eats `Bar`). Acceptable per
+   redactor's "prefer over-redaction" stance.
+
+**Rule.**
+
+- When writing tests that round-trip `Date` through `JSONEncoder`'s
+  `.iso8601` strategy (or `ISO8601DateFormatter`), pin fixtures to
+  `Date(timeIntervalSince1970: N)` with `N` an integer. Don't use
+  `.now`, `Date()`, or any non-integer interval — sub-second precision
+  loss will make equality comparisons false-fail in confusing ways.
+- For SwiftPM build-tool plugins that produce a resource that *might*
+  collide with Xcode's built-in compiler for that file type
+  (DataModelCompile, AssetCatalogCompile, etc.), give the plugin's
+  output a distinct filename and let the consuming code fall back
+  through both names. Trying to suppress Xcode's auto-compile via build
+  settings or by manipulating the `resources:` declaration didn't work
+  in 2026-05-14 testing; the rename is the only clean cross-tool path.
+- Don't trust prior engineering notes' claims that "SPM auto-compiles
+  X" without a fresh-`.build` repro on the current toolchain — Plan 7's
+  similar claim about `.xcdatamodeld` was wrong, almost certainly due
+  to a stale-artifact false negative.
+- For redactors that pattern-match macOS paths, account for literal
+  spaces inside known path components (`Application Support`,
+  `Mobile Documents`, etc.). The cheapest fix is a
+  `\s(?=[A-Z][a-z])` lookahead inside the path body.
+
+**Evidence.** Plan 9 commits `e86cbd0` (preference + plugin re-apply),
+`71a2546` (rename plugin output to `.spm.momd` + macOS app wiring),
+`265eddb` (CLI ISO8601 date fixture rule), `e2bfd3c` (LogRedactor
+greedier path regex with three-agent panel ranked-choice ballot
+captured in commit message).
+
+---
+
 ## 2026-05-14 — Plan 8 iOS app: AppIntent metadata must be `static let` under Swift 6; `@Parameter` wrappers can't be set via `init()`; App Group container is the only path for app/extension store sharing; standalone iOS test bundle (`TEST_HOST=""`) cannot `@testable import` the app module; `Foundation.localizedStandardContains("")` returns `false`
 
 **Context.** Five gotchas surfaced while wiring up the iOS app, Share
