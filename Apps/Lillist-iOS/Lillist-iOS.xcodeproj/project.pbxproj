@@ -34,12 +34,14 @@
 		92FB9F599E4AE68D4C2E5151 /* ShareExtension-iOS.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 940380DB2F7305D2993DCD30 /* ShareExtension-iOS.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		9978784936A13783F1BF8E35 /* SharePayload.swift in Sources */ = {isa = PBXBuildFile; fileRef = D2F899010F7F794421F9DB2A /* SharePayload.swift */; };
 		9A614EB7763D94FE9D1D032D /* TabShell.swift in Sources */ = {isa = PBXBuildFile; fileRef = CDF66890A34B8871D4E2278B /* TabShell.swift */; };
+		A6EE4318B3317216DF56160D /* SharePayloadTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6816606162835A06ED8B8FEF /* SharePayloadTests.swift */; };
 		AD0144EC54CC3FA76CD3D1D0 /* AllTagsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7AE05D83958BE1618EC00B27 /* AllTagsView.swift */; };
 		C1FEEAB56AFC2EFD9C108C47 /* TaskJournalTab.swift in Sources */ = {isa = PBXBuildFile; fileRef = F6C4BEE444B84DDF5F88ABF3 /* TaskJournalTab.swift */; };
 		CA4034D690255FE0554C7DE2 /* RootShell.swift in Sources */ = {isa = PBXBuildFile; fileRef = 03C3319AED08244B047F88E4 /* RootShell.swift */; };
 		CEE10BDC98205D724AA29DCD /* FilterResultsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2A651BD41829D553D469EC3 /* FilterResultsView.swift */; };
 		DD83C4577F076A2042F05E6E /* KeyboardShortcuts.swift in Sources */ = {isa = PBXBuildFile; fileRef = A51D139E432B20E90E93549D /* KeyboardShortcuts.swift */; };
 		E01B4AB3BC5C4E7EE9093B74 /* LillistApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1CF1EBE004127B957F4AB99 /* LillistApp.swift */; };
+		E40226631EC34F5D4110B4D6 /* SharePayload.swift in Sources */ = {isa = PBXBuildFile; fileRef = D2F899010F7F794421F9DB2A /* SharePayload.swift */; };
 		ED3F0012AFC75791B7432CB6 /* ShareViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3013CF9707368DFFA43E4C72 /* ShareViewController.swift */; };
 		F77B7FA0960260C3C222F792 /* TaskAttachmentsTab.swift in Sources */ = {isa = PBXBuildFile; fileRef = 737996A9942CE2D095EAA6AB /* TaskAttachmentsTab.swift */; };
 		F85E96DD9CD8A9EC48C58105 /* DefaultSmartFiltersInstaller.swift in Sources */ = {isa = PBXBuildFile; fileRef = 877582BCF5CA2C44CB3C90FE /* DefaultSmartFiltersInstaller.swift */; };
@@ -95,6 +97,7 @@
 		5E708B597B5A514DE89C94FC /* Lillist-iOS.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = "Lillist-iOS.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		62D4015C93252ACE03FBA920 /* ShortcutsPlaceholder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShortcutsPlaceholder.swift; sourceTree = "<group>"; };
 		63687CA5DAE8C94F242FB14A /* TaskNotesTab.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TaskNotesTab.swift; sourceTree = "<group>"; };
+		6816606162835A06ED8B8FEF /* SharePayloadTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SharePayloadTests.swift; sourceTree = "<group>"; };
 		737996A9942CE2D095EAA6AB /* TaskAttachmentsTab.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TaskAttachmentsTab.swift; sourceTree = "<group>"; };
 		7AE05D83958BE1618EC00B27 /* AllTagsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AllTagsView.swift; sourceTree = "<group>"; };
 		877582BCF5CA2C44CB3C90FE /* DefaultSmartFiltersInstaller.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DefaultSmartFiltersInstaller.swift; sourceTree = "<group>"; };
@@ -225,6 +228,7 @@
 			isa = PBXGroup;
 			children = (
 				5D9EA074A9D3F9A86933CEA3 /* DefaultSmartFiltersInstallerTests.swift */,
+				6816606162835A06ED8B8FEF /* SharePayloadTests.swift */,
 			);
 			path = UnitTests;
 			sourceTree = "<group>";
@@ -508,6 +512,8 @@
 			files = (
 				3C197827BB6E072E187327F3 /* DefaultSmartFiltersInstallerTests.swift in Sources */,
 				3A2760F631CB59A9344DC2EF /* QuickCaptureFlowTests.swift in Sources */,
+				E40226631EC34F5D4110B4D6 /* SharePayload.swift in Sources */,
+				A6EE4318B3317216DF56160D /* SharePayloadTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

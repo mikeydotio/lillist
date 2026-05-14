@@ -104,6 +104,11 @@ targets:
     deploymentTarget: "18.0"
     sources:
       - path: Tests
+      # Co-compile the SharePayload source so the tests can exercise its
+      # decode() logic without needing a separate ShareExtension test
+      # bundle. SharePayload has no UIKit-only behavior when initialised
+      # with the `items:` test seam.
+      - path: ../../Extensions/ShareExtension-iOS/SharePayload.swift
     dependencies:
       - package: LillistCore
         product: LillistCore
