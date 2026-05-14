@@ -8,7 +8,11 @@ let package = Package(
         .iOS(.v18)
     ],
     products: [
-        .library(name: "LillistCore", targets: ["LillistCore"])
+        .library(name: "LillistCore", targets: ["LillistCore"]),
+        .executable(name: "lillist", targets: ["lillist-cli"])
+    ],
+    dependencies: [
+        .package(url: "https://github.com/apple/swift-argument-parser", from: "1.5.0")
     ],
     targets: [
         .plugin(
@@ -28,6 +32,24 @@ let package = Package(
         .testTarget(
             name: "LillistCoreTests",
             dependencies: ["LillistCore"]
+        ),
+        .executableTarget(
+            name: "lillist-cli",
+            dependencies: [
+                "LillistCore",
+                .product(name: "ArgumentParser", package: "swift-argument-parser")
+            ],
+            swiftSettings: [
+                .enableExperimentalFeature("StrictConcurrency")
+            ]
+        ),
+        .testTarget(
+            name: "lillistCLITests",
+            dependencies: [
+                "lillist-cli",
+                "LillistCore",
+                .product(name: "ArgumentParser", package: "swift-argument-parser")
+            ]
         )
     ]
 )
