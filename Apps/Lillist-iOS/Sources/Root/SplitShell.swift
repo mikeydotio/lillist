@@ -27,6 +27,7 @@ struct SplitShell: View {
 
     @State private var selection: Section? = .today
     @State private var isQuickCapturePresented = false
+    @State private var isSettingsPresented = false
 
     var body: some View {
         NavigationSplitView {
@@ -36,6 +37,16 @@ struct SplitShell: View {
                 }
             }
             .navigationTitle("Lillist")
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button {
+                        isSettingsPresented = true
+                    } label: {
+                        Image(systemName: "gearshape")
+                    }
+                    .accessibilityLabel("Settings")
+                }
+            }
         } detail: {
             NavigationStack {
                 switch selection ?? .today {
@@ -52,6 +63,9 @@ struct SplitShell: View {
         .sheet(isPresented: $isQuickCapturePresented) {
             QuickCaptureSheet()
                 .presentationDetents([.fraction(0.35), .medium])
+        }
+        .sheet(isPresented: $isSettingsPresented) {
+            SettingsTab()
         }
         .lillistKeyboardShortcuts(
             isQuickCapturePresented: $isQuickCapturePresented,
