@@ -53,5 +53,34 @@ struct SplitShell: View {
             QuickCaptureSheet()
                 .presentationDetents([.fraction(0.35), .medium])
         }
+        .lillistKeyboardShortcuts(
+            isQuickCapturePresented: $isQuickCapturePresented,
+            selectedTab: Binding(
+                get: { selection?.asTabShellTab },
+                set: { selection = $0?.asSection }
+            )
+        )
+    }
+}
+
+extension SplitShell.Section {
+    var asTabShellTab: TabShell.Tab {
+        switch self {
+        case .today: return .today
+        case .all: return .all
+        case .filters: return .filters
+        case .search: return .search
+        }
+    }
+}
+
+extension TabShell.Tab {
+    var asSection: SplitShell.Section {
+        switch self {
+        case .today: return .today
+        case .all: return .all
+        case .filters: return .filters
+        case .search: return .search
+        }
     }
 }

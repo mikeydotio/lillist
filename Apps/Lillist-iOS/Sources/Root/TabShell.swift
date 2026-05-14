@@ -8,6 +8,13 @@ struct TabShell: View {
 
     enum Tab: Hashable { case today, all, filters, search }
 
+    private var selectionOptional: Binding<Tab?> {
+        Binding(
+            get: { selection },
+            set: { if let new = $0 { selection = new } }
+        )
+    }
+
     var body: some View {
         TabView(selection: $selection) {
             NavigationStack {
@@ -42,5 +49,9 @@ struct TabShell: View {
                 .presentationDetents([.fraction(0.35), .medium])
                 .presentationDragIndicator(.visible)
         }
+        .lillistKeyboardShortcuts(
+            isQuickCapturePresented: $isQuickCapturePresented,
+            selectedTab: selectionOptional
+        )
     }
 }
