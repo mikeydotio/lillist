@@ -107,6 +107,19 @@ public final class TagStore: @unchecked Sendable {
         }
     }
 
+    // MARK: - Tint
+
+    /// Sets the tag's tint color. Used by the CLI's `lillist tags tint` and
+    /// later by the macOS / iOS tag editors. The hex string is stored as-is —
+    /// validation is the caller's job (`#RRGGBB` per design Section 2).
+    public func setTintColor(id: UUID, hex: String?) async throws {
+        try await context.perform { [self] in
+            let m = try fetchManagedObject(id: id, in: context)
+            m.tintColor = hex
+            try context.save()
+        }
+    }
+
     // MARK: - Helpers
 
     private func fetchManagedObject(id: UUID, in ctx: NSManagedObjectContext) throws -> Tag {
