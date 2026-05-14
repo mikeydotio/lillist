@@ -61,13 +61,32 @@ public actor NotificationScheduler: NotificationReconciling {
             let pendingByID = Dictionary(uniqueKeysWithValues: ourPending.map { ($0.identifier, $0) })
             let desiredByID = Dictionary(uniqueKeysWithValues: desired.map { ($0.identifier, $0) })
 
-            // Remove stale.
-            let toRemove = ourPending.map(\.identifier).filter { desiredByID[$0] == nil }
+            // Stale = pending whose identifier is no longer desired.
+            // Changed = pending whose identifier is still desired but whose
+            // trigger components differ (e.g. all-day default-time preference
+            // change — same spec, new wall-clock target).
+            //
+            // Built with for-loops rather than compactMap so the actor-isolated
+            // `desiredByID` dictionary is not captured into a closure (Swift 6
+            // strict-concurrency `SendingRisksDataRace`).
+            var toRemove: [String] = []
+            for p in ourPending {
+                if let d = desiredByID[p.identifier] {
+                    if triggersDiffer(p.trigger, d.trigger) {
+                        toRemove.append(p.identifier)
+                    }
+                } else {
+                    toRemove.append(p.identifier)
+                }
+            }
             if toRemove.isEmpty == false {
                 await center.removePendingNotificationRequests(withIdentifiers: toRemove)
             }
-            // Add missing.
-            for req in desired where pendingByID[req.identifier] == nil {
+
+            // Add missing — and re-add the ones we just removed because of a
+            // trigger change.
+            let removedSet = Set(toRemove)
+            for req in desired where pendingByID[req.identifier] == nil || removedSet.contains(req.identifier) {
                 try await center.add(req)
             }
         } catch {
@@ -75,6 +94,23 @@ public actor NotificationScheduler: NotificationReconciling {
             // the app layer if needed. Failures here mean a transient
             // store/center error; next reconcile will retry.
         }
+    }
+
+    /// True if two `UNCalendarNotificationTrigger`s would fire at different
+    /// wall-clock instants. Used by `reconcile` to detect that a still-known
+    /// spec's scheduled trigger has changed (e.g. preference-driven time
+    /// shift, snooze, etc.) and needs replacing.
+    private func triggersDiffer(_ a: UNNotificationTrigger?, _ b: UNNotificationTrigger?) -> Bool {
+        guard let a = a as? UNCalendarNotificationTrigger,
+              let b = b as? UNCalendarNotificationTrigger else { return false }
+        let ac = a.dateComponents
+        let bc = b.dateComponents
+        return ac.year != bc.year
+            || ac.month != bc.month
+            || ac.day != bc.day
+            || ac.hour != bc.hour
+            || ac.minute != bc.minute
+            || ac.second != bc.second
     }
 
     // MARK: - Snapshot
@@ -251,6 +287,33 @@ public actor NotificationScheduler: NotificationReconciling {
         guard request.identifier.hasSuffix("#\(deviceFingerprint)") else { return false }
         guard let taskIDString = request.content.userInfo["taskID"] as? String else { return false }
         return taskIDString == taskID.uuidString
+    }
+
+    // MARK: - Preference change
+
+    /// Update the default all-day notification time. Reconciles every task
+    /// that has at least one all-day default spec (design Section 4 Layer 2:
+    /// the configured time is used at delivery, so changing it must
+    /// re-trigger every dependent request).
+    public func updateDefaultAllDayTime(hour: Int, minute: Int) async {
+        self.defaultAllDayHour = hour
+        self.defaultAllDayMinute = minute
+        let affected = await tasksWithAllDayDefaults()
+        for taskID in affected {
+            await reconcile(taskID: taskID)
+        }
+    }
+
+    private func tasksWithAllDayDefaults() async -> [UUID] {
+        let ctx = persistence.container.viewContext
+        return await ctx.perform {
+            let req = NSFetchRequest<LillistTask>(entityName: "LillistTask")
+            req.predicate = NSPredicate(
+                format: "(start != nil AND startHasTime == NO) OR (deadline != nil AND deadlineHasTime == NO)"
+            )
+            let tasks = (try? ctx.fetch(req)) ?? []
+            return tasks.compactMap(\.id)
+        }
     }
 
     // MARK: - Public Layer 3 API
