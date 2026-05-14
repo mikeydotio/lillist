@@ -57,8 +57,14 @@ targets:
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: io.mikeydotio.Lillist.tests
+        # Standalone test bundle — no app test host, so the headless CLI
+        # build works without a development signing identity. The tests
+        # exercise LillistCore / LillistUI behaviors that back Plan 7's
+        # interaction tests; they intentionally do not @testable-import
+        # Lillist_macOS view types.
+        TEST_HOST: ""
+        BUNDLE_LOADER: ""
     dependencies:
-      - target: Lillist-macOS
       - package: LillistCore
         product: LillistCore
       - package: LillistUI
