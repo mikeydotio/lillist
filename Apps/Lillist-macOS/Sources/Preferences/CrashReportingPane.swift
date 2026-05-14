@@ -1,12 +1,67 @@
 import SwiftUI
 import LillistCore
 
-/// Stub — real implementation lands in Plan 10 Task 9.
+/// macOS Preferences Crash Reporting pane (Plan 10 Task 9).
+///
+/// Single toggle bound to `crashPromptsEnabled` (Plan 9). A disclosure
+/// group surfaces a sample preview of what a crash report would look
+/// like — this is the Plan-9-promised affordance to let curious users
+/// inspect the payload before deciding whether to keep prompts on.
 struct CrashReportingPane: View {
+    @Environment(AppEnvironment.self) private var environment
+    @State private var prefs: PreferencesStore.Prefs?
+    @State private var sampleVisible = false
+
     var body: some View {
         Form {
-            Text("Crash Reporting preferences coming soon.")
+            if let b = binding {
+                Section("Post-crash prompt") {
+                    Toggle("Show prompt after Lillist quits unexpectedly", isOn: b.crashPromptsEnabled)
+                    Text("Reports go directly to Mikey via email. No third-party telemetry.")
+                        .font(.callout)
+                        .foregroundStyle(.secondary)
+                }
+                Section {
+                    DisclosureGroup("View what would be sent", isExpanded: $sampleVisible) {
+                        Text(samplePreview)
+                            .font(.system(.caption, design: .monospaced))
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .textSelection(.enabled)
+                    }
+                }
+            } else {
+                ProgressView()
+            }
         }
         .formStyle(.grouped)
+        .task { prefs = try? await environment.preferencesStore.read() }
+        .onChange(of: prefs) { _, new in
+            guard let new else { return }
+            Task { try? await environment.preferencesStore.update { $0 = new } }
+            // Plan 9 wires `crashPromptsEnabled` through to the live
+            // CrashReporterHost via `AppEnvironment.crashPromptsEnabled`
+            // (a `var`). Mirror the change so the current launch picks
+            // up the new value if the user toggles mid-session.
+            environment.crashPromptsEnabled = new.crashPromptsEnabled
+        }
+    }
+
+    private var binding: Binding<PreferencesStore.Prefs>? {
+        guard prefs != nil else { return nil }
+        return Binding(get: { prefs! }, set: { prefs = $0 })
+    }
+
+    private var samplePreview: String {
+        """
+        Build: \(environment.buildVersion)
+        OS: \(environment.osVersion)
+        Device: \(environment.deviceModel)
+        Breadcrumbs:
+          (Anonymized verbs from your last ~50 mutations.)
+        Logs:
+          (System logs from the last ~30 seconds of the crashed run.)
+        Sent to: mikeyward@gmail.com
+        Method: macOS Mail.app draft via mailto: — you choose whether to send.
+        """
     }
 }
