@@ -103,8 +103,16 @@ public final class PersistenceController: @unchecked Sendable {
     }
 
     nonisolated(unsafe) private static let sharedModel: NSManagedObjectModel = {
-        guard let url = Bundle.module.url(forResource: "LillistModel", withExtension: "momd") else {
-            preconditionFailure("LillistModel.momd not found in bundle")
+        // Try Xcode's DataModelCompile output first (`LillistModel.momd`,
+        // produced in workspace builds), then fall back to the SPM
+        // build-tool plugin's output (`LillistModel.spm.momd`, produced
+        // in standalone `swift build` / `swift test`). The plugin uses a
+        // distinct filename to avoid colliding with Xcode's auto-compile
+        // in workspace builds; see `CompileCoreDataModel.swift`.
+        let url = Bundle.module.url(forResource: "LillistModel", withExtension: "momd")
+            ?? Bundle.module.url(forResource: "LillistModel.spm", withExtension: "momd")
+        guard let url else {
+            preconditionFailure("LillistModel.momd not found in bundle (looked for LillistModel.momd and LillistModel.spm.momd)")
         }
         guard let model = NSManagedObjectModel(contentsOf: url) else {
             preconditionFailure("Failed to load NSManagedObjectModel from \(url)")

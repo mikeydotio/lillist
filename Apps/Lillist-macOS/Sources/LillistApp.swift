@@ -24,8 +24,16 @@ struct LillistApp: App {
     @ViewBuilder
     private var content: some View {
         if let environment {
-            RootSplitView()
-                .environment(environment)
+            CrashReporterHost(
+                reporter: environment.crashReporter,
+                buildVersion: environment.buildVersion,
+                osVersion: environment.osVersion,
+                deviceModel: environment.deviceModel,
+                crashPromptsEnabled: environment.crashPromptsEnabled
+            ) {
+                RootSplitView()
+                    .environment(environment)
+            }
         } else if let loadError {
             EmptyStateView(
                 title: "Could not load Lillist",

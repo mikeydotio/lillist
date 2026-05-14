@@ -20,7 +20,16 @@ struct CompileCoreDataModel: BuildToolPlugin {
         return modelDirs.map { file in
             let inputURL = file.url
             let name = inputURL.deletingPathExtension().lastPathComponent
-            let outputURL = context.pluginWorkDirectoryURL.appendingPathComponent("\(name).momd")
+            // Output filename intentionally differs from `<name>.momd` so
+            // the plugin's output does NOT collide with Xcode's built-in
+            // `DataModelCompile` rule when this package is consumed from a
+            // workspace (Xcode auto-compiles the same .xcdatamodeld into
+            // `<name>.momd` and the two copy commands both target the same
+            // bundle path, raising a "Multiple commands produce…" error).
+            // Loaders (PersistenceController) look for `<name>.momd`
+            // first, then `<name>.spm.momd` as a fallback for builds where
+            // only this plugin runs (`swift test` / `swift build`).
+            let outputURL = context.pluginWorkDirectoryURL.appendingPathComponent("\(name).spm.momd")
             return .buildCommand(
                 displayName: "Compiling Core Data model \(name)",
                 executable: URL(fileURLWithPath: "/usr/bin/xcrun"),

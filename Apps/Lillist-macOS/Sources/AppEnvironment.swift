@@ -21,6 +21,12 @@ final class AppEnvironment {
     let notificationScheduler: NotificationScheduler
     let notificationPermissions: NotificationPermissions
     let syncMonitor: any SyncIndicatorMonitor
+    let breadcrumbs: BreadcrumbBuffer
+    let crashReporter: CrashReporter
+    var crashPromptsEnabled: Bool = PreferencesStore.Prefs.crashPromptsDefault
+    let buildVersion: String
+    let osVersion: String
+    let deviceModel: String
 
     private init(persistence: PersistenceController) {
         self.persistence = persistence
@@ -62,6 +68,28 @@ final class AppEnvironment {
         // that bridges LillistCore.SyncStatusMonitor's statusStream to the
         // SyncIndicatorMonitor protocol shape.
         self.syncMonitor = IdleSyncIndicatorMonitor()
+
+        // Plan 9: shared breadcrumb buffer + crash reporter.
+        let info = Bundle.main.infoDictionary ?? [:]
+        let buildVersion = "\(info["CFBundleShortVersionString"] as? String ?? "?") (\(info["CFBundleVersion"] as? String ?? "?"))"
+        let osVersion = "macOS \(ProcessInfo.processInfo.operatingSystemVersionString)"
+        let deviceModel = ProcessInfo.processInfo.hostName
+        let hostname = Host.current().localizedName ?? "Mac"
+        let breadcrumbs = BreadcrumbBuffer()
+        self.breadcrumbs = breadcrumbs
+        self.buildVersion = buildVersion
+        self.osVersion = osVersion
+        self.deviceModel = deviceModel
+        self.crashReporter = CrashReporter(
+            canaryFile: CanaryFile(url: CanaryFile.defaultURL(for: .macOSApp)),
+            buildVersion: buildVersion,
+            osVersion: osVersion,
+            deviceModel: deviceModel,
+            hostname: hostname,
+            logFetcher: OSLogFetcher(),
+            breadcrumbs: breadcrumbs,
+            transport: MailtoTransport()
+        )
     }
 
     /// Async-friendly constructor. Loads the Core Data store and wires up
@@ -76,5 +104,17 @@ final class AppEnvironment {
     /// snooze actions on the Lock Screen dispatch correctly.
     func bootstrap() async {
         await notificationScheduler.bootstrap()
+        // Plan 9: start the canary for *this* run. detectAndPrepare()
+        // (called by CrashReporterHost on first render) will read any
+        // stale canary the prior crashed process left and then re-arm.
+        // We call start() defensively in case the host never gets a
+        // chance to render (e.g. some failure between env.make() and
+        // first paint) — the cost of an extra fresh canary write is nil.
+        try? await crashReporter.start()
+        // Hydrate crashPromptsEnabled from the user's preferences.
+        let prefs = try? await PreferencesStore(persistence: persistence).read()
+        if let prefs {
+            self.crashPromptsEnabled = prefs.crashPromptsEnabled
+        }
     }
 }

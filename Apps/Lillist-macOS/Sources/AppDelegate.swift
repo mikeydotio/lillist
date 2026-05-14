@@ -33,5 +33,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationWillTerminate(_ notification: Notification) {
         hotkeyMonitor?.uninstall()
         statusBarController?.uninstall()
+        // Plan 9: delete the launch canary so the next launch knows
+        // this exit was clean. Block briefly so we don't race the
+        // process tear-down, but cap the wait to avoid hanging.
+        if let reporter = environment?.crashReporter {
+            let group = DispatchGroup()
+            group.enter()
+            Task {
+                try? await reporter.markCleanExit()
+                group.leave()
+            }
+            _ = group.wait(timeout: .now() + .seconds(2))
+        }
     }
 }
