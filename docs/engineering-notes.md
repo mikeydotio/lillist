@@ -18,6 +18,92 @@ artifact, test).
 
 ---
 
+## 2026-05-14 — Plan 8 iOS app: AppIntent metadata must be `static let` under Swift 6; `@Parameter` wrappers can't be set via `init()`; App Group container is the only path for app/extension store sharing; standalone iOS test bundle (`TEST_HOST=""`) cannot `@testable import` the app module; `Foundation.localizedStandardContains("")` returns `false`
+
+**Context.** Five gotchas surfaced while wiring up the iOS app, Share
+Extension, and App Intents extension on top of the macOS work from
+Plan 7.
+
+1. **AppIntent metadata must be `static let`, not `static var`, under
+   Swift 6 strict concurrency.** `AppIntent`'s protocol requirements
+   (`title`, `description`, `openAppWhenRun`, `isDiscoverable`,
+   `typeDisplayRepresentation`, `caseDisplayRepresentations`,
+   `defaultQuery`) are declared `var x: T { get }` — but you satisfy
+   them with `static let x: T` and side-step "nonisolated mutable
+   global state". Plan 8 commit `0d45a36` does this across every
+   intent / entity / enum file.
+
+2. **`@Parameter`-wrapped properties can't be set via `init()`.** The
+   property wrapper makes the stored type `IntentParameter<T>`, not
+   `T`. To prefill an intent value before passing to
+   `.result(opensIntent:)`, construct the intent with `init()` and
+   then assign through the wrappedValue:
+   ```swift
+   var inner = OpenTaskInAppIntent()
+   inner.taskID = task.id.uuidString
+   return .result(opensIntent: inner)
+   ```
+   You also need an explicit `init() {}` on the helper intent if you
+   want the no-arg constructor — synthesized inits are problematic
+   when only `@Parameter` fields exist.
+
+3. **Sharing the SQLite store between the iOS app and its extensions
+   requires App Group container URL.** `FileManager.containerURL(
+   forSecurityApplicationGroupIdentifier:)` returns the per-group
+   sandbox directory; both the main app and every embedded extension
+   point their `PersistenceController` at the same SQLite file inside
+   that directory. `FileManager.default.homeDirectoryForCurrentUser`
+   is macOS-only — `NSHomeDirectory()` is portable but inside the
+   per-app sandbox on iOS, so it doesn't satisfy the sharing
+   requirement. Plan 8 added `StoreConfiguration.appGroupOnDisk(
+   groupID:)` to LillistCore for this.
+
+4. **A standalone iOS test bundle (`TEST_HOST=""` + `BUNDLE_LOADER=""`)
+   cannot `@testable import` the app module.** With no test host the
+   app target's symbols aren't reachable from the test bundle. Two
+   options: (a) test the underlying LillistCore/LillistUI paths
+   (preferred — the app code is mostly glue, and the cores have their
+   own deep coverage); (b) co-compile specific source files into the
+   test bundle via `sources: - path: ../../Extensions/.../X.swift`
+   in `project.yml`. Plan 8 uses (b) for `SharePayload.swift` so its
+   pure-decode logic gets tested without a signed host.
+
+5. **`Foundation.localizedStandardContains("")` returns `false` on
+   iOS 18.** Counterintuitive — you might expect "every string
+   contains the empty string". The practical consequence: a search
+   path that does `title.localizedStandardContains(query)` won't
+   accidentally return every task when the query is empty. That's
+   safe default behavior but worth pinning with a regression test in
+   case Foundation changes its mind.
+
+**Rule.**
+
+- For every `AppIntent` / `AppEntity` / `AppEnum` declaration in Swift
+  6, use `static let` for metadata (`title`, `description`,
+  `openAppWhenRun`, `isDiscoverable`, `typeDisplayRepresentation`,
+  `caseDisplayRepresentations`, `defaultQuery`). Use `static var` only
+  for accessors that genuinely compute, e.g. `parameterSummary`.
+- To prefill an `@Parameter` value in a helper intent, call its
+  `init()` and assign to the wrappedValue. Never try to pass through
+  a custom init that takes the parameter value directly.
+- For any iOS app that ships extensions, point `PersistenceController`
+  at the App Group container URL via
+  `StoreConfiguration.appGroupOnDisk(groupID:)`. Falling back to
+  `defaultOnDisk` (per-app Application Support) silently breaks the
+  sharing contract.
+- For standalone iOS test bundles, design tests against LillistCore /
+  LillistUI surfaces, not against the iOS app module. When a specific
+  iOS-app source file needs coverage and is pure (no UIKit-only
+  dependencies), co-compile it into the test bundle via project.yml.
+- Don't assume `localizedStandardContains` matches everything on an
+  empty needle; assert the actual behavior in a test.
+
+**Evidence.** Plan 8 commits `0d45a36` (Swift 6 fixes), `905d0a5`
+(App Group plumbing), `a3f9d08` (SharePayload co-compile),
+`184b2ef` (empty-query regression test).
+
+---
+
 ## 2026-05-14 — Plan 7 macOS app: SwiftPM 6 + Xcode SPM both auto-compile `.xcdatamodeld`; macOS SwiftUI View snapshots need `NSHostingView`; xcodegen path resolution; entitlements need development cert for `xcodebuild`; XCTAssert autoclosures don't accept `try await`
 
 **Context.** Five concrete gotchas surfaced while wiring up the macOS
