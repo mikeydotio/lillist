@@ -2,8 +2,8 @@ import AppIntents
 import LillistCore
 
 struct AddNoteIntent: AppIntent {
-    static var title: LocalizedStringResource = "Add Journal Note"
-    static var description = IntentDescription("Add a note to a task's journal.")
+    static let title: LocalizedStringResource = "Add Journal Note"
+    static let description = IntentDescription("Add a note to a task's journal.")
 
     @Parameter(title: "Task") var task: TaskEntity
     @Parameter(title: "Body") var body: String

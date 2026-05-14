@@ -7,8 +7,8 @@ enum StatusAppEnum: String, AppEnum {
     case blocked
     case closed
 
-    static var typeDisplayRepresentation: TypeDisplayRepresentation = "Status"
-    static var caseDisplayRepresentations: [StatusAppEnum: DisplayRepresentation] = [
+    static let typeDisplayRepresentation: TypeDisplayRepresentation = "Status"
+    static let caseDisplayRepresentations: [StatusAppEnum: DisplayRepresentation] = [
         .todo: "To-do",
         .started: "Started",
         .blocked: "Blocked",

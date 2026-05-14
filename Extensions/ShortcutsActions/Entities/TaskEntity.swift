@@ -12,7 +12,7 @@ struct TaskEntity: AppEntity, Identifiable {
     @Property(title: "Status") var status: StatusAppEnum
     @Property(title: "Deadline") var deadline: Date?
 
-    static var typeDisplayRepresentation: TypeDisplayRepresentation = "Task"
+    static let typeDisplayRepresentation: TypeDisplayRepresentation = "Task"
 
     var displayRepresentation: DisplayRepresentation {
         DisplayRepresentation(
@@ -21,7 +21,7 @@ struct TaskEntity: AppEntity, Identifiable {
         )
     }
 
-    static var defaultQuery = TaskEntityQuery()
+    static let defaultQuery = TaskEntityQuery()
 
     init(id: UUID, title: String, status: StatusAppEnum, deadline: Date?) {
         self.id = id

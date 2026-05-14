@@ -2,8 +2,8 @@ import AppIntents
 import LillistCore
 
 struct CompleteTaskIntent: AppIntent {
-    static var title: LocalizedStringResource = "Complete Task"
-    static var description = IntentDescription("Mark a task closed.")
+    static let title: LocalizedStringResource = "Complete Task"
+    static let description = IntentDescription("Mark a task closed.")
 
     @Parameter(title: "Task") var task: TaskEntity
 

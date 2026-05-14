@@ -3,9 +3,9 @@ import AppIntents
 /// Discoverable entry point used by the Lock Screen widget. Opens the app
 /// (which surfaces the Quick Capture sheet via `OpenAtQuickCaptureIntent`).
 struct QuickCaptureLockScreenIntent: AppIntent {
-    static var title: LocalizedStringResource = "Quick Capture"
-    static var description = IntentDescription("Capture a task into Lillist.")
-    static var openAppWhenRun = true
+    static let title: LocalizedStringResource = "Quick Capture"
+    static let description = IntentDescription("Capture a task into Lillist.")
+    static let openAppWhenRun = true
 
     init() {}
 
@@ -18,8 +18,8 @@ struct QuickCaptureLockScreenIntent: AppIntent {
 /// Hidden helper intent the main app handles on launch to present the
 /// Quick Capture sheet immediately.
 struct OpenAtQuickCaptureIntent: AppIntent {
-    static var title: LocalizedStringResource = "Open Quick Capture"
-    static var isDiscoverable = false
+    static let title: LocalizedStringResource = "Open Quick Capture"
+    static let isDiscoverable = false
 
     init() {}
 

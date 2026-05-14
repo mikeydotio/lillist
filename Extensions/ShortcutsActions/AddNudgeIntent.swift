@@ -3,8 +3,8 @@ import Foundation
 import LillistCore
 
 struct AddNudgeIntent: AppIntent {
-    static var title: LocalizedStringResource = "Add Nudge"
-    static var description = IntentDescription("Schedule a one-off notification on a task.")
+    static let title: LocalizedStringResource = "Add Nudge"
+    static let description = IntentDescription("Schedule a one-off notification on a task.")
 
     @Parameter(title: "Task") var task: TaskEntity
     @Parameter(title: "Fire At") var fireAt: Date

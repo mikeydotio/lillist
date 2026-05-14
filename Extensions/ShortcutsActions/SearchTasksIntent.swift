@@ -2,8 +2,8 @@ import AppIntents
 import LillistCore
 
 struct SearchTasksIntent: AppIntent {
-    static var title: LocalizedStringResource = "Search Tasks"
-    static var description = IntentDescription("Search Lillist by title or notes substring.")
+    static let title: LocalizedStringResource = "Search Tasks"
+    static let description = IntentDescription("Search Lillist by title or notes substring.")
 
     @Parameter(title: "Query") var query: String
 

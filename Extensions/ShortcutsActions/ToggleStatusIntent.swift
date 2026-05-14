@@ -2,8 +2,8 @@ import AppIntents
 import LillistCore
 
 struct ToggleStatusIntent: AppIntent {
-    static var title: LocalizedStringResource = "Set Task Status"
-    static var description = IntentDescription("Set a task's status.")
+    static let title: LocalizedStringResource = "Set Task Status"
+    static let description = IntentDescription("Set a task's status.")
 
     @Parameter(title: "Task") var task: TaskEntity
     @Parameter(title: "Status") var status: StatusAppEnum

@@ -33,9 +33,12 @@ struct TaskEntityQuery: EntityQuery {
     }
 
     static func makePersistence() async throws -> PersistenceController {
-        let config = StoreConfiguration.appGroupOnDisk(
-            groupID: "group.io.mikeydotio.Lillist"
-        ) ?? (try .defaultOnDisk)
+        let config: StoreConfiguration
+        if let group = StoreConfiguration.appGroupOnDisk(groupID: "group.io.mikeydotio.Lillist") {
+            config = group
+        } else {
+            config = try StoreConfiguration.defaultOnDisk
+        }
         return try await PersistenceController(configuration: config)
     }
 }

@@ -77,8 +77,12 @@ final class AppEnvironment {
     /// App Group's shared container so the Share Extension and App
     /// Intents extension see the same data.
     static func make() async throws -> AppEnvironment {
-        let config = StoreConfiguration.appGroupOnDisk(groupID: appGroupID)
-            ?? (try .defaultOnDisk)
+        let config: StoreConfiguration
+        if let group = StoreConfiguration.appGroupOnDisk(groupID: appGroupID) {
+            config = group
+        } else {
+            config = try StoreConfiguration.defaultOnDisk
+        }
         let persistence = try await PersistenceController(configuration: config)
         return AppEnvironment(persistence: persistence)
     }

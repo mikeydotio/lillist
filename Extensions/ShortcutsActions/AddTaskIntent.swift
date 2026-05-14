@@ -3,9 +3,9 @@ import Foundation
 import LillistCore
 
 struct AddTaskIntent: AppIntent {
-    static var title: LocalizedStringResource = "Add Task"
-    static var description = IntentDescription("Create a new task in Lillist.")
-    static var openAppWhenRun = false
+    static let title: LocalizedStringResource = "Add Task"
+    static let description = IntentDescription("Create a new task in Lillist.")
+    static let openAppWhenRun = false
 
     @Parameter(title: "Title") var taskTitle: String
     @Parameter(title: "Deadline") var deadline: Date?
