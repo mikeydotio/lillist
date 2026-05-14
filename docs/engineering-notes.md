@@ -18,6 +18,63 @@ artifact, test).
 
 ---
 
+## 2026-05-14 — Plan 6 CLI: NSPredicate is non-Sendable, hex-only fuzzy tokens collide with UUID prefix routing, `localizedStandardContains` does not fold diacritics, and the `@main` annotation conflicts with a `main.swift` file
+
+**Context.** Three concrete gotchas surfaced while building the `lillist` CLI
+(see commits `0ab5e94`, `2a2b7a5`, `1771301`):
+
+1. **`NSPredicate` is not `Sendable` in Swift 6.** Capturing a pre-built
+   predicate into a `context.perform { ... }` closure trips
+   `[#SendableClosureCaptures]` even though `NSManagedObjectContext.perform`
+   itself runs on its own queue. The strict-concurrency-clean shape is to
+   build the predicate **inside** the perform closure from a `Sendable`
+   `PredicateGroup`. See `LsHandler` and `EvalHandler`.
+2. **Hex-only tokens like `cafe` route to UUID-prefix matching, not title
+   substring.** Design Section 6 says "tokens matching `^[0-9a-f]{4,}$`
+   resolve as UUID prefixes." That rule preempts the title path even when
+   the user typed an English word that happens to be all-hex (`cafe`,
+   `face`, `dead`, `beef`). Tests for diacritic folding must use a token
+   with at least one non-hex character (`naive`, `resume`).
+3. **`localizedStandardContains` is unreliable for diacritic folding.** It
+   does case folding but its diacritic behavior depends on the current
+   locale. The robust path is to fold both sides explicitly via
+   `applyingTransform(.stripDiacritics, reverse: false)`, then case-fold
+   via `lowercased()`, then `contains`. See `Resolver.foldedContains`.
+4. **`@main` on a type cannot coexist with a `main.swift` file in the same
+   executable target.** SwiftPM treats `main.swift` as the entry point and
+   `@main` is rejected. Plan 6 Task 1 had the executable target use only
+   `@main`; Task 24 swapped to a `main.swift` that calls
+   `Lillist.runWithExitCodes()` and removed the `@main` annotation. Both
+   are valid; pick one and don't ship both.
+5. **`ISO8601DateFormatter` is not `Sendable` and cannot be a `static let`
+   under strict concurrency** — it triggers `[#MutableGlobalVariable]`.
+   Construct it per-call inside the function that needs it; instantiation
+   is cheap.
+
+**Rule.**
+
+- Build any `NSPredicate` *inside* the `context.perform` closure that uses
+  it. Pass `Sendable` value types (`PredicateGroup`, `UUID`, `String`,
+  `Date`) across the boundary, not predicates.
+- When the design specifies a UUID-prefix routing rule, design test
+  fixtures so all-hex words (`cafe`, `dead`, `beef`) are not used as
+  title-substring inputs. Document the precedence rule in the resolver's
+  doc comment.
+- For substring matching that needs both case- and diacritic-insensitivity,
+  always fold via `applyingTransform(.stripDiacritics, reverse: false)`
+  before `lowercased().contains(...)`. Don't rely on
+  `localizedStandardContains`.
+- For executable targets, choose either `@main` on a type or a `main.swift`
+  file with top-level code, never both.
+- For `Foundation` formatter types that aren't `Sendable`
+  (`ISO8601DateFormatter`, `DateFormatter`, `JSONEncoder`/`Decoder` are
+  `Sendable` since macOS 14), construct them per-call rather than as
+  static singletons under strict concurrency.
+
+**Evidence.** `git show 0ab5e94 1771301 9e9f37d 2a2b7a5`.
+
+---
+
 ## 2026-05-14 — Swift 6 strict concurrency in the test target; `@preconcurrency import UserNotifications`; `OSAllocatedUnfairLock`
 
 **Context.** Plan 5 (notifications layer) needed an `actor`-based
