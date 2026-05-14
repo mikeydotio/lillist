@@ -18,6 +18,84 @@ artifact, test).
 
 ---
 
+## 2026-05-14 — Plan 7 macOS app: SwiftPM 6 + Xcode SPM both auto-compile `.xcdatamodeld`; macOS SwiftUI View snapshots need `NSHostingView`; xcodegen path resolution; entitlements need development cert for `xcodebuild`; XCTAssert autoclosures don't accept `try await`
+
+**Context.** Five concrete gotchas surfaced while wiring up the macOS
+app on top of the SwiftPM packages built in Plans 1–5.
+
+1. **Swift Package Manager 6 compiles `.xcdatamodeld` natively, and
+   so does Xcode's SPM integration.** Plan 1 shipped a
+   `CompileCoreDataModel` build-tool plugin that ran `momc`. Under SPM
+   CLI (`swift build`) the plugin produced `LillistModel.momd` and the
+   resource pipeline silently de-duplicated. Under `xcodebuild`
+   consuming the same package from a workspace, both the plugin and
+   Xcode's `DataModelCompile` task ran, hitting "Multiple commands
+   produce …/LillistModel.momd". The fix: remove the plugin and rely
+   on SwiftPM's `.process("LillistModel.xcdatamodeld")` resource entry
+   alone. SPM 6 + Xcode 17 both handle it. Plan 7 commit
+   `7715ec0` does this.
+2. **`swift-snapshot-testing` 1.17 has no macOS SwiftUI `View`
+   snapshot strategy.** The plan's `SnapshotEnvironment` extension
+   tried to declare `Snapshotting where Value: View, Format == NSImage`
+   and call `.image(size:traits:)` directly. On macOS the library
+   provides image strategies only for `NSView` /
+   `NSViewController` — not for SwiftUI `View`. The fix is to host
+   each SwiftUI view in an `NSHostingView` and snapshot the resulting
+   `NSView`. Helper: `makeHostingView(_:size:) -> NSView`.
+3. **xcodegen path resolution is anchored at the spec file's
+   directory.** Generating the project with `xcodegen generate --spec
+   project.yml --project Apps` from a repo-root `project.yml` stored
+   `Apps/Lillist-macOS/Sources` as the source path *literally* —
+   which Xcode then resolved against `$(SRCROOT) = Apps/`, yielding
+   `Apps/Apps/Lillist-macOS/Sources/`. The fix is to put `project.yml`
+   inside `Apps/` so source paths are relative to the project
+   location, and to drop the `info:` / `entitlements:` blocks from
+   the YAML (xcodegen regenerates default minimal versions of those
+   files on every run, clobbering hand-written contents — just set
+   `INFOPLIST_FILE` and `CODE_SIGN_ENTITLEMENTS` in build settings
+   instead).
+4. **The macOS entitlements in this repo require a development
+   signing identity for `xcodebuild build`.** App-group +
+   iCloud-container-identifiers + CloudKit-services entitlements all
+   trigger Xcode's "requires signing with a development certificate"
+   gate. Headless CI / CLI builds work with
+   `CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO
+   CODE_SIGNING_ALLOWED=NO`. With those flags the test bundle can't
+   load a fully-signed `.app` host, so the macOS test target is
+   configured with `TEST_HOST=""` and `BUNDLE_LOADER=""` as a
+   standalone bundle. The plan's test bodies were rewritten to import
+   only `LillistCore` / `LillistUI`, never `@testable import
+   Lillist_macOS`, so this works.
+5. **`XCTAssertEqual(try await store.foo(), expected)` doesn't
+   compile.** XCTAssert's autoclosures are non-async, so a `try
+   await` inside trips
+   `'async' call in an autoclosure that does not support concurrency`.
+   The fix is mechanical: `let v = try await store.foo();
+   XCTAssertEqual(v, expected)`.
+
+**Rule.**
+
+- Use SwiftPM's native `.process("Foo.xcdatamodeld")` resource
+  declaration; do NOT layer a build-tool plugin on top of it.
+- For macOS SwiftUI view snapshots, host the view in `NSHostingView`
+  first; the snapshotter only knows about `NSView` /
+  `NSViewController` on macOS.
+- Place `project.yml` in the same directory you want xcodegen to
+  generate the `.xcodeproj` into; leave the `info` / `entitlements`
+  blocks out and use build settings to point at hand-written files.
+- For headless macOS app builds with CloudKit / app-group
+  entitlements, expect to pass code-signing-disabled flags. Configure
+  the test target to be standalone (no host) so it builds without a
+  signed `.app`.
+- Never embed `try await` inside XCTAssert; compute the value first.
+
+**Evidence.** Plan 7 commits `7715ec0`, `40ca007`, `2caa014`,
+`93333dc`. The new build-system gotcha is captured in this note;
+the macOS snapshot-testing one is enshrined in
+`Packages/LillistUI/Tests/LillistUITests/Helpers/SnapshotEnvironment.swift`.
+
+---
+
 ## 2026-05-14 — Plan 6 CLI: NSPredicate is non-Sendable, hex-only fuzzy tokens collide with UUID prefix routing, `localizedStandardContains` does not fold diacritics, and the `@main` annotation conflicts with a `main.swift` file
 
 **Context.** Three concrete gotchas surfaced while building the `lillist` CLI
