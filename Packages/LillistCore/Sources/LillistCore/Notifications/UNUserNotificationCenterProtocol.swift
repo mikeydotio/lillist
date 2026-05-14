@@ -15,6 +15,10 @@ public protocol UNUserNotificationCenterProtocol: Sendable {
     func setNotificationCategories(_ categories: Set<UNNotificationCategory>) async
     func requestAuthorization(options: UNAuthorizationOptions) async throws -> Bool
     func notificationSettings() async -> UNNotificationSettings
+    /// Just the authorization status, without forcing test doubles to mint
+    /// a real `UNNotificationSettings` (which isn't constructible outside
+    /// the framework). Production uses `notificationSettings().authorizationStatus`.
+    func currentAuthorizationStatus() async -> UNAuthorizationStatus
 }
 
 /// Production adapter wrapping the real center.
@@ -47,5 +51,9 @@ public final class SystemUserNotificationCenter: UNUserNotificationCenterProtoco
 
     public func notificationSettings() async -> UNNotificationSettings {
         await center.notificationSettings()
+    }
+
+    public func currentAuthorizationStatus() async -> UNAuthorizationStatus {
+        await center.notificationSettings().authorizationStatus
     }
 }

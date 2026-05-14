@@ -26,6 +26,10 @@ final class FakeUserNotificationCenter: UNUserNotificationCenterProtocol, @unche
         var categories: Set<UNNotificationCategory> = []
         var authorizationGranted: Bool = true
         var requestAuthorizationCallCount: Int = 0
+        /// Used by `currentAuthorizationStatus()` (Plan 10). Distinguishes
+        /// `notDetermined` (first-launch) from `denied` without forcing
+        /// tests to construct a real `UNNotificationSettings`.
+        var currentStatusOverride: UNAuthorizationStatus = .notDetermined
     }
     private let state = OSAllocatedUnfairLock<State>(initialState: State())
 
@@ -64,6 +68,10 @@ final class FakeUserNotificationCenter: UNUserNotificationCenterProtocol, @unche
         fatalError("FakeUserNotificationCenter.notificationSettings() not implemented; use requestAuthorization() in tests instead")
     }
 
+    func currentAuthorizationStatus() async -> UNAuthorizationStatus {
+        state.withLock { $0.currentStatusOverride }
+    }
+
     // MARK: - Test inspection accessors (Sendable snapshots)
 
     /// Snapshot of the current pending-request list.
@@ -96,6 +104,13 @@ final class FakeUserNotificationCenter: UNUserNotificationCenterProtocol, @unche
 
     func setAuthorizationGranted(_ granted: Bool) async {
         state.withLock { $0.authorizationGranted = granted }
+    }
+
+    /// Drive `currentAuthorizationStatus()` independently of the
+    /// "request → boolean grant" path. Used by Plan 10 to test the
+    /// `.notDetermined` first-launch branch.
+    func setCurrentAuthorizationStatus(_ status: UNAuthorizationStatus) async {
+        state.withLock { $0.currentStatusOverride = status }
     }
 
     func reset() async {

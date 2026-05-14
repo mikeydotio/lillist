@@ -8,6 +8,7 @@ public actor NotificationPermissions {
     public enum AuthorizationStatus: Sendable, Equatable {
         case authorized
         case denied
+        case notDetermined
     }
 
     private let center: any UNUserNotificationCenterProtocol
@@ -26,6 +27,24 @@ public actor NotificationPermissions {
             return granted ? .authorized : .denied
         } catch {
             return .denied
+        }
+    }
+
+    /// Snapshot of the current authorization state — does NOT show a
+    /// permission prompt. Plan 10's onboarding uses this to distinguish
+    /// "first launch, never asked" from "user already chose". Provisional
+    /// and ephemeral are both treated as `.authorized` for UI purposes.
+    public func currentStatus() async -> AuthorizationStatus {
+        let raw = await center.currentAuthorizationStatus()
+        switch raw {
+        case .authorized, .provisional, .ephemeral:
+            return .authorized
+        case .denied:
+            return .denied
+        case .notDetermined:
+            return .notDetermined
+        @unknown default:
+            return .notDetermined
         }
     }
 }
