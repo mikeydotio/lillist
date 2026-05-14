@@ -261,4 +261,35 @@ public actor NotificationScheduler {
         await reconcile(taskID: taskID)
         return id
     }
+
+    // MARK: - Public Layer 4 API
+
+    /// Install or replace the daily morning summary at the given time.
+    /// The body is supplied at delivery via a notification content extension
+    /// that queries `LillistCore` for today's tasks (design Section 4 Layer 4).
+    public func installMorningSummary(hour: Int, minute: Int) async {
+        await center.removePendingNotificationRequests(withIdentifiers: [MorningSummary.requestID])
+
+        let content = UNMutableNotificationContent()
+        content.title = "Today in Lillist"
+        content.body = ""  // Filled by content extension at delivery time.
+        content.categoryIdentifier = MorningSummary.categoryID
+
+        var components = DateComponents()
+        components.hour = hour
+        components.minute = minute
+        components.timeZone = timeZone
+        let trigger = UNCalendarNotificationTrigger(dateMatching: components, repeats: true)
+
+        let request = UNNotificationRequest(
+            identifier: MorningSummary.requestID,
+            content: content,
+            trigger: trigger
+        )
+        try? await center.add(request)
+    }
+
+    public func uninstallMorningSummary() async {
+        await center.removePendingNotificationRequests(withIdentifiers: [MorningSummary.requestID])
+    }
 }
