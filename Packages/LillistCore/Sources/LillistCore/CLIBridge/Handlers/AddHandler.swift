@@ -80,17 +80,21 @@ extension CLIBridge {
         }
 
         /// Recursively walks the tag tree looking for the first tag with this
-        /// name (case-sensitive). Sufficient for CLI-level lookups; Plan 7 may
-        /// add a richer lookup via `TagStore`.
+        /// name (case- and whitespace-insensitive — matches `TagStore.findOrCreate`
+        /// so Quick Capture and the CLI/App-Intent paths converge on the same
+        /// tag for "errands" vs "Errands" vs " errands ").
         static func firstTagWithName(_ name: String, store: TagStore) async throws -> UUID? {
-            try await walkAndFind(name: name, parent: nil, store: store)
+            let needle = name.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+            return try await walkAndFind(needle: needle, parent: nil, store: store)
         }
 
-        private static func walkAndFind(name: String, parent: UUID?, store: TagStore) async throws -> UUID? {
+        private static func walkAndFind(needle: String, parent: UUID?, store: TagStore) async throws -> UUID? {
             let children = try await store.children(of: parent)
             for c in children {
-                if c.name == name { return c.id }
-                if let descendant = try await walkAndFind(name: name, parent: c.id, store: store) {
+                if c.name.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() == needle {
+                    return c.id
+                }
+                if let descendant = try await walkAndFind(needle: needle, parent: c.id, store: store) {
                     return descendant
                 }
             }
