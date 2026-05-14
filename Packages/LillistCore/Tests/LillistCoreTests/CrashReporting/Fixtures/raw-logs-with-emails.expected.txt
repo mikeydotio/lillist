@@ -1,0 +1,2 @@
+2026-05-12 10:00:01 [Account] iCloud account <email> active
+2026-05-12 10:00:02 [Account] backup to <email>

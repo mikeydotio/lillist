@@ -30,7 +30,10 @@ let package = Package(
         ),
         .testTarget(
             name: "LillistCoreTests",
-            dependencies: ["LillistCore"]
+            dependencies: ["LillistCore"],
+            resources: [
+                .copy("CrashReporting/Fixtures")
+            ]
         ),
         .executableTarget(
             name: "lillist-cli",

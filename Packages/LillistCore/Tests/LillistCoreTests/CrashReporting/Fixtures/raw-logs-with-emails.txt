@@ -1,0 +1,2 @@
+2026-05-12 10:00:01 [Account] iCloud account mikeyward@gmail.com active
+2026-05-12 10:00:02 [Account] backup to alt+test@example.co.uk

@@ -1,0 +1,2 @@
+2026-05-12 10:00:01 [Journal] noted <journal>This is what I was doing today and tomorrow</journal>
+2026-05-12 10:00:02 [Journal] noted notes=Some-private-notes-here

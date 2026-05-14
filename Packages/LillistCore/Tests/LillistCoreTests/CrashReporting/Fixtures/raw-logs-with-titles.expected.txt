@@ -1,0 +1,2 @@
+2026-05-12 10:00:01 [TaskStore] created <title><redacted></title>
+2026-05-12 10:00:02 [TaskStore] updated title=<redacted> to closed

@@ -1,0 +1,2 @@
+2026-05-12 10:00:01 [TagStore] created <tag>Personal/Health</tag>
+2026-05-12 10:00:02 [TagStore] linked tag=Work-Confidential to task

@@ -1,0 +1,3 @@
+2026-05-12 10:00:01 [Attach] saved to /Users/mikey/Documents/foo.png
+2026-05-12 10:00:02 [Attach] saved to /var/mobile/Containers/Data/Application/12345678-AAAA-BBBB-CCCC-DEADBEEF0000/Library/bar.png
+2026-05-12 10:00:03 [Attach] expand ~/Library/Application Support/Lillist
