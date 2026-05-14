@@ -5,6 +5,15 @@ public final class JournalStore: @unchecked Sendable {
     private let persistence: PersistenceController
     private var context: NSManagedObjectContext { persistence.container.viewContext }
 
+    /// Optional breadcrumb sink. See Plan 9 / design Section 8.
+    public var breadcrumbs: BreadcrumbBuffer?
+
+    fileprivate func recordCrumb(_ action: String, success: Bool) async {
+        if let b = breadcrumbs {
+            try? await b.record(action: action, success: success)
+        }
+    }
+
     public init(persistence: PersistenceController) {
         self.persistence = persistence
     }
@@ -23,7 +32,8 @@ public final class JournalStore: @unchecked Sendable {
 
     @discardableResult
     public func appendNote(taskID: UUID, body: String) async throws -> UUID {
-        try await context.perform { [self] in
+        defer { Task { [weak self] in await self?.recordCrumb("journal.append", success: true) } }
+        return try await context.perform { [self] in
             let task = try fetchTask(id: taskID, in: context)
             let entry = JournalEntry(context: context)
             entry.id = UUID()

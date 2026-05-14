@@ -8,6 +8,15 @@ public final class AttachmentStore: @unchecked Sendable {
     /// Files larger than this byte count are rejected outright.
     public static let hardSizeLimit: Int64 = 500 * 1024 * 1024
 
+    /// Optional breadcrumb sink. See Plan 9 / design Section 8.
+    public var breadcrumbs: BreadcrumbBuffer?
+
+    fileprivate func recordCrumb(_ action: String, success: Bool) async {
+        if let b = breadcrumbs {
+            try? await b.record(action: action, success: success)
+        }
+    }
+
     public init(persistence: PersistenceController) {
         self.persistence = persistence
     }
@@ -159,7 +168,8 @@ public final class AttachmentStore: @unchecked Sendable {
         data: Data?,
         linkPreviewJSON: String?
     ) async throws -> UUID {
-        try await context.perform { [self] in
+        defer { Task { [weak self] in await self?.recordCrumb("attachment.attach", success: true) } }
+        return try await context.perform { [self] in
             let task = try fetchTask(id: taskID, in: context)
             let journal = JournalEntry(context: context)
             journal.id = UUID()

@@ -14,6 +14,19 @@ public final class TaskStore: @unchecked Sendable {
     /// modification.
     public var notificationScheduler: (any NotificationReconciling)?
 
+    /// Optional breadcrumb sink. When non-nil, successful and failed
+    /// mutations record verb-only entries for crash diagnostics.
+    /// See design Section 8 / Plan 9.
+    public var breadcrumbs: BreadcrumbBuffer?
+
+    /// Fire-and-forget breadcrumb recorder. Drops silently if the
+    /// buffer rejects the verb (e.g. would-be PII in `action`).
+    fileprivate func recordCrumb(_ action: String, success: Bool) async {
+        if let b = breadcrumbs {
+            try? await b.record(action: action, success: success)
+        }
+    }
+
     public init(persistence: PersistenceController) {
         self.persistence = persistence
     }
@@ -90,26 +103,33 @@ public final class TaskStore: @unchecked Sendable {
         notes: String = "",
         parent: UUID? = nil
     ) async throws -> UUID {
-        try validateTitle(title)
-        return try await context.perform { [self] in
-            let task = LillistTask(context: context)
-            let id = UUID()
-            task.id = id
-            task.title = title
-            task.notes = notes
-            task.status = .todo
-            task.startHasTime = false
-            task.deadlineHasTime = false
-            task.isPinned = false
-            task.createdAt = Date()
-            task.modifiedAt = task.createdAt
-            if let parent {
-                let parentTask = try fetchManagedObject(id: parent, in: context)
-                task.parent = parentTask
+        do {
+            try validateTitle(title)
+            let id: UUID = try await context.perform { [self] in
+                let task = LillistTask(context: context)
+                let id = UUID()
+                task.id = id
+                task.title = title
+                task.notes = notes
+                task.status = .todo
+                task.startHasTime = false
+                task.deadlineHasTime = false
+                task.isPinned = false
+                task.createdAt = Date()
+                task.modifiedAt = task.createdAt
+                if let parent {
+                    let parentTask = try fetchManagedObject(id: parent, in: context)
+                    task.parent = parentTask
+                }
+                task.position = try nextPosition(forParent: task.parent)
+                try context.save()
+                return id
             }
-            task.position = try nextPosition(forParent: task.parent)
-            try context.save()
+            await recordCrumb("task.create", success: true)
             return id
+        } catch {
+            await recordCrumb("task.create", success: false)
+            throw error
         }
     }
 
@@ -125,39 +145,46 @@ public final class TaskStore: @unchecked Sendable {
     // MARK: - Update
 
     public func update(id: UUID, _ block: @escaping @Sendable (inout TaskDraft) -> Void) async throws {
-        try await context.perform { [self] in
-            let m = try fetchManagedObject(id: id, in: context)
-            var draft = TaskDraft(
-                title: m.title ?? "",
-                notes: m.notes ?? "",
-                start: m.start,
-                startHasTime: m.startHasTime,
-                deadline: m.deadline,
-                deadlineHasTime: m.deadlineHasTime,
-                isPinned: m.isPinned
-            )
-            block(&draft)
-            try validateTitle(draft.title)
-            m.title = draft.title
-            m.notes = draft.notes
-            m.start = draft.start
-            m.startHasTime = draft.startHasTime
-            m.deadline = draft.deadline
-            m.deadlineHasTime = draft.deadlineHasTime
-            m.isPinned = draft.isPinned
-            m.modifiedAt = Date()
-            try context.save()
-        }
-        // Anchor fields (start/deadline) and their time flags affect
-        // notification scheduling. Reconcile after save.
-        if let scheduler = notificationScheduler {
-            await scheduler.reconcile(taskID: id)
+        do {
+            try await context.perform { [self] in
+                let m = try fetchManagedObject(id: id, in: context)
+                var draft = TaskDraft(
+                    title: m.title ?? "",
+                    notes: m.notes ?? "",
+                    start: m.start,
+                    startHasTime: m.startHasTime,
+                    deadline: m.deadline,
+                    deadlineHasTime: m.deadlineHasTime,
+                    isPinned: m.isPinned
+                )
+                block(&draft)
+                try validateTitle(draft.title)
+                m.title = draft.title
+                m.notes = draft.notes
+                m.start = draft.start
+                m.startHasTime = draft.startHasTime
+                m.deadline = draft.deadline
+                m.deadlineHasTime = draft.deadlineHasTime
+                m.isPinned = draft.isPinned
+                m.modifiedAt = Date()
+                try context.save()
+            }
+            // Anchor fields (start/deadline) and their time flags affect
+            // notification scheduling. Reconcile after save.
+            if let scheduler = notificationScheduler {
+                await scheduler.reconcile(taskID: id)
+            }
+            await recordCrumb("task.update", success: true)
+        } catch {
+            await recordCrumb("task.update", success: false)
+            throw error
         }
     }
 
     // MARK: - Hard delete
 
     public func hardDelete(id: UUID) async throws {
+        defer { Task { [weak self] in await self?.recordCrumb("task.purge", success: true) } }
         try await context.perform { [self] in
             let m = try fetchManagedObject(id: id, in: context)
             context.delete(m)
@@ -185,6 +212,7 @@ public final class TaskStore: @unchecked Sendable {
     }
 
     public func reparent(id: UUID, newParent newParentID: UUID?) async throws {
+        defer { Task { [weak self] in await self?.recordCrumb("task.move", success: true) } }
         try await context.perform { [self] in
             let m = try fetchManagedObject(id: id, in: context)
             let newParent: LillistTask?
@@ -243,6 +271,7 @@ public final class TaskStore: @unchecked Sendable {
     // MARK: - Status transitions
 
     public func transition(id: UUID, to newStatus: Status) async throws {
+        defer { Task { [weak self] in await self?.recordCrumb("task.status.change", success: true) } }
         let spawnedID: UUID? = try await context.perform { [self] in
             let m = try fetchManagedObject(id: id, in: context)
             let oldStatus = m.status
@@ -290,6 +319,7 @@ public final class TaskStore: @unchecked Sendable {
     // MARK: - Soft delete
 
     public func softDelete(id: UUID) async throws {
+        defer { Task { [weak self] in await self?.recordCrumb("task.delete", success: true) } }
         try await context.perform { [self] in
             let m = try fetchManagedObject(id: id, in: context)
             let now = Date()
@@ -302,6 +332,7 @@ public final class TaskStore: @unchecked Sendable {
     }
 
     public func restore(id: UUID) async throws {
+        defer { Task { [weak self] in await self?.recordCrumb("task.restore", success: true) } }
         try await context.perform { [self] in
             let m = try fetchManagedObject(id: id, in: context)
             guard let deletedAt = m.deletedAt else { return }

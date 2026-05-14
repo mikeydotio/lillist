@@ -100,6 +100,12 @@ final class AppEnvironment {
             breadcrumbs: breadcrumbs,
             transport: mailTransport
         )
+
+        // Plan 9: hook the stores into the shared breadcrumb buffer.
+        self.taskStore.breadcrumbs = breadcrumbs
+        self.tagStore.breadcrumbs = breadcrumbs
+        self.journalStore.breadcrumbs = breadcrumbs
+        self.attachmentStore.breadcrumbs = breadcrumbs
     }
 
     /// App Group identifier shared between the main app, Share Extension,

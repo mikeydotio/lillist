@@ -5,6 +5,15 @@ public final class TagStore: @unchecked Sendable {
     let persistence: PersistenceController
     var context: NSManagedObjectContext { persistence.container.viewContext }
 
+    /// Optional breadcrumb sink. See Plan 9 / design Section 8.
+    public var breadcrumbs: BreadcrumbBuffer?
+
+    fileprivate func recordCrumb(_ action: String, success: Bool) async {
+        if let b = breadcrumbs {
+            try? await b.record(action: action, success: success)
+        }
+    }
+
     public init(persistence: PersistenceController) {
         self.persistence = persistence
     }
@@ -21,18 +30,25 @@ public final class TagStore: @unchecked Sendable {
 
     @discardableResult
     public func create(name: String, tintColor: String? = nil, parent: UUID? = nil) async throws -> UUID {
-        try validateName(name)
-        return try await context.perform { [self] in
-            let parentTag = try parent.map { try fetchManagedObject(id: $0, in: context) }
-            let resolved = try uniqueNameUnder(parent: parentTag, desired: name)
-            let tag = Tag(context: context)
-            tag.id = UUID()
-            tag.name = resolved
-            tag.tintColor = tintColor
-            tag.parent = parentTag
-            tag.position = try nextPosition(forParent: parentTag)
-            try context.save()
-            return tag.id!
+        do {
+            try validateName(name)
+            let id: UUID = try await context.perform { [self] in
+                let parentTag = try parent.map { try fetchManagedObject(id: $0, in: context) }
+                let resolved = try uniqueNameUnder(parent: parentTag, desired: name)
+                let tag = Tag(context: context)
+                tag.id = UUID()
+                tag.name = resolved
+                tag.tintColor = tintColor
+                tag.parent = parentTag
+                tag.position = try nextPosition(forParent: parentTag)
+                try context.save()
+                return tag.id!
+            }
+            await recordCrumb("tag.create", success: true)
+            return id
+        } catch {
+            await recordCrumb("tag.create", success: false)
+            throw error
         }
     }
 
@@ -62,6 +78,7 @@ public final class TagStore: @unchecked Sendable {
     // MARK: - Rename
 
     public func rename(id: UUID, to newName: String) async throws {
+        defer { Task { [weak self] in await self?.recordCrumb("tag.rename", success: true) } }
         try validateName(newName)
         try await context.perform { [self] in
             let m = try fetchManagedObject(id: id, in: context)
@@ -100,6 +117,7 @@ public final class TagStore: @unchecked Sendable {
     // MARK: - Delete
 
     public func delete(id: UUID) async throws {
+        defer { Task { [weak self] in await self?.recordCrumb("tag.delete", success: true) } }
         try await context.perform { [self] in
             let m = try fetchManagedObject(id: id, in: context)
             context.delete(m)

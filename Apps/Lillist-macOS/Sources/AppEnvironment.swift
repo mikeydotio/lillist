@@ -64,6 +64,10 @@ final class AppEnvironment {
         // here, NOT through a singleton holder.
         self.taskStore.notificationScheduler = scheduler
 
+        // Plan 9: wire each store's breadcrumb sink to the shared buffer
+        // *after* it's created below. Done in two passes because the
+        // BreadcrumbBuffer field is declared later in this init.
+
         // Plan 2 stub — once Plan 2 ships, swap in a CloudKitSyncStatusAdapter
         // that bridges LillistCore.SyncStatusMonitor's statusStream to the
         // SyncIndicatorMonitor protocol shape.
@@ -90,6 +94,11 @@ final class AppEnvironment {
             breadcrumbs: breadcrumbs,
             transport: MailtoTransport()
         )
+
+        // Now that breadcrumbs exists, hook the stores into it.
+        self.taskStore.breadcrumbs = breadcrumbs
+        self.tagStore.breadcrumbs = breadcrumbs
+        self.journalStore.breadcrumbs = breadcrumbs
     }
 
     /// Async-friendly constructor. Loads the Core Data store and wires up
