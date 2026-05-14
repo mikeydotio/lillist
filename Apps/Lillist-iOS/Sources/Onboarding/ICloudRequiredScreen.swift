@@ -1,0 +1,62 @@
+import SwiftUI
+import LillistCore
+
+/// Full-screen blocker shown when iCloud is unavailable during
+/// onboarding on iOS (design Section 8). The user can deep-link into
+/// Settings to sign in or retry the account-status check.
+struct ICloudRequiredScreen: View {
+    let accountMonitor: AccountStateMonitor
+
+    @State private var isRechecking = false
+    @State private var lastError: String?
+
+    var body: some View {
+        VStack(spacing: 20) {
+            Image(systemName: "icloud.slash")
+                .font(.system(size: 64, weight: .light))
+                .foregroundStyle(.red)
+            Text("iCloud is required")
+                .font(.title.bold())
+            Text("Lillist syncs your tasks via your private iCloud database. Sign into iCloud in Settings, then return here.")
+                .multilineTextAlignment(.center)
+                .foregroundStyle(.secondary)
+                .padding(.horizontal, 32)
+            if let lastError {
+                Text(lastError)
+                    .font(.callout)
+                    .foregroundStyle(.orange)
+                    .padding(.horizontal, 32)
+            }
+
+            Button("Open Settings") {
+                if let url = URL(string: UIApplication.openSettingsURLString) {
+                    UIApplication.shared.open(url)
+                }
+            }
+            .buttonStyle(.bordered)
+
+            Button {
+                Task { await recheck() }
+            } label: {
+                if isRechecking {
+                    ProgressView()
+                } else {
+                    Text("Try again").frame(maxWidth: 180)
+                }
+            }
+            .buttonStyle(.borderedProminent)
+        }
+        .padding(32)
+    }
+
+    private func recheck() async {
+        isRechecking = true
+        lastError = nil
+        defer { isRechecking = false }
+        do {
+            try await accountMonitor.refresh()
+        } catch {
+            lastError = "iCloud check failed: \(error.localizedDescription)"
+        }
+    }
+}

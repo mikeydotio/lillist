@@ -31,6 +31,7 @@
 		5D9279E9C4C73820704AB2C5 /* ShareExtensionPayloadTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 165A87417D8DB0F2E8100ABB /* ShareExtensionPayloadTests.swift */; };
 		62AB4F9A61AB494F525F54FF /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A8F22116451755349886D09A /* Assets.xcassets */; };
 		652545A8D47A8D082D04EE75 /* QuickCaptureSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = F23FBC5D0477DD491DCDF6FC /* QuickCaptureSheet.swift */; };
+		67467AD14169FBD143D6960A /* ICloudRequiredScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = EA561E81CC0E97A39CDEC2E1 /* ICloudRequiredScreen.swift */; };
 		67A2B9B597F60AFE39A0FDED /* QuickCaptureLockScreenIntent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 752930BC024A56479687DFAA /* QuickCaptureLockScreenIntent.swift */; };
 		69BECB4741B1463737509C95 /* LillistCore in Frameworks */ = {isa = PBXBuildFile; productRef = A9A442D94E3178E3C8BAB2CE /* LillistCore */; };
 		69D488A19ACCD482A6941919 /* TagTaskListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 064823BCA68E4055D7204717 /* TagTaskListView.swift */; };
@@ -46,6 +47,7 @@
 		9978784936A13783F1BF8E35 /* SharePayload.swift in Sources */ = {isa = PBXBuildFile; fileRef = D2F899010F7F794421F9DB2A /* SharePayload.swift */; };
 		9A614EB7763D94FE9D1D032D /* TabShell.swift in Sources */ = {isa = PBXBuildFile; fileRef = CDF66890A34B8871D4E2278B /* TabShell.swift */; };
 		A6EE4318B3317216DF56160D /* SharePayloadTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6816606162835A06ED8B8FEF /* SharePayloadTests.swift */; };
+		AB0DAB0FFB124C1178A0FAB6 /* OnboardingScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 824FA7B5DC23A67CD85D65A0 /* OnboardingScreen.swift */; };
 		AD0144EC54CC3FA76CD3D1D0 /* AllTagsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7AE05D83958BE1618EC00B27 /* AllTagsView.swift */; };
 		C1FEEAB56AFC2EFD9C108C47 /* TaskJournalTab.swift in Sources */ = {isa = PBXBuildFile; fileRef = F6C4BEE444B84DDF5F88ABF3 /* TaskJournalTab.swift */; };
 		C37A5B3B5892E493D5874513 /* ReportCrashIntentTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 97A39E4B87749E005F34B7FF /* ReportCrashIntentTests.swift */; };
@@ -128,6 +130,7 @@
 		737996A9942CE2D095EAA6AB /* TaskAttachmentsTab.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TaskAttachmentsTab.swift; sourceTree = "<group>"; };
 		752930BC024A56479687DFAA /* QuickCaptureLockScreenIntent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuickCaptureLockScreenIntent.swift; sourceTree = "<group>"; };
 		7AE05D83958BE1618EC00B27 /* AllTagsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AllTagsView.swift; sourceTree = "<group>"; };
+		824FA7B5DC23A67CD85D65A0 /* OnboardingScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingScreen.swift; sourceTree = "<group>"; };
 		877582BCF5CA2C44CB3C90FE /* DefaultSmartFiltersInstaller.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DefaultSmartFiltersInstaller.swift; sourceTree = "<group>"; };
 		8E53A86D921898A0FB836C9A /* TaskDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TaskDetailView.swift; sourceTree = "<group>"; };
 		940380DB2F7305D2993DCD30 /* ShareExtension-iOS.appex */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = "wrapper.app-extension"; path = "ShareExtension-iOS.appex"; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -149,6 +152,7 @@
 		D2F899010F7F794421F9DB2A /* SharePayload.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SharePayload.swift; sourceTree = "<group>"; };
 		E4C1FA7E921214B499AC7C78 /* IntentSupport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IntentSupport.swift; sourceTree = "<group>"; };
 		E61A40B2BDFBA8C6B05AC79E /* CrashReporterHost.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CrashReporterHost.swift; sourceTree = "<group>"; };
+		EA561E81CC0E97A39CDEC2E1 /* ICloudRequiredScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ICloudRequiredScreen.swift; sourceTree = "<group>"; };
 		F23FBC5D0477DD491DCDF6FC /* QuickCaptureSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuickCaptureSheet.swift; sourceTree = "<group>"; };
 		F2A651BD41829D553D469EC3 /* FilterResultsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FilterResultsView.swift; sourceTree = "<group>"; };
 		F3FB7F9EA7F274415E924EA6 /* StatusAppEnum.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatusAppEnum.swift; sourceTree = "<group>"; };
@@ -214,6 +218,15 @@
 				4BADE4E23B29DACB74971F2E /* MailComposerView.swift */,
 			);
 			path = App;
+			sourceTree = "<group>";
+		};
+		0E400BFF61C240129A67D324 /* Onboarding */ = {
+			isa = PBXGroup;
+			children = (
+				EA561E81CC0E97A39CDEC2E1 /* ICloudRequiredScreen.swift */,
+				824FA7B5DC23A67CD85D65A0 /* OnboardingScreen.swift */,
+			);
+			path = Onboarding;
 			sourceTree = "<group>";
 		};
 		0FC767B6457A48B4FC8B6F55 /* Tests */ = {
@@ -396,6 +409,7 @@
 				A933F3CB1E8F5653BE7C8EBF /* Common */,
 				4962004905DD25063A067A83 /* Detail */,
 				09DC0A89B4B328FDAFC9EE14 /* Filters */,
+				0E400BFF61C240129A67D324 /* Onboarding */,
 				AC13230856153F50EF61C195 /* QuickCapture */,
 				677A3CA280289E526B0546DE /* Root */,
 				76340D4D58B629E63D587BF2 /* Search */,
@@ -619,10 +633,12 @@
 				CEE10BDC98205D724AA29DCD /* FilterResultsView.swift in Sources */,
 				8ED796B233C11810C84BB4DB /* FiltersListView.swift in Sources */,
 				2001164CDA5863CF6F20A39B /* FloatingPlusOverlay.swift in Sources */,
+				67467AD14169FBD143D6960A /* ICloudRequiredScreen.swift in Sources */,
 				DD83C4577F076A2042F05E6E /* KeyboardShortcuts.swift in Sources */,
 				E01B4AB3BC5C4E7EE9093B74 /* LillistApp.swift in Sources */,
 				FF3DA22F3237CE457042CD1E /* MailComposerTransport.swift in Sources */,
 				F75A71A023C47A17E5C2157E /* MailComposerView.swift in Sources */,
+				AB0DAB0FFB124C1178A0FAB6 /* OnboardingScreen.swift in Sources */,
 				652545A8D47A8D082D04EE75 /* QuickCaptureSheet.swift in Sources */,
 				CA4034D690255FE0554C7DE2 /* RootShell.swift in Sources */,
 				1B361E001278EAD358271191 /* SearchResultRow.swift in Sources */,

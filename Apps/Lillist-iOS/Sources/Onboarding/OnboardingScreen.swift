@@ -1,0 +1,147 @@
+import SwiftUI
+import LillistCore
+
+/// First-launch onboarding screen for iOS (full-screen cover).
+///
+/// One screen with the same content matrix as the macOS sheet (Plan 10
+/// Task 6): welcome header, three bullets, permission status, two
+/// primary actions, and a "Skip for now" link. The Quick Capture
+/// bullet swaps to the iOS-appropriate Lock Screen Shortcut + floating
+/// + button affordances (design Section 7).
+///
+/// Same explicit-constructor-injection pattern as the macOS variant —
+/// the cover's presenting view reads `@Environment(AppEnvironment.self)`
+/// and forwards just the four dependencies that matter.
+struct OnboardingScreen: View {
+    let onboardingState: OnboardingState
+    let installer: DefaultsInstaller
+    let notificationPermissions: NotificationPermissions
+    let onCompleted: () -> Void
+
+    @State private var permissionStatus: NotificationPermissions.AuthorizationStatus = .notDetermined
+    @State private var isRequesting = false
+    @State private var isCompleting = false
+
+    var body: some View {
+        VStack(spacing: 0) {
+            ScrollView {
+                VStack(spacing: 28) {
+                    header
+                    bullets
+                    permissionStatusRow
+                }
+                .padding(24)
+            }
+            actionBar
+        }
+        .task { permissionStatus = await notificationPermissions.currentStatus() }
+    }
+
+    private var header: some View {
+        VStack(spacing: 8) {
+            Image(systemName: "checklist")
+                .font(.system(size: 64, weight: .light))
+                .foregroundStyle(.tint)
+            Text("Welcome to Lillist")
+                .font(.largeTitle.bold())
+            Text("A pure-nesting task manager. Everything is a task.")
+                .font(.title3)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+        }
+    }
+
+    private var bullets: some View {
+        VStack(alignment: .leading, spacing: 18) {
+            bullet(icon: "icloud", text: "iCloud sync is required. Your data lives in your private CloudKit database.")
+            bullet(icon: "bell", text: "Notification permission powers reminders for tasks with dates.")
+            bullet(icon: "plus.circle", text: "Use the Lock Screen Shortcut or the floating + button to capture anywhere.")
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private func bullet(icon: String, text: String) -> some View {
+        HStack(alignment: .top, spacing: 14) {
+            Image(systemName: icon)
+                .font(.title3)
+                .frame(width: 28)
+                .foregroundStyle(.tint)
+            Text(text)
+                .font(.body)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    @ViewBuilder private var permissionStatusRow: some View {
+        switch permissionStatus {
+        case .authorized:
+            Label("Notifications enabled.", systemImage: "checkmark.circle.fill")
+                .foregroundStyle(.green)
+        case .denied:
+            VStack(alignment: .leading, spacing: 8) {
+                Label("Notifications denied.", systemImage: "exclamationmark.triangle.fill")
+                    .foregroundStyle(.orange)
+                Button("Open Settings") {
+                    if let url = URL(string: UIApplication.openSettingsURLString) {
+                        UIApplication.shared.open(url)
+                    }
+                }
+            }
+        case .notDetermined:
+            EmptyView()
+        }
+    }
+
+    private var actionBar: some View {
+        VStack(spacing: 12) {
+            Button {
+                Task { await requestPermission() }
+            } label: {
+                Text(isRequesting ? "Requesting…" : "Set up notifications")
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 6)
+            }
+            .buttonStyle(.bordered)
+            .disabled(isRequesting || permissionStatus != .notDetermined)
+
+            Button {
+                Task { await complete() }
+            } label: {
+                Text(isCompleting ? "Finishing…" : "Get started")
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 6)
+            }
+            .buttonStyle(.borderedProminent)
+            .disabled(isCompleting)
+
+            Button("Skip for now") {
+                Task { await complete() }
+            }
+            .font(.callout)
+            .foregroundStyle(.secondary)
+        }
+        .padding(20)
+        .background(.bar)
+    }
+
+    private func requestPermission() async {
+        isRequesting = true
+        defer { isRequesting = false }
+        permissionStatus = await notificationPermissions.requestAuthorization()
+    }
+
+    private func complete() async {
+        isCompleting = true
+        defer { isCompleting = false }
+        do {
+            try await installer.installIfNeeded()
+            try await onboardingState.markCompleted()
+            onCompleted()
+        } catch {
+            // Surface to the user via a log here; the modal stays
+            // visible and the user can re-tap the button. Plan 10
+            // doesn't ship an iOS error sheet for this rare path.
+            print("Onboarding completion failed: \(error)")
+        }
+    }
+}
