@@ -236,4 +236,29 @@ public actor NotificationScheduler {
         guard let taskIDString = request.content.userInfo["taskID"] as? String else { return false }
         return taskIDString == taskID.uuidString
     }
+
+    // MARK: - Public Layer 3 API
+
+    /// Add a per-task offset reminder relative to either `start` or `deadline`.
+    /// Negative `offsetMinutes` fires before the anchor; positive after.
+    @discardableResult
+    public func addOffset(
+        taskID: UUID,
+        anchor: NotificationKind.Anchor,
+        offsetMinutes: Int32
+    ) async throws -> UUID {
+        let kind: NotificationKind
+        switch anchor {
+        case .start: kind = .offsetStart
+        case .deadline: kind = .offsetDeadline
+        }
+        let id = try await specStore.add(
+            taskID: taskID,
+            kind: kind,
+            offsetMinutes: offsetMinutes,
+            fireDate: nil
+        )
+        await reconcile(taskID: taskID)
+        return id
+    }
 }
