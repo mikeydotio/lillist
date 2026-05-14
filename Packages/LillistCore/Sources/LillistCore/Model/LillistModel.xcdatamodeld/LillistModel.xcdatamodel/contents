@@ -65,6 +65,11 @@
         <attribute name="trashRetentionDays" optional="YES" attributeType="Integer 16" defaultValueString="30" usesScalarValueType="YES"/>
         <attribute name="defaultTaskListSortRaw" optional="YES" attributeType="String" defaultValueString="manualPosition"/>
         <attribute name="crashPromptsEnabled" optional="YES" attributeType="Boolean" defaultValueString="YES" usesScalarValueType="YES"/>
+        <attribute name="hasCompletedOnboarding" optional="YES" attributeType="Boolean" defaultValueString="NO" usesScalarValueType="YES"/>
+        <attribute name="quickCaptureEnabled" optional="YES" attributeType="Boolean" defaultValueString="YES" usesScalarValueType="YES"/>
+        <attribute name="quickCaptureHotkey" optional="YES" attributeType="String" defaultValueString="ctrl+opt+space"/>
+        <attribute name="statusBarItemVisible" optional="YES" attributeType="Boolean" defaultValueString="YES" usesScalarValueType="YES"/>
+        <attribute name="defaultTagTintHex" optional="YES" attributeType="String" defaultValueString="#7F8FA6"/>
     </entity>
     <entity name="SmartFilter" representedClassName="SmartFilter" syncable="YES">
         <attribute name="id" optional="YES" attributeType="UUID" usesScalarValueType="NO"/>

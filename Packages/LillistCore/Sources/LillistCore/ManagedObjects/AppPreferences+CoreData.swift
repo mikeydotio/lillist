@@ -12,6 +12,11 @@ public final class AppPreferences: NSManagedObject {
     @NSManaged public var trashRetentionDays: Int16
     @NSManaged public var defaultTaskListSortRaw: String?
     @NSManaged public var crashPromptsEnabled: Bool
+    @NSManaged public var hasCompletedOnboarding: Bool
+    @NSManaged public var quickCaptureEnabled: Bool
+    @NSManaged public var quickCaptureHotkey: String?
+    @NSManaged public var statusBarItemVisible: Bool
+    @NSManaged public var defaultTagTintHex: String?
 }
 
 extension AppPreferences {
