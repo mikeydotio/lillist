@@ -52,9 +52,18 @@ public actor CloudKitEventBridge {
     public var eventStream: AsyncStream<CloudKitSyncEvent> {
         AsyncStream { continuation in
             let id = UUID()
-            // Outer Task inherits this actor's isolation; the inner
-            // onTermination closure does not and must keep its `await`.
-            Task { self.register(id: id, continuation: continuation) }
+            // The builder closure runs synchronously on this actor's
+            // executor (the getter is actor-isolated and Swift 6
+            // isolation inference carries that into the closure), so
+            // `register` is a direct same-actor call. Calling it
+            // synchronously here — rather than deferring via Task —
+            // guarantees the continuation is in `continuations` before
+            // the stream is returned, closing the pre-subscription
+            // drop race documented in .rca/sync-status-monitor-event-drop/.
+            //
+            // The `onTermination` closure below IS @Sendable and does
+            // not inherit isolation, so its Task with `await` is genuine.
+            self.register(id: id, continuation: continuation)
             continuation.onTermination = { _ in
                 Task { await self.unregister(id: id) }
             }
@@ -78,10 +87,13 @@ public actor CloudKitEventBridge {
             let translated = Self.translate(ckEvent)
             Task { await self.recordEvent(translated) }
         }
-        // This Task is created inside actor-isolated `attach(to:)` and
-        // inherits the actor's isolation, so `setObserverToken` is
-        // same-actor — no `await` needed.
-        Task { self.setObserverToken(token) }
+        // `setObserverToken` is a same-actor call inside actor-isolated
+        // `attach(to:)`. Calling it synchronously (instead of inside a
+        // Task) guarantees the token is recorded before this method
+        // returns, so a caller that calls `detach()` immediately after
+        // `attach(to:)` cannot race past a deferred write and leak the
+        // observer.
+        self.setObserverToken(token)
     }
 
     private func setObserverToken(_ token: NSObjectProtocol) {

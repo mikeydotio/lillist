@@ -35,9 +35,11 @@ public actor SyncStatusMonitor {
     public var statusStream: AsyncStream<SyncStatus> {
         AsyncStream { continuation in
             let id = UUID()
-            // Outer Task inherits this actor's isolation; the inner
-            // onTermination closure does not and must keep its `await`.
-            Task { self.registerStatus(id: id, continuation: continuation) }
+            // Synchronous same-actor registration — see CloudKitEventBridge.eventStream
+            // for the full rationale. The onTermination closure below is
+            // @Sendable and crosses isolation, so its Task with `await`
+            // is genuine.
+            self.registerStatus(id: id, continuation: continuation)
             continuation.onTermination = { _ in
                 Task { await self.unregisterStatus(id: id) }
             }

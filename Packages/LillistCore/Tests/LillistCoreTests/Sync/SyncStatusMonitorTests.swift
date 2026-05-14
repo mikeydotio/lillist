@@ -17,10 +17,20 @@ struct SyncStatusMonitorTests {
         let bridge = CloudKitEventBridge()
         let monitor = SyncStatusMonitor(bridge: bridge)
         await monitor.start()
-        // Let the consumer task subscribe to the bridge before we record.
-        for _ in 0..<5 { await Task.yield() }
+
+        // Use the monitor's statusStream as the synchronization primitive.
+        // `iterator.next()` on the post-record yield is a real happens-before:
+        // it only returns after `apply` has updated `currentStatus` and
+        // yielded to subscribers. No yield-polling needed.
+        var iterator = await monitor.statusStream.makeAsyncIterator()
+        _ = await iterator.next() // initial replay (state .idle)
+
         await bridge.recordEvent(.init(type: .setup, started: true, endedAt: nil, error: nil))
-        for _ in 0..<5 { await Task.yield() }
+        let next = await iterator.next()
+
+        #expect(next?.inProgress == true)
+        #expect(next?.error == nil)
+        // currentStatus is also consistent now that we waited for apply.
         let status = await monitor.currentStatus
         #expect(status.inProgress == true)
         #expect(status.error == nil)
@@ -31,16 +41,20 @@ struct SyncStatusMonitorTests {
         let bridge = CloudKitEventBridge()
         let monitor = SyncStatusMonitor(bridge: bridge)
         await monitor.start()
-        for _ in 0..<5 { await Task.yield() }
+
+        var iterator = await monitor.statusStream.makeAsyncIterator()
+        _ = await iterator.next() // initial replay
+
         let end = Date(timeIntervalSince1970: 2_000_000)
         await bridge.recordEvent(.init(type: .import, started: true, endedAt: nil, error: nil))
-        for _ in 0..<5 { await Task.yield() }
+        _ = await iterator.next() // state after start
+
         await bridge.recordEvent(.init(type: .import, started: false, endedAt: end, error: nil))
-        for _ in 0..<5 { await Task.yield() }
-        let status = await monitor.currentStatus
-        #expect(status.inProgress == false)
-        #expect(status.lastSyncedAt == end)
-        #expect(status.error == nil)
+        let final = await iterator.next() // state after end
+
+        #expect(final?.inProgress == false)
+        #expect(final?.lastSyncedAt == end)
+        #expect(final?.error == nil)
     }
 
     @Test("Failed export records the error and clears inProgress")
@@ -48,15 +62,19 @@ struct SyncStatusMonitorTests {
         let bridge = CloudKitEventBridge()
         let monitor = SyncStatusMonitor(bridge: bridge)
         await monitor.start()
-        for _ in 0..<5 { await Task.yield() }
+
+        var iterator = await monitor.statusStream.makeAsyncIterator()
+        _ = await iterator.next() // initial replay
+
         let err = LillistError.syncFailure(underlying: "network down")
         await bridge.recordEvent(.init(type: .export, started: true, endedAt: nil, error: nil))
-        for _ in 0..<5 { await Task.yield() }
+        _ = await iterator.next() // state after start
+
         await bridge.recordEvent(.init(type: .export, started: false, endedAt: Date(), error: err))
-        for _ in 0..<5 { await Task.yield() }
-        let status = await monitor.currentStatus
-        #expect(status.inProgress == false)
-        #expect(status.error == err)
+        let final = await iterator.next() // state after failure
+
+        #expect(final?.inProgress == false)
+        #expect(final?.error == err)
     }
 
     @Test("Status stream yields updates")
@@ -64,7 +82,6 @@ struct SyncStatusMonitorTests {
         let bridge = CloudKitEventBridge()
         let monitor = SyncStatusMonitor(bridge: bridge)
         await monitor.start()
-        for _ in 0..<5 { await Task.yield() }
         var iterator = await monitor.statusStream.makeAsyncIterator()
         _ = await iterator.next() // initial replay
         await bridge.recordEvent(.init(type: .setup, started: true, endedAt: nil, error: nil))

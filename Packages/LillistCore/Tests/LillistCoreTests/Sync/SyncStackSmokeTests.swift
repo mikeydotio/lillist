@@ -10,18 +10,26 @@ struct SyncStackSmokeTests {
         let controller = try await PersistenceController(configuration: .inMemory)
         let monitor = SyncStatusMonitor(bridge: controller.cloudKitEventBridge)
         await monitor.start()
-        for _ in 0..<5 { await Task.yield() }
+
+        // Use the monitor's statusStream as the deterministic sync primitive
+        // between the bridge's producer and the test's assertions.
+        var iterator = await monitor.statusStream.makeAsyncIterator()
+        _ = await iterator.next() // initial replay (state .idle)
 
         let end = Date(timeIntervalSince1970: 3_000_000)
-        await controller.cloudKitEventBridge.recordEvent(.init(type: .import, started: true, endedAt: nil, error: nil))
-        for _ in 0..<5 { await Task.yield() }
-        await controller.cloudKitEventBridge.recordEvent(.init(type: .import, started: false, endedAt: end, error: nil))
-        for _ in 0..<5 { await Task.yield() }
+        await controller.cloudKitEventBridge.recordEvent(
+            .init(type: .import, started: true, endedAt: nil, error: nil)
+        )
+        _ = await iterator.next() // state after start
 
-        let status = await monitor.currentStatus
-        #expect(status.inProgress == false)
-        #expect(status.lastSyncedAt == end)
-        #expect(status.error == nil)
+        await controller.cloudKitEventBridge.recordEvent(
+            .init(type: .import, started: false, endedAt: end, error: nil)
+        )
+        let final = await iterator.next() // state after end
+
+        #expect(final?.inProgress == false)
+        #expect(final?.lastSyncedAt == end)
+        #expect(final?.error == nil)
     }
 
     @Test("Account monitor + sync monitor coexist without crashing")

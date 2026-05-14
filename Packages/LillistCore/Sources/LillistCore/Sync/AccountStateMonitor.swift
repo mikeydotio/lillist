@@ -51,11 +51,12 @@ public actor AccountStateMonitor {
     public var stateStream: AsyncStream<iCloudAccountState> {
         AsyncStream { continuation in
             let id = UUID()
-            // Outer Task inherits this actor's isolation, so the call is
-            // same-actor and synchronous — no `await` needed. The Task
-            // inside `onTermination` (a @Sendable closure) does NOT inherit
-            // isolation and must keep its `await`.
-            Task { self.register(id: id, continuation: continuation) }
+            // Synchronous same-actor registration — see CloudKitEventBridge.eventStream
+            // for the full rationale. Calling `register` directly (rather
+            // than via Task) ensures the initial-replay yield inside
+            // `register` lands before the getter returns, so the next
+            // `iterator.next()` is guaranteed to receive it.
+            self.register(id: id, continuation: continuation)
             continuation.onTermination = { _ in
                 Task { await self.unregister(id: id) }
             }
