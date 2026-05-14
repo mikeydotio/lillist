@@ -47,6 +47,11 @@ struct SearchView: View {
         .navigationDestination(for: UUID.self) { id in
             TaskDetailView(taskID: id)
         }
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                SyncStatusBadge(indicator: env.syncMonitor.indicator)
+            }
+        }
         .task(id: query) { await runSearch() }
     }
 

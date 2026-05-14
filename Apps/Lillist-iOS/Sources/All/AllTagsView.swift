@@ -42,6 +42,11 @@ struct AllTagsView: View {
         .navigationDestination(for: TagDestination.self) { dest in
             TagTaskListView(tagID: dest.id)
         }
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                SyncStatusBadge(indicator: env.syncMonitor.indicator)
+            }
+        }
         .task { await reload() }
     }
 

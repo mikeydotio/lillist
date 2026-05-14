@@ -41,6 +41,11 @@ struct FilterResultsView: View {
         .navigationDestination(for: UUID.self) { id in
             TaskDetailView(taskID: id)
         }
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                SyncStatusBadge(indicator: env.syncMonitor.indicator)
+            }
+        }
         .task { await reload() }
         .refreshable { await reload() }
     }
