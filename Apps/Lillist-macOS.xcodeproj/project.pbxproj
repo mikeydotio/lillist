@@ -21,6 +21,7 @@
 		513F80DB225B3198A6B428C6 /* CrashReporterHost.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBBEE29201F8E282644A5147 /* CrashReporterHost.swift */; };
 		51CD698709C7470BF850D750 /* TodayPopoverView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 59867850C82C90EBDA587E7A /* TodayPopoverView.swift */; };
 		524AAE0A4EEB795D8EA674AC /* KeyboardShortcutTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8B91031B39FF519BA7C7984B /* KeyboardShortcutTests.swift */; };
+		52B6567908A60B67FDA9CBAC /* NotificationPermissionFlowTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 953BE94B80FD2AFB27B77F89 /* NotificationPermissionFlowTests.swift */; };
 		5368030379D37BFAD59E2576 /* LillistUI in Frameworks */ = {isa = PBXBuildFile; productRef = 1ED4C893535B6A6E62346628 /* LillistUI */; };
 		5680498D8BF4DFA917500D55 /* CrashReportingPane.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA80085EB3BB242379E92790 /* CrashReportingPane.swift */; };
 		5D718D6A47C34D934FA0267C /* SidebarSelection.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8908D968CD95B46BAA9848BB /* SidebarSelection.swift */; };
@@ -88,6 +89,7 @@
 		8908D968CD95B46BAA9848BB /* SidebarSelection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SidebarSelection.swift; sourceTree = "<group>"; };
 		895660AD2C33EBCF965A577D /* SidebarSection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SidebarSection.swift; sourceTree = "<group>"; };
 		8B91031B39FF519BA7C7984B /* KeyboardShortcutTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyboardShortcutTests.swift; sourceTree = "<group>"; };
+		953BE94B80FD2AFB27B77F89 /* NotificationPermissionFlowTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationPermissionFlowTests.swift; sourceTree = "<group>"; };
 		996D14F2AE9898FB76C7696C /* UIStatePersistence.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UIStatePersistence.swift; sourceTree = "<group>"; };
 		9F8B217F0E070121B95D2E56 /* LillistUI */ = {isa = PBXFileReference; lastKnownFileType = folder; name = LillistUI; path = ../Packages/LillistUI; sourceTree = SOURCE_ROOT; };
 		A11533C6477F2D2A981B7E22 /* TaskOutlineNode.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TaskOutlineNode.swift; sourceTree = "<group>"; };
@@ -155,6 +157,7 @@
 				42C2D056A53E557FD7C76E00 /* DragDropInteractionTests.swift */,
 				6BF3D37E4FFA35138008C7ED /* InlineCreateInteractionTests.swift */,
 				8B91031B39FF519BA7C7984B /* KeyboardShortcutTests.swift */,
+				953BE94B80FD2AFB27B77F89 /* NotificationPermissionFlowTests.swift */,
 			);
 			path = Tests;
 			sourceTree = "<group>";
@@ -484,6 +487,7 @@
 				04DB0667DD4F3B9B95FB9581 /* DragDropInteractionTests.swift in Sources */,
 				BDA1E09753034DE2322D998A /* InlineCreateInteractionTests.swift in Sources */,
 				524AAE0A4EEB795D8EA674AC /* KeyboardShortcutTests.swift in Sources */,
+				52B6567908A60B67FDA9CBAC /* NotificationPermissionFlowTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
