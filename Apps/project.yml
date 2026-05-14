@@ -1,0 +1,78 @@
+name: Lillist-macOS
+options:
+  bundleIdPrefix: io.mikeydotio
+  deploymentTarget:
+    macOS: "15.0"
+  developmentLanguage: en
+  createIntermediateGroups: true
+  generateEmptyDirectories: true
+  groupSortPosition: top
+
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    SWIFT_STRICT_CONCURRENCY: complete
+    ENABLE_HARDENED_RUNTIME: YES
+    DEAD_CODE_STRIPPING: YES
+    GENERATE_INFOPLIST_FILE: NO
+
+packages:
+  LillistCore:
+    path: ../Packages/LillistCore
+  LillistUI:
+    path: ../Packages/LillistUI
+
+targets:
+  Lillist-macOS:
+    type: application
+    platform: macOS
+    deploymentTarget: "15.0"
+    sources:
+      - path: Lillist-macOS/Sources
+      - path: Lillist-macOS/Resources
+        buildPhase: resources
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: io.mikeydotio.Lillist
+        PRODUCT_NAME: Lillist
+        MACOSX_DEPLOYMENT_TARGET: "15.0"
+        CODE_SIGN_ENTITLEMENTS: Lillist-macOS/Lillist.entitlements
+        CODE_SIGN_STYLE: Automatic
+        INFOPLIST_FILE: Lillist-macOS/Info.plist
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        COMBINE_HIDPI_IMAGES: YES
+        LD_RUNPATH_SEARCH_PATHS: "$(inherited) @executable_path/../Frameworks"
+    dependencies:
+      - package: LillistCore
+        product: LillistCore
+      - package: LillistUI
+        product: LillistUI
+
+  Lillist-macOSTests:
+    type: bundle.unit-test
+    platform: macOS
+    deploymentTarget: "15.0"
+    sources:
+      - Lillist-macOS/Tests
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: io.mikeydotio.Lillist.tests
+    dependencies:
+      - target: Lillist-macOS
+      - package: LillistCore
+        product: LillistCore
+      - package: LillistUI
+        product: LillistUI
+
+schemes:
+  Lillist-macOS:
+    build:
+      targets:
+        Lillist-macOS: all
+        Lillist-macOSTests: [test]
+    run:
+      config: Debug
+    test:
+      config: Debug
+      targets:
+        - Lillist-macOSTests

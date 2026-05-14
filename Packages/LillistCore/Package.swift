@@ -26,8 +26,7 @@ let package = Package(
             ],
             swiftSettings: [
                 .enableExperimentalFeature("StrictConcurrency")
-            ],
-            plugins: ["CompileCoreDataModel"]
+            ]
         ),
         .testTarget(
             name: "LillistCoreTests",

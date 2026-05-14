@@ -1,0 +1,496 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		12192573C492F4C19AC7A9AF /* LillistApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2B69FCA7EA5A0AEC03AC528 /* LillistApp.swift */; };
+		34205E56AB7BBAC39AABE64A /* LillistCore in Frameworks */ = {isa = PBXBuildFile; productRef = D5DCD7417305E330CB4C0DC0 /* LillistCore */; };
+		5368030379D37BFAD59E2576 /* LillistUI in Frameworks */ = {isa = PBXBuildFile; productRef = 1ED4C893535B6A6E62346628 /* LillistUI */; };
+		883E82B069F58DB56B18C7C4 /* LillistUI in Frameworks */ = {isa = PBXBuildFile; productRef = FE69D0E9A4ADB1CDB38E1E3A /* LillistUI */; };
+		B685FB1C17A64BBA91B50EA2 /* LillistCore in Frameworks */ = {isa = PBXBuildFile; productRef = 1CBD90EC484EB04CE92F5794 /* LillistCore */; };
+		EC52B77A7309EF0911822A63 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 4FD0FFC71B48B70D0F2AFB67 /* Assets.xcassets */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		C51514D2F210568596903FEC /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 97A6421094FD20B5F4217690 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 9A5124FFDB375540D83CD302;
+			remoteInfo = "Lillist-macOS";
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXFileReference section */
+		4202ADFC69D471DD8EDD09C4 /* Lillist-macOSTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "Lillist-macOSTests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
+		4FD0FFC71B48B70D0F2AFB67 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		9F8B217F0E070121B95D2E56 /* LillistUI */ = {isa = PBXFileReference; lastKnownFileType = folder; name = LillistUI; path = ../Packages/LillistUI; sourceTree = SOURCE_ROOT; };
+		B2B69FCA7EA5A0AEC03AC528 /* LillistApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LillistApp.swift; sourceTree = "<group>"; };
+		D002EB6866402CB86776B481 /* Lillist-macOS.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Lillist-macOS.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		E5425E4B83C495ACEC60F879 /* LillistCore */ = {isa = PBXFileReference; lastKnownFileType = folder; name = LillistCore; path = ../Packages/LillistCore; sourceTree = SOURCE_ROOT; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		0A28D183F577891ECB51C83E /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				B685FB1C17A64BBA91B50EA2 /* LillistCore in Frameworks */,
+				5368030379D37BFAD59E2576 /* LillistUI in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		237B715AD39CAC7F81045FA8 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				34205E56AB7BBAC39AABE64A /* LillistCore in Frameworks */,
+				883E82B069F58DB56B18C7C4 /* LillistUI in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		2C3802C5B4E9E611224A01B3 /* Tests */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			path = Tests;
+			sourceTree = "<group>";
+		};
+		4DFFF97A4360A65ED6EF76B3 = {
+			isa = PBXGroup;
+			children = (
+				C98E95966AFDCFA41F5863CF /* Lillist-macOS */,
+				5E4CCBE3157FB005976F2FFB /* Packages */,
+				DA073ABE15DD6C41A9E871BC /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		5E4CCBE3157FB005976F2FFB /* Packages */ = {
+			isa = PBXGroup;
+			children = (
+				E5425E4B83C495ACEC60F879 /* LillistCore */,
+				9F8B217F0E070121B95D2E56 /* LillistUI */,
+			);
+			name = Packages;
+			sourceTree = "<group>";
+		};
+		69E1E48BBFAA7E3AE82ADD4F /* Sources */ = {
+			isa = PBXGroup;
+			children = (
+				B2B69FCA7EA5A0AEC03AC528 /* LillistApp.swift */,
+			);
+			path = Sources;
+			sourceTree = "<group>";
+		};
+		C98E95966AFDCFA41F5863CF /* Lillist-macOS */ = {
+			isa = PBXGroup;
+			children = (
+				F45F05CA1E2A56D872E322CB /* Resources */,
+				69E1E48BBFAA7E3AE82ADD4F /* Sources */,
+				2C3802C5B4E9E611224A01B3 /* Tests */,
+			);
+			path = "Lillist-macOS";
+			sourceTree = "<group>";
+		};
+		DA073ABE15DD6C41A9E871BC /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				D002EB6866402CB86776B481 /* Lillist-macOS.app */,
+				4202ADFC69D471DD8EDD09C4 /* Lillist-macOSTests.xctest */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		F45F05CA1E2A56D872E322CB /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				4FD0FFC71B48B70D0F2AFB67 /* Assets.xcassets */,
+			);
+			path = Resources;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		9A5124FFDB375540D83CD302 /* Lillist-macOS */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 3E7A17B42EA603E56104390A /* Build configuration list for PBXNativeTarget "Lillist-macOS" */;
+			buildPhases = (
+				4C99504CB24BAD288959C557 /* Sources */,
+				C4B0F60AAF7CFD8B9E592281 /* Resources */,
+				237B715AD39CAC7F81045FA8 /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = "Lillist-macOS";
+			packageProductDependencies = (
+				D5DCD7417305E330CB4C0DC0 /* LillistCore */,
+				FE69D0E9A4ADB1CDB38E1E3A /* LillistUI */,
+			);
+			productName = "Lillist-macOS";
+			productReference = D002EB6866402CB86776B481 /* Lillist-macOS.app */;
+			productType = "com.apple.product-type.application";
+		};
+		EA7ACBEE78B233225EBF7E20 /* Lillist-macOSTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 9BC8C967D895E12C9E8B5441 /* Build configuration list for PBXNativeTarget "Lillist-macOSTests" */;
+			buildPhases = (
+				D705F1E2133E7D2BDE887144 /* Sources */,
+				0A28D183F577891ECB51C83E /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				F59F4C59095A5231CAD9EAD5 /* PBXTargetDependency */,
+			);
+			name = "Lillist-macOSTests";
+			packageProductDependencies = (
+				1CBD90EC484EB04CE92F5794 /* LillistCore */,
+				1ED4C893535B6A6E62346628 /* LillistUI */,
+			);
+			productName = "Lillist-macOSTests";
+			productReference = 4202ADFC69D471DD8EDD09C4 /* Lillist-macOSTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		97A6421094FD20B5F4217690 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 1430;
+				TargetAttributes = {
+					9A5124FFDB375540D83CD302 = {
+						ProvisioningStyle = Automatic;
+					};
+				};
+			};
+			buildConfigurationList = 213CE2B1B0E6BA6C848A3B58 /* Build configuration list for PBXProject "Lillist-macOS" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				Base,
+				en,
+			);
+			mainGroup = 4DFFF97A4360A65ED6EF76B3;
+			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				081C4657D6DCBF95D5E46B84 /* XCLocalSwiftPackageReference "../Packages/LillistCore" */,
+				5D034D84FFF031BB1D2F8D30 /* XCLocalSwiftPackageReference "../Packages/LillistUI" */,
+			);
+			preferredProjectObjectVersion = 77;
+			productRefGroup = DA073ABE15DD6C41A9E871BC /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				9A5124FFDB375540D83CD302 /* Lillist-macOS */,
+				EA7ACBEE78B233225EBF7E20 /* Lillist-macOSTests */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		C4B0F60AAF7CFD8B9E592281 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				EC52B77A7309EF0911822A63 /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		4C99504CB24BAD288959C557 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				12192573C492F4C19AC7A9AF /* LillistApp.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		D705F1E2133E7D2BDE887144 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		F59F4C59095A5231CAD9EAD5 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 9A5124FFDB375540D83CD302 /* Lillist-macOS */;
+			targetProxy = C51514D2F210568596903FEC /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		4F4BEB48675B2B79920BD03C /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEAD_CODE_STRIPPING = YES;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				MACOSX_DEPLOYMENT_TARGET = 15.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_STRICT_CONCURRENCY = complete;
+				SWIFT_VERSION = 6.0;
+			};
+			name = Release;
+		};
+		5B757EC2AC0345BCE3659513 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				COMBINE_HIDPI_IMAGES = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+					"@loader_path/../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 15.0;
+				PRODUCT_BUNDLE_IDENTIFIER = io.mikeydotio.Lillist.tests;
+				SDKROOT = macosx;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Lillist-macOS.app/Contents/MacOS/Lillist-macOS";
+			};
+			name = Debug;
+		};
+		6806A95C4FCF64A04B08F5FF /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = "Lillist-macOS/Lillist.entitlements";
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				INFOPLIST_FILE = "Lillist-macOS/Info.plist";
+				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/../Frameworks";
+				MACOSX_DEPLOYMENT_TARGET = 15.0;
+				PRODUCT_BUNDLE_IDENTIFIER = io.mikeydotio.Lillist;
+				PRODUCT_NAME = Lillist;
+				SDKROOT = macosx;
+			};
+			name = Debug;
+		};
+		751D56DC4D043F4732FC1C3A /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = "Lillist-macOS/Lillist.entitlements";
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				INFOPLIST_FILE = "Lillist-macOS/Info.plist";
+				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/../Frameworks";
+				MACOSX_DEPLOYMENT_TARGET = 15.0;
+				PRODUCT_BUNDLE_IDENTIFIER = io.mikeydotio.Lillist;
+				PRODUCT_NAME = Lillist;
+				SDKROOT = macosx;
+			};
+			name = Release;
+		};
+		C156E1A7847CBFD7C872E5C5 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				COMBINE_HIDPI_IMAGES = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+					"@loader_path/../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 15.0;
+				PRODUCT_BUNDLE_IDENTIFIER = io.mikeydotio.Lillist.tests;
+				SDKROOT = macosx;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Lillist-macOS.app/Contents/MacOS/Lillist-macOS";
+			};
+			name = Release;
+		};
+		EDC3C21D6E626B0AD724C6F2 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEAD_CODE_STRIPPING = YES;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"DEBUG=1",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				MACOSX_DEPLOYMENT_TARGET = 15.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_STRICT_CONCURRENCY = complete;
+				SWIFT_VERSION = 6.0;
+			};
+			name = Debug;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		213CE2B1B0E6BA6C848A3B58 /* Build configuration list for PBXProject "Lillist-macOS" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				EDC3C21D6E626B0AD724C6F2 /* Debug */,
+				4F4BEB48675B2B79920BD03C /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		3E7A17B42EA603E56104390A /* Build configuration list for PBXNativeTarget "Lillist-macOS" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				6806A95C4FCF64A04B08F5FF /* Debug */,
+				751D56DC4D043F4732FC1C3A /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		9BC8C967D895E12C9E8B5441 /* Build configuration list for PBXNativeTarget "Lillist-macOSTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				5B757EC2AC0345BCE3659513 /* Debug */,
+				C156E1A7847CBFD7C872E5C5 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+/* End XCConfigurationList section */
+
+/* Begin XCLocalSwiftPackageReference section */
+		081C4657D6DCBF95D5E46B84 /* XCLocalSwiftPackageReference "../Packages/LillistCore" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = ../Packages/LillistCore;
+		};
+		5D034D84FFF031BB1D2F8D30 /* XCLocalSwiftPackageReference "../Packages/LillistUI" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = ../Packages/LillistUI;
+		};
+/* End XCLocalSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		1CBD90EC484EB04CE92F5794 /* LillistCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = LillistCore;
+		};
+		1ED4C893535B6A6E62346628 /* LillistUI */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = LillistUI;
+		};
+		D5DCD7417305E330CB4C0DC0 /* LillistCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = LillistCore;
+		};
+		FE69D0E9A4ADB1CDB38E1E3A /* LillistUI */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = LillistUI;
+		};
+/* End XCSwiftPackageProductDependency section */
+	};
+	rootObject = 97A6421094FD20B5F4217690 /* Project object */;
+}
