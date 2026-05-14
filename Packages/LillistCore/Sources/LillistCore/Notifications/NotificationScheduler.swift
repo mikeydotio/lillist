@@ -186,18 +186,20 @@ public actor NotificationScheduler: NotificationReconciling {
 
         var out: [UNNotificationRequest] = []
         for spec in specs {
-            // Cross-device de-dup: once any device records `lastFiredAt`
-            // (via `recordFired` after delivery), other devices observing
-            // the CloudKit-synced change drop their matching pending
-            // request before it fires locally (design Section 4: "Other
-            // devices observe the change via CloudKit sync, remove the
-            // matching pending notification before it fires"). A future
-            // reschedule (e.g. via snooze) clears or supersedes
-            // `lastFiredAt` so the spec can fire again.
-            if spec.lastFiredAt != nil {
+            guard let fireDate = computeFireDate(for: spec, task: task) else { continue }
+            // Cross-device de-dup: skip when `lastFiredAt` is at or after
+            // the currently-computed fire time (within a small wall-clock
+            // tolerance). The lastFiredAt is written by `recordFired`
+            // when a notification is delivered on some device; other
+            // devices then drop their matching pending. Crucially this
+            // check is fireDate-relative, not absolute — if the user
+            // edits the deadline forward after a fire, the new fireDate
+            // is greater than lastFiredAt and the spec re-fires for the
+            // new date (design Section 4).
+            if let lastFired = spec.lastFiredAt,
+               lastFired >= fireDate.addingTimeInterval(-60) {
                 continue
             }
-            guard let fireDate = computeFireDate(for: spec, task: task) else { continue }
             // Skip past-due fire dates.
             guard fireDate > Date() else { continue }
 

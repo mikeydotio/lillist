@@ -26,8 +26,8 @@ struct NotificationSchedulerCrossDeviceDedupTests {
         #expect(pending[0].identifier == "\(nudgeID.uuidString)#phone-7")
     }
 
-    @Test("Recording lastFiredAt removes the pending request on this device")
-    func lastFiredRemoves() async throws {
+    @Test("Recording lastFiredAt at-or-after the scheduled fire time removes the pending request")
+    func lastFiredAtScheduledTimeRemoves() async throws {
         let p = try await TestStore.make()
         let tasks = TaskStore(persistence: p)
         let specs = NotificationSpecStore(persistence: p)
@@ -45,12 +45,42 @@ struct NotificationSchedulerCrossDeviceDedupTests {
         let nudgeID = try await scheduler.addNudge(taskID: taskID, fireDate: fireDate)
         #expect(await fake.addedCount() == 1)
 
-        // Simulate another device firing it; lastFiredAt is set in the spec.
-        try await specs.recordLastFired(id: nudgeID, at: Date())
+        // Simulate another device firing it at the scheduled fire time.
+        try await specs.recordLastFired(id: nudgeID, at: fireDate)
         await scheduler.reconcile(taskID: taskID)
 
         let pending = await fake.pendingNotificationRequests()
         #expect(pending.isEmpty)
+    }
+
+    @Test("lastFiredAt does NOT suppress firing after the user moves the fire time forward")
+    func deadlineChangeAfterFireReschedules() async throws {
+        let p = try await TestStore.make()
+        let tasks = TaskStore(persistence: p)
+        let specs = NotificationSpecStore(persistence: p)
+        let fake = FakeUserNotificationCenter()
+        let registry = SnoozeRegistry(defaultAllDayHour: 9, defaultAllDayMinute: 0, timeZone: .current)
+        let scheduler = NotificationScheduler(
+            persistence: p, specs: specs, center: fake,
+            snoozeRegistry: registry, deviceFingerprint: "devA",
+            defaultAllDayHour: 9, defaultAllDayMinute: 0,
+            timeZone: TimeZone(identifier: "UTC")!
+        )
+
+        let taskID = try await tasks.create(title: "T")
+        let firstFireDate = Date().addingTimeInterval(3600)
+        let nudgeID = try await scheduler.addNudge(taskID: taskID, fireDate: firstFireDate)
+        try await specs.recordLastFired(id: nudgeID, at: firstFireDate)
+        await scheduler.reconcile(taskID: taskID)
+        #expect(await fake.pendingNotificationRequests().isEmpty)
+
+        // User moves the nudge forward by a day.
+        let newFireDate = firstFireDate.addingTimeInterval(86_400)
+        try await specs.update(id: nudgeID) { d in d.fireDate = newFireDate }
+        await scheduler.reconcile(taskID: taskID)
+
+        let pending = await fake.pendingNotificationRequests()
+        #expect(pending.count == 1)
     }
 
     @Test("Different device fingerprints produce different identifiers for the same spec")
