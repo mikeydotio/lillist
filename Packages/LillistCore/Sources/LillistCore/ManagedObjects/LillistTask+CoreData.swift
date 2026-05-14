@@ -25,6 +25,7 @@ public final class LillistTask: NSManagedObject {
     @NSManaged public var attachments: NSSet?
     @NSManaged public var series: Series?
     @NSManaged public var seriesAsSeed: Series?
+    @NSManaged public var notificationSpecs: NSSet?
 }
 
 extension LillistTask {
@@ -63,6 +64,18 @@ extension LillistTask {
 
     @objc(removeAttachmentsObject:)
     @NSManaged public func removeFromAttachments(_ value: Attachment)
+
+    @objc(addNotificationSpecsObject:)
+    @NSManaged public func addToNotificationSpecs(_ value: NotificationSpec)
+
+    @objc(removeNotificationSpecsObject:)
+    @NSManaged public func removeFromNotificationSpecs(_ value: NotificationSpec)
+
+    @objc(addNotificationSpecs:)
+    @NSManaged public func addToNotificationSpecs(_ values: NSSet)
+
+    @objc(removeNotificationSpecs:)
+    @NSManaged public func removeFromNotificationSpecs(_ values: NSSet)
 }
 
 extension LillistTask {

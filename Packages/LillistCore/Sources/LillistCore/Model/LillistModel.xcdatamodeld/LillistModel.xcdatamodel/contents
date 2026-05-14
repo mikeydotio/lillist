@@ -22,6 +22,7 @@
         <relationship name="attachments" optional="YES" toMany="YES" deletionRule="Cascade" destinationEntity="Attachment" inverseName="task" inverseEntity="Attachment"/>
         <relationship name="series" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="Series" inverseName="instances" inverseEntity="Series"/>
         <relationship name="seriesAsSeed" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="Series" inverseName="seedTask" inverseEntity="Series"/>
+        <relationship name="notificationSpecs" optional="YES" toMany="YES" deletionRule="Cascade" destinationEntity="NotificationSpec" inverseName="task" inverseEntity="NotificationSpec"/>
     </entity>
     <entity name="Tag" representedClassName="Tag" syncable="YES">
         <attribute name="id" optional="YES" attributeType="UUID" usesScalarValueType="NO"/>
@@ -82,5 +83,15 @@
         <attribute name="nextOccurrenceAfter" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
         <relationship name="seedTask" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="LillistTask" inverseName="seriesAsSeed" inverseEntity="LillistTask"/>
         <relationship name="instances" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="LillistTask" inverseName="series" inverseEntity="LillistTask"/>
+    </entity>
+    <entity name="NotificationSpec" representedClassName="NotificationSpec" syncable="YES">
+        <attribute name="id" optional="YES" attributeType="UUID" usesScalarValueType="NO"/>
+        <attribute name="kindRaw" optional="YES" attributeType="Integer 16" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="offsetMinutes" optional="YES" attributeType="Integer 32" usesScalarValueType="NO"/>
+        <attribute name="fireDate" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="lastFiredAt" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="snoozedUntil" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="createdAt" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
+        <relationship name="task" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="LillistTask" inverseName="notificationSpecs" inverseEntity="LillistTask"/>
     </entity>
 </model>
