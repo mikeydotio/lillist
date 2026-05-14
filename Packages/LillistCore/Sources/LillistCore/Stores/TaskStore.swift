@@ -35,6 +35,40 @@ public final class TaskStore: @unchecked Sendable {
         public var modifiedAt: Date?
         public var closedAt: Date?
         public var deletedAt: Date?
+
+        public init(
+            id: UUID,
+            title: String,
+            notes: String,
+            status: Status,
+            start: Date?,
+            startHasTime: Bool,
+            deadline: Date?,
+            deadlineHasTime: Bool,
+            position: Double,
+            isPinned: Bool,
+            parentID: UUID?,
+            createdAt: Date?,
+            modifiedAt: Date?,
+            closedAt: Date?,
+            deletedAt: Date?
+        ) {
+            self.id = id
+            self.title = title
+            self.notes = notes
+            self.status = status
+            self.start = start
+            self.startHasTime = startHasTime
+            self.deadline = deadline
+            self.deadlineHasTime = deadlineHasTime
+            self.position = position
+            self.isPinned = isPinned
+            self.parentID = parentID
+            self.createdAt = createdAt
+            self.modifiedAt = modifiedAt
+            self.closedAt = closedAt
+            self.deletedAt = deletedAt
+        }
     }
 
     /// Mutable view passed to `update`'s closure.
