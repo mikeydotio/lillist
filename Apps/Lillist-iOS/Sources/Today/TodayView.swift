@@ -11,7 +11,7 @@ import LillistUI
 // - No `preferredColorScheme` override; semantic colors only.
 
 /// Built-in "Today" smart-filter surface. Fetches the user's "Today" filter
-/// (installed by `DefaultSmartFiltersInstaller`) and renders its results
+/// (installed by `LillistCore.DefaultsInstaller`) and renders its results
 /// with the shared `TaskRowView`. Design Section 7 iOS subsection.
 struct TodayView: View {
     @Environment(AppEnvironment.self) private var env

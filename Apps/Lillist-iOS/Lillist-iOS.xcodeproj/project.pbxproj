@@ -64,7 +64,6 @@
 		F6AC14D90F6B8A293A753408 /* AppIntentHandlerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4E15BAD0E599EA928403C4A8 /* AppIntentHandlerTests.swift */; };
 		F75A71A023C47A17E5C2157E /* MailComposerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4BADE4E23B29DACB74971F2E /* MailComposerView.swift */; };
 		F77B7FA0960260C3C222F792 /* TaskAttachmentsTab.swift in Sources */ = {isa = PBXBuildFile; fileRef = 737996A9942CE2D095EAA6AB /* TaskAttachmentsTab.swift */; };
-		F85E96DD9CD8A9EC48C58105 /* DefaultSmartFiltersInstaller.swift in Sources */ = {isa = PBXBuildFile; fileRef = 877582BCF5CA2C44CB3C90FE /* DefaultSmartFiltersInstaller.swift */; };
 		FE5E36D23CC9D9B15A788C5B /* LillistShortcuts.swift in Sources */ = {isa = PBXBuildFile; fileRef = C879F47AAC9011FEA0721657 /* LillistShortcuts.swift */; };
 		FF3DA22F3237CE457042CD1E /* MailComposerTransport.swift in Sources */ = {isa = PBXBuildFile; fileRef = F712F10B1BA7CC96F08D684A /* MailComposerTransport.swift */; };
 /* End PBXBuildFile section */
@@ -131,7 +130,6 @@
 		752930BC024A56479687DFAA /* QuickCaptureLockScreenIntent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuickCaptureLockScreenIntent.swift; sourceTree = "<group>"; };
 		7AE05D83958BE1618EC00B27 /* AllTagsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AllTagsView.swift; sourceTree = "<group>"; };
 		824FA7B5DC23A67CD85D65A0 /* OnboardingScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingScreen.swift; sourceTree = "<group>"; };
-		877582BCF5CA2C44CB3C90FE /* DefaultSmartFiltersInstaller.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DefaultSmartFiltersInstaller.swift; sourceTree = "<group>"; };
 		8E53A86D921898A0FB836C9A /* TaskDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TaskDetailView.swift; sourceTree = "<group>"; };
 		940380DB2F7305D2993DCD30 /* ShareExtension-iOS.appex */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = "wrapper.app-extension"; path = "ShareExtension-iOS.appex"; sourceTree = BUILT_PRODUCTS_DIR; };
 		97A39E4B87749E005F34B7FF /* ReportCrashIntentTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReportCrashIntentTests.swift; sourceTree = "<group>"; };
@@ -212,7 +210,6 @@
 			children = (
 				297211E1BF6A9D0C7890E078 /* AppEnvironment.swift */,
 				E61A40B2BDFBA8C6B05AC79E /* CrashReporterHost.swift */,
-				877582BCF5CA2C44CB3C90FE /* DefaultSmartFiltersInstaller.swift */,
 				B1CF1EBE004127B957F4AB99 /* LillistApp.swift */,
 				F712F10B1BA7CC96F08D684A /* MailComposerTransport.swift */,
 				4BADE4E23B29DACB74971F2E /* MailComposerView.swift */,
@@ -629,7 +626,6 @@
 				AD0144EC54CC3FA76CD3D1D0 /* AllTagsView.swift in Sources */,
 				046D8F27FB3D4AD0970C455F /* AppEnvironment.swift in Sources */,
 				3440B5C7EBBC1DE929C708F1 /* CrashReporterHost.swift in Sources */,
-				F85E96DD9CD8A9EC48C58105 /* DefaultSmartFiltersInstaller.swift in Sources */,
 				CEE10BDC98205D724AA29DCD /* FilterResultsView.swift in Sources */,
 				8ED796B233C11810C84BB4DB /* FiltersListView.swift in Sources */,
 				2001164CDA5863CF6F20A39B /* FloatingPlusOverlay.swift in Sources */,

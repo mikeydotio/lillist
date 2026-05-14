@@ -27,6 +27,7 @@ struct LillistApp: App {
             ) {
                 RootShell()
                     .environment(environment)
+                    .modifier(OnboardingPresentationModifier(environment: environment))
             }
         } else if let loadError {
             VStack(spacing: 12) {
@@ -49,15 +50,80 @@ struct LillistApp: App {
         do {
             let env = try await AppEnvironment.make()
             await env.bootstrap()
-            try? await DefaultSmartFiltersInstaller.installIfNeeded(
-                store: env.smartFilterStore
-            )
-            // Notification authorization is handled by NotificationPermissions
-            // — best-effort here; UI continues to function if denied.
-            _ = await env.notificationPermissions.requestAuthorization()
+            // Plan 10: invoke the defaults installer once on every cold
+            // launch. The onboarding completion path runs the same
+            // installer; running here is a safety net for returning
+            // users who already passed onboarding before this code
+            // landed, and is harmless on subsequent launches (idempotent
+            // by name).
+            try? await env.defaultsInstaller.installIfNeeded()
+            // Plan 10 deviation note: Plan 8's
+            // `await env.notificationPermissions.requestAuthorization()`
+            // unconditional first-launch prompt is removed. Plan 10's
+            // onboarding flow now owns the prompt — first-launch users
+            // see the explanation in OnboardingScreen and tap "Set up
+            // notifications" to consent. Returning users who already
+            // dismissed onboarding never see a re-prompt.
             environment = env
         } catch {
             loadError = "\(error)"
+        }
+    }
+}
+
+/// iOS counterpart of macOS's onboarding presentation modifier.
+/// Drives a one-time evaluation on first .task fire, then layers
+/// either OnboardingScreen or ICloudRequiredScreen on top of the
+/// root tab shell via full-screen covers.
+private struct OnboardingPresentationModifier: ViewModifier {
+    let environment: AppEnvironment
+
+    @State private var showOnboarding = false
+    @State private var showICloudRequired = false
+    @State private var didEvaluate = false
+
+    func body(content: Content) -> some View {
+        content
+            .task {
+                guard !didEvaluate else { return }
+                didEvaluate = true
+                await evaluate()
+            }
+            .fullScreenCover(isPresented: $showICloudRequired) {
+                ICloudRequiredScreen(accountMonitor: environment.accountStateMonitor)
+                    .interactiveDismissDisabled(true)
+            }
+            .fullScreenCover(isPresented: $showOnboarding) {
+                OnboardingScreen(
+                    onboardingState: environment.onboardingState,
+                    installer: environment.defaultsInstaller,
+                    notificationPermissions: environment.notificationPermissions,
+                    onCompleted: { showOnboarding = false }
+                )
+                .interactiveDismissDisabled(true)
+            }
+            .onChange(of: environment.accountState) { _, new in
+                if showICloudRequired, isAvailable(new) {
+                    showICloudRequired = false
+                    showOnboarding = true
+                }
+            }
+    }
+
+    private func evaluate() async {
+        let done = (try? await environment.onboardingState.hasCompletedOnboarding()) ?? false
+        guard !done else { return }
+        if isAvailable(environment.accountState) {
+            showOnboarding = true
+        } else {
+            showICloudRequired = true
+        }
+    }
+
+    private func isAvailable(_ state: iCloudAccountState) -> Bool {
+        switch state {
+        case .available: return true
+        case .noAccount, .restricted, .accountChanged: return false
         }
     }
 }

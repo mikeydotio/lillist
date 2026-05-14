@@ -13,7 +13,6 @@
 		1A2D780A16C371DC7ED92F77 /* DetailHeaderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4722304C1C8F9E2D009A78EA /* DetailHeaderView.swift */; };
 		2AE1F90D7F261EEFA392223F /* QuickCapturePane.swift in Sources */ = {isa = PBXBuildFile; fileRef = 23D285C988F042A513BC9303 /* QuickCapturePane.swift */; };
 		2D6DAC66A7B57213009DD506 /* TaskListHeaderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE0A7E026D6DBD214EB737F9 /* TaskListHeaderView.swift */; };
-		310895205B2BD16886958961 /* DefaultSmartFiltersInstaller.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3D10751B7C8B220687539F2C /* DefaultSmartFiltersInstaller.swift */; };
 		34205E56AB7BBAC39AABE64A /* LillistCore in Frameworks */ = {isa = PBXBuildFile; productRef = D5DCD7417305E330CB4C0DC0 /* LillistCore */; };
 		3B20971664653ADF6B7B8A39 /* FollowUpFormView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 40E496CC31EAABC3031FA783 /* FollowUpFormView.swift */; };
 		3BFAF02F4DF61C06EF1ACC64 /* TaskListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7428376E8AED267AF2F3C3EE /* TaskListView.swift */; };
@@ -66,7 +65,6 @@
 		23D285C988F042A513BC9303 /* QuickCapturePane.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuickCapturePane.swift; sourceTree = "<group>"; };
 		288A06800EA1CB39081E0910 /* QuickCapturePanelController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuickCapturePanelController.swift; sourceTree = "<group>"; };
 		38BC4169CE094018D5BEA0BD /* TaskListSortControl.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TaskListSortControl.swift; sourceTree = "<group>"; };
-		3D10751B7C8B220687539F2C /* DefaultSmartFiltersInstaller.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DefaultSmartFiltersInstaller.swift; sourceTree = "<group>"; };
 		3F0D9EC0691515027BF44021 /* BlockedFollowUpTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BlockedFollowUpTests.swift; sourceTree = "<group>"; };
 		40E496CC31EAABC3031FA783 /* FollowUpFormView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FollowUpFormView.swift; sourceTree = "<group>"; };
 		40F8F1B3826FD9A436D73201 /* GeneralPane.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GeneralPane.swift; sourceTree = "<group>"; };
@@ -215,7 +213,6 @@
 			isa = PBXGroup;
 			children = (
 				96DC643FB6D30A62EE875517 /* Commands */,
-				D2942F410B3B01718B4D7676 /* Defaults */,
 				134B6B7B41C63E10F28DEF85 /* Hotkey */,
 				37B5B7691A22F7149CDE6F7D /* Onboarding */,
 				E3416FFB6A29F2327C365618 /* Persistence */,
@@ -286,14 +283,6 @@
 				2C3802C5B4E9E611224A01B3 /* Tests */,
 			);
 			path = "Lillist-macOS";
-			sourceTree = "<group>";
-		};
-		D2942F410B3B01718B4D7676 /* Defaults */ = {
-			isa = PBXGroup;
-			children = (
-				3D10751B7C8B220687539F2C /* DefaultSmartFiltersInstaller.swift */,
-			);
-			path = Defaults;
 			sourceTree = "<group>";
 		};
 		DA073ABE15DD6C41A9E871BC /* Products */ = {
@@ -443,7 +432,6 @@
 				91FABFBF68F43C57D1569831 /* Color+Hex.swift in Sources */,
 				513F80DB225B3198A6B428C6 /* CrashReporterHost.swift in Sources */,
 				5680498D8BF4DFA917500D55 /* CrashReportingPane.swift in Sources */,
-				310895205B2BD16886958961 /* DefaultSmartFiltersInstaller.swift in Sources */,
 				1A2D780A16C371DC7ED92F77 /* DetailHeaderView.swift in Sources */,
 				3B20971664653ADF6B7B8A39 /* FollowUpFormView.swift in Sources */,
 				018B5E501EEC7DD0110B515A /* GeneralPane.swift in Sources */,
