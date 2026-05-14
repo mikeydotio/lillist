@@ -115,7 +115,7 @@ Lillist/
 
 **Notification permission is non-blocking.** The intro screen has two buttons: "Set up notifications" (calls `NotificationPermissions.requestAuthorization()` inline, then updates a `@State` indicator) and "Get started" (proceeds regardless of permission state). If the request returns `.denied`, we show a Settings deep-link affordance ("Open Settings") and a one-line explanation — but the user can still complete onboarding.
 
-**Preferences live in `PreferencesStore.Prefs`.** Task 2 extends `Prefs` with the fields needed by panes that don't already have a home: `quickCaptureEnabled`, `quickCaptureHotkey` (macOS), `statusBarItemVisible` (macOS), `showPostCrashPrompt` (Plan 9 already added — verify and don't duplicate), `defaultTagTintHex`. The macOS-only fields (hotkey, status-bar) compile on iOS as `Int16`/`Bool` no-ops so we can keep the Core Data schema unified.
+**Preferences live in `PreferencesStore.Prefs`.** Task 2 extends `Prefs` with the fields needed by panes that don't already have a home: `quickCaptureEnabled`, `quickCaptureHotkey` (macOS), `statusBarItemVisible` (macOS), `defaultTagTintHex`. The crash-prompt setting is already on `Prefs` as `crashPromptsEnabled` (Plan 9 Task 10) — bind the Settings UI's "Show prompt after Lillist quits unexpectedly" toggle to it, and do NOT add a parallel `showPostCrashPrompt` field. The macOS-only fields (hotkey, status-bar) compile on iOS as `Int16`/`Bool` no-ops so we can keep the Core Data schema unified.
 
 **Snapshot tests.** Use `pointfreeco/swift-snapshot-testing` in `precisionMode: 0.99` for non-trivial views (Settings panes have subtle font rendering differences across macOS minor versions). New baselines committed under `Tests/.../__Snapshots__/`. Light + dark variants for every snapshot.
 
@@ -125,14 +125,16 @@ Lillist/
 
 **Managed-object class generation — hand-written, not auto-generated.** `AppPreferences+CoreData.swift` is a hand-written `@NSManaged` subclass (see Plan 1 Task 8 and the same convention applied in Plans 3/4). When you add the six new attributes in Task 1, you must add a matching `@NSManaged` line per attribute to that file — the model XML change alone won't expose the properties to Swift, and Task 2's `PreferencesStore` updates won't compile without them. Task 1 below has been updated to include this step.
 
-**Build-plugin caching gotcha.** Plan 7 removed the
-`CompileCoreDataModel` SwiftPM build-tool plugin from
-`Packages/LillistCore/Package.swift`. Swift 6 / Xcode 17 compile
-`.xcdatamodeld` natively via `.process(...)`. The stale-`.momd` failure
-mode can still appear when SwiftPM caches by directory mtime — the
-`touch` workaround below remains the right fix after any model edit
-(silently-masked onboarding flags as `false`, the original symptom,
-is still possible):
+**Build-plugin caching gotcha.** Plan 9 re-applied the
+`CompileCoreDataModel` SwiftPM build-tool plugin to LillistCore after
+discovering that Plan 7's "SwiftPM 6 auto-compiles `.xcdatamodeld`
+natively" claim was a stale-`.build` false negative. The plugin now
+emits `LillistModel.spm.momd` (Xcode's built-in DataModelCompile
+produces `LillistModel.momd` in workspace builds); both filenames are
+distinct so they don't collide.  After any model edit, force the
+plugin's input-mtime tracker to re-fire by touching the model
+directories — silently-masked onboarding flags reading as `false` is
+the classic symptom of a stale `.momd`:
 
 ```bash
 touch Packages/LillistCore/Sources/LillistCore/Model/LillistModel.xcdatamodeld/LillistModel.xcdatamodel/ \
@@ -258,6 +260,99 @@ touch Packages/LillistCore/Sources/LillistCore/Model/LillistModel.xcdatamodeld/L
 >   "create your first tags" prompt, calling `findOrCreate` or
 >   `AddHandler.run` on the same name produces the same row.
 
+> **Plan 9 deviation notes (added retroactively).** Plan 9 landed
+> crash detection and opt-in reporting; the following realities affect
+> Plan 10's preferences UI and any model edits this plan performs:
+>
+> - **`crashPromptsEnabled` is the canonical name** (singular, default
+>   `true`). Plan 9 Task 10 added it as a Core Data attribute on
+>   `AppPreferences`, a matching `@NSManaged public var
+>   crashPromptsEnabled: Bool` on `AppPreferences+CoreData.swift`, a
+>   matching field on `PreferencesStore.Prefs`, threaded through
+>   `read()`/`update(_:)`, plus a `setCrashPromptsEnabled(_:)`
+>   convenience and `PreferencesStore.Prefs.crashPromptsDefault`
+>   helper. **Do not add a second `showPostCrashPrompt` attribute** —
+>   bind the Settings pane's "Show prompt after Lillist quits
+>   unexpectedly" toggle to `crashPromptsEnabled`.
+> - **The CompileCoreDataModel SPM plugin is re-applied to LillistCore
+>   under Plan 9.** Plan 7's claim that "SwiftPM 6 compiles
+>   `.xcdatamodeld` natively via `.process(...)`" was a stale-`.build`
+>   false negative; on Swift 6.2.4 the `.process` resource pipeline
+>   does NOT compile the model. The plugin now produces
+>   `LillistModel.spm.momd` (note the `.spm` infix); Xcode's built-in
+>   DataModelCompile produces the canonical `LillistModel.momd` in
+>   workspace builds. `PersistenceController.sharedModel` falls back
+>   from the latter to the former. **You don't need to do anything
+>   for this to work — just don't reintroduce the duplicate-output
+>   error by renaming the plugin's output back to `LillistModel.momd`.**
+>   The `touch` workaround in the "Build-plugin caching gotcha"
+>   section below remains valid after any model edit; the *plugin
+>   that needs the touch* is the active one again.
+> - **`AppEnvironment` already wires CrashReporter and breadcrumbs.**
+>   On both macOS and iOS, `AppEnvironment` now has
+>   `breadcrumbs: BreadcrumbBuffer`, `crashReporter: CrashReporter`,
+>   `crashPromptsEnabled: Bool`, `buildVersion: String`,
+>   `osVersion: String`, `deviceModel: String`, and on iOS also
+>   `mailTransport: MailComposerTransport`. The bootstrap reads
+>   `preferencesStore.read().crashPromptsEnabled` and hydrates
+>   `env.crashPromptsEnabled` at app launch. **If Plan 10's Settings
+>   UI changes `crashPromptsEnabled` at runtime, the host's
+>   `CrashReporterHost` reads the value from `AppEnvironment` and not
+>   from a stream, so a launched session does not need to react — the
+>   change takes effect on the *next* launch.** If a Settings change
+>   should hide the prompt immediately on the *current* launch,
+>   you'll need to either mutate `env.crashPromptsEnabled` from the
+>   Settings binding (it's `var` not `let`) or add a stream — start
+>   with the simple mutation.
+> - **`CrashReporterHost` wraps the root view** on both platforms.
+>   On macOS, `LillistApp.content` wraps `RootSplitView` in
+>   `CrashReporterHost(reporter:, buildVersion:, osVersion:, deviceModel:, crashPromptsEnabled:)`.
+>   On iOS, same shape plus a `mailTransport:` argument. **Plan 10's
+>   onboarding gate (sheet on macOS, full-screen cover on iOS) should
+>   layer ON TOP of `RootSplitView` / `RootShell`, INSIDE the
+>   `CrashReporterHost` wrapper** — i.e. the host wraps the entire
+>   stack including the onboarding sheet, so a stale canary surfaces
+>   the crash sheet even before onboarding completes. (Alternative:
+>   suppress the crash sheet until onboarding is done by passing
+>   `crashPromptsEnabled: hasCompletedOnboarding && env.crashPromptsEnabled`.
+>   This is a small UX call — left to the implementer.)
+> - **`PreferencesStore.Prefs` field order matters when adding
+>   fields.** Plan 9 added `crashPromptsEnabled` as the *last* field
+>   in `Prefs`. Plan 10's new fields (`hasCompletedOnboarding`,
+>   `quickCaptureEnabled`, etc.) should be inserted *before*
+>   `crashPromptsEnabled` to keep that field at the end (avoids
+>   reordering the field declarations and the `read()` /
+>   `update(_:)` initializer arguments).
+> - **`BreadcrumbBuffer` is wired into stores via property injection.**
+>   Each of TaskStore/TagStore/JournalStore (and AttachmentStore on
+>   iOS) has a `breadcrumbs: BreadcrumbBuffer?` property set in
+>   `AppEnvironment.init` to the shared buffer. If Plan 10 introduces
+>   any new store-like type that mutates user data, mirror this:
+>   add `var breadcrumbs: BreadcrumbBuffer?`, a small
+>   `recordCrumb(_:success:)` helper, and let the AppEnvironment
+>   wire it.
+> - **iOS App Group container is used for the canary file.**
+>   `CanaryFile.defaultURL(for: .iOSApp)` lives in the App Group
+>   container `group.io.mikeydotio.Lillist`, the same place the
+>   SQLite store lives (Plan 8). No new entitlement needed.
+> - **ISO8601 date round-trips drop sub-second precision.** Plan 9
+>   pinned this gotcha in the engineering notes: tests that serialize
+>   a `Date` through `.iso8601` encoding (`CrashCanary`,
+>   `CrashReport`, anything else that adopts the same dateEncoding
+>   strategy) and assert equality of the round-tripped value must
+>   pin fixture dates to `Date(timeIntervalSince1970: <integer>)` —
+>   `.now` will false-fail on the comparison after decode because the
+>   original has nanoseconds and the decoded version has zero. Plan
+>   10 doesn't have many places that round-trip dates through
+>   ISO8601, but if any test adopts that pattern, follow the rule.
+> - **AppIntents (if Plan 10 adds any) follow Plan 8 rules.** All
+>   `static var` metadata must be `static let` under Swift 6 strict
+>   concurrency. `@Parameter` wrappers can't be set via custom init;
+>   construct with `init()` then assign `wrappedValue`. Plan 9's
+>   `ReportCrashIntent` is the canonical lightweight example: pure
+>   logic in an enum (`ReportCrashIntentResolver`), the intent itself
+>   delegates and the test exercises the enum.
+
 **Verification command throughout:**
 - For `LillistCore` changes: `cd Packages/LillistCore && swift test`
 - For macOS app: `xcodebuild test -workspace Lillist.xcworkspace -scheme Lillist-macOS -destination 'platform=macOS'`
@@ -288,18 +383,16 @@ Edit `Packages/LillistCore/Sources/LillistCore/Model/LillistModel.xcdatamodeld/L
         <attribute name="morningSummaryMinute" optional="YES" attributeType="Integer 16" defaultValueString="0" usesScalarValueType="YES"/>
         <attribute name="trashRetentionDays" optional="YES" attributeType="Integer 16" defaultValueString="30" usesScalarValueType="YES"/>
         <attribute name="defaultTaskListSortRaw" optional="YES" attributeType="String" defaultValueString="manualPosition"/>
+        <attribute name="crashPromptsEnabled" optional="YES" attributeType="Boolean" defaultValueString="YES" usesScalarValueType="YES"/>
         <attribute name="hasCompletedOnboarding" optional="YES" attributeType="Boolean" defaultValueString="NO" usesScalarValueType="YES"/>
         <attribute name="quickCaptureEnabled" optional="YES" attributeType="Boolean" defaultValueString="YES" usesScalarValueType="YES"/>
         <attribute name="quickCaptureHotkey" optional="YES" attributeType="String" defaultValueString="ctrl+opt+space"/>
         <attribute name="statusBarItemVisible" optional="YES" attributeType="Boolean" defaultValueString="YES" usesScalarValueType="YES"/>
-        <attribute name="showPostCrashPrompt" optional="YES" attributeType="Boolean" defaultValueString="YES" usesScalarValueType="YES"/>
         <attribute name="defaultTagTintHex" optional="YES" attributeType="String" defaultValueString="#7F8FA6"/>
     </entity>
 ```
 
-This is an additive, lightweight migration; Core Data infers it.
-
-> **Heads-up: `showPostCrashPrompt` may already exist.** Plan 9 Task 10 adds `crashPromptsEnabled` (singular, default `YES`). The field above is named `showPostCrashPrompt` and defaults to `YES`. These are *not* the same attribute. If Plan 9 has landed, decide which name wins and reconcile here — duplicating the underlying setting under two attribute names will confuse the Settings UI in Task 6+. The preferred resolution is to standardize on Plan 9's `crashPromptsEnabled` and drop `showPostCrashPrompt` from this plan; update Task 6's checklist accordingly.
+This is an additive, lightweight migration; Core Data infers it. Note: `crashPromptsEnabled` was already added by Plan 9 Task 10 — the line is included above only for completeness when reading the canonical entity shape. If you're editing `contents` to add the *new* Plan 10 attributes, leave `crashPromptsEnabled` alone (it's already there) and append only the four new ones (`hasCompletedOnboarding`, `quickCaptureEnabled`, `quickCaptureHotkey`, `statusBarItemVisible`, `defaultTagTintHex`).
 
 - [ ] **Step 3: Add matching `@NSManaged` properties to the hand-written `AppPreferences` class**
 
@@ -310,9 +403,10 @@ Open `Packages/LillistCore/Sources/LillistCore/ManagedObjects/AppPreferences+Cor
 @NSManaged public var quickCaptureEnabled: Bool
 @NSManaged public var quickCaptureHotkey: String?
 @NSManaged public var statusBarItemVisible: Bool
-@NSManaged public var showPostCrashPrompt: Bool   // (Skip this line if reconciling with Plan 9's crashPromptsEnabled — see note above.)
 @NSManaged public var defaultTagTintHex: String?
 ```
+
+(`crashPromptsEnabled: Bool` is already declared on `AppPreferences+CoreData.swift` by Plan 9 Task 10 — don't redeclare it.)
 
 This codebase does not use Core Data's class codegen — see Plan 1 Task 8 for the convention. The XML edit alone won't expose these properties to Swift; the `PreferencesStore` updates in Task 2 will fail to compile until these lines exist.
 
@@ -353,7 +447,9 @@ git commit -m "feat: extend AppPreferences with onboarding, quick-capture, crash
         #expect(prefs.quickCaptureEnabled == true)
         #expect(prefs.quickCaptureHotkey == "ctrl+opt+space")
         #expect(prefs.statusBarItemVisible == true)
-        #expect(prefs.showPostCrashPrompt == true)
+        // crashPromptsEnabled is the Plan 9 name; Plan 10 binds the
+        // Settings UI's "Show prompt after crash" toggle to this field.
+        #expect(prefs.crashPromptsEnabled == true)
         #expect(prefs.defaultTagTintHex == "#7F8FA6")
     }
 
@@ -381,14 +477,16 @@ Expected: compile failure — `Prefs` lacks the new fields.
         public var morningSummaryMinute: Int16
         public var trashRetentionDays: Int16
         public var defaultTaskListSort: SortField
+        public var crashPromptsEnabled: Bool        // Plan 9 — pre-existing
         public var hasCompletedOnboarding: Bool
         public var quickCaptureEnabled: Bool
         public var quickCaptureHotkey: String
         public var statusBarItemVisible: Bool
-        public var showPostCrashPrompt: Bool
         public var defaultTagTintHex: String
     }
 ```
+
+(`crashPromptsEnabled` is already on `Prefs` from Plan 9 Task 10. Keep it in place; Plan 10's new fields are appended *after* it. The shape above shows the canonical final field order.)
 
 - [ ] **Step 3: Update `read()` to populate the new fields**
 
@@ -406,11 +504,11 @@ Replace the `read()` body in `PreferencesStore.swift`:
                 morningSummaryMinute: row.morningSummaryMinute,
                 trashRetentionDays: row.trashRetentionDays,
                 defaultTaskListSort: row.defaultTaskListSort,
+                crashPromptsEnabled: row.crashPromptsEnabled,
                 hasCompletedOnboarding: row.hasCompletedOnboarding,
                 quickCaptureEnabled: row.quickCaptureEnabled,
                 quickCaptureHotkey: row.quickCaptureHotkey ?? "ctrl+opt+space",
                 statusBarItemVisible: row.statusBarItemVisible,
-                showPostCrashPrompt: row.showPostCrashPrompt,
                 defaultTagTintHex: row.defaultTagTintHex ?? "#7F8FA6"
             )
         }
@@ -431,11 +529,11 @@ Replace the `read()` body in `PreferencesStore.swift`:
                 morningSummaryMinute: row.morningSummaryMinute,
                 trashRetentionDays: row.trashRetentionDays,
                 defaultTaskListSort: row.defaultTaskListSort,
+                crashPromptsEnabled: row.crashPromptsEnabled,
                 hasCompletedOnboarding: row.hasCompletedOnboarding,
                 quickCaptureEnabled: row.quickCaptureEnabled,
                 quickCaptureHotkey: row.quickCaptureHotkey ?? "ctrl+opt+space",
                 statusBarItemVisible: row.statusBarItemVisible,
-                showPostCrashPrompt: row.showPostCrashPrompt,
                 defaultTagTintHex: row.defaultTagTintHex ?? "#7F8FA6"
             )
             block(&prefs)
@@ -446,11 +544,11 @@ Replace the `read()` body in `PreferencesStore.swift`:
             row.morningSummaryMinute = prefs.morningSummaryMinute
             row.trashRetentionDays = prefs.trashRetentionDays
             row.defaultTaskListSort = prefs.defaultTaskListSort
+            row.crashPromptsEnabled = prefs.crashPromptsEnabled
             row.hasCompletedOnboarding = prefs.hasCompletedOnboarding
             row.quickCaptureEnabled = prefs.quickCaptureEnabled
             row.quickCaptureHotkey = prefs.quickCaptureHotkey
             row.statusBarItemVisible = prefs.statusBarItemVisible
-            row.showPostCrashPrompt = prefs.showPostCrashPrompt
             row.defaultTagTintHex = prefs.defaultTagTintHex
             try context.save()
         }
@@ -469,11 +567,11 @@ Replace the `read()` body in `PreferencesStore.swift`:
         row.morningSummaryMinute = 0
         row.trashRetentionDays = 30
         row.defaultTaskListSortRaw = SortField.manualPosition.rawValue
+        row.crashPromptsEnabled = true               // Plan 9; left in place
         row.hasCompletedOnboarding = false
         row.quickCaptureEnabled = true
         row.quickCaptureHotkey = "ctrl+opt+space"
         row.statusBarItemVisible = true
-        row.showPostCrashPrompt = true
         row.defaultTagTintHex = "#7F8FA6"
         try ctx.save()
         return row
@@ -1554,13 +1652,20 @@ struct CrashReportingPane: View {
         Form {
             if let b = binding {
                 Section("Post-crash prompt") {
-                    Toggle("Show prompt after Lillist quits unexpectedly", isOn: b.showPostCrashPrompt)
+                    Toggle("Show prompt after Lillist quits unexpectedly", isOn: b.crashPromptsEnabled)
                     Text("Reports go directly to Mikey via email. No third-party telemetry.")
                         .font(.callout).foregroundStyle(.secondary)
                 }
                 Section {
                     DisclosureGroup("View what would be sent", isExpanded: $sampleVisible) {
-                        Text(services.crashReporter.samplePayloadPreview())
+                        // Plan 9 ships `CrashReportPreviewSheet` for the
+                        // post-crash flow; reuse the rendering by composing
+                        // a synthetic CrashReport via env.crashReporter and
+                        // calling renderedAsPlainText() directly. The
+                        // canonical "sample payload" pattern lives on
+                        // CrashReport, not on a method called
+                        // `samplePayloadPreview()`.
+                        Text("(Sample preview goes here — call `CrashReport(...).renderedAsPlainText()` against an `env.crashReporter`-shaped canary.)")
                             .font(.system(.caption, design: .monospaced))
                             .frame(maxWidth: .infinity, alignment: .leading)
                             .textSelection(.enabled)
@@ -2341,11 +2446,14 @@ struct CrashReportingSection: View {
 
     var body: some View {
         Section("Crash reporting") {
-            Toggle("Show prompt after Lillist quits unexpectedly", isOn: $prefs.showPostCrashPrompt)
+            Toggle("Show prompt after Lillist quits unexpectedly", isOn: $prefs.crashPromptsEnabled)
             Text("Reports go directly to Mikey via email. No third-party telemetry.")
                 .font(.footnote).foregroundStyle(.secondary)
             DisclosureGroup("View what would be sent", isExpanded: $showSample) {
-                Text(services.crashReporter.samplePayloadPreview())
+                // Plan 9 ships `CrashReportPreviewSheet`; compose a
+                // synthetic CrashReport against `env.crashReporter`
+                // metadata and call renderedAsPlainText().
+                Text("(Sample preview goes here.)")
                     .font(.system(.caption, design: .monospaced))
                     .textSelection(.enabled)
             }
@@ -2618,7 +2726,7 @@ cross-platform Preferences/Settings UIs.
 
 - `Onboarding/OnboardingState` — reads/writes `hasCompletedOnboarding` on `AppPreferences`.
 - `Onboarding/DefaultsInstaller` — idempotently installs five default smart filters: Today, This Week, No Tags, Recently Closed, Stale.
-- `PreferencesStore.Prefs` gains `hasCompletedOnboarding`, `quickCaptureEnabled`, `quickCaptureHotkey`, `statusBarItemVisible`, `showPostCrashPrompt`, `defaultTagTintHex`.
+- `PreferencesStore.Prefs` gains `hasCompletedOnboarding`, `quickCaptureEnabled`, `quickCaptureHotkey`, `statusBarItemVisible`, `defaultTagTintHex`. (`crashPromptsEnabled` is already present from Plan 9 and is bound by the Settings UI's crash-reporting toggle.)
 - macOS app: `Settings { … }` scene with six panes (General, Notifications, Trash, Quick Capture, Crash Reporting, Advanced). Onboarding presented as a sheet on first launch.
 - iOS app: `SettingsTab` with parallel sections (Quick Capture diverges to Lock Screen Shortcut). Onboarding presented as a full-screen cover on first launch.
 - Plan 3 follow-up: `Field.hasTags` added (boolean) to power the "No Tags" default filter.
