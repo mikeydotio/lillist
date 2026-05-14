@@ -39,4 +39,10 @@ struct ArgumentParsingTests {
         let cmd = try LsCommand.parse(["--json"])
         #expect(cmd.globals.json == true)
     }
+
+    @Test("`show` parses a token")
+    func showParses() throws {
+        let cmd = try ShowCommand.parse(["some-task"])
+        #expect(cmd.token == "some-task")
+    }
 }
