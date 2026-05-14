@@ -7,6 +7,7 @@ struct TaskListView: View {
     let selection: SidebarSelection
     @Binding var taskSelection: UUID?
 
+    @State private var uiState = UIStatePersistence()
     @State private var rootNodes: [TaskOutlineNode] = []
     @State private var flatResults: [TaskStore.TaskRecord] = []
     @State private var breadcrumbsByID: [UUID: [String]] = [:]
@@ -15,6 +16,16 @@ struct TaskListView: View {
     @State private var inlineCreateText = ""
     @State private var showInlineCreate = false
     @State private var inlineCreateParent: UUID?
+
+    private var sourceKey: String {
+        switch selection {
+        case .pinnedTask(let id):   return "pinnedTask.\(id)"
+        case .pinnedFilter(let id): return "pinnedFilter.\(id)"
+        case .tag(let id):          return "tag.\(id)"
+        case .filter(let id):       return "filter.\(id)"
+        case .trash:                return "trash"
+        }
+    }
 
     private var isFlat: Bool {
         switch selection {
@@ -108,9 +119,20 @@ struct TaskListView: View {
                 }
             }
         }
-        .task(id: anchorIdentity) { await refresh() }
-        .onChange(of: sortField) { _, _ in Task { await refresh() } }
-        .onChange(of: sortAscending) { _, _ in Task { await refresh() } }
+        .task(id: anchorIdentity) {
+            if let saved = uiState.sort(for: sourceKey) {
+                sortField = saved.0; sortAscending = saved.1
+            }
+            await refresh()
+        }
+        .onChange(of: sortField) { _, _ in
+            uiState.setSort(sortField, ascending: sortAscending, for: sourceKey)
+            Task { await refresh() }
+        }
+        .onChange(of: sortAscending) { _, _ in
+            uiState.setSort(sortField, ascending: sortAscending, for: sourceKey)
+            Task { await refresh() }
+        }
         .onReceive(NotificationCenter.default.publisher(for: .lillistNewTask)) { _ in
             showInlineCreate = true
             inlineCreateParent = nil

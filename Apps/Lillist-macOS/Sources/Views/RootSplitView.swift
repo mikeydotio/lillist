@@ -4,11 +4,17 @@ import LillistUI
 
 struct RootSplitView: View {
     @Environment(AppEnvironment.self) private var env
+    @State private var uiState = UIStatePersistence()
     @State private var sidebarSelection: SidebarSelection?
     @State private var taskSelection: UUID?
     @FocusState private var focusedColumn: Column?
 
     enum Column: Hashable { case sidebar, list, detail }
+
+    init() {
+        let persisted = UIStatePersistence().sidebarSelection
+        _sidebarSelection = State(initialValue: persisted)
+    }
 
     var body: some View {
         NavigationSplitView {
@@ -51,5 +57,6 @@ struct RootSplitView: View {
                 Task { try? await env.taskStore.transition(id: id, to: .blocked) }
             }
         }
+        .onChange(of: sidebarSelection) { _, new in uiState.sidebarSelection = new }
     }
 }
