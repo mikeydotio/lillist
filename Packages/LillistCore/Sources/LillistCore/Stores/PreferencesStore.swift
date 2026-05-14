@@ -20,6 +20,16 @@ public final class PreferencesStore: @unchecked Sendable {
         /// Whether the post-crash report sheet is shown on the next
         /// launch after a crash. Default `true`; see design Section 8.
         public var crashPromptsEnabled: Bool
+        /// First-launch onboarding gate (Plan 10).
+        public var hasCompletedOnboarding: Bool
+        /// macOS: global Quick Capture hotkey active. iOS: floating + button.
+        public var quickCaptureEnabled: Bool
+        /// macOS-only: textual hotkey spec (e.g. "ctrl+opt+space"). Ignored on iOS.
+        public var quickCaptureHotkey: String
+        /// macOS-only: status-bar icon visible. Ignored on iOS.
+        public var statusBarItemVisible: Bool
+        /// Hex-RGB tint applied to newly-created tags. Default "#7F8FA6".
+        public var defaultTagTintHex: String
     }
 
     public func read() async throws -> Prefs {
@@ -33,7 +43,12 @@ public final class PreferencesStore: @unchecked Sendable {
                 morningSummaryMinute: row.morningSummaryMinute,
                 trashRetentionDays: row.trashRetentionDays,
                 defaultTaskListSort: row.defaultTaskListSort,
-                crashPromptsEnabled: row.crashPromptsEnabled
+                crashPromptsEnabled: row.crashPromptsEnabled,
+                hasCompletedOnboarding: row.hasCompletedOnboarding,
+                quickCaptureEnabled: row.quickCaptureEnabled,
+                quickCaptureHotkey: row.quickCaptureHotkey ?? "ctrl+opt+space",
+                statusBarItemVisible: row.statusBarItemVisible,
+                defaultTagTintHex: row.defaultTagTintHex ?? "#7F8FA6"
             )
         }
     }
@@ -49,7 +64,12 @@ public final class PreferencesStore: @unchecked Sendable {
                 morningSummaryMinute: row.morningSummaryMinute,
                 trashRetentionDays: row.trashRetentionDays,
                 defaultTaskListSort: row.defaultTaskListSort,
-                crashPromptsEnabled: row.crashPromptsEnabled
+                crashPromptsEnabled: row.crashPromptsEnabled,
+                hasCompletedOnboarding: row.hasCompletedOnboarding,
+                quickCaptureEnabled: row.quickCaptureEnabled,
+                quickCaptureHotkey: row.quickCaptureHotkey ?? "ctrl+opt+space",
+                statusBarItemVisible: row.statusBarItemVisible,
+                defaultTagTintHex: row.defaultTagTintHex ?? "#7F8FA6"
             )
             block(&prefs)
             row.defaultAllDayNotificationHour = prefs.defaultAllDayHour
@@ -60,6 +80,11 @@ public final class PreferencesStore: @unchecked Sendable {
             row.trashRetentionDays = prefs.trashRetentionDays
             row.defaultTaskListSort = prefs.defaultTaskListSort
             row.crashPromptsEnabled = prefs.crashPromptsEnabled
+            row.hasCompletedOnboarding = prefs.hasCompletedOnboarding
+            row.quickCaptureEnabled = prefs.quickCaptureEnabled
+            row.quickCaptureHotkey = prefs.quickCaptureHotkey
+            row.statusBarItemVisible = prefs.statusBarItemVisible
+            row.defaultTagTintHex = prefs.defaultTagTintHex
             try context.save()
         }
     }
@@ -94,6 +119,11 @@ public final class PreferencesStore: @unchecked Sendable {
         row.trashRetentionDays = 30
         row.defaultTaskListSortRaw = SortField.manualPosition.rawValue
         row.crashPromptsEnabled = true
+        row.hasCompletedOnboarding = false
+        row.quickCaptureEnabled = true
+        row.quickCaptureHotkey = "ctrl+opt+space"
+        row.statusBarItemVisible = true
+        row.defaultTagTintHex = "#7F8FA6"
         try ctx.save()
         return row
     }
