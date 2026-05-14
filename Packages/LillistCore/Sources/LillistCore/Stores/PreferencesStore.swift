@@ -17,6 +17,9 @@ public final class PreferencesStore: @unchecked Sendable {
         public var morningSummaryMinute: Int16
         public var trashRetentionDays: Int16
         public var defaultTaskListSort: SortField
+        /// Whether the post-crash report sheet is shown on the next
+        /// launch after a crash. Default `true`; see design Section 8.
+        public var crashPromptsEnabled: Bool
     }
 
     public func read() async throws -> Prefs {
@@ -29,7 +32,8 @@ public final class PreferencesStore: @unchecked Sendable {
                 morningSummaryHour: row.morningSummaryHour,
                 morningSummaryMinute: row.morningSummaryMinute,
                 trashRetentionDays: row.trashRetentionDays,
-                defaultTaskListSort: row.defaultTaskListSort
+                defaultTaskListSort: row.defaultTaskListSort,
+                crashPromptsEnabled: row.crashPromptsEnabled
             )
         }
     }
@@ -44,7 +48,8 @@ public final class PreferencesStore: @unchecked Sendable {
                 morningSummaryHour: row.morningSummaryHour,
                 morningSummaryMinute: row.morningSummaryMinute,
                 trashRetentionDays: row.trashRetentionDays,
-                defaultTaskListSort: row.defaultTaskListSort
+                defaultTaskListSort: row.defaultTaskListSort,
+                crashPromptsEnabled: row.crashPromptsEnabled
             )
             block(&prefs)
             row.defaultAllDayNotificationHour = prefs.defaultAllDayHour
@@ -54,8 +59,15 @@ public final class PreferencesStore: @unchecked Sendable {
             row.morningSummaryMinute = prefs.morningSummaryMinute
             row.trashRetentionDays = prefs.trashRetentionDays
             row.defaultTaskListSort = prefs.defaultTaskListSort
+            row.crashPromptsEnabled = prefs.crashPromptsEnabled
             try context.save()
         }
+    }
+
+    /// Convenience: toggle whether the post-crash report sheet is
+    /// presented on next launch.
+    public func setCrashPromptsEnabled(_ value: Bool) async throws {
+        try await update { $0.crashPromptsEnabled = value }
     }
 
     /// Test helper: count of AppPreferences rows. Asserts singleton invariant.
@@ -81,6 +93,7 @@ public final class PreferencesStore: @unchecked Sendable {
         row.morningSummaryMinute = 0
         row.trashRetentionDays = 30
         row.defaultTaskListSortRaw = SortField.manualPosition.rawValue
+        row.crashPromptsEnabled = true
         try ctx.save()
         return row
     }
