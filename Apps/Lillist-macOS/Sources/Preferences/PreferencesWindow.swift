@@ -1,0 +1,26 @@
+import SwiftUI
+import LillistCore
+
+/// Root of the macOS `Settings { … }` scene. Six tabs match design
+/// Section 7. The actual pane implementations land in Task 8 (General)
+/// and Task 9 (Notifications / Trash / Quick Capture / Crash Reporting
+/// / Advanced).
+struct PreferencesWindow: View {
+    var body: some View {
+        TabView {
+            GeneralPane()
+                .tabItem { Label("General", systemImage: "gearshape") }
+            NotificationsPane()
+                .tabItem { Label("Notifications", systemImage: "bell") }
+            TrashPane()
+                .tabItem { Label("Trash", systemImage: "trash") }
+            QuickCapturePane()
+                .tabItem { Label("Quick Capture", systemImage: "keyboard") }
+            CrashReportingPane()
+                .tabItem { Label("Crash Reporting", systemImage: "ant") }
+            AdvancedPane()
+                .tabItem { Label("Advanced", systemImage: "wrench.and.screwdriver") }
+        }
+        .frame(width: 520, height: 420)
+    }
+}

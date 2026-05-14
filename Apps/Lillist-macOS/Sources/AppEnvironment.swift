@@ -1,4 +1,5 @@
 import Foundation
+import CloudKit
 import Observation
 import LillistCore
 import LillistUI
@@ -15,15 +16,23 @@ final class AppEnvironment {
     let taskStore: TaskStore
     let tagStore: TagStore
     let journalStore: JournalStore
+    let preferencesStore: PreferencesStore
     let smartFilterStore: SmartFilterStore
     let notificationSpecStore: NotificationSpecStore
     let snoozeRegistry: SnoozeRegistry
     let notificationScheduler: NotificationScheduler
     let notificationPermissions: NotificationPermissions
+    let accountStateMonitor: AccountStateMonitor
+    let onboardingState: OnboardingState
+    let defaultsInstaller: DefaultsInstaller
     let syncMonitor: any SyncIndicatorMonitor
     let breadcrumbs: BreadcrumbBuffer
     let crashReporter: CrashReporter
     var crashPromptsEnabled: Bool = PreferencesStore.Prefs.crashPromptsDefault
+    /// Plan 10: latest known iCloud account state, mirrored off the
+    /// `AccountStateMonitor` actor so SwiftUI views can react via
+    /// `@Observable`-based observation.
+    var accountState: iCloudAccountState = .noAccount
     let buildVersion: String
     let osVersion: String
     let deviceModel: String
@@ -33,7 +42,15 @@ final class AppEnvironment {
         self.taskStore = TaskStore(persistence: persistence)
         self.tagStore = TagStore(persistence: persistence)
         self.journalStore = JournalStore(persistence: persistence)
-        self.smartFilterStore = SmartFilterStore(persistence: persistence)
+        let preferencesStore = PreferencesStore(persistence: persistence)
+        self.preferencesStore = preferencesStore
+        let smartFilterStore = SmartFilterStore(persistence: persistence)
+        self.smartFilterStore = smartFilterStore
+        self.onboardingState = OnboardingState(preferences: preferencesStore)
+        self.defaultsInstaller = DefaultsInstaller(filters: smartFilterStore)
+        self.accountStateMonitor = AccountStateMonitor(
+            provider: CloudKitAccountStatusProvider(container: CKContainer.default())
+        )
         let specStore = NotificationSpecStore(persistence: persistence)
         self.notificationSpecStore = specStore
 
@@ -121,9 +138,28 @@ final class AppEnvironment {
         // first paint) — the cost of an extra fresh canary write is nil.
         try? await crashReporter.start()
         // Hydrate crashPromptsEnabled from the user's preferences.
-        let prefs = try? await PreferencesStore(persistence: persistence).read()
+        let prefs = try? await preferencesStore.read()
         if let prefs {
             self.crashPromptsEnabled = prefs.crashPromptsEnabled
+        }
+        // Plan 10: prime the iCloud account-state cache so the onboarding
+        // gate has a non-default value to read. Errors fall through; the
+        // gate handles `.noAccount` as the "iCloud unavailable" branch.
+        try? await accountStateMonitor.refresh()
+        self.accountState = await accountStateMonitor.currentState
+        startObservingAccountState()
+    }
+
+    /// Plan 10: stream account-state changes off the actor into the
+    /// `@Observable` mirror so views update without polling.
+    private func startObservingAccountState() {
+        let monitor = self.accountStateMonitor
+        Task { [weak self] in
+            for await state in await monitor.stateStream {
+                await MainActor.run {
+                    self?.accountState = state
+                }
+            }
         }
     }
 }
