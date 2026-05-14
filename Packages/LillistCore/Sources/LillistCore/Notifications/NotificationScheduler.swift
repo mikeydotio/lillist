@@ -292,4 +292,22 @@ public actor NotificationScheduler {
     public func uninstallMorningSummary() async {
         await center.removePendingNotificationRequests(withIdentifiers: [MorningSummary.requestID])
     }
+
+    // MARK: - Public Nudge API
+
+    /// Schedule a first-class nudge with an absolute `fireDate`. The nudge
+    /// is independent of `start`/`deadline` and survives changes to them
+    /// (design Section 4: "Nudges. First-class NotificationSpec of kind
+    /// nudge with an absolute fireDate. Independent of start/deadline").
+    @discardableResult
+    public func addNudge(taskID: UUID, fireDate: Date) async throws -> UUID {
+        let id = try await specStore.add(
+            taskID: taskID,
+            kind: .nudge,
+            offsetMinutes: nil,
+            fireDate: fireDate
+        )
+        await reconcile(taskID: taskID)
+        return id
+    }
 }
