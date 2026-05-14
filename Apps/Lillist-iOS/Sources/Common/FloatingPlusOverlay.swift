@@ -1,14 +1,25 @@
 import SwiftUI
 import LillistUI
 
-/// Drives the floating "+" button positioned bottom-trailing on every primary
-/// surface. Tapping the button sets `isPresented = true`, which the parent
-/// view uses to present the Quick Capture sheet. Replaced (or extended) by
-/// Task 8.
+/// Driver layer that hosts `FloatingAddButton` and toggles `isPresented`.
+/// Hidden via opacity when the system keyboard is up — it'd be invisible
+/// behind the keyboard anyway, and hiding it from accessibility prevents
+/// VoiceOver from snagging on an off-screen button.
 struct FloatingPlusOverlay: View {
     @Binding var isPresented: Bool
+    @State private var keyboardVisible = false
 
     var body: some View {
         FloatingAddButton(onTap: { isPresented = true })
+            .opacity(keyboardVisible ? 0 : 1)
+            .accessibilityHidden(keyboardVisible)
+            .onReceive(
+                NotificationCenter.default
+                    .publisher(for: UIResponder.keyboardWillShowNotification)
+            ) { _ in keyboardVisible = true }
+            .onReceive(
+                NotificationCenter.default
+                    .publisher(for: UIResponder.keyboardWillHideNotification)
+            ) { _ in keyboardVisible = false }
     }
 }
