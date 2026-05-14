@@ -19,6 +19,7 @@
 		2DADFF6343511363B623E9F4 /* SplitShell.swift in Sources */ = {isa = PBXBuildFile; fileRef = 262D045DF7FC19BD936381F6 /* SplitShell.swift */; };
 		34376E8334E842553856720B /* ShareRootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BF7C0CBC7BB61226C9ABECE1 /* ShareRootView.swift */; };
 		3440B5C7EBBC1DE929C708F1 /* CrashReporterHost.swift in Sources */ = {isa = PBXBuildFile; fileRef = E61A40B2BDFBA8C6B05AC79E /* CrashReporterHost.swift */; };
+		3723770D2788EE577A418AB1 /* ReportCrashIntent.swift in Sources */ = {isa = PBXBuildFile; fileRef = A319992C5C6111D1848B5549 /* ReportCrashIntent.swift */; };
 		379E3FE8AFB068E832A2617E /* LillistUI in Frameworks */ = {isa = PBXBuildFile; productRef = 2ABD72EED49C2E40D19B1F5F /* LillistUI */; };
 		3A2760F631CB59A9344DC2EF /* QuickCaptureFlowTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CEE1AA15CD7EEB68E16E53D8 /* QuickCaptureFlowTests.swift */; };
 		3BBC72AEC744027E002243C4 /* TaskEntityQuery.swift in Sources */ = {isa = PBXBuildFile; fileRef = 32DFE7DBEC9D4A404CCF4A90 /* TaskEntityQuery.swift */; };
@@ -47,6 +48,7 @@
 		A6EE4318B3317216DF56160D /* SharePayloadTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6816606162835A06ED8B8FEF /* SharePayloadTests.swift */; };
 		AD0144EC54CC3FA76CD3D1D0 /* AllTagsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7AE05D83958BE1618EC00B27 /* AllTagsView.swift */; };
 		C1FEEAB56AFC2EFD9C108C47 /* TaskJournalTab.swift in Sources */ = {isa = PBXBuildFile; fileRef = F6C4BEE444B84DDF5F88ABF3 /* TaskJournalTab.swift */; };
+		C37A5B3B5892E493D5874513 /* ReportCrashIntentTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 97A39E4B87749E005F34B7FF /* ReportCrashIntentTests.swift */; };
 		CA4034D690255FE0554C7DE2 /* RootShell.swift in Sources */ = {isa = PBXBuildFile; fileRef = 03C3319AED08244B047F88E4 /* RootShell.swift */; };
 		CEE10BDC98205D724AA29DCD /* FilterResultsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2A651BD41829D553D469EC3 /* FilterResultsView.swift */; };
 		D68B04863DB035FBB4CC7D19 /* CompleteTaskIntent.swift in Sources */ = {isa = PBXBuildFile; fileRef = B85AEF08DCB6A6F29677F2F8 /* CompleteTaskIntent.swift */; };
@@ -54,6 +56,7 @@
 		DEC33DF9FB210ECBF51CB363 /* ToggleStatusIntent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4167EC3BD9F49B2C79556A19 /* ToggleStatusIntent.swift */; };
 		E01B4AB3BC5C4E7EE9093B74 /* LillistApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1CF1EBE004127B957F4AB99 /* LillistApp.swift */; };
 		E40226631EC34F5D4110B4D6 /* SharePayload.swift in Sources */ = {isa = PBXBuildFile; fileRef = D2F899010F7F794421F9DB2A /* SharePayload.swift */; };
+		E4C230FEC3056278B860651E /* ReportCrashIntent.swift in Sources */ = {isa = PBXBuildFile; fileRef = A319992C5C6111D1848B5549 /* ReportCrashIntent.swift */; };
 		E56611471CAD14B868BBAE0D /* SearchTasksIntent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 127316B4280751452F412407 /* SearchTasksIntent.swift */; };
 		ED3F0012AFC75791B7432CB6 /* ShareViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3013CF9707368DFFA43E4C72 /* ShareViewController.swift */; };
 		F6AC14D90F6B8A293A753408 /* AppIntentHandlerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4E15BAD0E599EA928403C4A8 /* AppIntentHandlerTests.swift */; };
@@ -128,6 +131,8 @@
 		877582BCF5CA2C44CB3C90FE /* DefaultSmartFiltersInstaller.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DefaultSmartFiltersInstaller.swift; sourceTree = "<group>"; };
 		8E53A86D921898A0FB836C9A /* TaskDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TaskDetailView.swift; sourceTree = "<group>"; };
 		940380DB2F7305D2993DCD30 /* ShareExtension-iOS.appex */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = "wrapper.app-extension"; path = "ShareExtension-iOS.appex"; sourceTree = BUILT_PRODUCTS_DIR; };
+		97A39E4B87749E005F34B7FF /* ReportCrashIntentTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReportCrashIntentTests.swift; sourceTree = "<group>"; };
+		A319992C5C6111D1848B5549 /* ReportCrashIntent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReportCrashIntent.swift; sourceTree = "<group>"; };
 		A51D139E432B20E90E93549D /* KeyboardShortcuts.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyboardShortcuts.swift; sourceTree = "<group>"; };
 		A60CEF999A5541D9221BEF8C /* OpenTaskIntent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OpenTaskIntent.swift; sourceTree = "<group>"; };
 		A8F22116451755349886D09A /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
@@ -253,6 +258,7 @@
 				C879F47AAC9011FEA0721657 /* LillistShortcuts.swift */,
 				A60CEF999A5541D9221BEF8C /* OpenTaskIntent.swift */,
 				752930BC024A56479687DFAA /* QuickCaptureLockScreenIntent.swift */,
+				A319992C5C6111D1848B5549 /* ReportCrashIntent.swift */,
 				127316B4280751452F412407 /* SearchTasksIntent.swift */,
 				4167EC3BD9F49B2C79556A19 /* ToggleStatusIntent.swift */,
 			);
@@ -285,6 +291,7 @@
 			isa = PBXGroup;
 			children = (
 				5D9EA074A9D3F9A86933CEA3 /* DefaultSmartFiltersInstallerTests.swift */,
+				97A39E4B87749E005F34B7FF /* ReportCrashIntentTests.swift */,
 				6816606162835A06ED8B8FEF /* SharePayloadTests.swift */,
 			);
 			path = UnitTests;
@@ -572,6 +579,8 @@
 				F6AC14D90F6B8A293A753408 /* AppIntentHandlerTests.swift in Sources */,
 				3C197827BB6E072E187327F3 /* DefaultSmartFiltersInstallerTests.swift in Sources */,
 				3A2760F631CB59A9344DC2EF /* QuickCaptureFlowTests.swift in Sources */,
+				3723770D2788EE577A418AB1 /* ReportCrashIntent.swift in Sources */,
+				C37A5B3B5892E493D5874513 /* ReportCrashIntentTests.swift in Sources */,
 				5D9279E9C4C73820704AB2C5 /* ShareExtensionPayloadTests.swift in Sources */,
 				E40226631EC34F5D4110B4D6 /* SharePayload.swift in Sources */,
 				A6EE4318B3317216DF56160D /* SharePayloadTests.swift in Sources */,
@@ -590,6 +599,7 @@
 				FE5E36D23CC9D9B15A788C5B /* LillistShortcuts.swift in Sources */,
 				3E7FA26351870152F713291F /* OpenTaskIntent.swift in Sources */,
 				67A2B9B597F60AFE39A0FDED /* QuickCaptureLockScreenIntent.swift in Sources */,
+				E4C230FEC3056278B860651E /* ReportCrashIntent.swift in Sources */,
 				E56611471CAD14B868BBAE0D /* SearchTasksIntent.swift in Sources */,
 				73BE8F1D6EF2D3BE9D67C497 /* StatusAppEnum.swift in Sources */,
 				037A2818BA4C8A5CFECE4DC4 /* TaskEntity.swift in Sources */,
