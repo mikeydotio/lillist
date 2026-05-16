@@ -59,9 +59,14 @@ struct TaskDetailView: View {
                 Button {
                     showingRecurrenceSheet = true
                 } label: {
-                    Image(systemName: seriesRule == nil ? "repeat" : "repeat.circle.fill")
+                    HStack(spacing: LillistSpacing.xs) {
+                        Image(systemName: seriesRule == nil ? "repeat" : "repeat.circle.fill")
+                        Text(seriesRuleSummary)
+                            .font(LillistTypography.caption)
+                    }
                 }
                 .accessibilityLabel(seriesRule == nil ? "Add recurrence" : "Edit recurrence")
+                .accessibilityValue(seriesRuleSummary)
             }
         }
         .sheet(isPresented: $showingRecurrenceSheet) {
@@ -90,6 +95,10 @@ struct TaskDetailView: View {
         } catch {
             loadError = "\(error)"
         }
+    }
+
+    private var seriesRuleSummary: String {
+        RecurrenceEditorViewModel(rule: seriesRule).humanSummary
     }
 }
 

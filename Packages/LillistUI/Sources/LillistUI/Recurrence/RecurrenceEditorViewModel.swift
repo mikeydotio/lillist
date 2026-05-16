@@ -87,4 +87,28 @@ public struct RecurrenceEditorViewModel: Equatable {
             return .afterCompletion(RecurrenceRule.AfterCompletionRule(interval: afterCompletionSeconds))
         }
     }
+
+    /// Human-readable summary of the current recurrence configuration.
+    /// Mirrors the inline `currentRecurrenceSummary` previously built in
+    /// the macOS `TaskDetailView` (Plan 11). Lifted to the view model
+    /// so iOS can show the same string next to its toolbar icon.
+    public var humanSummary: String {
+        guard repeats else { return "Doesn't repeat" }
+        switch mode {
+        case .calendar:
+            let unit: String
+            switch freq {
+            case .daily: unit = "day"
+            case .weekly: unit = "week"
+            case .monthly: unit = "month"
+            case .yearly: unit = "year"
+            }
+            return interval == 1
+                ? "Every \(unit)"
+                : "Every \(interval) \(unit)s"
+        case .afterCompletion:
+            let days = Int(afterCompletionSeconds / 86_400)
+            return "Repeats \(days) day\(days == 1 ? "" : "s") after completion"
+        }
+    }
 }
