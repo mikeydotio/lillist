@@ -13,8 +13,8 @@ public struct SyncStatusBadge: View {
 
     public var body: some View {
         Circle()
-            .fill(color)
-            .frame(width: 10, height: 10)
+            .fill(indicator.color)
+            .frame(width: LillistSpacing.s + 2, height: LillistSpacing.s + 2)
             .overlay(
                 Group {
                     if case .inProgress = indicator {
@@ -23,18 +23,12 @@ public struct SyncStatusBadge: View {
                     }
                 }
             )
+            // Plan 13 fallout: keep the outer 44pt hit area + content
+            // shape + .isStaticText trait introduced by Plan 13 Task 8.
             .frame(width: 44, height: 44)
             .contentShape(Rectangle())
             .accessibilityLabel(label)
             .accessibilityAddTraits(.isStaticText)
-    }
-
-    private var color: Color {
-        switch indicator {
-        case .idle: return .green
-        case .inProgress: return .blue
-        case .error: return .red
-        }
     }
 
     private var label: String {
