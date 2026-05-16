@@ -2549,11 +2549,13 @@ struct HotkeyRecorder: View {
     // MARK: - Pure encoder (testable)
 
     static func encode(modifiers: NSEvent.ModifierFlags, keyCode: Int) -> String? {
+        // Canonical modifier order matches the test expectations
+        // (`cmd+shift+l`): ctrl, opt, cmd, shift.
         var parts: [String] = []
         if modifiers.contains(.control) { parts.append("ctrl") }
         if modifiers.contains(.option) { parts.append("opt") }
-        if modifiers.contains(.shift) { parts.append("shift") }
         if modifiers.contains(.command) { parts.append("cmd") }
+        if modifiers.contains(.shift) { parts.append("shift") }
         guard let keyName = keyName(for: keyCode) else { return nil }
         parts.append(keyName)
         return parts.joined(separator: "+")
