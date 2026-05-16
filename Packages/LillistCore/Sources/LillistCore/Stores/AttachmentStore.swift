@@ -100,6 +100,47 @@ public final class AttachmentStore: @unchecked Sendable {
         )
     }
 
+    // MARK: - Update link preview
+
+    /// Replace the unfurled metadata for an existing link-preview
+    /// attachment. Called by `LinkPreviewUnfurler` once it has fetched
+    /// OG/Twitter card data (and optionally a thumbnail). Pass
+    /// `LinkPreviewMetadata.empty` to update only the thumbnail bytes.
+    public func updateLinkPreview(
+        id: UUID,
+        metadata: LinkPreviewMetadata,
+        thumbnailData: Data? = nil
+    ) async throws {
+        try await context.perform { [self] in
+            let m = try fetchManagedObject(id: id, in: context)
+            guard m.kindRaw == Int16(AttachmentKind.linkPreview.rawValue) else {
+                throw LillistError.validationFailed([
+                    .init(field: "kind", message: "attachment is not a link preview")
+                ])
+            }
+
+            // Merge: keep existing fields if metadata fields are nil.
+            var existing: LinkPreviewPayload?
+            if let json = m.linkPreviewJSON, let bytes = json.data(using: .utf8) {
+                existing = try? JSONDecoder().decode(LinkPreviewPayload.self, from: bytes)
+            }
+            let merged = LinkPreviewPayload(
+                url: existing?.url ?? "",
+                title: metadata.title ?? existing?.title,
+                description: metadata.description ?? existing?.description,
+                fetchedAt: Date()
+            )
+            let encoded = try JSONEncoder().encode(merged)
+            m.linkPreviewJSON = String(data: encoded, encoding: .utf8)
+
+            if let bytes = thumbnailData {
+                m.data = bytes
+                m.byteSize = Int64(bytes.count)
+            }
+            try context.save()
+        }
+    }
+
     // MARK: - Read
 
     public func fetch(id: UUID) async throws -> AttachmentRecord {
