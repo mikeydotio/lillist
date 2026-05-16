@@ -353,6 +353,40 @@ public final class TaskStore: @unchecked Sendable {
         }
     }
 
+    /// Hard-delete every task currently in the Trash (i.e. with
+    /// `deletedAt != nil`), including any descendants. Returns the number
+    /// of tasks removed. Plan 11 / design Section 7 ("Trash") — the
+    /// "Empty Trash now" affordance in Preferences calls this.
+    ///
+    /// Distinct from `AutoPurgeJob`, which only removes tasks whose
+    /// `deletedAt` is older than the retention window.
+    @discardableResult
+    public func purgeAll() async throws -> Int {
+        try await context.perform { [self] in
+            let req = NSFetchRequest<LillistTask>(entityName: "LillistTask")
+            req.predicate = NSPredicate(format: "deletedAt != nil")
+            let trashed = try context.fetch(req)
+            // Only count/iterate trashed roots — tasks whose parent isn't
+            // itself trashed. Descendants are already cascade-soft-deleted
+            // via `applySoftDelete`, so iterating every trashed row would
+            // double-count children once via `countDescendants(of: parent)`
+            // and again when the child appears in `trashed` directly.
+            let trashedRoots = trashed.filter { $0.parent?.deletedAt == nil }
+            var count = 0
+            for t in trashedRoots {
+                count += 1 + countDescendants(of: t)
+                context.delete(t) // cascades to children via the Core Data rule
+            }
+            try context.save()
+            return count
+        }
+    }
+
+    private func countDescendants(of t: LillistTask) -> Int {
+        guard let kids = t.children as? Set<LillistTask>, !kids.isEmpty else { return 0 }
+        return kids.reduce(0) { $0 + 1 + countDescendants(of: $1) }
+    }
+
     private func applySoftDelete(to m: LillistTask, at now: Date) {
         m.deletedAt = now
         m.modifiedAt = now
