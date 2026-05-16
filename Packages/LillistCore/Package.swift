@@ -1,4 +1,4 @@
-// swift-tools-version: 6.0
+// swift-tools-version: 6.2
 import PackageDescription
 
 let package = Package(
@@ -25,7 +25,8 @@ let package = Package(
                 .process("Model/LillistModel.xcdatamodeld")
             ],
             swiftSettings: [
-                .enableExperimentalFeature("StrictConcurrency")
+                .enableExperimentalFeature("StrictConcurrency"),
+                .treatAllWarnings(as: .error)
             ],
             plugins: ["CompileCoreDataModel"]
         ),
@@ -35,6 +36,9 @@ let package = Package(
             resources: [
                 .copy("CrashReporting/Fixtures"),
                 .copy("LinkPreview/HTMLFixtures")
+            ],
+            swiftSettings: [
+                .treatAllWarnings(as: .error)
             ]
         ),
         .executableTarget(
@@ -45,7 +49,8 @@ let package = Package(
             ],
             exclude: ["README.md"],
             swiftSettings: [
-                .enableExperimentalFeature("StrictConcurrency")
+                .enableExperimentalFeature("StrictConcurrency"),
+                .treatAllWarnings(as: .error)
             ]
         ),
         .testTarget(
@@ -57,6 +62,9 @@ let package = Package(
             ],
             resources: [
                 .copy("Fixtures/snapshots")
+            ],
+            swiftSettings: [
+                .treatAllWarnings(as: .error)
             ]
         )
     ]
