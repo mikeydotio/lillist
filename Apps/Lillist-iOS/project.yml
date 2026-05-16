@@ -141,6 +141,9 @@ targets:
         # entitlements gating signed builds.
         TEST_HOST: ""
         BUNDLE_LOADER: ""
+        # Test bundles still need an Info.plist; without a hosting app
+        # to inherit one, auto-generate it.
+        GENERATE_INFOPLIST_FILE: YES
 
 schemes:
   Lillist-iOS:
