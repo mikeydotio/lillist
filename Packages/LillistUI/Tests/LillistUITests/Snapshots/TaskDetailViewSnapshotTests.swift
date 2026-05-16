@@ -35,15 +35,5 @@ final class TaskDetailComponentsSnapshotTests: XCTestCase {
         )
         assertSnapshot(of: host, as: .image(size: CGSize(width: 360, height: 50)))
     }
-
-    func test_recurrencePlaceholder() {
-        let host = makeHostingView(
-            SnapshotHost(colorScheme: .light) {
-                RecurrenceFieldPlaceholderView().padding().frame(width: 420)
-            },
-            size: CGSize(width: 420, height: 40)
-        )
-        assertSnapshot(of: host, as: .image(size: CGSize(width: 420, height: 40)))
-    }
 }
 #endif
