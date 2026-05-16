@@ -22,7 +22,7 @@ public struct QuickCaptureView: View {
         VStack(alignment: .leading, spacing: 8) {
             TextField("New task… (#tag, ^date)", text: $text)
                 .textFieldStyle(.plain)
-                .font(.system(size: 18))
+                .font(LillistTypography.quickCaptureField)
                 .onSubmit { onSubmit(parsed) }
                 .accessibilityLabel("Quick capture")
 
@@ -41,9 +41,9 @@ public struct QuickCaptureView: View {
                     .foregroundStyle(.tertiary)
             }
         }
-        .padding(14)
+        .padding(LillistSpacing.m + 2)
         .frame(width: 520)
-        .background(.thickMaterial, in: RoundedRectangle(cornerRadius: 12))
+        .background(.thickMaterial, in: RoundedRectangle(cornerRadius: LillistRadius.m))
         #if os(macOS)
         .onExitCommand(perform: onCancel)
         #endif

@@ -16,9 +16,9 @@ public struct StatusIndicatorView: View {
     public var body: some View {
         Button(action: onClick) {
             Image(systemName: StatusGlyph.symbol(for: status))
-                .font(.system(size: 16, weight: .regular))
+                .font(LillistTypography.statusGlyph)
                 .foregroundStyle(status == .closed ? .green : .secondary)
-                .frame(width: 22, height: 22)
+                .frame(width: LillistSpacing.xl - 2, height: LillistSpacing.xl - 2)
                 .frame(width: 44, height: 44)
                 .contentShape(Rectangle())
         }
@@ -29,7 +29,7 @@ public struct StatusIndicatorView: View {
             onLongPress()
         }
         .simultaneousGesture(
-            LongPressGesture(minimumDuration: 0.4).onEnded { _ in onLongPress() }
+            LongPressGesture(minimumDuration: LillistTiming.longPress).onEnded { _ in onLongPress() }
         )
     }
 }
