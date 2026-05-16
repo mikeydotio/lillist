@@ -1,7 +1,7 @@
 # Lillist — Project Conventions
 
-Repo-scoped notes for Claude Code (and humans). User-global rules live in
-`~/.claude/CLAUDE.md`; this file only adds Lillist-specific guidance.
+Repo-scoped notes for Claude Code (and humans).
+User-global rules live in `~/.claude/CLAUDE.md`; this file only adds Lillist-specific guidance.
 
 ## Project shape
 
@@ -31,6 +31,9 @@ section numbers from it.
 
 ## House rules specific to this repo
 
+- **Maintain high quality standards** Follow software engineering best practices, 
+  including SOLID, DRY, YAGNI, and separation of concerns. Treat build warnings as errors.
+  Do not seek to merely resolve or work around warnings and errors; instead, strive to write well-architected software that doesn't have any.
 - **Hand-written `@NSManaged` subclasses.** Every Core Data entity has a
   hand-written `@objc(Name) public final class Name: NSManagedObject { @NSManaged … }`
   in `Packages/LillistCore/Sources/LillistCore/ManagedObjects/`. Don't rely on
