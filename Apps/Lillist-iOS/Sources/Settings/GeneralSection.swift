@@ -1,5 +1,6 @@
 import SwiftUI
 import LillistCore
+import LillistUI
 
 struct GeneralSection: View {
     @Binding var prefs: PreferencesStore.Prefs
