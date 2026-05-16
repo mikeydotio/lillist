@@ -13,8 +13,8 @@ public struct SyncStatusDotView: View {
     public var body: some View {
         Button { showPopover.toggle() } label: {
             Circle()
-                .fill(color)
-                .frame(width: 8, height: 8)
+                .fill(indicator.color)
+                .frame(width: LillistSpacing.s, height: LillistSpacing.s)
                 .accessibilityLabel(label)
         }
         .buttonStyle(.plain)
@@ -26,20 +26,8 @@ public struct SyncStatusDotView: View {
                     Button("Try again", action: onRetry)
                 }
             }
-            .padding(12)
+            .padding(LillistSpacing.m)
             .frame(width: 240)
-        }
-    }
-
-    private var color: Color {
-        switch indicator {
-        case .idle(let last):
-            guard let last else { return .yellow }
-            return Date().timeIntervalSince(last) < 60 ? .green : .yellow
-        case .inProgress:
-            return .blue
-        case .error:
-            return .red
         }
     }
 
