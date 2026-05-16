@@ -103,7 +103,10 @@ private struct TaskDetailHeader: View {
                 .strikethrough(task.status == .closed)
                 .accessibilityAddTraits(.isHeader)
             HStack(spacing: 8) {
-                Label(statusLabel, systemImage: statusGlyph)
+                Label(
+                    StatusGlyph.accessibilityLabel(for: task.status),
+                    systemImage: StatusGlyph.symbol(for: task.status)
+                )
                     .font(.caption)
                     .foregroundStyle(.secondary)
                 if let deadline = task.deadline {
@@ -120,23 +123,5 @@ private struct TaskDetailHeader: View {
         .padding(.horizontal)
         .padding(.vertical, 8)
         .accessibilityElement(children: .combine)
-    }
-
-    private var statusLabel: String {
-        switch task.status {
-        case .todo: return "To do"
-        case .started: return "Started"
-        case .blocked: return "Blocked"
-        case .closed: return "Closed"
-        }
-    }
-
-    private var statusGlyph: String {
-        switch task.status {
-        case .todo: return "circle"
-        case .started: return "circle.lefthalf.filled"
-        case .blocked: return "exclamationmark.octagon"
-        case .closed: return "checkmark.circle.fill"
-        }
     }
 }
