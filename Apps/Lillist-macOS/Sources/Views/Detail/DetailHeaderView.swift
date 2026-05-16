@@ -28,6 +28,7 @@ struct DetailHeaderView: View {
                         .background(Capsule().fill(.quaternary))
                 }
                 .menuStyle(.borderlessButton)
+                .accessibilityElement(children: .ignore)
                 .accessibilityLabel("Status: \(StatusGlyph.accessibilityLabel(for: status))")
             }
 
