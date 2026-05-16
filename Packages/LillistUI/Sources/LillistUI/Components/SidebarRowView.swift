@@ -19,7 +19,7 @@ public struct SidebarRowView: View {
     }
 
     public var body: some View {
-        HStack(spacing: 8) {
+        HStack(spacing: LillistSpacing.s) {
             Image(systemName: icon)
                 .foregroundStyle(tint?.resolved(in: scheme).color ?? .accentColor)
                 .frame(width: 18)
@@ -27,8 +27,8 @@ public struct SidebarRowView: View {
             Spacer()
             if let badge, badge > 0 {
                 Text("\(badge)")
-                    .font(.caption2)
-                    .padding(.horizontal, 6)
+                    .font(LillistTypography.caption2)
+                    .padding(.horizontal, LillistSpacing.xs + 2)
                     .padding(.vertical, 1)
                     .background(Capsule().fill(.quaternary))
                     .accessibilityLabel("\(badge) items")
