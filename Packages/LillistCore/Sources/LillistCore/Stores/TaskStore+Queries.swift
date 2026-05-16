@@ -72,7 +72,7 @@ extension TaskStore {
     public func breadcrumbs(for ids: [UUID]) async throws -> [UUID: [String]] {
         guard !ids.isEmpty else { return [:] }
         let ctx = persistence.container.viewContext
-        return try await ctx.perform { [self] in
+        return try await ctx.perform {
             let req = NSFetchRequest<LillistTask>(entityName: "LillistTask")
             req.predicate = NSPredicate(format: "id IN %@", ids)
             let tasks = try ctx.fetch(req)
