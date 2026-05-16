@@ -40,6 +40,7 @@
 		947D4EE0DFF95B690ABADDF4 /* RootSplitView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5FF6CA37C3301C81C8947230 /* RootSplitView.swift */; };
 		9674C4C2BAEC11A6B734FB61 /* PreferencesWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = BC4034CAF7C667207F94C76D /* PreferencesWindow.swift */; };
 		9F391934C274739419CEE25E /* ICloudRequiredView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0170278028A77220944FD21B /* ICloudRequiredView.swift */; };
+		A6252DAED612CEFA721DAC35 /* PinnedSidebarIntegrationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D86C5C049217ECDE9095EF97 /* PinnedSidebarIntegrationTests.swift */; };
 		A8953EC19E865A2EDEF9B85D /* JournalStreamView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4E67786671223711890742F9 /* JournalStreamView.swift */; };
 		ADB800B781E7E9C7D30BEBA6 /* JournalComposerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 44D7A4355E919A190BED242F /* JournalComposerView.swift */; };
 		B02E809B71858F1620968554 /* UIStatePersistence.swift in Sources */ = {isa = PBXBuildFile; fileRef = 996D14F2AE9898FB76C7696C /* UIStatePersistence.swift */; };
@@ -98,6 +99,7 @@
 		BC4034CAF7C667207F94C76D /* PreferencesWindow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreferencesWindow.swift; sourceTree = "<group>"; };
 		CD5D524971199DDBA766AF3F /* TaskDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TaskDetailView.swift; sourceTree = "<group>"; };
 		D002EB6866402CB86776B481 /* Lillist-macOS.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Lillist-macOS.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		D86C5C049217ECDE9095EF97 /* PinnedSidebarIntegrationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PinnedSidebarIntegrationTests.swift; sourceTree = "<group>"; };
 		D8D39D3B3FEA4E7D295B1274 /* Color+Hex.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Color+Hex.swift"; sourceTree = "<group>"; };
 		E5425E4B83C495ACEC60F879 /* LillistCore */ = {isa = PBXFileReference; lastKnownFileType = folder; name = LillistCore; path = ../Packages/LillistCore; sourceTree = SOURCE_ROOT; };
 		ED9565C658DC6743EF09396D /* MailtoTransport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MailtoTransport.swift; sourceTree = "<group>"; };
@@ -156,6 +158,7 @@
 				6BF3D37E4FFA35138008C7ED /* InlineCreateInteractionTests.swift */,
 				8B91031B39FF519BA7C7984B /* KeyboardShortcutTests.swift */,
 				953BE94B80FD2AFB27B77F89 /* NotificationPermissionFlowTests.swift */,
+				D86C5C049217ECDE9095EF97 /* PinnedSidebarIntegrationTests.swift */,
 			);
 			path = Tests;
 			sourceTree = "<group>";
@@ -476,6 +479,7 @@
 				BDA1E09753034DE2322D998A /* InlineCreateInteractionTests.swift in Sources */,
 				524AAE0A4EEB795D8EA674AC /* KeyboardShortcutTests.swift in Sources */,
 				52B6567908A60B67FDA9CBAC /* NotificationPermissionFlowTests.swift in Sources */,
+				A6252DAED612CEFA721DAC35 /* PinnedSidebarIntegrationTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
