@@ -57,13 +57,7 @@ struct TaskSubtasksTab: View {
     }
 
     private func cycle(_ record: TaskStore.TaskRecord) async {
-        let next: Status
-        switch record.status {
-        case .todo:    next = .started
-        case .started: next = .closed
-        case .closed:  next = .todo
-        case .blocked: next = .started
-        }
+        let next = StatusCycler.nextOnClick(from: record.status)
         try? await env.taskStore.transition(id: record.id, to: next)
         await reload()
     }
