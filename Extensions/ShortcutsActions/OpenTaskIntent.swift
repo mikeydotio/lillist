@@ -13,7 +13,7 @@ struct OpenTaskIntent: AppIntent {
 
     @MainActor
     func perform() async throws -> some IntentResult & OpensIntent {
-        var inner = OpenTaskInAppIntent()
+        let inner = OpenTaskInAppIntent()
         inner.taskID = task.id.uuidString
         return .result(opensIntent: inner)
     }
