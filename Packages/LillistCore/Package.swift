@@ -43,6 +43,7 @@ let package = Package(
                 "LillistCore",
                 .product(name: "ArgumentParser", package: "swift-argument-parser")
             ],
+            exclude: ["README.md"],
             swiftSettings: [
                 .enableExperimentalFeature("StrictConcurrency")
             ]
