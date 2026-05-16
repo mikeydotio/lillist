@@ -1,5 +1,6 @@
 import SwiftUI
 import LillistCore
+import LillistUI
 
 /// Full-screen blocker shown when iCloud is unavailable during
 /// onboarding on iOS (design Section 8). The user can deep-link into
@@ -13,7 +14,7 @@ struct ICloudRequiredScreen: View {
     var body: some View {
         VStack(spacing: 20) {
             Image(systemName: "icloud.slash")
-                .font(.system(size: 64, weight: .light))
+                .font(LillistTypography.largeTitle.weight(.light))
                 .foregroundStyle(.red)
             Text("iCloud is required")
                 .font(.title.bold())
