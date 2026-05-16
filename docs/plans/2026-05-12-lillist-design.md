@@ -510,6 +510,14 @@ The sidebar is navigation, not the task tree. Tasks-as-tree are content (middle 
 - Subtasks: compact outline with inline create.
 - Journal & Attachments: single stream with composer at bottom; accepts text, dragged files, pasted URLs (auto-unfurl). Each entry has timestamp + edit/delete (system entries reject edit). "Attachments" tab filter at the top of the stream.
 
+**Recurrence editor.** The task detail surface includes a recurrence
+editor (Plan 11) that lets the user toggle "Doesn't repeat" / "Repeats…"
+and configure either a calendar rule (frequency, byDay, byMonthDay,
+bySetPos, count, until) or an after-completion rule (interval in
+seconds, presets for common windows). The "this only" / "all future"
+fork affordances remain out of v1 UI scope; CLI and App Intents access
+them.
+
 ### iOS
 
 Two-tier with sheets. Tab bar: **Today / All / Filters / Search**.
@@ -811,7 +819,7 @@ Captured as an explicit workflow step in the implementation plan.
 ### Likely v2 roadmap (informational)
 
 - Attachment text extraction and indexing.
-- Custom snooze options + custom recurrence pattern editor.
+- Custom snooze options.
 - Widgets.
 - TaskPaper import.
 - Nested smart filter groups in UI.
