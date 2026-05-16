@@ -78,6 +78,28 @@ struct LsHandlerTests {
         #expect(results.map(\.title) == ["A", "B", "C"])
     }
 
+    @Test("Ls result surfaces seriesID for recurring tasks")
+    func lsSurfacesSeriesID() async throws {
+        let persistence = try await TestStore.make()
+        let tasks = TaskStore(persistence: persistence)
+        let series = SeriesStore(persistence: persistence)
+        let taskID = try await tasks.create(title: "recurring")
+        let seriesID = try await series.create(
+            fromSeedTask: taskID,
+            rule: .calendar(.init(freq: .daily, interval: 1))
+        )
+        let records = try await CLIBridge.LsHandler.run(
+            flags: CLIBridge.FilterFlags(),
+            savedFilterName: nil,
+            sort: .createdAt,
+            persistence: persistence,
+            now: Date(),
+            calendar: .current
+        )
+        let recurring = records.first { $0.id == taskID }
+        #expect(recurring?.seriesID == seriesID)
+    }
+
     @Test("Ls JSON round-trips byte-for-byte")
     func lsJSONRoundtrip() async throws {
         let p = try await TestStore.make()
