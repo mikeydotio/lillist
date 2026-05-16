@@ -58,7 +58,11 @@ targets:
       # helper is reachable from the standalone test bundle without a
       # signed app test host. Mirrors the SharePayload co-compile
       # pattern documented in docs/engineering-notes.md (Plan 8 entry).
+      # HotkeyKeyTable backs HotkeyRecorder.keyName(for:) — Plan 12
+      # Task 3 consolidated the keyCode↔keyName tables into one source
+      # of truth, so the test bundle must co-compile both files.
       - path: Lillist-macOS/Sources/Hotkey/HotkeyRecorder.swift
+      - path: Lillist-macOS/Sources/Hotkey/HotkeyKeyTable.swift
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: io.mikeydotio.Lillist.tests

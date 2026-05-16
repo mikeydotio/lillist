@@ -29,6 +29,7 @@
 		5D973F060EA0402FDC6F5088 /* TrashPane.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0914C02F19D5D32DBFCB3C8E /* TrashPane.swift */; };
 		5FA1ACA29EE1847B105C0AA6 /* LillistCommands.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D70826CFF84526D54963DB7 /* LillistCommands.swift */; };
 		65A0C314392C2CF1F96524BA /* AdvancedPane.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4785BD3BA4D67F4C69F79D09 /* AdvancedPane.swift */; };
+		66EE57111151096A6E2C968C /* HotkeyKeyTable.swift in Sources */ = {isa = PBXBuildFile; fileRef = 95FC2DAA17C7F98B4F907832 /* HotkeyKeyTable.swift */; };
 		6BC1C156D5890D402EA02A98 /* StatusBarController.swift in Sources */ = {isa = PBXBuildFile; fileRef = B726991AAC124C45C502A869 /* StatusBarController.swift */; };
 		70EB429F941CB59A033F2530 /* OnboardingSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4939196DF6130616743D37DC /* OnboardingSheet.swift */; };
 		719E3F9F89E009424C9CA367 /* NotesEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 21D24939B908AE453AB3E6C2 /* NotesEditorView.swift */; };
@@ -46,6 +47,7 @@
 		A8953EC19E865A2EDEF9B85D /* JournalStreamView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4E67786671223711890742F9 /* JournalStreamView.swift */; };
 		ADB800B781E7E9C7D30BEBA6 /* JournalComposerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 44D7A4355E919A190BED242F /* JournalComposerView.swift */; };
 		B02E809B71858F1620968554 /* UIStatePersistence.swift in Sources */ = {isa = PBXBuildFile; fileRef = 996D14F2AE9898FB76C7696C /* UIStatePersistence.swift */; };
+		B3682D3489423B4E04BB6948 /* HotkeyKeyTable.swift in Sources */ = {isa = PBXBuildFile; fileRef = 95FC2DAA17C7F98B4F907832 /* HotkeyKeyTable.swift */; };
 		B685FB1C17A64BBA91B50EA2 /* LillistCore in Frameworks */ = {isa = PBXBuildFile; productRef = 1CBD90EC484EB04CE92F5794 /* LillistCore */; };
 		BDA1E09753034DE2322D998A /* InlineCreateInteractionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6BF3D37E4FFA35138008C7ED /* InlineCreateInteractionTests.swift */; };
 		C439B581B7310C39C9F78C8B /* NotificationsPane.swift in Sources */ = {isa = PBXBuildFile; fileRef = F9E0C4B2D659722AE215A0B8 /* NotificationsPane.swift */; };
@@ -93,6 +95,7 @@
 		895660AD2C33EBCF965A577D /* SidebarSection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SidebarSection.swift; sourceTree = "<group>"; };
 		8B91031B39FF519BA7C7984B /* KeyboardShortcutTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyboardShortcutTests.swift; sourceTree = "<group>"; };
 		953BE94B80FD2AFB27B77F89 /* NotificationPermissionFlowTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationPermissionFlowTests.swift; sourceTree = "<group>"; };
+		95FC2DAA17C7F98B4F907832 /* HotkeyKeyTable.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HotkeyKeyTable.swift; sourceTree = "<group>"; };
 		996D14F2AE9898FB76C7696C /* UIStatePersistence.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UIStatePersistence.swift; sourceTree = "<group>"; };
 		9F8B217F0E070121B95D2E56 /* LillistUI */ = {isa = PBXFileReference; lastKnownFileType = folder; name = LillistUI; path = ../Packages/LillistUI; sourceTree = SOURCE_ROOT; };
 		A11533C6477F2D2A981B7E22 /* TaskOutlineNode.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TaskOutlineNode.swift; sourceTree = "<group>"; };
@@ -141,6 +144,7 @@
 			isa = PBXGroup;
 			children = (
 				447BBBCF160E4CA4AF71A686 /* GlobalHotkeyMonitor.swift */,
+				95FC2DAA17C7F98B4F907832 /* HotkeyKeyTable.swift */,
 				D2F709C6BFFCBE01EB7EB243 /* HotkeyRecorder.swift */,
 				288A06800EA1CB39081E0910 /* QuickCapturePanelController.swift */,
 			);
@@ -446,6 +450,7 @@
 				3B20971664653ADF6B7B8A39 /* FollowUpFormView.swift in Sources */,
 				018B5E501EEC7DD0110B515A /* GeneralPane.swift in Sources */,
 				7F57439EAB3BC0D4FBB91F2C /* GlobalHotkeyMonitor.swift in Sources */,
+				66EE57111151096A6E2C968C /* HotkeyKeyTable.swift in Sources */,
 				CA6F82635F86657E263F03BF /* HotkeyRecorder.swift in Sources */,
 				9F391934C274739419CEE25E /* ICloudRequiredView.swift in Sources */,
 				F46A68730B52D3C00F76D896 /* InlineCreateField.swift in Sources */,
@@ -484,6 +489,7 @@
 			files = (
 				D18582EAD9CC9DEF45E3D046 /* BlockedFollowUpTests.swift in Sources */,
 				04DB0667DD4F3B9B95FB9581 /* DragDropInteractionTests.swift in Sources */,
+				B3682D3489423B4E04BB6948 /* HotkeyKeyTable.swift in Sources */,
 				297F386CC41DF81630DAABC2 /* HotkeyRecorder.swift in Sources */,
 				285DC7E46B1AA401F748B09E /* HotkeyRecorderTests.swift in Sources */,
 				BDA1E09753034DE2322D998A /* InlineCreateInteractionTests.swift in Sources */,

@@ -117,25 +117,9 @@ final class GlobalHotkeyMonitor {
     }
 
     /// Maps a canonical key-name token to its macOS virtual key code.
-    /// This is the inverse of ``HotkeyRecorder.keyName(for:)`` and must
-    /// stay in sync with it.
+    /// Delegates to ``HotkeyKeyTable`` — the single source of truth shared
+    /// with ``HotkeyRecorder.encode``.
     private static func keyCode(for name: String) -> Int? {
-        switch name {
-        case "a": return 0;  case "s": return 1;  case "d": return 2;  case "f": return 3
-        case "h": return 4;  case "g": return 5;  case "z": return 6;  case "x": return 7
-        case "c": return 8;  case "v": return 9;  case "b": return 11; case "q": return 12
-        case "w": return 13; case "e": return 14; case "r": return 15; case "y": return 16
-        case "t": return 17; case "o": return 31; case "u": return 32; case "i": return 34
-        case "p": return 35; case "l": return 37; case "j": return 38; case "k": return 40
-        case "n": return 45; case "m": return 46; case "space": return 49
-        case "return": return 36; case "delete": return 51; case "escape": return 53
-        case "1": return 18; case "2": return 19; case "3": return 20; case "4": return 21
-        case "5": return 23; case "6": return 22; case "7": return 26; case "8": return 28
-        case "9": return 25; case "0": return 29
-        case "f1": return 122; case "f2": return 120; case "f3": return 99;  case "f4": return 118
-        case "f5": return 96;  case "f6": return 97;  case "f7": return 98;  case "f8": return 100
-        case "f9": return 101; case "f10": return 109; case "f11": return 103; case "f12": return 111
-        default: return nil
-        }
+        HotkeyKeyTable.keyCode(forName: name)
     }
 }
