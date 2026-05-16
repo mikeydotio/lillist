@@ -1,19 +1,16 @@
 import SwiftUI
 import LillistCore
 
-/// macOS Preferences Trash pane (Plan 10 Task 9).
+/// macOS Preferences Trash pane.
 ///
 /// Slider controls the auto-purge retention window (7-365 days).
-/// "Empty Trash now" — Plan 10 leaves this as a stub button: the
-/// canonical purge job lives in LillistCore.AutoPurgeJob (Plan 1
-/// follow-up), which doesn't have an "empty now" public method on
-/// `main`. The button surfaces the affordance but logs a TODO until a
-/// `forceAll`-style API lands.
+/// "Empty Trash now" calls `TaskStore.purgeAll()` after confirmation.
 struct TrashPane: View {
     @Environment(AppEnvironment.self) private var environment
     @State private var prefs: PreferencesStore.Prefs?
     @State private var isEmptying = false
     @State private var emptyResult: String?
+    @State private var confirmingEmpty = false
 
     var body: some View {
         Form {
@@ -35,7 +32,7 @@ struct TrashPane: View {
                 }
                 Section {
                     Button(role: .destructive) {
-                        Task { await emptyTrash() }
+                        confirmingEmpty = true
                     } label: {
                         if isEmptying {
                             ProgressView().controlSize(.small)
@@ -44,6 +41,18 @@ struct TrashPane: View {
                         }
                     }
                     .disabled(isEmptying)
+                    .confirmationDialog(
+                        "Empty Trash?",
+                        isPresented: $confirmingEmpty,
+                        titleVisibility: .visible
+                    ) {
+                        Button("Empty Trash", role: .destructive) {
+                            Task { await emptyTrash() }
+                        }
+                        Button("Cancel", role: .cancel) {}
+                    } message: {
+                        Text("Tasks in Trash will be permanently deleted and cannot be recovered.")
+                    }
                     if let emptyResult {
                         Text(emptyResult)
                             .font(.footnote)
@@ -70,10 +79,13 @@ struct TrashPane: View {
     private func emptyTrash() async {
         isEmptying = true
         defer { isEmptying = false }
-        // TODO(Plan 1 follow-up): wire a public `purgeAll()` method on
-        // AutoPurgeJob (or TaskStore.permanentlyDeleteAll(filter:.trashed)).
-        // For now this is a no-op affordance — surface a friendly
-        // explanation so the button isn't silently broken.
-        emptyResult = "Empty-now isn't wired up yet. Trashed tasks will purge automatically after \(prefs?.trashRetentionDays ?? 30) days."
+        do {
+            let purged = try await environment.taskStore.purgeAll()
+            emptyResult = purged == 0
+                ? "Trash was already empty."
+                : "Emptied \(purged) task\(purged == 1 ? "" : "s") from Trash."
+        } catch {
+            emptyResult = "Couldn't empty Trash: \(error.localizedDescription)"
+        }
     }
 }
