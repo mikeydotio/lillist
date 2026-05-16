@@ -59,6 +59,16 @@ final class iOSSnapshotTests: XCTestCase {
     }
 
     @MainActor
+    func test_syncStatusBadge_inProgress() {
+        let view = SyncStatusBadge(indicator: .inProgress)
+            .padding()
+            .background(Color(.systemBackground))
+        let host = UIHostingController(rootView: view)
+        host.view.frame = CGRect(x: 0, y: 0, width: 60, height: 40)
+        assertSnapshot(of: host, as: .image(size: CGSize(width: 60, height: 40)))
+    }
+
+    @MainActor
     func test_quickCaptureField_with_suggestions() {
         @State var text: String = "Buy milk"
         let view = QuickCaptureField(
