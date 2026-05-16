@@ -3,12 +3,11 @@ import LillistCore
 
 /// macOS Preferences Quick Capture pane (Plan 10 Task 9).
 ///
-/// Two toggles + hotkey text field. The hotkey field is intentionally
-/// simple — the canonical hotkey-recording UI lives in Plan 7's hotkey
-/// stack (`GlobalHotkeyMonitor`, `QuickCapturePanelController`); this
-/// pane writes the textual representation into the `quickCaptureHotkey`
-/// preference, and a future iteration can replace the field with a
-/// proper key-capture recorder.
+/// Two toggles + the Plan 11 NSEvent-based ``HotkeyRecorder``. The
+/// recorder writes its canonical string representation
+/// (`"ctrl+opt+space"`, `"cmd+shift+l"`, …) into the
+/// `quickCaptureHotkey` preference; `GlobalHotkeyMonitor` reads the
+/// same key on next launch.
 struct QuickCapturePane: View {
     @Environment(AppEnvironment.self) private var environment
     @State private var prefs: PreferencesStore.Prefs?
@@ -49,17 +48,5 @@ struct QuickCapturePane: View {
     private var binding: Binding<PreferencesStore.Prefs>? {
         guard prefs != nil else { return nil }
         return Binding(get: { prefs! }, set: { prefs = $0 })
-    }
-}
-
-/// Tiny placeholder hotkey recorder. The real key-capture UI is left
-/// for a Plan 7 follow-up; this binds to a string for now so the
-/// preference can at least be edited textually.
-private struct HotkeyRecorder: View {
-    @Binding var value: String
-    var body: some View {
-        TextField("hotkey", text: $value)
-            .textFieldStyle(.roundedBorder)
-            .font(.system(.body, design: .monospaced))
     }
 }

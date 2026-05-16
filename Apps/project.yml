@@ -54,6 +54,11 @@ targets:
     deploymentTarget: "15.0"
     sources:
       - Lillist-macOS/Tests
+      # Co-compile the HotkeyRecorder source so its pure `encode(...)`
+      # helper is reachable from the standalone test bundle without a
+      # signed app test host. Mirrors the SharePayload co-compile
+      # pattern documented in docs/engineering-notes.md (Plan 8 entry).
+      - path: Lillist-macOS/Sources/Hotkey/HotkeyRecorder.swift
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: io.mikeydotio.Lillist.tests
