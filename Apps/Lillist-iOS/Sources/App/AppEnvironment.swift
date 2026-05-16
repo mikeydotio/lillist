@@ -23,6 +23,7 @@ final class AppEnvironment {
     let journalStore: JournalStore
     let attachmentStore: AttachmentStore
     let preferencesStore: PreferencesStore
+    let seriesStore: SeriesStore
     let smartFilterStore: SmartFilterStore
     let notificationSpecStore: NotificationSpecStore
     let snoozeRegistry: SnoozeRegistry
@@ -52,6 +53,7 @@ final class AppEnvironment {
         self.attachmentStore = AttachmentStore(persistence: persistence)
         let preferencesStore = PreferencesStore(persistence: persistence)
         self.preferencesStore = preferencesStore
+        self.seriesStore = SeriesStore(persistence: persistence)
         let smartFilterStore = SmartFilterStore(persistence: persistence)
         self.smartFilterStore = smartFilterStore
         self.onboardingState = OnboardingState(preferences: preferencesStore)

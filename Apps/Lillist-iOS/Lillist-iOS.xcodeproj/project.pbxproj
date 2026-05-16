@@ -49,6 +49,7 @@
 		970FBA04A6DFC89AFF90B93B /* Color+Hex.swift in Sources */ = {isa = PBXBuildFile; fileRef = 01AACE45A624EA0EF9FE21E6 /* Color+Hex.swift */; };
 		9978784936A13783F1BF8E35 /* SharePayload.swift in Sources */ = {isa = PBXBuildFile; fileRef = D2F899010F7F794421F9DB2A /* SharePayload.swift */; };
 		9A614EB7763D94FE9D1D032D /* TabShell.swift in Sources */ = {isa = PBXBuildFile; fileRef = CDF66890A34B8871D4E2278B /* TabShell.swift */; };
+		9FCE62513DB659CE02151EB4 /* RecurrenceSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 21542BC245EEBE9709AB17DD /* RecurrenceSheet.swift */; };
 		A3140D5C493ECC74519DBB39 /* CrashReportingSection.swift in Sources */ = {isa = PBXBuildFile; fileRef = 400AB5E7E52D7AC0BFF18DAE /* CrashReportingSection.swift */; };
 		A6EE4318B3317216DF56160D /* SharePayloadTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6816606162835A06ED8B8FEF /* SharePayloadTests.swift */; };
 		AB0DAB0FFB124C1178A0FAB6 /* OnboardingScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 824FA7B5DC23A67CD85D65A0 /* OnboardingScreen.swift */; };
@@ -118,6 +119,7 @@
 		0D8F8030267286E55CE51EA8 /* TodayView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TodayView.swift; sourceTree = "<group>"; };
 		127316B4280751452F412407 /* SearchTasksIntent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SearchTasksIntent.swift; sourceTree = "<group>"; };
 		165A87417D8DB0F2E8100ABB /* ShareExtensionPayloadTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShareExtensionPayloadTests.swift; sourceTree = "<group>"; };
+		21542BC245EEBE9709AB17DD /* RecurrenceSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecurrenceSheet.swift; sourceTree = "<group>"; };
 		2451C017B338C99A72811F7E /* FloatingPlusOverlay.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FloatingPlusOverlay.swift; sourceTree = "<group>"; };
 		262D045DF7FC19BD936381F6 /* SplitShell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SplitShell.swift; sourceTree = "<group>"; };
 		297211E1BF6A9D0C7890E078 /* AppEnvironment.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppEnvironment.swift; sourceTree = "<group>"; };
@@ -306,6 +308,7 @@
 		4962004905DD25063A067A83 /* Detail */ = {
 			isa = PBXGroup;
 			children = (
+				21542BC245EEBE9709AB17DD /* RecurrenceSheet.swift */,
 				737996A9942CE2D095EAA6AB /* TaskAttachmentsTab.swift */,
 				8E53A86D921898A0FB836C9A /* TaskDetailView.swift */,
 				F6C4BEE444B84DDF5F88ABF3 /* TaskJournalTab.swift */,
@@ -678,6 +681,7 @@
 				AB0DAB0FFB124C1178A0FAB6 /* OnboardingScreen.swift in Sources */,
 				E40372B99D819D778F4F2ED7 /* QuickCaptureSection.swift in Sources */,
 				652545A8D47A8D082D04EE75 /* QuickCaptureSheet.swift in Sources */,
+				9FCE62513DB659CE02151EB4 /* RecurrenceSheet.swift in Sources */,
 				CA4034D690255FE0554C7DE2 /* RootShell.swift in Sources */,
 				1B361E001278EAD358271191 /* SearchResultRow.swift in Sources */,
 				6D038BF4B04B076DD80D649B /* SearchView.swift in Sources */,

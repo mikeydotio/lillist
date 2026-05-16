@@ -19,6 +19,8 @@ struct TaskDetailView: View {
     @State private var record: TaskStore.TaskRecord?
     @State private var loadError: String?
     @State private var selection: Tab = .notes
+    @State private var seriesRule: RecurrenceRule?
+    @State private var showingRecurrenceSheet = false
 
     enum Tab: Hashable { case notes, subtasks, journal, attachments }
 
@@ -52,12 +54,38 @@ struct TaskDetailView: View {
         }
         .navigationBarTitleDisplayMode(.inline)
         .navigationTitle(record?.title ?? "")
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button {
+                    showingRecurrenceSheet = true
+                } label: {
+                    Image(systemName: seriesRule == nil ? "repeat" : "repeat.circle.fill")
+                }
+                .accessibilityLabel(seriesRule == nil ? "Add recurrence" : "Edit recurrence")
+            }
+        }
+        .sheet(isPresented: $showingRecurrenceSheet) {
+            RecurrenceSheet(
+                taskID: taskID,
+                initialRule: seriesRule,
+                initialSeriesID: record?.seriesID,
+                onClose: {
+                    showingRecurrenceSheet = false
+                    Task { await reload() }
+                }
+            )
+        }
         .task { await reload() }
     }
 
     private func reload() async {
         do {
             record = try await env.taskStore.fetch(id: taskID)
+            if let sid = record?.seriesID {
+                seriesRule = (try? await env.seriesStore.fetch(id: sid))?.rule
+            } else {
+                seriesRule = nil
+            }
             loadError = nil
         } catch {
             loadError = "\(error)"
