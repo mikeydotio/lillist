@@ -72,10 +72,11 @@ struct NSPredicateCompilerTests {
         let group = PredicateGroup(combinator: .all, predicates: [
             .leaf(.init(field: .title, op: .contains, value: .string("design")))
         ])
-        let p = NSPredicateCompiler.compile(group)
-        let req = NSFetchRequest<LillistTask>(entityName: "LillistTask")
-        req.predicate = p
-        let results = try await ctx.perform { try ctx.fetch(req) }
+        let results = try await ctx.perform {
+            let req = NSFetchRequest<LillistTask>(entityName: "LillistTask")
+            req.predicate = NSPredicateCompiler.compile(group)
+            return try ctx.fetch(req)
+        }
         #expect(results.count == 1)
     }
 }
@@ -225,9 +226,11 @@ struct NSPredicateCompilerSubqueryTests {
         let group = PredicateGroup(combinator: .all, predicates: [
             .leaf(.init(field: .journalText, op: .contains, value: .string("dependency")))
         ])
-        let req = NSFetchRequest<LillistTask>(entityName: "LillistTask")
-        req.predicate = NSPredicateCompiler.compile(group)
-        let results = try await ctx.perform { try ctx.fetch(req) }
+        let results = try await ctx.perform {
+            let req = NSFetchRequest<LillistTask>(entityName: "LillistTask")
+            req.predicate = NSPredicateCompiler.compile(group)
+            return try ctx.fetch(req)
+        }
         #expect(results.count == 1)
         #expect(results.first?.id == id)
     }
