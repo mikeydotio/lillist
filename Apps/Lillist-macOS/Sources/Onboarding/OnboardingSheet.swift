@@ -1,6 +1,7 @@
 import SwiftUI
 import AppKit
 import LillistCore
+import LillistUI
 
 /// First-launch onboarding sheet for macOS.
 ///
@@ -51,10 +52,10 @@ struct OnboardingSheet: View {
     private var header: some View {
         VStack(spacing: 8) {
             Image(systemName: "checklist")
-                .font(.system(size: 56, weight: .light))
+                .font(LillistTypography.largeTitle.weight(.light))
                 .foregroundStyle(.tint)
             Text("Welcome to Lillist")
-                .font(.system(size: 28, weight: .semibold))
+                .font(LillistTypography.title2.weight(.semibold))
             Text("A pure-nesting task manager. Everything is a task.")
                 .font(.title3)
                 .foregroundStyle(.secondary)

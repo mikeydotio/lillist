@@ -1,5 +1,6 @@
 import SwiftUI
 import LillistCore
+import LillistUI
 
 /// First-launch onboarding screen for iOS (full-screen cover).
 ///
@@ -40,7 +41,7 @@ struct OnboardingScreen: View {
     private var header: some View {
         VStack(spacing: 8) {
             Image(systemName: "checklist")
-                .font(.system(size: 64, weight: .light))
+                .font(LillistTypography.largeTitle.weight(.light))
                 .foregroundStyle(.tint)
             Text("Welcome to Lillist")
                 .font(.largeTitle.bold())
