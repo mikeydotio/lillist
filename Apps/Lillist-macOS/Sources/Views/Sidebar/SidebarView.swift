@@ -60,13 +60,7 @@ struct SidebarView: View {
 
     private func refresh() async {
         do {
-            // TODO(Plan 7 follow-up): LillistCore lacks a `TaskStore.pinned()`
-            // query that walks the whole tree. As a stopgap, we filter the
-            // root-level tasks. Pinned tasks deeper in the hierarchy won't
-            // appear here until LillistCore exposes a true pinned-anywhere
-            // query (or until the smart-filter `isPinned == true` rendering
-            // path is wired through this section).
-            pinnedTasks = (try await env.taskStore.children(of: nil)).filter { $0.isPinned }
+            pinnedTasks = try await env.taskStore.pinned()
             let allFilters = try await env.smartFilterStore.list()
             pinnedFilters = allFilters.filter(\.isPinned)
             nonPinnedFilters = allFilters.filter { !$0.isPinned }
