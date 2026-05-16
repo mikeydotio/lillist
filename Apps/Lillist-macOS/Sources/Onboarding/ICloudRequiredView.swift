@@ -1,6 +1,7 @@
 import SwiftUI
 import AppKit
 import LillistCore
+import LillistUI
 
 /// Full-window blocker shown when iCloud is unavailable during
 /// onboarding (design Section 8, "iCloud account states"). The user
@@ -17,11 +18,10 @@ struct ICloudRequiredView: View {
     var body: some View {
         VStack(spacing: 20) {
             Image(systemName: "icloud.slash")
-                .font(.system(size: 56, weight: .light))
+                .font(LillistTypography.largeTitle.weight(.light))
                 .foregroundStyle(.red)
             Text("iCloud is required")
-                .font(.title)
-                .bold()
+                .font(LillistTypography.title.weight(.bold))
             Text("Lillist syncs your tasks via your private iCloud database. Please sign into iCloud in System Settings and try again.")
                 .multilineTextAlignment(.center)
                 .foregroundStyle(.secondary)

@@ -1,5 +1,6 @@
 import SwiftUI
 import LillistCore
+import LillistUI
 
 /// Attachments tab: grid of attachments associated with the task. Tap to
 /// download via `AttachmentStore.downloadData(id:)` (lands the bytes from
@@ -43,11 +44,11 @@ private struct AttachmentTile: View {
     var body: some View {
         VStack(spacing: 6) {
             Image(systemName: glyph)
-                .font(.system(size: 32))
+                .font(LillistTypography.title)
                 .frame(width: 96, height: 96)
-                .background(RoundedRectangle(cornerRadius: 12).fill(Color.secondary.opacity(0.15)))
+                .background(RoundedRectangle(cornerRadius: LillistRadius.m).fill(Color.secondary.opacity(0.15)))
             Text(attachment.filename)
-                .font(.caption)
+                .font(LillistTypography.caption)
                 .lineLimit(1)
                 .truncationMode(.middle)
         }
