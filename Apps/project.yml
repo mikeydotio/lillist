@@ -47,6 +47,11 @@ targets:
         product: LillistCore
       - package: LillistUI
         product: LillistUI
+      # `appintentsmetadataprocessor` runs on every app/test target and
+      # warns when AppIntents.framework isn't linked. The macOS app does
+      # not currently define App Intents, but linking the SDK keeps the
+      # processor silent and future-proofs adding an AppShortcutsProvider.
+      - sdk: AppIntents.framework
 
   Lillist-macOSTests:
     type: bundle.unit-test
@@ -82,6 +87,8 @@ targets:
         product: LillistCore
       - package: LillistUI
         product: LillistUI
+      # See note on Lillist-macOS target re: appintentsmetadataprocessor.
+      - sdk: AppIntents.framework
 
 schemes:
   Lillist-macOS:

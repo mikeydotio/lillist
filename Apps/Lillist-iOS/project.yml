@@ -43,6 +43,12 @@ targets:
         embed: true
       - target: ShortcutsActions
         embed: true
+      # `appintentsmetadataprocessor` runs on every app/extension target by
+      # default and warns when it can't find AppIntents.framework linked.
+      # Linking the SDK explicitly silences the warning even when the
+      # target has no `import AppIntents`; the processor then runs and
+      # cleanly produces an empty `.appintents` bundle.
+      - sdk: AppIntents.framework
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: io.mikeydotio.Lillist
@@ -67,6 +73,8 @@ targets:
     dependencies:
       - package: LillistCore
         product: LillistCore
+      # See note on Lillist-iOS target re: appintentsmetadataprocessor.
+      - sdk: AppIntents.framework
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: io.mikeydotio.Lillist.Share
@@ -89,6 +97,10 @@ targets:
     dependencies:
       - package: LillistCore
         product: LillistCore
+      # ShortcutsActions is the target that actually defines App Intents;
+      # explicit linkage is more robust than relying on auto-link from
+      # `import AppIntents`.
+      - sdk: AppIntents.framework
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: io.mikeydotio.Lillist.Shortcuts
