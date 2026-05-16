@@ -22,17 +22,3 @@ struct GeneralSection: View {
     }
 }
 
-private extension SortField {
-    var displayName: String {
-        switch self {
-        case .manualPosition: return "Manual"
-        case .start: return "Start date"
-        case .deadline: return "Deadline"
-        case .title: return "Title"
-        case .createdAt: return "Created"
-        case .modifiedAt: return "Modified"
-        case .closedAt: return "Closed"
-        case .status: return "Status"
-        }
-    }
-}

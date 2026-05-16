@@ -1,5 +1,6 @@
 import SwiftUI
 import LillistCore
+import LillistUI
 
 struct CrashReportingSection: View {
     @Binding var prefs: PreferencesStore.Prefs
@@ -28,15 +29,12 @@ struct CrashReportingSection: View {
     }
 
     private var samplePreview: String {
-        """
-        Build: \(environment.buildVersion)
-        OS: \(environment.osVersion)
-        Device: \(environment.deviceModel)
-        Breadcrumbs:
-          (Anonymized verbs from your last ~50 mutations.)
-        Logs:
-          (System logs from the last ~30 seconds of the crashed run.)
-        Sent via: Mail (you choose whether to send).
-        """
+        CrashReportSample.preview(.init(
+            buildVersion: environment.buildVersion,
+            osVersion: environment.osVersion,
+            deviceModel: environment.deviceModel,
+            recipient: "mikeyward@gmail.com",
+            methodSuffix: "Mail (you choose whether to send)."
+        ))
     }
 }

@@ -1,5 +1,6 @@
 import SwiftUI
 import LillistCore
+import LillistUI
 
 /// macOS Preferences Crash Reporting pane (Plan 10 Task 9).
 ///
@@ -52,16 +53,12 @@ struct CrashReportingPane: View {
     }
 
     private var samplePreview: String {
-        """
-        Build: \(environment.buildVersion)
-        OS: \(environment.osVersion)
-        Device: \(environment.deviceModel)
-        Breadcrumbs:
-          (Anonymized verbs from your last ~50 mutations.)
-        Logs:
-          (System logs from the last ~30 seconds of the crashed run.)
-        Sent to: mikeyward@gmail.com
-        Method: macOS Mail.app draft via mailto: — you choose whether to send.
-        """
+        CrashReportSample.preview(.init(
+            buildVersion: environment.buildVersion,
+            osVersion: environment.osVersion,
+            deviceModel: environment.deviceModel,
+            recipient: "mikeyward@gmail.com",
+            methodSuffix: "macOS Mail.app draft via mailto: — you choose whether to send."
+        ))
     }
 }

@@ -1,5 +1,6 @@
 import SwiftUI
 import LillistCore
+import LillistUI
 
 /// macOS Preferences Notifications pane (Plan 10 Task 9).
 ///
@@ -86,7 +87,7 @@ struct NotificationsPane: View {
 
     private func hmBinding(_ b: Binding<PreferencesStore.Prefs>) -> Binding<Date> {
         Binding(
-            get: { date(hour: Int(b.wrappedValue.defaultAllDayHour), minute: Int(b.wrappedValue.defaultAllDayMinute)) },
+            get: { HourMinuteDate.date(hour: Int(b.wrappedValue.defaultAllDayHour), minute: Int(b.wrappedValue.defaultAllDayMinute)) },
             set: {
                 let comps = Calendar.current.dateComponents([.hour, .minute], from: $0)
                 b.wrappedValue.defaultAllDayHour = Int16(comps.hour ?? 9)
@@ -97,20 +98,13 @@ struct NotificationsPane: View {
 
     private func morningBinding(_ b: Binding<PreferencesStore.Prefs>) -> Binding<Date> {
         Binding(
-            get: { date(hour: Int(b.wrappedValue.morningSummaryHour), minute: Int(b.wrappedValue.morningSummaryMinute)) },
+            get: { HourMinuteDate.date(hour: Int(b.wrappedValue.morningSummaryHour), minute: Int(b.wrappedValue.morningSummaryMinute)) },
             set: {
                 let comps = Calendar.current.dateComponents([.hour, .minute], from: $0)
                 b.wrappedValue.morningSummaryHour = Int16(comps.hour ?? 9)
                 b.wrappedValue.morningSummaryMinute = Int16(comps.minute ?? 0)
             }
         )
-    }
-
-    private func date(hour: Int, minute: Int) -> Date {
-        var c = Calendar.current.dateComponents([.year, .month, .day], from: Date())
-        c.hour = hour
-        c.minute = minute
-        return Calendar.current.date(from: c) ?? Date()
     }
 
     /// Plan 10: the prefs UI is the source of truth, but the
