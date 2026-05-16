@@ -1,12 +1,15 @@
 import AppKit
 import SwiftUI
 
-/// Owns AppKit-bridge objects (status bar item, global hotkey monitor, quick-capture panel).
+/// Owns AppKit-bridge objects (status bar item, quick-capture panel).
+/// The global hotkey monitor itself lives on ``AppEnvironment`` (Plan 11
+/// Task 18) so the Quick Capture preferences pane can re-register the
+/// combo at runtime; `AppDelegate.bootstrap()` still wires up its
+/// `onHotkey` callback and calls `install()`.
 /// Installed by `LillistApp` via `@NSApplicationDelegateAdaptor`.
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
     var statusBarController: StatusBarController?
-    var hotkeyMonitor: GlobalHotkeyMonitor?
     var quickCapturePanel: QuickCapturePanelController?
     weak var environment: AppEnvironment?
 
@@ -19,11 +22,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func bootstrap() {
         guard let env = environment, statusBarController == nil else { return }
         let panel = QuickCapturePanelController(environment: env)
-        let hk = GlobalHotkeyMonitor()
-        hk.onHotkey = { panel.toggle() }
-        hk.install()
+        env.hotkeyMonitor.onHotkey = { panel.toggle() }
+        env.hotkeyMonitor.install()
         self.quickCapturePanel = panel
-        self.hotkeyMonitor = hk
         self.statusBarController = StatusBarController(
             environment: env,
             onQuickCapture: { panel.toggle() }
@@ -31,7 +32,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationWillTerminate(_ notification: Notification) {
-        hotkeyMonitor?.uninstall()
+        environment?.hotkeyMonitor.uninstall()
         statusBarController?.uninstall()
         // Plan 9: delete the launch canary so the next launch knows
         // this exit was clean. Block briefly so we don't race the

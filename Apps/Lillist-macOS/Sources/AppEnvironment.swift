@@ -26,6 +26,12 @@ final class AppEnvironment {
     let accountStateMonitor: AccountStateMonitor
     let onboardingState: OnboardingState
     let defaultsInstaller: DefaultsInstaller
+    /// Plan 11 Task 18: the global hotkey monitor lives on the
+    /// environment (alongside the other singletons) so the Quick
+    /// Capture preferences pane can call `reregister(combo:)` directly
+    /// when the user saves a new combo. `AppDelegate.bootstrap()`
+    /// configures `onHotkey` and calls `install()`.
+    let hotkeyMonitor: GlobalHotkeyMonitor
     let syncMonitor: any SyncIndicatorMonitor
     let breadcrumbs: BreadcrumbBuffer
     let crashReporter: CrashReporter
@@ -38,7 +44,10 @@ final class AppEnvironment {
     let osVersion: String
     let deviceModel: String
 
-    private init(persistence: PersistenceController) {
+    private init(
+        persistence: PersistenceController,
+        initialHotkeyCombo: String = GlobalHotkeyMonitor.defaultCombo
+    ) {
         self.persistence = persistence
         self.taskStore = TaskStore(persistence: persistence)
         self.tagStore = TagStore(persistence: persistence)
@@ -50,6 +59,11 @@ final class AppEnvironment {
         self.smartFilterStore = smartFilterStore
         self.onboardingState = OnboardingState(preferences: preferencesStore)
         self.defaultsInstaller = DefaultsInstaller(filters: smartFilterStore)
+        // Plan 11 Task 18: arm the hotkey monitor with the user's stored
+        // combo before `AppDelegate.bootstrap()` calls `install()`. If
+        // prefs lookup fails (or this is a brand-new install), we fall
+        // back to `GlobalHotkeyMonitor.defaultCombo`.
+        self.hotkeyMonitor = GlobalHotkeyMonitor(initialCombo: initialHotkeyCombo)
         self.accountStateMonitor = AccountStateMonitor(
             provider: CloudKitAccountStatusProvider(container: CKContainer.default())
         )
@@ -124,7 +138,13 @@ final class AppEnvironment {
     /// every store / scheduler used by the SwiftUI hierarchy.
     static func make() async throws -> AppEnvironment {
         let persistence = try await PersistenceController(configuration: .defaultOnDisk)
-        let env = AppEnvironment(persistence: persistence)
+        // Plan 11 Task 18: read the user's saved hotkey combo before
+        // instantiating so the monitor is armed with the right combo
+        // when `AppDelegate.bootstrap()` calls `install()`. A failed
+        // read (e.g. fresh install) falls back to the default.
+        let prefsStore = PreferencesStore(persistence: persistence)
+        let combo = (try? await prefsStore.read().quickCaptureHotkey) ?? GlobalHotkeyMonitor.defaultCombo
+        let env = AppEnvironment(persistence: persistence, initialHotkeyCombo: combo)
         return env
     }
 

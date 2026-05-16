@@ -6,8 +6,10 @@ import LillistCore
 /// Two toggles + the Plan 11 NSEvent-based ``HotkeyRecorder``. The
 /// recorder writes its canonical string representation
 /// (`"ctrl+opt+space"`, `"cmd+shift+l"`, …) into the
-/// `quickCaptureHotkey` preference; `GlobalHotkeyMonitor` reads the
-/// same key on next launch.
+/// `quickCaptureHotkey` preference. Plan 11 Task 18 makes the change
+/// take effect immediately by calling
+/// ``GlobalHotkeyMonitor/reregister(combo:)`` after the store update
+/// lands.
 struct QuickCapturePane: View {
     @Environment(AppEnvironment.self) private var environment
     @State private var prefs: PreferencesStore.Prefs?
@@ -24,7 +26,7 @@ struct QuickCapturePane: View {
                     }
                 }
                 Section {
-                    Text("Hotkey changes apply on next launch. The recorder accepts strings like `ctrl+opt+space` or `cmd+shift+l`.")
+                    Text("Press Record, then your key combination. Changes apply immediately.")
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                 }
@@ -36,12 +38,15 @@ struct QuickCapturePane: View {
         .task { prefs = try? await environment.preferencesStore.read() }
         .onChange(of: prefs) { _, new in
             guard let new else { return }
-            Task { try? await environment.preferencesStore.update { $0 = new } }
-            // TODO(Plan 7): re-register the hotkey via
-            // GlobalHotkeyMonitor.register(...) so the new combo takes
-            // effect without a relaunch. Until then, hotkey edits land
-            // in the store but the hotkey monitor still serves the
-            // previously-installed combo for the current session.
+            let monitor = environment.hotkeyMonitor
+            Task {
+                try? await environment.preferencesStore.update { $0 = new }
+                // Plan 11 Task 18: re-arm the global hotkey with the
+                // newly-saved combo so the change takes effect without
+                // a relaunch. `reregister` is idempotent and tolerates
+                // unparseable strings (it ignores them).
+                monitor.reregister(combo: new.quickCaptureHotkey)
+            }
         }
     }
 
