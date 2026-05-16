@@ -323,7 +323,8 @@ extension SmartFilterStore {
             createdAt: m.createdAt,
             modifiedAt: m.modifiedAt,
             closedAt: m.closedAt,
-            deletedAt: m.deletedAt
+            deletedAt: m.deletedAt,
+            seriesID: m.series?.id
         )
     }
 }

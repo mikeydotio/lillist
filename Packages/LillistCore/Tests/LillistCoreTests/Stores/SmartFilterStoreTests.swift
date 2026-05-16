@@ -195,4 +195,26 @@ struct SmartFilterStoreEvaluateTests {
         let results = try await smartStore.evaluate(id: fid)
         #expect(results.map(\.id) == [t1, t2])
     }
+
+    @Test("SmartFilter evaluate result surfaces seriesID for recurring tasks")
+    func evaluateSurfacesSeriesID() async throws {
+        let persistence = try await TestStore.make()
+        let tasks = TaskStore(persistence: persistence)
+        let series = SeriesStore(persistence: persistence)
+        let smart = SmartFilterStore(persistence: persistence)
+
+        let taskID = try await tasks.create(title: "recurring")
+        let seriesID = try await series.create(
+            fromSeedTask: taskID,
+            rule: .calendar(.init(freq: .daily, interval: 1))
+        )
+
+        // Match-everything filter.
+        let group = PredicateGroup(combinator: .all, predicates: [])
+        let filterID = try await smart.create(name: "All", group: group)
+        let results = try await smart.evaluate(id: filterID)
+
+        let recurring = results.first { $0.id == taskID }
+        #expect(recurring?.seriesID == seriesID)
+    }
 }
