@@ -114,10 +114,25 @@ public final class PersistenceController: @unchecked Sendable {
     /// workspace builds; see `CompileCoreDataModel.swift` and the Plan 9
     /// engineering note.
     ///
+    /// The result is cached on first call so successive
+    /// `PersistenceController` constructions reuse a single
+    /// `NSManagedObjectModel`. Loading the model afresh every time
+    /// makes Core Data emit a runtime warning of the form
+    /// `<Entity> from NSManagedObjectModel <addr> claims <Entity>` for
+    /// every entity in every parallel test worker — the framework
+    /// detects that the same Swift class is registered to multiple
+    /// model instances. `NSManagedObjectModel` is effectively immutable
+    /// once compiled, so the shared instance is safe to read from any
+    /// thread.
+    ///
     /// - Throws: `LillistError.modelUnavailable` listing the filenames
     ///   that were searched if no model bundle is found, or the single
     ///   resolved filename if the bundle exists but fails to parse.
     public static func sharedModel() throws -> NSManagedObjectModel {
+        try cachedModelResult.get()
+    }
+
+    nonisolated(unsafe) private static let cachedModelResult: Result<NSManagedObjectModel, LillistError> = {
         let searched = ["LillistModel.momd", "LillistModel.spm.momd"]
         var foundURL: URL?
         for name in searched {
@@ -128,11 +143,11 @@ public final class PersistenceController: @unchecked Sendable {
             }
         }
         guard let url = foundURL else {
-            throw LillistError.modelUnavailable(searchedFilenames: searched)
+            return .failure(.modelUnavailable(searchedFilenames: searched))
         }
         guard let model = NSManagedObjectModel(contentsOf: url) else {
-            throw LillistError.modelUnavailable(searchedFilenames: [url.lastPathComponent])
+            return .failure(.modelUnavailable(searchedFilenames: [url.lastPathComponent]))
         }
-        return model
-    }
+        return .success(model)
+    }()
 }
