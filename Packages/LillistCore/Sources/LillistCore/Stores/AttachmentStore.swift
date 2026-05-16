@@ -167,8 +167,8 @@ public final class AttachmentStore: @unchecked Sendable {
             let m = try fetchManagedObject(id: id, in: context)
             // Touching `m.data` is what causes the asset materialization.
             guard let bytes = m.data else {
-                let placeholder = URL(string: "lillist://attachment/\(id.uuidString)")!
-                throw LillistError.attachmentFetchFailed(url: placeholder)
+                let sentinelURL = URL(string: "lillist://attachment/\(id.uuidString)")!
+                throw LillistError.attachmentFetchFailed(url: sentinelURL)
             }
             return bytes
         }
