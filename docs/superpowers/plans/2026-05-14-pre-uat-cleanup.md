@@ -44,7 +44,7 @@ Lillist/
 │               ├── LinkPreview/                          (NEW directory)
 │               │   ├── OpenGraphParserTests.swift        (NEW)
 │               │   ├── LinkPreviewUnfurlerTests.swift    (NEW)
-│               │   └── Fixtures/                         (NEW)
+│               │   └── HTMLFixtures/                     (NEW — renamed from Fixtures to avoid SwiftPM same-basename collision with CrashReporting/Fixtures)
 │               │       ├── og-typical.html               (NEW)
 │               │       ├── og-twitter.html               (NEW)
 │               │       ├── og-empty.html                 (NEW)
@@ -113,7 +113,7 @@ Lillist/
 
 **`taskStore.pinned()` already exists** and is tested ("pinned returns all pinned tasks across the tree, excluding trash" — Plan 4 tag). The TODO comment in `SidebarView.swift:63-69` is stale. The first three tasks of this plan are: delete the stopgap workaround, swap to the real query, prove the difference with an integration test.
 
-**Link-preview unfurl uses pure-Swift HTML parsing** — no SwiftSoup or other deps. The Apple-shipped option is `NSAttributedString(data:options:documentAttributes:)` with `.html` document type, but that's fragile for OG tag extraction. Instead we hand-write a small regex/scanner that extracts the four `<meta property="og:*">` and `<meta name="twitter:*">` tags we need, plus `<title>`. This is per the design §3 "HTML-only parsing (no JS execution)" mandate. The parser is a pure function; tests use static fixture files committed under `Tests/LillistCoreTests/LinkPreview/Fixtures/`.
+**Link-preview unfurl uses pure-Swift HTML parsing** — no SwiftSoup or other deps. The Apple-shipped option is `NSAttributedString(data:options:documentAttributes:)` with `.html` document type, but that's fragile for OG tag extraction. Instead we hand-write a small regex/scanner that extracts the four `<meta property="og:*">` and `<meta name="twitter:*">` tags we need, plus `<title>`. This is per the design §3 "HTML-only parsing (no JS execution)" mandate. The parser is a pure function; tests use static fixture files committed under `Tests/LillistCoreTests/LinkPreview/HTMLFixtures/`.
 
 **`URLSession` tests use `URLProtocol` stubbing** — register a custom `URLProtocol` subclass at test setup, intercept by URL pattern, return a canned `(response, data)`. This avoids live network and works deterministically in `swift test`. The pattern is well-known; see `StubURLProtocol.swift` in Task 6.
 
@@ -687,14 +687,14 @@ git commit -m "test(core): add StubURLProtocol helper for unfurl tests"
 - Create: `Packages/LillistCore/Sources/LillistCore/LinkPreview/LinkPreviewMetadata.swift`
 - Create: `Packages/LillistCore/Sources/LillistCore/LinkPreview/OpenGraphParser.swift`
 - Create: `Packages/LillistCore/Tests/LillistCoreTests/LinkPreview/OpenGraphParserTests.swift`
-- Create: `Packages/LillistCore/Tests/LillistCoreTests/LinkPreview/Fixtures/og-typical.html`
-- Create: `Packages/LillistCore/Tests/LillistCoreTests/LinkPreview/Fixtures/og-twitter.html`
-- Create: `Packages/LillistCore/Tests/LillistCoreTests/LinkPreview/Fixtures/og-empty.html`
-- Create: `Packages/LillistCore/Tests/LillistCoreTests/LinkPreview/Fixtures/og-malformed.html`
+- Create: `Packages/LillistCore/Tests/LillistCoreTests/LinkPreview/HTMLFixtures/og-typical.html`
+- Create: `Packages/LillistCore/Tests/LillistCoreTests/LinkPreview/HTMLFixtures/og-twitter.html`
+- Create: `Packages/LillistCore/Tests/LillistCoreTests/LinkPreview/HTMLFixtures/og-empty.html`
+- Create: `Packages/LillistCore/Tests/LillistCoreTests/LinkPreview/HTMLFixtures/og-malformed.html`
 
 - [ ] **Step 1: Create fixture HTML files**
 
-`Tests/LillistCoreTests/LinkPreview/Fixtures/og-typical.html`:
+`Tests/LillistCoreTests/LinkPreview/HTMLFixtures/og-typical.html`:
 
 ```html
 <!doctype html>
@@ -710,7 +710,7 @@ git commit -m "test(core): add StubURLProtocol helper for unfurl tests"
 </html>
 ```
 
-`Tests/LillistCoreTests/LinkPreview/Fixtures/og-twitter.html`:
+`Tests/LillistCoreTests/LinkPreview/HTMLFixtures/og-twitter.html`:
 
 ```html
 <!doctype html>
@@ -725,7 +725,7 @@ git commit -m "test(core): add StubURLProtocol helper for unfurl tests"
 </html>
 ```
 
-`Tests/LillistCoreTests/LinkPreview/Fixtures/og-empty.html`:
+`Tests/LillistCoreTests/LinkPreview/HTMLFixtures/og-empty.html`:
 
 ```html
 <!doctype html>
@@ -737,7 +737,7 @@ git commit -m "test(core): add StubURLProtocol helper for unfurl tests"
 </html>
 ```
 
-`Tests/LillistCoreTests/LinkPreview/Fixtures/og-malformed.html`:
+`Tests/LillistCoreTests/LinkPreview/HTMLFixtures/og-malformed.html`:
 
 ```html
 <html<<<head <title>Broken</title <meta property=og:title content=NoQuotes>
@@ -753,7 +753,7 @@ Open `Packages/LillistCore/Package.swift` and add to the `lillistCoreTests` targ
             dependencies: ["LillistCore"],
             resources: [
                 .copy("CrashReporting/Fixtures"),
-                .copy("LinkPreview/Fixtures")
+                .copy("LinkPreview/HTMLFixtures")
             ]
         ),
 ```
