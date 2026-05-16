@@ -61,8 +61,12 @@ targets:
       # HotkeyKeyTable backs HotkeyRecorder.keyName(for:) — Plan 12
       # Task 3 consolidated the keyCode↔keyName tables into one source
       # of truth, so the test bundle must co-compile both files.
+      # GlobalHotkeyMonitor.parse is co-compiled (Plan 12 Task 4) so the
+      # encode/parse round-trip test can call it directly without a
+      # signed app test host.
       - path: Lillist-macOS/Sources/Hotkey/HotkeyRecorder.swift
       - path: Lillist-macOS/Sources/Hotkey/HotkeyKeyTable.swift
+      - path: Lillist-macOS/Sources/Hotkey/GlobalHotkeyMonitor.swift
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: io.mikeydotio.Lillist.tests

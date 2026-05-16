@@ -30,4 +30,37 @@ struct HotkeyRecorderTests {
         let s = HotkeyRecorder.encode(modifiers: [.command], keyCode: 0xFFFF)
         #expect(s == nil)
     }
+
+    /// Plan 12 Task 4 — guard the encoder/parser pair against silent
+    /// divergence. `HotkeyRecorder.encode` and `GlobalHotkeyMonitor.parse`
+    /// must agree on every (modifiers, keyCode) pair the recorder is
+    /// allowed to emit; otherwise a user-recorded combo would fail to
+    /// re-arm the global monitor after the app relaunches.
+    ///
+    /// `GlobalHotkeyMonitor` is `@MainActor`-isolated (it touches
+    /// `NSEvent` global monitors), so its `static parse` inherits main-
+    /// actor isolation — hence the `@MainActor` annotation on this test.
+    @MainActor
+    @Test("Encode then parse round-trips for representative combos")
+    func encodeParseRoundTrip() {
+        let cases: [(modifiers: NSEvent.ModifierFlags, keyCode: Int)] = [
+            ([.control, .option], 49),         // ctrl+opt+space (default)
+            ([.command, .shift], 37),          // cmd+shift+l
+            ([.command], 18),                  // cmd+1
+            ([.command, .option, .shift], 99), // cmd+opt+shift+f3
+            ([.shift], 122)                    // shift+f1
+        ]
+        for c in cases {
+            guard let encoded = HotkeyRecorder.encode(modifiers: c.modifiers, keyCode: c.keyCode) else {
+                Issue.record("encode returned nil for \(c)")
+                continue
+            }
+            guard let parsed = GlobalHotkeyMonitor.parse(combo: encoded) else {
+                Issue.record("parse returned nil for '\(encoded)'")
+                continue
+            }
+            #expect(parsed.modifiers == c.modifiers, "modifiers diverged for '\(encoded)'")
+            #expect(parsed.keyCode == c.keyCode, "keyCode diverged for '\(encoded)'")
+        }
+    }
 }
