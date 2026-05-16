@@ -17,7 +17,7 @@ public struct SyncStatusBadge: View {
             .frame(width: 10, height: 10)
             .overlay(
                 Group {
-                    if indicator == .inProgress {
+                    if case .inProgress = indicator {
                         ProgressView()
                             .scaleEffect(0.5)
                     }
@@ -29,7 +29,7 @@ public struct SyncStatusBadge: View {
     private var color: Color {
         switch indicator {
         case .idle: return .green
-        case .inProgress: return .clear
+        case .inProgress: return .blue
         case .error: return .red
         }
     }
