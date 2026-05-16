@@ -12,22 +12,8 @@ struct ICloudRequiredScreen: View {
     @State private var lastError: String?
 
     var body: some View {
-        VStack(spacing: 20) {
-            Image(systemName: "icloud.slash")
-                .font(LillistTypography.largeTitle.weight(.light))
-                .foregroundStyle(.red)
-            Text("iCloud is required")
-                .font(.title.bold())
-            Text("Lillist syncs your tasks via your private iCloud database. Sign into iCloud in Settings, then return here.")
-                .multilineTextAlignment(.center)
-                .foregroundStyle(.secondary)
-                .padding(.horizontal, 32)
-            if let lastError {
-                Text(lastError)
-                    .font(.callout)
-                    .foregroundStyle(.orange)
-                    .padding(.horizontal, 32)
-            }
+        VStack(spacing: LillistSpacing.l) {
+            ICloudRequiredContent(lastError: lastError)
 
             Button("Open Settings") {
                 if let url = URL(string: UIApplication.openSettingsURLString) {
@@ -47,7 +33,7 @@ struct ICloudRequiredScreen: View {
             }
             .buttonStyle(.borderedProminent)
         }
-        .padding(32)
+        .padding(LillistSpacing.xl + LillistSpacing.s)
     }
 
     private func recheck() async {

@@ -16,23 +16,10 @@ struct ICloudRequiredView: View {
     @State private var lastError: String?
 
     var body: some View {
-        VStack(spacing: 20) {
-            Image(systemName: "icloud.slash")
-                .font(LillistTypography.largeTitle.weight(.light))
-                .foregroundStyle(.red)
-            Text("iCloud is required")
-                .font(LillistTypography.title.weight(.bold))
-            Text("Lillist syncs your tasks via your private iCloud database. Please sign into iCloud in System Settings and try again.")
-                .multilineTextAlignment(.center)
-                .foregroundStyle(.secondary)
-                .frame(maxWidth: 420)
-            if let lastError {
-                Text(lastError)
-                    .font(.callout)
-                    .foregroundStyle(.orange)
-                    .frame(maxWidth: 420)
-            }
-            HStack(spacing: 12) {
+        VStack(spacing: LillistSpacing.l) {
+            ICloudRequiredContent(lastError: lastError)
+
+            HStack(spacing: LillistSpacing.m) {
                 Button("Open System Settings") {
                     if let url = URL(string: "x-apple.systempreferences:com.apple.preferences.AppleIDPrefPane") {
                         NSWorkspace.shared.open(url)
@@ -51,7 +38,7 @@ struct ICloudRequiredView: View {
                 .buttonStyle(.borderedProminent)
             }
         }
-        .padding(40)
+        .padding(LillistSpacing.xxl)
         .frame(width: 520, height: 360)
     }
 
