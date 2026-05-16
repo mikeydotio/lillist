@@ -22,6 +22,8 @@
 		3BFAF02F4DF61C06EF1ACC64 /* TaskListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7428376E8AED267AF2F3C3EE /* TaskListView.swift */; };
 		41D5332FFC9A37D6874E1E44 /* AppIntents.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = ECE3A50348E57FE59F4366B8 /* AppIntents.framework */; };
 		44330D12274449C7C6D5CE18 /* TaskDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CD5D524971199DDBA766AF3F /* TaskDetailView.swift */; };
+		4AC4945ABE79B0437B1676D5 /* FocusedShortcutGatingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1ED0A7A8881D45E8627191BA /* FocusedShortcutGatingTests.swift */; };
+		4EA67DECB7AC159A867B2EE4 /* FocusedListColumn.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA226DA3844BBFC1DFFDA0CA /* FocusedListColumn.swift */; };
 		513F80DB225B3198A6B428C6 /* CrashReporterHost.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBBEE29201F8E282644A5147 /* CrashReporterHost.swift */; };
 		51CD698709C7470BF850D750 /* TodayPopoverView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 59867850C82C90EBDA587E7A /* TodayPopoverView.swift */; };
 		524AAE0A4EEB795D8EA674AC /* KeyboardShortcutTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8B91031B39FF519BA7C7984B /* KeyboardShortcutTests.swift */; };
@@ -50,6 +52,7 @@
 		A8953EC19E865A2EDEF9B85D /* JournalStreamView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4E67786671223711890742F9 /* JournalStreamView.swift */; };
 		ADB800B781E7E9C7D30BEBA6 /* JournalComposerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 44D7A4355E919A190BED242F /* JournalComposerView.swift */; };
 		B02E809B71858F1620968554 /* UIStatePersistence.swift in Sources */ = {isa = PBXBuildFile; fileRef = 996D14F2AE9898FB76C7696C /* UIStatePersistence.swift */; };
+		B2F0F266E785E96D6C25B25C /* FocusedListColumn.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA226DA3844BBFC1DFFDA0CA /* FocusedListColumn.swift */; };
 		B3682D3489423B4E04BB6948 /* HotkeyKeyTable.swift in Sources */ = {isa = PBXBuildFile; fileRef = 95FC2DAA17C7F98B4F907832 /* HotkeyKeyTable.swift */; };
 		B685FB1C17A64BBA91B50EA2 /* LillistCore in Frameworks */ = {isa = PBXBuildFile; productRef = 1CBD90EC484EB04CE92F5794 /* LillistCore */; };
 		BDA1E09753034DE2322D998A /* InlineCreateInteractionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6BF3D37E4FFA35138008C7ED /* InlineCreateInteractionTests.swift */; };
@@ -70,6 +73,7 @@
 		0170278028A77220944FD21B /* ICloudRequiredView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ICloudRequiredView.swift; sourceTree = "<group>"; };
 		07756C86343C55B654BB65B1 /* SubtaskOutlineView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SubtaskOutlineView.swift; sourceTree = "<group>"; };
 		0914C02F19D5D32DBFCB3C8E /* TrashPane.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrashPane.swift; sourceTree = "<group>"; };
+		1ED0A7A8881D45E8627191BA /* FocusedShortcutGatingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FocusedShortcutGatingTests.swift; sourceTree = "<group>"; };
 		21D24939B908AE453AB3E6C2 /* NotesEditorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotesEditorView.swift; sourceTree = "<group>"; };
 		23D285C988F042A513BC9303 /* QuickCapturePane.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuickCapturePane.swift; sourceTree = "<group>"; };
 		288A06800EA1CB39081E0910 /* QuickCapturePanelController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuickCapturePanelController.swift; sourceTree = "<group>"; };
@@ -102,6 +106,7 @@
 		996D14F2AE9898FB76C7696C /* UIStatePersistence.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UIStatePersistence.swift; sourceTree = "<group>"; };
 		9F8B217F0E070121B95D2E56 /* LillistUI */ = {isa = PBXFileReference; lastKnownFileType = folder; name = LillistUI; path = ../Packages/LillistUI; sourceTree = SOURCE_ROOT; };
 		A11533C6477F2D2A981B7E22 /* TaskOutlineNode.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TaskOutlineNode.swift; sourceTree = "<group>"; };
+		AA226DA3844BBFC1DFFDA0CA /* FocusedListColumn.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FocusedListColumn.swift; sourceTree = "<group>"; };
 		B2B69FCA7EA5A0AEC03AC528 /* LillistApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LillistApp.swift; sourceTree = "<group>"; };
 		B726991AAC124C45C502A869 /* StatusBarController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatusBarController.swift; sourceTree = "<group>"; };
 		B9EFCC8DD54B786D210CB412 /* AppEnvironment.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppEnvironment.swift; sourceTree = "<group>"; };
@@ -171,6 +176,7 @@
 			children = (
 				3F0D9EC0691515027BF44021 /* BlockedFollowUpTests.swift */,
 				42C2D056A53E557FD7C76E00 /* DragDropInteractionTests.swift */,
+				1ED0A7A8881D45E8627191BA /* FocusedShortcutGatingTests.swift */,
 				2BC54A777EAD574C648DD1F9 /* HotkeyRecorderTests.swift */,
 				6BF3D37E4FFA35138008C7ED /* InlineCreateInteractionTests.swift */,
 				8B91031B39FF519BA7C7984B /* KeyboardShortcutTests.swift */,
@@ -273,6 +279,7 @@
 		96DC643FB6D30A62EE875517 /* Commands */ = {
 			isa = PBXGroup;
 			children = (
+				AA226DA3844BBFC1DFFDA0CA /* FocusedListColumn.swift */,
 				6D70826CFF84526D54963DB7 /* LillistCommands.swift */,
 			);
 			path = Commands;
@@ -462,6 +469,7 @@
 				513F80DB225B3198A6B428C6 /* CrashReporterHost.swift in Sources */,
 				5680498D8BF4DFA917500D55 /* CrashReportingPane.swift in Sources */,
 				1A2D780A16C371DC7ED92F77 /* DetailHeaderView.swift in Sources */,
+				4EA67DECB7AC159A867B2EE4 /* FocusedListColumn.swift in Sources */,
 				3B20971664653ADF6B7B8A39 /* FollowUpFormView.swift in Sources */,
 				018B5E501EEC7DD0110B515A /* GeneralPane.swift in Sources */,
 				7F57439EAB3BC0D4FBB91F2C /* GlobalHotkeyMonitor.swift in Sources */,
@@ -504,6 +512,8 @@
 			files = (
 				D18582EAD9CC9DEF45E3D046 /* BlockedFollowUpTests.swift in Sources */,
 				04DB0667DD4F3B9B95FB9581 /* DragDropInteractionTests.swift in Sources */,
+				B2F0F266E785E96D6C25B25C /* FocusedListColumn.swift in Sources */,
+				4AC4945ABE79B0437B1676D5 /* FocusedShortcutGatingTests.swift in Sources */,
 				1835D5C3561B08CF2C688CD5 /* GlobalHotkeyMonitor.swift in Sources */,
 				B3682D3489423B4E04BB6948 /* HotkeyKeyTable.swift in Sources */,
 				297F386CC41DF81630DAABC2 /* HotkeyRecorder.swift in Sources */,

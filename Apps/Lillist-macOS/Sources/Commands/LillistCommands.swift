@@ -7,6 +7,7 @@ import LillistUI
 /// observes; this keeps the commands target-agnostic.
 struct LillistCommands: Commands {
     let environment: AppEnvironment
+    @FocusedValue(\.listColumn) private var listColumn: ListColumn?
 
     var body: some Commands {
         CommandGroup(replacing: .newItem) {
@@ -16,31 +17,36 @@ struct LillistCommands: Commands {
 
             Button("New Sibling Task") {
                 NotificationCenter.default.post(name: .lillistNewSibling, object: nil)
-            }.keyboardShortcut("n", modifiers: [.command, .shift])
+            }.keyboardShortcut(.return, modifiers: [.command, .shift])
         }
 
         CommandMenu("Task") {
             Button("Toggle Started") {
                 NotificationCenter.default.post(name: .lillistToggleStarted, object: nil)
             }.keyboardShortcut(.space, modifiers: [])
+              .disabled(listColumn == nil)
 
             Button("Mark Closed") {
                 NotificationCenter.default.post(name: .lillistMarkClosed, object: nil)
-            }.keyboardShortcut("d", modifiers: [.command])
+            }.keyboardShortcut(.return, modifiers: [.command])
+              .disabled(listColumn == nil)
 
             Button("Mark Blocked & Schedule Follow-up") {
                 NotificationCenter.default.post(name: .lillistMarkBlocked, object: nil)
             }.keyboardShortcut(".", modifiers: [.command])
+              .disabled(listColumn == nil)
 
             Divider()
 
             Button("Indent") {
                 NotificationCenter.default.post(name: .lillistIndent, object: nil)
             }.keyboardShortcut(.tab, modifiers: [])
+              .disabled(listColumn == nil)
 
             Button("Outdent") {
                 NotificationCenter.default.post(name: .lillistOutdent, object: nil)
             }.keyboardShortcut(.tab, modifiers: [.shift])
+              .disabled(listColumn == nil)
         }
 
         CommandGroup(replacing: .textEditing) {
