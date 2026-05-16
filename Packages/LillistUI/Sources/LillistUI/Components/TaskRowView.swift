@@ -32,26 +32,26 @@ public struct TaskRowView: View {
     }
 
     public var body: some View {
-        HStack(spacing: 8) {
+        HStack(spacing: LillistSpacing.s) {
             StatusIndicatorView(
                 status: task.status,
                 onClick: onStatusClick,
                 onLongPress: onStatusLongPress
             )
 
-            VStack(alignment: .leading, spacing: 2) {
+            VStack(alignment: .leading, spacing: LillistSpacing.xs / 2) {
                 Text(task.title)
                     .strikethrough(task.status == .closed)
                     .foregroundStyle(task.status == .closed ? .secondary : .primary)
                     .lineLimit(1)
 
                 if !tagNames.isEmpty || task.deadline != nil {
-                    HStack(spacing: 4) {
+                    HStack(spacing: LillistSpacing.xs) {
                         ForEach(tagNames, id: \.self) { TagChipView(name: $0) }
                         if let deadline = task.deadline {
                             Label(deadline.formatted(date: .abbreviated, time: task.deadlineHasTime ? .shortened : .omitted),
                                   systemImage: "calendar")
-                                .font(.caption2)
+                                .font(LillistTypography.caption2)
                                 .foregroundStyle(.secondary)
                         }
                     }
@@ -62,8 +62,8 @@ public struct TaskRowView: View {
                 .foregroundStyle(.tertiary)
                 .accessibilityLabel("Drag handle")
         }
-        .padding(.vertical, 4)
-        .padding(.horizontal, 6)
+        .padding(.vertical, LillistSpacing.xs)
+        .padding(.horizontal, LillistSpacing.xs + 2)
         .contentShape(Rectangle())
         .accessibilityElement(children: .combine)
         .accessibilityLabel(Self.composedAccessibilityLabel(task: task, tagNames: tagNames))

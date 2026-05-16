@@ -17,8 +17,8 @@ public struct FloatingAddButton: View {
     public var body: some View {
         Button(action: onTap) {
             Image(systemName: "plus")
-                .font(.system(size: 24, weight: .semibold))
-                .frame(width: 56, height: 56)
+                .font(LillistTypography.floatingAddGlyph)
+                .frame(width: LillistSpacing.xxl + LillistSpacing.l, height: LillistSpacing.xxl + LillistSpacing.l)  // 56pt
                 .background(Circle().fill(Color.accentColor))
                 .foregroundStyle(.white)
                 .shadow(radius: 6, y: 3)
@@ -29,12 +29,12 @@ public struct FloatingAddButton: View {
             onLongPress?()
         }
         .simultaneousGesture(
-            LongPressGesture(minimumDuration: 0.5).onEnded { _ in
+            LongPressGesture(minimumDuration: LillistTiming.longPress).onEnded { _ in
                 onLongPress?()
             }
         )
-        .padding(.trailing, 20)
-        .padding(.bottom, 20)
+        .padding(.trailing, LillistSpacing.l + LillistSpacing.xs)  // 20pt
+        .padding(.bottom, LillistSpacing.l + LillistSpacing.xs)
     }
 }
 #endif

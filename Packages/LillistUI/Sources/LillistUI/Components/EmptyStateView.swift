@@ -12,13 +12,13 @@ public struct EmptyStateView: View {
     }
 
     public var body: some View {
-        VStack(spacing: 10) {
+        VStack(spacing: LillistSpacing.s + 2) {
             Image(systemName: systemImage)
-                .font(.system(size: 36, weight: .light))
+                .font(LillistTypography.largeTitle.weight(.light))
                 .foregroundStyle(.tertiary)
-            Text(title).font(.headline)
+            Text(title).font(LillistTypography.headline)
             Text(message)
-                .font(.subheadline)
+                .font(LillistTypography.subheadline)
                 .multilineTextAlignment(.center)
                 .foregroundStyle(.secondary)
                 .frame(maxWidth: 320)
