@@ -1,5 +1,6 @@
 import SwiftUI
 import LillistCore
+import LillistUI
 
 struct JournalStreamView: View {
     @Environment(AppEnvironment.self) private var env
@@ -40,27 +41,3 @@ struct JournalStreamView: View {
     }
 }
 
-private struct JournalEntryRow: View {
-    let entry: JournalStore.JournalRecord
-    var body: some View {
-        VStack(alignment: .leading, spacing: 2) {
-            HStack {
-                Image(systemName: icon)
-                    .foregroundStyle(.secondary)
-                Text(entry.createdAt?.formatted(date: .abbreviated, time: .shortened) ?? "—")
-                    .font(.caption).foregroundStyle(.secondary)
-            }
-            Text(LocalizedStringKey(entry.body))
-                .textSelection(.enabled)
-        }
-        .padding(.vertical, 4)
-    }
-    private var icon: String {
-        switch entry.kind {
-        case .note: return "text.bubble"
-        case .statusChange: return "arrow.triangle.2.circlepath"
-        case .attachment: return "paperclip"
-        case .createdFollowUp: return "arrow.uturn.right.circle"
-        }
-    }
-}
