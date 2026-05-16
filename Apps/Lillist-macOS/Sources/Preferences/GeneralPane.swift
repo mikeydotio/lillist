@@ -1,5 +1,6 @@
 import SwiftUI
 import LillistCore
+import LillistUI
 
 /// macOS Preferences General pane (Plan 10 Task 8).
 ///
