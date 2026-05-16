@@ -17,7 +17,7 @@ struct GeneralSection: View {
     private var tintBinding: Binding<Color> {
         Binding(
             get: { Color(hex: prefs.defaultTagTintHex) ?? .gray },
-            set: { prefs.defaultTagTintHex = $0.toHex() ?? "#7F8FA6" }
+            set: { prefs.defaultTagTintHex = $0.toHex() ?? LillistTokens.defaultTagTintHex }
         )
     }
 }
