@@ -79,10 +79,13 @@ struct HotkeyRecorder: View {
     /// parses. Returns `nil` for key codes that aren't in the supported
     /// alphanumeric / function / control-key set; callers should keep
     /// listening in that case.
-    static func encode(modifiers: NSEvent.ModifierFlags, keyCode: Int) -> String? {
+    nonisolated static func encode(modifiers: NSEvent.ModifierFlags, keyCode: Int) -> String? {
         // Canonical order, derived from Plan 11 Task 17's encoder
         // contract tests: `ctrl, opt, cmd, shift, <key>`. (Both
         // `ctrl+opt+space` and `cmd+shift+l` must round-trip cleanly.)
+        // `nonisolated` because the encoder is a pure function over
+        // `HotkeyKeyTable` (a plain enum) and shouldn't inherit
+        // `View`'s `@MainActor` isolation.
         var parts: [String] = []
         if modifiers.contains(.control) { parts.append("ctrl") }
         if modifiers.contains(.option) { parts.append("opt") }
@@ -97,7 +100,7 @@ struct HotkeyRecorder: View {
     /// canonical hotkey representation. Covers letters, digits, F1–F12,
     /// space, return, delete, and escape — the keys most users will
     /// bind to a global hotkey. Extend as needed.
-    private static func keyName(for keyCode: Int) -> String? {
+    nonisolated private static func keyName(for keyCode: Int) -> String? {
         HotkeyKeyTable.name(forKeyCode: keyCode)
     }
 }
