@@ -53,7 +53,7 @@ struct GeneralPane: View {
             get: { Color(hex: prefs?.defaultTagTintHex) ?? .gray },
             set: { newColor in
                 guard prefs != nil else { return }
-                prefs!.defaultTagTintHex = newColor.toHex() ?? "#7F8FA6"
+                prefs!.defaultTagTintHex = newColor.toHex() ?? LillistTokens.defaultTagTintHex
             }
         )
     }
