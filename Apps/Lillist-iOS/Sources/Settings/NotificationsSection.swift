@@ -1,5 +1,6 @@
 import SwiftUI
 import LillistCore
+import LillistUI
 
 struct NotificationsSection: View {
     @Binding var prefs: PreferencesStore.Prefs
@@ -55,7 +56,7 @@ struct NotificationsSection: View {
 
     private var hmBinding: Binding<Date> {
         Binding(
-            get: { date(Int(prefs.defaultAllDayHour), Int(prefs.defaultAllDayMinute)) },
+            get: { HourMinuteDate.date(hour: Int(prefs.defaultAllDayHour), minute: Int(prefs.defaultAllDayMinute)) },
             set: {
                 let c = Calendar.current.dateComponents([.hour, .minute], from: $0)
                 prefs.defaultAllDayHour = Int16(c.hour ?? 9)
@@ -66,20 +67,13 @@ struct NotificationsSection: View {
 
     private var morningBinding: Binding<Date> {
         Binding(
-            get: { date(Int(prefs.morningSummaryHour), Int(prefs.morningSummaryMinute)) },
+            get: { HourMinuteDate.date(hour: Int(prefs.morningSummaryHour), minute: Int(prefs.morningSummaryMinute)) },
             set: {
                 let c = Calendar.current.dateComponents([.hour, .minute], from: $0)
                 prefs.morningSummaryHour = Int16(c.hour ?? 9)
                 prefs.morningSummaryMinute = Int16(c.minute ?? 0)
             }
         )
-    }
-
-    private func date(_ h: Int, _ m: Int) -> Date {
-        var c = Calendar.current.dateComponents([.year, .month, .day], from: Date())
-        c.hour = h
-        c.minute = m
-        return Calendar.current.date(from: c) ?? Date()
     }
 
     private func applyAllDayChange() {
