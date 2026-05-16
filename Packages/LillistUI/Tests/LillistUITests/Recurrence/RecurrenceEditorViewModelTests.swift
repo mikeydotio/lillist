@@ -69,4 +69,47 @@ struct RecurrenceEditorViewModelTests {
         #expect(vm.byMonthDay == [1, 15])
         #expect(vm.count == 6)
     }
+
+    // MARK: - humanSummary (Plan 14)
+
+    @Test("humanSummary: empty state reads 'Doesn't repeat'")
+    func humanSummary_doesNotRepeat() {
+        let vm = RecurrenceEditorViewModel(rule: nil)
+        #expect(vm.humanSummary == "Doesn't repeat")
+    }
+
+    @Test("humanSummary: daily/interval 1 reads 'Every day'")
+    func humanSummary_everyDay() {
+        let rule: RecurrenceRule = .calendar(.init(freq: .daily, interval: 1))
+        let vm = RecurrenceEditorViewModel(rule: rule)
+        #expect(vm.humanSummary == "Every day")
+    }
+
+    @Test("humanSummary: weekly/interval 1 reads 'Every week'")
+    func humanSummary_everyWeek() {
+        let rule: RecurrenceRule = .calendar(.init(freq: .weekly, interval: 1))
+        let vm = RecurrenceEditorViewModel(rule: rule)
+        #expect(vm.humanSummary == "Every week")
+    }
+
+    @Test("humanSummary: monthly/interval 3 reads 'Every 3 months'")
+    func humanSummary_everyNMonths() {
+        let rule: RecurrenceRule = .calendar(.init(freq: .monthly, interval: 3))
+        let vm = RecurrenceEditorViewModel(rule: rule)
+        #expect(vm.humanSummary == "Every 3 months")
+    }
+
+    @Test("humanSummary: afterCompletion at 1 day reads singular")
+    func humanSummary_afterCompletion_singularDay() {
+        let rule: RecurrenceRule = .afterCompletion(.init(interval: 86_400))
+        let vm = RecurrenceEditorViewModel(rule: rule)
+        #expect(vm.humanSummary == "Repeats 1 day after completion")
+    }
+
+    @Test("humanSummary: afterCompletion at 7 days reads plural")
+    func humanSummary_afterCompletion_pluralDays() {
+        let rule: RecurrenceRule = .afterCompletion(.init(interval: 86_400 * 7))
+        let vm = RecurrenceEditorViewModel(rule: rule)
+        #expect(vm.humanSummary == "Repeats 7 days after completion")
+    }
 }

@@ -79,23 +79,7 @@ struct TaskDetailView: View {
     }
 
     private var currentRecurrenceSummary: String {
-        guard recurrenceViewModel.repeats else { return "Doesn't repeat" }
-        switch recurrenceViewModel.mode {
-        case .calendar:
-            let unit: String
-            switch recurrenceViewModel.freq {
-            case .daily: unit = "day"
-            case .weekly: unit = "week"
-            case .monthly: unit = "month"
-            case .yearly: unit = "year"
-            }
-            return recurrenceViewModel.interval == 1
-                ? "Every \(unit)"
-                : "Every \(recurrenceViewModel.interval) \(unit)s"
-        case .afterCompletion:
-            let days = Int(recurrenceViewModel.afterCompletionSeconds / 86_400)
-            return "Repeats \(days) day\(days == 1 ? "" : "s") after completion"
-        }
+        recurrenceViewModel.humanSummary
     }
 
     private func load() async {
