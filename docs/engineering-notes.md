@@ -4,6 +4,90 @@ Append-only log of cross-cutting engineering lessons learned while building
 Lillist. Each entry captures a non-obvious gotcha — usually one that took real
 investigation to find — so future work doesn't re-learn it the hard way.
 
+## 2026-05-15 — Zero-warning sweep: NSItemProvider's closure-less `loadItem`, `appintentsmetadataprocessor`, `NSFetchRequest` Sendable captures, View-inherited `@MainActor` on pure helpers, NSManagedObjectModel duplicate-registration runtime warnings, UIKit-delegate isolation crossings
+
+**Context.** A `Treat warnings as errors` audit before turning on
+`SWIFT_TREAT_WARNINGS_AS_ERRORS` surfaced several kinds of recurring
+warnings, each pointing at a quietly broken or fragile piece of code.
+
+**Rules.**
+
+- **`NSItemProvider.loadItem(forTypeIdentifier:options:)` has a
+  closure-less form that silently returns Void.** The
+  `(NSSecureCoding?, Error?) -> Void` completion handler is *optional*.
+  Calling `loadItem(forTypeIdentifier:options:)` without a trailing
+  closure resolves to the completion-handler overload with
+  `completionHandler == nil`, which kicks off the load and discards the
+  result. The cast that follows (`as? URL`) always fails. Use the
+  async overload (`try await provider.loadItem(forTypeIdentifier:)`)
+  inside an `async` context instead. The Share Extension's
+  `SharePayload` shipped with this bug — the share sheet never
+  actually received the inbound URL — until the zero-warning sweep.
+- **`appintentsmetadataprocessor` runs on every app/extension target by
+  default and warns if `AppIntents.framework` isn't linked.** Auto-link
+  from `import AppIntents` is enough for the compiler but isn't enough
+  for the metadata processor; targets that don't define any App
+  Intents still need an explicit `- sdk: AppIntents.framework` in
+  their `project.yml` `dependencies:` to keep the build clean.
+- **Capturing `NSFetchRequest` / `NSPredicate` in a `ctx.perform`
+  closure trips the `@SendableClosureCaptures` warning.** Both Core
+  Data types are unannotated for Sendability. The fix is to construct
+  them *inside* the `perform` closure, capturing the inputs they're
+  built from (e.g., a Sendable `PredicateGroup`) rather than the
+  Core Data products themselves.
+- **A SwiftUI `View`'s `@MainActor` flows through static members.**
+  A pure static function declared inside `struct MyView: View` is
+  main-actor-isolated even if it never touches View state. If the
+  function is genuinely actor-agnostic (pure logic over plain
+  values/enums), mark it `nonisolated static` so callers from any
+  context — tests, background work, other actors — can use it.
+- **`NSManagedObjectModel` should be loaded once per process.** Tests
+  that construct multiple `PersistenceController` instances will each
+  call `NSManagedObjectModel(contentsOf:)` afresh, producing distinct
+  model objects that all claim the same Swift entity classes. Core
+  Data logs a noisy `'<Entity>' from NSManagedObjectModel <addr>
+  claims '<Entity>'` runtime warning per entity per registration —
+  in our test suite, > 1100 lines. Cache the model in a
+  `nonisolated(unsafe) static let` of type `Result<NSManagedObjectModel,
+  LillistError>` and `try cachedModelResult.get()` from the public
+  accessor. The compiled model is effectively immutable so sharing is
+  safe.
+- **UIKit delegate protocols that pre-date Swift 6 force an isolation
+  bridge.** Protocols like `MFMailComposeViewControllerDelegate` are
+  declared `nonisolated`, so a delegate-conforming class can't be
+  `@MainActor`. But every documented callback fires on the main
+  thread, and the work inside (`controller.dismiss`, SwiftUI state
+  updates) is main-actor-only. The clean shape is:
+  1. Type the user-supplied callback closure as `@MainActor`
+     (`let onFinish: @MainActor (Result<…>) -> Void`).
+  2. In the nonisolated delegate method, copy `self.onFinish` to a
+     local first, then call into a `MainActor.assumeIsolated { … }`
+     block. The local-capture step keeps the assumed-isolated closure
+     from carrying `self` across the actor boundary.
+
+**Side note.** The unsigned headless macOS test build wants
+`CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO`
+on the `xcodebuild` invocation; without those overrides Xcode 17/SDK
+26 fails the entitlements-without-signature check at build time. The
+overrides match how the standalone `TEST_HOST=""` bundle was already
+configured.
+
+**Bundled SwiftPM bump.** `treatAllWarnings(as: .error)` (the modern
+SwiftPM API for warnings-as-errors) is only available with
+`swift-tools-version: 6.2`. Bumped the manifest.
+
+**Evidence.** See the commits in this sweep:
+`SharePayload` refactored to async-resolve providers;
+`PersistenceController` caches `sharedModel()`; iOS + macOS
+`project.yml` files all gain `SWIFT_TREAT_WARNINGS_AS_ERRORS`,
+`GCC_TREAT_WARNINGS_AS_ERRORS`, and `- sdk: AppIntents.framework`
+on every app/extension/test target; `NSPredicateCompilerTests` builds
+its fetch request and predicate inside the perform closure;
+`HotkeyRecorder`'s encoder helpers are `nonisolated`;
+`MailComposerView.Coordinator` uses the local-capture +
+`MainActor.assumeIsolated` pattern with a `@MainActor` `onFinish`
+closure.
+
 ## 2026-05-15 — Plan 12 Plan 11 follow-ups: parallel `record(from:)` mappers, shared key-code table
 
 **Context.** Plan 11 added `TaskRecord.seriesID` and populated it in
