@@ -768,7 +768,7 @@ import Foundation
 @Suite("OpenGraphParser")
 struct OpenGraphParserTests {
     private func fixture(_ name: String) throws -> String {
-        let url = try #require(Bundle.module.url(forResource: name, withExtension: "html", subdirectory: "Fixtures"))
+        let url = try #require(Bundle.module.url(forResource: name, withExtension: "html", subdirectory: "HTMLFixtures"))
         return try String(contentsOf: url, encoding: .utf8)
     }
 
