@@ -1,6 +1,6 @@
 import Testing
 import Foundation
-import LillistCore
+@testable import LillistCore
 
 @Suite("TaskStore.purgeAll")
 struct TaskStorePurgeAllTests {
@@ -42,5 +42,18 @@ struct TaskStorePurgeAllTests {
 
         let purged = try await store.purgeAll()
         #expect(purged == 2)
+    }
+
+    @Test("purgeAll twice in a row: second call returns 0")
+    func idempotent() async throws {
+        let persistence = try await TestStore.make()
+        let store = TaskStore(persistence: persistence)
+        let a = try await store.create(title: "a")
+        try await store.softDelete(id: a)
+
+        let first = try await store.purgeAll()
+        #expect(first == 1)
+        let second = try await store.purgeAll()
+        #expect(second == 0)
     }
 }

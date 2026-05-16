@@ -362,23 +362,30 @@ public final class TaskStore: @unchecked Sendable {
     /// `deletedAt` is older than the retention window.
     @discardableResult
     public func purgeAll() async throws -> Int {
-        try await context.perform { [self] in
-            let req = NSFetchRequest<LillistTask>(entityName: "LillistTask")
-            req.predicate = NSPredicate(format: "deletedAt != nil")
-            let trashed = try context.fetch(req)
-            // Only count/iterate trashed roots — tasks whose parent isn't
-            // itself trashed. Descendants are already cascade-soft-deleted
-            // via `applySoftDelete`, so iterating every trashed row would
-            // double-count children once via `countDescendants(of: parent)`
-            // and again when the child appears in `trashed` directly.
-            let trashedRoots = trashed.filter { $0.parent?.deletedAt == nil }
-            var count = 0
-            for t in trashedRoots {
-                count += 1 + countDescendants(of: t)
-                context.delete(t) // cascades to children via the Core Data rule
+        do {
+            let count: Int = try await context.perform { [self] in
+                let req = NSFetchRequest<LillistTask>(entityName: "LillistTask")
+                req.predicate = NSPredicate(format: "deletedAt != nil")
+                let trashed = try context.fetch(req)
+                // Only count/iterate trashed roots — tasks whose parent isn't
+                // itself trashed. Descendants are already cascade-soft-deleted
+                // via `applySoftDelete`, so iterating every trashed row would
+                // double-count children once via `countDescendants(of: parent)`
+                // and again when the child appears in `trashed` directly.
+                let trashedRoots = trashed.filter { $0.parent?.deletedAt == nil }
+                var count = 0
+                for t in trashedRoots {
+                    count += 1 + countDescendants(of: t)
+                    context.delete(t) // cascades to children via the Core Data rule
+                }
+                try context.save()
+                return count
             }
-            try context.save()
+            await recordCrumb("task.purge_all", success: true)
             return count
+        } catch {
+            await recordCrumb("task.purge_all", success: false)
+            throw error
         }
     }
 
