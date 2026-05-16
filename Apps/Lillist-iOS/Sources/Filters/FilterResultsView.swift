@@ -24,14 +24,39 @@ struct FilterResultsView: View {
                     systemImage: "magnifyingglass"
                 )
             } else {
-                List(results, id: \.id) { record in
-                    NavigationLink(value: record.id) {
-                        TaskRowView(
-                            task: record,
-                            tagNames: [],
-                            onStatusClick: { Task { await cycle(record) } },
-                            onStatusLongPress: { /* status menu lands in Task 13 */ }
-                        )
+                List {
+                    ForEach(results, id: \.id) { record in
+                        NavigationLink(value: record.id) {
+                            TaskRowView(
+                                task: record,
+                                tagNames: [],
+                                onStatusClick: { Task { await cycle(record) } },
+                                onStatusLongPress: {}
+                            )
+                        }
+                        .swipeActions(edge: .leading, allowsFullSwipe: true) {
+                            Button("Complete") {
+                                Task { try? await env.taskStore.transition(id: record.id, to: .closed); await reload() }
+                            }.tint(.green)
+                        }
+                        .swipeActions(edge: .trailing) {
+                            Button("Snooze") { Task { await snooze(record) } }
+                            Button(role: .destructive) {
+                                Task { try? await env.taskStore.softDelete(id: record.id); await reload() }
+                            } label: { Text("Delete") }
+                        }
+                        .contextMenu {
+                            Menu("Change status") {
+                                ForEach(Status.allCases, id: \.self) { s in
+                                    Button(StatusGlyph.accessibilityLabel(for: s)) {
+                                        Task { try? await env.taskStore.transition(id: record.id, to: s); await reload() }
+                                    }
+                                }
+                            }
+                            Button(role: .destructive) {
+                                Task { try? await env.taskStore.softDelete(id: record.id); await reload() }
+                            } label: { Text("Delete") }
+                        }
                     }
                 }
                 .listStyle(.plain)
@@ -60,6 +85,16 @@ struct FilterResultsView: View {
             loadError = "\(error)"
             results = []
         }
+    }
+
+    private func snooze(_ record: TaskStore.TaskRecord) async {
+        let cal = Calendar.current
+        let base = record.deadline ?? Date()
+        guard let newDeadline = cal.date(byAdding: .day, value: 1, to: base) else { return }
+        try? await env.taskStore.update(id: record.id) { mut in
+            mut.deadline = newDeadline
+        }
+        await reload()
     }
 
     private func cycle(_ record: TaskStore.TaskRecord) async {
