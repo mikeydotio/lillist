@@ -4,6 +4,110 @@ Append-only log of cross-cutting engineering lessons learned while building
 Lillist. Each entry captures a non-obvious gotcha — usually one that took real
 investigation to find — so future work doesn't re-learn it the hard way.
 
+## 2026-05-15 — Plan 11 pre-UAT cleanup: stale TODO comments outlive the API they reference; URLProtocol stubbing needs per-session keying when tests run in parallel; recurrence type names are nested under `RecurrenceRule` not `CalendarRule`; SwiftPM `.copy(...)` resources can't share a basename across directories
+
+**Context.** Plan 11 closed the loose ends found in the pre-UAT review:
+the macOS sidebar's `pinned()` workaround (the comment claimed
+LillistCore lacked the query; LillistCore had had it since Plan 4),
+the link-preview unfurl pipeline (promised by design §3, never
+shipped), the recurrence pattern editor (pulled forward from v2),
+the Empty Trash buttons (no `TaskStore.purgeAll()` existed),
+the macOS hotkey recorder (a text field stood in for a key-capture UI),
+and the `preconditionFailure` / `fatalError` calls in shipped and
+test code. Five concrete realities surfaced that future work should
+not re-learn:
+
+1. **Stale TODO comments are worse than no comment.** The
+   `// TODO(Plan 7 follow-up): LillistCore lacks a TaskStore.pinned()`
+   comment in `SidebarView.swift` claimed the API didn't exist; the
+   API had been on `main` since Plan 4 with a passing test
+   ("pinned returns all pinned tasks across the tree, excluding
+   trash"). The comment outlasted the limitation. Rule: when you
+   leave a `TODO(Plan N)` referencing a missing capability,
+   include a one-line check in the commit message that re-derives
+   the claim ("grep'd `TaskStore.pinned` 2026-05-09"), and when you
+   remove the workaround, audit the rest of the codebase for the
+   same comment.
+
+2. **`URLProtocol`-based test stubbing needs per-session keying when
+   tests run in parallel.** Swift Testing runs cases in parallel by
+   default; a single `static var responder: ((URL) -> Response?)?`
+   on a `URLProtocol` subclass is a data race when two tests inside
+   the same suite construct different responders. With one consumer
+   (just `LinkPreviewUnfurlerTests`) the tests happened to serialise;
+   adding a second consumer surfaced the race immediately
+   ("End-to-end" passing in isolation but corrupting the 404 case
+   and vice versa, depending on scheduling). The fix is to key
+   responders by a per-session token: every
+   `StubURLProtocol.session(responder:)` writes its responder to a
+   keyed dictionary under a fresh UUID and threads that UUID via
+   `URLSessionConfiguration.httpAdditionalHeaders`, so each request
+   `startLoading` looks up *its* responder. Public API
+   (`StubURLProtocol.session { ... }`) doesn't change.
+
+3. **Recurrence type names are nested under `RecurrenceRule`, not
+   `CalendarRule`.** `RecurrenceRule.Frequency` is the canonical
+   path (`CalendarRule.Frequency` does NOT exist — `Frequency` and
+   `CalendarRule` are sibling members of `RecurrenceRule`).
+   `CalendarRule.freq` (not `.frequency`) is the field name. When
+   writing UI code that constructs rules outside `RecurrenceRule`'s
+   scope, fully-qualify the type. Plan 11's Task 12-13 spec went
+   through three rounds of corrections before settling.
+
+4. **SwiftPM `.copy(...)` resources can't share a basename across
+   directories in the same target.** Two `.copy("CrashReporting/Fixtures")`
+   and `.copy("LinkPreview/Fixtures")` rules collide on the
+   `Fixtures` basename and produce `multiple resources named
+   'Fixtures'`. The fix is to rename one directory (Plan 11 went
+   with `LinkPreview/HTMLFixtures`). The plan author can't see
+   this from the file structure alone — the surprise is the
+   SwiftPM-side basename uniqueness rule.
+
+5. **`fatalError` in test code is a CI footgun.** Test-only
+   "should never reach" branches that use `fatalError` abort the
+   test runner process and surface as inscrutable "test crashed"
+   without a message naming the misuse. Swift Testing's
+   `Issue.record` (and XCTest's `XCTFail`) report a test failure
+   with the message and let the rest of the suite continue —
+   preferable in every case where a future maintainer might
+   actually hit the branch.
+
+**Rule.**
+
+- Audit `TODO(Plan N)` comments at every plan-close milestone.
+  Either resolve them or update them with the current reason they
+  still apply. The same goes for "this stopgap is here because X is
+  missing" comments — verify X is still missing before perpetuating
+  the stopgap.
+- Test fakes never `fatalError`. Use `Issue.record` / `XCTFail` and
+  return a defensible default. The cost is a few lines of "what to
+  return"; the benefit is CI legibility.
+- For unfurl-style pipelines that combine network + parse +
+  persist, abstract at the bytes boundary (return `Data?`), have
+  the production type wrap `URLSession`, and stub via
+  `URLProtocol` with per-session keying for parallel-safety.
+  Don't share static responder state across tests.
+- For SwiftPM build-tool resources, give each `.copy(...)`
+  directory a unique basename across the target. The CrashReporting
+  / LinkPreview collision is the canonical example.
+- For recurrence types: `RecurrenceRule.Frequency`, `RecurrenceRule.CalendarRule`,
+  `RecurrenceRule.AfterCompletionRule`. Fields are `freq`, `interval`,
+  `byDay`, `byMonthDay`, `bySetPos`, `count`, `until` (calendar) and
+  `interval` (after-completion). Don't guess at "frequency" — the
+  shorter `freq` is canonical.
+
+**Evidence.** Plan 11 commits in the `2026-05-14-pre-uat-cleanup`
+branch: `de719f8` (sidebar `pinned()` fix), `cf8f561` /
+`47205321` / `842ed72` / `fccb4be` / `98914df` (LinkPreview
+pipeline), `c539658` / `94076c8` / `69900e4` / `f8c754d`
+(Recurrence editor), `5bd92d2` / `caf66d9` / `8b932b9` (purgeAll
++ Empty Trash wiring), `2c49d1d` / `923abce` (HotkeyRecorder +
+re-registration), `cba1776` (fatalError softening), `d452686`
+(PersistenceController throws), `5dfab87` (snapshot tests), `e41b90c`
+(design doc update).
+
+---
+
 ## 2026-05-14 — Plan 10 onboarding + preferences: SwiftUI `.sheet` and `.fullScreenCover` content can't rely on `@Environment(AppEnvironment.self)`; `UNAuthorizationStatus.ephemeral` is `@available(macOS, unavailable)`; SwiftFilterStore has no `rename` or `create(... isPinned:)`; bootstrapping AccountStateMonitor needs an explicit `Task` to bridge actor → `@Observable` mirror
 
 **Context.** Plan 10 wired the first-launch onboarding sheet/cover and
