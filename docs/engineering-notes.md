@@ -4,6 +4,46 @@ Append-only log of cross-cutting engineering lessons learned while building
 Lillist. Each entry captures a non-obvious gotcha — usually one that took real
 investigation to find — so future work doesn't re-learn it the hard way.
 
+## 2026-05-15 — Plan 12 Plan 11 follow-ups: parallel `record(from:)` mappers, shared key-code table
+
+**Context.** Plan 11 added `TaskRecord.seriesID` and populated it in
+the canonical `TaskStore.record(from:)` mapper. Two parallel mappers —
+`SmartFilterStore.record(from:)` and `CLIBridge.LsHandler.record(from:)` —
+were not updated at the time, leaving smart-filter results and
+`lillist ls` output without series info. Plan 12 backfilled both with
+regression tests. Separately, Plan 11's macOS hotkey stack had two
+duplicated keyCode↔keyName tables (in `HotkeyRecorder` and
+`GlobalHotkeyMonitor`); Plan 12 consolidated them into `HotkeyKeyTable`
+with a round-trip test and exposed the test via a co-compile of
+`GlobalHotkeyMonitor.swift` into the standalone macOS test bundle.
+
+**Rule.**
+
+- **When you add a field to a public DTO, grep the entire codebase
+  for parallel mappers that construct that DTO.**
+  `TaskStore.record(from:)` was not the only place that produced
+  `TaskRecord`; `SmartFilterStore` and `LsHandler` each had their own
+  static mapper. Adding the field with a default value in the `init`
+  keeps callers compiling, but parallel mappers silently omit it.
+  `grep -rn 'TaskRecord(' --include='*.swift'` surfaces every site.
+- **Don't duplicate inversion tables.** When two pieces of code map
+  A→B and B→A, the inversion is one source of truth: a `[(A, B)]`
+  master list plus two `Dictionary(uniqueKeysWithValues:)` lookups.
+  Adding a row in one place propagates to both directions.
+  Duplicated tables drift silently and produce confusing round-trip
+  failures.
+- **`@MainActor` isolation flows through `static` members.** A
+  `static func` on a `@MainActor` class is itself main-actor isolated.
+  Tests calling it from a synchronous nonisolated context must be
+  `@MainActor` themselves. The compiler error
+  ("Call to main actor-isolated static method … in a synchronous
+  nonisolated context") points at the call site but the fix is on the
+  caller's annotation.
+
+**Evidence.** Plan 12 commits on `plan-12-followups`:
+SmartFilterStore + test, LsHandler + test, `HotkeyKeyTable.swift`,
+both Hotkey delegates, round-trip test.
+
 ## 2026-05-15 — Plan 11 pre-UAT cleanup: stale TODO comments outlive the API they reference; URLProtocol stubbing needs per-session keying when tests run in parallel; recurrence type names are nested under `RecurrenceRule` not `CalendarRule`; SwiftPM `.copy(...)` resources can't share a basename across directories
 
 **Context.** Plan 11 closed the loose ends found in the pre-UAT review:
