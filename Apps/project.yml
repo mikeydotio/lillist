@@ -74,6 +74,11 @@ targets:
       - path: Lillist-macOS/Sources/Hotkey/HotkeyRecorder.swift
       - path: Lillist-macOS/Sources/Hotkey/HotkeyKeyTable.swift
       - path: Lillist-macOS/Sources/Hotkey/GlobalHotkeyMonitor.swift
+      # FocusedListColumn declares the standalone ListColumn enum + the
+      # FocusedValueKey/extension; co-compiling it lets the focus gating
+      # test reference ListColumn without pulling in RootSplitView's
+      # AppEnvironment/sidebar dependencies (Plan 13 Task 5).
+      - path: Lillist-macOS/Sources/Commands/FocusedListColumn.swift
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: io.mikeydotio.Lillist.tests

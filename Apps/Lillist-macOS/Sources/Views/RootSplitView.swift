@@ -7,9 +7,7 @@ struct RootSplitView: View {
     @State private var uiState = UIStatePersistence()
     @State private var sidebarSelection: SidebarSelection?
     @State private var taskSelection: UUID?
-    @FocusState private var focusedColumn: Column?
-
-    enum Column: Hashable { case sidebar, list, detail }
+    @FocusState private var focusedColumn: ListColumn?
 
     init() {
         let persisted = UIStatePersistence().sidebarSelection
@@ -58,5 +56,6 @@ struct RootSplitView: View {
             }
         }
         .onChange(of: sidebarSelection) { _, new in uiState.sidebarSelection = new }
+        .focusedValue(\.listColumn, focusedColumn)
     }
 }
