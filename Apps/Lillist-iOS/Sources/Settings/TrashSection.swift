@@ -5,6 +5,8 @@ struct TrashSection: View {
     @Binding var prefs: PreferencesStore.Prefs
     @Environment(AppEnvironment.self) private var environment
     @State private var emptyResult: String?
+    @State private var isEmptying = false
+    @State private var confirmingEmpty = false
 
     var body: some View {
         Section("Trash") {
@@ -21,18 +23,46 @@ struct TrashSection: View {
                     .font(.footnote)
                     .foregroundStyle(.secondary)
             }
-            // TODO(Plan 1 follow-up): wire a public purgeAll() on
-            // AutoPurgeJob so this button has a real implementation.
             Button(role: .destructive) {
-                emptyResult = "Empty-now isn't wired up yet. Trashed tasks will purge automatically after \(prefs.trashRetentionDays) days."
+                confirmingEmpty = true
             } label: {
-                Text("Empty Trash now")
+                if isEmptying {
+                    ProgressView()
+                } else {
+                    Text("Empty Trash now")
+                }
+            }
+            .disabled(isEmptying)
+            .confirmationDialog(
+                "Empty Trash?",
+                isPresented: $confirmingEmpty,
+                titleVisibility: .visible
+            ) {
+                Button("Empty Trash", role: .destructive) {
+                    Task { await emptyTrash() }
+                }
+                Button("Cancel", role: .cancel) {}
+            } message: {
+                Text("Tasks in Trash will be permanently deleted.")
             }
             if let emptyResult {
                 Text(emptyResult)
                     .font(.footnote)
                     .foregroundStyle(.secondary)
             }
+        }
+    }
+
+    private func emptyTrash() async {
+        isEmptying = true
+        defer { isEmptying = false }
+        do {
+            let purged = try await environment.taskStore.purgeAll()
+            emptyResult = purged == 0
+                ? "Trash was already empty."
+                : "Emptied \(purged) task\(purged == 1 ? "" : "s")."
+        } catch {
+            emptyResult = "Couldn't empty Trash: \(error.localizedDescription)"
         }
     }
 }
