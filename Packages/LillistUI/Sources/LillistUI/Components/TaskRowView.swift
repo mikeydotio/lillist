@@ -6,17 +6,29 @@ public struct TaskRowView: View {
     public var tagNames: [String]
     public var onStatusClick: () -> Void
     public var onStatusLongPress: () -> Void
+    public var onMoveUp: (() -> Void)?
+    public var onMoveDown: (() -> Void)?
+    public var onIndent: (() -> Void)?
+    public var onOutdent: (() -> Void)?
 
     public init(
         task: TaskStore.TaskRecord,
         tagNames: [String],
         onStatusClick: @escaping () -> Void,
-        onStatusLongPress: @escaping () -> Void
+        onStatusLongPress: @escaping () -> Void,
+        onMoveUp: (() -> Void)? = nil,
+        onMoveDown: (() -> Void)? = nil,
+        onIndent: (() -> Void)? = nil,
+        onOutdent: (() -> Void)? = nil
     ) {
         self.task = task
         self.tagNames = tagNames
         self.onStatusClick = onStatusClick
         self.onStatusLongPress = onStatusLongPress
+        self.onMoveUp = onMoveUp
+        self.onMoveDown = onMoveDown
+        self.onIndent = onIndent
+        self.onOutdent = onOutdent
     }
 
     public var body: some View {
@@ -54,6 +66,51 @@ public struct TaskRowView: View {
         .padding(.horizontal, 6)
         .contentShape(Rectangle())
         .accessibilityElement(children: .combine)
-        .accessibilityLabel("\(task.title), \(StatusGlyph.accessibilityLabel(for: task.status))")
+        .accessibilityLabel(Self.composedAccessibilityLabel(task: task, tagNames: tagNames))
+        .modifier(ReorderActionsModifier(
+            onMoveUp: onMoveUp,
+            onMoveDown: onMoveDown,
+            onIndent: onIndent,
+            onOutdent: onOutdent
+        ))
+    }
+
+    /// Composes the row's combined accessibility label. Exposed for unit testing.
+    /// Format: "<title>, <status>[, tagged <tags>][, due <date>]"
+    public static func composedAccessibilityLabel(
+        task: TaskStore.TaskRecord,
+        tagNames: [String]
+    ) -> String {
+        var parts: [String] = [task.title, StatusGlyph.accessibilityLabel(for: task.status)]
+        if !tagNames.isEmpty {
+            parts.append("tagged \(tagNames.joined(separator: ", "))")
+        }
+        if let deadline = task.deadline {
+            let formatted = deadline.formatted(
+                date: .abbreviated,
+                time: task.deadlineHasTime ? .shortened : .omitted
+            )
+            parts.append("due \(formatted)")
+        }
+        return parts.joined(separator: ", ")
+    }
+}
+
+/// Conditionally adds reorder accessibility actions. Each action is
+/// only attached when its closure is non-nil, so callers that don't
+/// want a particular action (e.g. iOS surfaces that lack the
+/// notification plumbing) get no extraneous announcements.
+private struct ReorderActionsModifier: ViewModifier {
+    var onMoveUp: (() -> Void)?
+    var onMoveDown: (() -> Void)?
+    var onIndent: (() -> Void)?
+    var onOutdent: (() -> Void)?
+
+    func body(content: Content) -> some View {
+        content
+            .accessibilityAction(named: Text("Move up")) { onMoveUp?() }
+            .accessibilityAction(named: Text("Move down")) { onMoveDown?() }
+            .accessibilityAction(named: Text("Indent")) { onIndent?() }
+            .accessibilityAction(named: Text("Outdent")) { onOutdent?() }
     }
 }
