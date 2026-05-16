@@ -38,20 +38,30 @@ public struct QuickCaptureField: View {
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 6) {
                         ForEach(tagSuggestions, id: \.self) { tag in
-                            Text("#\(tag)")
-                                .padding(.horizontal, 8)
-                                .padding(.vertical, 4)
-                                .background(Capsule().fill(Color.accentColor.opacity(0.15)))
-                                .onTapGesture { text += " #\(tag)" }
-                                .accessibilityLabel("Insert tag \(tag)")
+                            Button {
+                                text += " #\(tag)"
+                            } label: {
+                                Text("#\(tag)")
+                                    .padding(.horizontal, 8)
+                                    .padding(.vertical, 4)
+                                    .frame(minHeight: 44)
+                                    .background(Capsule().fill(Color.accentColor.opacity(0.15)))
+                            }
+                            .buttonStyle(.plain)
+                            .accessibilityLabel("Insert tag \(tag)")
                         }
                         ForEach(dateSuggestions, id: \.self) { phrase in
-                            Text("^\(phrase)")
-                                .padding(.horizontal, 8)
-                                .padding(.vertical, 4)
-                                .background(Capsule().fill(Color.orange.opacity(0.15)))
-                                .onTapGesture { text += " ^\(phrase)" }
-                                .accessibilityLabel("Insert deadline \(phrase)")
+                            Button {
+                                text += " ^\(phrase)"
+                            } label: {
+                                Text("^\(phrase)")
+                                    .padding(.horizontal, 8)
+                                    .padding(.vertical, 4)
+                                    .frame(minHeight: 44)
+                                    .background(Capsule().fill(Color.orange.opacity(0.15)))
+                            }
+                            .buttonStyle(.plain)
+                            .accessibilityLabel("Insert deadline \(phrase)")
                         }
                     }
                 }
