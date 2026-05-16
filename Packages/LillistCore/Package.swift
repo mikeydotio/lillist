@@ -33,7 +33,8 @@ let package = Package(
             name: "LillistCoreTests",
             dependencies: ["LillistCore"],
             resources: [
-                .copy("CrashReporting/Fixtures")
+                .copy("CrashReporting/Fixtures"),
+                .copy("LinkPreview/HTMLFixtures")
             ]
         ),
         .executableTarget(
