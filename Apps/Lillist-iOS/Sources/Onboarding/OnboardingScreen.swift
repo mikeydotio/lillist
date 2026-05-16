@@ -28,8 +28,15 @@ struct OnboardingScreen: View {
             ScrollView {
                 VStack(spacing: 28) {
                     header
-                    bullets
-                    permissionStatusRow
+                    OnboardingContent(
+                        bullets: Self.iOSBullets,
+                        permissionStatus: permissionStatus,
+                        onOpenSettings: {
+                            if let url = URL(string: UIApplication.openSettingsURLString) {
+                                UIApplication.shared.open(url)
+                            }
+                        }
+                    )
                 }
                 .padding(24)
             }
@@ -52,46 +59,11 @@ struct OnboardingScreen: View {
         }
     }
 
-    private var bullets: some View {
-        VStack(alignment: .leading, spacing: 18) {
-            bullet(icon: "icloud", text: "iCloud sync is required. Your data lives in your private CloudKit database.")
-            bullet(icon: "bell", text: "Notification permission powers reminders for tasks with dates.")
-            bullet(icon: "plus.circle", text: "Use the Lock Screen Shortcut or the floating + button to capture anywhere.")
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-    }
-
-    private func bullet(icon: String, text: String) -> some View {
-        HStack(alignment: .top, spacing: 14) {
-            Image(systemName: icon)
-                .font(.title3)
-                .frame(width: 28)
-                .foregroundStyle(.tint)
-            Text(text)
-                .font(.body)
-                .fixedSize(horizontal: false, vertical: true)
-        }
-    }
-
-    @ViewBuilder private var permissionStatusRow: some View {
-        switch permissionStatus {
-        case .authorized:
-            Label("Notifications enabled.", systemImage: "checkmark.circle.fill")
-                .foregroundStyle(.green)
-        case .denied:
-            VStack(alignment: .leading, spacing: 8) {
-                Label("Notifications denied.", systemImage: "exclamationmark.triangle.fill")
-                    .foregroundStyle(.orange)
-                Button("Open Settings") {
-                    if let url = URL(string: UIApplication.openSettingsURLString) {
-                        UIApplication.shared.open(url)
-                    }
-                }
-            }
-        case .notDetermined:
-            EmptyView()
-        }
-    }
+    private static let iOSBullets: [OnboardingContent.Bullet] = [
+        .init(icon: "icloud", text: "iCloud sync is required. Your data lives in your private CloudKit database."),
+        .init(icon: "bell", text: "Notification permission powers reminders for tasks with dates."),
+        .init(icon: "plus.circle", text: "Use the Lock Screen Shortcut or the floating + button to capture anywhere.")
+    ]
 
     private var actionBar: some View {
         VStack(spacing: 12) {

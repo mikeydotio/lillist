@@ -37,8 +37,15 @@ struct OnboardingSheet: View {
     var body: some View {
         VStack(spacing: 24) {
             header
-            bullets
-            permissionStatusRow
+            OnboardingContent(
+                bullets: Self.macOSBullets,
+                permissionStatus: permissionStatus,
+                onOpenSettings: {
+                    if let url = URL(string: "x-apple.systempreferences:com.apple.preference.notifications") {
+                        NSWorkspace.shared.open(url)
+                    }
+                }
+            )
             buttons
             skipLink
         }
@@ -63,46 +70,11 @@ struct OnboardingSheet: View {
         }
     }
 
-    private var bullets: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            bullet(icon: "icloud", text: "iCloud sync is required. Your data lives in your private CloudKit database.")
-            bullet(icon: "bell", text: "Notification permission powers reminders for tasks with dates.")
-            bullet(icon: "keyboard", text: "Press \u{2303}\u{2325}Space anywhere for Quick Capture.")
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-    }
-
-    private func bullet(icon: String, text: String) -> some View {
-        HStack(alignment: .top, spacing: 12) {
-            Image(systemName: icon)
-                .frame(width: 24, height: 24)
-                .foregroundStyle(.tint)
-            Text(text)
-                .font(.body)
-                .fixedSize(horizontal: false, vertical: true)
-        }
-    }
-
-    @ViewBuilder private var permissionStatusRow: some View {
-        switch permissionStatus {
-        case .authorized:
-            Label("Notifications enabled.", systemImage: "checkmark.circle.fill")
-                .foregroundStyle(.green)
-        case .denied:
-            VStack(alignment: .leading, spacing: 6) {
-                Label("Notifications denied.", systemImage: "exclamationmark.triangle.fill")
-                    .foregroundStyle(.orange)
-                Button("Open System Settings") {
-                    if let url = URL(string: "x-apple.systempreferences:com.apple.preference.notifications") {
-                        NSWorkspace.shared.open(url)
-                    }
-                }
-                .buttonStyle(.link)
-            }
-        case .notDetermined:
-            EmptyView()
-        }
-    }
+    private static let macOSBullets: [OnboardingContent.Bullet] = [
+        .init(icon: "icloud", text: "iCloud sync is required. Your data lives in your private CloudKit database."),
+        .init(icon: "bell", text: "Notification permission powers reminders for tasks with dates."),
+        .init(icon: "keyboard", text: "Press \u{2303}\u{2325}Space anywhere for Quick Capture.")
+    ]
 
     private var buttons: some View {
         HStack(spacing: 12) {
