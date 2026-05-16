@@ -1,5 +1,6 @@
 import SwiftUI
 import LillistCore
+import LillistUI
 
 /// Journal tab: reverse-chronological note log plus a composer at the
 /// bottom. Backed by `JournalStore.entries(forTask:)` and `appendNote`.
@@ -43,20 +44,3 @@ struct TaskJournalTab: View {
     }
 }
 
-private struct JournalEntryRow: View {
-    let entry: JournalStore.JournalRecord
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text(entry.body)
-                .lineLimit(nil)
-            if let createdAt = entry.createdAt {
-                Text(createdAt.formatted(date: .abbreviated, time: .shortened))
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
-            }
-        }
-        .padding(.vertical, 4)
-        .accessibilityElement(children: .combine)
-    }
-}
