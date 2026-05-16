@@ -25,6 +25,9 @@ public struct FloatingAddButton: View {
         }
         .accessibilityLabel("New task")
         .accessibilityHint("Opens quick capture")
+        .accessibilityAction(named: Text("Capture from clipboard")) {
+            onLongPress?()
+        }
         .simultaneousGesture(
             LongPressGesture(minimumDuration: 0.5).onEnded { _ in
                 onLongPress?()
