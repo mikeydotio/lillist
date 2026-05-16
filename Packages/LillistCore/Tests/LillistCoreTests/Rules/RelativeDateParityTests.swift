@@ -17,13 +17,10 @@ struct RelativeDateParityTests {
         let now = ParityFixtures.now
         let cal = ParityFixtures.calendar
 
-        var idsByOffset: [Int: UUID] = [:]
         try await ctx.perform {
             for offset in -10...30 {
-                let id = UUID()
-                idsByOffset[offset] = id
                 let t = LillistTask(context: ctx)
-                t.id = id
+                t.id = UUID()
                 t.title = "off=\(offset)"
                 t.notes = ""
                 t.status = .todo
