@@ -69,6 +69,44 @@ final class iOSSnapshotTests: XCTestCase {
     }
 
     @MainActor
+    func test_syncStatusBadge_idle_dark() {
+        let view = SyncStatusBadge(indicator: .idle(lastSync: Date(timeIntervalSince1970: 0)))
+            .padding()
+            .background(Color(.systemBackground))
+            .environment(\.colorScheme, .dark)
+        let host = UIHostingController(rootView: view)
+        host.view.frame = CGRect(x: 0, y: 0, width: 60, height: 40)
+        host.overrideUserInterfaceStyle = .dark
+        assertSnapshot(of: host, as: .image(size: CGSize(width: 60, height: 40)))
+    }
+
+    @MainActor
+    func test_syncStatusBadge_error_dark() {
+        let view = SyncStatusBadge(
+            indicator: .error(message: "Network unavailable", lastSuccess: nil)
+        )
+        .padding()
+        .background(Color(.systemBackground))
+        .environment(\.colorScheme, .dark)
+        let host = UIHostingController(rootView: view)
+        host.view.frame = CGRect(x: 0, y: 0, width: 60, height: 40)
+        host.overrideUserInterfaceStyle = .dark
+        assertSnapshot(of: host, as: .image(size: CGSize(width: 60, height: 40)))
+    }
+
+    @MainActor
+    func test_syncStatusBadge_inProgress_dark() {
+        let view = SyncStatusBadge(indicator: .inProgress)
+            .padding()
+            .background(Color(.systemBackground))
+            .environment(\.colorScheme, .dark)
+        let host = UIHostingController(rootView: view)
+        host.view.frame = CGRect(x: 0, y: 0, width: 60, height: 40)
+        host.overrideUserInterfaceStyle = .dark
+        assertSnapshot(of: host, as: .image(size: CGSize(width: 60, height: 40)))
+    }
+
+    @MainActor
     func test_quickCaptureField_with_suggestions() {
         @State var text: String = "Buy milk"
         let view = QuickCaptureField(
