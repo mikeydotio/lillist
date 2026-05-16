@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		018B5E501EEC7DD0110B515A /* GeneralPane.swift in Sources */ = {isa = PBXBuildFile; fileRef = 40F8F1B3826FD9A436D73201 /* GeneralPane.swift */; };
+		03FBDEF7777954B9B884E193 /* AppIntents.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = ECE3A50348E57FE59F4366B8 /* AppIntents.framework */; };
 		04DB0667DD4F3B9B95FB9581 /* DragDropInteractionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 42C2D056A53E557FD7C76E00 /* DragDropInteractionTests.swift */; };
 		12192573C492F4C19AC7A9AF /* LillistApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2B69FCA7EA5A0AEC03AC528 /* LillistApp.swift */; };
 		1835D5C3561B08CF2C688CD5 /* GlobalHotkeyMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 447BBBCF160E4CA4AF71A686 /* GlobalHotkeyMonitor.swift */; };
@@ -19,6 +20,7 @@
 		34205E56AB7BBAC39AABE64A /* LillistCore in Frameworks */ = {isa = PBXBuildFile; productRef = D5DCD7417305E330CB4C0DC0 /* LillistCore */; };
 		3B20971664653ADF6B7B8A39 /* FollowUpFormView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 40E496CC31EAABC3031FA783 /* FollowUpFormView.swift */; };
 		3BFAF02F4DF61C06EF1ACC64 /* TaskListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7428376E8AED267AF2F3C3EE /* TaskListView.swift */; };
+		41D5332FFC9A37D6874E1E44 /* AppIntents.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = ECE3A50348E57FE59F4366B8 /* AppIntents.framework */; };
 		44330D12274449C7C6D5CE18 /* TaskDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CD5D524971199DDBA766AF3F /* TaskDetailView.swift */; };
 		513F80DB225B3198A6B428C6 /* CrashReporterHost.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBBEE29201F8E282644A5147 /* CrashReporterHost.swift */; };
 		51CD698709C7470BF850D750 /* TodayPopoverView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 59867850C82C90EBDA587E7A /* TodayPopoverView.swift */; };
@@ -111,6 +113,7 @@
 		D86C5C049217ECDE9095EF97 /* PinnedSidebarIntegrationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PinnedSidebarIntegrationTests.swift; sourceTree = "<group>"; };
 		D8D39D3B3FEA4E7D295B1274 /* Color+Hex.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Color+Hex.swift"; sourceTree = "<group>"; };
 		E5425E4B83C495ACEC60F879 /* LillistCore */ = {isa = PBXFileReference; lastKnownFileType = folder; name = LillistCore; path = ../Packages/LillistCore; sourceTree = SOURCE_ROOT; };
+		ECE3A50348E57FE59F4366B8 /* AppIntents.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = AppIntents.framework; path = System/Library/Frameworks/AppIntents.framework; sourceTree = SDKROOT; };
 		ED9565C658DC6743EF09396D /* MailtoTransport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MailtoTransport.swift; sourceTree = "<group>"; };
 		EF7781804345711C5D1DFA6D /* InlineCreateField.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InlineCreateField.swift; sourceTree = "<group>"; };
 		F6F0E55BAE4ADA6310628012 /* SidebarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SidebarView.swift; sourceTree = "<group>"; };
@@ -126,6 +129,7 @@
 			files = (
 				B685FB1C17A64BBA91B50EA2 /* LillistCore in Frameworks */,
 				5368030379D37BFAD59E2576 /* LillistUI in Frameworks */,
+				41D5332FFC9A37D6874E1E44 /* AppIntents.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -135,6 +139,7 @@
 			files = (
 				34205E56AB7BBAC39AABE64A /* LillistCore in Frameworks */,
 				883E82B069F58DB56B18C7C4 /* LillistUI in Frameworks */,
+				03FBDEF7777954B9B884E193 /* AppIntents.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -189,6 +194,7 @@
 			children = (
 				C98E95966AFDCFA41F5863CF /* Lillist-macOS */,
 				5E4CCBE3157FB005976F2FFB /* Packages */,
+				71000219E4A9B056D1ED61DC /* Frameworks */,
 				DA073ABE15DD6C41A9E871BC /* Products */,
 			);
 			sourceTree = "<group>";
@@ -242,6 +248,14 @@
 				ED9565C658DC6743EF09396D /* MailtoTransport.swift */,
 			);
 			path = Sources;
+			sourceTree = "<group>";
+		};
+		71000219E4A9B056D1ED61DC /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				ECE3A50348E57FE59F4366B8 /* AppIntents.framework */,
+			);
+			name = Frameworks;
 			sourceTree = "<group>";
 		};
 		816CA5865BFAA7A95B02CE71 /* TaskList */ = {
@@ -545,6 +559,7 @@
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu11;
 				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_TREAT_WARNINGS_AS_ERRORS = YES;
 				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
 				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
 				GCC_WARN_UNDECLARED_SELECTOR = YES;
@@ -560,6 +575,7 @@
 				SWIFT_COMPILATION_MODE = wholemodule;
 				SWIFT_OPTIMIZATION_LEVEL = "-O";
 				SWIFT_STRICT_CONCURRENCY = complete;
+				SWIFT_TREAT_WARNINGS_AS_ERRORS = YES;
 				SWIFT_VERSION = 6.0;
 			};
 			name = Release;
@@ -677,6 +693,7 @@
 					"$(inherited)",
 					"DEBUG=1",
 				);
+				GCC_TREAT_WARNINGS_AS_ERRORS = YES;
 				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
 				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
 				GCC_WARN_UNDECLARED_SELECTOR = YES;
@@ -693,6 +710,7 @@
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				SWIFT_STRICT_CONCURRENCY = complete;
+				SWIFT_TREAT_WARNINGS_AS_ERRORS = YES;
 				SWIFT_VERSION = 6.0;
 			};
 			name = Debug;
