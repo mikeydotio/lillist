@@ -1,5 +1,6 @@
 import Foundation
 import os
+import Testing
 @preconcurrency import UserNotifications
 @testable import LillistCore
 
@@ -65,7 +66,11 @@ final class FakeUserNotificationCenter: UNUserNotificationCenterProtocol, @unche
     func notificationSettings() async -> UNNotificationSettings {
         // We can't construct UNNotificationSettings from outside the framework;
         // tests that need to inspect settings should use requestAuthorization() instead.
-        fatalError("FakeUserNotificationCenter.notificationSettings() not implemented; use requestAuthorization() in tests instead")
+        // If a test reaches this path, surface it as a test failure rather than
+        // crashing the runner; fall back to the real center (which on Simulator
+        // returns a denied state) so the caller still gets a UNNotificationSettings.
+        Issue.record("FakeUserNotificationCenter.notificationSettings() called — tests should use requestAuthorization() instead")
+        return await UNUserNotificationCenter.current().notificationSettings()
     }
 
     func currentAuthorizationStatus() async -> UNAuthorizationStatus {

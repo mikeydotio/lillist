@@ -71,7 +71,12 @@ private final class MockNotificationCenter: UNUserNotificationCenterProtocol, @u
         grantedOnPrompt
     }
     func notificationSettings() async -> UNNotificationSettings {
-        fatalError("Not implemented; tests should not need real UNNotificationSettings")
+        // Tests in this bundle shouldn't need real UNNotificationSettings; if a
+        // test reaches this path, surface it as a test failure rather than
+        // crashing the runner. Fall back to the real center so the call still
+        // returns a value.
+        XCTFail("MockNotificationCenter.notificationSettings() called — tests should not need real UNNotificationSettings")
+        return await UNUserNotificationCenter.current().notificationSettings()
     }
     func currentAuthorizationStatus() async -> UNAuthorizationStatus {
         .notDetermined
