@@ -1312,8 +1312,17 @@ struct LinkPreviewUnfurlerTests {
         let outcome = await unfurler.unfurl(attachmentID: aid, url: URL(string: "https://example.com/gone")!)
         if case .failure = outcome { /* pass */ } else { Issue.record("Expected .failure outcome") }
 
+        // `addLinkPreview` already wrote initial JSON with the URL and a
+        // `fetchedAt` timestamp, so we don't assert the row is empty.
+        // What we DO want to verify: the unfurler did not stamp any
+        // metadata onto the row (title/description still nil), and the
+        // URL stays available for the "couldn't fetch — retry" UX.
         let row = try await attachments.fetch(id: aid)
-        #expect(row.linkPreviewJSON == nil || row.linkPreviewJSON == "")
+        let payload = try #require(row.linkPreviewJSON.flatMap { $0.data(using: .utf8) })
+        let decoded = try JSONDecoder().decode(AttachmentStore.LinkPreviewPayload.self, from: payload)
+        #expect(decoded.title == nil)
+        #expect(decoded.description == nil)
+        #expect(decoded.url == "https://example.com/gone")
     }
 }
 ```
