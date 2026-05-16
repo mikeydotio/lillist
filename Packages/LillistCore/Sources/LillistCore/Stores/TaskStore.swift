@@ -48,6 +48,7 @@ public final class TaskStore: @unchecked Sendable {
         public var modifiedAt: Date?
         public var closedAt: Date?
         public var deletedAt: Date?
+        public var seriesID: UUID?
 
         public init(
             id: UUID,
@@ -64,7 +65,8 @@ public final class TaskStore: @unchecked Sendable {
             createdAt: Date?,
             modifiedAt: Date?,
             closedAt: Date?,
-            deletedAt: Date?
+            deletedAt: Date?,
+            seriesID: UUID? = nil
         ) {
             self.id = id
             self.title = title
@@ -81,6 +83,7 @@ public final class TaskStore: @unchecked Sendable {
             self.modifiedAt = modifiedAt
             self.closedAt = closedAt
             self.deletedAt = deletedAt
+            self.seriesID = seriesID
         }
     }
 
@@ -503,7 +506,8 @@ public final class TaskStore: @unchecked Sendable {
             createdAt: m.createdAt,
             modifiedAt: m.modifiedAt,
             closedAt: m.closedAt,
-            deletedAt: m.deletedAt
+            deletedAt: m.deletedAt,
+            seriesID: m.series?.id
         )
     }
 }

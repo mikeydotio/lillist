@@ -12,6 +12,8 @@ struct TaskDetailView: View {
     @State private var start: Date?
     @State private var deadline: Date?
     @State private var showFollowUpForm = false
+    @State private var recurrenceViewModel = RecurrenceEditorViewModel(rule: nil)
+    @State private var showingRecurrenceEditor = false
 
     var body: some View {
         ScrollView {
@@ -25,7 +27,7 @@ struct TaskDetailView: View {
                         deadline: $deadline,
                         onStatusMenu: { s in Task { await transition(to: s) } }
                     )
-                    RecurrenceFieldPlaceholderView().padding(.horizontal)
+                    recurrenceRow.padding(.horizontal)
                     if showFollowUpForm {
                         FollowUpFormView(
                             blockedTaskID: r.id,
@@ -48,6 +50,52 @@ struct TaskDetailView: View {
         .onChange(of: notes) { _, new in Task { try? await env.taskStore.update(id: taskID) { $0.notes = new } } }
         .onChange(of: start) { _, new in Task { try? await env.taskStore.update(id: taskID) { $0.start = new } } }
         .onChange(of: deadline) { _, new in Task { try? await env.taskStore.update(id: taskID) { $0.deadline = new } } }
+        .sheet(isPresented: $showingRecurrenceEditor) {
+            RecurrenceEditorView(
+                viewModel: $recurrenceViewModel,
+                onCommit: { rule in
+                    Task { await commitRecurrence(rule) }
+                    showingRecurrenceEditor = false
+                },
+                onCancel: { showingRecurrenceEditor = false }
+            )
+            .frame(minWidth: 420, minHeight: 480)
+        }
+    }
+
+    @ViewBuilder
+    private var recurrenceRow: some View {
+        HStack {
+            Image(systemName: "repeat")
+                .foregroundStyle(.secondary)
+            Text(currentRecurrenceSummary)
+                .foregroundStyle(.secondary)
+            Spacer()
+            Button(recurrenceViewModel.repeats ? "Edit…" : "Add…") {
+                showingRecurrenceEditor = true
+            }
+        }
+        .font(.callout)
+    }
+
+    private var currentRecurrenceSummary: String {
+        guard recurrenceViewModel.repeats else { return "Doesn't repeat" }
+        switch recurrenceViewModel.mode {
+        case .calendar:
+            let unit: String
+            switch recurrenceViewModel.freq {
+            case .daily: unit = "day"
+            case .weekly: unit = "week"
+            case .monthly: unit = "month"
+            case .yearly: unit = "year"
+            }
+            return recurrenceViewModel.interval == 1
+                ? "Every \(unit)"
+                : "Every \(recurrenceViewModel.interval) \(unit)s"
+        case .afterCompletion:
+            let days = Int(recurrenceViewModel.afterCompletionSeconds / 86_400)
+            return "Repeats \(days) day\(days == 1 ? "" : "s") after completion"
+        }
     }
 
     private func load() async {
@@ -58,11 +106,35 @@ struct TaskDetailView: View {
         start = r.start
         deadline = r.deadline
         showFollowUpForm = (r.status == .blocked)
+        if let seriesID = r.seriesID,
+           let series = try? await env.seriesStore.fetch(id: seriesID) {
+            recurrenceViewModel = RecurrenceEditorViewModel(rule: series.rule)
+        } else {
+            recurrenceViewModel = RecurrenceEditorViewModel(rule: nil)
+        }
     }
 
     private func transition(to s: Status) async {
         try? await env.taskStore.transition(id: taskID, to: s)
         if s == .blocked { showFollowUpForm = true } else { showFollowUpForm = false }
         await load()
+    }
+
+    private func commitRecurrence(_ rule: RecurrenceRule?) async {
+        guard let r = record else { return }
+        do {
+            if let rule {
+                if let seriesID = r.seriesID {
+                    try await env.seriesStore.update(id: seriesID, rule: rule)
+                } else {
+                    _ = try await env.seriesStore.create(fromSeedTask: taskID, rule: rule)
+                }
+            } else if let seriesID = r.seriesID {
+                try await env.seriesStore.delete(id: seriesID)
+            }
+            await load()
+        } catch {
+            // Surface in a banner later; failure leaves state unchanged.
+        }
     }
 }

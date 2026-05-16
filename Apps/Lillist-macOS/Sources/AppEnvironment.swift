@@ -16,6 +16,7 @@ final class AppEnvironment {
     let taskStore: TaskStore
     let tagStore: TagStore
     let journalStore: JournalStore
+    let seriesStore: SeriesStore
     let preferencesStore: PreferencesStore
     let smartFilterStore: SmartFilterStore
     let notificationSpecStore: NotificationSpecStore
@@ -42,6 +43,7 @@ final class AppEnvironment {
         self.taskStore = TaskStore(persistence: persistence)
         self.tagStore = TagStore(persistence: persistence)
         self.journalStore = JournalStore(persistence: persistence)
+        self.seriesStore = SeriesStore(persistence: persistence)
         let preferencesStore = PreferencesStore(persistence: persistence)
         self.preferencesStore = preferencesStore
         let smartFilterStore = SmartFilterStore(persistence: persistence)
