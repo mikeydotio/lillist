@@ -26,7 +26,7 @@ public final class PersistenceController: @unchecked Sendable {
 
     public init(configuration: StoreConfiguration) async throws {
         self.configuration = configuration
-        let container = Self.makeContainer(for: configuration)
+        let container = try Self.makeContainer(for: configuration)
         let description = Self.makeStoreDescription(for: configuration)
         container.persistentStoreDescriptions = [description]
 
@@ -58,8 +58,10 @@ public final class PersistenceController: @unchecked Sendable {
     /// - In-memory configurations return a plain `NSPersistentContainer`.
     /// - On-disk configurations return an `NSPersistentCloudKitContainer` so
     ///   Core Data can mirror to iCloud (design Section 3).
-    public static func makeContainer(for configuration: StoreConfiguration) -> NSPersistentContainer {
-        let model = loadModel()
+    /// - Throws: `LillistError.modelUnavailable` if the compiled managed-object
+    ///   model cannot be located in the resource bundle.
+    public static func makeContainer(for configuration: StoreConfiguration) throws -> NSPersistentContainer {
+        let model = try sharedModel()
         switch configuration.storeKind {
         case .inMemory:
             return NSPersistentContainer(name: "LillistModel", managedObjectModel: model)
@@ -102,25 +104,35 @@ public final class PersistenceController: @unchecked Sendable {
         return description
     }
 
-    nonisolated(unsafe) private static let sharedModel: NSManagedObjectModel = {
-        // Try Xcode's DataModelCompile output first (`LillistModel.momd`,
-        // produced in workspace builds), then fall back to the SPM
-        // build-tool plugin's output (`LillistModel.spm.momd`, produced
-        // in standalone `swift build` / `swift test`). The plugin uses a
-        // distinct filename to avoid colliding with Xcode's auto-compile
-        // in workspace builds; see `CompileCoreDataModel.swift`.
-        let url = Bundle.module.url(forResource: "LillistModel", withExtension: "momd")
-            ?? Bundle.module.url(forResource: "LillistModel.spm", withExtension: "momd")
-        guard let url else {
-            preconditionFailure("LillistModel.momd not found in bundle (looked for LillistModel.momd and LillistModel.spm.momd)")
+    /// The compiled Core Data managed-object model.
+    ///
+    /// Tries Xcode's DataModelCompile output first (`LillistModel.momd`,
+    /// produced in workspace builds), then falls back to the SPM
+    /// build-tool plugin's output (`LillistModel.spm.momd`, produced in
+    /// standalone `swift build` / `swift test`). The plugin uses a
+    /// distinct filename to avoid colliding with Xcode's auto-compile in
+    /// workspace builds; see `CompileCoreDataModel.swift` and the Plan 9
+    /// engineering note.
+    ///
+    /// - Throws: `LillistError.modelUnavailable` listing the filenames
+    ///   that were searched if no model bundle is found, or the single
+    ///   resolved filename if the bundle exists but fails to parse.
+    public static func sharedModel() throws -> NSManagedObjectModel {
+        let searched = ["LillistModel.momd", "LillistModel.spm.momd"]
+        var foundURL: URL?
+        for name in searched {
+            let stem = (name as NSString).deletingPathExtension
+            if let url = Bundle.module.url(forResource: stem, withExtension: "momd") {
+                foundURL = url
+                break
+            }
+        }
+        guard let url = foundURL else {
+            throw LillistError.modelUnavailable(searchedFilenames: searched)
         }
         guard let model = NSManagedObjectModel(contentsOf: url) else {
-            preconditionFailure("Failed to load NSManagedObjectModel from \(url)")
+            throw LillistError.modelUnavailable(searchedFilenames: [url.lastPathComponent])
         }
         return model
-    }()
-
-    private static func loadModel() -> NSManagedObjectModel {
-        sharedModel
     }
 }

@@ -6,15 +6,15 @@ import Foundation
 @Suite("PersistenceController (CloudKit)")
 struct PersistenceControllerCloudKitTests {
     @Test("On-disk configuration produces an NSPersistentCloudKitContainer")
-    func onDiskMakesCloudKitContainer() {
+    func onDiskMakesCloudKitContainer() throws {
         let url = URL(fileURLWithPath: "/tmp/Lillist-fake.sqlite")
-        let container = PersistenceController.makeContainer(for: .onDisk(url: url))
+        let container = try PersistenceController.makeContainer(for: .onDisk(url: url))
         #expect(container is NSPersistentCloudKitContainer)
     }
 
     @Test("In-memory configuration produces a plain NSPersistentContainer (test/preview path)")
-    func inMemoryMakesPlainContainer() {
-        let container = PersistenceController.makeContainer(for: .inMemory)
+    func inMemoryMakesPlainContainer() throws {
+        let container = try PersistenceController.makeContainer(for: .inMemory)
         #expect((container is NSPersistentCloudKitContainer) == false)
     }
 

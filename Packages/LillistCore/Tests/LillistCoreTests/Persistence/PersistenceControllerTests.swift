@@ -38,6 +38,20 @@ struct PersistenceControllerTests {
         #expect(names.contains("SmartFilter"))
     }
 
+    @Test("modelUnavailable error description lists both searched filenames")
+    func modelUnavailableError() {
+        // Pin the LillistError.modelUnavailable shape. We can't easily
+        // force Bundle.module to forget the model, so this is a
+        // change-detection test for the error contract that
+        // PersistenceController.sharedModel() promises to throw when
+        // neither LillistModel.momd nor LillistModel.spm.momd is
+        // present in the bundle.
+        let err = LillistError.modelUnavailable(searchedFilenames: ["LillistModel.momd", "LillistModel.spm.momd"])
+        let desc = err.localizedDescription
+        #expect(desc.contains("LillistModel.momd"))
+        #expect(desc.contains("LillistModel.spm.momd"))
+    }
+
     @Test("Model contains SmartFilter entity with expected attributes")
     func smartFilterEntityShape() async throws {
         let controller = try await PersistenceController(configuration: .inMemory)

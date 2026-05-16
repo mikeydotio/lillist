@@ -22,6 +22,7 @@ public enum LillistError: Error, Sendable, Equatable {
     case attachmentFetchFailed(url: URL)
     case migrationRequired
     case migrationFailed(underlying: String)
+    case modelUnavailable(searchedFilenames: [String])
 }
 
 extension LillistError: LocalizedError {
@@ -50,6 +51,8 @@ extension LillistError: LocalizedError {
             return "A data migration is required to open this store."
         case .migrationFailed(let underlying):
             return "Data migration failed: \(underlying)"
+        case .modelUnavailable(let names):
+            return "Lillist data model not found in app bundle (searched: \(names.joined(separator: ", ")))"
         }
     }
 }
