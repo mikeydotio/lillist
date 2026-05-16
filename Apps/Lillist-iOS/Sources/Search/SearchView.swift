@@ -39,6 +39,28 @@ struct SearchView: View {
                     NavigationLink(value: task.id) {
                         SearchResultRow(task: task, tagNames: [])
                     }
+                    .swipeActions(edge: .leading, allowsFullSwipe: true) {
+                        Button("Complete") {
+                            Task { try? await env.taskStore.transition(id: task.id, to: .closed); await runSearch() }
+                        }.tint(.green)
+                    }
+                    .swipeActions(edge: .trailing) {
+                        Button(role: .destructive) {
+                            Task { try? await env.taskStore.softDelete(id: task.id); await runSearch() }
+                        } label: { Text("Delete") }
+                    }
+                    .contextMenu {
+                        Menu("Change status") {
+                            ForEach(Status.allCases, id: \.self) { s in
+                                Button(StatusGlyph.accessibilityLabel(for: s)) {
+                                    Task { try? await env.taskStore.transition(id: task.id, to: s); await runSearch() }
+                                }
+                            }
+                        }
+                        Button(role: .destructive) {
+                            Task { try? await env.taskStore.softDelete(id: task.id); await runSearch() }
+                        } label: { Text("Delete") }
+                    }
                 }
             }
         }
