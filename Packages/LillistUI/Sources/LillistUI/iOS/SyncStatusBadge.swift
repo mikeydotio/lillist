@@ -23,7 +23,10 @@ public struct SyncStatusBadge: View {
                     }
                 }
             )
+            .frame(width: 44, height: 44)
+            .contentShape(Rectangle())
             .accessibilityLabel(label)
+            .accessibilityAddTraits(.isStaticText)
     }
 
     private var color: Color {
