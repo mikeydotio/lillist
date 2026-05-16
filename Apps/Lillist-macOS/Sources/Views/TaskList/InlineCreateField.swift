@@ -23,6 +23,9 @@ struct InlineCreateField: View {
             .onExitCommand(perform: onCancel)
             #endif
             .onKeyPress(keys: [.tab], phases: .down) { press in
+                if text.isEmpty {
+                    return .ignored
+                }
                 if press.modifiers.contains(.shift) {
                     onShiftTab()
                 } else {

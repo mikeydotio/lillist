@@ -79,6 +79,9 @@ targets:
       # test reference ListColumn without pulling in RootSplitView's
       # AppEnvironment/sidebar dependencies (Plan 13 Task 5).
       - path: Lillist-macOS/Sources/Commands/FocusedListColumn.swift
+      # InlineCreateField is exercised by the empty-tab wiring guard in
+      # InlineCreateInteractionTests (Plan 13 Task 6).
+      - path: Lillist-macOS/Sources/Views/TaskList/InlineCreateField.swift
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: io.mikeydotio.Lillist.tests
