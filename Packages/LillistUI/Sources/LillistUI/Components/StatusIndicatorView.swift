@@ -19,11 +19,15 @@ public struct StatusIndicatorView: View {
                 .font(.system(size: 16, weight: .regular))
                 .foregroundStyle(status == .closed ? .green : .secondary)
                 .frame(width: 22, height: 22)
+                .frame(width: 44, height: 44)
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .accessibilityLabel(StatusGlyph.accessibilityLabel(for: status))
         .accessibilityAddTraits(.isButton)
+        .accessibilityAction(named: Text("Cycle status")) {
+            onLongPress()
+        }
         .simultaneousGesture(
             LongPressGesture(minimumDuration: 0.4).onEnded { _ in onLongPress() }
         )
