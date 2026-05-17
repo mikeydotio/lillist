@@ -141,6 +141,11 @@ struct SearchView: View {
             results = []
             return
         }
+        do {
+            try await Task.sleep(for: .milliseconds(250))
+        } catch {
+            return  // cancelled — newer query incoming
+        }
         var predicates: [LillistCore.Predicate] = [
             .leaf(Leaf(field: .title, op: .contains, value: .string(trimmed))),
             .leaf(Leaf(field: .inTrash, op: .is, value: .bool(false)))
