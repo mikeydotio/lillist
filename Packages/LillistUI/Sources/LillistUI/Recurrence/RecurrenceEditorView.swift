@@ -69,15 +69,27 @@ public struct RecurrenceEditorView: View {
                     }
 
                     Section("Limit") {
-                        Stepper(viewModel.count.map { "After \($0) occurrences" } ?? "No occurrence limit",
-                                value: Binding(
-                                    get: { viewModel.count ?? 0 },
-                                    set: { viewModel.count = $0 == 0 ? nil : $0 }
-                                ),
-                                in: 0...365)
+                        Toggle("Repeat forever", isOn: Binding(
+                            get: { viewModel.count == nil },
+                            set: { isUnbounded in
+                                if isUnbounded {
+                                    viewModel.count = nil
+                                } else {
+                                    viewModel.count = viewModel.count ?? 10
+                                }
+                            }
+                        ))
+                        if let bound = viewModel.count {
+                            Stepper("After \(bound) occurrence\(bound == 1 ? "" : "s")",
+                                    value: Binding(
+                                        get: { bound },
+                                        set: { viewModel.count = $0 }
+                                    ),
+                                    in: 1...365)
+                        }
                         Toggle("End by date", isOn: Binding(
                             get: { viewModel.until != nil },
-                            set: { on in viewModel.until = on ? (viewModel.until ?? Date().addingTimeInterval(86_400 * 30)) : nil }
+                            set: { on in viewModel.until = on ? (viewModel.until ?? defaultUntil()) : nil }
                         ))
                         if let _ = viewModel.until {
                             DatePicker("End date", selection: Binding(
@@ -148,6 +160,15 @@ public struct RecurrenceEditorView: View {
                 set.wrappedValue = copy
             }
         )
+    }
+
+    /// Sensible default end-date when the user flips the "End by date"
+    /// toggle on. Plan 23 replaces this stub with a calendar-aware
+    /// computation that derives from the task's anchor + interval; until
+    /// that lands, "30 days from now" is the same hardcoded default the
+    /// pre-Plan-22 toggle used.
+    private func defaultUntil() -> Date {
+        Calendar.current.date(byAdding: .day, value: 30, to: Date()) ?? Date()
     }
 
     @ViewBuilder

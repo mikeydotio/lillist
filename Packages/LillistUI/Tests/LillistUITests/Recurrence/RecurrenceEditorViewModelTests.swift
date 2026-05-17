@@ -112,4 +112,23 @@ struct RecurrenceEditorViewModelTests {
         let vm = RecurrenceEditorViewModel(rule: rule)
         #expect(vm.humanSummary == "Repeats 7 days after completion")
     }
+
+    @Test("Default count is nil (unbounded); setting count=10 builds a bounded rule")
+    func toggleRepeatForeverDefaultsCount() {
+        // The Plan 22 "Repeat forever" toggle lives in the View; the View
+        // model's `count` field is the underlying state. Contract: nil ==
+        // unbounded, count > 0 == bounded. Toggling off the View toggle
+        // assigns `count = 10` if previously nil; toggling on assigns nil.
+        var vm = RecurrenceEditorViewModel(rule: nil)
+        vm.repeats = true
+        #expect(vm.count == nil, "Default is unbounded")
+        vm.count = 10
+        #expect(vm.count == 10)
+        let rule = vm.build()
+        if case .calendar(let c) = rule {
+            #expect(c.count == 10)
+        } else {
+            Issue.record("Expected calendar rule")
+        }
+    }
 }
