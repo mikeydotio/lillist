@@ -150,9 +150,18 @@ struct TaskDetailView: View {
             } else if let seriesID = r.seriesID {
                 try await env.seriesStore.delete(id: seriesID)
             }
+            AccessibilityAnnouncements.post(
+                rule == nil
+                    ? String(localized: "Recurrence removed.")
+                    : String(localized: "Recurrence saved."),
+                priority: .low
+            )
             await load()
         } catch {
-            // Surface in a banner later; failure leaves state unchanged.
+            AccessibilityAnnouncements.post(
+                String(localized: "Couldn't save recurrence: \(error.localizedDescription)"),
+                priority: .high
+            )
         }
     }
 

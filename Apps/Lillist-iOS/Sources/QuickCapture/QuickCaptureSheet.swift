@@ -93,9 +93,17 @@ struct QuickCaptureSheet: View {
                 }
                 hasCapturedTask = true
                 submitting = false
+                AccessibilityAnnouncements.post(
+                    String(localized: "Task created: \(title)"),
+                    priority: .low
+                )
                 dismiss()
             } catch {
                 errorMessage = "\(error)"
+                AccessibilityAnnouncements.post(
+                    String(localized: "Couldn't create task: \(error.localizedDescription)"),
+                    priority: .high
+                )
                 submitting = false
             }
         }

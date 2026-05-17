@@ -1,5 +1,6 @@
 import SwiftUI
 import LillistCore
+import LillistUI
 
 /// Inline form revealed when the user moves a task to Blocked, per design Section 4 and Section 7.
 /// Submitting calls `TaskStore.scheduleFollowUp` (Plan 5), which creates a sibling task and
@@ -40,11 +41,22 @@ struct FollowUpFormView: View {
 
     private func submit() async {
         let useTitle = title.isEmpty ? "Follow up on '\(parentTitle)'" : title
-        _ = try? await env.taskStore.scheduleFollowUp(
-            parentTaskID: blockedTaskID,
-            title: useTitle,
-            deadline: deadline
-        )
-        onCommit()
+        do {
+            _ = try await env.taskStore.scheduleFollowUp(
+                parentTaskID: blockedTaskID,
+                title: useTitle,
+                deadline: deadline
+            )
+            AccessibilityAnnouncements.post(
+                String(localized: "Follow-up scheduled: \(useTitle)"),
+                priority: .low
+            )
+            onCommit()
+        } catch {
+            AccessibilityAnnouncements.post(
+                String(localized: "Couldn't schedule follow-up: \(error.localizedDescription)"),
+                priority: .high
+            )
+        }
     }
 }
