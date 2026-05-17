@@ -31,6 +31,7 @@
 		5368030379D37BFAD59E2576 /* LillistUI in Frameworks */ = {isa = PBXBuildFile; productRef = 1ED4C893535B6A6E62346628 /* LillistUI */; };
 		5680498D8BF4DFA917500D55 /* CrashReportingPane.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA80085EB3BB242379E92790 /* CrashReportingPane.swift */; };
 		57C8322E802DF6435DEF0934 /* ToolbarPersistenceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A4DD99AC3C19CA70493DAA1 /* ToolbarPersistenceTests.swift */; };
+		5A0CBDF7D9B0E218F4B30247 /* LillistServicesProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = E1401C2C25052CC9906188BF /* LillistServicesProvider.swift */; };
 		5D718D6A47C34D934FA0267C /* SidebarSelection.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8908D968CD95B46BAA9848BB /* SidebarSelection.swift */; };
 		5D973F060EA0402FDC6F5088 /* TrashPane.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0914C02F19D5D32DBFCB3C8E /* TrashPane.swift */; };
 		5FA1ACA29EE1847B105C0AA6 /* LillistCommands.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D70826CFF84526D54963DB7 /* LillistCommands.swift */; };
@@ -127,6 +128,7 @@
 		D002EB6866402CB86776B481 /* Lillist-macOS.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Lillist-macOS.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		D2F709C6BFFCBE01EB7EB243 /* HotkeyRecorder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HotkeyRecorder.swift; sourceTree = "<group>"; };
 		D86C5C049217ECDE9095EF97 /* PinnedSidebarIntegrationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PinnedSidebarIntegrationTests.swift; sourceTree = "<group>"; };
+		E1401C2C25052CC9906188BF /* LillistServicesProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LillistServicesProvider.swift; sourceTree = "<group>"; };
 		E5425E4B83C495ACEC60F879 /* LillistCore */ = {isa = PBXFileReference; lastKnownFileType = folder; name = LillistCore; path = ../Packages/LillistCore; sourceTree = SOURCE_ROOT; };
 		ECE3A50348E57FE59F4366B8 /* AppIntents.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = AppIntents.framework; path = System/Library/Frameworks/AppIntents.framework; sourceTree = SDKROOT; };
 		ED9565C658DC6743EF09396D /* MailtoTransport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MailtoTransport.swift; sourceTree = "<group>"; };
@@ -179,6 +181,14 @@
 				59867850C82C90EBDA587E7A /* TodayPopoverView.swift */,
 			);
 			path = StatusBar;
+			sourceTree = "<group>";
+		};
+		1D2342C905DE60492EA94579 /* Services */ = {
+			isa = PBXGroup;
+			children = (
+				E1401C2C25052CC9906188BF /* LillistServicesProvider.swift */,
+			);
+			path = Services;
 			sourceTree = "<group>";
 		};
 		2C3802C5B4E9E611224A01B3 /* Tests */ = {
@@ -258,6 +268,7 @@
 				37B5B7691A22F7149CDE6F7D /* Onboarding */,
 				E3416FFB6A29F2327C365618 /* Persistence */,
 				4E45BA1455A571C9EF426E7F /* Preferences */,
+				1D2342C905DE60492EA94579 /* Services */,
 				1C16A008F3486D9CE6DB930E /* StatusBar */,
 				A1C67229F95B21C3E42CA8DF /* Views */,
 				5BDE58C737A0E5123FA07D0F /* AppDelegate.swift */,
@@ -493,6 +504,7 @@
 				A8953EC19E865A2EDEF9B85D /* JournalStreamView.swift in Sources */,
 				12192573C492F4C19AC7A9AF /* LillistApp.swift in Sources */,
 				5FA1ACA29EE1847B105C0AA6 /* LillistCommands.swift in Sources */,
+				5A0CBDF7D9B0E218F4B30247 /* LillistServicesProvider.swift in Sources */,
 				D4D4307086A35ECB53CF3FBC /* MailtoTransport.swift in Sources */,
 				CFB2EE593D82AE7C21914CF1 /* MenuBarExtraScene.swift in Sources */,
 				7564C88434C25219DE08C2A9 /* NoSelectionDetailView.swift in Sources */,
