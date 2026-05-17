@@ -24,7 +24,7 @@ public struct QuickCaptureView: View {
                 .textFieldStyle(.plain)
                 .font(LillistTypography.quickCaptureField)
                 .onSubmit { onSubmit(parsed) }
-                .accessibilityLabel("Quick capture")
+                .accessibilityLabel(String(localized: "Quick capture", bundle: .module))
 
             HStack(spacing: 6) {
                 ForEach(parsed.tags, id: \.self) { name in

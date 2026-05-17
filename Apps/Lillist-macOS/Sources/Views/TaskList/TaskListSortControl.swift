@@ -18,7 +18,7 @@ struct TaskListSortControl: View {
             Label("Sort", systemImage: "arrow.up.arrow.down")
         }
         .menuStyle(.borderlessButton)
-        .accessibilityLabel("Sort tasks by \(field.displayName)")
+        .accessibilityLabel(String(localized: "Sort tasks by \(field.displayName)"))
     }
 }
 

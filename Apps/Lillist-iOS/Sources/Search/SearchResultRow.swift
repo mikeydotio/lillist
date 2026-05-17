@@ -30,7 +30,7 @@ struct SearchResultRow: View {
             }
         }
         .accessibilityElement(children: .combine)
-        .accessibilityLabel("\(task.title), \(statusLabel)")
+        .accessibilityLabel(String(localized: "\(task.title), \(statusLabel)"))
     }
 
     /// Returns the task title wrapped in an `AttributedString` where every

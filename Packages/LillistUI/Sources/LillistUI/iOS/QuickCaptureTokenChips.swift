@@ -24,7 +24,7 @@ struct QuickCaptureTokenChips: View {
                     Label(token, systemImage: "calendar")
                         .font(LillistTypography.caption)
                         .foregroundStyle(.secondary)
-                        .accessibilityLabel("Parsed deadline \(token)")
+                        .accessibilityLabel(String(localized: "Parsed deadline \(token)", bundle: .module))
                 }
             }
         }

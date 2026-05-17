@@ -35,7 +35,7 @@ struct FollowUpFormView: View {
         .padding(12)
         .background(.quaternary.opacity(0.4), in: RoundedRectangle(cornerRadius: 8))
         .accessibilityElement(children: .contain)
-        .accessibilityLabel("Schedule follow-up form")
+        .accessibilityLabel(String(localized: "Schedule follow-up form"))
     }
 
     private func submit() async {

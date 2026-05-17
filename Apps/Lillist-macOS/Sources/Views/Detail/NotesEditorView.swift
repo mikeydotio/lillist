@@ -20,7 +20,7 @@ struct NotesEditorView: View {
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .textSelection(.enabled)
                 }
-                .accessibilityLabel("Notes preview")
+                .accessibilityLabel(String(localized: "Notes preview"))
             } else {
                 TextEditor(text: $markdown)
                     .font(.body.monospaced())
@@ -30,7 +30,7 @@ struct NotesEditorView: View {
                         RoundedRectangle(cornerRadius: 6) // TODO(Plan 14): LillistRadius.s
                             .stroke(.quaternary)
                     )
-                    .accessibilityLabel("Notes editor, Markdown")
+                    .accessibilityLabel(String(localized: "Notes editor, Markdown"))
             }
         }
         .padding(.horizontal)

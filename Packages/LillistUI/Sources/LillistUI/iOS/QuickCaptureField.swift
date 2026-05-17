@@ -51,7 +51,7 @@ public struct QuickCaptureField: View {
                                     .contentShape(Capsule())
                             }
                             .buttonStyle(.plain)
-                            .accessibilityLabel("Insert tag \(tag)")
+                            .accessibilityLabel(String(localized: "Insert tag \(tag)", bundle: .module))
                         }
                         ForEach(dateSuggestions, id: \.self) { phrase in
                             Button {
@@ -65,7 +65,7 @@ public struct QuickCaptureField: View {
                                     .contentShape(Capsule())
                             }
                             .buttonStyle(.plain)
-                            .accessibilityLabel("Insert deadline \(phrase)")
+                            .accessibilityLabel(String(localized: "Insert deadline \(phrase)", bundle: .module))
                         }
                     }
                 }

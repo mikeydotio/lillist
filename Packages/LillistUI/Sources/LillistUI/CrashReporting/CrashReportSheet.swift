@@ -38,7 +38,7 @@ public struct CrashReportSheet: View {
                 Section("What were you doing?") {
                     TextEditor(text: $model.userDescription)
                         .frame(minHeight: 80)
-                        .accessibilityLabel("Description of what you were doing")
+                        .accessibilityLabel(String(localized: "Description of what you were doing", bundle: .module))
                 }
                 Section("What to include") {
                     Toggle(isOn: $model.includeLogs) {

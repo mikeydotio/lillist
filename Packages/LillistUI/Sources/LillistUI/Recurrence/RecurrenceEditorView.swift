@@ -202,7 +202,9 @@ public struct RecurrenceEditorView: View {
                 .foregroundStyle(isSelected ? .white : .primary)
         }
         .buttonStyle(.plain)
-        .accessibilityLabel(isSelected ? "Day \(day) selected" : "Day \(day) not selected")
+        .accessibilityLabel(isSelected
+            ? String(localized: "Day \(day) selected", bundle: .module)
+            : String(localized: "Day \(day) not selected", bundle: .module))
         .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
 }

@@ -60,7 +60,7 @@ public struct TaskRowView: View {
             Spacer(minLength: 0)
             Image(systemName: "line.3.horizontal")
                 .foregroundStyle(.tertiary)
-                .accessibilityLabel("Drag handle")
+                .accessibilityLabel(String(localized: "Drag handle", bundle: .module))
         }
         .padding(.vertical, LillistSpacing.xs)
         .padding(.horizontal, LillistSpacing.xs + 2)
@@ -83,14 +83,15 @@ public struct TaskRowView: View {
     ) -> String {
         var parts: [String] = [task.title, StatusGlyph.accessibilityLabel(for: task.status)]
         if !tagNames.isEmpty {
-            parts.append("tagged \(tagNames.joined(separator: ", "))")
+            let joined = tagNames.joined(separator: ", ")
+            parts.append(String(localized: "tagged \(joined)", bundle: .module))
         }
         if let deadline = task.deadline {
             let formatted = deadline.formatted(
                 date: .abbreviated,
                 time: task.deadlineHasTime ? .shortened : .omitted
             )
-            parts.append("due \(formatted)")
+            parts.append(String(localized: "due \(formatted)", bundle: .module))
         }
         return parts.joined(separator: ", ")
     }

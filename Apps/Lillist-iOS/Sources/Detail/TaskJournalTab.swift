@@ -21,7 +21,7 @@ struct TaskJournalTab: View {
                     .id(entry.id)
             }
             .listStyle(.plain)
-            .accessibilityLabel("Journal")
+            .accessibilityLabel(String(localized: "Journal"))
             .safeAreaInset(edge: .bottom) {
                 composer(proxy: proxy)
             }

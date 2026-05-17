@@ -30,7 +30,7 @@ struct TaskAttachmentsTab: View {
             }
         }
         .task { await reload() }
-        .accessibilityLabel("Attachments")
+        .accessibilityLabel(String(localized: "Attachments"))
     }
 
     private func reload() async {
@@ -53,7 +53,7 @@ private struct AttachmentTile: View {
                 .truncationMode(.middle)
         }
         .accessibilityElement(children: .combine)
-        .accessibilityLabel("\(kindLabel) — \(attachment.filename)")
+        .accessibilityLabel(String(localized: "\(kindLabel) — \(attachment.filename)"))
     }
 
     private var glyph: String {

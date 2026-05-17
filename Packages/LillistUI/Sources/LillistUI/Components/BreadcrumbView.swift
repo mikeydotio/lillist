@@ -11,6 +11,9 @@ public struct BreadcrumbView: View {
             }
         }
         .accessibilityElement(children: .combine)
-        .accessibilityLabel("Path: " + path.joined(separator: " › "))
+        .accessibilityLabel({
+            let joined = path.joined(separator: " › ")
+            return String(localized: "Path: \(joined)", bundle: .module)
+        }())
     }
 }

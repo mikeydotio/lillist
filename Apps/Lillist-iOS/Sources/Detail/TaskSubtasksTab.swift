@@ -41,7 +41,7 @@ struct TaskSubtasksTab: View {
         }
         .task { await reload() }
         .refreshable { await reload() }
-        .accessibilityLabel("Subtasks")
+        .accessibilityLabel(String(localized: "Subtasks"))
     }
 
     private func reload() async {

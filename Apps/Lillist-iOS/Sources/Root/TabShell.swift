@@ -87,7 +87,7 @@ struct SettingsToolbarItem: ViewModifier {
                 } label: {
                     Image(systemName: "gearshape")
                 }
-                .accessibilityLabel("Settings")
+                .accessibilityLabel(String(localized: "Settings"))
             }
         }
     }
