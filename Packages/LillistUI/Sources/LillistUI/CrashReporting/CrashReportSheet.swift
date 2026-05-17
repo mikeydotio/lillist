@@ -12,6 +12,10 @@ public struct CrashReportSheet: View {
     public let deviceModel: String
 
     @State private var showingPreview = false
+    @State private var showingLogsPreview = false
+    @State private var showingBreadcrumbsPreview = false
+    @State private var logsPreviewText = ""
+    @State private var breadcrumbsPreviewText = ""
 
     public init(
         model: CrashReportViewModel,
@@ -41,21 +45,53 @@ public struct CrashReportSheet: View {
                         .accessibilityLabel(String(localized: "Description of what you were doing", bundle: .module))
                 }
                 Section("What to include") {
-                    Toggle(isOn: $model.includeLogs) {
-                        VStack(alignment: .leading) {
-                            Text("Recent app logs")
-                            Text("Last 5 min, ~50 KB; reviewable below")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
+                    VStack(alignment: .leading, spacing: 4) {
+                        Toggle(isOn: $model.includeLogs) {
+                            VStack(alignment: .leading) {
+                                Text("Recent app logs")
+                                Text("Last 5 min, ~50 KB; reviewable below")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
                         }
+                        Button("Preview these") {
+                            Task {
+                                logsPreviewText = await model.renderPreview(
+                                    includeLogs: true,
+                                    includeBreadcrumbs: false,
+                                    buildVersion: buildVersion,
+                                    osVersion: osVersion,
+                                    deviceModel: deviceModel
+                                )
+                                showingLogsPreview = true
+                            }
+                        }
+                        .font(.caption)
+                        .accessibilityLabel(String(localized: "Preview the logs that would be sent", bundle: .module))
                     }
-                    Toggle(isOn: $model.includeBreadcrumbs) {
-                        VStack(alignment: .leading) {
-                            Text("Last action breadcrumbs")
-                            Text("No titles or content, just verbs and counts")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
+                    VStack(alignment: .leading, spacing: 4) {
+                        Toggle(isOn: $model.includeBreadcrumbs) {
+                            VStack(alignment: .leading) {
+                                Text("Last action breadcrumbs")
+                                Text("No titles or content, just verbs and counts")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
                         }
+                        Button("Preview these") {
+                            Task {
+                                breadcrumbsPreviewText = await model.renderPreview(
+                                    includeLogs: false,
+                                    includeBreadcrumbs: true,
+                                    buildVersion: buildVersion,
+                                    osVersion: osVersion,
+                                    deviceModel: deviceModel
+                                )
+                                showingBreadcrumbsPreview = true
+                            }
+                        }
+                        .font(.caption)
+                        .accessibilityLabel(String(localized: "Preview the breadcrumbs that would be sent", bundle: .module))
                     }
                 }
                 Section {
@@ -98,6 +134,12 @@ public struct CrashReportSheet: View {
             }
             .sheet(isPresented: $showingPreview) {
                 CrashReportPreviewSheet(body: model.previewText)
+            }
+            .sheet(isPresented: $showingLogsPreview) {
+                CrashReportPreviewSheet(body: logsPreviewText)
+            }
+            .sheet(isPresented: $showingBreadcrumbsPreview) {
+                CrashReportPreviewSheet(body: breadcrumbsPreviewText)
             }
         }
     }
