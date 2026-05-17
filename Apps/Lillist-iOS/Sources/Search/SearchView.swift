@@ -61,7 +61,7 @@ struct SearchView: View {
                 resultsBody
             }
         }
-        .searchable(text: $query, placement: .navigationBarDrawer(displayMode: .always))
+        .searchable(text: $query, placement: .automatic)
         .searchScopes($scope, scopes: {
             ForEach(Scope.allCases, id: \.self) { s in
                 Text(s.title).tag(s)
