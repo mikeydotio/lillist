@@ -11,6 +11,16 @@ struct LillistCommands: Commands {
     @FocusedValue(\.listColumn) private var listColumn: ListColumn?
 
     var body: some Commands {
+        // Multi-window deferred — Plan 19 Task 3.
+        // `CommandGroup(replacing: .newItem)` removed SwiftUI's implicit
+        // ⌘N "New Window". Restoring it requires multi-window correctness
+        // verification (independent RootSplitView state per window,
+        // OnboardingPresentationModifier not re-firing on already-onboarded
+        // users, focus-routing across windows). The shared `AppEnvironment`
+        // pattern is Core-Data-safe, but the SwiftUI-state side needs an
+        // eyeball pass that wasn't possible during Plan 19's autonomous
+        // execution. Land ⌥⌘N "New Window" in a follow-up plan once the
+        // verification can be driven interactively.
         CommandGroup(replacing: .newItem) {
             Button("New Task") {
                 NotificationCenter.default.post(name: .lillistNewTask, object: nil)
