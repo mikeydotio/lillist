@@ -4,6 +4,75 @@ Append-only log of cross-cutting engineering lessons learned while building
 Lillist. Each entry captures a non-obvious gotcha — usually one that took real
 investigation to find — so future work doesn't re-learn it the hard way.
 
+## 2026-05-17 — Plan 19 macOS polish sweep: WindowGroup chrome, live preference streams, sidebar context menus, list-column source-name resolution, single contact-info constant
+
+**Context.** Plan 19 closed the LOW/NIT-severity macOS findings from
+the 2026-05-16 design review that weren't addressed by Plans 13–17.
+Most tasks were 1–5-file surgical edits; the load-bearing structural
+change was a hot `AsyncStream<Prefs>` on `PreferencesStore` so the
+six Preferences panes stay current under CloudKit-pushed setting
+changes. A secondary structural change was extracting
+`SourceTitleResolver` from `TaskListView` so both the toolbar's
+principal slot and the WindowGroup chrome can feed off the same
+resolved-name computation.
+
+**Rules.**
+
+- **`WindowGroup` title flows from the deepest `.navigationTitle`.**
+  Set the title on the column whose content the user is editing,
+  not on the `WindowGroup` itself — the system promotes it. Same
+  computation feeds the toolbar (Plan 15 Task 1) and the window
+  chrome (Plan 19 Task 1). When the toolbar has a `.principal`
+  item, that overrides the title-bar text, so both surfaces need
+  to converge on the same resolver.
+- **`@unchecked Sendable` final classes expose `AsyncStream` with
+  `NSLock` + a continuation dictionary.** Copy the shape from
+  `AccountStateMonitor.stateStream` / `CloudKitEventBridge.eventStream`
+  / `SyncStatusMonitor.statusStream` — but the actor versions use
+  the actor's own queue for serialization, while a class-based
+  store needs an explicit `NSLock`. Pair every `update`-then-`save`
+  with `broadcast(snapshot)` *after* the `context.perform` block
+  returns (broadcasting from inside the perform closure works but
+  invites lock-order surprises later).
+- **`NSPersistentStoreRemoteChange` fires for in-memory stores too**
+  when `NSPersistentStoreRemoteChangeNotificationPostOptionKey` is
+  set on the description. Tests that exercise an in-memory store
+  through `update` *will* see remote-change echoes through the
+  same broadcast path. Don't write the test as "exactly N
+  snapshots arrive"; write it as "all expected field values land
+  somewhere in the snapshot sequence" — eventual consistency is
+  the real contract.
+- **Subscribers that round-trip their own writes must echo-suppress.**
+  When a Preferences pane writes `prefs` and the store broadcasts
+  the snapshot back, compare to local state and skip if equal.
+  Otherwise the form fights itself mid-edit (the field's
+  `onChange` handler kicks the store, the store broadcasts back,
+  the binding fires `onChange` again, and so on).
+- **`applicationShouldHandleReopen(_:hasVisibleWindows:)` is the
+  AppKit-native recovery for `⌘W`-closes-only-window.** SwiftUI's
+  `WindowGroup` does not auto-reopen. The system asks AppDelegate
+  via the reopen callback; combine with `NotificationCenter` →
+  `@Environment(\.openWindow)` to spawn a fresh window if the
+  group is empty. Give the `WindowGroup` an explicit `id:` so
+  `openWindow(id:)` is unambiguous.
+- **One constant beats six copies.** Six files held
+  `"mikeyward@gmail.com"`. The right shape is
+  `LillistCoreContact.crashReportRecipient`. Cost of the one-file
+  abstraction: zero; cost of copies diverging on the next email
+  change: a bug-report round.
+- **Standalone macOS test bundle: extract pure helpers, co-compile
+  them.** The bundle has no test host so it can't `@testable
+  import Lillist_macOS`. The pattern (used by
+  `QuickCapturePlacementMath`, `IndexingMappers`, and now
+  `SourceTitleResolver` / `SelectionAdvance`) is: extract the
+  pure logic from the view into its own file under `Sources/`,
+  then add a co-compile entry to `project.yml`'s test target.
+  Re-run `xcodegen generate` after editing the YAML so the
+  pbxproj picks up the new source.
+
+**Evidence.** Plan 19 commits on `main`: one commit per task,
+tagged `plan-19-macos-polish-sweep`.
+
 ## 2026-05-16 — Plan 18 iOS polish sweep: gesture-reliable status indicator, Form footers, MailComposer clipboard fallback
 
 **Context.** Plan 18 closed eleven LOW / NIT items from the 2026-05-16
