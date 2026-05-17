@@ -48,6 +48,7 @@ public struct QuickCaptureField: View {
                                     .padding(.vertical, 4)
                                     .frame(minHeight: 44)
                                     .background(Capsule().fill(Color.accentColor.opacity(0.15)))
+                                    .contentShape(Capsule())
                             }
                             .buttonStyle(.plain)
                             .accessibilityLabel("Insert tag \(tag)")
@@ -61,6 +62,7 @@ public struct QuickCaptureField: View {
                                     .padding(.vertical, 4)
                                     .frame(minHeight: 44)
                                     .background(Capsule().fill(Color.orange.opacity(0.15)))
+                                    .contentShape(Capsule())
                             }
                             .buttonStyle(.plain)
                             .accessibilityLabel("Insert deadline \(phrase)")
