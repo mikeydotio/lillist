@@ -58,6 +58,7 @@ struct TrashPane: View {
                         Text(emptyResult)
                             .font(.footnote)
                             .foregroundStyle(.secondary)
+                            .accessibilityAddTraits(.updatesFrequently)
                     }
                 }
             } else {

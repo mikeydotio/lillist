@@ -65,6 +65,7 @@ struct TrashSection: View {
                 Text(emptyResult)
                     .font(.footnote)
                     .foregroundStyle(.secondary)
+                    .accessibilityAddTraits(.updatesFrequently)
             }
         }
     }
