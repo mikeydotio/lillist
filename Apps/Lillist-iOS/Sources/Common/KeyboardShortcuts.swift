@@ -1,4 +1,5 @@
 import SwiftUI
+import LillistUI
 
 /// Hardware keyboard shortcuts surfaced as a view modifier so both shells
 /// can apply the same declaration. Design Section 7's cross-platform
@@ -9,7 +10,7 @@ import SwiftUI
 /// - ⌘⇧F — jump to Search
 struct LillistKeyboardShortcuts: ViewModifier {
     @Binding var isQuickCapturePresented: Bool
-    @Binding var selectedTab: TabShell.Tab?
+    @Binding var selectedTab: iPadSection?
 
     func body(content: Content) -> some View {
         content
@@ -37,7 +38,7 @@ struct LillistKeyboardShortcuts: ViewModifier {
 extension View {
     func lillistKeyboardShortcuts(
         isQuickCapturePresented: Binding<Bool>,
-        selectedTab: Binding<TabShell.Tab?>
+        selectedTab: Binding<iPadSection?>
     ) -> some View {
         modifier(LillistKeyboardShortcuts(
             isQuickCapturePresented: isQuickCapturePresented,

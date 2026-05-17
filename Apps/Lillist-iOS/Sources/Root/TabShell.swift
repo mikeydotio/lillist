@@ -4,13 +4,11 @@ import LillistUI
 /// Compact-size shell: a tab bar with Today / All / Filters / Search,
 /// matching design Section 7's iOS subsection.
 struct TabShell: View {
-    @State private var selection: Tab = .today
+    @State private var selection: iPadSection = .today
     @State private var isQuickCapturePresented = false
     @State private var isSettingsPresented = false
 
-    enum Tab: Hashable { case today, all, filters, search }
-
-    private var selectionOptional: Binding<Tab?> {
+    private var selectionOptional: Binding<iPadSection?> {
         Binding(
             get: { selection },
             set: { if let new = $0 { selection = new } }
@@ -24,28 +22,28 @@ struct TabShell: View {
                     .modifier(SettingsToolbarItem(isPresented: $isSettingsPresented))
             }
             .tabItem { Label("Today", systemImage: "sun.max") }
-            .tag(Tab.today)
+            .tag(iPadSection.today)
 
             NavigationStack {
                 AllTagsView()
                     .modifier(SettingsToolbarItem(isPresented: $isSettingsPresented))
             }
             .tabItem { Label("All", systemImage: "tag") }
-            .tag(Tab.all)
+            .tag(iPadSection.all)
 
             NavigationStack {
                 FiltersListView()
                     .modifier(SettingsToolbarItem(isPresented: $isSettingsPresented))
             }
             .tabItem { Label("Filters", systemImage: "line.3.horizontal.decrease.circle") }
-            .tag(Tab.filters)
+            .tag(iPadSection.filters)
 
             NavigationStack {
                 SearchView()
                     .modifier(SettingsToolbarItem(isPresented: $isSettingsPresented))
             }
             .tabItem { Label("Search", systemImage: "magnifyingglass") }
-            .tag(Tab.search)
+            .tag(iPadSection.search)
         }
         .tabViewBottomAccessory {
             FloatingAddButton(onTap: { isQuickCapturePresented = true })

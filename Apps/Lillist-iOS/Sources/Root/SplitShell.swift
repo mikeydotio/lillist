@@ -1,37 +1,17 @@
 import SwiftUI
+import LillistUI
 
 /// Regular-size shell for iPad. Two-column `NavigationSplitView` mirroring
 /// macOS's middle+detail columns. The tab bar collapses into a sidebar list.
 /// Design Section 7 iOS subsection.
 struct SplitShell: View {
-    enum Section: Hashable, CaseIterable, Identifiable {
-        case today, all, filters, search
-        var id: Self { self }
-        var title: String {
-            switch self {
-            case .today: return "Today"
-            case .all: return "All"
-            case .filters: return "Filters"
-            case .search: return "Search"
-            }
-        }
-        var systemImage: String {
-            switch self {
-            case .today: return "sun.max"
-            case .all: return "tag"
-            case .filters: return "line.3.horizontal.decrease.circle"
-            case .search: return "magnifyingglass"
-            }
-        }
-    }
-
-    @State private var selection: Section? = .today
+    @State private var selection: iPadSection? = .today
     @State private var isQuickCapturePresented = false
     @State private var isSettingsPresented = false
 
     var body: some View {
         NavigationSplitView {
-            List(Section.allCases, selection: $selection) { section in
+            List(iPadSection.allCases, selection: $selection) { section in
                 NavigationLink(value: section) {
                     Label(section.title, systemImage: section.systemImage)
                 }
@@ -78,32 +58,7 @@ struct SplitShell: View {
         }
         .lillistKeyboardShortcuts(
             isQuickCapturePresented: $isQuickCapturePresented,
-            selectedTab: Binding(
-                get: { selection?.asTabShellTab },
-                set: { selection = $0?.asSection }
-            )
+            selectedTab: $selection
         )
-    }
-}
-
-extension SplitShell.Section {
-    var asTabShellTab: TabShell.Tab {
-        switch self {
-        case .today: return .today
-        case .all: return .all
-        case .filters: return .filters
-        case .search: return .search
-        }
-    }
-}
-
-extension TabShell.Tab {
-    var asSection: SplitShell.Section {
-        switch self {
-        case .today: return .today
-        case .all: return .all
-        case .filters: return .filters
-        case .search: return .search
-        }
     }
 }
