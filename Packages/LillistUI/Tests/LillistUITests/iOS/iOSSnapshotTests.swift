@@ -136,6 +136,20 @@ final class iOSSnapshotTests: XCTestCase {
                        named: "quick-capture-field-with-parsed-tokens")
     }
 
+    @MainActor
+    func test_statusIndicator_menu_button_renders_at_44pt() {
+        let view = StatusIndicatorView(
+            status: .todo,
+            onClick: {},
+            onSetStatus: { _ in }
+        )
+        .padding()
+        .background(Color(.systemBackground))
+        let host = UIHostingController(rootView: view)
+        host.view.frame = CGRect(x: 0, y: 0, width: 80, height: 80)
+        assertSnapshot(of: host, as: .image(size: CGSize(width: 80, height: 80)))
+    }
+
     // MARK: - helpers
 
     @MainActor

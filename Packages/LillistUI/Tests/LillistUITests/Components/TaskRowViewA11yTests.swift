@@ -58,7 +58,7 @@ struct TaskRowViewA11yTests {
             task: record,
             tagNames: [],
             onStatusClick: {},
-            onStatusLongPress: {},
+            onStatusSet: { _ in },
             onMoveUp: { calls.append("up") },
             onMoveDown: { calls.append("down") },
             onIndent: { calls.append("indent") },

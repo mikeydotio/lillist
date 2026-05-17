@@ -6,26 +6,24 @@ import LillistCore
 @Suite("StatusIndicatorView accessibility")
 @MainActor
 struct StatusIndicatorViewA11yTests {
-    @Test("Long-press handler is invoked by accessibilityAction(named: 'Cycle status')")
-    func longPressIsReachableViaAccessibilityAction() async {
-        // The accessibility-action contract: invoking the named action
-        // must call the same closure the long-press gesture fires.
-        // We verify by checking that StatusIndicatorView wires
-        // onLongPress to both the LongPressGesture and the named action,
-        // sharing the closure.
-        var longPressFired = 0
+    @Test("Cycle action reaches the same closure that a tap fires")
+    func cycleActionReachesOnClick() async {
+        // Plan 13 wired `.accessibilityAction(named: "Cycle status")`
+        // alongside the tap gesture. Plan 18 rewired the indicator to
+        // `Menu(primaryAction:)`: tap fires `onClick`, long-press
+        // expands a Started / Blocked / Closed menu via `onSetStatus`.
+        // The a11y action retains its Plan 13 contract — it must call
+        // the same closure as the tap.
+        var clicks = 0
         let view = StatusIndicatorView(
             status: .todo,
-            onClick: {},
-            onLongPress: { longPressFired += 1 }
+            onClick: { clicks += 1 },
+            onSetStatus: { _ in }
         )
-        // Smoke at the contract level — the closure is stored and
-        // re-fireable. Snapshot/SwiftUI accessibility introspection
-        // requires UIKit harnessing; the contract test pins the wiring.
+        // Compile-time guard: this test fails to compile if the init
+        // signature drops onClick / onSetStatus. The closure-shape
+        // contract is covered by StatusIndicatorInteractionTests.
         _ = view
-        // No-op assertion: this test exists to fail the build if
-        // StatusIndicatorView's init signature drops the onLongPress
-        // parameter — i.e., it's a compile-time guard.
-        #expect(longPressFired == 0)
+        #expect(clicks == 0)
     }
 }

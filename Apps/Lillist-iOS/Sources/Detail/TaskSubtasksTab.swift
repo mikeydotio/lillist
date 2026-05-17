@@ -20,7 +20,7 @@ struct TaskSubtasksTab: View {
                             task: child,
                             tagNames: [],
                             onStatusClick: { Task { await cycle(child) } },
-                            onStatusLongPress: {}
+                            onStatusSet: { newStatus in Task { await setStatus(child, to: newStatus) } }
                         )
                     }
                 }
@@ -59,6 +59,11 @@ struct TaskSubtasksTab: View {
     private func cycle(_ record: TaskStore.TaskRecord) async {
         let next = StatusCycler.nextOnClick(from: record.status)
         try? await env.taskStore.transition(id: record.id, to: next)
+        await reload()
+    }
+
+    private func setStatus(_ record: TaskStore.TaskRecord, to newStatus: Status) async {
+        try? await env.taskStore.transition(id: record.id, to: newStatus)
         await reload()
     }
 }

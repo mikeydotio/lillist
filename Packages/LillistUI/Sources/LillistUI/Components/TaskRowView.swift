@@ -5,7 +5,7 @@ public struct TaskRowView: View {
     public var task: TaskStore.TaskRecord
     public var tagNames: [String]
     public var onStatusClick: () -> Void
-    public var onStatusLongPress: () -> Void
+    public var onStatusSet: (Status) -> Void
     public var onMoveUp: (() -> Void)?
     public var onMoveDown: (() -> Void)?
     public var onIndent: (() -> Void)?
@@ -15,7 +15,7 @@ public struct TaskRowView: View {
         task: TaskStore.TaskRecord,
         tagNames: [String],
         onStatusClick: @escaping () -> Void,
-        onStatusLongPress: @escaping () -> Void,
+        onStatusSet: @escaping (Status) -> Void,
         onMoveUp: (() -> Void)? = nil,
         onMoveDown: (() -> Void)? = nil,
         onIndent: (() -> Void)? = nil,
@@ -24,7 +24,7 @@ public struct TaskRowView: View {
         self.task = task
         self.tagNames = tagNames
         self.onStatusClick = onStatusClick
-        self.onStatusLongPress = onStatusLongPress
+        self.onStatusSet = onStatusSet
         self.onMoveUp = onMoveUp
         self.onMoveDown = onMoveDown
         self.onIndent = onIndent
@@ -36,7 +36,7 @@ public struct TaskRowView: View {
             StatusIndicatorView(
                 status: task.status,
                 onClick: onStatusClick,
-                onLongPress: onStatusLongPress
+                onSetStatus: onStatusSet
             )
 
             VStack(alignment: .leading, spacing: LillistSpacing.xs / 2) {

@@ -16,7 +16,7 @@ struct SubtaskOutlineView: View {
             ForEach(children, id: \.id) { c in
                 TaskRowView(task: c, tagNames: [],
                             onStatusClick: { Task { try? await cycle(c) } },
-                            onStatusLongPress: { /* menu handled at row level */ })
+                            onStatusSet: { newStatus in Task { try? await setStatus(c, to: newStatus) } })
             }
             HStack {
                 Image(systemName: "plus")
@@ -46,6 +46,11 @@ struct SubtaskOutlineView: View {
     private func cycle(_ rec: TaskStore.TaskRecord) async throws {
         let next = StatusCycler.nextOnClick(from: rec.status)
         try await env.taskStore.transition(id: rec.id, to: next)
+        await refresh()
+    }
+
+    private func setStatus(_ rec: TaskStore.TaskRecord, to newStatus: Status) async throws {
+        try await env.taskStore.transition(id: rec.id, to: newStatus)
         await refresh()
     }
 }

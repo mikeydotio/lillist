@@ -40,7 +40,7 @@ final class MacOSScreenTourTests: XCTestCase {
         TaskRowView(
             task: task(title, status: status, deadline: deadline),
             tagNames: tags,
-            onStatusClick: {}, onStatusLongPress: {}
+            onStatusClick: {}, onStatusSet: { _ in }
         )
     }
 
@@ -342,7 +342,7 @@ final class MacOSScreenTourTests: XCTestCase {
         Form {
             Section {
                 HStack(spacing: 10) {
-                    StatusIndicatorView(status: .started, onClick: {}, onLongPress: {})
+                    StatusIndicatorView(status: .started, onClick: {}, onSetStatus: { _ in })
                     Text("Draft launch email")
                         .font(.system(size: 22, weight: .semibold))
                     Spacer()

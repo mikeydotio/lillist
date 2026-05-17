@@ -24,7 +24,7 @@ final class TaskListViewSnapshotTests: XCTestCase {
             SnapshotHost(colorScheme: .light) {
                 TaskRowView(task: self.record(title: "Buy milk", status: .todo),
                             tagNames: [],
-                            onStatusClick: {}, onStatusLongPress: {})
+                            onStatusClick: {}, onStatusSet: { _ in })
                     .frame(width: 520)
             },
             size: CGSize(width: 520, height: 50)
@@ -37,7 +37,7 @@ final class TaskListViewSnapshotTests: XCTestCase {
             SnapshotHost(colorScheme: .dark) {
                 TaskRowView(task: self.record(title: "Draft email", status: .started),
                             tagNames: ["work", "urgent"],
-                            onStatusClick: {}, onStatusLongPress: {})
+                            onStatusClick: {}, onStatusSet: { _ in })
                     .frame(width: 520)
             },
             size: CGSize(width: 520, height: 60)
@@ -52,7 +52,7 @@ final class TaskListViewSnapshotTests: XCTestCase {
                                          status: .blocked,
                                          deadline: Date(timeIntervalSince1970: 1_780_000_000)),
                             tagNames: ["release"],
-                            onStatusClick: {}, onStatusLongPress: {})
+                            onStatusClick: {}, onStatusSet: { _ in })
                     .frame(width: 520)
             },
             size: CGSize(width: 520, height: 60)
@@ -65,7 +65,7 @@ final class TaskListViewSnapshotTests: XCTestCase {
             SnapshotHost(colorScheme: .dark) {
                 TaskRowView(task: self.record(title: "Pay rent", status: .closed),
                             tagNames: [],
-                            onStatusClick: {}, onStatusLongPress: {})
+                            onStatusClick: {}, onStatusSet: { _ in })
                     .frame(width: 520)
             },
             size: CGSize(width: 520, height: 50)

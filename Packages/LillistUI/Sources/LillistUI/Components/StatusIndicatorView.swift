@@ -2,34 +2,68 @@ import SwiftUI
 import LillistCore
 
 /// Clickable status indicator per design Section 7.
+///
+/// Tap fires `onClick` (the cycle contract from `StatusCycler.nextOnClick`).
+/// Long-press expands an inline menu of explicit setters — Started, Blocked,
+/// Closed — wired through `onSetStatus`. The Plan 13 a11y action
+/// "Cycle status" still drives the cycle path so AT users get the same
+/// behaviour as a tap.
+///
+/// Plan 18 swapped the underlying gesture from `simultaneousGesture(LongPressGesture)`
+/// on a `.plain` Button to `Menu(primaryAction:)`. The simultaneous gesture
+/// was widely flaky — the Button could swallow the press depending on
+/// duration. See `docs/engineering-notes.md` entry "Plan 18 iOS polish sweep".
 public struct StatusIndicatorView: View {
     public var status: Status
     public var onClick: () -> Void
-    public var onLongPress: () -> Void
+    public var onSetStatus: (Status) -> Void
 
-    public init(status: Status, onClick: @escaping () -> Void, onLongPress: @escaping () -> Void) {
+    public init(
+        status: Status,
+        onClick: @escaping () -> Void,
+        onSetStatus: @escaping (Status) -> Void
+    ) {
         self.status = status
         self.onClick = onClick
-        self.onLongPress = onLongPress
+        self.onSetStatus = onSetStatus
     }
 
     public var body: some View {
-        Button(action: onClick) {
+        Menu {
+            Button {
+                onSetStatus(.started)
+            } label: {
+                Label(StatusGlyph.accessibilityLabel(for: .started),
+                      systemImage: StatusGlyph.symbol(for: .started))
+            }
+            Button {
+                onSetStatus(.blocked)
+            } label: {
+                Label(StatusGlyph.accessibilityLabel(for: .blocked),
+                      systemImage: StatusGlyph.symbol(for: .blocked))
+            }
+            Button {
+                onSetStatus(.closed)
+            } label: {
+                Label(StatusGlyph.accessibilityLabel(for: .closed),
+                      systemImage: StatusGlyph.symbol(for: .closed))
+            }
+        } label: {
             Image(systemName: StatusGlyph.symbol(for: status))
                 .font(LillistTypography.statusGlyph)
-                .foregroundStyle(StatusPalette.color(for: status))   // Plan 17 / Plan 15
+                .foregroundStyle(StatusPalette.color(for: status))
                 .frame(width: LillistSpacing.xl - 2, height: LillistSpacing.xl - 2)
-                .frame(width: 44, height: 44)
                 .contentShape(Rectangle())
+        } primaryAction: {
+            onClick()
         }
-        .buttonStyle(.plain)
+        .menuStyle(.borderlessButton)
+        .frame(width: 44, height: 44)
+        .contentShape(Rectangle())
         .accessibilityLabel(StatusGlyph.accessibilityLabel(for: status))
         .accessibilityAddTraits(.isButton)
         .accessibilityAction(named: Text("Cycle status")) {
-            onLongPress()
+            onClick()
         }
-        .simultaneousGesture(
-            LongPressGesture(minimumDuration: LillistTiming.longPress).onEnded { _ in onLongPress() }
-        )
     }
 }
