@@ -20,6 +20,11 @@ public struct EmptyStateView: View {
 
     @FocusState private var focused: Bool
 
+    // @ScaledMetric so the icon respects the user's Dynamic Type
+    // size with a base value pinned locally rather than tracking
+    // .largeTitle's evolving metric.
+    @ScaledMetric private var iconSize: CGFloat = 36
+
     public init(title: String, message: String, systemImage: String = "tray") {
         self.title = title
         self.message = message
@@ -29,7 +34,7 @@ public struct EmptyStateView: View {
     public var body: some View {
         VStack(spacing: LillistSpacing.s + 2) {
             Image(systemName: systemImage)
-                .font(LillistTypography.largeTitle.weight(.light))
+                .font(.system(size: iconSize, weight: .light))
                 .foregroundStyle(.tertiary)
             Text(title).font(LillistTypography.headline)
             Text(message)
