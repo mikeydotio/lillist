@@ -73,7 +73,19 @@ private struct MenuBarPopover: View {
                     for w in NSApp.windows where w.title == "Lillist" {
                         w.makeKeyAndOrderFront(nil); return
                     }
+                    // Plan 19 Task 12: if no Lillist window is currently
+                    // open (the user ⌘W-closed it), fall through to the
+                    // same reopen path the Dock icon uses.
+                    NotificationCenter.default.post(name: .lillistReopenMainWindow, object: nil)
                 }
+                // Plan 19 Task 12: explicit affordance for users with the
+                // menu-bar item visible. Goes through the same notification
+                // as `applicationShouldHandleReopen`, so the Dock-icon path
+                // and this button share their reopen logic.
+                Button("Show Main Window") {
+                    NotificationCenter.default.post(name: .lillistReopenMainWindow, object: nil)
+                }
+                .keyboardShortcut("0", modifiers: [.command])
                 Spacer()
                 Button("Quit") { NSApp.terminate(nil) }
             }

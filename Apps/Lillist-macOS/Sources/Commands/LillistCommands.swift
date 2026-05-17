@@ -140,4 +140,7 @@ extension Notification.Name {
     static let lillistSelectFilter      = Notification.Name("lillist.selectFilter")
     // Plan 15 Task 29: ⌃⌘S menu command for sidebar visibility.
     static let lillistToggleSidebar     = Notification.Name("lillist.toggleSidebar")
+    // Plan 19 Task 12: re-spawn the main window after ⌘W closed it (or
+    // the menu-bar popover's "Show Main Window" button was clicked).
+    static let lillistReopenMainWindow  = Notification.Name("lillist.reopenMainWindow")
 }
