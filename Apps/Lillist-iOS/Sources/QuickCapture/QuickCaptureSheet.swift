@@ -32,6 +32,12 @@ struct QuickCaptureSheet: View {
                     onSubmit: { _ in submit() }
                 )
                 .focused($focused)
+                .accessibilityElement(children: .contain)
+                .accessibilityLabel(String(localized: "Title, required"))
+                .accessibilityValue(trimmedTitleIsEmpty
+                    ? String(localized: "Empty")
+                    : String(localized: "Not empty")
+                )
                 if let errorMessage {
                     // SwiftUI has no `.accessibilityLiveRegion(_:)` modifier
                     // (it's an HTML/UIKit concept). The `updatesFrequently`
