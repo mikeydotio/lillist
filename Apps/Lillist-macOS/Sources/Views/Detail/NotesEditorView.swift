@@ -7,7 +7,9 @@ struct NotesEditorView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack {
-                Text("Notes").font(.headline)
+                Text("Notes")
+                    .font(.headline)
+                    .accessibilityAddTraits(.isHeader)
                 Spacer()
                 Toggle("Preview", isOn: $previewing)
                     .toggleStyle(.switch)
