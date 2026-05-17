@@ -107,7 +107,13 @@ public struct CrashReportSheet: View {
                     }
                 }
                 Section {
-                    Text("Reports go directly to Mikey (\(LillistCoreContact.crashReportRecipient)). No third-party telemetry.")
+                    // Embed the email as an explicit markdown link so the
+                    // address renders as a clickable mailto. SwiftUI's
+                    // automatic data-detection only links bare URLs/emails
+                    // when the LocalizedStringKey is a compile-time literal;
+                    // interpolated values are rendered as plain text, so
+                    // we spell the link out to preserve the affordance.
+                    Text("Reports go directly to Mikey ([\(LillistCoreContact.crashReportRecipient)](mailto:\(LillistCoreContact.crashReportRecipient))). No third-party telemetry.")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
