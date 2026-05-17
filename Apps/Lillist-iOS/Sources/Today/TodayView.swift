@@ -15,6 +15,7 @@ import LillistUI
 /// with the shared `TaskRowView`. Design Section 7 iOS subsection.
 struct TodayView: View {
     @Environment(AppEnvironment.self) private var env
+    @Environment(\.taskSelectionBinding) private var taskSelection
 
     @State private var results: [TaskStore.TaskRecord] = []
     @State private var loadError: String?
@@ -34,45 +35,7 @@ struct TodayView: View {
                     description: Text("Tasks with a start or deadline of today show up here.")
                 )
             } else {
-                List {
-                    ForEach(results, id: \.id) { record in
-                        NavigationLink(value: record.id) {
-                            TaskRowView(
-                                task: record,
-                                tagNames: [],
-                                onStatusClick: { Task { await cycle(record) } },
-                                onStatusLongPress: {}
-                            )
-                        }
-                        .swipeActions(edge: .leading, allowsFullSwipe: true) {
-                            Button("Complete") {
-                                Task { try? await env.taskStore.transition(id: record.id, to: .closed); await reload() }
-                            }
-                            .tint(.green)
-                        }
-                        .swipeActions(edge: .trailing) {
-                            Button("Snooze") {
-                                Task { await snooze(record) }
-                            }
-                            Button(role: .destructive) {
-                                Task { try? await env.taskStore.softDelete(id: record.id); await reload() }
-                            } label: { Text("Delete") }
-                        }
-                        .contextMenu {
-                            Menu("Change status") {
-                                ForEach(Status.allCases, id: \.self) { s in
-                                    Button(StatusGlyph.accessibilityLabel(for: s)) {
-                                        Task { try? await env.taskStore.transition(id: record.id, to: s); await reload() }
-                                    }
-                                }
-                            }
-                            Button(role: .destructive) {
-                                Task { try? await env.taskStore.softDelete(id: record.id); await reload() }
-                            } label: { Text("Delete") }
-                        }
-                    }
-                }
-                .listStyle(.plain)
+                listBody
             }
         }
         .navigationTitle("Today")
@@ -86,6 +49,64 @@ struct TodayView: View {
         }
         .task { await reload() }
         .refreshable { await reload() }
+    }
+
+    @ViewBuilder
+    private var listBody: some View {
+        if let taskSelection {
+            List(selection: taskSelection) {
+                ForEach(results, id: \.id) { record in
+                    row(record)
+                        .tag(record.id)
+                }
+            }
+            .listStyle(.plain)
+        } else {
+            List {
+                ForEach(results, id: \.id) { record in
+                    NavigationLink(value: record.id) {
+                        row(record)
+                    }
+                }
+            }
+            .listStyle(.plain)
+        }
+    }
+
+    @ViewBuilder
+    private func row(_ record: TaskStore.TaskRecord) -> some View {
+        TaskRowView(
+            task: record,
+            tagNames: [],
+            onStatusClick: { Task { await cycle(record) } },
+            onStatusLongPress: {}
+        )
+        .swipeActions(edge: .leading, allowsFullSwipe: true) {
+            Button("Complete") {
+                Task { try? await env.taskStore.transition(id: record.id, to: .closed); await reload() }
+            }
+            .tint(.green)
+        }
+        .swipeActions(edge: .trailing) {
+            Button("Snooze") {
+                Task { await snooze(record) }
+            }
+            Button(role: .destructive) {
+                Task { try? await env.taskStore.softDelete(id: record.id); await reload() }
+            } label: { Text("Delete") }
+        }
+        .contextMenu {
+            Menu("Change status") {
+                ForEach(Status.allCases, id: \.self) { s in
+                    Button(StatusGlyph.accessibilityLabel(for: s)) {
+                        Task { try? await env.taskStore.transition(id: record.id, to: s); await reload() }
+                    }
+                }
+            }
+            Button(role: .destructive) {
+                Task { try? await env.taskStore.softDelete(id: record.id); await reload() }
+            } label: { Text("Delete") }
+        }
     }
 
     private func reload() async {
