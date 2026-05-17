@@ -24,6 +24,11 @@ struct NotesEditorView: View {
                 TextEditor(text: $markdown)
                     .font(.body.monospaced())
                     .frame(minHeight: 120)
+                    .padding(6) // TODO(Plan 14): replace with LillistSpacing.s
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 6) // TODO(Plan 14): LillistRadius.s
+                            .stroke(.quaternary)
+                    )
                     .accessibilityLabel("Notes editor, Markdown")
             }
         }
