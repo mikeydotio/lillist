@@ -57,10 +57,14 @@ public struct RecurrenceEditorView: View {
                     }
 
                     if viewModel.freq == .monthly {
-                        Section("On day of month") {
-                            ForEach(1...31, id: \.self) { d in
-                                Toggle("Day \(d)", isOn: bindingFor(monthDay: d, in: $viewModel.byMonthDay))
+                        Section("On days of month") {
+                            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 6), count: 7),
+                                      spacing: 6) {
+                                ForEach(1...31, id: \.self) { day in
+                                    dayCell(day)
+                                }
                             }
+                            .padding(.vertical, 4)
                         }
                     }
 
@@ -144,5 +148,29 @@ public struct RecurrenceEditorView: View {
                 set.wrappedValue = copy
             }
         )
+    }
+
+    @ViewBuilder
+    private func dayCell(_ day: Int) -> some View {
+        let isSelected = viewModel.byMonthDay.contains(day)
+        Button {
+            if isSelected {
+                viewModel.byMonthDay.remove(day)
+            } else {
+                viewModel.byMonthDay.insert(day)
+            }
+        } label: {
+            Text("\(day)")
+                .font(.body)
+                .frame(minWidth: 36, minHeight: 36)
+                .background {
+                    Circle()
+                        .fill(isSelected ? Color.accentColor : Color.clear)
+                }
+                .foregroundStyle(isSelected ? .white : .primary)
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(isSelected ? "Day \(day) selected" : "Day \(day) not selected")
+        .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
 }

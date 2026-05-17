@@ -48,5 +48,27 @@ final class RecurrenceEditorSnapshotTests: XCTestCase {
         assertSnapshot(of: makeHostingView(view, size: .init(width: 420, height: 360)),
                        as: .image(precision: 0.99), named: "after-completion-week-light")
     }
+
+    func testMonthlyDay15_light() {
+        var vm = RecurrenceEditorViewModel(rule: nil)
+        vm.repeats = true
+        vm.freq = .monthly
+        vm.byMonthDay = [15]
+        let view = RecurrenceEditorView(viewModel: .constant(vm))
+            .frame(width: 420, height: 600)
+        assertSnapshot(of: makeHostingView(view, size: .init(width: 420, height: 600)),
+                       as: .image(precision: 0.99), named: "monthly-day-15-light")
+    }
+
+    func testMonthlyMultipleDays_light() {
+        var vm = RecurrenceEditorViewModel(rule: nil)
+        vm.repeats = true
+        vm.freq = .monthly
+        vm.byMonthDay = [1, 7, 15, 22, 28]
+        let view = RecurrenceEditorView(viewModel: .constant(vm))
+            .frame(width: 420, height: 600)
+        assertSnapshot(of: makeHostingView(view, size: .init(width: 420, height: 600)),
+                       as: .image(precision: 0.99), named: "monthly-multi-light")
+    }
 }
 #endif
