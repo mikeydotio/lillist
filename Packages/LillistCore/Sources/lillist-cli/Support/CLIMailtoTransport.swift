@@ -6,7 +6,7 @@ import LillistCore
 /// the CLI doesn't depend on AppKit.
 public struct CLIMailtoTransport: CrashReportTransport {
     private let recipient: String
-    public init(recipient: String = "mikeyward@gmail.com") { self.recipient = recipient }
+    public init(recipient: String = LillistCoreContact.crashReportRecipient) { self.recipient = recipient }
     public func send(_ report: CrashReport) async throws {
         let tmp = FileManager.default.temporaryDirectory
             .appendingPathComponent("lillist-crash-\(UUID().uuidString).lillistcrash")

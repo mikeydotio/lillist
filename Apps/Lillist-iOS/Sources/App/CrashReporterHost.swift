@@ -51,7 +51,7 @@ struct CrashReporterHost<Content: View>: View {
                 #if canImport(MessageUI)
                 if MFMailComposeViewController.canSendMail() {
                     MailComposerView(
-                        recipient: "mikeyward@gmail.com",
+                        recipient: LillistCoreContact.crashReportRecipient,
                         subject: staged.subject,
                         body: staged.body,
                         attachment: (staged.attachmentName, staged.attachmentData),

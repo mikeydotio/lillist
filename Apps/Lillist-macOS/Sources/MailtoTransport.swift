@@ -9,7 +9,7 @@ import LillistCore
 /// the user has minimum context if they don't attach the file.
 public struct MailtoTransport: CrashReportTransport {
     private let recipient: String
-    public init(recipient: String = "mikeyward@gmail.com") {
+    public init(recipient: String = LillistCoreContact.crashReportRecipient) {
         self.recipient = recipient
     }
     public func send(_ report: CrashReport) async throws {

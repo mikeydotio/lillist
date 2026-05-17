@@ -39,7 +39,7 @@ struct CrashReportingSection: View {
             buildVersion: environment.buildVersion,
             osVersion: environment.osVersion,
             deviceModel: environment.deviceModel,
-            recipient: "mikeyward@gmail.com",
+            recipient: LillistCoreContact.crashReportRecipient,
             methodSuffix: "Mail (you choose whether to send)."
         ))
     }
