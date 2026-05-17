@@ -29,6 +29,7 @@ final class QuickCapturePanelController {
         panel.isOpaque = false
         panel.hidesOnDeactivate = false
         panel.becomesKeyOnlyIfNeeded = false
+        panel.hasShadow = true // Plan 15 Task 16: drop shadow under borderless panel
 
         let host = NSHostingController(
             rootView: QuickCaptureView(
@@ -39,10 +40,42 @@ final class QuickCapturePanelController {
             .environment(environment)
         )
         panel.contentView = host.view
-        panel.center()
+
+        // Plan 15 Task 13: place on the screen under the cursor (or
+        // primary if the cursor isn't over any screen — e.g. a
+        // disconnected display) at ~1/3 from the top of that screen's
+        // visible frame. `placementOrigin` is a pure helper for tests.
+        let target = NSScreen.screens.first { $0.frame.contains(NSEvent.mouseLocation) } ?? .main
+        let screenFrame = target?.frame ?? .zero
+        let visibleFrame = target?.visibleFrame ?? .zero
+        let origin = QuickCapturePlacementMath.placementOrigin(
+            screenFrame: screenFrame,
+            visibleFrame: visibleFrame,
+            panelSize: panel.frame.size
+        )
+        panel.setFrameOrigin(origin)
+
         panel.makeKeyAndOrderFront(nil)
-        NSApp.activate(ignoringOtherApps: true)
+        // Plan 15 Task 15: do NOT call NSApp.activate(ignoringOtherApps:)
+        // — that defeats `.nonactivatingPanel` and steals menu bar focus
+        // from whatever app the user was in. The panel can be key
+        // without bringing the app forward.
+
+        // Plan 15 Task 14: dismiss when the panel resigns key (e.g. the
+        // user clicked away or hit ⌘Tab to switch apps).
+        installResignKeyObserver(on: panel)
+
         self.panel = panel
+    }
+
+    private func installResignKeyObserver(on panel: NSPanel) {
+        NotificationCenter.default.addObserver(
+            forName: NSWindow.didResignKeyNotification,
+            object: panel,
+            queue: .main
+        ) { [weak self] _ in
+            Task { @MainActor in self?.close() }
+        }
     }
 
     func close() {

@@ -56,6 +56,7 @@
 		B3682D3489423B4E04BB6948 /* HotkeyKeyTable.swift in Sources */ = {isa = PBXBuildFile; fileRef = 95FC2DAA17C7F98B4F907832 /* HotkeyKeyTable.swift */; };
 		B685FB1C17A64BBA91B50EA2 /* LillistCore in Frameworks */ = {isa = PBXBuildFile; productRef = 1CBD90EC484EB04CE92F5794 /* LillistCore */; };
 		B8F458A4C7FD86FBFC7F968C /* UIStatePersistence.swift in Sources */ = {isa = PBXBuildFile; fileRef = 996D14F2AE9898FB76C7696C /* UIStatePersistence.swift */; };
+		BC6B1E1CBFD580532B72EFA1 /* QuickCapturePlacementTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 702938FB7797F816EE1EA2B0 /* QuickCapturePlacementTests.swift */; };
 		BDA1E09753034DE2322D998A /* InlineCreateInteractionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6BF3D37E4FFA35138008C7ED /* InlineCreateInteractionTests.swift */; };
 		C439B581B7310C39C9F78C8B /* NotificationsPane.swift in Sources */ = {isa = PBXBuildFile; fileRef = F9E0C4B2D659722AE215A0B8 /* NotificationsPane.swift */; };
 		C6D19521CA3CF9D9C2A61033 /* TaskOutlineNode.swift in Sources */ = {isa = PBXBuildFile; fileRef = A11533C6477F2D2A981B7E22 /* TaskOutlineNode.swift */; };
@@ -64,9 +65,11 @@
 		CD807090167A2EB33A3F40BF /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5BDE58C737A0E5123FA07D0F /* AppDelegate.swift */; };
 		CFB2EE593D82AE7C21914CF1 /* MenuBarExtraScene.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2EFA693098EDBDA8867F2C1 /* MenuBarExtraScene.swift */; };
 		D18582EAD9CC9DEF45E3D046 /* BlockedFollowUpTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3F0D9EC0691515027BF44021 /* BlockedFollowUpTests.swift */; };
+		D1A0C35C122BFC3BE27BB475 /* QuickCapturePlacementMath.swift in Sources */ = {isa = PBXBuildFile; fileRef = 714EC7647AE061D0704C0E76 /* QuickCapturePlacementMath.swift */; };
 		D4D4307086A35ECB53CF3FBC /* MailtoTransport.swift in Sources */ = {isa = PBXBuildFile; fileRef = ED9565C658DC6743EF09396D /* MailtoTransport.swift */; };
 		D5E5E81DCC5FCF5E0F844A60 /* SubtaskOutlineView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 07756C86343C55B654BB65B1 /* SubtaskOutlineView.swift */; };
 		E36FA06746569B45811C186D /* TaskListSortControl.swift in Sources */ = {isa = PBXBuildFile; fileRef = 38BC4169CE094018D5BEA0BD /* TaskListSortControl.swift */; };
+		E3B2DBE7E86F28A40968F08C /* QuickCapturePlacementMath.swift in Sources */ = {isa = PBXBuildFile; fileRef = 714EC7647AE061D0704C0E76 /* QuickCapturePlacementMath.swift */; };
 		E844140043C9E82E250EE2FA /* SidebarSection.swift in Sources */ = {isa = PBXBuildFile; fileRef = 895660AD2C33EBCF965A577D /* SidebarSection.swift */; };
 		EC52B77A7309EF0911822A63 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 4FD0FFC71B48B70D0F2AFB67 /* Assets.xcassets */; };
 		F46A68730B52D3C00F76D896 /* InlineCreateField.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF7781804345711C5D1DFA6D /* InlineCreateField.swift */; };
@@ -99,7 +102,9 @@
 		5FF6CA37C3301C81C8947230 /* RootSplitView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootSplitView.swift; sourceTree = "<group>"; };
 		6BF3D37E4FFA35138008C7ED /* InlineCreateInteractionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InlineCreateInteractionTests.swift; sourceTree = "<group>"; };
 		6D70826CFF84526D54963DB7 /* LillistCommands.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LillistCommands.swift; sourceTree = "<group>"; };
+		702938FB7797F816EE1EA2B0 /* QuickCapturePlacementTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuickCapturePlacementTests.swift; sourceTree = "<group>"; };
 		70E52322AC633894E540853D /* NoSelectionDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoSelectionDetailView.swift; sourceTree = "<group>"; };
+		714EC7647AE061D0704C0E76 /* QuickCapturePlacementMath.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuickCapturePlacementMath.swift; sourceTree = "<group>"; };
 		7428376E8AED267AF2F3C3EE /* TaskListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TaskListView.swift; sourceTree = "<group>"; };
 		8908D968CD95B46BAA9848BB /* SidebarSelection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SidebarSelection.swift; sourceTree = "<group>"; };
 		895660AD2C33EBCF965A577D /* SidebarSection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SidebarSection.swift; sourceTree = "<group>"; };
@@ -161,6 +166,7 @@
 				95FC2DAA17C7F98B4F907832 /* HotkeyKeyTable.swift */,
 				D2F709C6BFFCBE01EB7EB243 /* HotkeyRecorder.swift */,
 				288A06800EA1CB39081E0910 /* QuickCapturePanelController.swift */,
+				714EC7647AE061D0704C0E76 /* QuickCapturePlacementMath.swift */,
 			);
 			path = Hotkey;
 			sourceTree = "<group>";
@@ -184,6 +190,7 @@
 				8B91031B39FF519BA7C7984B /* KeyboardShortcutTests.swift */,
 				953BE94B80FD2AFB27B77F89 /* NotificationPermissionFlowTests.swift */,
 				D86C5C049217ECDE9095EF97 /* PinnedSidebarIntegrationTests.swift */,
+				702938FB7797F816EE1EA2B0 /* QuickCapturePlacementTests.swift */,
 				9A4DD99AC3C19CA70493DAA1 /* ToolbarPersistenceTests.swift */,
 			);
 			path = Tests;
@@ -492,6 +499,7 @@
 				9674C4C2BAEC11A6B734FB61 /* PreferencesWindow.swift in Sources */,
 				2AE1F90D7F261EEFA392223F /* QuickCapturePane.swift in Sources */,
 				863B5709B57AA4BB35BF7DC3 /* QuickCapturePanelController.swift in Sources */,
+				E3B2DBE7E86F28A40968F08C /* QuickCapturePlacementMath.swift in Sources */,
 				947D4EE0DFF95B690ABADDF4 /* RootSplitView.swift in Sources */,
 				E844140043C9E82E250EE2FA /* SidebarSection.swift in Sources */,
 				5D718D6A47C34D934FA0267C /* SidebarSelection.swift in Sources */,
@@ -525,6 +533,8 @@
 				524AAE0A4EEB795D8EA674AC /* KeyboardShortcutTests.swift in Sources */,
 				52B6567908A60B67FDA9CBAC /* NotificationPermissionFlowTests.swift in Sources */,
 				A6252DAED612CEFA721DAC35 /* PinnedSidebarIntegrationTests.swift in Sources */,
+				D1A0C35C122BFC3BE27BB475 /* QuickCapturePlacementMath.swift in Sources */,
+				BC6B1E1CBFD580532B72EFA1 /* QuickCapturePlacementTests.swift in Sources */,
 				85B75D89DED9313BFD53E0A7 /* SidebarSelection.swift in Sources */,
 				57C8322E802DF6435DEF0934 /* ToolbarPersistenceTests.swift in Sources */,
 				B8F458A4C7FD86FBFC7F968C /* UIStatePersistence.swift in Sources */,
