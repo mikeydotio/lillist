@@ -4,6 +4,63 @@ Append-only log of cross-cutting engineering lessons learned while building
 Lillist. Each entry captures a non-obvious gotcha — usually one that took real
 investigation to find — so future work doesn't re-learn it the hard way.
 
+## 2026-05-16 — Plan 18 iOS polish sweep: gesture-reliable status indicator, Form footers, MailComposer clipboard fallback
+
+**Context.** Plan 18 closed eleven LOW / NIT items from the 2026-05-16
+design review that Plans 13-17 didn't cover. The headline correctness
+fix is the StatusIndicatorView gesture rewrite:
+`simultaneousGesture(LongPressGesture)` on a `.plain` Button is
+known-flaky (the tap can swallow the long-press depending on press
+duration), so Plan 13's `.accessibilityAction(named: "Cycle status")`
+was the only reliable path for AT users. Plan 18 swapped the
+underlying mechanism to `Menu(primaryAction:)` — primary action fires
+the cycle, long-press expands a Started / Blocked / Closed menu —
+giving sighted-touch users the same reliability AT users got in
+Plan 13.
+
+**Rules.**
+
+- **`simultaneousGesture(LongPressGesture)` on a `.plain` Button is
+  flaky.** SwiftUI's `Button` consumes the press for itself; the
+  simultaneous long-press fires inconsistently depending on press
+  duration. If you need tap + long-press on the same surface, reach
+  for `Menu(primaryAction:)` (tap = primary action, long-press =
+  expand) or `.contextMenu` on the surrounding container. Don't layer
+  a `simultaneousGesture` on a Button.
+- **`Menu` with a custom label shows a disclosure chevron on macOS by
+  default.** If the label is the affordance (an icon, a glyph), add
+  `.menuIndicator(.hidden)` to suppress the chevron — otherwise you
+  ship a glyph + chevron compound visual that wasn't in the design.
+  iOS Menu doesn't show the indicator by default, so the modifier is
+  a no-op there.
+- **`Section(footer:)` is the right place for non-obvious Form
+  defaults.** SwiftUI's `Section { content } header: { Text(...) }
+  footer: { Text(...) }` shape renders the footer beneath the section's
+  last row in subdued type. Non-obvious behavioural impact ("affects
+  all task lists" / "applied to new tags only") goes here, not in a
+  label modifier or a tooltip. Tooltips don't exist on iOS Form.
+- **Don't show preview UI for a feature that's gated off.**
+  `CrashReportingSection` showed a hardcoded "View what would be sent"
+  disclosure even when crash prompts were disabled, misleading users
+  into thinking content was being collected. Gate preview UI behind
+  the same toggle that controls the feature; reset the disclosure's
+  expanded state on toggle-off so re-enables start collapsed.
+- **`PresentationDetent` `selection:` `.constant(...)` is read-only.**
+  If users should be able to drag-resize between detents, the
+  `selection:` parameter must be a `@State` binding, not `.constant`.
+  Use `.onAppear { detent = ... }` to set the initial value from
+  external state (e.g. an `@AppStorage` flag) while still allowing
+  user drags.
+- **MailComposer fallbacks need a recourse.** When
+  `MFMailComposeViewController.canSendMail()` returns false (which is
+  the default state in fresh simulators and on devices with no Mail
+  account), don't render a dead-end text view. Provide a "Copy to
+  clipboard" button so the user can paste into any email or messaging
+  app, and confirm the copy via `.alert(...)`.
+
+**Evidence.** Plan 18 commits on `main` between `b131247` and the
+`plan-18-ios-polish-sweep` tag.
+
 ## 2026-05-16 — Plan 17 Localization & Accessibility Environments
 
 **Context.** Lillist had zero usage of the four accessibility-environment
