@@ -18,28 +18,52 @@ struct TaskNotesTab: View {
     @FocusState private var focused: Bool
 
     var body: some View {
-        TextEditor(text: $text)
-            .padding(.horizontal)
-            .accessibilityLabel(String(localized: "Notes"))
-            .focused($focused)
-            .onAppear {
-                guard !hasAppeared else { return }
-                text = initialText
-                hasAppeared = true
-            }
-            .task(id: text) {
-                guard hasAppeared else { return }
-                do {
-                    try await Task.sleep(for: .milliseconds(Int(Self.debounceMilliseconds)))
-                } catch {
-                    return  // cancelled — newer keystroke arrived
+        VStack(alignment: .leading, spacing: 4) {
+            ZStack(alignment: .topLeading) {
+                if text.isEmpty {
+                    // TextEditor lacks a built-in placeholder; the iOS
+                    // pattern is to overlay a Text behind the editor and
+                    // hide it once the editor has content.
+                    Text(String(localized: "Notes — markdown supported"))
+                        .foregroundStyle(.tertiary)
+                        .padding(.horizontal, 4)
+                        .padding(.vertical, 8)
+                        .accessibilityHidden(true)
                 }
-                await saveNotes(text)
+                TextEditor(text: $text)
+                    .scrollIndicators(.automatic)
+                    .accessibilityLabel(String(localized: "Notes"))
+                    .focused($focused)
             }
-            .onChange(of: focused) { _, isFocused in
-                guard !isFocused, hasAppeared else { return }
-                Task { await saveNotes(text) }
+            if text.count > 500 {
+                Text(String(localized: "\(text.count) characters"))
+                    .font(.caption2)
+                    .foregroundStyle(.tertiary)
+                    .padding(.horizontal)
+                    .accessibilityLabel(
+                        String(localized: "Notes length: \(text.count) characters")
+                    )
             }
+        }
+        .padding(.horizontal)
+        .onAppear {
+            guard !hasAppeared else { return }
+            text = initialText
+            hasAppeared = true
+        }
+        .task(id: text) {
+            guard hasAppeared else { return }
+            do {
+                try await Task.sleep(for: .milliseconds(Int(Self.debounceMilliseconds)))
+            } catch {
+                return  // cancelled — newer keystroke arrived
+            }
+            await saveNotes(text)
+        }
+        .onChange(of: focused) { _, isFocused in
+            guard !isFocused, hasAppeared else { return }
+            Task { await saveNotes(text) }
+        }
     }
 
     private func saveNotes(_ value: String) async {
