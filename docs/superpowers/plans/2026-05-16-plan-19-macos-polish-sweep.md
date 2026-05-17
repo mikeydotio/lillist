@@ -1180,9 +1180,9 @@ git commit -m "feat(macOS): Dock-icon reopens main window after ⌘W; recover lo
 **Files:**
 - New: `Packages/LillistCore/Sources/LillistCore/Support/LillistCoreContact.swift`
 - Modify: `Apps/Lillist-macOS/Sources/MailtoTransport.swift:12`
-- Modify: `Apps/Lillist-macOS/Sources/Preferences/CrashReportingPane.swift:63` (already touched in Task 4, but reconfirm)
-- Modify: `Apps/Lillist-iOS/Sources/App/CrashReporterHost.swift:52`
-- Modify: `Packages/LillistUI/Sources/LillistUI/CrashReporting/CrashReportSheet.swift:74`
+- Modify: `Apps/Lillist-macOS/Sources/Preferences/CrashReportingPane.swift:61` (already touched in Task 4, but reconfirm)
+- Modify: `Apps/Lillist-iOS/Sources/App/CrashReporterHost.swift:54`
+- Modify: `Packages/LillistUI/Sources/LillistUI/CrashReporting/CrashReportSheet.swift:110`
 - Modify: `Packages/LillistCore/Sources/lillist-cli/Support/CLIMailtoTransport.swift:9`
 
 Five sites hardcode the same email address. Lift to one constant in `LillistCore` (the only module all five sites can import).
@@ -1228,17 +1228,18 @@ Edit each of the five sites to read `LillistCoreContact.crashReportRecipient` in
     public init(recipient: String = LillistCoreContact.crashReportRecipient) { self.recipient = recipient }
 ```
 
-`Apps/Lillist-iOS/Sources/App/CrashReporterHost.swift:52`:
+`Apps/Lillist-iOS/Sources/App/CrashReporterHost.swift:54`:
 ```swift
+                    MailComposerView(
                         recipient: LillistCoreContact.crashReportRecipient,
 ```
 
-`Apps/Lillist-macOS/Sources/Preferences/CrashReportingPane.swift:63` (the multi-line string):
+`Apps/Lillist-macOS/Sources/Preferences/CrashReportingPane.swift:61` (the `samplePreview` builder):
 ```swift
-        Sent to: \(LillistCoreContact.crashReportRecipient)
+            recipient: LillistCoreContact.crashReportRecipient,
 ```
 
-`Packages/LillistUI/Sources/LillistUI/CrashReporting/CrashReportSheet.swift:74`:
+`Packages/LillistUI/Sources/LillistUI/CrashReporting/CrashReportSheet.swift:110`:
 ```swift
                     Text("Reports go directly to Mikey (\(LillistCoreContact.crashReportRecipient)). No third-party telemetry.")
 ```

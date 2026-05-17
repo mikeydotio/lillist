@@ -110,7 +110,7 @@ Lillist/
 
 **Task 5 (module doc) is documentation-only.** Replace the `LillistUI.swift` stub with a doc-comment landing page; the referenced surfaces — `Theme/Tokens.swift` (design tokens) and `Accessibility/AccessibilityEnvironment.swift` (environment-aware modifiers) — both exist on `main`.
 
-**Task 6 (case audit) is one-time normalization.** macOS title case for menus and standalone buttons; iOS title case for toolbar/navbar buttons, sentence case for inline Form-row actions. Known offenders: `CrashReportSheet.swift:82,90` ("Don't send" / "Send report" both sentence) — harmonize to title case for both.
+**Task 6 (case audit) is one-time normalization.** macOS title case for menus and standalone buttons; iOS title case for toolbar/navbar buttons, sentence case for inline Form-row actions. Known offenders: `CrashReportSheet.swift:118,126` ("Don't send" / "Send report" both sentence) — harmonize to title case for both.
 
 **Tasks 7-12 are individual a11y nits.** Each is a 1-3 line modifier addition (or comment block for Tasks 8, 12). Tasks 7, 9, 10 carry small tests; the rest are documentary or visually verified.
 
@@ -631,7 +631,7 @@ Version constant retained for SemVer hygiene."
 ## Task 6: Audit and fix sentence/title case per platform
 
 **Files:**
-- Modify: `Packages/LillistUI/Sources/LillistUI/CrashReporting/CrashReportSheet.swift:82,90`
+- Modify: `Packages/LillistUI/Sources/LillistUI/CrashReporting/CrashReportSheet.swift:118,126`
 - Modify (per audit): `Apps/Lillist-macOS/Sources/Commands/LillistCommands.swift` (verify title case)
 - Modify (per audit): `Apps/Lillist-iOS/Sources/Settings/*Section.swift` (verify button labels)
 - Document: a checklist of audited callsites in the commit message
@@ -640,7 +640,7 @@ Version constant retained for SemVer hygiene."
 
 - [ ] **Step 1: Fix the known offender in `CrashReportSheet`**
 
-Edit `Packages/LillistUI/Sources/LillistUI/CrashReporting/CrashReportSheet.swift` lines 82 and 90:
+Edit `Packages/LillistUI/Sources/LillistUI/CrashReporting/CrashReportSheet.swift` lines 118 and 126:
 - `Button("Don't send")` → `Button("Don't Send")`
 - `Button("Send report")` → `Button("Send Report")`
 
@@ -993,24 +993,24 @@ treatment already in place on the macOS detail-view section titles."
 ## Task 10: Make `EmptyStateView` icon scale with Dynamic Type
 
 **Files:**
-- Modify: `Packages/LillistUI/Sources/LillistUI/Components/EmptyStateView.swift:17`
+- Modify: `Packages/LillistUI/Sources/LillistUI/Components/EmptyStateView.swift:32`
 - Create: `Packages/LillistUI/Tests/LillistUITests/Components/EmptyStateViewDynamicTypeTests.swift`
 
-Today (lines 15-18):
+Today (the `body` opens at line 29; the icon is at lines 31-33):
 
 ```swift
-        VStack(spacing: 10) {
+        VStack(spacing: LillistSpacing.s + 2) {
             Image(systemName: systemImage)
-                .font(.system(size: 36, weight: .light))
+                .font(LillistTypography.largeTitle.weight(.light))
                 .foregroundStyle(.tertiary)
 ```
 
-The hardcoded `36` doesn't scale when the user picks a larger Dynamic Type size. Two equally good fixes:
+`LillistTypography.largeTitle` resolves to `.largeTitle` — a semantic Dynamic Type font, so the icon *does* scale today. But the underlying primitive (`.largeTitle`) carries an opinionated base size that drifts visually as the body text changes; an explicit `@ScaledMetric` makes the contract local and lets the snapshot baselines anchor a known base value. Two equally good fixes:
 
-1. **`@ScaledMetric` wrap:** Add `@ScaledMetric private var iconSize: CGFloat = 36` and use `.font(.system(size: iconSize, weight: .light))`. Preserves the exact base size.
-2. **Semantic font:** Replace `.font(.system(size: 36, weight: .light))` with `.font(.largeTitle.weight(.light))`. Inherits Dynamic Type behavior for free, but base size shifts slightly (~34pt vs 36pt at default).
+1. **`@ScaledMetric` wrap:** Add `@ScaledMetric private var iconSize: CGFloat = 36` and use `.font(.system(size: iconSize, weight: .light))`. Pins the exact base size while preserving Dynamic Type response.
+2. **Semantic font (status quo):** Keep `.font(LillistTypography.largeTitle.weight(.light))`. No change required if the design call is to let the icon track `.largeTitle`'s evolution exactly.
 
-Option 1 preserves visual parity with all snapshot baselines; pick it.
+Option 1 pins the visual baseline; pick it.
 
 - [ ] **Step 1: Write the failing test**
 
@@ -1022,9 +1022,9 @@ import XCTest
 
 @MainActor
 final class EmptyStateViewDynamicTypeTests: XCTestCase {
-    /// EmptyStateView's icon must scale with Dynamic Type. We assert
-    /// the source uses @ScaledMetric for the icon size rather than a
-    /// hardcoded numeric literal in .font(.system(size: 36, ...)).
+    /// EmptyStateView's icon must scale with Dynamic Type via an
+    /// explicit `@ScaledMetric` so the base size is pinned by this
+    /// component, not by Apple's evolving `.largeTitle` metric.
     func test_iconSize_isScaledMetric() throws {
         let path = "\(#filePath)"
             .replacingOccurrences(of: "Tests/LillistUITests/Components/EmptyStateViewDynamicTypeTests.swift",
@@ -1035,8 +1035,8 @@ final class EmptyStateViewDynamicTypeTests: XCTestCase {
             "EmptyStateView must use @ScaledMetric so its icon scales with Dynamic Type."
         )
         XCTAssertFalse(
-            source.contains(".font(.system(size: 36"),
-            "EmptyStateView must not use a hardcoded 36pt size for its icon."
+            source.contains("LillistTypography.largeTitle.weight(.light)"),
+            "EmptyStateView must not delegate the icon font to LillistTypography.largeTitle — pin the base size locally."
         )
     }
 }
@@ -1054,13 +1054,14 @@ Expect: fails on both assertions.
 
 Edit `Packages/LillistUI/Sources/LillistUI/Components/EmptyStateView.swift`. Two surgical edits:
 
-1. Add a stored property after the `systemImage` declaration:
+1. Add a stored property after the `systemImage` declaration (around line 19):
    ```swift
        // @ScaledMetric so the icon respects the user's Dynamic Type
-       // size. Default value 36 matches the visual baseline.
+       // size with a base value pinned locally rather than tracking
+       // .largeTitle's evolving metric.
        @ScaledMetric private var iconSize: CGFloat = 36
    ```
-2. Swap the hardcoded literal on line 17 (`.font(.system(size: 36, weight: .light))`) to consume the new property: `.font(.system(size: iconSize, weight: .light))`.
+2. Swap the icon font line (around line 32 — `.font(LillistTypography.largeTitle.weight(.light))`) to consume the new property: `.font(.system(size: iconSize, weight: .light))`.
 
 `@ScaledMetric` is part of `SwiftUI`, no extra import needed.
 
