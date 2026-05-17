@@ -82,6 +82,12 @@ targets:
       # InlineCreateField is exercised by the empty-tab wiring guard in
       # InlineCreateInteractionTests (Plan 13 Task 6).
       - path: Lillist-macOS/Sources/Views/TaskList/InlineCreateField.swift
+      # Plan 15 Task 2: ToolbarPersistenceTests exercises
+      # UIStatePersistence.taskSelection(for:) which keys on
+      # SidebarSelection. Co-compile both so the standalone bundle
+      # builds without `@testable import Lillist_macOS`.
+      - path: Lillist-macOS/Sources/Persistence/UIStatePersistence.swift
+      - path: Lillist-macOS/Sources/Views/Sidebar/SidebarSelection.swift
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: io.mikeydotio.Lillist.tests
