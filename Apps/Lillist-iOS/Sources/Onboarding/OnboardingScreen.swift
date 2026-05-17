@@ -22,6 +22,7 @@ struct OnboardingScreen: View {
     @State private var permissionStatus: NotificationPermissions.AuthorizationStatus = .notDetermined
     @State private var isRequesting = false
     @State private var isCompleting = false
+    @State private var errorMessage: String?
 
     var body: some View {
         VStack(spacing: 0) {
@@ -37,6 +38,12 @@ struct OnboardingScreen: View {
                             }
                         }
                     )
+                    if let errorMessage {
+                        Label(errorMessage, systemImage: "exclamationmark.triangle.fill")
+                            .font(.callout)
+                            .foregroundStyle(.red)
+                            .accessibilityAddTraits(.updatesFrequently)
+                    }
                 }
                 .padding(24)
             }
@@ -114,10 +121,11 @@ struct OnboardingScreen: View {
             try await onboardingState.markCompleted()
             onCompleted()
         } catch {
-            // Surface to the user via a log here; the modal stays
-            // visible and the user can re-tap the button. Plan 10
-            // doesn't ship an iOS error sheet for this rare path.
-            print("Onboarding completion failed: \(error)")
+            let message = String(
+                localized: "Couldn't finish onboarding: \(error.localizedDescription)"
+            )
+            errorMessage = message
+            AccessibilityAnnouncements.post(message, priority: .high)
         }
     }
 }
