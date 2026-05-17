@@ -23,7 +23,7 @@ struct TrashSection: View {
     }
 
     var body: some View {
-        Section("Trash") {
+        Section {
             Picker("Retain trashed tasks for", selection: Binding(
                 get: { Int(prefs.trashRetentionDays) },
                 set: { prefs.trashRetentionDays = Int16($0) }
@@ -67,6 +67,10 @@ struct TrashSection: View {
                     .foregroundStyle(.secondary)
                     .accessibilityAddTraits(.updatesFrequently)
             }
+        } header: {
+            Text("Trash")
+        } footer: {
+            Text("Tasks in the trash are permanently deleted after this many days.")
         }
     }
 
