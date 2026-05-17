@@ -44,6 +44,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         NSApp.servicesProvider = servicesProvider
         self.servicesProvider = servicesProvider
         NSUpdateDynamicServices()
+
+        // Plan 15 Task 24: Spotlight indexing. `start()` performs an
+        // initial reindex (if the format signature is stale) and
+        // subscribes to Core Data save notifications for incremental
+        // updates.
+        let indexer = IndexingService(environment: env)
+        Task { await indexer.start() }
+        self.indexingService = indexer
     }
 
     /// Plan 15 Task 23: strong reference holder for the services
@@ -51,6 +59,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// this the provider would be deallocated immediately after
     /// `bootstrap()` returns.
     private var servicesProvider: LillistServicesProvider?
+
+    /// Plan 15 Task 24: strong reference holder for the Spotlight
+    /// indexing service. The service registers a NotificationCenter
+    /// observer in `start()`; the AppDelegate's lifetime keeps the
+    /// observer alive for the duration of the app session.
+    var indexingService: IndexingService?
 
     func applicationWillTerminate(_ notification: Notification) {
         environment?.hotkeyMonitor.uninstall()
