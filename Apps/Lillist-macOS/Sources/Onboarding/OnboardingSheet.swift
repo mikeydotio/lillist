@@ -123,7 +123,14 @@ struct OnboardingSheet: View {
         isCompleting = true
         defer { isCompleting = false }
         do {
-            try await installer.installIfNeeded()
+            // Plan 19 Task 10: `installer.installIfNeeded()` was previously
+            // called here too, but every launch already runs it via
+            // `LillistApp.loadEnvironmentIfNeeded()`. The onboarding-side
+            // call was structurally redundant — a user who quits
+            // mid-onboarding still gets defaults the next launch through
+            // the App-startup path. The `installer` parameter stays on
+            // the init for type-shape parity with iOS `OnboardingScreen`.
+            _ = installer
             try await onboardingState.markCompleted()
             onCompleted()
         } catch {
