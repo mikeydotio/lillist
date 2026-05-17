@@ -7,10 +7,33 @@ struct RootSplitView: View {
     @State private var uiState = UIStatePersistence()
     @State private var sidebarSelection: SidebarSelection?
     @State private var taskSelection: UUID?
-    @State private var columnVisibility: NavigationSplitViewVisibility = .automatic
+    @SceneStorage("lillist.ui.columnVisibility") private var columnVisibilityRaw: String = "all"
     @State private var sortField: SortField = .deadline
     @State private var sortAscending: Bool = true
     @FocusState private var focusedColumn: ListColumn?
+
+    private var columnVisibility: Binding<NavigationSplitViewVisibility> {
+        Binding(
+            get: { Self.parseVisibility(columnVisibilityRaw) },
+            set: { columnVisibilityRaw = Self.encodeVisibility($0) }
+        )
+    }
+
+    static func parseVisibility(_ raw: String) -> NavigationSplitViewVisibility {
+        switch raw {
+        case "doubleColumn": return .doubleColumn
+        case "detailOnly":   return .detailOnly
+        default:             return .all
+        }
+    }
+
+    static func encodeVisibility(_ v: NavigationSplitViewVisibility) -> String {
+        switch v {
+        case .doubleColumn: return "doubleColumn"
+        case .detailOnly:   return "detailOnly"
+        default:            return "all"
+        }
+    }
 
     init() {
         let persisted = UIStatePersistence().sidebarSelection
@@ -18,7 +41,7 @@ struct RootSplitView: View {
     }
 
     var body: some View {
-        NavigationSplitView(columnVisibility: $columnVisibility) {
+        NavigationSplitView(columnVisibility: columnVisibility) {
             SidebarView(selection: $sidebarSelection)
                 .focused($focusedColumn, equals: .sidebar)
                 .navigationSplitViewColumnWidth(min: 200, ideal: 240)
@@ -66,7 +89,17 @@ struct RootSplitView: View {
                 Task { try? await env.taskStore.transition(id: id, to: .blocked) }
             }
         }
-        .onChange(of: sidebarSelection) { _, new in uiState.sidebarSelection = new }
+        .onChange(of: sidebarSelection) { _, new in
+            uiState.sidebarSelection = new
+            // Restore the remembered task selection for the new source
+            // (or clear if none).
+            taskSelection = new.flatMap { uiState.taskSelection(for: $0) }
+        }
+        .onChange(of: taskSelection) { _, new in
+            if let sel = sidebarSelection {
+                uiState.setTaskSelection(new, for: sel)
+            }
+        }
         .focusedValue(\.listColumn, focusedColumn)
     }
 
@@ -79,9 +112,10 @@ struct RootSplitView: View {
         ToolbarItem(placement: .navigation) {
             Button {
                 withAnimation(.easeInOut(duration: 0.18)) {
-                    columnVisibility = (columnVisibility == .all)
-                        ? .doubleColumn
-                        : .all
+                    let current = Self.parseVisibility(columnVisibilityRaw)
+                    columnVisibilityRaw = Self.encodeVisibility(
+                        current == .all ? .doubleColumn : .all
+                    )
                 }
             } label: {
                 Image(systemName: "sidebar.left")
