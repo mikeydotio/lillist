@@ -46,5 +46,24 @@ final class ContrastSnapshotTests: XCTestCase {
                        as: .image(precision: 0.99),
                        named: "tagchip-dark-increase-contrast")
     }
+
+    func test_sidebarRow_normal_with_badge() {
+        let view = SidebarRowView(icon: "tray", label: "Inbox", badge: 7, kind: .task)
+            .frame(width: 220)
+            .padding(8)
+        assertSnapshot(of: makeHostingView(view, size: CGSize(width: 220, height: 40)),
+                       as: .image(precision: 0.99),
+                       named: "sidebar-row-normal")
+    }
+
+    func test_sidebarRow_increaseContrast_with_badge() {
+        let view = SidebarRowView(icon: "tray", label: "Inbox", badge: 7, kind: .task)
+            .frame(width: 220)
+            .padding(8)
+            .environment(\.increaseContrastOverride, true)
+        assertSnapshot(of: makeHostingView(view, size: CGSize(width: 220, height: 40)),
+                       as: .image(precision: 0.99),
+                       named: "sidebar-row-increase-contrast")
+    }
 }
 #endif
