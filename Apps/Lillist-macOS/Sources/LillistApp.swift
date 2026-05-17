@@ -10,10 +10,11 @@ struct LillistApp: App {
     @State private var statusBarItemVisible = true
 
     var body: some Scene {
-        WindowGroup("Lillist") {
+        WindowGroup("Lillist", id: "main") {
             content
                 .frame(minWidth: 900, minHeight: 560)
                 .task { await loadEnvironmentIfNeeded() }
+                .modifier(MainWindowReopener())
         }
         .defaultSize(width: 1180, height: 760)
         .windowResizability(.contentSize)
@@ -166,6 +167,20 @@ private struct OnboardingPresentationModifier: ViewModifier {
         switch state {
         case .available: return true
         case .noAccount, .restricted, .accountChanged: return false
+        }
+    }
+}
+
+/// Plan 19 Task 12: re-spawn the main window when the user closes the
+/// only window with `⌘W` and then clicks the Dock icon (or hits the
+/// "Show Main Window" item in the menu-bar popover). Both paths post
+/// `.lillistReopenMainWindow`; this modifier grabs `openWindow` from
+/// the SwiftUI environment and reopens the `WindowGroup(id: "main")`.
+private struct MainWindowReopener: ViewModifier {
+    @Environment(\.openWindow) private var openWindow
+    func body(content: Content) -> some View {
+        content.onReceive(NotificationCenter.default.publisher(for: .lillistReopenMainWindow)) { _ in
+            openWindow(id: "main")
         }
     }
 }

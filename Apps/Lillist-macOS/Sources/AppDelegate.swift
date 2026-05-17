@@ -25,6 +25,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // wiring here would race the environment's availability.
     }
 
+    /// Plan 19 Task 12: recover from `⌘W`-closes-only-window. SwiftUI's
+    /// `WindowGroup` does not auto-reopen on Dock-icon activation;
+    /// AppKit asks AppDelegate via this callback. We bounce the request
+    /// through a notification so the `MainWindowReopener` modifier in
+    /// `LillistApp` can invoke `@Environment(\.openWindow)`.
+    func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows: Bool) -> Bool {
+        if !hasVisibleWindows {
+            NSApp.activate(ignoringOtherApps: true)
+            NotificationCenter.default.post(name: .lillistReopenMainWindow, object: nil)
+        }
+        return true
+    }
+
     func bootstrap() {
         guard let env = environment, quickCapturePanel == nil else { return }
         let panel = QuickCapturePanelController(environment: env)
