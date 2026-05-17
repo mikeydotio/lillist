@@ -1,4 +1,5 @@
 import SwiftUI
+import LillistUI
 
 /// Compact-size shell: a tab bar with Today / All / Filters / Search,
 /// matching design Section 7's iOS subsection.
@@ -46,12 +47,13 @@ struct TabShell: View {
             .tabItem { Label("Search", systemImage: "magnifyingglass") }
             .tag(Tab.search)
         }
-        .overlay(alignment: .bottomTrailing) {
-            FloatingPlusOverlay(isPresented: $isQuickCapturePresented)
+        .tabViewBottomAccessory {
+            FloatingAddButton(onTap: { isQuickCapturePresented = true })
+                .accessibilityIdentifier("QuickCaptureAccessory")
         }
         .sheet(isPresented: $isQuickCapturePresented) {
             QuickCaptureSheet()
-                .presentationDetents([.fraction(0.35), .medium])
+                .presentationDetents([.fraction(0.35), .medium, .large])
                 .presentationDragIndicator(.visible)
         }
         .sheet(isPresented: $isSettingsPresented) {

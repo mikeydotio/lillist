@@ -15,7 +15,6 @@
 		1C56CE523F96BDB4ED0163D4 /* AddNudgeIntent.swift in Sources */ = {isa = PBXBuildFile; fileRef = B82728947B00E5DCC963F9A5 /* AddNudgeIntent.swift */; };
 		1F01AB703411576F362D1A03 /* AddTaskIntent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 343B12E0AE009EE4CB0ECBE7 /* AddTaskIntent.swift */; };
 		1F88713EE31954520467B3CB /* LillistUI in Frameworks */ = {isa = PBXBuildFile; productRef = 632F42FE2460074A366178DF /* LillistUI */; };
-		2001164CDA5863CF6F20A39B /* FloatingPlusOverlay.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2451C017B338C99A72811F7E /* FloatingPlusOverlay.swift */; };
 		206EB5B95925C98A34CA2639 /* AddNoteIntent.swift in Sources */ = {isa = PBXBuildFile; fileRef = CECC0E4966AEDB2B50C11DCA /* AddNoteIntent.swift */; };
 		2DADFF6343511363B623E9F4 /* SplitShell.swift in Sources */ = {isa = PBXBuildFile; fileRef = 262D045DF7FC19BD936381F6 /* SplitShell.swift */; };
 		34376E8334E842553856720B /* ShareRootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BF7C0CBC7BB61226C9ABECE1 /* ShareRootView.swift */; };
@@ -123,7 +122,6 @@
 		127316B4280751452F412407 /* SearchTasksIntent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SearchTasksIntent.swift; sourceTree = "<group>"; };
 		165A87417D8DB0F2E8100ABB /* ShareExtensionPayloadTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShareExtensionPayloadTests.swift; sourceTree = "<group>"; };
 		21542BC245EEBE9709AB17DD /* RecurrenceSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecurrenceSheet.swift; sourceTree = "<group>"; };
-		2451C017B338C99A72811F7E /* FloatingPlusOverlay.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FloatingPlusOverlay.swift; sourceTree = "<group>"; };
 		262D045DF7FC19BD936381F6 /* SplitShell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SplitShell.swift; sourceTree = "<group>"; };
 		297211E1BF6A9D0C7890E078 /* AppEnvironment.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppEnvironment.swift; sourceTree = "<group>"; };
 		29C684CCD22ABED2078AE9FA /* TaskSubtasksTab.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TaskSubtasksTab.swift; sourceTree = "<group>"; };
@@ -417,7 +415,6 @@
 		A933F3CB1E8F5653BE7C8EBF /* Common */ = {
 			isa = PBXGroup;
 			children = (
-				2451C017B338C99A72811F7E /* FloatingPlusOverlay.swift */,
 				A51D139E432B20E90E93549D /* KeyboardShortcuts.swift */,
 			);
 			path = Common;
@@ -690,7 +687,6 @@
 				A3140D5C493ECC74519DBB39 /* CrashReportingSection.swift in Sources */,
 				CEE10BDC98205D724AA29DCD /* FilterResultsView.swift in Sources */,
 				8ED796B233C11810C84BB4DB /* FiltersListView.swift in Sources */,
-				2001164CDA5863CF6F20A39B /* FloatingPlusOverlay.swift in Sources */,
 				B28D66C3798D9DE9462CB3D0 /* GeneralSection.swift in Sources */,
 				67467AD14169FBD143D6960A /* ICloudRequiredScreen.swift in Sources */,
 				DD83C4577F076A2042F05E6E /* KeyboardShortcuts.swift in Sources */,
@@ -753,7 +749,7 @@
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
 				INFOPLIST_FILE = Info.plist;
-				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -771,7 +767,7 @@
 				CODE_SIGN_ENTITLEMENTS = ../../Extensions/ShortcutsActions/Lillist.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				INFOPLIST_FILE = ../../Extensions/ShortcutsActions/Info.plist;
-				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -789,7 +785,7 @@
 				CODE_SIGN_ENTITLEMENTS = "../../Extensions/ShareExtension-iOS/Lillist.entitlements";
 				CODE_SIGN_STYLE = Automatic;
 				INFOPLIST_FILE = "../../Extensions/ShareExtension-iOS/Info.plist";
-				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -809,7 +805,7 @@
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
 				INFOPLIST_FILE = Info.plist;
-				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -878,7 +874,7 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				GENERATE_INFOPLIST_FILE = NO;
-				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
 				MARKETING_VERSION = 0.1.0;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
@@ -899,7 +895,7 @@
 				CODE_SIGN_ENTITLEMENTS = "../../Extensions/ShareExtension-iOS/Lillist.entitlements";
 				CODE_SIGN_STYLE = Automatic;
 				INFOPLIST_FILE = "../../Extensions/ShareExtension-iOS/Info.plist";
-				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -917,7 +913,7 @@
 				CODE_SIGN_ENTITLEMENTS = ../../Extensions/ShortcutsActions/Lillist.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				INFOPLIST_FILE = ../../Extensions/ShortcutsActions/Info.plist;
-				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -980,7 +976,7 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				GENERATE_INFOPLIST_FILE = NO;
-				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
 				MARKETING_VERSION = 0.1.0;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
@@ -999,7 +995,7 @@
 			buildSettings = {
 				BUNDLE_LOADER = "";
 				GENERATE_INFOPLIST_FILE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -1017,7 +1013,7 @@
 			buildSettings = {
 				BUNDLE_LOADER = "";
 				GENERATE_INFOPLIST_FILE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",

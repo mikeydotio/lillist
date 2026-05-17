@@ -56,13 +56,22 @@ struct SplitShell: View {
                 case .search: SearchView()
                 }
             }
-        }
-        .overlay(alignment: .bottomTrailing) {
-            FloatingPlusOverlay(isPresented: $isQuickCapturePresented)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button {
+                        isQuickCapturePresented = true
+                    } label: {
+                        Image(systemName: "plus")
+                    }
+                    .accessibilityLabel("New task")
+                    .accessibilityHint("Opens quick capture")
+                }
+            }
         }
         .sheet(isPresented: $isQuickCapturePresented) {
             QuickCaptureSheet()
-                .presentationDetents([.fraction(0.35), .medium])
+                .presentationDetents([.fraction(0.35), .medium, .large])
+                .presentationDragIndicator(.visible)
         }
         .sheet(isPresented: $isSettingsPresented) {
             SettingsTab()
