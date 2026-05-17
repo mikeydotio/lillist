@@ -75,6 +75,7 @@
 		ED3F0012AFC75791B7432CB6 /* ShareViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3013CF9707368DFFA43E4C72 /* ShareViewController.swift */; };
 		F11F925F3DFE05C9595A1825 /* SettingsTab.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1B6EFD3373C205B1003A91A /* SettingsTab.swift */; };
 		F6AC14D90F6B8A293A753408 /* AppIntentHandlerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4E15BAD0E599EA928403C4A8 /* AppIntentHandlerTests.swift */; };
+		F71E162C0547B39972F7F2C4 /* NotesDebounceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 44B1BAD46F1743FCF753B964 /* NotesDebounceTests.swift */; };
 		F75A71A023C47A17E5C2157E /* MailComposerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4BADE4E23B29DACB74971F2E /* MailComposerView.swift */; };
 		F77B7FA0960260C3C222F792 /* TaskAttachmentsTab.swift in Sources */ = {isa = PBXBuildFile; fileRef = 737996A9942CE2D095EAA6AB /* TaskAttachmentsTab.swift */; };
 		FE5E36D23CC9D9B15A788C5B /* LillistShortcuts.swift in Sources */ = {isa = PBXBuildFile; fileRef = C879F47AAC9011FEA0721657 /* LillistShortcuts.swift */; };
@@ -133,6 +134,7 @@
 		400AB5E7E52D7AC0BFF18DAE /* CrashReportingSection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CrashReportingSection.swift; sourceTree = "<group>"; };
 		4167EC3BD9F49B2C79556A19 /* ToggleStatusIntent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ToggleStatusIntent.swift; sourceTree = "<group>"; };
 		448E26B3838FE07DB2DF0357 /* SearchResultRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SearchResultRow.swift; sourceTree = "<group>"; };
+		44B1BAD46F1743FCF753B964 /* NotesDebounceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotesDebounceTests.swift; sourceTree = "<group>"; };
 		4908E6E0B96502CEFCDF8DB5 /* AppIntents.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = AppIntents.framework; path = System/Library/Frameworks/AppIntents.framework; sourceTree = SDKROOT; };
 		4BADE4E23B29DACB74971F2E /* MailComposerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MailComposerView.swift; sourceTree = "<group>"; };
 		4E15BAD0E599EA928403C4A8 /* AppIntentHandlerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppIntentHandlerTests.swift; sourceTree = "<group>"; };
@@ -338,6 +340,7 @@
 			isa = PBXGroup;
 			children = (
 				5D9EA074A9D3F9A86933CEA3 /* DefaultSmartFiltersInstallerTests.swift */,
+				44B1BAD46F1743FCF753B964 /* NotesDebounceTests.swift */,
 				A2B005498284E28D02A97CF6 /* NotificationPermissionFlowTests.swift */,
 				97A39E4B87749E005F34B7FF /* ReportCrashIntentTests.swift */,
 				6816606162835A06ED8B8FEF /* SharePayloadTests.swift */,
@@ -643,6 +646,7 @@
 			files = (
 				F6AC14D90F6B8A293A753408 /* AppIntentHandlerTests.swift in Sources */,
 				3C197827BB6E072E187327F3 /* DefaultSmartFiltersInstallerTests.swift in Sources */,
+				F71E162C0547B39972F7F2C4 /* NotesDebounceTests.swift in Sources */,
 				E8F2F2AFAD19AAB4AE538B52 /* NotificationPermissionFlowTests.swift in Sources */,
 				3A2760F631CB59A9344DC2EF /* QuickCaptureFlowTests.swift in Sources */,
 				3723770D2788EE577A418AB1 /* ReportCrashIntent.swift in Sources */,
