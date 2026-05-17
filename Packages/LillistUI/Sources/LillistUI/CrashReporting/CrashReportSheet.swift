@@ -107,7 +107,7 @@ public struct CrashReportSheet: View {
                     }
                 }
                 Section {
-                    Text("Reports go directly to Mikey (mikeyward@gmail.com). No third-party telemetry.")
+                    Text("Reports go directly to Mikey (\(LillistCoreContact.crashReportRecipient)). No third-party telemetry.")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }

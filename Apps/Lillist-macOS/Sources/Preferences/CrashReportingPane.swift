@@ -77,7 +77,7 @@ struct CrashReportingPane: View {
             buildVersion: environment.buildVersion,
             osVersion: environment.osVersion,
             deviceModel: environment.deviceModel,
-            recipient: "mikeyward@gmail.com",
+            recipient: LillistCoreContact.crashReportRecipient,
             methodSuffix: "macOS Mail.app draft via mailto: — you choose whether to send."
         ))
     }
