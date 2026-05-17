@@ -82,11 +82,10 @@ struct QuickCaptureSheet: View {
         guard !submitting else { return }
         submitting = true
         let parsed = QuickCaptureParser.parse(text)
+        // No empty-title guard: Save is `.disabled(trimmedTitleIsEmpty)`
+        // and QuickCaptureField.onSubmit doesn't fire on empty text.
+        // See Plan 18 Task 3 + QuickCaptureSheetGuardTests.
         let title = parsed.title.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !title.isEmpty else {
-            submitting = false
-            return
-        }
         // Drop the keyboard immediately so its collapse animation runs in
         // parallel with the Core Data + CloudKit write below.
         focused = false
