@@ -33,8 +33,6 @@ public struct FloatingAddButton: View {
                 onLongPress?()
             }
         )
-        .padding(.trailing, LillistSpacing.l + LillistSpacing.xs)  // 20pt
-        .padding(.bottom, LillistSpacing.l + LillistSpacing.xs)
     }
 }
 #endif
