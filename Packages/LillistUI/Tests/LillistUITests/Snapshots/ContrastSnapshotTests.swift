@@ -65,5 +65,29 @@ final class ContrastSnapshotTests: XCTestCase {
                        as: .image(precision: 0.99),
                        named: "sidebar-row-increase-contrast")
     }
+
+    func test_syncDot_idle_differentiated() {
+        let view = SyncStatusDotView(
+            indicator: .idle(lastSync: Date(timeIntervalSinceNow: -10)),
+            onRetry: {}
+        )
+        .padding()
+        .environment(\.differentiateWithoutColorOverride, true)
+        assertSnapshot(of: makeHostingView(view, size: CGSize(width: 40, height: 40)),
+                       as: .image(precision: 0.99),
+                       named: "syncdot-idle-differentiated")
+    }
+
+    func test_syncDot_error_differentiated() {
+        let view = SyncStatusDotView(
+            indicator: .error(message: "Network unavailable", lastSuccess: nil),
+            onRetry: {}
+        )
+        .padding()
+        .environment(\.differentiateWithoutColorOverride, true)
+        assertSnapshot(of: makeHostingView(view, size: CGSize(width: 40, height: 40)),
+                       as: .image(precision: 0.99),
+                       named: "syncdot-error-differentiated")
+    }
 }
 #endif

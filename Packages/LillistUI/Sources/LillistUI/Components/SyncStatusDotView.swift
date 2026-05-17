@@ -4,6 +4,8 @@ public struct SyncStatusDotView: View {
     public var indicator: SyncIndicator
     public var onRetry: () -> Void
     @State private var showPopover = false
+    @Environment(\.accessibilityDifferentiateWithoutColor) private var systemDifferentiate
+    @Environment(\.differentiateWithoutColorOverride) private var overrideDifferentiate
 
     public init(indicator: SyncIndicator, onRetry: @escaping () -> Void) {
         self.indicator = indicator
@@ -11,11 +13,19 @@ public struct SyncStatusDotView: View {
     }
 
     public var body: some View {
+        let differentiate = overrideDifferentiate ?? systemDifferentiate
         Button { showPopover.toggle() } label: {
-            Circle()
-                .fill(indicator.color)
-                .frame(width: LillistSpacing.s, height: LillistSpacing.s)
-                .accessibilityLabel(label)
+            ZStack {
+                Circle()
+                    .fill(indicator.color)
+                    .frame(width: LillistSpacing.s, height: LillistSpacing.s)
+                if differentiate {
+                    Image(systemName: indicator.differentiatedSystemImage)
+                        .font(.system(size: 7, weight: .bold))
+                        .foregroundStyle(.white)
+                }
+            }
+            .accessibilityLabel(label)
         }
         .buttonStyle(.plain)
         .popover(isPresented: $showPopover, arrowEdge: .top) {
