@@ -44,7 +44,7 @@ struct CrashReportingPane: View {
         }
         .formStyle(.grouped)
         .fixedSize() // Plan 15 Task 26: pane self-sizes; window animates
-        .task { prefs = try? await environment.preferencesStore.read() }
+        .task { await subscribe() }
         .onChange(of: prefs) { _, new in
             guard let new else { return }
             Task { try? await environment.preferencesStore.update { $0 = new } }
@@ -53,6 +53,17 @@ struct CrashReportingPane: View {
             // (a `var`). Mirror the change so the current launch picks
             // up the new value if the user toggles mid-session.
             environment.crashPromptsEnabled = new.crashPromptsEnabled
+        }
+    }
+
+    private func subscribe() async {
+        if prefs == nil {
+            prefs = try? await environment.preferencesStore.read()
+        }
+        for await snapshot in environment.preferencesStore.prefsStream {
+            if snapshot != prefs {
+                prefs = snapshot
+            }
         }
     }
 

@@ -36,7 +36,7 @@ struct QuickCapturePane: View {
         }
         .formStyle(.grouped)
         .fixedSize() // Plan 15 Task 26: pane self-sizes; window animates
-        .task { prefs = try? await environment.preferencesStore.read() }
+        .task { await subscribe() }
         .onChange(of: prefs) { _, new in
             guard let new else { return }
             let monitor = environment.hotkeyMonitor
@@ -54,5 +54,16 @@ struct QuickCapturePane: View {
     private var binding: Binding<PreferencesStore.Prefs>? {
         guard prefs != nil else { return nil }
         return Binding(get: { prefs! }, set: { prefs = $0 })
+    }
+
+    private func subscribe() async {
+        if prefs == nil {
+            prefs = try? await environment.preferencesStore.read()
+        }
+        for await snapshot in environment.preferencesStore.prefsStream {
+            if snapshot != prefs {
+                prefs = snapshot
+            }
+        }
     }
 }

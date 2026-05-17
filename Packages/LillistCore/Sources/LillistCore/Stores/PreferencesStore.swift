@@ -5,8 +5,36 @@ public final class PreferencesStore: @unchecked Sendable {
     private let persistence: PersistenceController
     private var context: NSManagedObjectContext { persistence.container.viewContext }
 
+    private var continuations: [UUID: AsyncStream<Prefs>.Continuation] = [:]
+    private let continuationsLock = NSLock()
+    private var remoteChangeObserver: NSObjectProtocol?
+
     public init(persistence: PersistenceController) {
         self.persistence = persistence
+        // Bridge CloudKit / cross-process Core Data writes through the same
+        // broadcast path used for local updates. `NSPersistentStoreRemoteChange`
+        // fires when the persistent coordinator sees a write that didn't
+        // originate from this context — typically a CloudKit pull, or another
+        // window/process of the app.
+        remoteChangeObserver = NotificationCenter.default.addObserver(
+            forName: .NSPersistentStoreRemoteChange,
+            object: persistence.container.persistentStoreCoordinator,
+            queue: nil
+        ) { [weak self] _ in
+            guard let self else { return }
+            Task { [weak self] in
+                guard let self else { return }
+                if let snapshot = try? await self.read() {
+                    self.broadcast(snapshot)
+                }
+            }
+        }
+    }
+
+    deinit {
+        if let remoteChangeObserver {
+            NotificationCenter.default.removeObserver(remoteChangeObserver)
+        }
     }
 
     public struct Prefs: Sendable, Equatable {
@@ -54,7 +82,7 @@ public final class PreferencesStore: @unchecked Sendable {
     }
 
     public func update(_ block: @escaping @Sendable (inout Prefs) -> Void) async throws {
-        try await context.perform { [self] in
+        let updated: Prefs = try await context.perform { [self] in
             let row = try fetchOrCreateSingleton(in: context)
             var prefs = Prefs(
                 defaultAllDayHour: row.defaultAllDayNotificationHour,
@@ -86,6 +114,46 @@ public final class PreferencesStore: @unchecked Sendable {
             row.statusBarItemVisible = prefs.statusBarItemVisible
             row.defaultTagTintHex = prefs.defaultTagTintHex
             try context.save()
+            return prefs
+        }
+        broadcast(updated)
+    }
+
+    /// An async stream of `Prefs` snapshots. Emits once for every successful
+    /// `update(_:)` and once for every CloudKit / cross-process remote change.
+    /// Each call returns a fresh stream scoped to its caller; closing the
+    /// stream removes the continuation. Pattern modelled on
+    /// `AccountStateMonitor.stateStream` / `CloudKitEventBridge.eventStream` —
+    /// the store is `@unchecked Sendable` so the continuation registry is
+    /// guarded by `NSLock` rather than living on an actor.
+    public var prefsStream: AsyncStream<Prefs> {
+        AsyncStream { continuation in
+            let id = UUID()
+            self.register(id: id, continuation: continuation)
+            continuation.onTermination = { [weak self] _ in
+                self?.unregister(id: id)
+            }
+        }
+    }
+
+    private func register(id: UUID, continuation: AsyncStream<Prefs>.Continuation) {
+        continuationsLock.lock()
+        continuations[id] = continuation
+        continuationsLock.unlock()
+    }
+
+    private func unregister(id: UUID) {
+        continuationsLock.lock()
+        continuations[id] = nil
+        continuationsLock.unlock()
+    }
+
+    private func broadcast(_ snapshot: Prefs) {
+        continuationsLock.lock()
+        let snapshotContinuations = Array(continuations.values)
+        continuationsLock.unlock()
+        for continuation in snapshotContinuations {
+            continuation.yield(snapshot)
         }
     }
 

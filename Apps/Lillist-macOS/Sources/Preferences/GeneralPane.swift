@@ -33,7 +33,7 @@ struct GeneralPane: View {
         }
         .formStyle(.grouped)
         .fixedSize() // Plan 15 Task 26: pane self-sizes; window animates
-        .task { await load() }
+        .task { await subscribe() }
         .onChange(of: prefs) { _, new in
             guard let new else { return }
             // Each granular toggle writes the full Prefs snapshot back.
@@ -41,6 +41,22 @@ struct GeneralPane: View {
             // notification scheduler reconciliation on the Notifications
             // pane), wrap the binding setter instead.
             Task { try? await environment.preferencesStore.update { $0 = new } }
+        }
+    }
+
+    private func subscribe() async {
+        // Initial load + live stream. Subsequent snapshots from `prefsStream`
+        // include both local-write echoes (suppressed below by equality
+        // check so the form doesn't fight itself mid-edit) and external
+        // CloudKit / cross-process pushes.
+        if prefs == nil {
+            do { prefs = try await environment.preferencesStore.read() }
+            catch { loadError = error }
+        }
+        for await snapshot in environment.preferencesStore.prefsStream {
+            if snapshot != prefs {
+                prefs = snapshot
+            }
         }
     }
 
@@ -59,12 +75,4 @@ struct GeneralPane: View {
         )
     }
 
-    private func load() async {
-        do {
-            prefs = try await environment.preferencesStore.read()
-        } catch {
-            loadError = error
-        }
-    }
 }
-
