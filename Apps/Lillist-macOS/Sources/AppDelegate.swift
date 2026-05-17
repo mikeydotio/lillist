@@ -36,7 +36,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // save, and immediately on launch. Also refreshes the dock
         // menu's pinned-filter cache (Plan 15 Task 20).
         installDockBadge()
+
+        // Plan 15 Task 23: Services provider for "Add to Lillist as task".
+        // `NSUpdateDynamicServices()` registers the provider with the
+        // system so the menu item appears in Services submenus.
+        let servicesProvider = LillistServicesProvider(environment: env)
+        NSApp.servicesProvider = servicesProvider
+        self.servicesProvider = servicesProvider
+        NSUpdateDynamicServices()
     }
+
+    /// Plan 15 Task 23: strong reference holder for the services
+    /// provider. `NSApp.servicesProvider` is `unowned`, so without
+    /// this the provider would be deallocated immediately after
+    /// `bootstrap()` returns.
+    private var servicesProvider: LillistServicesProvider?
 
     func applicationWillTerminate(_ notification: Notification) {
         environment?.hotkeyMonitor.uninstall()
