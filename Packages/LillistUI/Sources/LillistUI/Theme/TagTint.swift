@@ -29,12 +29,49 @@ public struct TagTint: Sendable, Equatable {
         self.blue  = Double( v        & 0xFF) / 255.0
     }
 
+    /// Resolve to the actual color used on screen, applying:
+    ///   1. Dark-mode desaturation (cosmetic, design Section 7).
+    ///   2. A WCAG contrast floor against the chip background
+    ///      (`base.opacity(0.18)` per `TagChipView`). Bumps brightness
+    ///      until the foreground/background ratio clears 4.5:1.
     public func resolved(in scheme: ColorScheme) -> Resolved {
         let (h, s, b) = Self.rgbToHSB(r: red, g: green, b: blue)
+        var resolvedSaturation = s
+        var resolvedBrightness = b
         if scheme == .dark {
-            return Resolved(hue: h, saturation: s * 0.7, brightness: min(b * 1.05, 1.0), opacity: 1.0)
+            resolvedSaturation = s * 0.7
+            resolvedBrightness = min(b * 1.05, 1.0)
         }
-        return Resolved(hue: h, saturation: s, brightness: b, opacity: 1.0)
+        let floorBrightness = Self.clampBrightnessForContrastFloor(
+            hue: h,
+            saturation: resolvedSaturation,
+            brightness: resolvedBrightness,
+            scheme: scheme
+        )
+        return Resolved(hue: h, saturation: resolvedSaturation, brightness: floorBrightness, opacity: 1.0)
+    }
+
+    /// Iterate brightness upward (light backgrounds: downward) until the
+    /// foreground/background WCAG ratio clears 4.5:1, or we hit the bound.
+    private static func clampBrightnessForContrastFloor(
+        hue: Double,
+        saturation: Double,
+        brightness initial: Double,
+        scheme: ColorScheme
+    ) -> Double {
+        // Approximate background: in dark mode, near-black; in light mode, near-white.
+        let bgLum: Double = scheme == .dark ? 0.05 : 0.95
+        let direction: Double = scheme == .dark ? 0.05 : -0.05
+        var brightness = initial
+        for _ in 0..<10 {
+            let (r, g, b) = ContrastMath.hsbToRGB(hue: hue, saturation: saturation, brightness: brightness)
+            let fgLum = ContrastMath.relativeLuminance(red: r, green: g, blue: b)
+            if ContrastMath.wcagRatio(fgLum, bgLum) >= 4.5 {
+                return brightness
+            }
+            brightness = max(0.0, min(1.0, brightness + direction))
+        }
+        return brightness
     }
 
     private static func rgbToHSB(r: Double, g: Double, b: Double) -> (Double, Double, Double) {
