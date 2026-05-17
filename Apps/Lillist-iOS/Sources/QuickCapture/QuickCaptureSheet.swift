@@ -23,6 +23,11 @@ struct QuickCaptureSheet: View {
                 QuickCaptureField(
                     text: $text,
                     tagSuggestions: tagSuggestions,
+                    // i18n-exempt: these are also the literal parser tokens
+                    // accepted by RelativeDate.parse. Localizing the chip
+                    // labels without first teaching the parser to accept
+                    // localized aliases would break the round-trip. Tracked
+                    // for a future plan.
                     dateSuggestions: ["today", "tomorrow", "+3d", "+1w"],
                     onSubmit: { _ in submit() }
                 )
