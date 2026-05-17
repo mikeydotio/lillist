@@ -121,19 +121,19 @@ final class iOSSnapshotTests: XCTestCase {
     }
 
     @MainActor
-    func test_quickCaptureField_with_suggestions() {
-        @State var text: String = "Buy milk"
+    func test_quickCaptureField_with_parsed_tokens() {
         let view = QuickCaptureField(
-            text: .constant("Buy milk"),
-            tagSuggestions: ["errands", "shopping"],
-            dateSuggestions: ["today", "tomorrow"],
+            text: .constant("Buy milk #errands ^tomorrow"),
+            tagSuggestions: ["shopping"],
+            dateSuggestions: ["today"],
             onSubmit: { _ in }
         )
         .padding()
         .background(Color(.systemBackground))
         let host = UIHostingController(rootView: view)
-        host.view.frame = CGRect(x: 0, y: 0, width: 360, height: 120)
-        assertSnapshot(of: host, as: .image(size: CGSize(width: 360, height: 120)))
+        host.view.frame = CGRect(x: 0, y: 0, width: 360, height: 160)
+        assertSnapshot(of: host, as: .image(size: CGSize(width: 360, height: 160)),
+                       named: "quick-capture-field-with-parsed-tokens")
     }
 
     // MARK: - helpers

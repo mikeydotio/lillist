@@ -26,14 +26,16 @@ public struct QuickCaptureField: View {
     }
 
     public var body: some View {
+        let parsed = QuickCaptureParser.parse(text)
         VStack(alignment: .leading, spacing: 8) {
             TextField("Capture a task…", text: $text)
                 .textFieldStyle(.roundedBorder)
                 .submitLabel(.done)
                 .accessibilityIdentifier("QuickCaptureField")
                 .onSubmit {
-                    onSubmit(QuickCaptureParser.parse(text))
+                    onSubmit(parsed)
                 }
+            QuickCaptureTokenChips(parsed: parsed)
             if !tagSuggestions.isEmpty || !dateSuggestions.isEmpty {
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 6) {

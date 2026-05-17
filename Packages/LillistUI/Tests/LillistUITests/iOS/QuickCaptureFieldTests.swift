@@ -1,5 +1,7 @@
 #if os(iOS)
 import XCTest
+import SwiftUI
+import UIKit
 @testable import LillistUI
 
 final class QuickCaptureFieldTests: XCTestCase {
@@ -15,6 +17,16 @@ final class QuickCaptureFieldTests: XCTestCase {
         XCTAssertEqual(result.title, "Fix bug")
         XCTAssertEqual(result.tags, ["ios", "urgent"])
         XCTAssertNil(result.dateToken)
+    }
+
+    @MainActor
+    func test_token_chips_view_handles_empty_parse() {
+        let parsed = QuickCaptureParser.parse("")
+        let view = QuickCaptureTokenChips(parsed: parsed)
+        let host = UIHostingController(rootView: view)
+        host.view.layoutIfNeeded()
+        // EmptyView collapses to zero size; just confirm no crash and bound is non-negative.
+        XCTAssertGreaterThanOrEqual(host.view.bounds.height, 0)
     }
 }
 #endif
