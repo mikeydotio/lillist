@@ -43,7 +43,12 @@ public struct QuickCaptureView: View {
         }
         .padding(LillistSpacing.m + 2)
         .frame(width: 520)
-        .background(.thickMaterial, in: RoundedRectangle(cornerRadius: LillistRadius.m))
+        // Plan 15 Task 17: switched from `.thickMaterial` to
+        // `.regularMaterial` for a lighter Tahoe-native look.
+        // `.glassBackgroundEffect()` is visionOS-only as of SDK 26.2;
+        // when an analogous macOS modifier ships, wrap it in a
+        // `#available`-guarded ViewModifier here.
+        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: LillistRadius.m))
         #if os(macOS)
         .onExitCommand(perform: onCancel)
         #endif
