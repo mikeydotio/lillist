@@ -12,6 +12,7 @@ struct TabShell: View {
     @Environment(\.selectedSectionBinding) private var selectedSection
     @State private var isSettingsPresented = false
     @AppStorage("hasCapturedTask") private var hasCapturedTask = false
+    @State private var quickCaptureDetent: PresentationDetent = .large
 
     /// `TabView(selection:)` wants a non-optional `iPadSection`; the
     /// scene-level binding is optional (so CommandMenu can reset
@@ -63,9 +64,16 @@ struct TabShell: View {
             QuickCaptureSheet()
                 .presentationDetents(
                     [.fraction(0.35), .medium, .large],
-                    selection: .constant(hasCapturedTask ? .fraction(0.35) : .large)
+                    selection: $quickCaptureDetent
                 )
                 .presentationDragIndicator(.visible)
+                .onAppear {
+                    // Re-derive the initial detent each time the sheet
+                    // presents so the first-capture-defaults-to-large
+                    // semantic from Plan 16 survives, while still letting
+                    // subsequent drags persist for the sheet's lifetime.
+                    quickCaptureDetent = hasCapturedTask ? .fraction(0.35) : .large
+                }
         }
         .sheet(isPresented: $isSettingsPresented) {
             SettingsTab()
