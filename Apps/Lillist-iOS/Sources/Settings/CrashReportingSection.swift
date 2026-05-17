@@ -13,10 +13,12 @@ struct CrashReportingSection: View {
             Text("Reports go directly to Mikey via email. No third-party telemetry.")
                 .font(.footnote)
                 .foregroundStyle(.secondary)
-            DisclosureGroup("View what would be sent", isExpanded: $showSample) {
-                Text(samplePreview)
-                    .font(.system(.caption, design: .monospaced))
-                    .textSelection(.enabled)
+            if prefs.crashPromptsEnabled {
+                DisclosureGroup("View what would be sent", isExpanded: $showSample) {
+                    Text(samplePreview)
+                        .font(.system(.caption, design: .monospaced))
+                        .textSelection(.enabled)
+                }
             }
         }
         .onChange(of: prefs.crashPromptsEnabled) { _, new in
@@ -25,6 +27,10 @@ struct CrashReportingSection: View {
             // immediately. Plan 9 stores this as `var` for exactly this
             // reason.
             environment.crashPromptsEnabled = new
+            // Collapse the preview when prompts are turned off so a
+            // later re-enable starts from a closed state — the user
+            // shouldn't land in a panel they weren't looking at.
+            if !new { showSample = false }
         }
     }
 
