@@ -26,8 +26,6 @@
     <string>Copyright © 2026 Mikey Ward. All rights reserved.</string>
     <key>NSPrincipalClass</key>
     <string>NSApplication</string>
-    <key>NSAppleEventsUsageDescription</key>
-    <string>Lillist uses Apple Events for global keyboard shortcuts.</string>
     <key>NSServices</key>
     <array>
         <dict>
