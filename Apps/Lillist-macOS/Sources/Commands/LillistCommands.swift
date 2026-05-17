@@ -50,12 +50,17 @@ struct LillistCommands: Commands {
               .disabled(listColumn == nil)
         }
 
-        CommandGroup(replacing: .textEditing) {
-            Button("Find in View") {
+        // Plan 15 Task 28: `replacing: .textEditing` destroyed the
+        // standard Find submenu. Switch to `after:` so Find Next /
+        // Find Previous / Use Selection for Find survive; ours append
+        // below them.
+        CommandGroup(after: .textEditing) {
+            Divider()
+            Button("Find in View…") {
                 NotificationCenter.default.post(name: .lillistFindInView, object: nil)
             }.keyboardShortcut("f", modifiers: [.command])
 
-            Button("Find Everywhere") {
+            Button("Find Everywhere…") {
                 NotificationCenter.default.post(name: .lillistFindEverywhere, object: nil)
             }.keyboardShortcut("f", modifiers: [.command, .shift])
         }
