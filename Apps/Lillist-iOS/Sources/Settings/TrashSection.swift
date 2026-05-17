@@ -1,5 +1,6 @@
 import SwiftUI
 import LillistCore
+import LillistUI
 
 struct TrashSection: View {
     @Binding var prefs: PreferencesStore.Prefs
@@ -73,11 +74,15 @@ struct TrashSection: View {
         defer { isEmptying = false }
         do {
             let purged = try await environment.taskStore.purgeAll()
-            emptyResult = purged == 0
-                ? "Trash was already empty."
-                : "Emptied \(purged) task\(purged == 1 ? "" : "s")."
+            let result = purged == 0
+                ? String(localized: "Trash was already empty.")
+                : String(localized: "Emptied \(purged) task\(purged == 1 ? "" : "s").")
+            emptyResult = result
+            AccessibilityAnnouncements.post(result, priority: .low)
         } catch {
-            emptyResult = "Couldn't empty Trash: \(error.localizedDescription)"
+            let failure = String(localized: "Couldn't empty Trash: \(error.localizedDescription)")
+            emptyResult = failure
+            AccessibilityAnnouncements.post(failure, priority: .high)
         }
     }
 }

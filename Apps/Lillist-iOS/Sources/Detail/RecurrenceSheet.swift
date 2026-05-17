@@ -68,9 +68,19 @@ struct RecurrenceSheet: View {
             } else if let sid = initialSeriesID {
                 try await env.seriesStore.delete(id: sid)
             }
+            AccessibilityAnnouncements.post(
+                rule == nil
+                    ? String(localized: "Recurrence removed.")
+                    : String(localized: "Recurrence saved."),
+                priority: .low
+            )
             onClose()
         } catch {
             errorMessage = error.localizedDescription
+            AccessibilityAnnouncements.post(
+                String(localized: "Couldn't save recurrence: \(error.localizedDescription)"),
+                priority: .high
+            )
         }
     }
 }
