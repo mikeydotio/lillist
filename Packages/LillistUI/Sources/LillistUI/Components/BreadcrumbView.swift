@@ -6,7 +6,7 @@ public struct BreadcrumbView: View {
     public var body: some View {
         HStack(spacing: 2) {
             ForEach(Array(path.enumerated()), id: \.offset) { i, name in
-                if i > 0 { Image(systemName: "chevron.right").font(.caption2).foregroundStyle(.tertiary) }
+                if i > 0 { Image(systemName: "chevron.forward").font(.caption2).foregroundStyle(.tertiary) }
                 Text(name).font(.caption).foregroundStyle(.secondary)
             }
         }
