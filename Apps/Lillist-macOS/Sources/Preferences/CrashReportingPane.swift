@@ -24,6 +24,14 @@ struct CrashReportingPane: View {
                 }
                 Section {
                     DisclosureGroup("View what would be sent", isExpanded: $sampleVisible) {
+                        // TODO(Plan 19 / Plan 14 follow-up): swap to a live
+                        // CrashReporter.preview() once that method lands. The
+                        // current text is the static `CrashReportSample.preview`
+                        // template (placeholder strings for breadcrumbs and
+                        // logs); a live render would invoke the BreadcrumbBuffer
+                        // and LogFetching to show the actual payload that would
+                        // be sent. Plan 14 shipped CrashReportSample.preview but
+                        // not the reporter-driven live renderer.
                         Text(samplePreview)
                             .font(.system(.caption, design: .monospaced))
                             .frame(maxWidth: .infinity, alignment: .leading)
