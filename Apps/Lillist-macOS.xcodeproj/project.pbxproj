@@ -25,6 +25,7 @@
 		3BFAF02F4DF61C06EF1ACC64 /* TaskListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7428376E8AED267AF2F3C3EE /* TaskListView.swift */; };
 		41D5332FFC9A37D6874E1E44 /* AppIntents.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = ECE3A50348E57FE59F4366B8 /* AppIntents.framework */; };
 		44330D12274449C7C6D5CE18 /* TaskDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CD5D524971199DDBA766AF3F /* TaskDetailView.swift */; };
+		47863B10A48D3DDDF0B83E58 /* SelectionAdvance.swift in Sources */ = {isa = PBXBuildFile; fileRef = FEDB14F1C8601271F653139B /* SelectionAdvance.swift */; };
 		48BCDA9D8B5C36BB2F899B5B /* SidebarContextMenuTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 365F9079CBE5A1C7C1D0158F /* SidebarContextMenuTests.swift */; };
 		4AC4945ABE79B0437B1676D5 /* FocusedShortcutGatingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1ED0A7A8881D45E8627191BA /* FocusedShortcutGatingTests.swift */; };
 		4EA67DECB7AC159A867B2EE4 /* FocusedListColumn.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA226DA3844BBFC1DFFDA0CA /* FocusedListColumn.swift */; };
@@ -77,6 +78,7 @@
 		D1A0C35C122BFC3BE27BB475 /* QuickCapturePlacementMath.swift in Sources */ = {isa = PBXBuildFile; fileRef = 714EC7647AE061D0704C0E76 /* QuickCapturePlacementMath.swift */; };
 		D4D4307086A35ECB53CF3FBC /* MailtoTransport.swift in Sources */ = {isa = PBXBuildFile; fileRef = ED9565C658DC6743EF09396D /* MailtoTransport.swift */; };
 		D5E5E81DCC5FCF5E0F844A60 /* SubtaskOutlineView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 07756C86343C55B654BB65B1 /* SubtaskOutlineView.swift */; };
+		D701E0A8466E8EE2590F083F /* SelectionAdvance.swift in Sources */ = {isa = PBXBuildFile; fileRef = FEDB14F1C8601271F653139B /* SelectionAdvance.swift */; };
 		DE0FBA518E8A32D99D3080CC /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = 60A609016A056EE8D91E1FE4 /* Localizable.xcstrings */; };
 		E36FA06746569B45811C186D /* TaskListSortControl.swift in Sources */ = {isa = PBXBuildFile; fileRef = 38BC4169CE094018D5BEA0BD /* TaskListSortControl.swift */; };
 		E3B2DBE7E86F28A40968F08C /* QuickCapturePlacementMath.swift in Sources */ = {isa = PBXBuildFile; fileRef = 714EC7647AE061D0704C0E76 /* QuickCapturePlacementMath.swift */; };
@@ -154,6 +156,7 @@
 		F9E0C4B2D659722AE215A0B8 /* NotificationsPane.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationsPane.swift; sourceTree = "<group>"; };
 		FA80085EB3BB242379E92790 /* CrashReportingPane.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CrashReportingPane.swift; sourceTree = "<group>"; };
 		FE0A7E026D6DBD214EB737F9 /* TaskListHeaderView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TaskListHeaderView.swift; sourceTree = "<group>"; };
+		FEDB14F1C8601271F653139B /* SelectionAdvance.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SelectionAdvance.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -331,6 +334,7 @@
 			isa = PBXGroup;
 			children = (
 				EF7781804345711C5D1DFA6D /* InlineCreateField.swift */,
+				FEDB14F1C8601271F653139B /* SelectionAdvance.swift */,
 				42A85F69009AEE818C5AD30E /* SourceTitleResolver.swift */,
 				FE0A7E026D6DBD214EB737F9 /* TaskListHeaderView.swift */,
 				38BC4169CE094018D5BEA0BD /* TaskListSortControl.swift */,
@@ -564,6 +568,7 @@
 				863B5709B57AA4BB35BF7DC3 /* QuickCapturePanelController.swift in Sources */,
 				E3B2DBE7E86F28A40968F08C /* QuickCapturePlacementMath.swift in Sources */,
 				947D4EE0DFF95B690ABADDF4 /* RootSplitView.swift in Sources */,
+				47863B10A48D3DDDF0B83E58 /* SelectionAdvance.swift in Sources */,
 				E844140043C9E82E250EE2FA /* SidebarSection.swift in Sources */,
 				5D718D6A47C34D934FA0267C /* SidebarSelection.swift in Sources */,
 				76EA648FBA90E8009F435844 /* SidebarView.swift in Sources */,
@@ -602,6 +607,7 @@
 				A6252DAED612CEFA721DAC35 /* PinnedSidebarIntegrationTests.swift in Sources */,
 				D1A0C35C122BFC3BE27BB475 /* QuickCapturePlacementMath.swift in Sources */,
 				BC6B1E1CBFD580532B72EFA1 /* QuickCapturePlacementTests.swift in Sources */,
+				D701E0A8466E8EE2590F083F /* SelectionAdvance.swift in Sources */,
 				48BCDA9D8B5C36BB2F899B5B /* SidebarContextMenuTests.swift in Sources */,
 				85B75D89DED9313BFD53E0A7 /* SidebarSelection.swift in Sources */,
 				72985CB5C5C702D617D4694A /* SourceTitleResolver.swift in Sources */,
