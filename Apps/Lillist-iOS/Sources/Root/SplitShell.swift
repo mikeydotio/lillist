@@ -10,6 +10,7 @@ struct SplitShell: View {
     @State private var taskSelection: UUID?
     @State private var isQuickCapturePresented = false
     @State private var isSettingsPresented = false
+    @AppStorage("hasCapturedTask") private var hasCapturedTask = false
 
     var body: some View {
         NavigationSplitView {
@@ -67,7 +68,10 @@ struct SplitShell: View {
         .environment(\.taskSelectionBinding, $taskSelection)
         .sheet(isPresented: $isQuickCapturePresented) {
             QuickCaptureSheet()
-                .presentationDetents([.fraction(0.35), .medium, .large])
+                .presentationDetents(
+                    [.fraction(0.35), .medium, .large],
+                    selection: .constant(hasCapturedTask ? .fraction(0.35) : .large)
+                )
                 .presentationDragIndicator(.visible)
         }
         .sheet(isPresented: $isSettingsPresented) {
