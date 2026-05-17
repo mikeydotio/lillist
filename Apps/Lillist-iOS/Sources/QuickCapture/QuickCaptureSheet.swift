@@ -23,12 +23,16 @@ struct QuickCaptureSheet: View {
                 QuickCaptureField(
                     text: $text,
                     tagSuggestions: tagSuggestions,
+                    // Canonical token list lives in
+                    // LillistUI/QuickCapture/QuickCaptureDateSuggestions.swift;
+                    // it's shared with macOS QuickCaptureView so adding a
+                    // token surfaces on both platforms simultaneously.
                     // i18n-exempt: these are also the literal parser tokens
                     // accepted by RelativeDate.parse. Localizing the chip
                     // labels without first teaching the parser to accept
                     // localized aliases would break the round-trip. Tracked
                     // for a future plan.
-                    dateSuggestions: ["today", "tomorrow", "+3d", "+1w"],
+                    dateSuggestions: QuickCaptureDateSuggestions.default,
                     onSubmit: { _ in submit() }
                 )
                 .focused($focused)
