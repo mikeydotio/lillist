@@ -23,6 +23,6 @@ public struct TagChipView: View {
             .overlay(
                 Capsule().stroke((resolved?.color ?? .gray).opacity(0.45), lineWidth: 0.5)
             )
-            .accessibilityLabel("Tag: \(name)")
+            .accessibilityLabel(String(localized: "Tag: \(name)", bundle: .module))
     }
 }

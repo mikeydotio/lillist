@@ -26,8 +26,8 @@ public struct FloatingAddButton: View {
                 }
                 .foregroundStyle(.primary)
         }
-        .accessibilityLabel("New task")
-        .accessibilityHint("Opens quick capture")
+        .accessibilityLabel(String(localized: "New task", bundle: .module))
+        .accessibilityHint(String(localized: "Opens quick capture", bundle: .module))
         .accessibilityAction(named: Text("Capture from clipboard")) {
             onLongPress?()
         }

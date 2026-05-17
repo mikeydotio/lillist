@@ -20,7 +20,7 @@ struct TaskNotesTab: View {
     var body: some View {
         TextEditor(text: $text)
             .padding(.horizontal)
-            .accessibilityLabel("Notes")
+            .accessibilityLabel(String(localized: "Notes"))
             .focused($focused)
             .onAppear {
                 guard !hasAppeared else { return }

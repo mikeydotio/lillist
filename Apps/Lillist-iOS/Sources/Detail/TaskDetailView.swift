@@ -39,7 +39,7 @@ struct TaskDetailView: View {
                     .pickerStyle(.segmented)
                     .padding(.horizontal)
                     .padding(.top, LillistSpacing.s)
-                    .accessibilityLabel("Detail section")
+                    .accessibilityLabel(String(localized: "Detail section"))
                     Group {
                         switch selection {
                         case .notes:
@@ -77,7 +77,9 @@ struct TaskDetailView: View {
                             .font(LillistTypography.caption)
                     }
                 }
-                .accessibilityLabel(seriesRule == nil ? "Add recurrence" : "Edit recurrence")
+                .accessibilityLabel(seriesRule == nil
+                    ? String(localized: "Add recurrence")
+                    : String(localized: "Edit recurrence"))
                 .accessibilityValue(seriesRuleSummary)
             }
         }

@@ -141,7 +141,7 @@ struct RootSplitView: View {
                 Image(systemName: "sidebar.left")
             }
             .help("Toggle sidebar")
-            .accessibilityLabel("Toggle sidebar")
+            .accessibilityLabel(String(localized: "Toggle sidebar"))
         }
 
         // Principal: the source title. TaskListHeaderView used to own

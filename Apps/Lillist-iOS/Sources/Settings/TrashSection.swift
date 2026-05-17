@@ -36,7 +36,7 @@ struct TrashSection: View {
                 Text("1 year").tag(365)
             }
             .pickerStyle(.menu)
-            .accessibilityValue("\(prefs.trashRetentionDays) days")
+            .accessibilityValue(String(localized: "\(prefs.trashRetentionDays) days"))
 
             Button(role: .destructive) {
                 confirmingEmpty = true

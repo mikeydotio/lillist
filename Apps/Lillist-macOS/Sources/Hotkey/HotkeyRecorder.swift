@@ -92,26 +92,26 @@ struct HotkeyRecorder: View {
 
     nonisolated private static func accessibilityDescription(for tokens: [String]) -> String {
         let mods = tokens.dropLast().map { friendlyModifier($0) }
-        let key = tokens.last.map { friendlyKey($0) } ?? "no key"
+        let key = tokens.last.map { friendlyKey($0) } ?? String(localized: "no key")
         return (mods + [key]).joined(separator: " ")
     }
 
     nonisolated private static func friendlyModifier(_ token: String) -> String {
         switch token {
-        case "ctrl":  return "Control"
-        case "opt":   return "Option"
-        case "cmd":   return "Command"
-        case "shift": return "Shift"
+        case "ctrl":  return String(localized: "Control")
+        case "opt":   return String(localized: "Option")
+        case "cmd":   return String(localized: "Command")
+        case "shift": return String(localized: "Shift")
         default:      return token
         }
     }
 
     nonisolated private static func friendlyKey(_ token: String) -> String {
         switch token {
-        case "space":  return "Space"
-        case "return": return "Return"
-        case "delete": return "Delete"
-        case "escape": return "Escape"
+        case "space":  return String(localized: "Space")
+        case "return": return String(localized: "Return")
+        case "delete": return String(localized: "Delete")
+        case "escape": return String(localized: "Escape")
         default:       return token.uppercased()
         }
     }

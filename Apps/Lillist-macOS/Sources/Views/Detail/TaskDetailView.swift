@@ -182,7 +182,7 @@ struct TaskDetailView: View {
                 }
                 .menuStyle(.borderlessButton)
                 .accessibilityElement(children: .ignore)
-                .accessibilityLabel("Status: \(StatusGlyph.accessibilityLabel(for: status))")
+                .accessibilityLabel(String(localized: "Status: \(StatusGlyph.accessibilityLabel(for: status))"))
                 .fixedSize()
             }
         }

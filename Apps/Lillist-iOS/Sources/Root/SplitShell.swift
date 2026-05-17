@@ -31,7 +31,7 @@ struct SplitShell: View {
                     } label: {
                         Image(systemName: "gearshape")
                     }
-                    .accessibilityLabel("Settings")
+                    .accessibilityLabel(String(localized: "Settings"))
                 }
             }
             .navigationSplitViewColumnWidth(min: 200, ideal: 240)
@@ -51,8 +51,8 @@ struct SplitShell: View {
                     } label: {
                         Image(systemName: "plus")
                     }
-                    .accessibilityLabel("New task")
-                    .accessibilityHint("Opens quick capture")
+                    .accessibilityLabel(String(localized: "New task"))
+                    .accessibilityHint(String(localized: "Opens quick capture"))
                 }
             }
             .navigationSplitViewColumnWidth(min: 320, ideal: 460)

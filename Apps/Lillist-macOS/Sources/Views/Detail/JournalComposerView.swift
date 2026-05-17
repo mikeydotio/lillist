@@ -11,7 +11,7 @@ struct JournalComposerView: View {
             TextEditor(text: $text)
                 .frame(minHeight: 60)
                 .overlay(RoundedRectangle(cornerRadius: 4).stroke(.quaternary))
-                .accessibilityLabel("Journal composer; drag files or paste URLs")
+                .accessibilityLabel(String(localized: "Journal composer; drag files or paste URLs"))
             HStack {
                 Spacer()
                 Button("Add entry") { Task { await submit() } }

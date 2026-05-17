@@ -31,10 +31,12 @@ public struct SidebarRowView: View {
                     .padding(.horizontal, LillistSpacing.xs + 2)
                     .padding(.vertical, 1)
                     .background(Capsule().fill(.quaternary))
-                    .accessibilityLabel("\(badge) items")
+                    .accessibilityLabel(String(localized: "\(badge) items", bundle: .module))
             }
         }
         .accessibilityElement(children: .combine)
-        .accessibilityLabel(badge.map { "\(label), \($0) items" } ?? label)
+        .accessibilityLabel(badge.map {
+            String(localized: "\(label), \($0) items", bundle: .module)
+        } ?? label)
     }
 }

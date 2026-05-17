@@ -33,6 +33,6 @@ struct InlineCreateField: View {
                 }
                 return .handled
             }
-            .accessibilityLabel("New task title; Return to save, Tab to indent")
+            .accessibilityLabel(String(localized: "New task title; Return to save, Tab to indent"))
     }
 }

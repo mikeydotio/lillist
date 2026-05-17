@@ -11,7 +11,7 @@ struct TaskListHeaderView: View {
             Text("\(count)")
                 .font(.title3)
                 .foregroundStyle(.secondary)
-                .accessibilityLabel("\(count) tasks")
+                .accessibilityLabel(String(localized: "\(count) tasks"))
             Spacer()
         }
         .padding(.horizontal, 16)
