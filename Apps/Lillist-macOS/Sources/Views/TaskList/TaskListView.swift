@@ -34,6 +34,16 @@ struct TaskListView: View {
         }
     }
 
+    private var sourceTitle: String {
+        switch selection {
+        case .pinnedTask:    return "Pinned task"
+        case .pinnedFilter:  return "Pinned filter"
+        case .tag:           return "Tag"
+        case .filter:        return "Filter"
+        case .trash:         return "Trash"
+        }
+    }
+
     var body: some View {
         VStack(spacing: 0) {
             if isFlat {
@@ -107,6 +117,7 @@ struct TaskListView: View {
             }
             await refresh()
         }
+        .navigationTitle(sourceTitle)
         .onChange(of: sortField) { _, _ in
             uiState.setSort(sortField, ascending: sortAscending, for: sourceKey)
             Task { await refresh() }
