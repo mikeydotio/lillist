@@ -63,6 +63,31 @@ section numbers from it.
 - **No `NSManagedObject` escapes `LillistCore`.** All public store APIs
   return value-type DTOs (`TaskStore.TaskRecord`, `SeriesStore.SeriesRecord`,
   etc.). Tests and downstream layers never see Core Data types.
+- **Code signing via xcconfig indirection.** `Apps/Config/` holds three
+  files that route the team ID through a gitignored sibling:
+  - `Signing.xcconfig` — committed scaffold. Contains
+    `#include? "Signing.local.xcconfig"` and
+    `DEVELOPMENT_TEAM = $(LOCAL_DEVELOPMENT_TEAM)`. Both `project.yml`s
+    reference this via `configFiles:` so it survives every
+    `xcodegen generate`.
+  - `Signing.local.xcconfig` — **gitignored**. Holds the one real
+    line: `LOCAL_DEVELOPMENT_TEAM = <your 10-char Team ID>`.
+  - `Signing.local.xcconfig.example` — committed template; new
+    contributors `cp` it to `Signing.local.xcconfig` and fill in the
+    team ID (developer.apple.com → Membership → Team ID).
+
+  Why the indirection: xcodegen auto-mirrors any resolved
+  `DEVELOPMENT_TEAM` into the pbxproj's `TargetAttributes.DevelopmentTeam`
+  block at generation time. The `$(LOCAL_DEVELOPMENT_TEAM)` placeholder is
+  literal at generate time (xcodegen doesn't expand it) but Xcode
+  resolves it at build time via the `#include?` chain. Result: pbxproj
+  contains only the placeholder string, the team ID lives only in the
+  gitignored file, and `xcodegen generate` is idempotent.
+
+  Never put `DEVELOPMENT_TEAM` in a `project.yml`'s `settings: base:`
+  block — project-level YAML overrides project-level xcconfig in the
+  generated pbxproj and would (a) leak the team ID and (b) wipe out the
+  indirection. `CODE_SIGN_STYLE: Automatic` stays in `project.yml`.
 
 ## Engineering lessons live in `docs/engineering-notes.md`
 

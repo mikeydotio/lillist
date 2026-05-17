@@ -85,6 +85,7 @@
 		0170278028A77220944FD21B /* ICloudRequiredView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ICloudRequiredView.swift; sourceTree = "<group>"; };
 		07756C86343C55B654BB65B1 /* SubtaskOutlineView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SubtaskOutlineView.swift; sourceTree = "<group>"; };
 		0914C02F19D5D32DBFCB3C8E /* TrashPane.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrashPane.swift; sourceTree = "<group>"; };
+		0ABBB27058E889BD296D6C36 /* Signing.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Signing.xcconfig; sourceTree = "<group>"; };
 		180C19E87D24FC9E1EB9260D /* HotkeyRecorderConflictTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HotkeyRecorderConflictTests.swift; sourceTree = "<group>"; };
 		1ED0A7A8881D45E8627191BA /* FocusedShortcutGatingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FocusedShortcutGatingTests.swift; sourceTree = "<group>"; };
 		21D24939B908AE453AB3E6C2 /* NotesEditorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotesEditorView.swift; sourceTree = "<group>"; };
@@ -229,6 +230,7 @@
 		4DFFF97A4360A65ED6EF76B3 = {
 			isa = PBXGroup;
 			children = (
+				779A2D039FDDE4223ECFE6E3 /* Config */,
 				C98E95966AFDCFA41F5863CF /* Lillist-macOS */,
 				5E4CCBE3157FB005976F2FFB /* Packages */,
 				71000219E4A9B056D1ED61DC /* Frameworks */,
@@ -295,6 +297,14 @@
 				ECE3A50348E57FE59F4366B8 /* AppIntents.framework */,
 			);
 			name = Frameworks;
+			sourceTree = "<group>";
+		};
+		779A2D039FDDE4223ECFE6E3 /* Config */ = {
+			isa = PBXGroup;
+			children = (
+				0ABBB27058E889BD296D6C36 /* Signing.xcconfig */,
+			);
+			path = Config;
 			sourceTree = "<group>";
 		};
 		7BBF05B636721D60EA5D840A /* Indexing */ = {
@@ -460,7 +470,11 @@
 				LastUpgradeCheck = 1430;
 				TargetAttributes = {
 					9A5124FFDB375540D83CD302 = {
+						DevelopmentTeam = "$(LOCAL_DEVELOPMENT_TEAM)";
 						ProvisioningStyle = Automatic;
+					};
+					EA7ACBEE78B233225EBF7E20 = {
+						DevelopmentTeam = "$(LOCAL_DEVELOPMENT_TEAM)";
 					};
 				};
 			};
@@ -584,6 +598,7 @@
 /* Begin XCBuildConfiguration section */
 		4F4BEB48675B2B79920BD03C /* Release */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = 0ABBB27058E889BD296D6C36 /* Signing.xcconfig */;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				CLANG_ANALYZER_NONNULL = YES;
@@ -712,6 +727,7 @@
 		};
 		EDC3C21D6E626B0AD724C6F2 /* Debug */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = 0ABBB27058E889BD296D6C36 /* Signing.xcconfig */;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				CLANG_ANALYZER_NONNULL = YES;

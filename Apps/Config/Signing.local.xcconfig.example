@@ -1,0 +1,13 @@
+// Template for local signing overrides.
+//
+// Setup:
+//   cp Apps/Config/Signing.local.xcconfig.example Apps/Config/Signing.local.xcconfig
+//   # then fill in LOCAL_DEVELOPMENT_TEAM below with your 10-character
+//   # Apple Developer Team ID (developer.apple.com → Membership → Team ID).
+//
+// `Signing.local.xcconfig` is gitignored. The committed `Signing.xcconfig`
+// includes it via `#include?` and resolves `DEVELOPMENT_TEAM` through
+// `$(LOCAL_DEVELOPMENT_TEAM)`, keeping the team ID out of every generated
+// pbxproj.
+
+LOCAL_DEVELOPMENT_TEAM =

@@ -8,6 +8,12 @@ options:
   generateEmptyDirectories: true
   groupSortPosition: top
 
+# Local-only signing values (DEVELOPMENT_TEAM) live in a gitignored
+# xcconfig so they survive `xcodegen generate`. See Config/Signing.xcconfig.example.
+configFiles:
+  Debug: Config/Signing.xcconfig
+  Release: Config/Signing.xcconfig
+
 settings:
   base:
     SWIFT_VERSION: "6.0"
