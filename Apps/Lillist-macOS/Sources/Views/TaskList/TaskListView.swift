@@ -6,13 +6,13 @@ struct TaskListView: View {
     @Environment(AppEnvironment.self) private var env
     let selection: SidebarSelection
     @Binding var taskSelection: UUID?
+    @Binding var sortField: SortField
+    @Binding var sortAscending: Bool
 
     @State private var uiState = UIStatePersistence()
     @State private var rootNodes: [TaskOutlineNode] = []
     @State private var flatResults: [TaskStore.TaskRecord] = []
     @State private var breadcrumbsByID: [UUID: [String]] = [:]
-    @State private var sortField: SortField = .deadline
-    @State private var sortAscending = true
     @State private var inlineCreateText = ""
     @State private var showInlineCreate = false
     @State private var inlineCreateParent: UUID?
@@ -34,26 +34,8 @@ struct TaskListView: View {
         }
     }
 
-    private var sourceTitle: String {
-        switch selection {
-        case .pinnedTask:    return "Pinned task"
-        case .pinnedFilter:  return "Pinned filter"
-        case .tag:           return "Tag"
-        case .filter:        return "Filter"
-        case .trash:         return "Trash"
-        }
-    }
-
     var body: some View {
         VStack(spacing: 0) {
-            TaskListHeaderView(
-                title: sourceTitle,
-                count: isFlat ? flatResults.count : rootNodes.count,
-                sortField: $sortField,
-                sortAscending: $sortAscending
-            )
-            Divider()
-
             if isFlat {
                 if flatResults.isEmpty {
                     EmptyStateView(
