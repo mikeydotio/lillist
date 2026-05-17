@@ -23,7 +23,21 @@ final class iOSSnapshotTests: XCTestCase {
             .background(Color(.systemBackground))
         let host = UIHostingController(rootView: view)
         host.view.frame = CGRect(x: 0, y: 0, width: 200, height: 100)
-        assertSnapshot(of: host, as: .image(size: CGSize(width: 200, height: 100)))
+        assertSnapshot(of: host, as: .image(size: CGSize(width: 200, height: 100)),
+                       named: "fab-light")
+    }
+
+    @MainActor
+    func test_floatingAddButton_dark() {
+        let view = FloatingAddButton(onTap: {})
+            .environment(\.colorScheme, .dark)
+            .frame(width: 200, height: 100)
+            .background(Color(.systemBackground))
+        let host = UIHostingController(rootView: view)
+        host.overrideUserInterfaceStyle = .dark
+        host.view.frame = CGRect(x: 0, y: 0, width: 200, height: 100)
+        assertSnapshot(of: host, as: .image(size: CGSize(width: 200, height: 100)),
+                       named: "fab-dark")
     }
 
     @MainActor
