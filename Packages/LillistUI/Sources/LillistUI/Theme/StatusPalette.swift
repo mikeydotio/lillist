@@ -12,7 +12,7 @@ public enum StatusPalette {
         switch status {
         case .todo:    return Color.secondary
         case .started: return Color.accentColor
-        case .blocked: return Color.orange
+        case .blocked: return Color.red           // Plan 17: was .orange; bumped for screen-reader-rotor visibility
         case .closed:  return Color.green
         }
     }
