@@ -35,12 +35,15 @@ public struct SyncStatusBadge: View {
         switch indicator {
         case .idle(let lastSync):
             if let lastSync {
-                return "Last synced \(Self.relativeFormatter.localizedString(for: lastSync, relativeTo: Date()))"
+                let relative = Self.relativeFormatter.localizedString(for: lastSync, relativeTo: Date())
+                return String(localized: "Last synced \(relative)", bundle: .module)
             } else {
-                return "Sync idle"
+                return String(localized: "Sync idle", bundle: .module)
             }
-        case .inProgress: return "Syncing"
-        case .error(let message, _): return "Sync error: \(message)"
+        case .inProgress:
+            return String(localized: "Syncing", bundle: .module)
+        case .error(let message, _):
+            return String(localized: "Sync error: \(message)", bundle: .module)
         }
     }
 

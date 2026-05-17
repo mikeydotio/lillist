@@ -34,11 +34,24 @@ public struct SyncStatusDotView: View {
     private var label: String {
         switch indicator {
         case .idle(let last):
-            return last.map { "Last synced \(RelativeDateTimeFormatter().localizedString(for: $0, relativeTo: Date()))" } ?? "Not synced yet"
-        case .inProgress: return "Syncing…"
-        case .error(let msg, _): return "Sync error: \(msg)"
+            if let last {
+                let relative = Self.relativeFormatter.localizedString(for: last, relativeTo: Date())
+                return String(localized: "Last synced \(relative)", bundle: .module)
+            } else {
+                return String(localized: "Not synced yet", bundle: .module)
+            }
+        case .inProgress:
+            return String(localized: "Syncing…", bundle: .module)
+        case .error(let msg, _):
+            return String(localized: "Sync error: \(msg)", bundle: .module)
         }
     }
+
+    private static let relativeFormatter: RelativeDateTimeFormatter = {
+        let f = RelativeDateTimeFormatter()
+        f.unitsStyle = .full
+        return f
+    }()
 
     @ViewBuilder private var detail: some View {
         if case .error(_, let last) = indicator, let last {
