@@ -57,9 +57,11 @@ struct QuickCaptureSheet: View {
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
                     Button("Cancel") { dismiss() }
+                        .keyboardShortcut(.cancelAction)
                 }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Save") { submit() }
+                        .keyboardShortcut(.defaultAction)
                         .disabled(submitting || trimmedTitleIsEmpty)
                 }
             }
