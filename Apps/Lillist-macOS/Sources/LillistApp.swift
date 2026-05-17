@@ -15,6 +15,8 @@ struct LillistApp: App {
                 .frame(minWidth: 900, minHeight: 560)
                 .task { await loadEnvironmentIfNeeded() }
         }
+        .defaultSize(width: 1180, height: 760)
+        .windowResizability(.contentSize)
         .commands {
             if let environment {
                 LillistCommands(environment: environment)
