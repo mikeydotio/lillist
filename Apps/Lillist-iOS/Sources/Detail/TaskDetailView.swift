@@ -86,6 +86,7 @@ struct TaskDetailView: View {
                 taskID: taskID,
                 initialRule: seriesRule,
                 initialSeriesID: record?.seriesID,
+                initialAnchorDate: record?.start ?? record?.deadline,
                 onClose: {
                     showingRecurrenceSheet = false
                     Task { await reload() }

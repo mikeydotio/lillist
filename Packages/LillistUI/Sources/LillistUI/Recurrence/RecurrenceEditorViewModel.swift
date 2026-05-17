@@ -24,7 +24,14 @@ public struct RecurrenceEditorViewModel: Equatable {
     public var until: Date?
     public var afterCompletionSeconds: TimeInterval
 
-    public init(rule: RecurrenceRule?) {
+    /// Anchor date used by the editor's "End by date" smart default
+    /// (Plan 23). When non-nil, the default `until` date is computed
+    /// from this anchor plus a sensible-for-frequency duration. Pass
+    /// the task's start or deadline so a task scheduled six months out
+    /// doesn't get a default end-date 30 days from *today*.
+    public var taskAnchorDate: Date?
+
+    public init(rule: RecurrenceRule?, taskAnchorDate: Date? = nil) {
         switch rule {
         case .none:
             self.repeats = false
@@ -60,6 +67,7 @@ public struct RecurrenceEditorViewModel: Equatable {
             self.until = nil
             self.afterCompletionSeconds = a.interval
         }
+        self.taskAnchorDate = taskAnchorDate
     }
 
     /// Synthesize a `RecurrenceRule` from the current view-model state, or

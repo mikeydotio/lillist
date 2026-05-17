@@ -163,12 +163,23 @@ public struct RecurrenceEditorView: View {
     }
 
     /// Sensible default end-date when the user flips the "End by date"
-    /// toggle on. Plan 23 replaces this stub with a calendar-aware
-    /// computation that derives from the task's anchor + interval; until
-    /// that lands, "30 days from now" is the same hardcoded default the
-    /// pre-Plan-22 toggle used.
+    /// toggle on (Plan 23). Computes a date a frequency-appropriate
+    /// distance from the task's anchor (start or deadline) so a task
+    /// scheduled six months out doesn't get a default end-date 30 days
+    /// from *today*. Defaults: daily → 30 days, weekly → 12 weeks
+    /// (~3 months), monthly → 6 months, yearly → 3 years, all scaled
+    /// by `interval`.
     private func defaultUntil() -> Date {
-        Calendar.current.date(byAdding: .day, value: 30, to: Date()) ?? Date()
+        let anchor = viewModel.taskAnchorDate ?? Date()
+        let units: Int
+        let component: Calendar.Component
+        switch viewModel.freq {
+        case .daily:   units = 30 * max(1, viewModel.interval); component = .day
+        case .weekly:  units = 12 * max(1, viewModel.interval); component = .weekOfYear
+        case .monthly: units = 6 * max(1, viewModel.interval);  component = .month
+        case .yearly:  units = 3 * max(1, viewModel.interval);  component = .year
+        }
+        return Calendar.current.date(byAdding: component, value: units, to: anchor) ?? anchor
     }
 
     @ViewBuilder

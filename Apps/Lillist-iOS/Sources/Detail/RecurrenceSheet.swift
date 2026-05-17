@@ -9,12 +9,22 @@ struct RecurrenceSheet: View {
 
     @Environment(AppEnvironment.self) private var env
     @State private var viewModel: RecurrenceEditorViewModel
+    @State private var errorMessage: String?
 
-    init(taskID: UUID, initialRule: RecurrenceRule?, initialSeriesID: UUID?, onClose: @escaping () -> Void) {
+    init(
+        taskID: UUID,
+        initialRule: RecurrenceRule?,
+        initialSeriesID: UUID?,
+        initialAnchorDate: Date? = nil,
+        onClose: @escaping () -> Void
+    ) {
         self.taskID = taskID
         self.initialSeriesID = initialSeriesID
         self.onClose = onClose
-        self._viewModel = State(initialValue: RecurrenceEditorViewModel(rule: initialRule))
+        self._viewModel = State(initialValue: RecurrenceEditorViewModel(
+            rule: initialRule,
+            taskAnchorDate: initialAnchorDate
+        ))
     }
 
     var body: some View {
@@ -32,6 +42,18 @@ struct RecurrenceSheet: View {
                         }
                     }
                 }
+                .alert(
+                    "Couldn't save recurrence",
+                    isPresented: Binding(
+                        get: { errorMessage != nil },
+                        set: { if !$0 { errorMessage = nil } }
+                    ),
+                    presenting: errorMessage
+                ) { _ in
+                    Button("OK", role: .cancel) { errorMessage = nil }
+                } message: { msg in
+                    Text(msg)
+                }
         }
     }
 
@@ -48,7 +70,7 @@ struct RecurrenceSheet: View {
             }
             onClose()
         } catch {
-            // Sheet remains open; future polish would surface an inline error.
+            errorMessage = error.localizedDescription
         }
     }
 }
