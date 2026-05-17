@@ -64,7 +64,7 @@ struct TaskDetailView: View {
                 ProgressView()
             }
         }
-        .navigationBarTitleDisplayMode(.inline)
+        .navigationBarTitleDisplayMode(.large)
         .navigationTitle(record?.title ?? "")
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
@@ -121,31 +121,41 @@ private struct TaskDetailHeader: View {
     let task: TaskStore.TaskRecord
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text(task.title)
-                .font(.title3)
-                .strikethrough(task.status == .closed)
-                .accessibilityAddTraits(.isHeader)
-            HStack(spacing: 8) {
+        HStack(spacing: 8) {
+            Label(
+                StatusGlyph.accessibilityLabel(for: task.status),
+                systemImage: StatusGlyph.symbol(for: task.status)
+            )
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            if let deadline = task.deadline {
                 Label(
-                    StatusGlyph.accessibilityLabel(for: task.status),
-                    systemImage: StatusGlyph.symbol(for: task.status)
+                    deadline.formatted(date: .abbreviated, time: task.deadlineHasTime ? .shortened : .omitted),
+                    systemImage: "calendar"
                 )
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                if let deadline = task.deadline {
-                    Label(
-                        deadline.formatted(date: .abbreviated, time: task.deadlineHasTime ? .shortened : .omitted),
-                        systemImage: "calendar"
-                    )
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                }
+                .font(.caption)
+                .foregroundStyle(.secondary)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.horizontal)
         .padding(.vertical, 8)
         .accessibilityElement(children: .combine)
+        .accessibilityLabel(accessibilityCombinedLabel)
+    }
+
+    /// Combine status + deadline into one VoiceOver label since the
+    /// title now lives in the nav bar where the system announces it as
+    /// the screen heading.
+    private var accessibilityCombinedLabel: String {
+        let statusLabel = StatusGlyph.accessibilityLabel(for: task.status)
+        if let deadline = task.deadline {
+            let formatted = deadline.formatted(
+                date: .abbreviated,
+                time: task.deadlineHasTime ? .shortened : .omitted
+            )
+            return "\(statusLabel), due \(formatted)"
+        }
+        return statusLabel
     }
 }
