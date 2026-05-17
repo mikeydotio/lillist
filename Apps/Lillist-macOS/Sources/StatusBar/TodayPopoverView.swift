@@ -17,8 +17,8 @@ struct TodayPopoverView: View {
             } else {
                 ForEach(tasks, id: \.id) { t in
                     TaskRowView(task: t, tagNames: [],
-                                onStatusClick: {},
-                                onStatusLongPress: {})
+                                onStatusClick: { Task { await setStatus(t, to: StatusCycler.nextOnClick(from: t.status)) } },
+                                onStatusSet: { newStatus in Task { await setStatus(t, to: newStatus) } })
                 }
             }
         }
@@ -37,5 +37,10 @@ struct TodayPopoverView: View {
         } catch {
             tasks = []
         }
+    }
+
+    private func setStatus(_ rec: TaskStore.TaskRecord, to newStatus: Status) async {
+        try? await env.taskStore.transition(id: rec.id, to: newStatus)
+        await load()
     }
 }

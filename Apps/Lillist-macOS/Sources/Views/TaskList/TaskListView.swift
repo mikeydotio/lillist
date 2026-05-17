@@ -54,7 +54,7 @@ struct TaskListView: View {
                                     task: rec,
                                     tagNames: [],
                                     onStatusClick: { cycle(rec.id, rec.status, click: true) },
-                                    onStatusLongPress: { /* menu in Task 19 */ }
+                                    onStatusSet: { newStatus in setStatus(rec.id, to: newStatus) }
                                 )
                             }
                             .tag(rec.id)
@@ -73,7 +73,7 @@ struct TaskListView: View {
                                 task: node.record,
                                 tagNames: [],
                                 onStatusClick: { cycle(node.id, node.record.status, click: true) },
-                                onStatusLongPress: { /* menu in Task 19 */ }
+                                onStatusSet: { newStatus in setStatus(node.id, to: newStatus) }
                             )
                             .tag(node.id)
                             .onDrop(of: [.lillistTask], delegate: TaskDropDelegate(
@@ -187,6 +187,13 @@ struct TaskListView: View {
         let next = click ? StatusCycler.nextOnClick(from: current) : StatusCycler.nextOnSpace(from: current)
         Task {
             try? await env.taskStore.transition(id: id, to: next)
+            await refresh()
+        }
+    }
+
+    private func setStatus(_ id: UUID, to newStatus: Status) {
+        Task {
+            try? await env.taskStore.transition(id: id, to: newStatus)
             await refresh()
         }
     }

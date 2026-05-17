@@ -47,7 +47,7 @@ final class LocalizationSnapshotTests: XCTestCase {
             seriesID: nil
         )
         let view = TaskRowView(task: task, tagNames: ["work"],
-                               onStatusClick: {}, onStatusLongPress: {})
+                               onStatusClick: {}, onStatusSet: { _ in })
             .environment(\.layoutDirection, .rightToLeft)
             .frame(width: 380, height: 44)
             .padding()

@@ -73,7 +73,7 @@ struct FilterResultsView: View {
             task: record,
             tagNames: [],
             onStatusClick: { Task { await cycle(record) } },
-            onStatusLongPress: {}
+            onStatusSet: { newStatus in Task { await setStatus(record, to: newStatus) } }
         )
         .swipeActions(edge: .leading, allowsFullSwipe: true) {
             Button("Complete") {
@@ -125,6 +125,11 @@ struct FilterResultsView: View {
     private func cycle(_ record: TaskStore.TaskRecord) async {
         let next = StatusCycler.nextOnClick(from: record.status)
         try? await env.taskStore.transition(id: record.id, to: next)
+        await reload()
+    }
+
+    private func setStatus(_ record: TaskStore.TaskRecord, to newStatus: Status) async {
+        try? await env.taskStore.transition(id: record.id, to: newStatus)
         await reload()
     }
 }
