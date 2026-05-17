@@ -17,7 +17,7 @@
 - **Plan 14** (color/contrast palette extraction) — owns `SyncPalette` (`Packages/LillistUI/Sources/LillistUI/Theme/SyncPalette.swift` on `main`). Task 16 extends it with `differentiatedSystemImage`.
 - **Plan 15** (macOS chrome) — actually shipped `StatusPalette` (in `Packages/LillistUI/Sources/LillistUI/Theme/StatusPalette.swift`, public, with `color(for:)` and `fill(for:)`) as a follow-up to Plan 14. Task 17 below extends that *existing* type with an explicit `tint(for:)` accessor and revisits the `.blocked` hue, since Plan 15 left it at `.orange` (legible, but Plan 17 favors `.red` for screen-reader rotor visibility).
 - **Plan 15** (form/inline-create polish) — Task 23 layers required-field a11y onto whatever shape Plan 15 leaves the title inputs in.
-- **Plan 16** (recurrence editor v2) — overlaps with Task 21's "Limit occurrences" toggle. If Plan 16 already shipped the toggle, Task 21 becomes a no-op assertion; otherwise it ships it.
+- **Plan 16** (iOS polish) — shipped a `Toggle("Repeat forever", isOn:)` (inverse polarity of Task 21's "Limit occurrences" framing) plus a revealed Stepper. Task 21 now only adds the a11y `.accessibilityLiveRegion` modifiers and asserts the toggle shape via test — no editor surgery needed. Plan 16 also raised the iOS deployment target to 26.0, deleted `Apps/Lillist-iOS/Sources/Common/FloatingPlusOverlay.swift` (the FAB now lives in `.tabViewBottomAccessory`), and unified `TabShell.Tab` / `SplitShell.Section` into `LillistUI.iPadSection`. Plan 17 file references reflect post-Plan-16 state.
 
 ---
 
@@ -71,8 +71,6 @@ Lillist/
 │   │   ├── Resources/                                               (NEW directory if absent)
 │   │   │   └── Localizable.xcstrings                                (NEW — string catalog)
 │   │   ├── Sources/
-│   │   │   ├── Common/
-│   │   │   │   └── FloatingPlusOverlay.swift                        (modify — annotate intent comment)
 │   │   │   ├── Onboarding/
 │   │   │   │   └── OnboardingScreen.swift                           (modify — reduce-transparency, error live region)
 │   │   │   ├── QuickCapture/
@@ -240,7 +238,7 @@ Concretely, for the `Lillist-iOS` target:
   Lillist-iOS:
     type: application
     platform: iOS
-    deploymentTarget: "18.0"
+    deploymentTarget: "26.0"
     sources:
       - path: Lillist-iOS/Sources
       - path: Lillist-iOS/Resources
@@ -1062,8 +1060,7 @@ git commit -m "feat(a11y): add .accessibleAnimation / .accessibleMaterial enviro
 
 **Files:**
 - Audit-only: `Packages/LillistUI/Sources/**/*.swift`, `Apps/**/*.swift`
-- Maybe modify: `Apps/Lillist-iOS/Sources/Common/FloatingPlusOverlay.swift:13-15`
-- Maybe modify any sites Plan 13 left behind
+- Maybe modify any sites Plan 13 / 15 left behind
 
 - [ ] **Step 1: Audit**
 
@@ -1073,32 +1070,9 @@ grep -RIn '\.animation(' Packages/LillistUI/Sources Apps/ 2>&1
 grep -RIn '\.transition(' Packages/LillistUI/Sources Apps/ 2>&1
 ```
 
-Expected at plan-write time: zero hits for all three. (The `try? await env.taskStore.transition(...)` calls are Core Data, not SwiftUI transitions, and don't match `\.transition(`.) If Plan 13 has merged and introduced animation sites, each becomes a Step 2 entry below.
+(The `try? await env.taskStore.transition(...)` calls are Core Data, not SwiftUI transitions, and don't match `\.transition(`.) Each animation site becomes a Step 2 entry below.
 
-- [ ] **Step 2: Add intent annotations to currently-no-animation surfaces that *could* benefit**
-
-In `Apps/Lillist-iOS/Sources/Common/FloatingPlusOverlay.swift`, the keyboard-hide logic snaps the button on/off via `.opacity()`. There's no animation today. Annotate the intent:
-
-```swift
-struct FloatingPlusOverlay: View {
-    @Binding var isPresented: Bool
-    @State private var keyboardVisible = false
-
-    var body: some View {
-        FloatingAddButton(onTap: { isPresented = true })
-            // Plan 17: snap (no .accessibleAnimation) is the design
-            // intent here — the keyboard appearance is itself a fast
-            // transition and animating opacity in addition feels janky.
-            // If future visual polish wants a fade, wrap the .opacity in
-            // .accessibleAnimation(.easeInOut(duration: 0.15), value: keyboardVisible).
-            .opacity(keyboardVisible ? 0 : 1)
-            .accessibilityHidden(keyboardVisible)
-            // … existing onReceive handlers
-    }
-}
-```
-
-- [ ] **Step 3: If Plan 13 added any `.animation` callsites, gate each via `.accessibleAnimation`**
+- [ ] **Step 2: If Plan 13 / 15 added any `.animation` callsites, gate each via `.accessibleAnimation`**
 
 For each site, swap:
 
@@ -1124,9 +1098,9 @@ if reduceMotion {
 }
 ```
 
-(In v1 there are no such sites; this step becomes a no-op if Plan 13 left nothing to gate.)
+(In v1 there are no such sites; this step becomes a no-op if Plan 13 / 15 left nothing to gate.)
 
-- [ ] **Step 4: Build both apps**
+- [ ] **Step 3: Build both apps**
 
 ```bash
 xcodebuild -workspace Lillist.xcworkspace -scheme Lillist-iOS \
@@ -1137,12 +1111,13 @@ xcodebuild -workspace Lillist.xcworkspace -scheme Lillist-macOS \
   CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO build 2>&1 | tail -3
 ```
 
-- [ ] **Step 5: Commit**
+- [ ] **Step 4: Commit (only if any gating diffs landed in Step 2)**
 
 ```bash
-git add Apps/Lillist-iOS/Sources/Common/FloatingPlusOverlay.swift
-git commit -m "chore(a11y): annotate FloatingPlusOverlay's no-animation intent for reduce-motion audit"
+git commit -m "chore(a11y): gate user-noticeable animations through .accessibleAnimation"
 ```
+
+If no animation sites were found, skip the commit entirely.
 
 ---
 
@@ -2137,10 +2112,43 @@ Add `import LillistUI` to the file.
 
 - [ ] **Step 5: Recurrence save (both platforms)**
 
-In `Apps/Lillist-iOS/Sources/Detail/RecurrenceSheet.swift` (and the macOS equivalent in `TaskDetailView.swift`), inside the `onCommit` closure, after the save succeeds:
+The iOS RecurrenceSheet uses a toolbar `Save` button that calls an explicit `commit(_ rule:) async` method (Plan 16 Task 24's Alert-on-error refactor). Insert announcements inside that method's existing success / catch branches:
 
 ```swift
-RecurrenceEditorView(viewModel: $vm,
+// Apps/Lillist-iOS/Sources/Detail/RecurrenceSheet.swift
+private func commit(_ rule: RecurrenceRule?) async {
+    do {
+        if let rule {
+            if let sid = initialSeriesID {
+                try await env.seriesStore.update(id: sid, rule: rule)
+            } else {
+                _ = try await env.seriesStore.create(fromSeedTask: taskID, rule: rule)
+            }
+        } else if let sid = initialSeriesID {
+            try await env.seriesStore.delete(id: sid)
+        }
+        AccessibilityAnnouncements.post(
+            rule == nil
+                ? String(localized: "Recurrence removed.")
+                : String(localized: "Recurrence saved."),
+            priority: .low
+        )
+        onClose()
+    } catch {
+        errorMessage = error.localizedDescription
+        AccessibilityAnnouncements.post(
+            String(localized: "Couldn't save recurrence: \(error.localizedDescription)"),
+            priority: .high
+        )
+    }
+}
+```
+
+The macOS site at `Apps/Lillist-macOS/Sources/Views/Detail/TaskDetailView.swift` still uses `RecurrenceEditorView`'s `onCommit:` / `onCancel:` closures directly. Apply the announcement pattern inside the existing `onCommit` Task:
+
+```swift
+RecurrenceEditorView(
+    viewModel: $recurrenceViewModel,
     onCommit: { rule in
         Task {
             do {
@@ -2151,7 +2159,6 @@ RecurrenceEditorView(viewModel: $vm,
                         : String(localized: "Recurrence saved."),
                     priority: .low
                 )
-                dismiss()
             } catch {
                 AccessibilityAnnouncements.post(
                     String(localized: "Couldn't save recurrence: \(error.localizedDescription)"),
@@ -2160,11 +2167,9 @@ RecurrenceEditorView(viewModel: $vm,
             }
         }
     },
-    onCancel: { dismiss() }
+    onCancel: { showingRecurrenceEditor = false }
 )
 ```
-
-Locate the exact callsite — Plan 11 Task 13/14 wired both. If the wrapper view doesn't currently capture errors, this task adds the do/catch + announcement.
 
 - [ ] **Step 6: Build both apps**
 
@@ -2247,16 +2252,14 @@ git commit -m "feat(a11y): announce sync state transitions via AccessibilityAnno
 
 ---
 
-## Task 21: Add `.accessibilityLiveRegion` to error labels, fix recurrence "Limit" toggle
+## Task 21: Add `.accessibilityLiveRegion` to error labels
 
 **Files:**
 - Modify: `Apps/Lillist-iOS/Sources/QuickCapture/QuickCaptureSheet.swift:29-33`
 - Modify: `Apps/Lillist-iOS/Sources/Settings/TrashSection.swift:48-52`
 - Modify: `Apps/Lillist-macOS/Sources/Preferences/TrashPane.swift:56-60`
-- Modify: `Packages/LillistUI/Sources/LillistUI/Recurrence/RecurrenceEditorView.swift:67-73`
-- Modify: `Packages/LillistUI/Sources/LillistUI/Recurrence/RecurrenceEditorViewModel.swift`
 
-Two concerns folded together: (a) `.accessibilityLiveRegion(.assertive)` on the QuickCapture and Trash error labels so VoiceOver re-reads them as they change, and (b) replace the nil-as-zero-occurrences ambiguity in the recurrence editor with an explicit `Toggle("Limit occurrences", isOn: $bounded)` + conditional Stepper. (Overlaps with Plan 16; if Plan 16 already shipped the toggle, this task asserts via test instead of re-implementing.)
+`.accessibilityLiveRegion(.assertive)` on the QuickCapture error label and `.polite` on the Trash result labels so VoiceOver re-reads them as they change. The recurrence-editor "limit" ambiguity that the original Plan 17 draft folded in here was already resolved by Plan 16 Task 22 (a `Toggle("Repeat forever", isOn:)` that reveals a Stepper when off). No editor surgery in this task.
 
 - [ ] **Step 1: QuickCapture error label**
 
@@ -2299,59 +2302,7 @@ In `TrashPane.swift`, lines 56-60:
                     }
 ```
 
-- [ ] **Step 4: Recurrence "Limit occurrences" toggle**
-
-First, check Plan 16's state. If `RecurrenceEditorViewModel.bounded: Bool` already exists, skip the model edit. Otherwise:
-
-In `Packages/LillistUI/Sources/LillistUI/Recurrence/RecurrenceEditorViewModel.swift`, add:
-
-```swift
-    /// True when the user wants a bounded number of occurrences. When
-    /// false, `count` is forced nil. When true and `count` is nil, the
-    /// stepper renders at 1.
-    public var bounded: Bool {
-        get { count != nil }
-        set { count = newValue ? (count ?? 10) : nil }
-    }
-```
-
-Then in `RecurrenceEditorView.swift`, replace the `Section("Limit")` block (lines 67-73):
-
-```swift
-                    Section("Limit") {
-                        Toggle("Limit occurrences", isOn: $viewModel.bounded)
-                        if viewModel.bounded {
-                            Stepper("After \(viewModel.count ?? 1) occurrences",
-                                    value: Binding(
-                                        get: { viewModel.count ?? 1 },
-                                        set: { viewModel.count = $0 }
-                                    ),
-                                    in: 1...365)
-                        }
-                        Toggle("End by date", isOn: Binding(
-                            get: { viewModel.until != nil },
-                            set: { on in
-                                viewModel.until = on
-                                    ? (viewModel.until ?? Date().addingTimeInterval(86_400 * 30))
-                                    : nil
-                            }
-                        ))
-                        if viewModel.until != nil {
-                            DatePicker("End date", selection: Binding(
-                                get: { viewModel.until ?? Date() },
-                                set: { viewModel.until = $0 }
-                            ), displayedComponents: [.date])
-                        }
-                    }
-```
-
-- [ ] **Step 5: Build, test, update RecurrenceEditor baselines if any**
-
-```bash
-swift test --package-path Packages/LillistUI --filter RecurrenceEditor 2>&1 | tail -10
-```
-
-If existing snapshot baselines were recorded with the old "After 0 occurrences" stepper, they'll fail. Re-record once and commit.
+- [ ] **Step 4: Build**
 
 ```bash
 xcodebuild -workspace Lillist.xcworkspace -scheme Lillist-iOS \
@@ -2362,16 +2313,13 @@ xcodebuild -workspace Lillist.xcworkspace -scheme Lillist-macOS \
   CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO build 2>&1 | tail -3
 ```
 
-- [ ] **Step 6: Commit**
+- [ ] **Step 5: Commit**
 
 ```bash
 git add Apps/Lillist-iOS/Sources/QuickCapture/QuickCaptureSheet.swift \
         Apps/Lillist-iOS/Sources/Settings/TrashSection.swift \
-        Apps/Lillist-macOS/Sources/Preferences/TrashPane.swift \
-        Packages/LillistUI/Sources/LillistUI/Recurrence/RecurrenceEditorView.swift \
-        Packages/LillistUI/Sources/LillistUI/Recurrence/RecurrenceEditorViewModel.swift \
-        Packages/LillistUI/Tests/LillistUITests/Recurrence/__Snapshots__/
-git commit -m "feat(a11y): live-region error labels; replace nil-as-zero occurrences with Limit toggle"
+        Apps/Lillist-macOS/Sources/Preferences/TrashPane.swift
+git commit -m "feat(a11y): live-region error labels on QuickCapture and Trash"
 ```
 
 ---
