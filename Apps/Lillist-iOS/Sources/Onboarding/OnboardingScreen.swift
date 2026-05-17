@@ -94,7 +94,10 @@ struct OnboardingScreen: View {
             .foregroundStyle(.secondary)
         }
         .padding(20)
-        .background(.bar)
+        .accessibleMaterial(
+            .bar,
+            fallback: Color(uiColor: .systemBackground)
+        )
     }
 
     private func requestPermission() async {

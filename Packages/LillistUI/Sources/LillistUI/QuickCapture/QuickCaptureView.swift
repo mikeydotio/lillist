@@ -48,9 +48,21 @@ public struct QuickCaptureView: View {
         // `.glassBackgroundEffect()` is visionOS-only as of SDK 26.2;
         // when an analogous macOS modifier ships, wrap it in a
         // `#available`-guarded ViewModifier here.
-        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: LillistRadius.m))
+        // Plan 17 Task 12: substitute an opaque fallback when the user
+        // has enabled Reduce Transparency.
         #if os(macOS)
+        .accessibleMaterial(
+            .regularMaterial,
+            fallback: Color(nsColor: .windowBackgroundColor),
+            in: RoundedRectangle(cornerRadius: LillistRadius.m)
+        )
         .onExitCommand(perform: onCancel)
+        #else
+        .accessibleMaterial(
+            .regularMaterial,
+            fallback: Color(uiColor: .systemBackground),
+            in: RoundedRectangle(cornerRadius: LillistRadius.m)
+        )
         #endif
     }
 }
