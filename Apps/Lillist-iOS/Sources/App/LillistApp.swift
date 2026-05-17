@@ -6,11 +6,21 @@ import LillistUI
 struct LillistApp: App {
     @State private var environment: AppEnvironment?
     @State private var loadError: String?
+    @State private var isQuickCapturePresented = false
+    @State private var selectedSection: iPadSection? = .today
 
     var body: some Scene {
         WindowGroup {
             content
+                .environment(\.isQuickCapturePresentedBinding, $isQuickCapturePresented)
+                .environment(\.selectedSectionBinding, $selectedSection)
                 .task { await loadEnvironmentIfNeeded() }
+        }
+        .commands {
+            LillistCommands(
+                isQuickCapturePresented: $isQuickCapturePresented,
+                selectedSection: $selectedSection
+            )
         }
     }
 

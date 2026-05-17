@@ -3,21 +3,29 @@ import LillistUI
 
 /// Compact-size shell: a tab bar with Today / All / Filters / Search,
 /// matching design Section 7's iOS subsection.
+///
+/// Plan 16 Task 29: `isQuickCapturePresented` and `selection` are
+/// owned by `LillistApp` (so `LillistCommands` can bind to them from
+/// outside any view); TabShell reads them via env values.
 struct TabShell: View {
-    @State private var selection: iPadSection = .today
-    @State private var isQuickCapturePresented = false
+    @Environment(\.isQuickCapturePresentedBinding) private var isQuickCapturePresented
+    @Environment(\.selectedSectionBinding) private var selectedSection
     @State private var isSettingsPresented = false
     @AppStorage("hasCapturedTask") private var hasCapturedTask = false
 
-    private var selectionOptional: Binding<iPadSection?> {
+    /// `TabView(selection:)` wants a non-optional `iPadSection`; the
+    /// scene-level binding is optional (so CommandMenu can reset
+    /// selection during multi-window scenarios). Adapt by treating
+    /// `nil` as `.today`.
+    private var selection: Binding<iPadSection> {
         Binding(
-            get: { selection },
-            set: { if let new = $0 { selection = new } }
+            get: { selectedSection.wrappedValue ?? .today },
+            set: { selectedSection.wrappedValue = $0 }
         )
     }
 
     var body: some View {
-        TabView(selection: $selection) {
+        TabView(selection: selection) {
             NavigationStack {
                 TodayView()
                     .modifier(SettingsToolbarItem(isPresented: $isSettingsPresented))
@@ -46,12 +54,12 @@ struct TabShell: View {
             .tabItem { Label("Search", systemImage: "magnifyingglass") }
             .tag(iPadSection.search)
         }
-        .environment(\.quickCaptureAction, { isQuickCapturePresented = true })
+        .environment(\.quickCaptureAction, { isQuickCapturePresented.wrappedValue = true })
         .tabViewBottomAccessory {
-            FloatingAddButton(onTap: { isQuickCapturePresented = true })
+            FloatingAddButton(onTap: { isQuickCapturePresented.wrappedValue = true })
                 .accessibilityIdentifier("QuickCaptureAccessory")
         }
-        .sheet(isPresented: $isQuickCapturePresented) {
+        .sheet(isPresented: isQuickCapturePresented) {
             QuickCaptureSheet()
                 .presentationDetents(
                     [.fraction(0.35), .medium, .large],
@@ -62,10 +70,6 @@ struct TabShell: View {
         .sheet(isPresented: $isSettingsPresented) {
             SettingsTab()
         }
-        .lillistKeyboardShortcuts(
-            isQuickCapturePresented: $isQuickCapturePresented,
-            selectedTab: selectionOptional
-        )
     }
 }
 
