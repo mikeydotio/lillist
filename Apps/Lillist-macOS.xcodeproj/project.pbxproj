@@ -36,7 +36,6 @@
 		5FA1ACA29EE1847B105C0AA6 /* LillistCommands.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D70826CFF84526D54963DB7 /* LillistCommands.swift */; };
 		65A0C314392C2CF1F96524BA /* AdvancedPane.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4785BD3BA4D67F4C69F79D09 /* AdvancedPane.swift */; };
 		66EE57111151096A6E2C968C /* HotkeyKeyTable.swift in Sources */ = {isa = PBXBuildFile; fileRef = 95FC2DAA17C7F98B4F907832 /* HotkeyKeyTable.swift */; };
-		6BC1C156D5890D402EA02A98 /* StatusBarController.swift in Sources */ = {isa = PBXBuildFile; fileRef = B726991AAC124C45C502A869 /* StatusBarController.swift */; };
 		70EB429F941CB59A033F2530 /* OnboardingSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4939196DF6130616743D37DC /* OnboardingSheet.swift */; };
 		719E3F9F89E009424C9CA367 /* NotesEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 21D24939B908AE453AB3E6C2 /* NotesEditorView.swift */; };
 		7564C88434C25219DE08C2A9 /* NoSelectionDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70E52322AC633894E540853D /* NoSelectionDetailView.swift */; };
@@ -63,6 +62,7 @@
 		CA6F82635F86657E263F03BF /* HotkeyRecorder.swift in Sources */ = {isa = PBXBuildFile; fileRef = D2F709C6BFFCBE01EB7EB243 /* HotkeyRecorder.swift */; };
 		CAC72FCE791BC811B15696DB /* InlineCreateField.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF7781804345711C5D1DFA6D /* InlineCreateField.swift */; };
 		CD807090167A2EB33A3F40BF /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5BDE58C737A0E5123FA07D0F /* AppDelegate.swift */; };
+		CFB2EE593D82AE7C21914CF1 /* MenuBarExtraScene.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2EFA693098EDBDA8867F2C1 /* MenuBarExtraScene.swift */; };
 		D18582EAD9CC9DEF45E3D046 /* BlockedFollowUpTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3F0D9EC0691515027BF44021 /* BlockedFollowUpTests.swift */; };
 		D4D4307086A35ECB53CF3FBC /* MailtoTransport.swift in Sources */ = {isa = PBXBuildFile; fileRef = ED9565C658DC6743EF09396D /* MailtoTransport.swift */; };
 		D5E5E81DCC5FCF5E0F844A60 /* SubtaskOutlineView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 07756C86343C55B654BB65B1 /* SubtaskOutlineView.swift */; };
@@ -110,9 +110,9 @@
 		9A4DD99AC3C19CA70493DAA1 /* ToolbarPersistenceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ToolbarPersistenceTests.swift; sourceTree = "<group>"; };
 		9F8B217F0E070121B95D2E56 /* LillistUI */ = {isa = PBXFileReference; lastKnownFileType = folder; name = LillistUI; path = ../Packages/LillistUI; sourceTree = SOURCE_ROOT; };
 		A11533C6477F2D2A981B7E22 /* TaskOutlineNode.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TaskOutlineNode.swift; sourceTree = "<group>"; };
+		A2EFA693098EDBDA8867F2C1 /* MenuBarExtraScene.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MenuBarExtraScene.swift; sourceTree = "<group>"; };
 		AA226DA3844BBFC1DFFDA0CA /* FocusedListColumn.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FocusedListColumn.swift; sourceTree = "<group>"; };
 		B2B69FCA7EA5A0AEC03AC528 /* LillistApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LillistApp.swift; sourceTree = "<group>"; };
-		B726991AAC124C45C502A869 /* StatusBarController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatusBarController.swift; sourceTree = "<group>"; };
 		B9EFCC8DD54B786D210CB412 /* AppEnvironment.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppEnvironment.swift; sourceTree = "<group>"; };
 		BBBEE29201F8E282644A5147 /* CrashReporterHost.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CrashReporterHost.swift; sourceTree = "<group>"; };
 		BC4034CAF7C667207F94C76D /* PreferencesWindow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreferencesWindow.swift; sourceTree = "<group>"; };
@@ -168,7 +168,6 @@
 		1C16A008F3486D9CE6DB930E /* StatusBar */ = {
 			isa = PBXGroup;
 			children = (
-				B726991AAC124C45C502A869 /* StatusBarController.swift */,
 				59867850C82C90EBDA587E7A /* TodayPopoverView.swift */,
 			);
 			path = StatusBar;
@@ -223,6 +222,14 @@
 			path = Preferences;
 			sourceTree = "<group>";
 		};
+		548C45F0413BF5497135A326 /* MenuBar */ = {
+			isa = PBXGroup;
+			children = (
+				A2EFA693098EDBDA8867F2C1 /* MenuBarExtraScene.swift */,
+			);
+			path = MenuBar;
+			sourceTree = "<group>";
+		};
 		5E4CCBE3157FB005976F2FFB /* Packages */ = {
 			isa = PBXGroup;
 			children = (
@@ -237,6 +244,7 @@
 			children = (
 				96DC643FB6D30A62EE875517 /* Commands */,
 				134B6B7B41C63E10F28DEF85 /* Hotkey */,
+				548C45F0413BF5497135A326 /* MenuBar */,
 				37B5B7691A22F7149CDE6F7D /* Onboarding */,
 				E3416FFB6A29F2327C365618 /* Persistence */,
 				4E45BA1455A571C9EF426E7F /* Preferences */,
@@ -476,6 +484,7 @@
 				12192573C492F4C19AC7A9AF /* LillistApp.swift in Sources */,
 				5FA1ACA29EE1847B105C0AA6 /* LillistCommands.swift in Sources */,
 				D4D4307086A35ECB53CF3FBC /* MailtoTransport.swift in Sources */,
+				CFB2EE593D82AE7C21914CF1 /* MenuBarExtraScene.swift in Sources */,
 				7564C88434C25219DE08C2A9 /* NoSelectionDetailView.swift in Sources */,
 				719E3F9F89E009424C9CA367 /* NotesEditorView.swift in Sources */,
 				C439B581B7310C39C9F78C8B /* NotificationsPane.swift in Sources */,
@@ -487,7 +496,6 @@
 				E844140043C9E82E250EE2FA /* SidebarSection.swift in Sources */,
 				5D718D6A47C34D934FA0267C /* SidebarSelection.swift in Sources */,
 				76EA648FBA90E8009F435844 /* SidebarView.swift in Sources */,
-				6BC1C156D5890D402EA02A98 /* StatusBarController.swift in Sources */,
 				D5E5E81DCC5FCF5E0F844A60 /* SubtaskOutlineView.swift in Sources */,
 				44330D12274449C7C6D5CE18 /* TaskDetailView.swift in Sources */,
 				2D6DAC66A7B57213009DD506 /* TaskListHeaderView.swift in Sources */,

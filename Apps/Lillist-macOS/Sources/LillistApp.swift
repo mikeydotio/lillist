@@ -7,6 +7,7 @@ struct LillistApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
     @State private var environment: AppEnvironment?
     @State private var loadError: String?
+    @State private var statusBarItemVisible = true
 
     var body: some Scene {
         WindowGroup("Lillist") {
@@ -31,6 +32,25 @@ struct LillistApp: App {
                     .frame(width: 520, height: 420)
             }
         }
+
+        // Plan 15 Task 9: SwiftUI MenuBarExtra scene replaces the
+        // AppKit-bridge StatusBarController. `isInserted:` is driven
+        // by `PreferencesStore.statusBarItemVisible` and primed in
+        // `loadEnvironmentIfNeeded()`; flipping the toggle in
+        // Preferences adds/removes the scene at runtime. The scene
+        // is declared unconditionally (SceneBuilder's type-checker
+        // handles optional Scenes poorly); MenuBarExtraScene itself
+        // takes an optional `AppEnvironment?` and renders a
+        // placeholder while it's still loading.
+        MenuBarExtraScene(
+            isInserted: $statusBarItemVisible,
+            environment: environment,
+            onQuickCapture: triggerQuickCapture
+        )
+    }
+
+    private func triggerQuickCapture() {
+        appDelegate.quickCapturePanel?.toggle()
     }
 
     @ViewBuilder
@@ -71,6 +91,12 @@ struct LillistApp: App {
             // by name) and ensures returning users always have their five
             // baseline filters.
             try? await env.defaultsInstaller.installIfNeeded()
+            // Plan 15 Task 9: prime the menu-bar visibility binding from
+            // user prefs so the MenuBarExtra scene inserts (or not) on
+            // first launch matching the saved setting.
+            if let prefs = try? await env.preferencesStore.read() {
+                statusBarItemVisible = prefs.statusBarItemVisible
+            }
         } catch {
             loadError = "\(error)"
         }
