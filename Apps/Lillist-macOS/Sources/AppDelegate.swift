@@ -103,4 +103,68 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let all = (try? await env.smartFilterStore.list()) ?? []
         pinnedFilterCache = all.filter(\.isPinned)
     }
+
+    // MARK: - Dock menu (Plan 15 Task 20)
+
+    func applicationDockMenu(_ sender: NSApplication) -> NSMenu? {
+        let menu = NSMenu()
+
+        let quick = NSMenuItem(
+            title: "Quick Capture…",
+            action: #selector(quickCaptureAction),
+            keyEquivalent: ""
+        )
+        quick.target = self
+        menu.addItem(quick)
+
+        let today = NSMenuItem(
+            title: "Today's Tasks…",
+            action: #selector(showTodayAction),
+            keyEquivalent: ""
+        )
+        today.target = self
+        menu.addItem(today)
+
+        // Dynamically-built pinned filters from the cache populated on
+        // every Core Data save. If the cache hasn't populated yet,
+        // omit the section.
+        if !pinnedFilterCache.isEmpty {
+            menu.addItem(.separator())
+            for filter in pinnedFilterCache {
+                let item = NSMenuItem(
+                    title: filter.name,
+                    action: #selector(selectPinnedFilter(_:)),
+                    keyEquivalent: ""
+                )
+                item.target = self
+                item.representedObject = filter.id
+                menu.addItem(item)
+            }
+        }
+
+        return menu
+    }
+
+    @objc private func quickCaptureAction() {
+        quickCapturePanel?.toggle()
+    }
+
+    @objc private func showTodayAction() {
+        NSApp.activate(ignoringOtherApps: true)
+        for w in NSApp.windows where w.title == "Lillist" {
+            w.makeKeyAndOrderFront(nil)
+        }
+        NotificationCenter.default.post(name: .lillistSelectTodayFilter, object: nil)
+    }
+
+    @objc private func selectPinnedFilter(_ sender: NSMenuItem) {
+        guard let id = sender.representedObject as? UUID else { return }
+        NSApp.activate(ignoringOtherApps: true)
+        for w in NSApp.windows where w.title == "Lillist" {
+            w.makeKeyAndOrderFront(nil)
+        }
+        NotificationCenter.default.post(
+            name: .lillistSelectFilter, object: nil, userInfo: ["id": id]
+        )
+    }
 }
