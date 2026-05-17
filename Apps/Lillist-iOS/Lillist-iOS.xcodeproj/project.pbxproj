@@ -57,6 +57,7 @@
 		AB0DAB0FFB124C1178A0FAB6 /* OnboardingScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 824FA7B5DC23A67CD85D65A0 /* OnboardingScreen.swift */; };
 		AD0144EC54CC3FA76CD3D1D0 /* AllTagsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7AE05D83958BE1618EC00B27 /* AllTagsView.swift */; };
 		B28D66C3798D9DE9462CB3D0 /* GeneralSection.swift in Sources */ = {isa = PBXBuildFile; fileRef = 013C20AC115F9A9F16F18BA2 /* GeneralSection.swift */; };
+		BE9FFE27E0C03EB136C128DF /* SegmentedDetailTabPersistenceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 94307A6C8BB99028C434C008 /* SegmentedDetailTabPersistenceTests.swift */; };
 		C1FEEAB56AFC2EFD9C108C47 /* TaskJournalTab.swift in Sources */ = {isa = PBXBuildFile; fileRef = F6C4BEE444B84DDF5F88ABF3 /* TaskJournalTab.swift */; };
 		C37A5B3B5892E493D5874513 /* ReportCrashIntentTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 97A39E4B87749E005F34B7FF /* ReportCrashIntentTests.swift */; };
 		CA4034D690255FE0554C7DE2 /* RootShell.swift in Sources */ = {isa = PBXBuildFile; fileRef = 03C3319AED08244B047F88E4 /* RootShell.swift */; };
@@ -149,6 +150,7 @@
 		824FA7B5DC23A67CD85D65A0 /* OnboardingScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingScreen.swift; sourceTree = "<group>"; };
 		8E53A86D921898A0FB836C9A /* TaskDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TaskDetailView.swift; sourceTree = "<group>"; };
 		940380DB2F7305D2993DCD30 /* ShareExtension-iOS.appex */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = "wrapper.app-extension"; path = "ShareExtension-iOS.appex"; sourceTree = BUILT_PRODUCTS_DIR; };
+		94307A6C8BB99028C434C008 /* SegmentedDetailTabPersistenceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SegmentedDetailTabPersistenceTests.swift; sourceTree = "<group>"; };
 		97A39E4B87749E005F34B7FF /* ReportCrashIntentTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReportCrashIntentTests.swift; sourceTree = "<group>"; };
 		A2B005498284E28D02A97CF6 /* NotificationPermissionFlowTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationPermissionFlowTests.swift; sourceTree = "<group>"; };
 		A319992C5C6111D1848B5549 /* ReportCrashIntent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReportCrashIntent.swift; sourceTree = "<group>"; };
@@ -348,6 +350,7 @@
 			children = (
 				4E15BAD0E599EA928403C4A8 /* AppIntentHandlerTests.swift */,
 				CEE1AA15CD7EEB68E16E53D8 /* QuickCaptureFlowTests.swift */,
+				94307A6C8BB99028C434C008 /* SegmentedDetailTabPersistenceTests.swift */,
 				165A87417D8DB0F2E8100ABB /* ShareExtensionPayloadTests.swift */,
 			);
 			path = IntegrationTests;
@@ -644,6 +647,7 @@
 				3A2760F631CB59A9344DC2EF /* QuickCaptureFlowTests.swift in Sources */,
 				3723770D2788EE577A418AB1 /* ReportCrashIntent.swift in Sources */,
 				C37A5B3B5892E493D5874513 /* ReportCrashIntentTests.swift in Sources */,
+				BE9FFE27E0C03EB136C128DF /* SegmentedDetailTabPersistenceTests.swift in Sources */,
 				5D9279E9C4C73820704AB2C5 /* ShareExtensionPayloadTests.swift in Sources */,
 				E40226631EC34F5D4110B4D6 /* SharePayload.swift in Sources */,
 				A6EE4318B3317216DF56160D /* SharePayloadTests.swift in Sources */,
