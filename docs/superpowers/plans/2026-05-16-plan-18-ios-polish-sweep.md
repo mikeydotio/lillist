@@ -119,7 +119,7 @@ Expected: both lines present. If absent, halt and merge Plan 13 first.
 
 - [ ] **Step 2: Rewrite `StatusIndicatorView.body` to use `Menu(primaryAction:)`**
 
-Open `Packages/LillistUI/Sources/LillistUI/Components/StatusIndicatorView.swift`. Replace the current `body` with a `Menu(primaryAction:)` whose primary action fires `onClick`, whose label is the existing 22×22 `Image(systemName: StatusGlyph.symbol(for: status))` (with `.foregroundStyle(status == .closed ? .green : .secondary)` and `.contentShape(Rectangle())`), and whose menu items are three `Button`s — Started / Blocked / Closed, each calling `onSetStatus(.started)` / `.blocked` / `.closed`. Each menu Button uses `Label(name, systemImage: StatusGlyph.symbol(for: status))`. After the Menu, preserve Plan 13's modifiers: `.menuStyle(.borderlessButton)`, the outer `.frame(width: 44, height: 44)` + `.contentShape(Rectangle())` for the hit area, `.accessibilityLabel(StatusGlyph.accessibilityLabel(for: status))`, `.accessibilityAddTraits(.isButton)`, `.accessibilityAction(named: Text("Cycle status")) { onClick() }`.
+Open `Packages/LillistUI/Sources/LillistUI/Components/StatusIndicatorView.swift`. Replace the current `body` with a `Menu(primaryAction:)` whose primary action fires `onClick`, whose label is the existing 22×22 `Image(systemName: StatusGlyph.symbol(for: status))` (with `.foregroundStyle(StatusPalette.color(for: status))` and `.contentShape(Rectangle())`), and whose menu items are three `Button`s — Started / Blocked / Closed, each calling `onSetStatus(.started)` / `.blocked` / `.closed`. Each menu Button uses `Label(name, systemImage: StatusGlyph.symbol(for: status))`. After the Menu, preserve the existing modifiers: `.menuStyle(.borderlessButton)`, the outer `.frame(width: 44, height: 44)` + `.contentShape(Rectangle())` for the hit area, `.accessibilityLabel(StatusGlyph.accessibilityLabel(for: status))`, `.accessibilityAddTraits(.isButton)`, `.accessibilityAction(named: Text("Cycle status")) { onClick() }`.
 
 Add an inline comment above the `Menu` explaining why this replaces `simultaneousGesture(LongPressGesture)` (point at the engineering-notes Plan 18 entry).
 
@@ -426,14 +426,14 @@ Open `Apps/Lillist-iOS/Sources/Detail/TaskNotesTab.swift`. Replace the body (lin
                 }
                 TextEditor(text: $text)
                     .scrollIndicators(.automatic)
-                    .accessibilityLabel("Notes")
+                    .accessibilityLabel(String(localized: "Notes"))
             }
             if text.count > 500 {
                 Text("\(text.count) characters")
                     .font(.caption2)
                     .foregroundStyle(.tertiary)
                     .padding(.horizontal)
-                    .accessibilityLabel("Notes length: \(text.count) characters")
+                    .accessibilityLabel(String(localized: "Notes length: \(text.count) characters"))
             }
         }
         .padding(.horizontal)
@@ -913,7 +913,7 @@ In `Packages/LillistUI/Sources/LillistUI/CrashReporting/CrashReportSheet.swift`,
     @State private var breadcrumbsPreviewText = ""
 ```
 
-Replace lines 43-60 (the "What to include" Section). For each toggle, wrap the `Toggle` in a `VStack(alignment: .leading)` followed by a `.font(.caption)` `Button("Preview these") { ... }`. The button's action launches a `Task` that calls `await model.renderPreview(includeLogs: true, includeBreadcrumbs: false, ...)` (or `false, true` for breadcrumbs), stores the result in the corresponding `*PreviewText`, and sets the corresponding `showing*Preview = true`. Each button has an `.accessibilityLabel("Preview the [logs|breadcrumbs] that would be sent")`.
+Replace lines 43-60 (the "What to include" Section). For each toggle, wrap the `Toggle` in a `VStack(alignment: .leading)` followed by a `.font(.caption)` `Button("Preview these") { ... }`. The button's action launches a `Task` that calls `await model.renderPreview(includeLogs: true, includeBreadcrumbs: false, ...)` (or `false, true` for breadcrumbs), stores the result in the corresponding `*PreviewText`, and sets the corresponding `showing*Preview = true`. Each button has an `.accessibilityLabel(String(localized: "Preview the [logs|breadcrumbs] that would be sent", bundle: .module))` (CrashReportSheet lives in `LillistUI`, so the `bundle: .module` argument is required).
 
 Add two `.sheet(isPresented:)` modifiers at the bottom of `body` (alongside the existing `showingPreview` sheet), each presenting `CrashReportPreviewSheet(body: logsPreviewText)` or `CrashReportPreviewSheet(body: breadcrumbsPreviewText)`.
 

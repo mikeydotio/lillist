@@ -14,9 +14,9 @@
 
 - Plans 1-12 on `main`.
 - **Plan 13** (a11y & correctness) — Task 3 inherits any `⌘D` rebinding Plan 13 makes (re-grep `LillistCommands.swift` at Task 3 start).
-- **Plan 14** (design tokens) — Task 5's module doc references `Theme/Tokens.swift` as the design-system entry point; reference stays even if Plan 14 lands later.
+- **Plan 14** (design tokens) — on `main`. Task 5's module doc references `Theme/Tokens.swift` as the design-system entry point.
 - **Plan 16** (iOS polish) — on `main`. Plan 16 Task 29 lifted iPad shortcuts into a Scene-level `CommandMenu` (`Apps/Lillist-iOS/Sources/Commands/LillistCommands.swift`) and deleted `Apps/Lillist-iOS/Sources/Common/KeyboardShortcuts.swift` entirely. Task 3 here extends the `CommandMenu` scaffold. Scene-level state bindings (`isQuickCapturePresented`, `selectedSection`) are owned by `LillistApp` and exposed via env values declared in `Apps/Lillist-iOS/Sources/Common/SceneBindings.swift`.
-- **Plan 17** (i18n & a11y environments) — Task 5 module doc references `Accessibility/AccessibilityEnvironment.swift`. Task 9 complements Plan 17 Task 27 (which targets the macOS detail-view sections; Task 9 targets the recurrence editor). Plan 17 Task 8 covers parser localization; Task 2 here covers the macOS-vs-iOS chip-row divergence. Plan 17 Task 19 owns FollowUpFormView announcement (out of scope here).
+- **Plan 17** (i18n & a11y environments) — on `main`. Task 5's module doc references `Accessibility/AccessibilityEnvironment.swift` (now real). Task 9 extends the `.isHeader` trait coverage to the recurrence editor (Plan 17 already covered the macOS detail-view sections). Task 2 here covers the macOS-vs-iOS chip-row divergence (Plan 17 documented the parser-token coupling; this task closes the symmetry gap). FollowUpFormView submission announcement is already in place — out of scope here.
 
 ---
 
@@ -108,7 +108,7 @@ Lillist/
 
 **Task 4 (IOSScreenTourTests refactor) is significantly larger than every other task.** The iOS tour tests rebuild screens with inline mock chrome because the iOS app bundle isn't `@testable import`-able. The fix migrates screen composition from `Apps/Lillist-iOS/Sources/<Tab>/<Tab>View.swift` into `LillistUI/iOS/Screens/<Tab>Screen.swift` across five screens + a final tour-mock deletion. **Default: flag the user and spin out as `Plan 20a`** so Plan 20 stays a cohesive polish branch.
 
-**Task 5 (module doc) is documentation-only.** Replace the `LillistUI.swift` stub with a doc-comment landing page; references to Plan 14 (`Theme/Tokens.swift`) and Plan 17 (`Accessibility/AccessibilityEnvironment.swift`) describe the *intended* surface even if those plans land after.
+**Task 5 (module doc) is documentation-only.** Replace the `LillistUI.swift` stub with a doc-comment landing page; the referenced surfaces — `Theme/Tokens.swift` (design tokens) and `Accessibility/AccessibilityEnvironment.swift` (environment-aware modifiers) — both exist on `main`.
 
 **Task 6 (case audit) is one-time normalization.** macOS title case for menus and standalone buttons; iOS title case for toolbar/navbar buttons, sentence case for inline Form-row actions. Known offenders: `CrashReportSheet.swift:82,90` ("Don't send" / "Send report" both sentence) — harmonize to title case for both.
 
@@ -313,7 +313,7 @@ Expect: PASS (both cases).
 
 - [ ] **Step 3: Surface chips on macOS `QuickCaptureView`**
 
-Edit `Packages/LillistUI/Sources/LillistUI/QuickCapture/QuickCaptureView.swift`. The `body` (lines 20-50) shows parsed tags in an `HStack(spacing: 6)` at line 29. Add a new chip row immediately after that `HStack` closes (before the outer `VStack` ends):
+Edit `Packages/LillistUI/Sources/LillistUI/QuickCapture/QuickCaptureView.swift`. The `body` shows parsed tags in an `HStack(spacing: 6)` at line 29. Add a new chip row immediately after that `HStack` closes (before the outer `VStack` ends, around line 42):
 
 ```swift
             // Date-token chips. Single source of truth shared with the
@@ -328,7 +328,7 @@ Edit `Packages/LillistUI/Sources/LillistUI/QuickCapture/QuickCaptureView.swift`.
                     }
                     .buttonStyle(.bordered)
                     .controlSize(.small)
-                    .accessibilityLabel("Insert deadline \(token)")
+                    .accessibilityLabel(String(localized: "Insert deadline \(token)", bundle: .module))
                 }
                 Spacer()
             }
@@ -336,19 +336,13 @@ Edit `Packages/LillistUI/Sources/LillistUI/QuickCapture/QuickCaptureView.swift`.
 
 - [ ] **Step 4: Replace the hardcoded iOS list**
 
-Edit `Apps/Lillist-iOS/Sources/QuickCapture/QuickCaptureSheet.swift:25`. Replace:
-
-```swift
-                    dateSuggestions: ["today", "tomorrow", "+3d", "+1w"],
-```
-
-with:
+Edit `Apps/Lillist-iOS/Sources/QuickCapture/QuickCaptureSheet.swift`. The current `dateSuggestions:` line carries an `// i18n-exempt:` comment block explaining the parser-token coupling. Replace the literal array with the shared constant; keep the comment block — its rationale still applies to the shared canonical list:
 
 ```swift
                     dateSuggestions: QuickCaptureDateSuggestions.default,
 ```
 
-`QuickCaptureSheet.swift` already imports `LillistUI` (line 3), so the type is visible.
+`QuickCaptureSheet.swift` already imports `LillistUI` (line 3), so the type is visible. Update the comment block above the line to point at `QuickCaptureDateSuggestions.swift` as the canonical home.
 
 - [ ] **Step 5: Snapshot — re-record macOS QuickCapture and verify iOS unchanged**
 
@@ -575,14 +569,14 @@ import Foundation
 /// - **`Components/`** — atomic views: `TaskRowView`,
 ///   `SidebarRowView`, `StatusIndicatorView`, `BreadcrumbView`,
 ///   `EmptyStateView`, `TagChipView`, `SyncStatusDotView`.
-/// - **`Theme/`** — design tokens. `StatusGlyph` and `TagTint`
-///   live here today; `Tokens.swift` (spacing/radius/typography/
-///   timing) lands in Plan 14 as the canonical entry point.
+/// - **`Theme/`** — design tokens. `StatusGlyph`, `TagTint`,
+///   `StatusPalette`, `SyncPalette`, and `Tokens.swift` (spacing /
+///   radius / typography / timing) — the canonical entry point.
 /// - **`Accessibility/`** — environment-aware modifiers
 ///   (`accessibleAnimation`, `accessibleMaterial`,
-///   `contrastTuned`), platform-aware
-///   `AccessibilityAnnouncements.post(_:)`, APCA contrast math.
-///   Lands in Plan 17.
+///   `ContrastTuned.value(in:standard:increased:)`), platform-aware
+///   `AccessibilityAnnouncements.post(_:priority:)`, and the WCAG
+///   relative-luminance / contrast-ratio helpers in `ContrastMath`.
 /// - **`Recurrence/`** — `RecurrenceEditorView` and view-model.
 ///   Backed by `LillistCore.RecurrenceRule`.
 /// - **`QuickCapture/`** — the macOS panel host
@@ -627,8 +621,8 @@ git commit -m "docs(ui): replace LillistUI.swift stub with module landing page
 
 Documents the public surface (Components, Theme, Accessibility,
 Recurrence, QuickCapture, Status, DragDrop, CrashReporting, iOS) and
-calls out the design-system (Theme/Tokens.swift, Plan 14) and a11y
-(Accessibility/AccessibilityEnvironment.swift, Plan 17) entry points.
+calls out the design-system (Theme/Tokens.swift) and a11y
+(Accessibility/AccessibilityEnvironment.swift) entry points.
 Version constant retained for SemVer hygiene."
 ```
 
@@ -703,19 +697,21 @@ inline iOS Form-row actions."
 ## Task 7: Fix `SidebarRowView` a11y modifier ordering
 
 **Files:**
-- Modify: `Packages/LillistUI/Sources/LillistUI/Components/SidebarRowView.swift:37-38`
+- Modify: `Packages/LillistUI/Sources/LillistUI/Components/SidebarRowView.swift:34-37`
 - Modify: `Apps/Lillist-macOS/Sources/Views/Sidebar/SidebarView.swift:19-45` (no code change — verify ordering)
 - Create: `Packages/LillistUI/Tests/LillistUITests/Components/SidebarRowViewA11yTests.swift`
 
-Today (lines 21-39 of `SidebarRowView.swift`):
+Today (lines 23-38 of `SidebarRowView.swift`):
 
 ```swift
     public var body: some View {
-        HStack(spacing: 8) {
+        HStack(spacing: LillistSpacing.s) {
             …
         }
         .accessibilityElement(children: .combine)
-        .accessibilityLabel(badge.map { "\(label), \($0) items" } ?? label)
+        .accessibilityLabel(badge.map {
+            String(localized: "\(label), \($0) items", bundle: .module)
+        } ?? label)
     }
 ```
 
@@ -765,7 +761,7 @@ Expect: PASS (current source already satisfies the ordering).
 
 - [ ] **Step 2: Add a `MARK: Accessibility` comment to `SidebarRowView`**
 
-Edit `Packages/LillistUI/Sources/LillistUI/Components/SidebarRowView.swift`. Replace the closing two lines (37-38) with:
+Edit `Packages/LillistUI/Sources/LillistUI/Components/SidebarRowView.swift`. Replace the closing four lines (34-37) with:
 
 ```swift
         }
@@ -777,7 +773,9 @@ Edit `Packages/LillistUI/Sources/LillistUI/Components/SidebarRowView.swift`. Rep
         // SidebarRowViewA11yTests.test_rowExposesAccessibilityLabel_whenComposedWithTag
         // regression test pins the ordering.
         .accessibilityElement(children: .combine)
-        .accessibilityLabel(badge.map { "\(label), \($0) items" } ?? label)
+        .accessibilityLabel(badge.map {
+            String(localized: "\(label), \($0) items", bundle: .module)
+        } ?? label)
     }
 }
 ```
@@ -875,23 +873,24 @@ accessibility composition."
 ## Task 9: Add `.accessibilityAddTraits(.isHeader)` to `RecurrenceEditorView` section labels
 
 **Files:**
-- Modify: `Packages/LillistUI/Sources/LillistUI/Recurrence/RecurrenceEditorView.swift:32,41,52,60,67,86`
+- Modify: `Packages/LillistUI/Sources/LillistUI/Recurrence/RecurrenceEditorView.swift:41,65,73,84,115`
 - Create: `Packages/LillistUI/Tests/LillistUITests/Recurrence/RecurrenceEditorHeadingTests.swift`
 
-Today's section titles (confirmed with `grep -n 'Section(' Packages/LillistUI/Sources/LillistUI/Recurrence/RecurrenceEditorView.swift`):
+Today's titled sections (confirm with `grep -n 'Section(' Packages/LillistUI/Sources/LillistUI/Recurrence/RecurrenceEditorView.swift`):
 
-- Line 32: `Section("Pattern")`
 - Line 41: `Section("Frequency")`
-- Line 52: `Section("On days")`
-- Line 60: `Section("On day of month")`
-- Line 67: `Section("Limit")`
-- Line 86: `Section("After completion")`
+- Line 65: `Section("On days")`
+- Line 73: `Section("On days of month")`
+- Line 84: `Section("Limit")`
+- Line 115: `Section("Repeat after")`
+
+(The unlabeled `Section { … }` blocks — the Repeats toggle, the Schedule picker, and the Save/Cancel bar — have no title to mark, so they're untouched.)
 
 `SwiftUI.Section` already renders its title with a visual heading style and, on iOS, provides VoiceOver heading semantics automatically via `Form`. **But** on macOS the heading rotor behavior depends on the form style and the explicit trait; adding `.accessibilityAddTraits(.isHeader)` to the title row makes the heading rotor surface them consistently across platforms.
 
 The cleanest hook is to construct the section's header explicitly with a labelled `Text` and add the trait. Replace each `Section("…") { … }` with `Section(header: Text("…").accessibilityAddTraits(.isHeader)) { … }`.
 
-This complements Plan 17 Task 27 which adds the same trait to the macOS detail-view section titles (`SubtaskOutlineView`, `JournalStreamView`, `NotesEditorView`).
+This extends the heading-trait coverage that the macOS detail-view section titles already have (`SubtaskOutlineView`, `JournalStreamView`, `NotesEditorView`).
 
 - [ ] **Step 1: Write the failing test**
 
@@ -912,9 +911,9 @@ final class RecurrenceEditorHeadingTests: XCTestCase {
                                   with: "Sources/LillistUI/Recurrence/RecurrenceEditorView.swift")
         let source = try String(contentsOfFile: path, encoding: .utf8)
 
-        let plainSectionTitles = ["\"Pattern\"", "\"Frequency\"", "\"On days\"",
-                                   "\"On day of month\"", "\"Limit\"",
-                                   "\"After completion\""]
+        let plainSectionTitles = ["\"Frequency\"", "\"On days\"",
+                                   "\"On days of month\"", "\"Limit\"",
+                                   "\"Repeat after\""]
 
         for title in plainSectionTitles {
             XCTAssertFalse(
@@ -943,15 +942,14 @@ Expect: fails (current source uses bare `Section("…")`).
 Edit `Packages/LillistUI/Sources/LillistUI/Recurrence/RecurrenceEditorView.swift`. For each titled `Section`, rewrite the call site so the title is an explicit `Text(...).accessibilityAddTraits(.isHeader)`:
 
 ```
-Section("Pattern")           → Section(header: Text("Pattern").accessibilityAddTraits(.isHeader))
 Section("Frequency")         → Section(header: Text("Frequency").accessibilityAddTraits(.isHeader))
 Section("On days")           → Section(header: Text("On days").accessibilityAddTraits(.isHeader))
-Section("On day of month")   → Section(header: Text("On day of month").accessibilityAddTraits(.isHeader))
+Section("On days of month")  → Section(header: Text("On days of month").accessibilityAddTraits(.isHeader))
 Section("Limit")             → Section(header: Text("Limit").accessibilityAddTraits(.isHeader))
-Section("After completion")  → Section(header: Text("After completion").accessibilityAddTraits(.isHeader))
+Section("Repeat after")      → Section(header: Text("Repeat after").accessibilityAddTraits(.isHeader))
 ```
 
-Leave the untitled `Section { … }` for the Save/Cancel bar (line 99 today) untouched.
+Leave the unlabeled `Section { … }` blocks (the Repeats toggle, the Schedule picker, the Save/Cancel bar) untouched — they have no title to mark.
 
 - [ ] **Step 3: Re-run the test**
 
@@ -986,9 +984,8 @@ git commit -m "fix(a11y): mark RecurrenceEditorView section titles as headings
 
 Every titled Section now wraps its label in
 Text(...).accessibilityAddTraits(.isHeader) so the VoiceOver heading
-rotor surfaces them consistently across iOS and macOS.
-Complements Plan 17 Task 27 which adds the same trait to the
-macOS detail-view section titles."
+rotor surfaces them consistently across iOS and macOS, matching the
+treatment already in place on the macOS detail-view section titles."
 ```
 
 ---
@@ -1132,12 +1129,12 @@ Edit `Apps/Lillist-macOS/Sources/Views/Detail/DetailHeaderView.swift`. Add `.acc
                     get: { start ?? Date() }, set: { start = $0 }
                 ), displayedComponents: [.date])
                 .labelsHidden()
-                .accessibilityLabel("Start date")
+                .accessibilityLabel(String(localized: "Start date"))
                 DatePicker("Deadline", selection: Binding(
                     get: { deadline ?? Date() }, set: { deadline = $0 }
                 ), displayedComponents: [.date])
                 .labelsHidden()
-                .accessibilityLabel("Deadline")
+                .accessibilityLabel(String(localized: "Deadline"))
             }
             .font(.subheadline)
 ```
