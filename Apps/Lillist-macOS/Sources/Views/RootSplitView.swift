@@ -4,6 +4,7 @@ import LillistUI
 
 struct RootSplitView: View {
     @Environment(AppEnvironment.self) private var env
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var uiState = UIStatePersistence()
     @State private var sidebarSelection: SidebarSelection?
     @State private var taskSelection: UUID?
@@ -90,12 +91,7 @@ struct RootSplitView: View {
             }
         }
         .onReceive(NotificationCenter.default.publisher(for: .lillistToggleSidebar)) { _ in
-            withAnimation(.easeInOut(duration: 0.18)) {
-                let current = Self.parseVisibility(columnVisibilityRaw)
-                columnVisibilityRaw = Self.encodeVisibility(
-                    current == .all ? .doubleColumn : .all
-                )
-            }
+            toggleSidebar()
         }
         .onReceive(NotificationCenter.default.publisher(for: .lillistSelectTodayFilter)) { _ in
             Task {
@@ -131,12 +127,7 @@ struct RootSplitView: View {
         // ⌃⌘S menu command (Task 29).
         ToolbarItem(placement: .navigation) {
             Button {
-                withAnimation(.easeInOut(duration: 0.18)) {
-                    let current = Self.parseVisibility(columnVisibilityRaw)
-                    columnVisibilityRaw = Self.encodeVisibility(
-                        current == .all ? .doubleColumn : .all
-                    )
-                }
+                toggleSidebar()
             } label: {
                 Image(systemName: "sidebar.left")
             }
@@ -174,6 +165,19 @@ struct RootSplitView: View {
             SyncStatusDotView(indicator: env.syncMonitor.indicator) {
                 Task { await env.syncMonitor.retry() }
             }
+        }
+    }
+
+    private func toggleSidebar() {
+        let current = Self.parseVisibility(columnVisibilityRaw)
+        let next = current == .all
+            ? NavigationSplitViewVisibility.doubleColumn
+            : NavigationSplitViewVisibility.all
+        let apply = { columnVisibilityRaw = Self.encodeVisibility(next) }
+        if reduceMotion {
+            apply()
+        } else {
+            withAnimation(.easeInOut(duration: 0.18)) { apply() }
         }
     }
 
