@@ -105,6 +105,11 @@ targets:
       # IndexingService (whose AppEnvironment dependency would pull
       # in the entire app graph).
       - path: Lillist-macOS/Sources/Indexing/IndexingMappers.swift
+      # Plan 19 Task 7: TaskListSourceTitleTests exercises
+      # SourceTitleResolver.resolve(...). The resolver is extracted
+      # from TaskListView (whose SwiftUI/AppEnvironment dependencies
+      # would pull in the entire app graph).
+      - path: Lillist-macOS/Sources/Views/TaskList/SourceTitleResolver.swift
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: io.mikeydotio.Lillist.tests
