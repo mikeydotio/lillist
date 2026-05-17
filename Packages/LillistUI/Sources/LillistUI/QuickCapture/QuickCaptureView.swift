@@ -40,6 +40,24 @@ public struct QuickCaptureView: View {
                     .font(.caption2)
                     .foregroundStyle(.tertiary)
             }
+
+            // Date-token chips. Single source of truth shared with the
+            // iOS QuickCaptureSheet via QuickCaptureDateSuggestions;
+            // tapping appends `^token` to the text field for the inline
+            // parser to pick up.
+            HStack(spacing: 6) {
+                ForEach(QuickCaptureDateSuggestions.default, id: \.self) { token in
+                    Button {
+                        text += text.isEmpty ? "^\(token)" : " ^\(token)"
+                    } label: {
+                        Text("^\(token)").font(.caption)
+                    }
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
+                    .accessibilityLabel(String(localized: "Insert deadline \(token)", bundle: .module))
+                }
+                Spacer()
+            }
         }
         .padding(LillistSpacing.m + 2)
         .frame(width: 520)
