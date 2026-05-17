@@ -63,7 +63,7 @@ struct OnboardingSheet: View {
                 .foregroundStyle(.tint)
             Text("Welcome to Lillist")
                 .font(LillistTypography.title2.weight(.semibold))
-            Text("A pure-nesting task manager. Everything is a task.")
+            Text("Lists, tags, and reminders — synced to your iCloud.")
                 .font(.title3)
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
