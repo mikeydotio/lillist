@@ -45,7 +45,20 @@ public struct RecurrenceEditorView: View {
                             Text("Monthly").tag(RecurrenceRule.Frequency.monthly)
                             Text("Yearly").tag(RecurrenceRule.Frequency.yearly)
                         }
-                        Stepper("Every \(viewModel.interval)", value: $viewModel.interval, in: 1...365)
+                        HStack {
+                            Stepper("Every", value: $viewModel.interval, in: 1...365)
+                            TextField(
+                                "Interval",
+                                value: $viewModel.interval,
+                                format: .number.precision(.integerLength(1...3))
+                            )
+                            .multilineTextAlignment(.trailing)
+                            .frame(maxWidth: 80)
+                            #if os(iOS)
+                            .keyboardType(.numberPad)
+                            #endif
+                            .accessibilityLabel(String(localized: "Interval, every N units", bundle: .module))
+                        }
                     }
 
                     if viewModel.freq == .weekly {
