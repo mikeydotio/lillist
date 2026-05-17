@@ -15,7 +15,7 @@
 - Plans 1-12 on `main`.
 - **Plan 13** (a11y & correctness) — Task 3 inherits any `⌘D` rebinding Plan 13 makes (re-grep `LillistCommands.swift` at Task 3 start).
 - **Plan 14** (design tokens) — Task 5's module doc references `Theme/Tokens.swift` as the design-system entry point; reference stays even if Plan 14 lands later.
-- **Plan 16** (iOS polish) — Task 29 lifts iPad shortcuts into `CommandMenu`. Task 3 here extends that scaffold; if Plan 16 Task 29 hasn't shipped, Task 3 falls back to `LillistKeyboardShortcuts` with a TODO.
+- **Plan 16** (iOS polish) — on `main`. Plan 16 Task 29 lifted iPad shortcuts into a Scene-level `CommandMenu` (`Apps/Lillist-iOS/Sources/Commands/LillistCommands.swift`) and deleted `Apps/Lillist-iOS/Sources/Common/KeyboardShortcuts.swift` entirely. Task 3 here extends the `CommandMenu` scaffold. Scene-level state bindings (`isQuickCapturePresented`, `selectedSection`) are owned by `LillistApp` and exposed via env values declared in `Apps/Lillist-iOS/Sources/Common/SceneBindings.swift`.
 - **Plan 17** (i18n & a11y environments) — Task 5 module doc references `Accessibility/AccessibilityEnvironment.swift`. Task 9 complements Plan 17 Task 27 (which targets the macOS detail-view sections; Task 9 targets the recurrence editor). Plan 17 Task 8 covers parser localization; Task 2 here covers the macOS-vs-iOS chip-row divergence. Plan 17 Task 19 owns FollowUpFormView announcement (out of scope here).
 
 ---
@@ -41,8 +41,6 @@ Lillist/
 │   │   ├── Sources/
 │   │   │   ├── Commands/
 │   │   │   │   └── LillistCommands.swift                        (modify — Task 3: extend with parity actions)
-│   │   │   ├── Common/
-│   │   │   │   └── KeyboardShortcuts.swift                      (modify — Task 3: prune migrated bindings)
 │   │   │   ├── QuickCapture/
 │   │   │   │   └── QuickCaptureSheet.swift                      (modify — Task 2: consume shared token list)
 │   │   │   └── Settings/
@@ -106,7 +104,7 @@ Lillist/
 
 **Task 2 (Quick Capture chips) chooses chips on both platforms.** macOS shows none today; iOS hardcodes four. Centralize in `LillistUI/QuickCapture/QuickCaptureDateSuggestions.swift`. `QuickCaptureParser` accepts any `^token` form; `RelativeDate.parse` already resolves the default token set.
 
-**Task 3 (iPad shortcuts) coordinates with Plans 13 and 16.** Plan 13 may rebind macOS `⌘D` (Show Bookmarks system conflict) — grep `LillistCommands.swift` for the current "Mark Closed" key before adding the iPad binding. Plan 16 Task 29 lifts iPad shortcuts into `CommandMenu`. If shipped, Task 3 extends those; otherwise it appends to `LillistKeyboardShortcuts` with a `TODO(Plan 16 Task 29)`.
+**Task 3 (iPad shortcuts) coordinates with Plan 13.** Plan 13 may rebind macOS `⌘D` (Show Bookmarks system conflict) — grep `LillistCommands.swift` for the current "Mark Closed" key before adding the iPad binding. Plan 16 Task 29 already lifted iPad shortcuts into a Scene-level `CommandMenu` (`Apps/Lillist-iOS/Sources/Commands/LillistCommands.swift`); Task 3 extends that file directly.
 
 **Task 4 (IOSScreenTourTests refactor) is significantly larger than every other task.** The iOS tour tests rebuild screens with inline mock chrome because the iOS app bundle isn't `@testable import`-able. The fix migrates screen composition from `Apps/Lillist-iOS/Sources/<Tab>/<Tab>View.swift` into `LillistUI/iOS/Screens/<Tab>Screen.swift` across five screens + a final tour-mock deletion. **Default: flag the user and spin out as `Plan 20a`** so Plan 20 stays a cohesive polish branch.
 
@@ -395,8 +393,7 @@ contract (asserted by QuickCaptureDateSuggestionsTests)."
 
 **Files:**
 - Read first: `Apps/Lillist-macOS/Sources/Commands/LillistCommands.swift` (current macOS shortcut bindings — confirm `⌘D` / `⌘.` / `Tab` / `Shift-Tab` / `⌘1/2/3` are still bound where Plan 13 left them)
-- Read first: `Apps/Lillist-iOS/Sources/Common/KeyboardShortcuts.swift` (current iOS bindings)
-- Modify: `Apps/Lillist-iOS/Sources/Commands/LillistCommands.swift` if Plan 16 Task 29 has shipped it; otherwise `Apps/Lillist-iOS/Sources/Common/KeyboardShortcuts.swift`
+- Modify: `Apps/Lillist-iOS/Sources/Commands/LillistCommands.swift` (the Scene-level `CommandMenu` Plan 16 Task 29 introduced)
 
 macOS today (per `LillistCommands.swift` — updated after Plan 13 landed):
 - `⌘N` new task, `⌘⇧⏎` new sibling (was `⌘⇧N`; rebound by Plan 13 Task 5 to free `⌘⇧N` for macOS's "New Window")
@@ -407,10 +404,10 @@ macOS today (per `LillistCommands.swift` — updated after Plan 13 landed):
 - `⌘F` — find in view, `⌘⇧F` — find everywhere
 - `⌘1/2/3` — focus sidebar / list / detail
 
-iOS today (per `KeyboardShortcuts.swift`):
-- `⌘N` — new task
+iOS today (per `LillistCommands.swift`, Plan 16 Task 29):
+- `⌘⇧N` — new task (rebound from `⌘N` to avoid the iPadOS reserved "New Window")
 - `⌘1/2/3/4` — Today / All / Filters / Search
-- `⌘⇧F` — search
+- `⌘⇧F` — Find in Lillist…
 
 The iPad surface lacks every status-mutation and indent action available on macOS. Bring the iPad up to parity for the actions that make sense in a touch-first shell:
 
@@ -429,17 +426,17 @@ grep -n 'keyboardShortcut' Apps/Lillist-macOS/Sources/Commands/LillistCommands.s
 
 Plan 13 Task 5 rebound `⌘D` → `⌘⏎` for "Mark Closed" and `⌘⇧N` → `⌘⇧⏎` for "New Sibling Task". Step 3 below assumes those bindings are still in place. If a later plan rebinds again, mirror the chosen alternative here so iPad's "mark closed" matches macOS's.
 
-- [ ] **Step 2: Determine whether Plan 16 Task 29 has shipped**
+- [ ] **Step 2: Sanity-check the iOS `LillistCommands` exists on `main`**
 
 ```bash
-ls Apps/Lillist-iOS/Sources/Commands/ 2>&1
+ls Apps/Lillist-iOS/Sources/Commands/LillistCommands.swift
 ```
 
-If the directory exists and contains `LillistCommands.swift`, Plan 16 Task 29 has shipped — extend that file. If the directory is absent, fall back to extending `Apps/Lillist-iOS/Sources/Common/KeyboardShortcuts.swift` and leave a `TODO(Plan 16 Task 29)` comment.
+Expected: file exists (Plan 16 Task 29). If it's missing, halt — something regressed between Plan 16 and this Plan 20 task.
 
 - [ ] **Step 3: Add the parity shortcuts**
 
-Add to the iOS `LillistCommands` (if Plan 16 Task 29 shipped) two new `CommandMenu`s that mirror the macOS surface:
+Add to the iOS `LillistCommands` two new `CommandMenu`s that mirror the macOS surface:
 
 ```swift
         CommandMenu("Task") {
@@ -482,7 +479,7 @@ Add to the iOS `LillistCommands` (if Plan 16 Task 29 shipped) two new `CommandMe
         }
 ```
 
-Reuse the macOS `Notification.Name` constants if shared cross-platform; otherwise mirror them so the observer in the shared list/detail view picks up both posts. **Fallback (Plan 16 Task 29 not yet shipped):** add the same `Button(…).keyboardShortcut(…)` lines to the hidden-Button block in `Apps/Lillist-iOS/Sources/Common/KeyboardShortcuts.swift` and leave a `// TODO(Plan 16 Task 29): move into CommandMenu`.
+Reuse the macOS `Notification.Name` constants if shared cross-platform; otherwise mirror them so the observer in the shared list/detail view picks up both posts.
 
 - [ ] **Step 4: Build the iOS target**
 
@@ -507,7 +504,6 @@ The user holds `⌘` in the iPad simulator and confirms the new shortcuts appear
 
 ```bash
 git add Apps/Lillist-iOS/Sources/Commands/LillistCommands.swift \
-        Apps/Lillist-iOS/Sources/Common/KeyboardShortcuts.swift \
         Apps/Lillist-iOS/Lillist-iOS.xcodeproj/project.pbxproj
 git commit -m "feat(iOS): expand iPad keyboard shortcut coverage to match macOS
 
@@ -517,8 +513,6 @@ status-mutation and column-focus action available on macOS is also
 reachable from an iPad hardware keyboard. ⌘1-4 tab navigation in the
 compact shell stays as-is."
 ```
-
-(Include both files in the add even if only one was actually modified — `git add` ignores the other and the staging command stays robust across Variant A/B.)
 
 ---
 
