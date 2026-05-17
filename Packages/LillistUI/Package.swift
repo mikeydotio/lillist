@@ -20,6 +20,9 @@ let package = Package(
             dependencies: [
                 .product(name: "LillistCore", package: "LillistCore")
             ],
+            resources: [
+                .process("Resources")
+            ],
             swiftSettings: [
                 .enableExperimentalFeature("StrictConcurrency")
             ]
