@@ -7,6 +7,9 @@ struct NotificationsSection: View {
     @Environment(AppEnvironment.self) private var environment
     @State private var permStatus: NotificationPermissions.AuthorizationStatus = .notDetermined
 
+    private struct AllDayKey: Hashable { let h: Int16; let m: Int16 }
+    private struct MorningKey: Hashable { let enabled: Bool; let h: Int16; let m: Int16 }
+
     var body: some View {
         Section("All-day reminder time") {
             DatePicker("Default time", selection: hmBinding, displayedComponents: .hourAndMinute)
@@ -40,11 +43,22 @@ struct NotificationsSection: View {
             }
         }
         .task { permStatus = await environment.notificationPermissions.currentStatus() }
-        .onChange(of: prefs.morningSummaryEnabled) { _, _ in applyMorningSummaryChange() }
-        .onChange(of: prefs.morningSummaryHour) { _, _ in applyMorningSummaryChange() }
-        .onChange(of: prefs.morningSummaryMinute) { _, _ in applyMorningSummaryChange() }
-        .onChange(of: prefs.defaultAllDayHour) { _, _ in applyAllDayChange() }
-        .onChange(of: prefs.defaultAllDayMinute) { _, _ in applyAllDayChange() }
+        .task(id: AllDayKey(h: prefs.defaultAllDayHour, m: prefs.defaultAllDayMinute)) {
+            do {
+                try await Task.sleep(for: .milliseconds(750))
+            } catch { return }
+            applyAllDayChange()
+        }
+        .task(id: MorningKey(
+            enabled: prefs.morningSummaryEnabled,
+            h: prefs.morningSummaryHour,
+            m: prefs.morningSummaryMinute
+        )) {
+            do {
+                try await Task.sleep(for: .milliseconds(750))
+            } catch { return }
+            applyMorningSummaryChange()
+        }
     }
 
     @ViewBuilder private var statusLabel: some View {
