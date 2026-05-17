@@ -1,4 +1,5 @@
 import SwiftUI
+import CoreData
 import LillistCore
 import LillistUI
 
@@ -23,7 +24,10 @@ struct TodayPopoverView: View {
         }
         .padding()
         .frame(width: 320, height: 360)
-        .task { await load() }
+        .onAppear { Task { await load() } }
+        .onReceive(NotificationCenter.default.publisher(for: .NSManagedObjectContextDidSave)) { _ in
+            Task { await load() }
+        }
     }
 
     private func load() async {
