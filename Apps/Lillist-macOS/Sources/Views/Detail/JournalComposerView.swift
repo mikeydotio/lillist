@@ -16,6 +16,7 @@ struct JournalComposerView: View {
                 Spacer()
                 Button("Add entry") { Task { await submit() } }
                     .disabled(text.trimmingCharacters(in: .whitespaces).isEmpty)
+                    .keyboardShortcut(.return, modifiers: [.command])
             }
         }
     }
