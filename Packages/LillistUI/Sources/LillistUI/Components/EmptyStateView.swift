@@ -1,5 +1,18 @@
 import SwiftUI
 
+/// Empty-state placeholder for surfaces that have no content yet.
+///
+/// **Platform scope:** macOS-only as of Plan 18. iOS surfaces should
+/// use the system `ContentUnavailableView` (iOS 17+), which is the
+/// established convention across `AllTagsView`, `TaskDetailView`, and
+/// the iOS list shells. Compiling on iOS is permitted (the snapshot
+/// tour fixtures need it on iOS for visual parity in screenshots) but
+/// new iOS callers should prefer `ContentUnavailableView`.
+///
+/// Plan 14 Task 4 migrated the component to design tokens; Plan 18
+/// Task 8 made the platform scope explicit. If/when macOS adopts
+/// `ContentUnavailableView` too (separate design call), this view can
+/// be retired.
 public struct EmptyStateView: View {
     public var title: String
     public var message: String
