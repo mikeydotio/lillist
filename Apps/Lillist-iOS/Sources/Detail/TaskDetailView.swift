@@ -2,15 +2,16 @@ import SwiftUI
 import LillistCore
 import LillistUI
 
-// MARK: - Accessibility audit (Plan 8, Task 26)
+// MARK: - Accessibility audit
 // - Detail header uses `accessibilityElement(children: .combine)` so VoiceOver
 //   reads title + status + deadline as one element with `.isHeader` trait.
 // - Each tab body sets `.accessibilityLabel("…")` on its container.
-// - TabView(.page) exposes page-index dots; the system labels them.
+// - The segmented Picker carries an explicit "Detail section" a11y label.
 // - No fixed font sizes; semantic colors only.
 
-/// Task detail surface. Notes / Subtasks / Journal / Attachments are tabs
-/// in a `TabView(.page)` to keep the navigation stack shallow.
+/// Task detail surface. Notes / Subtasks / Journal / Attachments are
+/// labeled named sections behind a segmented `Picker` for one-tap
+/// access — mirrors Reminders, Things 3, and Todoist.
 /// Design Section 7 iOS subsection.
 struct TaskDetailView: View {
     let taskID: UUID
@@ -29,18 +30,29 @@ struct TaskDetailView: View {
             if let record {
                 VStack(spacing: 0) {
                     TaskDetailHeader(task: record)
-                    TabView(selection: $selection) {
-                        TaskNotesTab(taskID: record.id, initialText: record.notes)
-                            .tag(Tab.notes)
-                        TaskSubtasksTab(taskID: record.id)
-                            .tag(Tab.subtasks)
-                        TaskJournalTab(taskID: record.id)
-                            .tag(Tab.journal)
-                        TaskAttachmentsTab(taskID: record.id)
-                            .tag(Tab.attachments)
+                    Picker("Section", selection: $selection) {
+                        Text("Notes").tag(Tab.notes)
+                        Text("Subtasks").tag(Tab.subtasks)
+                        Text("Journal").tag(Tab.journal)
+                        Text("Attachments").tag(Tab.attachments)
                     }
-                    .tabViewStyle(.page(indexDisplayMode: .always))
-                    .indexViewStyle(.page(backgroundDisplayMode: .always))
+                    .pickerStyle(.segmented)
+                    .padding(.horizontal)
+                    .padding(.top, LillistSpacing.s)
+                    .accessibilityLabel("Detail section")
+                    Group {
+                        switch selection {
+                        case .notes:
+                            TaskNotesTab(taskID: record.id, initialText: record.notes)
+                        case .subtasks:
+                            TaskSubtasksTab(taskID: record.id)
+                        case .journal:
+                            TaskJournalTab(taskID: record.id)
+                        case .attachments:
+                            TaskAttachmentsTab(taskID: record.id)
+                        }
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
             } else if let loadError {
                 ContentUnavailableView(
