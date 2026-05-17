@@ -155,6 +155,17 @@ struct HotkeyRecorder: View {
     /// alphanumeric / function / control-key set; callers should keep
     /// listening in that case.
     nonisolated static func encode(modifiers: NSEvent.ModifierFlags, keyCode: Int) -> String? {
+        // Plan 15 Task 18: require at least one of ⌃ / ⌥ / ⇧ in the
+        // modifier set. Bare ⌘+letter combos would shadow standard
+        // application shortcuts (⌘Q quit, ⌘W close, ⌘Space Spotlight,
+        // …). A combo with no modifiers at all is also rejected — a
+        // global hotkey without modifiers would intercept every
+        // bare keystroke on the system.
+        let hasNonCommandModifier = modifiers.contains(.control)
+            || modifiers.contains(.option)
+            || modifiers.contains(.shift)
+        guard hasNonCommandModifier else { return nil }
+
         // Canonical order, derived from Plan 11 Task 17's encoder
         // contract tests: `ctrl, opt, cmd, shift, <key>`. (Both
         // `ctrl+opt+space` and `cmd+shift+l` must round-trip cleanly.)

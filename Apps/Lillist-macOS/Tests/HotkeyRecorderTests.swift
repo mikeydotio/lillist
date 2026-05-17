@@ -27,7 +27,10 @@ struct HotkeyRecorderTests {
 
     @Test("Unsupported keyCode produces nil")
     func unsupportedKey() {
-        let s = HotkeyRecorder.encode(modifiers: [.command], keyCode: 0xFFFF)
+        // Use a multi-modifier combo so the Plan 15 Task 18 bare-Cmd
+        // guard doesn't short-circuit; we want to assert the
+        // unknown-keyCode branch specifically.
+        let s = HotkeyRecorder.encode(modifiers: [.control, .option], keyCode: 0xFFFF)
         #expect(s == nil)
     }
 
@@ -43,10 +46,13 @@ struct HotkeyRecorderTests {
     @MainActor
     @Test("Encode then parse round-trips for representative combos")
     func encodeParseRoundTrip() {
+        // Plan 15 Task 18 added a guard rejecting modifier sets that
+        // lack ⌃/⌥/⇧ (so `cmd+1` is no longer encodable). The
+        // round-trip cases below all carry at least one of those
+        // modifiers and remain valid.
         let cases: [(modifiers: NSEvent.ModifierFlags, keyCode: Int)] = [
             ([.control, .option], 49),         // ctrl+opt+space (default)
             ([.command, .shift], 37),          // cmd+shift+l
-            ([.command], 18),                  // cmd+1
             ([.command, .option, .shift], 99), // cmd+opt+shift+f3
             ([.shift], 122)                    // shift+f1
         ]
