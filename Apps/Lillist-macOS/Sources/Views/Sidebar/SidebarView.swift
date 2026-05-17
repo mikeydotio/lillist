@@ -13,22 +13,54 @@ struct SidebarView: View {
     @State private var trashCount: Int = 0
     @State private var expandedTags: Set<UUID> = []
 
+    // Plan 19 Task 6: context-menu editor sheet targets.
+    @State private var renamingPinnedTask: TaskStore.TaskRecord?
+    @State private var renamingFilter: SmartFilterStore.SmartFilterRecord?
+    @State private var renamingTag: TagStore.TagRecord?
+    @State private var changingTagColor: TagStore.TagRecord?
+
     var body: some View {
         List(selection: $selection) {
             Section("Pinned") {
                 ForEach(pinnedTasks, id: \.id) { task in
                     SidebarRowView(icon: "pin.fill", label: task.title, kind: .task)
                         .tag(SidebarSelection.pinnedTask(task.id))
+                        .contextMenu {
+                            Button("Rename…") { renamingPinnedTask = task }
+                            Button("Unpin") {
+                                Task {
+                                    try? await env.taskStore.update(id: task.id) { $0.isPinned = false }
+                                    await refresh()
+                                }
+                            }
+                        }
                 }
                 ForEach(pinnedFilters, id: \.id) { f in
                     SidebarRowView(icon: "line.3.horizontal.decrease.circle", label: f.name, kind: .smartFilter)
                         .tag(SidebarSelection.pinnedFilter(f.id))
+                        .contextMenu {
+                            Button("Rename…") { renamingFilter = f }
+                            Divider()
+                            Button("Delete", role: .destructive) {
+                                Task {
+                                    try? await env.smartFilterStore.delete(id: f.id)
+                                    await refresh()
+                                }
+                            }
+                        }
                 }
             }
 
             Section("Tags") {
                 ForEach(rootTags, id: \.id) { tag in
-                    TagDisclosureView(tag: tag, expanded: $expandedTags, selection: $selection)
+                    TagDisclosureView(
+                        tag: tag,
+                        expanded: $expandedTags,
+                        selection: $selection,
+                        renamingTag: $renamingTag,
+                        changingTagColor: $changingTagColor,
+                        onMutation: { Task { await refresh() } }
+                    )
                 }
             }
 
@@ -36,6 +68,16 @@ struct SidebarView: View {
                 ForEach(nonPinnedFilters, id: \.id) { f in
                     SidebarRowView(icon: "line.3.horizontal.decrease.circle", label: f.name, kind: .smartFilter)
                         .tag(SidebarSelection.filter(f.id))
+                        .contextMenu {
+                            Button("Rename…") { renamingFilter = f }
+                            Divider()
+                            Button("Delete", role: .destructive) {
+                                Task {
+                                    try? await env.smartFilterStore.delete(id: f.id)
+                                    await refresh()
+                                }
+                            }
+                        }
                 }
             }
 
@@ -46,6 +88,30 @@ struct SidebarView: View {
         }
         .listStyle(.sidebar)
         .task { await refresh() }
+        .sheet(item: $renamingPinnedTask) { task in
+            RenameSheet(title: "Rename Task", initialValue: task.title) { newName in
+                try? await env.taskStore.update(id: task.id) { $0.title = newName }
+                await refresh()
+            }
+        }
+        .sheet(item: $renamingFilter) { filter in
+            RenameSheet(title: "Rename Filter", initialValue: filter.name) { newName in
+                try? await env.smartFilterStore.update(id: filter.id) { $0.name = newName }
+                await refresh()
+            }
+        }
+        .sheet(item: $renamingTag) { tag in
+            RenameSheet(title: "Rename Tag", initialValue: tag.name) { newName in
+                try? await env.tagStore.rename(id: tag.id, to: newName)
+                await refresh()
+            }
+        }
+        .sheet(item: $changingTagColor) { tag in
+            TagColorSheet(initialHex: tag.tintColor) { newHex in
+                try? await env.tagStore.setTintColor(id: tag.id, hex: newHex)
+                await refresh()
+            }
+        }
     }
 
     private func refresh() async {
@@ -66,6 +132,9 @@ private struct TagDisclosureView: View {
     let tag: TagStore.TagRecord
     @Binding var expanded: Set<UUID>
     @Binding var selection: SidebarSelection?
+    @Binding var renamingTag: TagStore.TagRecord?
+    @Binding var changingTagColor: TagStore.TagRecord?
+    let onMutation: () -> Void
     @Environment(AppEnvironment.self) private var env
     @State private var children: [TagStore.TagRecord] = []
 
@@ -79,7 +148,14 @@ private struct TagDisclosureView: View {
             )
         ) {
             ForEach(children, id: \.id) { child in
-                TagDisclosureView(tag: child, expanded: $expanded, selection: $selection)
+                TagDisclosureView(
+                    tag: child,
+                    expanded: $expanded,
+                    selection: $selection,
+                    renamingTag: $renamingTag,
+                    changingTagColor: $changingTagColor,
+                    onMutation: onMutation
+                )
             }
         } label: {
             SidebarRowView(
@@ -89,9 +165,106 @@ private struct TagDisclosureView: View {
                 kind: .tag
             )
             .tag(SidebarSelection.tag(tag.id))
+            .contextMenu {
+                Button("Rename…") { renamingTag = tag }
+                Button("Change Color…") { changingTagColor = tag }
+                Divider()
+                Button("Delete", role: .destructive) {
+                    Task {
+                        try? await env.tagStore.delete(id: tag.id)
+                        onMutation()
+                    }
+                }
+            }
         }
         .task {
             children = (try? await env.tagStore.children(of: tag.id)) ?? []
         }
     }
 }
+
+// MARK: - Rename / color editor sheets
+
+private struct RenameSheet: View {
+    let title: String
+    let initialValue: String
+    let onSave: (String) async -> Void
+
+    @Environment(\.dismiss) private var dismiss
+    @State private var text: String
+
+    init(title: String, initialValue: String, onSave: @escaping (String) async -> Void) {
+        self.title = title
+        self.initialValue = initialValue
+        self.onSave = onSave
+        _text = State(initialValue: initialValue)
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text(title).font(.headline)
+            TextField("Name", text: $text)
+                .textFieldStyle(.roundedBorder)
+                .frame(width: 280)
+                .onSubmit { Task { await save() } }
+            HStack {
+                Spacer()
+                Button("Cancel", role: .cancel) { dismiss() }
+                    .keyboardShortcut(.cancelAction)
+                Button("Save") { Task { await save() } }
+                    .keyboardShortcut(.defaultAction)
+                    .disabled(text.trimmingCharacters(in: .whitespaces).isEmpty)
+            }
+        }
+        .padding(20)
+    }
+
+    private func save() async {
+        let trimmed = text.trimmingCharacters(in: .whitespaces)
+        guard !trimmed.isEmpty, trimmed != initialValue else { dismiss(); return }
+        await onSave(trimmed)
+        dismiss()
+    }
+}
+
+private struct TagColorSheet: View {
+    let initialHex: String?
+    let onSave: (String?) async -> Void
+
+    @Environment(\.dismiss) private var dismiss
+    @State private var color: Color
+
+    init(initialHex: String?, onSave: @escaping (String?) async -> Void) {
+        self.initialHex = initialHex
+        self.onSave = onSave
+        _color = State(initialValue: Color(hex: initialHex) ?? .gray)
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text("Change Tag Color").font(.headline)
+            ColorPicker("Tint", selection: $color, supportsOpacity: false)
+                .frame(width: 280)
+            HStack {
+                Spacer()
+                Button("Cancel", role: .cancel) { dismiss() }
+                    .keyboardShortcut(.cancelAction)
+                Button("Save") { Task { await save() } }
+                    .keyboardShortcut(.defaultAction)
+            }
+        }
+        .padding(20)
+    }
+
+    private func save() async {
+        await onSave(color.toHex())
+        dismiss()
+    }
+}
+
+// `Identifiable` is required by `.sheet(item:)`. The record types from
+// the LillistCore stores already carry stable UUIDs, so a one-line
+// extension covers the requirement without exposing internal state.
+extension TaskStore.TaskRecord: @retroactive Identifiable {}
+extension SmartFilterStore.SmartFilterRecord: @retroactive Identifiable {}
+extension TagStore.TagRecord: @retroactive Identifiable {}

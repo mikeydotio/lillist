@@ -24,6 +24,7 @@
 		3BFAF02F4DF61C06EF1ACC64 /* TaskListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7428376E8AED267AF2F3C3EE /* TaskListView.swift */; };
 		41D5332FFC9A37D6874E1E44 /* AppIntents.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = ECE3A50348E57FE59F4366B8 /* AppIntents.framework */; };
 		44330D12274449C7C6D5CE18 /* TaskDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CD5D524971199DDBA766AF3F /* TaskDetailView.swift */; };
+		48BCDA9D8B5C36BB2F899B5B /* SidebarContextMenuTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 365F9079CBE5A1C7C1D0158F /* SidebarContextMenuTests.swift */; };
 		4AC4945ABE79B0437B1676D5 /* FocusedShortcutGatingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1ED0A7A8881D45E8627191BA /* FocusedShortcutGatingTests.swift */; };
 		4EA67DECB7AC159A867B2EE4 /* FocusedListColumn.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA226DA3844BBFC1DFFDA0CA /* FocusedListColumn.swift */; };
 		513F80DB225B3198A6B428C6 /* CrashReporterHost.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBBEE29201F8E282644A5147 /* CrashReporterHost.swift */; };
@@ -93,6 +94,7 @@
 		23D285C988F042A513BC9303 /* QuickCapturePane.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuickCapturePane.swift; sourceTree = "<group>"; };
 		288A06800EA1CB39081E0910 /* QuickCapturePanelController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuickCapturePanelController.swift; sourceTree = "<group>"; };
 		2BC54A777EAD574C648DD1F9 /* HotkeyRecorderTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HotkeyRecorderTests.swift; sourceTree = "<group>"; };
+		365F9079CBE5A1C7C1D0158F /* SidebarContextMenuTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SidebarContextMenuTests.swift; sourceTree = "<group>"; };
 		38BC4169CE094018D5BEA0BD /* TaskListSortControl.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TaskListSortControl.swift; sourceTree = "<group>"; };
 		3F0D9EC0691515027BF44021 /* BlockedFollowUpTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BlockedFollowUpTests.swift; sourceTree = "<group>"; };
 		40E496CC31EAABC3031FA783 /* FollowUpFormView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FollowUpFormView.swift; sourceTree = "<group>"; };
@@ -215,6 +217,7 @@
 				953BE94B80FD2AFB27B77F89 /* NotificationPermissionFlowTests.swift */,
 				D86C5C049217ECDE9095EF97 /* PinnedSidebarIntegrationTests.swift */,
 				702938FB7797F816EE1EA2B0 /* QuickCapturePlacementTests.swift */,
+				365F9079CBE5A1C7C1D0158F /* SidebarContextMenuTests.swift */,
 				9A4DD99AC3C19CA70493DAA1 /* ToolbarPersistenceTests.swift */,
 			);
 			path = Tests;
@@ -591,6 +594,7 @@
 				A6252DAED612CEFA721DAC35 /* PinnedSidebarIntegrationTests.swift in Sources */,
 				D1A0C35C122BFC3BE27BB475 /* QuickCapturePlacementMath.swift in Sources */,
 				BC6B1E1CBFD580532B72EFA1 /* QuickCapturePlacementTests.swift in Sources */,
+				48BCDA9D8B5C36BB2F899B5B /* SidebarContextMenuTests.swift in Sources */,
 				85B75D89DED9313BFD53E0A7 /* SidebarSelection.swift in Sources */,
 				57C8322E802DF6435DEF0934 /* ToolbarPersistenceTests.swift in Sources */,
 				B8F458A4C7FD86FBFC7F968C /* UIStatePersistence.swift in Sources */,
