@@ -93,10 +93,10 @@ struct LillistApp: App {
             appDelegate.environment = env
             appDelegate.bootstrap()
             await env.bootstrap()
-            // Plan 10: DefaultsInstaller is also invoked from the onboarding
-            // completion path; running it here too is harmless (idempotent
-            // by name) and ensures returning users always have their five
-            // baseline filters.
+            // Plan 19 Task 10: sole install path — runs on every launch
+            // (idempotent by name). OnboardingSheet used to call this too
+            // but that was redundant: a user who quits mid-onboarding
+            // still gets defaults the next launch through this code path.
             try? await env.defaultsInstaller.installIfNeeded()
             // Plan 15 Task 9: prime the menu-bar visibility binding from
             // user prefs so the MenuBarExtra scene inserts (or not) on
