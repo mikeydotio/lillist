@@ -19,11 +19,11 @@ struct TaskDetailView: View {
 
     @State private var record: TaskStore.TaskRecord?
     @State private var loadError: String?
-    @State private var selection: Tab = .notes
+    @SceneStorage("taskDetailTab") private var selection: Tab = .notes
     @State private var seriesRule: RecurrenceRule?
     @State private var showingRecurrenceSheet = false
 
-    enum Tab: Hashable { case notes, subtasks, journal, attachments }
+    enum Tab: String, Hashable { case notes, subtasks, journal, attachments }
 
     var body: some View {
         Group {
