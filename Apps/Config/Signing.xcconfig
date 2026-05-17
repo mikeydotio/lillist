@@ -1,0 +1,15 @@
+// Signing scaffold. Committed.
+//
+// The real DEVELOPMENT_TEAM lives in a sibling file `Signing.local.xcconfig`
+// (gitignored) as `LOCAL_DEVELOPMENT_TEAM = <team-id>`. We use `$()`
+// indirection so that xcodegen — which auto-mirrors the resolved
+// `DEVELOPMENT_TEAM` into `TargetAttributes.DevelopmentTeam` at generation
+// time — writes only the literal string `$(LOCAL_DEVELOPMENT_TEAM)` into
+// the pbxproj. Xcode expands the variable at build time, so signing still
+// works locally without committing any team ID.
+//
+// New contributors: see Apps/Config/Signing.local.xcconfig.example.
+
+#include? "Signing.local.xcconfig"
+
+DEVELOPMENT_TEAM = $(LOCAL_DEVELOPMENT_TEAM)
