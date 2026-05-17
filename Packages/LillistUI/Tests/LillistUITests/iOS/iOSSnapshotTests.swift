@@ -150,6 +150,46 @@ final class iOSSnapshotTests: XCTestCase {
         assertSnapshot(of: host, as: .image(size: CGSize(width: 80, height: 80)))
     }
 
+    // MARK: - TaskNotesTab visual fixtures (Plan 18 Task 4)
+    //
+    // The iOS test bundle can't @testable import Lillist_iOS, so each
+    // fixture below reconstructs the ZStack + TextEditor shape inline.
+    // The snapshot pins the *visual contract* — the placeholder
+    // visibility rule, the scroll-indicator presence, and the
+    // character-count footer threshold. If TaskNotesTab's body shape
+    // changes, update the fixtures in lockstep.
+
+    @MainActor
+    func test_taskNotesTab_empty_placeholder() {
+        let view = TaskNotesFixture(text: "")
+            .frame(width: 360, height: 200)
+            .background(Color(.systemBackground))
+        let host = UIHostingController(rootView: view)
+        host.view.frame = CGRect(x: 0, y: 0, width: 360, height: 200)
+        assertSnapshot(of: host, as: .image(size: CGSize(width: 360, height: 200)))
+    }
+
+    @MainActor
+    func test_taskNotesTab_short_no_counter() {
+        let view = TaskNotesFixture(text: "Short note.")
+            .frame(width: 360, height: 200)
+            .background(Color(.systemBackground))
+        let host = UIHostingController(rootView: view)
+        host.view.frame = CGRect(x: 0, y: 0, width: 360, height: 200)
+        assertSnapshot(of: host, as: .image(size: CGSize(width: 360, height: 200)))
+    }
+
+    @MainActor
+    func test_taskNotesTab_long_shows_counter() {
+        let body = String(repeating: "Lorem ipsum dolor sit amet. ", count: 25)
+        let view = TaskNotesFixture(text: body)
+            .frame(width: 360, height: 240)
+            .background(Color(.systemBackground))
+        let host = UIHostingController(rootView: view)
+        host.view.frame = CGRect(x: 0, y: 0, width: 360, height: 240)
+        assertSnapshot(of: host, as: .image(size: CGSize(width: 360, height: 240)))
+    }
+
     // MARK: - helpers
 
     @MainActor
@@ -159,6 +199,36 @@ final class iOSSnapshotTests: XCTestCase {
             return true
         }
         return false
+    }
+}
+
+/// Mirror of `TaskNotesTab`'s visual shape — placeholder overlay,
+/// editor with scroll indicators, character-count footer past 500. The
+/// fixture renders without a Core Data store so it can be hosted in
+/// the standalone LillistUI test bundle. If `TaskNotesTab.body`
+/// changes, update this fixture in lockstep.
+private struct TaskNotesFixture: View {
+    let text: String
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            ZStack(alignment: .topLeading) {
+                if text.isEmpty {
+                    Text("Notes — markdown supported")
+                        .foregroundStyle(.tertiary)
+                        .padding(.horizontal, 4)
+                        .padding(.vertical, 8)
+                }
+                TextEditor(text: .constant(text))
+                    .scrollIndicators(.automatic)
+            }
+            if text.count > 500 {
+                Text("\(text.count) characters")
+                    .font(.caption2)
+                    .foregroundStyle(.tertiary)
+                    .padding(.horizontal)
+            }
+        }
+        .padding(.horizontal)
     }
 }
 #endif
