@@ -38,6 +38,7 @@ struct SearchView: View {
     @State private var query = ""
     @State private var scope: Scope = .all
     @State private var results: [TaskStore.TaskRecord] = []
+    @State private var recents = RecentSearchesStore()
 
     var body: some View {
         Group {
@@ -66,6 +67,18 @@ struct SearchView: View {
                 Text(s.title).tag(s)
             }
         })
+        .searchSuggestions {
+            if query.isEmpty && !recents.recent.isEmpty {
+                Section("Recent") {
+                    ForEach(recents.recent, id: \.self) { recent in
+                        Text(recent).searchCompletion(recent)
+                    }
+                    Button("Clear recent searches", role: .destructive) {
+                        recents.clear()
+                    }
+                }
+            }
+        }
         .navigationTitle("Search")
         .navigationDestination(for: UUID.self) { id in
             TaskDetailView(taskID: id)
@@ -147,6 +160,9 @@ struct SearchView: View {
                 sort: .modifiedAt,
                 ascending: false
             )
+            if !results.isEmpty {
+                recents.record(trimmed)
+            }
         } catch {
             results = []
         }
