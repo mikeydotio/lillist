@@ -25,7 +25,8 @@ struct DetailHeaderView: View {
                 } label: {
                     Label(StatusGlyph.accessibilityLabel(for: status), systemImage: StatusGlyph.symbol(for: status))
                         .padding(.horizontal, 8).padding(.vertical, 4)
-                        .background(Capsule().fill(.quaternary))
+                        .background(Capsule().fill(StatusPalette.fill(for: status)))
+                        .foregroundStyle(StatusPalette.color(for: status))
                 }
                 .menuStyle(.borderlessButton)
                 .accessibilityElement(children: .ignore)
