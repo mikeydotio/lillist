@@ -74,16 +74,19 @@ struct LillistCommands: Commands {
 }
 
 extension Notification.Name {
-    static let lillistNewTask         = Notification.Name("lillist.newTask")
-    static let lillistNewSibling      = Notification.Name("lillist.newSibling")
-    static let lillistToggleStarted   = Notification.Name("lillist.toggleStarted")
-    static let lillistMarkClosed      = Notification.Name("lillist.markClosed")
-    static let lillistMarkBlocked     = Notification.Name("lillist.markBlocked")
-    static let lillistIndent          = Notification.Name("lillist.indent")
-    static let lillistOutdent         = Notification.Name("lillist.outdent")
-    static let lillistFindInView      = Notification.Name("lillist.findInView")
-    static let lillistFindEverywhere  = Notification.Name("lillist.findEverywhere")
-    static let lillistFocusSidebar    = Notification.Name("lillist.focusSidebar")
-    static let lillistFocusList       = Notification.Name("lillist.focusList")
-    static let lillistFocusDetail     = Notification.Name("lillist.focusDetail")
+    static let lillistNewTask           = Notification.Name("lillist.newTask")
+    static let lillistNewSibling        = Notification.Name("lillist.newSibling")
+    static let lillistToggleStarted     = Notification.Name("lillist.toggleStarted")
+    static let lillistMarkClosed        = Notification.Name("lillist.markClosed")
+    static let lillistMarkBlocked       = Notification.Name("lillist.markBlocked")
+    static let lillistIndent            = Notification.Name("lillist.indent")
+    static let lillistOutdent           = Notification.Name("lillist.outdent")
+    static let lillistFindInView        = Notification.Name("lillist.findInView")
+    static let lillistFindEverywhere    = Notification.Name("lillist.findEverywhere")
+    static let lillistFocusSidebar      = Notification.Name("lillist.focusSidebar")
+    static let lillistFocusList         = Notification.Name("lillist.focusList")
+    static let lillistFocusDetail       = Notification.Name("lillist.focusDetail")
+    // Plan 15 Task 20: dock menu navigation.
+    static let lillistSelectTodayFilter = Notification.Name("lillist.selectTodayFilter")
+    static let lillistSelectFilter      = Notification.Name("lillist.selectFilter")
 }

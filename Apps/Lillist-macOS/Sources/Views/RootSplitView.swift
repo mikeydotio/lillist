@@ -89,6 +89,18 @@ struct RootSplitView: View {
                 Task { try? await env.taskStore.transition(id: id, to: .blocked) }
             }
         }
+        .onReceive(NotificationCenter.default.publisher(for: .lillistSelectTodayFilter)) { _ in
+            Task {
+                if let today = try? await env.smartFilterStore.fetch(byName: "Today") {
+                    sidebarSelection = .pinnedFilter(today.id)
+                }
+            }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .lillistSelectFilter)) { note in
+            if let id = note.userInfo?["id"] as? UUID {
+                sidebarSelection = .pinnedFilter(id)
+            }
+        }
         .onChange(of: sidebarSelection) { _, new in
             uiState.sidebarSelection = new
             // Restore the remembered task selection for the new source
