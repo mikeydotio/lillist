@@ -31,6 +31,13 @@ public struct SidebarRowView: View {
                 badgeView(count: badge)
             }
         }
+        // MARK: Accessibility
+        // The .accessibilityElement(children: .combine) + .accessibilityLabel
+        // pair runs *last* in the body chain so the row's selection-tag
+        // (applied by SidebarView consumers via .tag(SidebarSelection.…))
+        // doesn't mask the explicit label. The
+        // SidebarRowViewA11yTests.test_rowExposesAccessibilityLabel_whenComposedWithTag
+        // regression test pins the ordering.
         .accessibilityElement(children: .combine)
         .accessibilityLabel(badge.map {
             String(localized: "\(label), \($0) items", bundle: .module)
