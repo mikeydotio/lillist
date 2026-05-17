@@ -67,10 +67,21 @@ struct TrashPane: View {
         }
         .formStyle(.grouped)
         .fixedSize() // Plan 15 Task 26: pane self-sizes; window animates
-        .task { prefs = try? await environment.preferencesStore.read() }
+        .task { await subscribe() }
         .onChange(of: prefs) { _, new in
             guard let new else { return }
             Task { try? await environment.preferencesStore.update { $0 = new } }
+        }
+    }
+
+    private func subscribe() async {
+        if prefs == nil {
+            prefs = try? await environment.preferencesStore.read()
+        }
+        for await snapshot in environment.preferencesStore.prefsStream {
+            if snapshot != prefs {
+                prefs = snapshot
+            }
         }
     }
 
