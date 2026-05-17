@@ -9,6 +9,7 @@ import LillistUI
 struct TaskJournalTab: View {
     let taskID: UUID
     @Environment(AppEnvironment.self) private var env
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     @State private var entries: [JournalStore.JournalRecord] = []
     @State private var composer: String = ""
@@ -42,7 +43,11 @@ struct TaskJournalTab: View {
                 .focused($composerFocused)
                 .onChange(of: composerFocused) { _, isFocused in
                     guard isFocused, let last = entries.last?.id else { return }
-                    withAnimation { proxy.scrollTo(last, anchor: .bottom) }
+                    if reduceMotion {
+                        proxy.scrollTo(last, anchor: .bottom)
+                    } else {
+                        withAnimation { proxy.scrollTo(last, anchor: .bottom) }
+                    }
                 }
             Button("Post") { Task { await post() } }
                 .disabled(composer.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
