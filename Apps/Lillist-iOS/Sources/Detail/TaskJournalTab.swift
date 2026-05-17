@@ -2,33 +2,53 @@ import SwiftUI
 import LillistCore
 import LillistUI
 
-/// Journal tab: reverse-chronological note log plus a composer at the
-/// bottom. Backed by `JournalStore.entries(forTask:)` and `appendNote`.
+/// Journal tab: reverse-chronological note log plus a composer pinned
+/// above the keyboard via `.safeAreaInset(edge: .bottom)`. The
+/// `ScrollViewReader` scrolls the latest entry into view when the
+/// composer takes focus so the user sees what they're replying to.
 struct TaskJournalTab: View {
     let taskID: UUID
     @Environment(AppEnvironment.self) private var env
 
     @State private var entries: [JournalStore.JournalRecord] = []
     @State private var composer: String = ""
+    @FocusState private var composerFocused: Bool
 
     var body: some View {
-        VStack(spacing: 0) {
+        ScrollViewReader { proxy in
             List(entries, id: \.id) { entry in
                 JournalEntryRow(entry: entry)
+                    .id(entry.id)
             }
             .listStyle(.plain)
-            Divider()
-            HStack {
-                TextField("Add a journal entry…", text: $composer, axis: .vertical)
-                    .lineLimit(1...5)
-                    .textFieldStyle(.roundedBorder)
-                Button("Post") { Task { await post() } }
-                    .disabled(composer.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+            .accessibilityLabel("Journal")
+            .safeAreaInset(edge: .bottom) {
+                composer(proxy: proxy)
             }
-            .padding()
+            .task {
+                await reload()
+                if let last = entries.last?.id {
+                    proxy.scrollTo(last, anchor: .bottom)
+                }
+            }
         }
-        .task { await reload() }
-        .accessibilityLabel("Journal")
+    }
+
+    private func composer(proxy: ScrollViewProxy) -> some View {
+        HStack {
+            TextField("Add a journal entry…", text: $composer, axis: .vertical)
+                .lineLimit(1...5)
+                .textFieldStyle(.roundedBorder)
+                .focused($composerFocused)
+                .onChange(of: composerFocused) { _, isFocused in
+                    guard isFocused, let last = entries.last?.id else { return }
+                    withAnimation { proxy.scrollTo(last, anchor: .bottom) }
+                }
+            Button("Post") { Task { await post() } }
+                .disabled(composer.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+        }
+        .padding()
+        .background(.thinMaterial)
     }
 
     private func reload() async {
@@ -43,4 +63,3 @@ struct TaskJournalTab: View {
         await reload()
     }
 }
-
