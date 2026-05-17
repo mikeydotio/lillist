@@ -110,7 +110,7 @@ struct SearchView: View {
 
     @ViewBuilder
     private func row(_ task: TaskStore.TaskRecord) -> some View {
-        SearchResultRow(task: task, tagNames: [])
+        SearchResultRow(task: task, tagNames: [], query: query)
             .swipeActions(edge: .leading, allowsFullSwipe: true) {
                 Button("Complete") {
                     Task { try? await env.taskStore.transition(id: task.id, to: .closed); await runSearch() }
