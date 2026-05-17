@@ -45,16 +45,6 @@ struct SidebarView: View {
             }
         }
         .listStyle(.sidebar)
-        .safeAreaInset(edge: .bottom) {
-            HStack {
-                SyncStatusDotView(indicator: env.syncMonitor.indicator) {
-                    Task { await env.syncMonitor.retry() }
-                }
-                Spacer()
-            }
-            .padding(.horizontal, 8)
-            .padding(.bottom, 6)
-        }
         .task { await refresh() }
     }
 
