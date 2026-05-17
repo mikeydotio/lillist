@@ -12,6 +12,7 @@ struct RootSplitView: View {
     @State private var sortField: SortField = .deadline
     @State private var sortAscending: Bool = true
     @FocusState private var focusedColumn: ListColumn?
+    @State private var resolvedPrincipalTitle: String = "Lillist"
 
     private var columnVisibility: Binding<NavigationSplitViewVisibility> {
         Binding(
@@ -110,13 +111,34 @@ struct RootSplitView: View {
             // Restore the remembered task selection for the new source
             // (or clear if none).
             taskSelection = new.flatMap { uiState.taskSelection(for: $0) }
+            Task { await refreshPrincipalTitle(for: new) }
         }
         .onChange(of: taskSelection) { _, new in
             if let sel = sidebarSelection {
                 uiState.setTaskSelection(new, for: sel)
             }
+            // If the principal title shows the selected task's title
+            // (the `.pinnedTask` case), re-resolve on selection change
+            // so renames in the detail pane flow up.
+            if case .pinnedTask = sidebarSelection {
+                Task { await refreshPrincipalTitle(for: sidebarSelection) }
+            }
         }
+        .task { await refreshPrincipalTitle(for: sidebarSelection) }
         .focusedValue(\.listColumn, focusedColumn)
+    }
+
+    private func refreshPrincipalTitle(for selection: SidebarSelection?) async {
+        guard let selection else {
+            resolvedPrincipalTitle = "Lillist"
+            return
+        }
+        resolvedPrincipalTitle = await SourceTitleResolver.resolve(
+            for: selection,
+            taskStore: env.taskStore,
+            tagStore: env.tagStore,
+            smartFilterStore: env.smartFilterStore
+        )
     }
 
     @ToolbarContentBuilder
@@ -138,8 +160,12 @@ struct RootSplitView: View {
         // Principal: the source title. TaskListHeaderView used to own
         // this; the toolbar is the right home so it survives column
         // collapse and matches Mac Mail / Notes / Reminders.
+        // Plan 19 Task 7: title is resolved to the actual tag/filter/task
+        // name via `SourceTitleResolver` rather than a generic kind
+        // string; the same resolver feeds `.navigationTitle` on
+        // `TaskListView`, so toolbar and window-chrome stay in lockstep.
         ToolbarItem(placement: .principal) {
-            Text(sidebarSelection.map(principalTitle(for:)) ?? "Lillist")
+            Text(resolvedPrincipalTitle)
                 .font(.headline)
         }
 
@@ -181,13 +207,4 @@ struct RootSplitView: View {
         }
     }
 
-    private func principalTitle(for selection: SidebarSelection) -> String {
-        switch selection {
-        case .pinnedTask:    return "Pinned task"
-        case .pinnedFilter:  return "Pinned filter"
-        case .tag:           return "Tag"
-        case .filter:        return "Filter"
-        case .trash:         return "Trash"
-        }
-    }
 }

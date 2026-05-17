@@ -16,6 +16,7 @@ struct TaskListView: View {
     @State private var inlineCreateText = ""
     @State private var showInlineCreate = false
     @State private var inlineCreateParent: UUID?
+    @State private var resolvedSourceTitle: String = ""
 
     private var sourceKey: String {
         switch selection {
@@ -35,6 +36,10 @@ struct TaskListView: View {
     }
 
     private var sourceTitle: String {
+        resolvedSourceTitle.isEmpty ? defaultTitleFallback : resolvedSourceTitle
+    }
+
+    private var defaultTitleFallback: String {
         switch selection {
         case .pinnedTask:    return "Pinned task"
         case .pinnedFilter:  return "Pinned filter"
@@ -116,6 +121,12 @@ struct TaskListView: View {
                 sortField = saved.0; sortAscending = saved.1
             }
             await refresh()
+            resolvedSourceTitle = await SourceTitleResolver.resolve(
+                for: selection,
+                taskStore: env.taskStore,
+                tagStore: env.tagStore,
+                smartFilterStore: env.smartFilterStore
+            )
         }
         .navigationTitle(sourceTitle)
         .onChange(of: sortField) { _, _ in
