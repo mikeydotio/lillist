@@ -23,16 +23,16 @@ struct InlineCreateField: View {
             .onExitCommand(perform: onCancel)
             #endif
             .onKeyPress(keys: [.tab], phases: .down) { press in
-                if text.isEmpty {
-                    return .ignored
-                }
-                if press.modifiers.contains(.shift) {
-                    onShiftTab()
-                } else {
-                    onTab()
-                }
+                // Plan 13 fallout: let Tab pass through when the field is
+                // empty so focus can leave an unused inline-create field.
+                if text.isEmpty { return .ignored }
+                if press.modifiers.contains(.shift) { onShiftTab() } else { onTab() }
                 return .handled
             }
-            .accessibilityLabel(String(localized: "New task title; Return to save, Tab to indent"))
+            .accessibilityLabel(String(localized: "Title, required; Return to save, Tab to indent"))
+            .accessibilityValue(text.isEmpty
+                ? String(localized: "Empty")
+                : String(localized: "Not empty")
+            )
     }
 }
