@@ -46,4 +46,50 @@ final class KeyboardShortcutTests: XCTestCase {
         let roots = try await store.children(of: nil).map(\.id)
         XCTAssertTrue(roots.contains(b))
     }
+
+    // MARK: - Plan 19 Task 8: arrow-key selection-advance contract
+
+    func test_arrowKey_downAdvancesSelectionByOne() {
+        let ids = (0..<5).map { _ in UUID() }
+        var selection: UUID? = ids[2]
+        selection = SelectionAdvance.advance(current: selection, ordered: ids, direction: 1)
+        XCTAssertEqual(selection, ids[3])
+    }
+
+    func test_arrowKey_upAdvancesSelectionByMinusOne() {
+        let ids = (0..<5).map { _ in UUID() }
+        var selection: UUID? = ids[2]
+        selection = SelectionAdvance.advance(current: selection, ordered: ids, direction: -1)
+        XCTAssertEqual(selection, ids[1])
+    }
+
+    func test_arrowKey_clampsAtBottomEdge() {
+        let ids = (0..<3).map { _ in UUID() }
+        let selection = SelectionAdvance.advance(current: ids.last, ordered: ids, direction: 1)
+        XCTAssertEqual(selection, ids.last)
+    }
+
+    func test_arrowKey_clampsAtTopEdge() {
+        let ids = (0..<3).map { _ in UUID() }
+        let selection = SelectionAdvance.advance(current: ids.first, ordered: ids, direction: -1)
+        XCTAssertEqual(selection, ids.first)
+    }
+
+    func test_arrowKey_emptyListReturnsCurrentUnchanged() {
+        let prior: UUID? = UUID()
+        let selection = SelectionAdvance.advance(current: prior, ordered: [], direction: 1)
+        XCTAssertEqual(selection, prior)
+    }
+
+    func test_arrowKey_nilSelectionDownPicksFirst() {
+        let ids = (0..<3).map { _ in UUID() }
+        let selection = SelectionAdvance.advance(current: nil, ordered: ids, direction: 1)
+        XCTAssertEqual(selection, ids.first)
+    }
+
+    func test_arrowKey_nilSelectionUpPicksLast() {
+        let ids = (0..<3).map { _ in UUID() }
+        let selection = SelectionAdvance.advance(current: nil, ordered: ids, direction: -1)
+        XCTAssertEqual(selection, ids.last)
+    }
 }

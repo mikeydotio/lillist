@@ -110,6 +110,11 @@ targets:
       # from TaskListView (whose SwiftUI/AppEnvironment dependencies
       # would pull in the entire app graph).
       - path: Lillist-macOS/Sources/Views/TaskList/SourceTitleResolver.swift
+      # Plan 19 Task 8: KeyboardShortcutTests exercises
+      # SelectionAdvance.advance(current:ordered:direction:) — the pure
+      # index-math used to document and regression-test SwiftUI's
+      # built-in arrow-key navigation contract.
+      - path: Lillist-macOS/Sources/Views/TaskList/SelectionAdvance.swift
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: io.mikeydotio.Lillist.tests
