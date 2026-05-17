@@ -80,6 +80,21 @@ struct TaskDetailView: View {
             )
             .frame(minWidth: 420, minHeight: 480)
         }
+        // Plan 15 Task 25: broadcast an NSUserActivity so iPhone/iPad
+        // can pick up the focused task via Handoff. The iOS app will
+        // implement the reciprocal `onContinueUserActivity` in a
+        // future plan.
+        .userActivity(
+            "com.mikeydotio.lillist.viewing-task",
+            isActive: record != nil
+        ) { activity in
+            guard let r = record else { return }
+            activity.userInfo = ["taskID": r.id.uuidString]
+            activity.title = r.title
+            activity.isEligibleForHandoff = true
+            activity.isEligibleForSearch = true
+            activity.requiredUserInfoKeys = ["taskID"]
+        }
     }
 
     @ViewBuilder
