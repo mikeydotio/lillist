@@ -9,7 +9,6 @@ import SwiftUI
 /// Installed by `LillistApp` via `@NSApplicationDelegateAdaptor`.
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
-    var statusBarController: StatusBarController?
     var quickCapturePanel: QuickCapturePanelController?
     weak var environment: AppEnvironment?
 
@@ -20,20 +19,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func bootstrap() {
-        guard let env = environment, statusBarController == nil else { return }
+        guard let env = environment, quickCapturePanel == nil else { return }
         let panel = QuickCapturePanelController(environment: env)
         env.hotkeyMonitor.onHotkey = { panel.toggle() }
         env.hotkeyMonitor.install()
         self.quickCapturePanel = panel
-        self.statusBarController = StatusBarController(
-            environment: env,
-            onQuickCapture: { panel.toggle() }
-        )
     }
 
     func applicationWillTerminate(_ notification: Notification) {
         environment?.hotkeyMonitor.uninstall()
-        statusBarController?.uninstall()
         // Plan 9: delete the launch canary so the next launch knows
         // this exit was clean. Block briefly so we don't race the
         // process tear-down, but cap the wait to avoid hanging.
