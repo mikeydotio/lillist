@@ -5,6 +5,8 @@ public struct EmptyStateView: View {
     public var message: String
     public var systemImage: String
 
+    @FocusState private var focused: Bool
+
     public init(title: String, message: String, systemImage: String = "tray") {
         self.title = title
         self.message = message
@@ -25,5 +27,11 @@ public struct EmptyStateView: View {
         }
         .padding()
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .contentShape(Rectangle())
+        .focusable()
+        .focused($focused)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(String(localized: "\(title). \(message)", bundle: .module))
+        .accessibilityAddTraits(.isStaticText)
     }
 }
