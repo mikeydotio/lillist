@@ -5,16 +5,20 @@ import LillistUI
 /// (sidebar → list → detail) mirroring macOS `RootSplitView` and the
 /// HIG-canonical Mail / Reminders / Notes layout.
 /// Design Section 7 iOS subsection.
+///
+/// Plan 16 Task 29: `isQuickCapturePresented` and `selection` are
+/// owned by `LillistApp` so `LillistCommands` (Scene-level) can bind
+/// to them. SplitShell reads them via env values.
 struct SplitShell: View {
-    @State private var selection: iPadSection? = .today
+    @Environment(\.isQuickCapturePresentedBinding) private var isQuickCapturePresented
+    @Environment(\.selectedSectionBinding) private var selection
     @State private var taskSelection: UUID?
-    @State private var isQuickCapturePresented = false
     @State private var isSettingsPresented = false
     @AppStorage("hasCapturedTask") private var hasCapturedTask = false
 
     var body: some View {
         NavigationSplitView {
-            List(iPadSection.allCases, selection: $selection) { section in
+            List(iPadSection.allCases, selection: selection) { section in
                 NavigationLink(value: section) {
                     Label(section.title, systemImage: section.systemImage)
                 }
@@ -33,7 +37,7 @@ struct SplitShell: View {
             .navigationSplitViewColumnWidth(min: 200, ideal: 240)
         } content: {
             NavigationStack {
-                switch selection ?? .today {
+                switch selection.wrappedValue ?? .today {
                 case .today: TodayView()
                 case .all: AllTagsView()
                 case .filters: FiltersListView()
@@ -43,7 +47,7 @@ struct SplitShell: View {
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button {
-                        isQuickCapturePresented = true
+                        isQuickCapturePresented.wrappedValue = true
                     } label: {
                         Image(systemName: "plus")
                     }
@@ -66,8 +70,8 @@ struct SplitShell: View {
             }
         }
         .environment(\.taskSelectionBinding, $taskSelection)
-        .environment(\.quickCaptureAction, { isQuickCapturePresented = true })
-        .sheet(isPresented: $isQuickCapturePresented) {
+        .environment(\.quickCaptureAction, { isQuickCapturePresented.wrappedValue = true })
+        .sheet(isPresented: isQuickCapturePresented) {
             QuickCaptureSheet()
                 .presentationDetents(
                     [.fraction(0.35), .medium, .large],
@@ -78,9 +82,5 @@ struct SplitShell: View {
         .sheet(isPresented: $isSettingsPresented) {
             SettingsTab()
         }
-        .lillistKeyboardShortcuts(
-            isQuickCapturePresented: $isQuickCapturePresented,
-            selectedTab: $selection
-        )
     }
 }
