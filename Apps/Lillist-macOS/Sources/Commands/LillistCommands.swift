@@ -1,4 +1,5 @@
 import SwiftUI
+import AppKit
 import LillistCore
 import LillistUI
 
@@ -69,6 +70,28 @@ struct LillistCommands: Commands {
             Button("Focus Detail") {
                 NotificationCenter.default.post(name: .lillistFocusDetail, object: nil)
             }.keyboardShortcut("3", modifiers: [.command])
+        }
+
+        // Plan 15 Task 21: custom About panel with byline credit.
+        CommandGroup(replacing: .appInfo) {
+            Button("About Lillist") {
+                NSApp.orderFrontStandardAboutPanel(options: [
+                    .credits: NSAttributedString(
+                        string: "Built by Mikey Ward",
+                        attributes: [
+                            .font: NSFont.systemFont(ofSize: NSFont.smallSystemFontSize),
+                            .foregroundColor: NSColor.secondaryLabelColor
+                        ]
+                    )
+                ])
+            }
+        }
+
+        // Plan 15 Task 22: replace the default Help submenu with a
+        // single Link to the repo. TODO: swap to a real docs site URL
+        // once it exists.
+        CommandGroup(replacing: .help) {
+            Link("Lillist Help", destination: URL(string: "https://github.com/mikeydotio/Lillist")!)
         }
     }
 }
