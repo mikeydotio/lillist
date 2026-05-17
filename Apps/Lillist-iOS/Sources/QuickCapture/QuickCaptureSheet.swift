@@ -15,6 +15,7 @@ struct QuickCaptureSheet: View {
     @State private var submitting = false
     @State private var errorMessage: String?
     @FocusState private var focused: Bool
+    @AppStorage("hasCapturedTask") private var hasCapturedTask = false
 
     var body: some View {
         NavigationStack {
@@ -67,6 +68,9 @@ struct QuickCaptureSheet: View {
             submitting = false
             return
         }
+        // Drop the keyboard immediately so its collapse animation runs in
+        // parallel with the Core Data + CloudKit write below.
+        focused = false
         Task {
             do {
                 let taskID = try await env.taskStore.create(title: title)
@@ -82,6 +86,7 @@ struct QuickCaptureSheet: View {
                         }
                     }
                 }
+                hasCapturedTask = true
                 submitting = false
                 dismiss()
             } catch {
