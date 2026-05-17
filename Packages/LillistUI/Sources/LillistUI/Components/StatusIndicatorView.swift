@@ -17,7 +17,7 @@ public struct StatusIndicatorView: View {
         Button(action: onClick) {
             Image(systemName: StatusGlyph.symbol(for: status))
                 .font(LillistTypography.statusGlyph)
-                .foregroundStyle(status == .closed ? .green : .secondary)
+                .foregroundStyle(StatusPalette.color(for: status))   // Plan 17 / Plan 15
                 .frame(width: LillistSpacing.xl - 2, height: LillistSpacing.xl - 2)
                 .frame(width: 44, height: 44)
                 .contentShape(Rectangle())
