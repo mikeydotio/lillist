@@ -53,6 +53,7 @@ struct AllTagsView: View {
                 SyncStatusBadge(indicator: env.syncMonitor.indicator)
             }
         }
+        .refreshable { await reload() }
         .task { await reload() }
     }
 
