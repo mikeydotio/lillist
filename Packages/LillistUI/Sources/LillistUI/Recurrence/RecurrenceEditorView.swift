@@ -38,7 +38,7 @@ public struct RecurrenceEditorView: View {
                 }
 
                 if viewModel.mode == .calendar {
-                    Section("Frequency") {
+                    Section(header: Text("Frequency").accessibilityAddTraits(.isHeader)) {
                         Picker("Frequency", selection: $viewModel.freq) {
                             Text("Daily").tag(RecurrenceRule.Frequency.daily)
                             Text("Weekly").tag(RecurrenceRule.Frequency.weekly)
@@ -62,7 +62,7 @@ public struct RecurrenceEditorView: View {
                     }
 
                     if viewModel.freq == .weekly {
-                        Section("On days") {
+                        Section(header: Text("On days").accessibilityAddTraits(.isHeader)) {
                             ForEach(Weekday.allCases, id: \.self) { day in
                                 Toggle(label(for: day), isOn: bindingFor(day: day, in: $viewModel.byDay))
                             }
@@ -70,7 +70,7 @@ public struct RecurrenceEditorView: View {
                     }
 
                     if viewModel.freq == .monthly {
-                        Section("On days of month") {
+                        Section(header: Text("On days of month").accessibilityAddTraits(.isHeader)) {
                             LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 6), count: 7),
                                       spacing: 6) {
                                 ForEach(1...31, id: \.self) { day in
@@ -81,7 +81,7 @@ public struct RecurrenceEditorView: View {
                         }
                     }
 
-                    Section("Limit") {
+                    Section(header: Text("Limit").accessibilityAddTraits(.isHeader)) {
                         Toggle("Repeat forever", isOn: Binding(
                             get: { viewModel.count == nil },
                             set: { isUnbounded in
@@ -112,7 +112,7 @@ public struct RecurrenceEditorView: View {
                         }
                     }
                 } else {
-                    Section("Repeat after") {
+                    Section(header: Text("Repeat after").accessibilityAddTraits(.isHeader)) {
                         Picker("Repeat after", selection: $viewModel.afterCompletionSeconds) {
                             Text("1 day").tag(TimeInterval(86_400))
                             Text("3 days").tag(TimeInterval(86_400 * 3))
