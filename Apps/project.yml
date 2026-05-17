@@ -93,6 +93,12 @@ targets:
       # class compiles via its dependencies, so we keep the pure
       # math in a standalone helper file co-compiled alone.
       - path: Lillist-macOS/Sources/Hotkey/QuickCapturePlacementMath.swift
+      # Plan 15 Task 24: IndexingServiceTests exercises
+      # IndexingMappers.attributeSet(for:tagNames:) and
+      # searchableItem(for:tagNames:). The helper is extracted from
+      # IndexingService (whose AppEnvironment dependency would pull
+      # in the entire app graph).
+      - path: Lillist-macOS/Sources/Indexing/IndexingMappers.swift
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: io.mikeydotio.Lillist.tests
