@@ -129,6 +129,7 @@ public struct RecurrenceEditorView: View {
                     HStack {
                         if let onCancel {
                             Button("Cancel", role: .cancel, action: onCancel)
+                                .keyboardShortcut(.cancelAction)
                         }
                         Spacer()
                         if let onCommit {
