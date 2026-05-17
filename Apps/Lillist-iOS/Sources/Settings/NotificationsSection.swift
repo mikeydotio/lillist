@@ -21,18 +21,22 @@ struct NotificationsSection: View {
             HStack {
                 statusLabel
                 Spacer()
-                Button("Test permission") {
+            }
+            switch permStatus {
+            case .notDetermined:
+                Button("Request permission") {
                     Task {
                         permStatus = await environment.notificationPermissions.requestAuthorization()
                     }
                 }
-            }
-            if permStatus == .denied {
-                Button("Open Settings") {
+            case .denied:
+                Button("Open Notification Settings") {
                     if let url = URL(string: UIApplication.openSettingsURLString) {
                         UIApplication.shared.open(url)
                     }
                 }
+            case .authorized:
+                EmptyView()
             }
         }
         .task { permStatus = await environment.notificationPermissions.currentStatus() }
