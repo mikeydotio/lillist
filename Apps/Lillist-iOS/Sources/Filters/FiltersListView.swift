@@ -24,11 +24,13 @@ struct FiltersListView: View {
                     description: Text(loadError)
                 )
             } else if pinned.isEmpty && others.isEmpty {
-                ContentUnavailableView(
-                    "No filters yet",
-                    systemImage: "line.3.horizontal.decrease.circle",
-                    description: Text("Pre-installed filters land on first sync.")
-                )
+                ContentUnavailableView {
+                    Label("No filters yet", systemImage: "line.3.horizontal.decrease.circle")
+                } description: {
+                    Text("Pre-installed filters land on first sync.")
+                }
+                // No CTA — filter creation isn't an iOS surface yet.
+                // When it lands, add a "Create filter" Button here.
             } else {
                 List {
                     if !pinned.isEmpty {

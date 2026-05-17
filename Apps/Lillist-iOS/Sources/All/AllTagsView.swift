@@ -12,6 +12,7 @@ import LillistUI
 /// Design Section 7 iOS subsection — "All opens the tag-tree drawer".
 struct AllTagsView: View {
     @Environment(AppEnvironment.self) private var env
+    @Environment(\.quickCaptureAction) private var quickCaptureAction
 
     @State private var tree: [TagNode] = []
     @State private var loadError: String?
@@ -25,11 +26,16 @@ struct AllTagsView: View {
                     description: Text(loadError)
                 )
             } else if tree.isEmpty {
-                ContentUnavailableView(
-                    "No tags yet",
-                    systemImage: "tag",
-                    description: Text("Use #name in Quick Capture to make a tag.")
-                )
+                ContentUnavailableView {
+                    Label("No tags yet", systemImage: "tag")
+                } description: {
+                    Text("Use #name in Quick Capture to make a tag.")
+                } actions: {
+                    Button("Capture a task", systemImage: "plus.circle.fill") {
+                        quickCaptureAction()
+                    }
+                    .buttonStyle(.borderedProminent)
+                }
             } else {
                 List(tree, children: \.optionalChildren) { node in
                     NavigationLink(value: TagDestination(id: node.id)) {

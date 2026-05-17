@@ -46,6 +46,7 @@ struct TabShell: View {
             .tabItem { Label("Search", systemImage: "magnifyingglass") }
             .tag(iPadSection.search)
         }
+        .environment(\.quickCaptureAction, { isQuickCapturePresented = true })
         .tabViewBottomAccessory {
             FloatingAddButton(onTap: { isQuickCapturePresented = true })
                 .accessibilityIdentifier("QuickCaptureAccessory")

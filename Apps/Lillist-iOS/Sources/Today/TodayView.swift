@@ -16,6 +16,7 @@ import LillistUI
 struct TodayView: View {
     @Environment(AppEnvironment.self) private var env
     @Environment(\.taskSelectionBinding) private var taskSelection
+    @Environment(\.quickCaptureAction) private var quickCaptureAction
 
     @State private var results: [TaskStore.TaskRecord] = []
     @State private var loadError: String?
@@ -29,11 +30,16 @@ struct TodayView: View {
                     description: Text(loadError)
                 )
             } else if results.isEmpty {
-                ContentUnavailableView(
-                    "Nothing for today",
-                    systemImage: "sparkles",
-                    description: Text("Tasks with a start or deadline of today show up here.")
-                )
+                ContentUnavailableView {
+                    Label("Nothing for today", systemImage: "sparkles")
+                } description: {
+                    Text("Tasks with a start or deadline of today show up here.")
+                } actions: {
+                    Button("Capture a task", systemImage: "plus.circle.fill") {
+                        quickCaptureAction()
+                    }
+                    .buttonStyle(.borderedProminent)
+                }
             } else {
                 listBody
             }

@@ -66,6 +66,7 @@ struct SplitShell: View {
             }
         }
         .environment(\.taskSelectionBinding, $taskSelection)
+        .environment(\.quickCaptureAction, { isQuickCapturePresented = true })
         .sheet(isPresented: $isQuickCapturePresented) {
             QuickCaptureSheet()
                 .presentationDetents(
