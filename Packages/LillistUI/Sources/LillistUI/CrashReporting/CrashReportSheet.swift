@@ -121,7 +121,7 @@ public struct CrashReportSheet: View {
             .navigationTitle("Crash report")
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Don't send") {
+                    Button("Don't Send") {
                         Task {
                             try? await model.dontSend()
                             dismiss()
@@ -129,7 +129,7 @@ public struct CrashReportSheet: View {
                     }
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Send report") {
+                    Button("Send Report") {
                         Task {
                             try? await model.send()
                             dismiss()
