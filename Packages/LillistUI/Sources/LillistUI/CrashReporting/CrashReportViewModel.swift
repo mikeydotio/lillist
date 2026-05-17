@@ -22,9 +22,18 @@ public final class CrashReportViewModel {
         self.reporter = reporter
     }
 
-    /// Compose the would-be report (without sending) for the
-    /// "View what will be sent" sheet.
-    public func refreshPreview(buildVersion: String, osVersion: String, deviceModel: String) async {
+    /// Pure rendering of the report body for arbitrary include flags
+    /// — does *not* touch `self.includeLogs` / `self.includeBreadcrumbs`,
+    /// so per-toggle previews don't disturb the model. Used by both
+    /// the bulk-preview button (driven by the model's own flags) and
+    /// the per-toggle "Preview these" buttons added in Plan 18 Task 10.
+    public func renderPreview(
+        includeLogs: Bool,
+        includeBreadcrumbs: Bool,
+        buildVersion: String,
+        osVersion: String,
+        deviceModel: String
+    ) async -> String {
         let report = CrashReport(
             buildVersion: buildVersion,
             osVersion: osVersion,
@@ -34,7 +43,20 @@ public final class CrashReportViewModel {
             logs: includeLogs ? ["(logs will be loaded here when sent)"] : nil,
             breadcrumbs: includeBreadcrumbs ? [] : nil
         )
-        previewText = report.renderedAsPlainText()
+        return report.renderedAsPlainText()
+    }
+
+    /// Compose the would-be report (without sending) for the bulk
+    /// "View what will be sent" sheet. Delegates to `renderPreview`
+    /// and stores the result on `self.previewText`.
+    public func refreshPreview(buildVersion: String, osVersion: String, deviceModel: String) async {
+        previewText = await renderPreview(
+            includeLogs: includeLogs,
+            includeBreadcrumbs: includeBreadcrumbs,
+            buildVersion: buildVersion,
+            osVersion: osVersion,
+            deviceModel: deviceModel
+        )
     }
 
     /// Hit by the "Send report" button.
