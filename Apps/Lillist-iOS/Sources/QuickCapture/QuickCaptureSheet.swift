@@ -33,9 +33,15 @@ struct QuickCaptureSheet: View {
                 )
                 .focused($focused)
                 if let errorMessage {
+                    // SwiftUI has no `.accessibilityLiveRegion(_:)` modifier
+                    // (it's an HTML/UIKit concept). The `updatesFrequently`
+                    // trait hints VoiceOver to re-poll the content for
+                    // changes; the assertive re-read comes from the
+                    // AccessibilityAnnouncements.post call in submit().
                     Label(errorMessage, systemImage: "exclamationmark.triangle")
                         .font(.caption)
                         .foregroundStyle(.red)
+                        .accessibilityAddTraits(.updatesFrequently)
                 }
                 Spacer()
             }
