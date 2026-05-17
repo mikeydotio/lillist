@@ -6,18 +6,25 @@ import SwiftUI
 /// shared LillistUI `SyncIndicator` enum (also used by the macOS app).
 public struct SyncStatusBadge: View {
     public var indicator: SyncIndicator
+    @Environment(\.accessibilityDifferentiateWithoutColor) private var systemDifferentiate
+    @Environment(\.differentiateWithoutColorOverride) private var overrideDifferentiate
 
     public init(indicator: SyncIndicator) {
         self.indicator = indicator
     }
 
     public var body: some View {
+        let differentiate = overrideDifferentiate ?? systemDifferentiate
         Circle()
             .fill(indicator.color)
             .frame(width: LillistSpacing.s + 2, height: LillistSpacing.s + 2)
             .overlay(
                 Group {
-                    if case .inProgress = indicator {
+                    if differentiate {
+                        Image(systemName: indicator.differentiatedSystemImage)
+                            .font(.system(size: 8, weight: .bold))
+                            .foregroundStyle(.white)
+                    } else if case .inProgress = indicator {
                         ProgressView()
                             .scaleEffect(0.5)
                     }

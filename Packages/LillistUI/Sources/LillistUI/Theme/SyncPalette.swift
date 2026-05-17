@@ -46,4 +46,19 @@ public extension SyncIndicator {
         case .error: return "exclamationmark.triangle.fill"
         }
     }
+
+    /// SF Symbol overlaid on the dot when
+    /// `accessibilityDifferentiateWithoutColor` is true. Each shape is
+    /// visually distinct from the other three, even rendered in a single
+    /// foreground color. Plan 17 introduced this as the shape axis for
+    /// the differentiate-without-color preference.
+    var differentiatedSystemImage: String {
+        switch self {
+        case .idle(let last):
+            guard let last else { return "circle" }
+            return Date().timeIntervalSince(last) < Self.recencyWindow ? "circle.fill" : "circle.dotted"
+        case .inProgress: return "arrow.triangle.2.circlepath"
+        case .error: return "exclamationmark.triangle.fill"
+        }
+    }
 }
