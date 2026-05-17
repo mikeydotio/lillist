@@ -4,6 +4,93 @@ Append-only log of cross-cutting engineering lessons learned while building
 Lillist. Each entry captures a non-obvious gotcha — usually one that took real
 investigation to find — so future work doesn't re-learn it the hard way.
 
+## 2026-05-17 — Plan 20 shared polish & accessibility nits
+
+**Context.** Plan 20 closed the cross-platform and a11y LOW/NIT
+items from the 2026-05-16 design review that didn't fit any single
+platform-specific plan: an `AccentColor` asset for both targets
+(placeholder brand tint), unified Quick Capture date-token chips,
+iPad keyboard shortcut parity with macOS, a module documentation
+landing page for `LillistUI`, a one-time copy audit (title-case
+fixes + cross-platform onboarding tagline parity), and individual
+a11y modifier additions on `SidebarRowView`, `BreadcrumbView`,
+`RecurrenceEditorView`, `EmptyStateView`, `DetailHeaderView`
+DatePickers, and `TagChipView`. Task 4 (IOSScreenTourTests
+refactor) was deferred to Plan 20a per the in-plan decision point.
+
+A precursor `fix(UI)` commit also restored the clickable mailto
+link on the `CrashReportSheet` footer that silently regressed in
+Plan 19 — see the LocalizedStringKey rule below.
+
+**Rules.**
+
+- **Shared components require shared assets.** When `LillistUI`
+  reads `Color.accentColor`, every consuming app target needs a
+  matching `AccentColor.colorset` **plus**
+  `ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME=AccentColor`.
+  Without both, silent fallback to system blue.
+- **Centralize parallel hardcoded lists at the seam.** Two
+  platforms hardcoding the same short list (Quick Capture date
+  tokens were on iOS but *missing* on macOS) drifts silently.
+  Cure: a single `public enum X { public static let default: [Y]
+  = [...] }` consumed by both surfaces, plus a parser-coupling
+  regression test.
+- **Cross-platform user-visible strings must match verbatim.** A
+  single-platform copy rewrite leaves the other platform's string
+  stale and the product feels uneven on first launch. When you
+  touch a welcome line, error message, or tagline on macOS, sync
+  the iOS twin in the same change (and vice versa); copy that
+  exists on both platforms is a shared surface even when the
+  files live apart.
+- **`Text(LocalizedStringKey)` auto-link detection is
+  literal-only.** SwiftUI auto-detects URLs and emails when the
+  `LocalizedStringKey` is a compile-time string literal; values
+  inserted via `\(interpolation)` render as plain text. The
+  one-line refactor "literal email → `\(constant)`" silently
+  drops the clickable mailto link. Cure: spell the link with
+  explicit markdown `[\(addr)](mailto:\(addr))` so the markdown
+  parser (which *does* run after interpolation) keeps the link
+  alive. Caught in Plan 20 only because snapshot tests showed
+  the visual diff — the swift-snapshot-testing baseline was the
+  thing standing between this regression and a silent ship.
+- **`@ScaledMetric` is the cure for hardcoded
+  `.font(.system(size: N, ...))` literals, but its base value
+  does *not* match `.largeTitle`'s native metric.** On macOS,
+  `.largeTitle` resolves to 34pt; `@ScaledMetric` with base 36
+  renders +2pt larger at default Dynamic Type. The trade-off:
+  pin the visual baseline locally and accept a one-time +2pt
+  shift, or stay coupled to Apple's evolving metric. Plan 20
+  Task 10 chose the former and re-recorded the affected
+  baselines.
+- **`.labelsHidden()` requires an explicit
+  `.accessibilityLabel(...)` companion.** VoiceOver may pick up
+  the underlying initializer label, but Voice Control's
+  label-match heuristic prefers a visible label — falling back
+  to no match when none exists. Two-line fix: keep
+  `.labelsHidden()` for the visual layout, follow with an
+  explicit `.accessibilityLabel(...)` for the AT path.
+- **Source-reading regression tests need indent-anchored
+  patterns.** A test that asserts "the body's closing brace is at
+  4-space indent" via `range(of: "    }")` matches *any* line
+  whose `}` is preceded by ≥4 spaces — the search treats the
+  pattern as a substring. Cure: search for a discriminator that
+  uniquely identifies the target line (e.g.
+  `.accessibilityLabel(badge.map`), or anchor with surrounding
+  newlines (`\n    }\n`).
+- **Snapshot tests are how you discover regressions you didn't
+  ship knowingly.** Several Plan 19 / Plan 20 commits ostensibly
+  did one thing (refactor a string constant, add an a11y trait)
+  but quietly diffed a snapshot baseline elsewhere. Run the full
+  `swift test --package-path Packages/LillistUI` after any
+  change to a shared SwiftUI view — coverage-by-snapshot is the
+  blast-radius detector for SwiftUI behavior we can't otherwise
+  unit-test.
+
+**Evidence.** Plan 20 commits on `main`: one commit per task,
+plus a precursor `fix(UI)` for the CrashReportSheet mailto
+regression and two `test(...)` follow-ups for snapshots missed in
+the Task 2 / Task 10 commits. Tag: `plan-20-shared-polish`.
+
 ## 2026-05-17 — Plan 19 macOS polish sweep: WindowGroup chrome, live preference streams, sidebar context menus, list-column source-name resolution, single contact-info constant
 
 **Context.** Plan 19 closed the LOW/NIT-severity macOS findings from
