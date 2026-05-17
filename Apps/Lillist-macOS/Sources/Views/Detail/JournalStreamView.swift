@@ -13,7 +13,9 @@ struct JournalStreamView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack {
-                Text("Journal & Attachments").font(.headline)
+                Text("Journal & Attachments")
+                    .font(.headline)
+                    .accessibilityAddTraits(.isHeader)
                 Spacer()
                 Picker("Filter", selection: $filter) {
                     Text("All").tag(Filter.all)

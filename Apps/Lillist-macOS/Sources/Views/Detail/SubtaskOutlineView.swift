@@ -10,7 +10,9 @@ struct SubtaskOutlineView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
-            Text("Subtasks").font(.headline)
+            Text("Subtasks")
+                .font(.headline)
+                .accessibilityAddTraits(.isHeader)
             ForEach(children, id: \.id) { c in
                 TaskRowView(task: c, tagNames: [],
                             onStatusClick: { Task { try? await cycle(c) } },
