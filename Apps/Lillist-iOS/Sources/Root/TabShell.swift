@@ -7,6 +7,7 @@ struct TabShell: View {
     @State private var selection: iPadSection = .today
     @State private var isQuickCapturePresented = false
     @State private var isSettingsPresented = false
+    @AppStorage("hasCapturedTask") private var hasCapturedTask = false
 
     private var selectionOptional: Binding<iPadSection?> {
         Binding(
@@ -51,7 +52,10 @@ struct TabShell: View {
         }
         .sheet(isPresented: $isQuickCapturePresented) {
             QuickCaptureSheet()
-                .presentationDetents([.fraction(0.35), .medium, .large])
+                .presentationDetents(
+                    [.fraction(0.35), .medium, .large],
+                    selection: .constant(hasCapturedTask ? .fraction(0.35) : .large)
+                )
                 .presentationDragIndicator(.visible)
         }
         .sheet(isPresented: $isSettingsPresented) {
