@@ -42,10 +42,12 @@ struct DetailHeaderView: View {
                     get: { start ?? Date() }, set: { start = $0 }
                 ), displayedComponents: [.date])
                 .labelsHidden()
+                .accessibilityLabel(String(localized: "Start date"))
                 DatePicker("Deadline", selection: Binding(
                     get: { deadline ?? Date() }, set: { deadline = $0 }
                 ), displayedComponents: [.date])
                 .labelsHidden()
+                .accessibilityLabel(String(localized: "Deadline"))
             }
             .font(.subheadline)
         }
