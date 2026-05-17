@@ -39,6 +39,25 @@ public struct SyncStatusDotView: View {
             .padding(LillistSpacing.m)
             .frame(width: 240)
         }
+        .onChange(of: indicator) { _, new in
+            switch new {
+            case .inProgress:
+                AccessibilityAnnouncements.post(
+                    String(localized: "Syncing to iCloud", bundle: .module),
+                    priority: .low
+                )
+            case .idle:
+                AccessibilityAnnouncements.post(
+                    String(localized: "Sync complete", bundle: .module),
+                    priority: .low
+                )
+            case .error(let msg, _):
+                AccessibilityAnnouncements.post(
+                    String(localized: "Sync error: \(msg)", bundle: .module),
+                    priority: .high
+                )
+            }
+        }
     }
 
     private var label: String {
