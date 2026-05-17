@@ -89,6 +89,14 @@ struct RootSplitView: View {
                 Task { try? await env.taskStore.transition(id: id, to: .blocked) }
             }
         }
+        .onReceive(NotificationCenter.default.publisher(for: .lillistToggleSidebar)) { _ in
+            withAnimation(.easeInOut(duration: 0.18)) {
+                let current = Self.parseVisibility(columnVisibilityRaw)
+                columnVisibilityRaw = Self.encodeVisibility(
+                    current == .all ? .doubleColumn : .all
+                )
+            }
+        }
         .onReceive(NotificationCenter.default.publisher(for: .lillistSelectTodayFilter)) { _ in
             Task {
                 if let today = try? await env.smartFilterStore.fetch(byName: "Today") {

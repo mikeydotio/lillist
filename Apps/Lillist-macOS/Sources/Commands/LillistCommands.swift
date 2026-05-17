@@ -77,6 +77,17 @@ struct LillistCommands: Commands {
             }.keyboardShortcut("3", modifiers: [.command])
         }
 
+        // Plan 15 Task 29: ⌃⌘S toggles the sidebar (Mac convention,
+        // matching Mail / Notes / Reminders). The toolbar button from
+        // Task 1 also flips columnVisibility; this menu command goes
+        // through a notification so the View has a single handler.
+        CommandGroup(after: .sidebar) {
+            Button("Show Sidebar") {
+                NotificationCenter.default.post(name: .lillistToggleSidebar, object: nil)
+            }
+            .keyboardShortcut("s", modifiers: [.control, .command])
+        }
+
         // Plan 15 Task 21: custom About panel with byline credit.
         CommandGroup(replacing: .appInfo) {
             Button("About Lillist") {
@@ -117,4 +128,6 @@ extension Notification.Name {
     // Plan 15 Task 20: dock menu navigation.
     static let lillistSelectTodayFilter = Notification.Name("lillist.selectTodayFilter")
     static let lillistSelectFilter      = Notification.Name("lillist.selectFilter")
+    // Plan 15 Task 29: ⌃⌘S menu command for sidebar visibility.
+    static let lillistToggleSidebar     = Notification.Name("lillist.toggleSidebar")
 }
