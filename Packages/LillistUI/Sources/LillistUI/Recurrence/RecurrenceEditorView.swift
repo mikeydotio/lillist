@@ -129,6 +129,30 @@ public struct RecurrenceEditorView: View {
     }
 
     private func label(for day: Weekday) -> String {
+        let index = Self.index(for: day)
+        // `standaloneWeekdaySymbols` is always Sunday-first; matches our
+        // Weekday raw indexing. Returns the system-localized form
+        // ("Sunday" in en, "Sonntag" in de, "الأحد" in ar).
+        let symbols = Calendar.current.standaloneWeekdaySymbols
+        guard symbols.indices.contains(index) else {
+            return String(localized: defaultEnglishName(for: day), bundle: .module)
+        }
+        return symbols[index]
+    }
+
+    private static func index(for day: Weekday) -> Int {
+        switch day {
+        case .sunday:    return 0
+        case .monday:    return 1
+        case .tuesday:   return 2
+        case .wednesday: return 3
+        case .thursday:  return 4
+        case .friday:    return 5
+        case .saturday:  return 6
+        }
+    }
+
+    private func defaultEnglishName(for day: Weekday) -> String.LocalizationValue {
         switch day {
         case .sunday: return "Sunday"
         case .monday: return "Monday"
