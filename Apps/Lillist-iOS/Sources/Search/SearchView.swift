@@ -16,10 +16,27 @@ import LillistUI
 /// DSL parser. Title-contains gets us the common case; a follow-up can swap
 /// in the DSL parser when one lands.
 struct SearchView: View {
+    enum Scope: Hashable, CaseIterable {
+        case all, open, closed
+        var title: String {
+            switch self {
+            case .all: return "All"
+            case .open: return "Open"
+            case .closed: return "Closed"
+            }
+        }
+    }
+
+    private struct SearchTrigger: Hashable {
+        let query: String
+        let scope: Scope
+    }
+
     @Environment(AppEnvironment.self) private var env
     @Environment(\.taskSelectionBinding) private var taskSelection
 
     @State private var query = ""
+    @State private var scope: Scope = .all
     @State private var results: [TaskStore.TaskRecord] = []
 
     var body: some View {
@@ -44,6 +61,11 @@ struct SearchView: View {
             }
         }
         .searchable(text: $query, placement: .navigationBarDrawer(displayMode: .always))
+        .searchScopes($scope, scopes: {
+            ForEach(Scope.allCases, id: \.self) { s in
+                Text(s.title).tag(s)
+            }
+        })
         .navigationTitle("Search")
         .navigationDestination(for: UUID.self) { id in
             TaskDetailView(taskID: id)
@@ -53,7 +75,7 @@ struct SearchView: View {
                 SyncStatusBadge(indicator: env.syncMonitor.indicator)
             }
         }
-        .task(id: query) { await runSearch() }
+        .task(id: SearchTrigger(query: query, scope: scope)) { await runSearch() }
     }
 
     @ViewBuilder
@@ -106,13 +128,19 @@ struct SearchView: View {
             results = []
             return
         }
-        let group = PredicateGroup(
-            combinator: .all,
-            predicates: [
-                .leaf(Leaf(field: .title, op: .contains, value: .string(trimmed))),
-                .leaf(Leaf(field: .inTrash, op: .is, value: .bool(false)))
-            ]
-        )
+        var predicates: [LillistCore.Predicate] = [
+            .leaf(Leaf(field: .title, op: .contains, value: .string(trimmed))),
+            .leaf(Leaf(field: .inTrash, op: .is, value: .bool(false)))
+        ]
+        switch scope {
+        case .all:
+            break
+        case .open:
+            predicates.append(.leaf(Leaf(field: .status, op: .isNot, value: .statusSet([.closed]))))
+        case .closed:
+            predicates.append(.leaf(Leaf(field: .status, op: .is, value: .statusSet([.closed]))))
+        }
+        let group = PredicateGroup(combinator: .all, predicates: predicates)
         do {
             results = try await env.smartFilterStore.evaluate(
                 group: group,
