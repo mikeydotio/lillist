@@ -10,6 +10,7 @@
 		037A2818BA4C8A5CFECE4DC4 /* TaskEntity.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60D270F4CC665B45F955D44A /* TaskEntity.swift */; };
 		046D8F27FB3D4AD0970C455F /* AppEnvironment.swift in Sources */ = {isa = PBXBuildFile; fileRef = 297211E1BF6A9D0C7890E078 /* AppEnvironment.swift */; };
 		0D39ED83FD7B9F2AB1F7B7A6 /* TaskNotesTab.swift in Sources */ = {isa = PBXBuildFile; fileRef = 63687CA5DAE8C94F242FB14A /* TaskNotesTab.swift */; };
+		0E896BFF8182396C85EDCCEC /* QuickCaptureAction.swift in Sources */ = {isa = PBXBuildFile; fileRef = CEBA9EB15D97EF41A80E2101 /* QuickCaptureAction.swift */; };
 		19E41567449FAA5BE15E6B32 /* AdvancedSection.swift in Sources */ = {isa = PBXBuildFile; fileRef = EAFB6125227B6A731DA61F20 /* AdvancedSection.swift */; };
 		1B361E001278EAD358271191 /* SearchResultRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 448E26B3838FE07DB2DF0357 /* SearchResultRow.swift */; };
 		1C56CE523F96BDB4ED0163D4 /* AddNudgeIntent.swift in Sources */ = {isa = PBXBuildFile; fileRef = B82728947B00E5DCC963F9A5 /* AddNudgeIntent.swift */; };
@@ -174,6 +175,7 @@
 		C01EA0AAA388BBCF9B11BDED /* Lillist-iOSTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = "Lillist-iOSTests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
 		C879F47AAC9011FEA0721657 /* LillistShortcuts.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LillistShortcuts.swift; sourceTree = "<group>"; };
 		CDF66890A34B8871D4E2278B /* TabShell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TabShell.swift; sourceTree = "<group>"; };
+		CEBA9EB15D97EF41A80E2101 /* QuickCaptureAction.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuickCaptureAction.swift; sourceTree = "<group>"; };
 		CECC0E4966AEDB2B50C11DCA /* AddNoteIntent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddNoteIntent.swift; sourceTree = "<group>"; };
 		CEE1AA15CD7EEB68E16E53D8 /* QuickCaptureFlowTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuickCaptureFlowTests.swift; sourceTree = "<group>"; };
 		D1B6EFD3373C205B1003A91A /* SettingsTab.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsTab.swift; sourceTree = "<group>"; };
@@ -427,6 +429,7 @@
 			isa = PBXGroup;
 			children = (
 				A51D139E432B20E90E93549D /* KeyboardShortcuts.swift */,
+				CEBA9EB15D97EF41A80E2101 /* QuickCaptureAction.swift */,
 				662317866BCDC0281427FF83 /* TaskSelectionEnvironment.swift */,
 			);
 			path = Common;
@@ -709,6 +712,7 @@
 				F75A71A023C47A17E5C2157E /* MailComposerView.swift in Sources */,
 				CB8301504557324D1B671609 /* NotificationsSection.swift in Sources */,
 				AB0DAB0FFB124C1178A0FAB6 /* OnboardingScreen.swift in Sources */,
+				0E896BFF8182396C85EDCCEC /* QuickCaptureAction.swift in Sources */,
 				E40372B99D819D778F4F2ED7 /* QuickCaptureSection.swift in Sources */,
 				652545A8D47A8D082D04EE75 /* QuickCaptureSheet.swift in Sources */,
 				3651D989130BF5B51EC10467 /* RecentSearchesStore.swift in Sources */,

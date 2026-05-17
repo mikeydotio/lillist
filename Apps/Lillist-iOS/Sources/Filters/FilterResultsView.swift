@@ -6,6 +6,7 @@ struct FilterResultsView: View {
     let filterID: UUID
     @Environment(AppEnvironment.self) private var env
     @Environment(\.taskSelectionBinding) private var taskSelection
+    @Environment(\.quickCaptureAction) private var quickCaptureAction
 
     @State private var filterName: String = "Filter"
     @State private var results: [TaskStore.TaskRecord] = []
@@ -20,10 +21,16 @@ struct FilterResultsView: View {
                     description: Text(loadError)
                 )
             } else if results.isEmpty {
-                ContentUnavailableView(
-                    "No matching tasks",
-                    systemImage: "magnifyingglass"
-                )
+                ContentUnavailableView {
+                    Label("No matching tasks", systemImage: "magnifyingglass")
+                } description: {
+                    Text("Tasks that match this filter will appear here.")
+                } actions: {
+                    Button("Capture a task", systemImage: "plus.circle.fill") {
+                        quickCaptureAction()
+                    }
+                    .buttonStyle(.borderedProminent)
+                }
             } else {
                 listBody
             }

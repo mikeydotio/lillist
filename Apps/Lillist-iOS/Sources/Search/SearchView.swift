@@ -34,6 +34,7 @@ struct SearchView: View {
 
     @Environment(AppEnvironment.self) private var env
     @Environment(\.taskSelectionBinding) private var taskSelection
+    @Environment(\.quickCaptureAction) private var quickCaptureAction
 
     @State private var query = ""
     @State private var scope: Scope = .all
@@ -43,12 +44,15 @@ struct SearchView: View {
     var body: some View {
         Group {
             if query.isEmpty {
-                List {
-                    ContentUnavailableView(
-                        "Search Lillist",
-                        systemImage: "magnifyingglass",
-                        description: Text("Type a word from a task title.")
-                    )
+                ContentUnavailableView {
+                    Label("Search Lillist", systemImage: "magnifyingglass")
+                } description: {
+                    Text("Type a word from a task title.")
+                } actions: {
+                    Button("Capture a task", systemImage: "plus.circle.fill") {
+                        quickCaptureAction()
+                    }
+                    .buttonStyle(.borderedProminent)
                 }
             } else if results.isEmpty {
                 List {

@@ -14,11 +14,11 @@ struct TaskAttachmentsTab: View {
     var body: some View {
         ScrollView {
             if items.isEmpty {
-                ContentUnavailableView(
-                    "No attachments",
-                    systemImage: "paperclip",
-                    description: Text("Use the Share sheet to add an image, file, or link to this task.")
-                )
+                ContentUnavailableView {
+                    Label("No attachments", systemImage: "paperclip")
+                } description: {
+                    Text("Use the Share sheet from any app to attach a file, image, or link.")
+                }
                 .padding(.top, 60)
             } else {
                 LazyVGrid(columns: [GridItem(.adaptive(minimum: 120))], spacing: 12) {
