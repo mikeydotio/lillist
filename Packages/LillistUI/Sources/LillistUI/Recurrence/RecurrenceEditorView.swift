@@ -29,10 +29,10 @@ public struct RecurrenceEditorView: View {
             }
 
             if viewModel.repeats {
-                Section("Pattern") {
-                    Picker("Mode", selection: $viewModel.mode) {
-                        Text("Calendar-based").tag(RecurrenceEditorViewModel.Mode.calendar)
-                        Text("After completion").tag(RecurrenceEditorViewModel.Mode.afterCompletion)
+                Section {
+                    Picker("Schedule", selection: $viewModel.mode) {
+                        Text("Repeat").tag(RecurrenceEditorViewModel.Mode.calendar)
+                        Text("When completed").tag(RecurrenceEditorViewModel.Mode.afterCompletion)
                     }
                     .pickerStyle(.segmented)
                 }
@@ -87,7 +87,7 @@ public struct RecurrenceEditorView: View {
                         }
                     }
                 } else {
-                    Section("After completion") {
+                    Section("Repeat after") {
                         Picker("Repeat after", selection: $viewModel.afterCompletionSeconds) {
                             Text("1 day").tag(TimeInterval(86_400))
                             Text("3 days").tag(TimeInterval(86_400 * 3))
