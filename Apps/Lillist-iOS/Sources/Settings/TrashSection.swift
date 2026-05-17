@@ -8,21 +8,36 @@ struct TrashSection: View {
     @State private var isEmptying = false
     @State private var confirmingEmpty = false
 
+    private static let presets: [Int16] = [7, 14, 30, 60, 90, 180, 365]
+
+    init(prefs: Binding<PreferencesStore.Prefs>) {
+        self._prefs = prefs
+        // Coerce a pre-Plan-26 custom value (e.g. 45 from the old slider)
+        // into the nearest preset so `Picker` can render it cleanly.
+        let current = prefs.wrappedValue.trashRetentionDays
+        if !Self.presets.contains(current) {
+            let nearest = Self.presets.min(by: { abs($0 - current) < abs($1 - current) }) ?? 30
+            prefs.wrappedValue.trashRetentionDays = nearest
+        }
+    }
+
     var body: some View {
         Section("Trash") {
-            VStack(alignment: .leading) {
-                Slider(
-                    value: Binding(
-                        get: { Double(prefs.trashRetentionDays) },
-                        set: { prefs.trashRetentionDays = Int16($0.rounded()) }
-                    ),
-                    in: 7...365,
-                    step: 1
-                )
-                Text("Retain trashed tasks for \(prefs.trashRetentionDays) days")
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
+            Picker("Retain trashed tasks for", selection: Binding(
+                get: { Int(prefs.trashRetentionDays) },
+                set: { prefs.trashRetentionDays = Int16($0) }
+            )) {
+                Text("7 days").tag(7)
+                Text("14 days").tag(14)
+                Text("30 days").tag(30)
+                Text("60 days").tag(60)
+                Text("90 days").tag(90)
+                Text("180 days").tag(180)
+                Text("1 year").tag(365)
             }
+            .pickerStyle(.menu)
+            .accessibilityValue("\(prefs.trashRetentionDays) days")
+
             Button(role: .destructive) {
                 confirmingEmpty = true
             } label: {
