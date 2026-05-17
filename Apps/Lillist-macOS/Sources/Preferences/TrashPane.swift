@@ -64,6 +64,7 @@ struct TrashPane: View {
             }
         }
         .formStyle(.grouped)
+        .fixedSize() // Plan 15 Task 26: pane self-sizes; window animates
         .task { prefs = try? await environment.preferencesStore.read() }
         .onChange(of: prefs) { _, new in
             guard let new else { return }

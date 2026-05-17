@@ -32,6 +32,7 @@ struct GeneralPane: View {
             }
         }
         .formStyle(.grouped)
+        .fixedSize() // Plan 15 Task 26: pane self-sizes; window animates
         .task { await load() }
         .onChange(of: prefs) { _, new in
             guard let new else { return }

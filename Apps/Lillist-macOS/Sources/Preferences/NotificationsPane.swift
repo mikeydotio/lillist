@@ -56,6 +56,7 @@ struct NotificationsPane: View {
             }
         }
         .formStyle(.grouped)
+        .fixedSize() // Plan 15 Task 26: pane self-sizes; window animates
         .task {
             prefs = try? await environment.preferencesStore.read()
             permStatus = await environment.notificationPermissions.currentStatus()

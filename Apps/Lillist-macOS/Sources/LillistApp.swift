@@ -28,8 +28,13 @@ struct LillistApp: App {
                 PreferencesWindow()
                     .environment(environment)
             } else {
+                // Plan 15 Task 26: the loaded panes self-size via
+                // `.fixedSize()`, so the placeholder also self-sizes
+                // (just paddding around the spinner). Don't lock to
+                // the old 520×420 — that was the only artifact pinning
+                // a square window even when only one tab was tall.
                 ProgressView("Loading…")
-                    .frame(width: 520, height: 420)
+                    .padding()
             }
         }
 

@@ -21,6 +21,8 @@ struct PreferencesWindow: View {
             AdvancedPane()
                 .tabItem { Label("Advanced", systemImage: "wrench.and.screwdriver") }
         }
-        .frame(width: 520, height: 420)
+        // Plan 15 Task 26: pane content drives the window's size
+        // (each pane's outer container ends with `.fixedSize()`); the
+        // TabView animates between tabs the way System Settings does.
     }
 }
