@@ -4,6 +4,101 @@ Append-only log of cross-cutting engineering lessons learned while building
 Lillist. Each entry captures a non-obvious gotcha — usually one that took real
 investigation to find — so future work doesn't re-learn it the hard way.
 
+## 2026-05-16 — Plan 17 Localization & Accessibility Environments
+
+**Context.** Lillist had zero usage of the four accessibility-environment
+values (`accessibilityReduceMotion`, `accessibilityReduceTransparency`,
+`accessibilityShouldIncreaseContrast`, `accessibilityDifferentiateWithoutColor`)
+and zero localization infrastructure. All user-facing strings were
+hardcoded English literals; `String`-typed `.accessibilityLabel(_:)`
+calls silently bypassed the catalog extractor. Plan 17 scaffolded
+String Catalogs for the SPM package and both app targets, routed all
+~50 `String`-typed a11y labels through `String(localized:bundle:)`,
+added environment-honoring view modifiers, and locked RTL,
+high-contrast, reduce-transparency, and differentiate-without-color
+code paths with snapshot baselines.
+
+**Rules.**
+
+- **`String(localized:bundle: .module)` is the right shape inside SPM
+  packages.** The default `Bundle.main` is the host app's bundle and
+  won't find the package catalog. App targets omit `bundle:`.
+- **`Text("…")` extracts; `.accessibilityLabel("…")` does not.** Wrap
+  every `String`-typed a11y label in `String(localized:)`.
+- **String concatenation defeats the extractor.** `"Last synced " + x`
+  becomes an orphan fragment; `"Last synced \(x)"` becomes
+  `"Last synced %@"` and the placeholder survives translation.
+- **`chevron.right` does not flip; `chevron.forward` does.** Use
+  forward/backward variants for any directional glyph that should
+  mirror under RTL. For non-mirroring symbols, apply
+  `.flipsForRightToLeftLayoutDirection(true)`.
+- **`accessibilityShouldIncreaseContrast` is iOS-only on the
+  EnvironmentValues type; the cross-platform spelling is
+  `colorSchemeContrast` (returns `ColorSchemeContrast.standard` or
+  `.increased`).** Three-agent panel chose to add a one-line boolean
+  shim `EnvironmentValues.accessibilityShouldIncreaseContrast: Bool`
+  computed from `colorSchemeContrast == .increased` so view callsites
+  read in the boolean shape they actually use.
+- **`\.accessibilityReduceMotion`, `\.accessibilityReduceTransparency`,
+  `\.accessibilityDifferentiateWithoutColor`, and `\.colorSchemeContrast`
+  are read-only `KeyPath`s in SDK 26.2, not `WritableKeyPath`s.** The
+  call `.environment(\.accessibilityReduceMotion, true)` that the
+  plan's snapshot tests assumed does NOT compile. The fix is to add
+  internal-only `*Override: Bool?` env keys (`reduceMotionOverride`,
+  `reduceTransparencyOverride`, `differentiateWithoutColorOverride`,
+  `increaseContrastOverride`). Each helper modifier reads both the
+  system value and the override, prefers the override when non-nil.
+  Production code never touches the override key (it's `internal` to
+  LillistUI). Tests using `@testable import LillistUI` inject via the
+  override for deterministic snapshot baselines.
+- **SwiftUI has no `.accessibilityLiveRegion(_:)` modifier.** That's
+  an HTML/UIKit concept; the closest equivalent is
+  `.accessibilityAddTraits(.updatesFrequently)` plus an explicit
+  `AccessibilityNotification.Announcement` (or
+  `NSAccessibility.post`) when the value changes. The platform-aware
+  `AccessibilityAnnouncements.post(_:priority:)` helper wraps both
+  APIs so callers don't `#if` per platform.
+- **`accessibilityShouldIncreaseContrast` is a tuning, not a switch.**
+  Bumping a fill from 0.18 to 0.30 and the stroke from 0.45 to 0.85
+  is the right shape. Black-on-white is overkill and reads worse.
+- **`accessibilityDifferentiateWithoutColor` requires a shape axis,
+  not just darker color.** SF Symbol overlays, distinct outlines, or
+  textured fills are all valid; the test is whether a grayscale
+  render still communicates the state.
+- **WCAG 4.5:1 is a 30-line pure-Swift calculation.** Ship the math
+  (`ContrastMath.relativeLuminance` / `wcagRatio` / `hsbToRGB`) and
+  iterate brightness against the floor in `TagTint.resolved(in:)` —
+  deterministic, testable, no designer eyeball.
+- **`NSApp` is implicitly unwrapped and can crash in unit-test
+  contexts.** `NSApplication.shared as NSApplication?` forces a real
+  optional that can be safely `guard let`-ed before reading
+  `mainWindow` / `windows.first`.
+- **SwiftPM `.process("Resources")` is correct for `.xcstrings`.**
+  `.copy("Resources")` skips the catalog compile step and the
+  runtime can't read the strings.
+- **`Calendar.current.standaloneWeekdaySymbols` is Sunday-first
+  regardless of the locale's `firstWeekday`.** Index 0 = `.sunday`,
+  etc. The returned strings are already localized.
+- **xcodegen auto-detects new files under a path with
+  `buildPhase: resources`.** Both app `project.yml`s already had a
+  `Resources` entry; just dropping `Localizable.xcstrings` into
+  `Apps/Lillist-iOS/Resources/` and `Apps/Lillist-macOS/Resources/`
+  and re-running `xcodegen generate` picks it up automatically — no
+  YAML changes needed.
+
+**Evidence.** Plan 17 commits on `main` (tag
+`plan-17-i18n-a11y-environments`): three `Localizable.xcstrings`
+files; `LillistUI/Accessibility/` directory with
+`AccessibilityEnvironment.swift`, `Announcements.swift`,
+`ContrastMath.swift`; three new snapshot suites
+(`LocalizationSnapshotTests`, `ContrastSnapshotTests`,
+`ReduceTransparencySnapshotTests`); `.blocked` retint in
+`StatusPalette`; differentiated overlay on `SyncStatusDotView` and
+`SyncStatusBadge`; `.updatesFrequently` trait on error labels;
+keyboard shortcuts on Recurrence + Quick Capture; focusable
+`EmptyStateView`; `withAnimation` gates on `accessibilityReduceMotion`
+in `RootSplitView.toggleSidebar()` and `TaskJournalTab.scrollTo`.
+
 ## 2026-05-16 — Plan 16 iOS polish: `tabViewBottomAccessory` is iOS 26, three-column iPad via env-binding, segmented detail tabs, live Quick Capture chips, monthly day grid, CommandMenu shortcuts
 
 **Context.** Plan 16 closed the visual / navigational gap between Lillist on iOS and first-tier iOS task managers (Reminders, Things, Todoist). Changes ran the gamut from per-screen polish (empty-state CTAs, notification-permission label conditionality, trash-retention picker) to structural shifts (three-column iPad split, segmented detail tabs replacing page-style TabView, FAB lifted off the tab bar into iOS 26's `tabViewBottomAccessory` slot, hardware keyboard shortcuts moved from a hidden-Button hack into Scene-level `CommandMenu`).
