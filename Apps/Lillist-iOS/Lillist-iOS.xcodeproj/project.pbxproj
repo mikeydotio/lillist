@@ -19,6 +19,7 @@
 		2DADFF6343511363B623E9F4 /* SplitShell.swift in Sources */ = {isa = PBXBuildFile; fileRef = 262D045DF7FC19BD936381F6 /* SplitShell.swift */; };
 		34376E8334E842553856720B /* ShareRootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BF7C0CBC7BB61226C9ABECE1 /* ShareRootView.swift */; };
 		3440B5C7EBBC1DE929C708F1 /* CrashReporterHost.swift in Sources */ = {isa = PBXBuildFile; fileRef = E61A40B2BDFBA8C6B05AC79E /* CrashReporterHost.swift */; };
+		3651D989130BF5B51EC10467 /* RecentSearchesStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 26EDE96C92F2F23320F74D12 /* RecentSearchesStore.swift */; };
 		3723770D2788EE577A418AB1 /* ReportCrashIntent.swift in Sources */ = {isa = PBXBuildFile; fileRef = A319992C5C6111D1848B5549 /* ReportCrashIntent.swift */; };
 		379E3FE8AFB068E832A2617E /* LillistUI in Frameworks */ = {isa = PBXBuildFile; productRef = 2ABD72EED49C2E40D19B1F5F /* LillistUI */; };
 		3A2760F631CB59A9344DC2EF /* QuickCaptureFlowTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CEE1AA15CD7EEB68E16E53D8 /* QuickCaptureFlowTests.swift */; };
@@ -60,6 +61,7 @@
 		BE9FFE27E0C03EB136C128DF /* SegmentedDetailTabPersistenceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 94307A6C8BB99028C434C008 /* SegmentedDetailTabPersistenceTests.swift */; };
 		C1FEEAB56AFC2EFD9C108C47 /* TaskJournalTab.swift in Sources */ = {isa = PBXBuildFile; fileRef = F6C4BEE444B84DDF5F88ABF3 /* TaskJournalTab.swift */; };
 		C37A5B3B5892E493D5874513 /* ReportCrashIntentTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 97A39E4B87749E005F34B7FF /* ReportCrashIntentTests.swift */; };
+		C8A0E7C145AB656C7991751D /* RecentSearchesStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AE7A4F593BEB8A9ABDF9C157 /* RecentSearchesStoreTests.swift */; };
 		CA4034D690255FE0554C7DE2 /* RootShell.swift in Sources */ = {isa = PBXBuildFile; fileRef = 03C3319AED08244B047F88E4 /* RootShell.swift */; };
 		CB8301504557324D1B671609 /* NotificationsSection.swift in Sources */ = {isa = PBXBuildFile; fileRef = E4D39B252544E335C0CC4FB5 /* NotificationsSection.swift */; };
 		CEE10BDC98205D724AA29DCD /* FilterResultsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2A651BD41829D553D469EC3 /* FilterResultsView.swift */; };
@@ -124,6 +126,7 @@
 		165A87417D8DB0F2E8100ABB /* ShareExtensionPayloadTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShareExtensionPayloadTests.swift; sourceTree = "<group>"; };
 		21542BC245EEBE9709AB17DD /* RecurrenceSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecurrenceSheet.swift; sourceTree = "<group>"; };
 		262D045DF7FC19BD936381F6 /* SplitShell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SplitShell.swift; sourceTree = "<group>"; };
+		26EDE96C92F2F23320F74D12 /* RecentSearchesStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecentSearchesStore.swift; sourceTree = "<group>"; };
 		297211E1BF6A9D0C7890E078 /* AppEnvironment.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppEnvironment.swift; sourceTree = "<group>"; };
 		29C684CCD22ABED2078AE9FA /* TaskSubtasksTab.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TaskSubtasksTab.swift; sourceTree = "<group>"; };
 		3013CF9707368DFFA43E4C72 /* ShareViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShareViewController.swift; sourceTree = "<group>"; };
@@ -159,6 +162,7 @@
 		A51D139E432B20E90E93549D /* KeyboardShortcuts.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyboardShortcuts.swift; sourceTree = "<group>"; };
 		A60CEF999A5541D9221BEF8C /* OpenTaskIntent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OpenTaskIntent.swift; sourceTree = "<group>"; };
 		A8F22116451755349886D09A /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		AE7A4F593BEB8A9ABDF9C157 /* RecentSearchesStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecentSearchesStoreTests.swift; sourceTree = "<group>"; };
 		B1CF1EBE004127B957F4AB99 /* LillistApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LillistApp.swift; sourceTree = "<group>"; };
 		B3C5475FEB9C980491DF8B93 /* LillistUI */ = {isa = PBXFileReference; lastKnownFileType = folder; name = LillistUI; path = ../../Packages/LillistUI; sourceTree = SOURCE_ROOT; };
 		B82728947B00E5DCC963F9A5 /* AddNudgeIntent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddNudgeIntent.swift; sourceTree = "<group>"; };
@@ -342,6 +346,7 @@
 				5D9EA074A9D3F9A86933CEA3 /* DefaultSmartFiltersInstallerTests.swift */,
 				44B1BAD46F1743FCF753B964 /* NotesDebounceTests.swift */,
 				A2B005498284E28D02A97CF6 /* NotificationPermissionFlowTests.swift */,
+				AE7A4F593BEB8A9ABDF9C157 /* RecentSearchesStoreTests.swift */,
 				97A39E4B87749E005F34B7FF /* ReportCrashIntentTests.swift */,
 				6816606162835A06ED8B8FEF /* SharePayloadTests.swift */,
 			);
@@ -392,6 +397,7 @@
 		76340D4D58B629E63D587BF2 /* Search */ = {
 			isa = PBXGroup;
 			children = (
+				26EDE96C92F2F23320F74D12 /* RecentSearchesStore.swift */,
 				448E26B3838FE07DB2DF0357 /* SearchResultRow.swift */,
 				54441E810591AED5EFAECF6F /* SearchView.swift */,
 			);
@@ -649,6 +655,7 @@
 				F71E162C0547B39972F7F2C4 /* NotesDebounceTests.swift in Sources */,
 				E8F2F2AFAD19AAB4AE538B52 /* NotificationPermissionFlowTests.swift in Sources */,
 				3A2760F631CB59A9344DC2EF /* QuickCaptureFlowTests.swift in Sources */,
+				C8A0E7C145AB656C7991751D /* RecentSearchesStoreTests.swift in Sources */,
 				3723770D2788EE577A418AB1 /* ReportCrashIntent.swift in Sources */,
 				C37A5B3B5892E493D5874513 /* ReportCrashIntentTests.swift in Sources */,
 				BE9FFE27E0C03EB136C128DF /* SegmentedDetailTabPersistenceTests.swift in Sources */,
@@ -700,6 +707,7 @@
 				AB0DAB0FFB124C1178A0FAB6 /* OnboardingScreen.swift in Sources */,
 				E40372B99D819D778F4F2ED7 /* QuickCaptureSection.swift in Sources */,
 				652545A8D47A8D082D04EE75 /* QuickCaptureSheet.swift in Sources */,
+				3651D989130BF5B51EC10467 /* RecentSearchesStore.swift in Sources */,
 				9FCE62513DB659CE02151EB4 /* RecurrenceSheet.swift in Sources */,
 				CA4034D690255FE0554C7DE2 /* RootShell.swift in Sources */,
 				1B361E001278EAD358271191 /* SearchResultRow.swift in Sources */,
