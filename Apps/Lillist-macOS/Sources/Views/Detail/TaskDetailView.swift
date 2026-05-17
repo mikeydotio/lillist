@@ -16,35 +16,54 @@ struct TaskDetailView: View {
     @State private var showingRecurrenceEditor = false
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 12) {
-                if let r = record {
-                    DetailHeaderView(
-                        title: $title,
-                        status: r.status,
-                        tagNames: [],
-                        start: $start,
-                        deadline: $deadline,
-                        onStatusMenu: { s in Task { await transition(to: s) } }
-                    )
-                    recurrenceRow.padding(.horizontal)
-                    if showFollowUpForm {
+        Form {
+            if let r = record {
+                Section {
+                    TitleRow(title: $title, status: r.status, onStatusMenu: { s in
+                        Task { await transition(to: s) }
+                    })
+                }
+
+                Section("Dates") {
+                    DatePicker("Start", selection: Binding(
+                        get: { start ?? Date() }, set: { start = $0 }
+                    ), displayedComponents: [.date])
+                    DatePicker("Deadline", selection: Binding(
+                        get: { deadline ?? Date() }, set: { deadline = $0 }
+                    ), displayedComponents: [.date])
+                }
+
+                Section("Recurrence") {
+                    recurrenceRow
+                }
+
+                if showFollowUpForm {
+                    Section("Follow-up") {
                         FollowUpFormView(
                             blockedTaskID: r.id,
                             parentTitle: title,
                             onCommit: { showFollowUpForm = false },
                             onDismiss: { showFollowUpForm = false }
                         )
-                        .padding(.horizontal)
                     }
-                    NotesEditorView(markdown: $notes)
-                    SubtaskOutlineView(parentID: r.id)
-                    JournalStreamView(taskID: r.id)
-                } else {
-                    ProgressView().padding()
                 }
+
+                Section("Notes") {
+                    NotesEditorView(markdown: $notes)
+                }
+
+                Section("Subtasks") {
+                    SubtaskOutlineView(parentID: r.id)
+                }
+
+                Section("Journal") {
+                    JournalStreamView(taskID: r.id)
+                }
+            } else {
+                ProgressView()
             }
         }
+        .formStyle(.grouped)
         .task(id: taskID) { await load() }
         .onChange(of: title) { _, new in Task { try? await env.taskStore.update(id: taskID) { $0.title = new } } }
         .onChange(of: notes) { _, new in Task { try? await env.taskStore.update(id: taskID) { $0.notes = new } } }
@@ -119,6 +138,37 @@ struct TaskDetailView: View {
             await load()
         } catch {
             // Surface in a banner later; failure leaves state unchanged.
+        }
+    }
+
+    private struct TitleRow: View {
+        @Binding var title: String
+        let status: Status
+        var onStatusMenu: (Status) -> Void
+
+        var body: some View {
+            HStack {
+                TextField("Title", text: $title)
+                    .textFieldStyle(.plain)
+                    .font(.title3.bold())
+                Menu {
+                    ForEach(Status.allCases, id: \.self) { s in
+                        Button { onStatusMenu(s) } label: {
+                            Label(StatusGlyph.accessibilityLabel(for: s),
+                                  systemImage: StatusGlyph.symbol(for: s))
+                        }
+                    }
+                } label: {
+                    Label(StatusGlyph.accessibilityLabel(for: status),
+                          systemImage: StatusGlyph.symbol(for: status))
+                        .padding(.horizontal, 8).padding(.vertical, 4)
+                        .background(Capsule().fill(.quaternary))
+                }
+                .menuStyle(.borderlessButton)
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel("Status: \(StatusGlyph.accessibilityLabel(for: status))")
+                .fixedSize()
+            }
         }
     }
 }

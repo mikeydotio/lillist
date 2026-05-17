@@ -339,8 +339,8 @@ final class MacOSScreenTourTests: XCTestCase {
     }
 
     private func taskDetailPane() -> some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 16) {
+        Form {
+            Section {
                 HStack(spacing: 10) {
                     StatusIndicatorView(status: .started, onClick: {}, onLongPress: {})
                     Text("Draft launch email")
@@ -355,58 +355,41 @@ final class MacOSScreenTourTests: XCTestCase {
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
+            }
 
-                Divider()
+            Section("Notes") {
+                Text("""
+                Outline the customer announcement: highlight CloudKit sync, \
+                the new recurrence engine, and the iOS quick-capture share \
+                extension. Pair with marketing on hero copy and screenshots.
+                """)
+                .font(.system(size: 13))
+                .foregroundStyle(.primary)
+                .multilineTextAlignment(.leading)
+            }
 
-                VStack(alignment: .leading, spacing: 6) {
-                    Text("Notes")
-                        .font(.system(size: 13, weight: .semibold))
-                        .foregroundStyle(.secondary)
-                    Text("""
-                    Outline the customer announcement: highlight CloudKit sync, \
-                    the new recurrence engine, and the iOS quick-capture share \
-                    extension. Pair with marketing on hero copy and screenshots.
-                    """)
-                    .font(.system(size: 13))
-                    .foregroundStyle(.primary)
-                    .multilineTextAlignment(.leading)
-                }
+            Section("Subtasks") {
+                taskRow("Pull metrics from beta program", status: .closed)
+                taskRow("Draft hero paragraph", status: .started)
+                taskRow("Get screenshots from QA", status: .blocked,
+                        tags: ["urgent"])
+                taskRow("Schedule review with Alex")
+            }
 
-                Divider()
-
-                VStack(alignment: .leading, spacing: 6) {
-                    Text("Subtasks")
-                        .font(.system(size: 13, weight: .semibold))
-                        .foregroundStyle(.secondary)
-                    taskRow("Pull metrics from beta program", status: .closed)
-                    taskRow("Draft hero paragraph", status: .started)
-                    taskRow("Get screenshots from QA", status: .blocked,
-                            tags: ["urgent"])
-                    taskRow("Schedule review with Alex")
-                }
-
-                Divider()
-
-                VStack(alignment: .leading, spacing: 6) {
-                    Text("Journal")
-                        .font(.system(size: 13, weight: .semibold))
-                        .foregroundStyle(.secondary)
-                    HStack(alignment: .top, spacing: 8) {
-                        Image(systemName: "bubble.left")
-                            .foregroundStyle(.tertiary)
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text("May 14, 9:14am")
-                                .font(.caption2).foregroundStyle(.tertiary)
-                            Text("Got first draft to Alex for review. Waiting on the screenshots from QA before sending out broadly.")
-                                .font(.system(size: 12))
-                        }
+            Section("Journal") {
+                HStack(alignment: .top, spacing: 8) {
+                    Image(systemName: "bubble.left")
+                        .foregroundStyle(.tertiary)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("May 14, 9:14am")
+                            .font(.caption2).foregroundStyle(.tertiary)
+                        Text("Got first draft to Alex for review. Waiting on the screenshots from QA before sending out broadly.")
+                            .font(.system(size: 12))
                     }
                 }
-
-                Spacer(minLength: 24)
             }
-            .padding(20)
         }
+        .formStyle(.grouped)
         .background(Color(NSColor.textBackgroundColor))
     }
 
