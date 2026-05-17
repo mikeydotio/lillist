@@ -24,6 +24,7 @@ public struct JournalEntryRow: View {
                     .font(LillistTypography.caption)
                     .foregroundStyle(.secondary)
             }
+            // i18n-exempt: user-authored journal entry body, not chrome.
             Text(LocalizedStringKey(entry.body))
                 .textSelection(.enabled)
         }

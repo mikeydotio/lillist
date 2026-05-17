@@ -15,6 +15,7 @@ struct NotesEditorView: View {
             }
             if previewing {
                 ScrollView {
+                    // i18n-exempt: user-authored Markdown.
                     Text(LocalizedStringKey(markdown))
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .textSelection(.enabled)
