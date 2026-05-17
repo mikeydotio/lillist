@@ -9,9 +9,9 @@
 **Tech Stack:** Swift 6, SwiftUI, Swift Testing for `LillistCore` and ad-hoc unit tests, XCTest + `swift-snapshot-testing` for the `LillistUITests/iOS/` snapshot bundle.
 
 **Depends on:**
-- **Plan 13 (a11y-correctness)** — Task 1 of this plan replaces the long-press `.simultaneousGesture` that Plan 13 Task 4 wrapped with `.accessibilityAction(named: "Cycle status")`. Land Plan 13 first so the a11y action is present when this plan rewires the underlying interaction.
-- **Plan 14 (design-system)** — Plan 14 Task migrates `EmptyStateView` to design tokens; Task 8 of this plan decides the file's long-term fate (delete vs. macOS-only doc-comment). Land Plan 14 first so the file is in its final design-system form before Plan 18 makes the keep/delete call.
-- **Plan 16 (ios-polish)** — Task 9 of this plan layers binding-based `selection:` detent semantics on top of Plan 16 Task 11's `.fraction(0.35), .medium, .large` detent set. Land Plan 16 first.
+- **Plan 13 (a11y-correctness)** — Task 1 of this plan replaces the long-press `.simultaneousGesture` that Plan 13 Task 4 wrapped with `.accessibilityAction(named: "Cycle status")`. Plan 13 is on `main`.
+- **Plan 14 (design-system)** — Plan 14 Task migrates `EmptyStateView` to design tokens; Task 8 of this plan decides the file's long-term fate (delete vs. macOS-only doc-comment). Plan 14 is on `main`.
+- **Plan 16 (ios-polish)** — on `main`. Plan 16 bumped the iOS deployment target to 26.0, deleted `FloatingPlusOverlay`, lifted the FAB into `.tabViewBottomAccessory`, unified `iPadSection`, and added the `.fraction(0.35) / .medium / .large` detent set with `selection: .constant(hasCapturedTask ? .fraction(0.35) : .large)` on both shells. Task 9 of this plan swaps that read-only `.constant(...)` for a mutable `@State` binding so users can drag-resize.
 - Plans 15 (macOS chrome) and 17 (i18n/a11y/environments) are independent — no merge ordering required against this plan.
 
 ---
@@ -65,14 +65,14 @@ Lillist/
 
 **Most tasks edit exactly one file.** Tasks 1, 5, 8, and 11 touch one source file each; Tasks 3, 4, 6, 9, 10 add a thin snapshot/unit test alongside the edit. Read the file first (the harness tracks edit baselines), make the change, run the verification command, commit. Do not bundle multiple tasks into one commit — each task has its own conventional-commit message at the bottom.
 
-**iOS 17+ APIs are fair game.** The iOS deployment target is iOS 18 (see `Apps/Lillist-iOS/project.yml` `deploymentTarget: "18.0"`). `ContentUnavailableView`, `.scrollIndicators(.automatic)`, `.searchable(placement: .adaptive)`, `.presentationDetents(_:selection:)`, `.refreshable`, `.contentTransition(...)` — all available, no `#available` shims required.
+**iOS 26+ APIs are fair game.** The iOS deployment target is iOS 26 (see `Apps/Lillist-iOS/project.yml` `deploymentTarget: "26.0"`, raised by Plan 16). `ContentUnavailableView`, `.scrollIndicators(.automatic)`, `.searchable(placement: .automatic)`, `.presentationDetents(_:selection:)`, `.refreshable`, `.contentTransition(...)`, `.tabViewBottomAccessory` — all available, no `#available` shims required. Note: `SearchFieldPlacement.adaptive` does not exist on this SDK; use `.automatic`, which already picks toolbar on iPad / drawer on iPhone.
 
 **Already covered by earlier plans — DO NOT REPLAN:**
-- **`Tab` / `Section` enum dedup** → Plan 16 Task 9 unifies `TabShell.Tab` and `SplitShell.Section` into a single `iPadSection` enum in `LillistUI/iOS/`.
-- **`.searchable(placement: .adaptive)` on iPad** → Plan 16 Task 19.
+- **`Tab` / `Section` enum dedup** → Plan 16 Task 9 unified `TabShell.Tab` and `SplitShell.Section` into `LillistUI.iPadSection`.
+- **`.searchable(placement: .automatic)` on iPad** → Plan 16 Task 19 (originally drafted as `.adaptive`; the SDK has no `.adaptive` case so `.automatic` shipped).
 - **`RecurrenceSheet` silent commit errors** → Plan 16 Task 24 wraps the commit path in an `Alert`.
-- **`⌘N` → `⌘⇧N` Quick Capture rebind** → Plan 16 Task 30 (Scene-level `CommandMenu` move).
-- **`.large` detent added to Quick Capture sheet** → Plan 16 Task 11 (Plan 18 Task 9 adds the `selection:` binding, not the detent).
+- **`⌘N` → `⌘⇧N` Quick Capture rebind** → Plan 16 Task 29 (Scene-level `CommandMenu` move; `LillistCommands` lives at `Apps/Lillist-iOS/Sources/Commands/LillistCommands.swift`, scene-level bindings at `Apps/Lillist-iOS/Sources/Common/SceneBindings.swift`).
+- **`.large` detent added to Quick Capture sheet** → Plan 16 Task 11 (Plan 18 Task 9 adds the mutable `selection:` binding, not the detent).
 - **`StatusIndicatorView` 44pt hit area + `.accessibilityAction(named: "Cycle status")`** → Plan 13 Task 7 (Plan 18 Task 1 replaces the underlying gesture, leaving Plan 13's a11y additions intact). Plan 13 used the double-`.frame` idiom (inner 22×22 visual, outer 44×44 hit area + `.contentShape(Rectangle())`), not `.frame(minWidth: 44, minHeight: 44)` — match the double-`.frame` shape when editing.
 - **iOS row swipe + context menus** → Plan 13 Tasks 13–15 (TodayView, TagTaskListView, FilterResultsView, SearchView). The row-level `.contextMenu` with a "Change status" sub-menu already provides the status-mutation surface that Task 1 was originally going to add to the indicator itself — verify whether Task 1's `Menu(primaryAction:)` rewrite is still needed in light of Plan 13's row menus.
 - **`EmptyStateView` token migration** → Plan 14 Task 4 (Plan 18 Task 8 decides the file's long-term shape).
@@ -91,7 +91,7 @@ Lillist/
 
 > **Plan 13 fallout (2026-05-16):** iOS-only LillistUI tests (`#if os(iOS)`) are *not* reachable from `swift test --package-path Packages/LillistUI` on a macOS host — they compile out and report "0 tests run." The repo's `Lillist-iOS.xcscheme` also doesn't wire `LillistUITests` into its TestAction (`Lillist-iOSTests` is the only testable). Until a Plan adds a real iOS test scheme for LillistUI, expect to verify iOS-snapshot changes via builds + opening the snapshot PNGs by hand in Xcode (or wiring LillistUITests into the Lillist-iOS scheme as a side-task before Task 1). The "record on first run" comment above stays true; the gap is just that the first run never happens automatically.
 
-**Verification cadence.** Every Swift-edit task ends with either `swift test --package-path Packages/LillistUI --filter '<pattern>'` (LillistUI, cross-platform tests only — iOS-only tests need an iOS scheme) or `xcodebuild test -workspace Lillist.xcworkspace -scheme Lillist-iOS -destination 'platform=iOS Simulator,name=iPhone 16 Pro,OS=18.2' -only-testing:Lillist-iOSTests/<TestClass> CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO` (app target). Final sweep runs all four targets in Task 12.
+**Verification cadence.** Every Swift-edit task ends with either `swift test --package-path Packages/LillistUI --filter '<pattern>'` (LillistUI, cross-platform tests only — iOS-only tests need an iOS scheme) or `xcodebuild test -workspace Lillist.xcworkspace -scheme Lillist-iOS -destination 'platform=iOS Simulator,name=iPhone 17 Pro Max,OS=26.2' -only-testing:Lillist-iOSTests/<TestClass> CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO` (app target — substitute any booted iOS 26+ simulator UDID). Final sweep runs all four targets in Task 12.
 
 **Branch & commits.** Branch `plan-18-ios-polish-sweep` off `main`; open PR once Task 12 lands. Conventional-commit prefixes: `fix:` (1, 3, 6, 11), `feat:` (2, 4, 9, 10), `refactor:` (5, 7, 8), `docs:` (12).
 
@@ -815,13 +815,13 @@ EOF
 
 **Depends on:** Plan 16 Task 11 (the `.fraction(0.35), .medium, .large` detent array must already be on both callers).
 
-- [ ] **Step 1: Confirm Plan 16 Task 11 is merged**
+- [ ] **Step 1: Sanity-check Plan 16 Task 11 is on `main`**
 
 ```bash
-rg -n 'presentationDetents\(\[\.fraction\(0\.35\), \.medium, \.large\]' Apps/Lillist-iOS/Sources/
+rg -n 'presentationDetents\(\s*\[\.fraction\(0\.35\), \.medium, \.large\]' Apps/Lillist-iOS/Sources/
 ```
 
-Expected: two matches — one in `TabShell.swift` (line ~55), one in `SplitShell.swift` (line ~65). If absent, halt and merge Plan 16 first.
+Expected: two matches — one each in `TabShell.swift` and `SplitShell.swift`. Plan 16 already landed both; the grep is just a guard against a future regression renaming the detent set.
 
 - [ ] **Step 2: Add a `@State` binding on each caller**
 
@@ -1166,9 +1166,9 @@ Expected: ~12 commits (one per task + the docs commit).
 
 **Out:**
 - Tab/Section enum dedup (Plan 16 Task 9)
-- `.searchable(placement: .adaptive)` on iPad (Plan 16 Task 19)
+- `.searchable(placement: .automatic)` on iPad (Plan 16 Task 19; SDK has no `.adaptive`)
 - RecurrenceSheet silent errors (Plan 16 Task 24)
-- `⌘N` → `⌘⇧N` Quick Capture rebind (Plan 16 Task 30)
+- `⌘N` → `⌘⇧N` Quick Capture rebind (Plan 16 Task 29)
 - `.large` detent on Quick Capture sheet (Plan 16 Task 11 — Plan 18 Task 9 adds the binding, not the detent)
 - StatusIndicatorView 44pt hit area + `.accessibilityAction(named:)` (Plan 13 Task 4 — Plan 18 Task 1 replaces the underlying gesture)
 - EmptyStateView token migration (Plan 14 Task 4 — Plan 18 Task 8 decides platform scope)
