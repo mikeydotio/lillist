@@ -6,7 +6,7 @@
 
 **Goal:** Close the cross-platform and accessibility LOW/NIT items surfaced by the 2026-05-16 design review that do **not** fit cleanly into any single platform-specific plan. Each task is a small, isolated polish — an asset, a label, an accessibility trait, a per-platform symmetry — applied opportunistically across `LillistUI` and both app targets. Two non-trivial items have user-input or scope considerations called out below (Task 1's brand color, Task 4's screen-extraction refactor).
 
-**Architecture:** Most tasks are local SwiftUI surgery — an `.accessibilityAddTraits(.isHeader)` here, a `@ScaledMetric` wrap there, a hardcoded list centralized into a shared constants file. Task 1 adds an `AccentColor.colorset` to each app target so `LillistUI`'s shared `Color.accentColor` callsites stop falling back to system blue. Task 2 centralizes Quick Capture date tokens into `QuickCaptureDateSuggestions.swift` consumed by both platforms. Task 3 brings the iPad `CommandMenu` surface up to parity with the macOS Command menu for status-mutation and column-focus actions. Task 4 — the largest item, with an explicit split-out decision point — proposes migrating screen composition from inline tour mocks into `Packages/LillistUI/Sources/LillistUI/iOS/Screens/`. Task 5 turns the `LillistUI.swift` stub into a module landing page. Task 6 normalizes title/sentence case per HIG. Tasks 7-12 are individual a11y nits — label ordering, heading traits, Dynamic Type wrapping, future-proofing comments.
+**Architecture:** Most tasks are local SwiftUI surgery — an `.accessibilityAddTraits(.isHeader)` here, a `@ScaledMetric` wrap there, a hardcoded list centralized into a shared constants file. Task 1 adds an `AccentColor.colorset` to each app target so `LillistUI`'s shared `Color.accentColor` callsites stop falling back to system blue. Task 2 centralizes Quick Capture date tokens into `QuickCaptureDateSuggestions.swift` consumed by both platforms. Task 3 brings the iPad `CommandMenu` surface up to parity with the macOS Command menu for status-mutation and column-focus actions. Task 4 — the largest item, with an explicit split-out decision point — proposes migrating screen composition from inline tour mocks into `Packages/LillistUI/Sources/LillistUI/iOS/Screens/`. Task 5 turns the `LillistUI.swift` stub into a module landing page. Task 6 normalizes title/sentence case per HIG and resynchronizes cross-platform user-visible copy (the iOS onboarding tagline). Tasks 7-12 are individual a11y nits — label ordering, heading traits, Dynamic Type wrapping, future-proofing comments.
 
 **Tech Stack:** Swift 6, SwiftUI, Swift Testing for `LillistCore` tests, XCTest + `swift-snapshot-testing` for `LillistUI` snapshot tests, asset catalog (`.colorset`) for AccentColor. No new third-party dependencies. No managed-object model changes, no migrations.
 
@@ -41,11 +41,13 @@ Lillist/
 │   │   ├── Sources/
 │   │   │   ├── Commands/
 │   │   │   │   └── LillistCommands.swift                        (modify — Task 3: extend with parity actions)
+│   │   │   ├── Onboarding/
+│   │   │   │   └── OnboardingScreen.swift                       (modify — Task 6: sync tagline with macOS)
 │   │   │   ├── QuickCapture/
 │   │   │   │   └── QuickCaptureSheet.swift                      (modify — Task 2: consume shared token list)
 │   │   │   └── Settings/
 │   │   │       └── (audit only — Task 6)
-│   │   └── (case-audit only — Task 6)
+│   │   └── (copy audit — Task 6)
 │   └── Lillist-macOS/
 │       ├── Resources/
 │       │   └── Assets.xcassets/
@@ -110,7 +112,7 @@ Lillist/
 
 **Task 5 (module doc) is documentation-only.** Replace the `LillistUI.swift` stub with a doc-comment landing page; the referenced surfaces — `Theme/Tokens.swift` (design tokens) and `Accessibility/AccessibilityEnvironment.swift` (environment-aware modifiers) — both exist on `main`.
 
-**Task 6 (case audit) is one-time normalization.** macOS title case for menus and standalone buttons; iOS title case for toolbar/navbar buttons, sentence case for inline Form-row actions. Known offenders: `CrashReportSheet.swift:118,126` ("Don't send" / "Send report" both sentence) — harmonize to title case for both.
+**Task 6 (copy audit) is one-time normalization.** Two strands: (a) macOS title case for menus and standalone buttons; iOS title case for toolbar/navbar buttons, sentence case for inline Form-row actions. Known offenders: `CrashReportSheet.swift:118,126` ("Don't send" / "Send report" both sentence) — harmonize to title case for both. (b) Cross-platform copy that exists on both targets (taglines, welcome strings) must match verbatim — the iOS `OnboardingScreen` tagline currently diverges from the macOS `OnboardingSheet` tagline and gets resynchronized.
 
 **Tasks 7-12 are individual a11y nits.** Each is a 1-3 line modifier addition (or comment block for Tasks 8, 12). Tasks 7, 9, 10 carry small tests; the rest are documentary or visually verified.
 
@@ -390,7 +392,7 @@ contract (asserted by QuickCaptureDateSuggestionsTests)."
 - Modify: `Apps/Lillist-iOS/Sources/Commands/LillistCommands.swift` (the Scene-level `CommandMenu` Plan 16 Task 29 introduced)
 
 macOS today (per `LillistCommands.swift` — updated after Plan 13 landed):
-- `⌘N` new task, `⌘⇧⏎` new sibling (was `⌘⇧N`; rebound by Plan 13 Task 5 to free `⌘⇧N` for macOS's "New Window")
+- `⌘N` new task, `⌘⇧⏎` new sibling (rebound from `⌘⇧N` by Plan 13 Task 5 to avoid system-shortcut overlap)
 - Space — toggle started *(gated on `@FocusedValue(\.listColumn) != nil`)*
 - `⌘⏎` — mark closed (was `⌘D`; rebound by Plan 13 Task 5 to free `⌘D` for macOS's "Duplicate") *(gated)*
 - `⌘.` — mark blocked *(gated)*
@@ -628,15 +630,16 @@ Version constant retained for SemVer hygiene."
 
 ---
 
-## Task 6: Audit and fix sentence/title case per platform
+## Task 6: Audit and fix user-visible copy across platforms
 
 **Files:**
 - Modify: `Packages/LillistUI/Sources/LillistUI/CrashReporting/CrashReportSheet.swift:118,126`
+- Modify: `Apps/Lillist-iOS/Sources/Onboarding/OnboardingScreen.swift:62` (sync tagline with macOS)
 - Modify (per audit): `Apps/Lillist-macOS/Sources/Commands/LillistCommands.swift` (verify title case)
 - Modify (per audit): `Apps/Lillist-iOS/Sources/Settings/*Section.swift` (verify button labels)
 - Document: a checklist of audited callsites in the commit message
 
-**Convention.** macOS: title case for menu items and every standalone button. iOS: title case for buttons in nav bars, toolbars, and primary CTAs; sentence case acceptable for inline / table-cell actions. `CrashReportSheet.swift` is shared via `#if os(…)` hosts — pick title case for its toolbar buttons.
+**Convention.** macOS: title case for menu items and every standalone button. iOS: title case for buttons in nav bars, toolbars, and primary CTAs; sentence case acceptable for inline / table-cell actions. `CrashReportSheet.swift` is shared via `#if os(…)` hosts — pick title case for its toolbar buttons. For cross-platform copy that exists on both targets (welcome strings, error messages, taglines), strings must match verbatim — divergence is a polish bug.
 
 - [ ] **Step 1: Fix the known offender in `CrashReportSheet`**
 
@@ -644,7 +647,17 @@ Edit `Packages/LillistUI/Sources/LillistUI/CrashReporting/CrashReportSheet.swift
 - `Button("Don't send")` → `Button("Don't Send")`
 - `Button("Send report")` → `Button("Send Report")`
 
-- [ ] **Step 2: Audit macOS / iOS labels**
+- [ ] **Step 2: Sync the iOS onboarding tagline with macOS**
+
+The macOS `OnboardingSheet` welcome line reads `"Lists, tags, and reminders — synced to your iCloud."` Edit `Apps/Lillist-iOS/Sources/Onboarding/OnboardingScreen.swift` line 62 to match:
+
+```swift
+            Text("Lists, tags, and reminders — synced to your iCloud.")
+```
+
+(Replaces the older `"A pure-nesting task manager. Everything is a task."` copy. If the user has supplied a different tagline before execution starts, substitute that value on both platforms.)
+
+- [ ] **Step 3: Audit macOS / iOS labels**
 
 ```bash
 grep -nE 'Button\("[A-Z]' Apps/Lillist-macOS/Sources/Commands/LillistCommands.swift
@@ -656,7 +669,7 @@ Focus only on user-visible chrome (buttons, toolbar items, alert titles, navigat
 
 macOS `LillistCommands.swift` lines 13-65 already use title case (`New Task`, `Mark Closed`, etc.) — no fix needed. iOS Settings buttons: toolbar `"Done"` at `SettingsTab.swift:30` already title case; inline Form-row actions stay sentence case. Document any divergences uncovered in the commit message.
 
-- [ ] **Step 3: Build all targets**
+- [ ] **Step 4: Build all targets**
 
 ```bash
 swift build --package-path Packages/LillistUI 2>&1 | tail -3
@@ -666,30 +679,33 @@ xcodebuild -workspace Lillist.xcworkspace -scheme Lillist-iOS -destination 'gene
   CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO build 2>&1 | tail -3
 ```
 
-- [ ] **Step 4: Re-record snapshots that depend on the changed labels**
+- [ ] **Step 5: Re-record snapshots that depend on the changed labels**
 
 ```bash
-swift test --package-path Packages/LillistUI --filter 'CrashReport' 2>&1 | tail -10
+swift test --package-path Packages/LillistUI --filter 'CrashReport|Onboarding' 2>&1 | tail -10
 ```
 
-Re-record per the standard `withSnapshotTesting(record: .all)` pattern if any snapshot diffs.
+Re-record per the standard `withSnapshotTesting(record: .all)` pattern if any snapshot diffs. The iOS tour snapshot is the likely site for the tagline diff (`Packages/LillistUI/Tests/LillistUITests/Tour/IOSScreenTourTests.swift`).
 
-- [ ] **Step 5: Commit**
+- [ ] **Step 6: Commit**
 
 ```bash
 git add Packages/LillistUI/Sources/LillistUI/CrashReporting/CrashReportSheet.swift \
+        Apps/Lillist-iOS/Sources/Onboarding/OnboardingScreen.swift \
         Packages/LillistUI/Tests/LillistUITests/Snapshots
-git commit -m "fix(ui): align button case to HIG (title case on macOS toolbars + sheets)
+git commit -m "fix(ui): align user-visible copy across platforms (case + tagline parity)
 
 Audit pass:
 - CrashReportSheet: 'Don't send' → 'Don't Send', 'Send report' → 'Send Report'
+- iOS OnboardingScreen tagline now matches macOS verbatim
 - macOS LillistCommands menu items: already title case (no change)
 - iOS Settings buttons: 'Done' toolbar button already title case
 - Inline / row-action buttons in Form sections: kept sentence case (HIG-compliant)
 
 Rule established: title case for macOS menus and every standalone button;
 title case for iOS toolbar/navbar buttons; sentence case acceptable for
-inline iOS Form-row actions."
+inline iOS Form-row actions; cross-platform user-visible strings must
+match verbatim."
 ```
 
 ---
@@ -1266,12 +1282,13 @@ Add at the top of `docs/engineering-notes.md` (above the most recent entry):
 ```markdown
 ## 2026-05-16 — Plan 20 shared polish & accessibility nits
 
-**Context.** Plan 20 closed the cross-platform and a11y LOW/NIT items from the 2026-05-16 design review that didn't fit any single platform-specific plan: an `AccentColor` asset for both targets (placeholder brand tint), unified Quick Capture date-token chips, iPad keyboard shortcut parity with macOS, a module documentation landing page for `LillistUI`, a one-time title-case audit, and individual a11y modifier additions on `SidebarRowView`, `BreadcrumbView`, `RecurrenceEditorView`, `EmptyStateView`, `DetailHeaderView` DatePickers, and `TagChipView`. Task 4 (IOSScreenTourTests refactor) spun out to Plan 20a per the in-plan decision point.
+**Context.** Plan 20 closed the cross-platform and a11y LOW/NIT items from the 2026-05-16 design review that didn't fit any single platform-specific plan: an `AccentColor` asset for both targets (placeholder brand tint), unified Quick Capture date-token chips, iPad keyboard shortcut parity with macOS, a module documentation landing page for `LillistUI`, a one-time copy audit (title-case fixes + cross-platform onboarding tagline parity), and individual a11y modifier additions on `SidebarRowView`, `BreadcrumbView`, `RecurrenceEditorView`, `EmptyStateView`, `DetailHeaderView` DatePickers, and `TagChipView`. Task 4 (IOSScreenTourTests refactor) spun out to Plan 20a per the in-plan decision point.
 
 **Rules.**
 
 - **Shared components require shared assets.** When `LillistUI` reads `Color.accentColor`, every consuming app target needs a matching `AccentColor.colorset` **plus** `ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME=AccentColor`. Without both, silent fallback to system blue.
 - **Centralize parallel hardcoded lists at the seam.** Two platforms hardcoding the same short list (Quick Capture date tokens were on iOS but *missing* on macOS) drifts silently. Cure: a single `public enum X { public static let default: [Y] = [...] }` consumed by both surfaces, plus a parser-coupling regression test.
+- **Cross-platform user-visible strings must match verbatim.** A single-platform copy rewrite leaves the other platform's string stale and the product feels uneven on first launch. When you touch a welcome line, error message, or tagline on macOS, sync the iOS twin in the same change (and vice versa); copy that exists on both platforms is a shared surface even when the files live apart.
 - **`@ScaledMetric` is the cure for hardcoded `.font(.system(size: N, ...))` literals.** Wrap numeric font sizes that should scale with Dynamic Type — one line preserves visual parity at the default size and respects user preference at every other size.
 - **`.labelsHidden()` requires an explicit `.accessibilityLabel(...)` companion.** VoiceOver may pick up the underlying initializer label, but Voice Control's label-match heuristic prefers a visible label — falling back to no match when none exists.
 
@@ -1296,7 +1313,7 @@ git log --oneline main..plan-20-shared-polish
 
 ## Plan 20 Scope
 
-**In:** AccentColor asset + xcodegen wiring (Task 1); `QuickCaptureDateSuggestions` + dual-platform chip rows (Task 2); iPad keyboard parity for status/focus actions (Task 3); `LillistUI` module landing page (Task 5); one-time case audit + `CrashReportSheet` fix (Task 6); `SidebarRowView` a11y-ordering regression test + MARK (Task 7); `BreadcrumbView` future-tappable a11y docs (Task 8); `RecurrenceEditorView` `.isHeader` traits + test (Task 9); `EmptyStateView` `@ScaledMetric` + test (Task 10); `DetailHeaderView` DatePicker labels (Task 11); `TagChipView` future-removable a11y docs (Task 12); engineering-note + tag (Task 13).
+**In:** AccentColor asset + xcodegen wiring (Task 1); `QuickCaptureDateSuggestions` + dual-platform chip rows (Task 2); iPad keyboard parity for status/focus actions (Task 3); `LillistUI` module landing page (Task 5); one-time copy audit — `CrashReportSheet` case fix + cross-platform onboarding-tagline parity (Task 6); `SidebarRowView` a11y-ordering regression test + MARK (Task 7); `BreadcrumbView` future-tappable a11y docs (Task 8); `RecurrenceEditorView` `.isHeader` traits + test (Task 9); `EmptyStateView` `@ScaledMetric` + test (Task 10); `DetailHeaderView` DatePicker labels (Task 11); `TagChipView` future-removable a11y docs (Task 12); engineering-note + tag (Task 13).
 
 **Out:** Task 4 (IOSScreenTourTests refactor) — spun out to **Plan 20a**; brand color decision (placeholder flagged); anything Plans 13-17 own (status cycler, design tokens, macOS chrome, iOS polish, i18n + a11y environments); Quick Capture date-token *localization* (Plan 17 Task 8); FollowUpFormView submission announcement (Plan 17 Task 19); macOS detail-view section heading traits (Plan 17 Task 27).
 
@@ -1309,7 +1326,7 @@ git log --oneline main..plan-20-shared-polish
 - [ ] **Task 3.** `⌘⏎`, `⌘.`, `⌘⇧J`, `⌘⇧K`, `⌘1/2/3` bound on the iPad surface dispatching via the same notifications as macOS; macOS bindings unchanged (or consistent with Plan 13 rebindings).
 - [ ] **Task 4.** Flagged to user; default outcome spun out to Plan 20a. If kept, 4a-4f delivered as six commits with per-screen re-recorded snapshots.
 - [ ] **Task 5.** `LillistUI.swift` carries a doc-comment landing page listing Components / Theme / Accessibility / Recurrence / QuickCapture / Status / DragDrop / CrashReporting / iOS with one-line descriptions, plus Plan 14 / 17 entry-point references.
-- [ ] **Task 6.** `CrashReportSheet.swift` buttons read "Don't Send" / "Send Report"; macOS menu items audited (already title case); iOS Settings audited (toolbar title case, inline sentence-case OK); audit checklist in commit message.
+- [ ] **Task 6.** `CrashReportSheet.swift` buttons read "Don't Send" / "Send Report"; iOS `OnboardingScreen` tagline matches the macOS `OnboardingSheet` verbatim; macOS menu items audited (already title case); iOS Settings audited (toolbar title case, inline sentence-case OK); audit checklist in commit message.
 - [ ] **Task 7.** `SidebarRowViewA11yTests` passes; `MARK: Accessibility` block in `SidebarRowView.swift`.
 - [ ] **Task 8.** `MARK: Accessibility` block in `BreadcrumbView.swift` documents the three-step contract change for future tappability.
 - [ ] **Task 9.** Every titled `Section` in `RecurrenceEditorView` wraps its label in `Text(...).accessibilityAddTraits(.isHeader)`; `RecurrenceEditorHeadingTests` passes.
