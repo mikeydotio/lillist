@@ -6,9 +6,12 @@ import LillistCore
 @testable import LillistUI
 
 // Renders iPhone-sized approximations of the iOS app's screens.
-// Composed from the public LillistUI components plus inline mock chrome —
-// the real RootShell/TodayView/SettingsTab live in the iOS app target
-// and aren't reachable from this test bundle.
+// Plan 20a Task 4f: the five Tab screens (Today, All, Filters, Search,
+// Settings) now render the real `LillistUI.*Screen` structs wrapped in
+// a NavigationStack — no more inline mock chrome for those. The
+// remaining tests (TaskDetail, QuickCapture sheet, Onboarding, iCloud
+// gate) still compose inline because they cover surfaces Plan 20a
+// did not migrate.
 @MainActor
 final class IOSScreenTourTests: XCTestCase {
 
@@ -46,82 +49,145 @@ final class IOSScreenTourTests: XCTestCase {
         )
     }
 
-    // MARK: - Screens
+    private func todayRecords() -> [TaskStore.TaskRecord] {
+        [
+            task("Buy milk"),
+            task("Draft launch email", status: .started),
+            task("Ship 1.0 release", status: .blocked,
+                 deadline: Date(timeIntervalSince1970: 1_780_300_000)),
+            task("Reply to investors"),
+            task("Sync with design", status: .started),
+            task("Pay rent", status: .closed),
+            task("Renew domain"),
+            task("Read DDIA ch. 6")
+        ]
+    }
+
+    private func filterRecord(
+        _ name: String, isPinned: Bool, position: Double
+    ) -> SmartFilterStore.SmartFilterRecord {
+        SmartFilterStore.SmartFilterRecord(
+            id: UUID(),
+            name: name,
+            group: PredicateGroup(combinator: .all, predicates: []),
+            tintColor: nil,
+            sortField: .manualPosition,
+            sortAscending: true,
+            isPinned: isPinned,
+            position: position,
+            createdAt: nil,
+            modifiedAt: nil
+        )
+    }
+
+    // MARK: - Migrated Tab screens (Plan 20a)
 
     func test_01_today_light() {
-        let view = tabScaffold(title: "Today", subtitle: "Tue · May 16", icon: "sun.max") {
-            VStack(spacing: 0) {
-                ForEach(Array(todayItems().enumerated()), id: \.offset) { _, item in
-                    item
-                    Divider().padding(.leading, 44)
-                }
-            }
+        let view = phoneShell(fab: true) {
+            TodayScreen(
+                results: todayRecords(),
+                syncIndicator: .idle(lastSync: nil)
+            )
         }
         assertScreen(view, name: "01-today-light", colorScheme: .light, size: phoneSize)
     }
 
     func test_02_today_dark() {
-        let view = tabScaffold(title: "Today", subtitle: "Tue · May 16", icon: "sun.max") {
-            VStack(spacing: 0) {
-                ForEach(Array(todayItems().enumerated()), id: \.offset) { _, item in
-                    item
-                    Divider().padding(.leading, 44)
-                }
-            }
+        let view = phoneShell(fab: true) {
+            TodayScreen(
+                results: todayRecords(),
+                syncIndicator: .idle(lastSync: nil)
+            )
         }
         assertScreen(view, name: "02-today-dark", colorScheme: .dark, size: phoneSize)
     }
 
     func test_03_allTags_light() {
-        let view = tabScaffold(title: "All", subtitle: "Tags", icon: "tag") {
-            VStack(spacing: 0) {
-                tagRow("work", count: 14, hex: "#3366FF")
-                tagRow("errands", count: 6, hex: "#22AA66")
-                tagRow("personal", count: 11, hex: "#FF6644")
-                tagRow("reading", count: 4, hex: "#AA66FF")
-                tagRow("urgent", count: 3, hex: "#EE3344")
-                tagRow("ideas", count: 9, hex: "#FFB822")
-                tagRow("watch-later", count: 2, hex: "#5566FF")
-            }
+        let tree: [AllTagsScreen.TagNode] = [
+            .init(id: UUID(), name: "work"),
+            .init(id: UUID(), name: "errands"),
+            .init(id: UUID(), name: "personal"),
+            .init(id: UUID(), name: "reading"),
+            .init(id: UUID(), name: "urgent"),
+            .init(id: UUID(), name: "ideas"),
+            .init(id: UUID(), name: "watch-later")
+        ]
+        let view = phoneShell(fab: true) {
+            AllTagsScreen(tree: tree)
         }
         assertScreen(view, name: "03-all-tags-light", colorScheme: .light, size: phoneSize)
     }
 
     func test_04_filters_light() {
-        let view = tabScaffold(title: "Filters", subtitle: "Smart filters", icon: "line.3.horizontal.decrease.circle") {
-            VStack(spacing: 0) {
-                filterRow("Today", icon: "sun.max", badge: 6)
-                filterRow("Upcoming", icon: "calendar", badge: 14)
-                filterRow("Overdue", icon: "exclamationmark.triangle", badge: 2)
-                filterRow("Inbox", icon: "tray", badge: 3)
-                filterRow("Completed", icon: "checkmark.circle")
-                filterRow("Blocked on me", icon: "hand.raised", badge: 1)
-                filterRow("This week at work", icon: "briefcase", badge: 9)
-            }
+        let pinned = [filterRecord("Today", isPinned: true, position: 0)]
+        let others = [
+            filterRecord("Upcoming", isPinned: false, position: 1),
+            filterRecord("Overdue", isPinned: false, position: 2),
+            filterRecord("Inbox", isPinned: false, position: 3),
+            filterRecord("Completed", isPinned: false, position: 4),
+            filterRecord("Blocked on me", isPinned: false, position: 5),
+            filterRecord("This week at work", isPinned: false, position: 6)
+        ]
+        let view = phoneShell(fab: true) {
+            FiltersListScreen(pinned: pinned, others: others)
         }
         assertScreen(view, name: "04-filters-light", colorScheme: .light, size: phoneSize)
     }
 
     func test_05_search_light() {
-        let view = tabScaffold(title: "Search", subtitle: "“launch”", icon: "magnifyingglass") {
-            VStack(spacing: 0) {
-                searchRow(title: "Draft launch email", subtitle: "Today · #work · started",
-                          tint: "#3366FF")
-                searchRow(title: "Pre-launch retrospective notes",
-                          subtitle: "Journal · 3 days ago", tint: nil)
-                searchRow(title: "Launch checklist v3", subtitle: "All Tasks · #work",
-                          tint: "#3366FF")
-                searchRow(title: "Ship 1.0 release", subtitle: "Overdue · #work · blocked",
-                          tint: "#EE3344")
-            }
+        let view = phoneShell(fab: true) {
+            SearchScreen(
+                query: .constant("launch"),
+                scope: .constant(.all),
+                results: [
+                    task("Draft launch email", status: .started),
+                    task("Pre-launch retrospective notes"),
+                    task("Launch checklist v3"),
+                    task("Ship 1.0 release", status: .blocked,
+                         deadline: Date(timeIntervalSince1970: 1_780_300_000))
+                ],
+                recents: []
+            )
         }
         assertScreen(view, name: "05-search-light", colorScheme: .light, size: phoneSize)
     }
 
+    func test_08_settings_light() {
+        let view = SettingsScreen(onDone: {}) {
+            Section("GENERAL") {
+                settingRow(label: "Default list", value: "Today")
+                settingRow(label: "First weekday", value: "Monday")
+                settingRow(label: "Show subtasks inline", value: "On")
+            }
+            Section("NOTIFICATIONS") {
+                settingRow(label: "Notifications", value: "Enabled")
+                settingRow(label: "All-day reminder", value: "9:00 AM")
+                settingRow(label: "Snooze default", value: "1 hour")
+                settingRow(label: "Morning summary", value: "Weekdays")
+            }
+            Section("QUICK CAPTURE") {
+                settingRow(label: "Share extension", value: "Enabled")
+                settingRow(label: "Default list", value: "Inbox")
+            }
+            Section("CRASH REPORTING") {
+                settingRow(label: "Prompt after crashes", value: "On")
+                settingRow(label: "Include logs", value: "On")
+            }
+            Section("ABOUT") {
+                settingRow(label: "Version", value: "1.0 (42)")
+                settingRow(label: "iCloud", value: "Synced just now")
+            }
+        }
+        .frame(width: phoneSize.width, height: phoneSize.height)
+        assertScreen(view, name: "08-settings-light", colorScheme: .light, size: phoneSize)
+    }
+
+    // MARK: - Non-Tab screens (kept inline — out of Plan 20a scope)
+
     func test_06_taskDetail_light() {
         let view = ZStack(alignment: .bottomTrailing) {
             VStack(spacing: 0) {
-                navBar(title: "Draft launch email", leading: "Today", trailing: "Edit")
+                detailNavBar(title: "Draft launch email", leading: "Today", trailing: "Edit")
                 ScrollView {
                     VStack(alignment: .leading, spacing: 16) {
                         HStack(spacing: 10) {
@@ -216,45 +282,6 @@ final class IOSScreenTourTests: XCTestCase {
         assertScreen(view, name: "07-quick-capture-sheet-dark", colorScheme: .dark, size: phoneSize)
     }
 
-    func test_08_settings_light() {
-        let view = VStack(spacing: 0) {
-            navBar(title: "Settings", leading: nil, trailing: nil)
-            ScrollView {
-                VStack(spacing: 18) {
-                    settingsGroup(title: "GENERAL") {
-                        settingRow(label: "Default list", value: "Today")
-                        settingRow(label: "First weekday", value: "Monday")
-                        settingRow(label: "Show subtasks inline", value: "On")
-                    }
-                    settingsGroup(title: "NOTIFICATIONS") {
-                        settingRow(label: "Notifications", value: "Enabled")
-                        settingRow(label: "All-day reminder", value: "9:00 AM")
-                        settingRow(label: "Snooze default", value: "1 hour")
-                        settingRow(label: "Morning summary", value: "Weekdays")
-                    }
-                    settingsGroup(title: "QUICK CAPTURE") {
-                        settingRow(label: "Share extension", value: "Enabled")
-                        settingRow(label: "Default list", value: "Inbox")
-                    }
-                    settingsGroup(title: "CRASH REPORTING") {
-                        settingRow(label: "Prompt after crashes", value: "On")
-                        settingRow(label: "Include logs", value: "On")
-                    }
-                    settingsGroup(title: "ABOUT") {
-                        settingRow(label: "Version", value: "1.0 (42)")
-                        settingRow(label: "iCloud", value: "Synced just now")
-                    }
-                    Spacer(minLength: 24)
-                }
-                .padding(.horizontal, 16)
-                .padding(.top, 12)
-            }
-        }
-        .frame(width: phoneSize.width, height: phoneSize.height)
-        .background(Color(.systemGroupedBackground))
-        assertScreen(view, name: "08-settings-light", colorScheme: .light, size: phoneSize)
-    }
-
     func test_09_onboarding_light() {
         let view = VStack(spacing: 28) {
             Spacer()
@@ -331,47 +358,34 @@ final class IOSScreenTourTests: XCTestCase {
         assertScreen(view, name: "10-icloud-required-light", colorScheme: .light, size: phoneSize)
     }
 
-    // MARK: - Sample composition helpers
+    // MARK: - Shell helper (Plan 20a)
 
-    private func todayItems() -> [AnyView] {
-        [
-            AnyView(taskRow("Buy milk", tags: ["errands"])),
-            AnyView(taskRow("Draft launch email", status: .started,
-                            tags: ["work", "urgent"])),
-            AnyView(taskRow("Ship 1.0 release", status: .blocked,
-                            deadline: Date(timeIntervalSince1970: 1_780_300_000),
-                            tags: ["work"])),
-            AnyView(taskRow("Reply to investors", tags: ["work"])),
-            AnyView(taskRow("Sync with design", status: .started, tags: ["work"])),
-            AnyView(taskRow("Pay rent", status: .closed)),
-            AnyView(taskRow("Renew domain", tags: ["personal"])),
-            AnyView(taskRow("Read DDIA ch. 6", tags: ["reading"]))
-        ]
-    }
-
+    /// Wraps a migrated Tab screen in a NavigationStack, sized to the
+    /// iPhone tour viewport, with the FloatingAddButton overlay the
+    /// real iOS shell paints.
     @ViewBuilder
-    private func tabScaffold<C: View>(
-        title: String, subtitle: String, icon: String,
+    private func phoneShell<C: View>(
+        fab: Bool,
         @ViewBuilder content: () -> C
     ) -> some View {
         ZStack(alignment: .bottomTrailing) {
-            VStack(spacing: 0) {
-                navBar(title: title, subtitle: subtitle, leading: nil, trailing: nil)
-                ScrollView { content().padding(.top, 4) }
-                tabBar(active: title)
-            }
-            .frame(width: phoneSize.width, height: phoneSize.height)
-            .background(Color(.systemBackground))
+            NavigationStack { content() }
+                .frame(width: phoneSize.width, height: phoneSize.height)
+                .background(Color(.systemBackground))
 
-            FloatingAddButton(onTap: {})
-                .padding(.trailing, 18)
-                .padding(.bottom, 88)
+            if fab {
+                FloatingAddButton(onTap: {})
+                    .padding(.trailing, 18)
+                    .padding(.bottom, 88)
+            }
         }
     }
 
+    // MARK: - Mock chrome retained for test_06 / test_09 only
+
     @ViewBuilder
-    private func navBar(title: String, subtitle: String? = nil,
-                        leading: String?, trailing: String?) -> some View {
+    private func detailNavBar(title: String,
+                              leading: String?, trailing: String?) -> some View {
         VStack(spacing: 0) {
             HStack {
                 if let leading {
@@ -382,12 +396,7 @@ final class IOSScreenTourTests: XCTestCase {
                     Spacer().frame(width: 60)
                 }
                 Spacer()
-                VStack(spacing: 2) {
-                    Text(title).font(.system(size: 17, weight: .semibold))
-                    if let subtitle {
-                        Text(subtitle).font(.caption2).foregroundStyle(.secondary)
-                    }
-                }
+                Text(title).font(.system(size: 17, weight: .semibold))
                 Spacer()
                 if let trailing {
                     Text(trailing)
@@ -405,90 +414,6 @@ final class IOSScreenTourTests: XCTestCase {
     }
 
     @ViewBuilder
-    private func tabBar(active: String) -> some View {
-        VStack(spacing: 0) {
-            Divider()
-            HStack {
-                tabItem("Today", icon: "sun.max", active: active == "Today")
-                tabItem("All", icon: "tag", active: active == "All")
-                tabItem("Filters", icon: "line.3.horizontal.decrease.circle",
-                        active: active == "Filters")
-                tabItem("Search", icon: "magnifyingglass", active: active == "Search")
-                tabItem("Settings", icon: "gearshape", active: active == "Settings")
-            }
-            .padding(.horizontal, 12)
-            .padding(.top, 8)
-            .padding(.bottom, 18)
-        }
-        .background(.regularMaterial)
-    }
-
-    @ViewBuilder
-    private func tabItem(_ label: String, icon: String, active: Bool) -> some View {
-        VStack(spacing: 3) {
-            Image(systemName: icon)
-                .font(.system(size: 18))
-            Text(label).font(.system(size: 10))
-        }
-        .frame(maxWidth: .infinity)
-        .foregroundStyle(active ? Color.accentColor : Color.secondary)
-    }
-
-    @ViewBuilder
-    private func tagRow(_ name: String, count: Int, hex: String) -> some View {
-        let color = (TagTint(hex: hex)?.resolved(in: .light).color) ?? Color.gray
-        HStack(spacing: 10) {
-            Circle().fill(color)
-                .frame(width: 10, height: 10)
-            Text(name).font(.system(size: 16))
-            Spacer()
-            Text("\(count)").font(.caption).foregroundStyle(.secondary)
-            Image(systemName: "chevron.right")
-                .font(.caption).foregroundStyle(.tertiary)
-        }
-        .padding(.horizontal, 16).padding(.vertical, 12)
-        .background(Divider().offset(y: 20), alignment: .bottom)
-    }
-
-    @ViewBuilder
-    private func filterRow(_ name: String, icon: String, badge: Int? = nil) -> some View {
-        HStack(spacing: 10) {
-            Image(systemName: icon)
-                .foregroundStyle(.tint)
-                .frame(width: 22)
-            Text(name).font(.system(size: 16))
-            Spacer()
-            if let badge {
-                Text("\(badge)")
-                    .font(.caption2)
-                    .padding(.horizontal, 6).padding(.vertical, 1)
-                    .background(Capsule().fill(.quaternary))
-            }
-            Image(systemName: "chevron.right")
-                .font(.caption).foregroundStyle(.tertiary)
-        }
-        .padding(.horizontal, 16).padding(.vertical, 12)
-        .background(Divider().offset(y: 20), alignment: .bottom)
-    }
-
-    @ViewBuilder
-    private func searchRow(title: String, subtitle: String, tint: String?) -> some View {
-        let bar = (tint.flatMap { TagTint(hex: $0)?.resolved(in: .light).color }) ?? Color.secondary
-        HStack(spacing: 10) {
-            RoundedRectangle(cornerRadius: 4)
-                .fill(bar)
-                .frame(width: 4, height: 28)
-            VStack(alignment: .leading, spacing: 2) {
-                Text(title).font(.system(size: 15))
-                Text(subtitle).font(.caption).foregroundStyle(.secondary)
-            }
-            Spacer()
-        }
-        .padding(.horizontal, 16).padding(.vertical, 12)
-        .background(Divider().offset(y: 24), alignment: .bottom)
-    }
-
-    @ViewBuilder
     private func labelledSection<Body: View>(title: String,
                                              @ViewBuilder _ body: () -> Body) -> some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -496,32 +421,6 @@ final class IOSScreenTourTests: XCTestCase {
                 .foregroundStyle(.secondary)
             body()
         }
-    }
-
-    @ViewBuilder
-    private func settingsGroup<Body: View>(title: String,
-                                           @ViewBuilder _ body: () -> Body) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text(title).font(.system(size: 11, weight: .semibold))
-                .foregroundStyle(.secondary)
-                .padding(.leading, 4)
-            VStack(spacing: 0) { body() }
-                .background(Color(.secondarySystemGroupedBackground))
-                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-        }
-    }
-
-    @ViewBuilder
-    private func settingRow(label: String, value: String) -> some View {
-        HStack {
-            Text(label).font(.system(size: 15))
-            Spacer()
-            Text(value).font(.system(size: 14)).foregroundStyle(.secondary)
-            Image(systemName: "chevron.right")
-                .font(.caption2).foregroundStyle(.tertiary)
-        }
-        .padding(.horizontal, 14).padding(.vertical, 11)
-        .background(Divider().offset(y: 18).padding(.leading, 14), alignment: .bottom)
     }
 
     @ViewBuilder
@@ -535,6 +434,17 @@ final class IOSScreenTourTests: XCTestCase {
                 Text(title).font(.system(size: 15, weight: .semibold))
                 Text(message).font(.system(size: 13)).foregroundStyle(.secondary)
             }
+        }
+    }
+
+    // MARK: - Settings row mock (test_08 only)
+
+    @ViewBuilder
+    private func settingRow(label: String, value: String) -> some View {
+        HStack {
+            Text(label)
+            Spacer()
+            Text(value).foregroundStyle(.secondary)
         }
     }
 
