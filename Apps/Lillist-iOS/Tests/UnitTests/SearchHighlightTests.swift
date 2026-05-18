@@ -1,28 +1,14 @@
 import XCTest
 import SwiftUI
+import LillistUI
 
-/// Pins the search-highlight contract. We duplicate the highlighting
-/// function here (mirroring `SearchResultRow.highlightedTitle`) because
-/// the iOS app target is not `@testable import`-able from this
-/// standalone test bundle. The duplication is intentional: any change
-/// to the production rule will fail this test until ported.
+/// Pins the search-highlight contract. Plan 20a Task 4d lifted the
+/// `SearchResultRow` view (and its `highlightedTitle` helper) into
+/// `LillistUI` as `SearchResultRowView`, so this test now exercises the
+/// production code directly instead of duplicating the rule.
 final class SearchHighlightTests: XCTestCase {
     static func highlightedTitle(title: String, query: String) -> AttributedString {
-        var attr = AttributedString(title)
-        let trimmedQuery = query.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmedQuery.isEmpty else { return attr }
-        let lowerTitle = title.lowercased()
-        let lowerQuery = trimmedQuery.lowercased()
-        var searchStart = lowerTitle.startIndex
-        while let range = lowerTitle.range(of: lowerQuery, range: searchStart..<lowerTitle.endIndex) {
-            let attrLower = AttributedString.Index(range.lowerBound, within: attr)
-            let attrUpper = AttributedString.Index(range.upperBound, within: attr)
-            if let lower = attrLower, let upper = attrUpper {
-                attr[lower..<upper].backgroundColor = .yellow.opacity(0.3)
-            }
-            searchStart = range.upperBound
-        }
-        return attr
+        SearchResultRowView.highlightedTitle(title: title, query: query)
     }
 
     func test_highlight_marks_matched_range() {

@@ -1,23 +1,24 @@
+#if os(iOS)
 import SwiftUI
 import LillistCore
-import LillistUI
 
 /// Search-result row: title with the matched query highlighted, plus
 /// (when present) the first notes line that also matched. Uses
 /// `AttributedString.backgroundColor` for the highlight so VoiceOver
 /// reads the title naturally without spelling out the highlight.
-struct SearchResultRow: View {
-    let task: TaskStore.TaskRecord
-    let tagNames: [String]
-    let query: String
+///
+/// Lifted into `LillistUI` for Plan 20a so `SearchScreen` can render
+/// directly from the snapshot suite without the iOS app target.
+public struct SearchResultRowView: View {
+    public let task: TaskStore.TaskRecord
+    public let query: String
 
-    init(task: TaskStore.TaskRecord, tagNames: [String], query: String = "") {
+    public init(task: TaskStore.TaskRecord, query: String = "") {
         self.task = task
-        self.tagNames = tagNames
         self.query = query
     }
 
-    var body: some View {
+    public var body: some View {
         VStack(alignment: .leading, spacing: 4) {
             Text(Self.highlightedTitle(title: task.title, query: query))
                 .font(LillistTypography.body)
@@ -30,13 +31,13 @@ struct SearchResultRow: View {
             }
         }
         .accessibilityElement(children: .combine)
-        .accessibilityLabel(String(localized: "\(task.title), \(statusLabel)"))
+        .accessibilityLabel(String(localized: "\(task.title), \(statusLabel)", bundle: .module))
     }
 
     /// Returns the task title wrapped in an `AttributedString` where every
     /// case-insensitive occurrence of `query` gets a yellow background
     /// attribute. Empty query → plain title.
-    static func highlightedTitle(title: String, query: String) -> AttributedString {
+    public nonisolated static func highlightedTitle(title: String, query: String) -> AttributedString {
         var attr = AttributedString(title)
         let trimmedQuery = query.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmedQuery.isEmpty else { return attr }
@@ -67,3 +68,4 @@ struct SearchResultRow: View {
         StatusGlyph.accessibilityLabel(for: task.status)
     }
 }
+#endif

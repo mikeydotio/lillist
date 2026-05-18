@@ -2,141 +2,58 @@ import SwiftUI
 import LillistCore
 import LillistUI
 
-// MARK: - Accessibility audit (Plan 8, Task 26)
-// - `.searchable` produces a standard VoiceOver-labeled search field.
-// - Result rows use SearchResultRow → TaskRowView which has a combined
-//   accessibility element with status spelled out.
-// - No fixed font sizes; semantic colors only.
-
-/// Full-screen search. The query string is treated as a title-substring
-/// match against non-trashed tasks (sorted by most-recently-modified).
+/// Thin wrapper around `LillistUI.SearchScreen`. Owns the @State for
+/// query, scope, results, and recents; runs the debounced
+/// title-substring match through `SmartFilterStore`; and registers the
+/// `.navigationDestination(for: UUID.self)` that turns a tapped row
+/// into a `TaskDetailView`. Plan 20a Task 4d.
 ///
 /// Deviation note: the plan text references `PredicateParser.parse(query)`
 /// for a full smart-filter DSL search, but LillistCore doesn't ship a public
 /// DSL parser. Title-contains gets us the common case; a follow-up can swap
 /// in the DSL parser when one lands.
 struct SearchView: View {
-    enum Scope: Hashable, CaseIterable {
-        case all, open, closed
-        var title: String {
-            switch self {
-            case .all: return "All"
-            case .open: return "Open"
-            case .closed: return "Closed"
-            }
-        }
-    }
-
     private struct SearchTrigger: Hashable {
         let query: String
-        let scope: Scope
+        let scope: SearchScreen.Scope
     }
 
     @Environment(AppEnvironment.self) private var env
-    @Environment(\.taskSelectionBinding) private var taskSelection
-    @Environment(\.quickCaptureAction) private var quickCaptureAction
 
     @State private var query = ""
-    @State private var scope: Scope = .all
+    @State private var scope: SearchScreen.Scope = .all
     @State private var results: [TaskStore.TaskRecord] = []
     @State private var recents = RecentSearchesStore()
 
     var body: some View {
-        Group {
-            if query.isEmpty {
-                ContentUnavailableView {
-                    Label("Search Lillist", systemImage: "magnifyingglass")
-                } description: {
-                    Text("Type a word from a task title.")
-                } actions: {
-                    Button("Capture a task", systemImage: "plus.circle.fill") {
-                        quickCaptureAction()
-                    }
-                    .buttonStyle(.borderedProminent)
+        SearchScreen(
+            query: $query,
+            scope: $scope,
+            results: results,
+            recents: recents.recent,
+            syncIndicator: env.syncMonitor.indicator,
+            onClearRecents: { recents.clear() },
+            onStatusClick: { record in Task { await cycle(record) } },
+            onStatusSet: { record, newStatus in
+                Task { await setStatus(record, to: newStatus) }
+            },
+            onComplete: { record in
+                Task {
+                    try? await env.taskStore.transition(id: record.id, to: .closed)
+                    await runSearch()
                 }
-            } else if results.isEmpty {
-                List {
-                    ContentUnavailableView(
-                        "No matches for \"\(query)\"",
-                        systemImage: "questionmark.text.page"
-                    )
-                }
-            } else {
-                resultsBody
-            }
-        }
-        .searchable(text: $query, placement: .automatic)
-        .searchScopes($scope, scopes: {
-            ForEach(Scope.allCases, id: \.self) { s in
-                Text(s.title).tag(s)
-            }
-        })
-        .searchSuggestions {
-            if query.isEmpty && !recents.recent.isEmpty {
-                Section("Recent") {
-                    ForEach(recents.recent, id: \.self) { recent in
-                        Text(recent).searchCompletion(recent)
-                    }
-                    Button("Clear recent searches", role: .destructive) {
-                        recents.clear()
-                    }
+            },
+            onDelete: { record in
+                Task {
+                    try? await env.taskStore.softDelete(id: record.id)
+                    await runSearch()
                 }
             }
-        }
-        .navigationTitle("Search")
+        )
         .navigationDestination(for: UUID.self) { id in
             TaskDetailView(taskID: id)
         }
-        .toolbar {
-            ToolbarItem(placement: .topBarTrailing) {
-                SyncStatusBadge(indicator: env.syncMonitor.indicator)
-            }
-        }
         .task(id: SearchTrigger(query: query, scope: scope)) { await runSearch() }
-    }
-
-    @ViewBuilder
-    private var resultsBody: some View {
-        if let taskSelection {
-            List(selection: taskSelection) {
-                ForEach(results, id: \.id) { task in
-                    row(task).tag(task.id)
-                }
-            }
-        } else {
-            List {
-                ForEach(results, id: \.id) { task in
-                    NavigationLink(value: task.id) { row(task) }
-                }
-            }
-        }
-    }
-
-    @ViewBuilder
-    private func row(_ task: TaskStore.TaskRecord) -> some View {
-        SearchResultRow(task: task, tagNames: [], query: query)
-            .swipeActions(edge: .leading, allowsFullSwipe: true) {
-                Button("Complete") {
-                    Task { try? await env.taskStore.transition(id: task.id, to: .closed); await runSearch() }
-                }.tint(.green)
-            }
-            .swipeActions(edge: .trailing) {
-                Button(role: .destructive) {
-                    Task { try? await env.taskStore.softDelete(id: task.id); await runSearch() }
-                } label: { Text("Delete") }
-            }
-            .contextMenu {
-                Menu("Change status") {
-                    ForEach(Status.allCases, id: \.self) { s in
-                        Button(StatusGlyph.accessibilityLabel(for: s)) {
-                            Task { try? await env.taskStore.transition(id: task.id, to: s); await runSearch() }
-                        }
-                    }
-                }
-                Button(role: .destructive) {
-                    Task { try? await env.taskStore.softDelete(id: task.id); await runSearch() }
-                } label: { Text("Delete") }
-            }
     }
 
     private func runSearch() async {
@@ -175,5 +92,16 @@ struct SearchView: View {
         } catch {
             results = []
         }
+    }
+
+    private func cycle(_ record: TaskStore.TaskRecord) async {
+        let next = StatusCycler.nextOnClick(from: record.status)
+        try? await env.taskStore.transition(id: record.id, to: next)
+        await runSearch()
+    }
+
+    private func setStatus(_ record: TaskStore.TaskRecord, to newStatus: Status) async {
+        try? await env.taskStore.transition(id: record.id, to: newStatus)
+        await runSearch()
     }
 }
