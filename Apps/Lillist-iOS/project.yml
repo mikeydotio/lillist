@@ -167,3 +167,9 @@ schemes:
       config: Debug
       targets:
         - Lillist-iOSTests
+        # SPM test bundle from Packages/LillistUI. Includes iOS-only
+        # snapshot tests guarded by `#if os(iOS)` that compile out on
+        # macOS hosts — wiring them into the iOS scheme is the only way
+        # they actually run. See docs/engineering-notes.md (the
+        # "scheme gap" entry) for the history.
+        - package: LillistUI/LillistUITests

@@ -4,6 +4,108 @@ Append-only log of cross-cutting engineering lessons learned while building
 Lillist. Each entry captures a non-obvious gotcha — usually one that took real
 investigation to find — so future work doesn't re-learn it the hard way.
 
+## 2026-05-17 — Closing the iOS LillistUITests scheme gap
+
+**Context.** `LillistUITests/iOS/iOSSnapshotTests.swift` (14 tests) and
+the iOS branches of `LillistUITests/Tour/IOSScreenTourTests.swift` (10
+tests) had been checked into the repo since May 14–16 but never
+executed — `swift test --package-path Packages/LillistUI` builds for
+the host platform (macOS), so the `#if os(iOS)` blocks compile out,
+and the Lillist-iOS scheme only listed `Lillist-iOSTests` in its test
+action. The previous engineering-notes entry called this "the scheme
+gap" with a manual workaround. It's now closed.
+
+**The new workflow.**
+
+1. **Scheme wiring.** `Apps/Lillist-iOS/project.yml` lists the SPM
+   test bundle alongside the iOS-app test bundle under the scheme's
+   test action:
+   ```yaml
+   schemes:
+     Lillist-iOS:
+       test:
+         targets:
+           - Lillist-iOSTests
+           - package: LillistUI/LillistUITests
+   ```
+   `xcodegen generate` translates `package: <name>/<test-target>` into
+   a `<TestableReference>` block in the xcscheme XML whose
+   `ReferencedContainer` points at `../../Packages/LillistUI`. The
+   syntax is documented in xcodegen's ProjectSpec "Testable Target
+   Reference" section.
+
+2. **Canonical simulator pin: iPhone 17 on iOS 26.2.** Snapshot tests
+   are simulator-version-sensitive; render output differs by iOS
+   version and device class. iPhone 17 + iOS 26.2 is the latest
+   available pair, matches the iOS deployment target (`iOS: "26.0"`),
+   and is the device class most users will be on by ship. Going
+   forward, baselines are recorded against this destination and any
+   re-record uses the same destination.
+
+3. **Running the tests.**
+   ```sh
+   xcodebuild test \
+     -workspace Lillist.xcworkspace \
+     -scheme Lillist-iOS \
+     -destination 'platform=iOS Simulator,name=iPhone 17,OS=26.2'
+   ```
+   This runs all four iOS test bundles: Lillist-iOSTests (38 tests)
+   and LillistUITests on iOS (47 tests, 1 currently XCTSkip-ed; see
+   below).
+
+4. **Re-recording iOS baselines.** `SNAPSHOT_TESTING_RECORD=all` and
+   `TEST_RUNNER_*`-prefixed env vars are *not* propagated through
+   `xcodebuild test` to the test-host process (this works for `swift
+   test` but not xcodebuild). The reliable workaround is to thread
+   `record: .all` directly through the assertion API for the run.
+   Plan 20 documented `withSnapshotTesting(record: .all) { … }` as
+   one option; the cleaner one for a whole suite is to add a `record:
+   .all` parameter to the per-suite helper (`assertScreen` in
+   `IOSScreenTourTests.swift`) temporarily, run, then revert. This
+   leaves the source untouched between record sessions.
+
+**Rules.**
+
+- **Don't probe SwiftUI accessibility via UIKit view-hierarchy
+  traversal.** A test that asks `host.view.subviews`'
+  `.accessibilityLabel` recursively — even with the host attached to
+  a key-and-visible window, a forced render via `drawHierarchy`, and
+  a runloop spin — finds *nothing*: SwiftUI only surfaces the a11y
+  tree to the real assistive-technology runtime (VoiceOver / Voice
+  Control), not to introspection. The `.accessibilityLabel(...)`
+  modifier *is* working; the tooling is wrong. To test a11y in unit
+  tests, either (a) use an accessibility-snapshot strategy (text
+  snapshot of the AT tree), or (b) hit the label via an `XCUITest`
+  whose `XCUIElement` queries go through the real AT layer.
+  `test_floatingAddButton_accessibilityLabel_is_present` is currently
+  `XCTSkip`-ed for this reason — the FAB has the right modifier;
+  there's just no working harness for verifying that here.
+- **SF Symbol glyphs render differently headless vs. in an attached
+  UI.** Recording a `FloatingAddButton` snapshot via xcodebuild test
+  produces a flat blue circle *without* the `+` glyph; the same view
+  in the iOS app shows the symbol correctly. The headless test
+  process doesn't fully resolve the SF Symbols rendering pipeline.
+  Snapshot tests still catch regressions because the headless render
+  is *deterministic* — it's only the human-readable preview that
+  looks off. Don't treat the missing glyph as a bug; check the live
+  app for visual correctness, and pin behaviour via the snapshot.
+- **Pre-commit iOS-LillistUI checks belong on `xcodebuild test`, not
+  `swift test`.** `swift test --package-path Packages/LillistUI` will
+  always under-report iOS coverage (anything `#if os(iOS)` compiles
+  out). Make `xcodebuild test -scheme Lillist-iOS -destination
+  'platform=iOS Simulator,name=iPhone 17,OS=26.2'` the canonical
+  pre-merge command for iOS UI changes.
+
+**Evidence.** `Apps/Lillist-iOS/project.yml` adds `- package:
+LillistUI/LillistUITests` under `schemes.Lillist-iOS.test.targets`;
+`xcodegen generate` regenerates the xcscheme accordingly. 13 new
+baselines in `Tests/LillistUITests/iOS/__Snapshots__/iOSSnapshotTests/`
+and 7 re-recorded baselines in
+`Tests/LillistUITests/Tour/__Snapshots__/IOSScreenTourTests/` (the
+latter were stale from before the May 17 AccentColor commit). Full
+iOS scheme test passes 47 tests on the LillistUITests bundle (1
+skipped) plus 38 in Lillist-iOSTests, 3× consecutive runs.
+
 ## 2026-05-17 — Snapshot test reliability: SwiftUI `Form` views drift on cold-cache runs
 
 **Context.** Three `RecurrenceEditorSnapshotTests` Form-rendered
@@ -444,7 +546,7 @@ in `RootSplitView.toggleSidebar()` and `TaskJournalTab.scrollTo`.
 - **Wrap small visual controls in a 44pt hit area; keep the inner frame for visual size.** Double-`.frame` (inner small for visuals, outer 44pt for touch) is the SwiftUI idiom for HIG-compliant tap targets without changing the visible design. `.contentShape(Rectangle())` on the outer frame ensures the entire hit region is tappable, not just the inner glyph.
 - **Every gesture-only interaction needs an `.accessibilityAction(named:)` equivalent.** Long-presses, swipes, drag handles — none are reachable from VoiceOver, Switch Control, or Voice Control by default. `.accessibilityAction(named: "Cycle status") { onLongPress() }` reuses the same closure so the two paths can't drift. The named action also surfaces in Voice Control's "Show Names" overlay so users see what verbs are available.
 - **`Date.formatted(date: .abbreviated, ...)` honors the runner's local timezone.** Fixture dates pinned at `T00:00:00Z` for a deadline check format as the *previous* day in negative-offset zones (US Pacific is UTC-7). Use noon UTC (`T12:00:00Z`) for fixtures whose date portion matters; the abbreviated format is then stable across CI runner locales.
-- **iOS-only LillistUI tests (`#if os(iOS)`) are not reachable from `swift test` on a macOS host.** `swift test --package-path Packages/LillistUI` builds for the host platform; iOS-conditional snapshot tests compile out and report "0 tests run." The current workspace also has no scheme with the `LillistUITests` target wired into an iOS test action, so these tests can only be exercised inside Xcode (or by adding the SPM test target to `Lillist-iOS.xcscheme`). Verify iOS-LillistUI changes via builds + the iOS app test bundle until the scheme gap is closed.
+- **iOS-only LillistUI tests (`#if os(iOS)`) are not reachable from `swift test` on a macOS host.** `swift test --package-path Packages/LillistUI` builds for the host platform; iOS-conditional snapshot tests compile out and report "0 tests run." The current workspace also has no scheme with the `LillistUITests` target wired into an iOS test action, so these tests can only be exercised inside Xcode (or by adding the SPM test target to `Lillist-iOS.xcscheme`). Verify iOS-LillistUI changes via builds + the iOS app test bundle until the scheme gap is closed. **2026-05-17 update:** the scheme gap is now closed — `Apps/Lillist-iOS/project.yml` includes `- package: LillistUI/LillistUITests` in the test action and `xcodebuild test -scheme Lillist-iOS -destination 'platform=iOS Simulator,name=iPhone 17,OS=26.2'` now runs the iOS-conditional tests. See the new entry at the top of this file for the full workflow.
 
 **Evidence.** Plan 13 commits on `main`: SyncStatusBadge inProgress fix + snapshot; four iOS StatusCycler routings; iOS TaskDetailView consumes StatusGlyph; @FocusedValue gating + ListColumn hoist + 2 rebound shortcuts; InlineCreateField empty-tab .ignored; 44pt hit areas on StatusIndicatorView + SyncStatusBadge; QuickCaptureField chips become Buttons; TaskRowView reorder actions + fuller a11y label; FloatingAddButton a11y action; DetailHeaderView a11y double-spoken fix; swipe + context menu across TodayView / TagTaskListView / FilterResultsView / SearchView.
 

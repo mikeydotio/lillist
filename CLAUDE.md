@@ -17,7 +17,11 @@ User-global rules live in `~/.claude/CLAUDE.md`; this file only adds Lillist-spe
     6/7/8 — not yet present).
 - **Build/test:** From `Packages/LillistCore`, use `swift build` and
   `swift test`. The package uses `-enable-experimental-feature StrictConcurrency`
-  on the source target.
+  on the source target. For iOS-conditional `LillistUITests` (the `#if os(iOS)`
+  branches of `iOSSnapshotTests` and `IOSScreenTourTests`), use the iOS scheme:
+  `xcodebuild test -workspace Lillist.xcworkspace -scheme Lillist-iOS -destination 'platform=iOS Simulator,name=iPhone 17,OS=26.2'`.
+  `swift test` on a macOS host compiles those branches out and reports them
+  as not run. iPhone 17 + iOS 26.2 is the canonical baseline-recording pin.
 
 ## Plans live in `docs/superpowers/plans/`
 
