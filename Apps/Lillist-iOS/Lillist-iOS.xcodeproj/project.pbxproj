@@ -10,7 +10,6 @@
 		037A2818BA4C8A5CFECE4DC4 /* TaskEntity.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60D270F4CC665B45F955D44A /* TaskEntity.swift */; };
 		046D8F27FB3D4AD0970C455F /* AppEnvironment.swift in Sources */ = {isa = PBXBuildFile; fileRef = 297211E1BF6A9D0C7890E078 /* AppEnvironment.swift */; };
 		0D39ED83FD7B9F2AB1F7B7A6 /* TaskNotesTab.swift in Sources */ = {isa = PBXBuildFile; fileRef = 63687CA5DAE8C94F242FB14A /* TaskNotesTab.swift */; };
-		0E896BFF8182396C85EDCCEC /* QuickCaptureAction.swift in Sources */ = {isa = PBXBuildFile; fileRef = CEBA9EB15D97EF41A80E2101 /* QuickCaptureAction.swift */; };
 		12B0B4969DCF826068F817E2 /* LillistCommands.swift in Sources */ = {isa = PBXBuildFile; fileRef = 320C843DACE915B2A004882D /* LillistCommands.swift */; };
 		19E41567449FAA5BE15E6B32 /* AdvancedSection.swift in Sources */ = {isa = PBXBuildFile; fileRef = EAFB6125227B6A731DA61F20 /* AdvancedSection.swift */; };
 		1B361E001278EAD358271191 /* SearchResultRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 448E26B3838FE07DB2DF0357 /* SearchResultRow.swift */; };
@@ -52,7 +51,6 @@
 		8ED796B233C11810C84BB4DB /* FiltersListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00051882E988E14985F0D4D1 /* FiltersListView.swift */; };
 		901C7E98FDF9DA6C070A641A /* TaskSubtasksTab.swift in Sources */ = {isa = PBXBuildFile; fileRef = 29C684CCD22ABED2078AE9FA /* TaskSubtasksTab.swift */; };
 		92FB9F599E4AE68D4C2E5151 /* ShareExtension-iOS.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 940380DB2F7305D2993DCD30 /* ShareExtension-iOS.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
-		98AD3CEA485DFBC2356D0744 /* TaskSelectionEnvironment.swift in Sources */ = {isa = PBXBuildFile; fileRef = 662317866BCDC0281427FF83 /* TaskSelectionEnvironment.swift */; };
 		9978784936A13783F1BF8E35 /* SharePayload.swift in Sources */ = {isa = PBXBuildFile; fileRef = D2F899010F7F794421F9DB2A /* SharePayload.swift */; };
 		9A614EB7763D94FE9D1D032D /* TabShell.swift in Sources */ = {isa = PBXBuildFile; fileRef = CDF66890A34B8871D4E2278B /* TabShell.swift */; };
 		9FCE62513DB659CE02151EB4 /* RecurrenceSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 21542BC245EEBE9709AB17DD /* RecurrenceSheet.swift */; };
@@ -158,7 +156,6 @@
 		5E708B597B5A514DE89C94FC /* Lillist-iOS.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = "Lillist-iOS.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		60D270F4CC665B45F955D44A /* TaskEntity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TaskEntity.swift; sourceTree = "<group>"; };
 		63687CA5DAE8C94F242FB14A /* TaskNotesTab.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TaskNotesTab.swift; sourceTree = "<group>"; };
-		662317866BCDC0281427FF83 /* TaskSelectionEnvironment.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TaskSelectionEnvironment.swift; sourceTree = "<group>"; };
 		6816606162835A06ED8B8FEF /* SharePayloadTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SharePayloadTests.swift; sourceTree = "<group>"; };
 		737996A9942CE2D095EAA6AB /* TaskAttachmentsTab.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TaskAttachmentsTab.swift; sourceTree = "<group>"; };
 		752930BC024A56479687DFAA /* QuickCaptureLockScreenIntent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuickCaptureLockScreenIntent.swift; sourceTree = "<group>"; };
@@ -184,7 +181,6 @@
 		C01EA0AAA388BBCF9B11BDED /* Lillist-iOSTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = "Lillist-iOSTests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
 		C879F47AAC9011FEA0721657 /* LillistShortcuts.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LillistShortcuts.swift; sourceTree = "<group>"; };
 		CDF66890A34B8871D4E2278B /* TabShell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TabShell.swift; sourceTree = "<group>"; };
-		CEBA9EB15D97EF41A80E2101 /* QuickCaptureAction.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuickCaptureAction.swift; sourceTree = "<group>"; };
 		CECC0E4966AEDB2B50C11DCA /* AddNoteIntent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddNoteIntent.swift; sourceTree = "<group>"; };
 		CEE1AA15CD7EEB68E16E53D8 /* QuickCaptureFlowTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuickCaptureFlowTests.swift; sourceTree = "<group>"; };
 		D1B6EFD3373C205B1003A91A /* SettingsTab.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsTab.swift; sourceTree = "<group>"; };
@@ -458,9 +454,7 @@
 		A933F3CB1E8F5653BE7C8EBF /* Common */ = {
 			isa = PBXGroup;
 			children = (
-				CEBA9EB15D97EF41A80E2101 /* QuickCaptureAction.swift */,
 				7682F5D6476B1BB703DB96DF /* SceneBindings.swift */,
-				662317866BCDC0281427FF83 /* TaskSelectionEnvironment.swift */,
 			);
 			path = Common;
 			sourceTree = "<group>";
@@ -754,7 +748,6 @@
 				F75A71A023C47A17E5C2157E /* MailComposerView.swift in Sources */,
 				CB8301504557324D1B671609 /* NotificationsSection.swift in Sources */,
 				AB0DAB0FFB124C1178A0FAB6 /* OnboardingScreen.swift in Sources */,
-				0E896BFF8182396C85EDCCEC /* QuickCaptureAction.swift in Sources */,
 				E40372B99D819D778F4F2ED7 /* QuickCaptureSection.swift in Sources */,
 				652545A8D47A8D082D04EE75 /* QuickCaptureSheet.swift in Sources */,
 				3651D989130BF5B51EC10467 /* RecentSearchesStore.swift in Sources */,
@@ -771,7 +764,6 @@
 				41FFD2B886C0549516C2E50D /* TaskDetailView.swift in Sources */,
 				C1FEEAB56AFC2EFD9C108C47 /* TaskJournalTab.swift in Sources */,
 				0D39ED83FD7B9F2AB1F7B7A6 /* TaskNotesTab.swift in Sources */,
-				98AD3CEA485DFBC2356D0744 /* TaskSelectionEnvironment.swift in Sources */,
 				901C7E98FDF9DA6C070A641A /* TaskSubtasksTab.swift in Sources */,
 				44179FDE8018A6D7AF8C4009 /* TodayView.swift in Sources */,
 				58E910FC4630D8C34D79AAC0 /* TrashSection.swift in Sources */,
