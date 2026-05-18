@@ -4,6 +4,57 @@ Append-only log of cross-cutting engineering lessons learned while building
 Lillist. Each entry captures a non-obvious gotcha — usually one that took real
 investigation to find — so future work doesn't re-learn it the hard way.
 
+## 2026-05-17 — Snapshot test reliability: SwiftUI `Form` views drift on cold-cache runs
+
+**Context.** Three `RecurrenceEditorSnapshotTests` Form-rendered
+baselines (`testWeeklyTuesdayThursday_light`, `testMonthlyDay15_light`,
+`testMonthlyMultipleDays_light`) failed on a cold-cache `swift test
+--package-path Packages/LillistUI` run with actual precision
+0.977–0.979 vs the required 0.99. Visual diff showed the entire Form
+content shifted by sub-pixel amounts — classic anti-aliasing /
+font-hinting drift, invisible to a human but enough to breach a strict
+raw-pixel threshold. The drift cleared on the next run in the same
+shell. Re-recording with `SNAPSHOT_TESTING_RECORD=all` produced
+byte-identical baselines to what was already in git — confirmation
+that the on-disk baselines were *correct*; the cold-cache render was
+the outlier. Other snapshot tests in the suite (custom layouts,
+sidebars, tag chips) weren't affected because their frames are smaller
+and they don't go through AppKit's Form chrome.
+
+**Rules.**
+
+- **`Form`-rendered snapshots need `perceptualPrecision: 0.98`
+  alongside `precision: 0.99`.** AppKit Form rendering accumulates
+  per-section AA drift that breaches 0.99 precision on larger frames
+  (420×600+) when the render pipeline is cold. `precision` still
+  catches real layout regressions (different row counts, different
+  section heights, accidental padding changes); `perceptualPrecision`
+  tolerates the sub-pixel font-edge drift you wouldn't see visually
+  anyway. Don't soften globally — most non-Form views pass at 0.99
+  alone, and that strictness is the regression net for everything
+  else.
+- **A 0.97–0.98 precision failure that clears on the next run is
+  render non-determinism, not a stale baseline.** Re-recording will
+  *appear* to fix it (the warm second run produces the "matching"
+  image), but check `git status` after a re-record: if the working
+  tree is clean, the new bytes are byte-identical to the existing
+  baseline — the existing baseline was right all along, and the cure
+  is precision tuning (add `perceptualPrecision`), not committing new
+  baselines.
+- **Read the diff before re-recording.** When a snapshot fails after
+  an a11y-only or copy-only commit ("baselines verified unchanged"),
+  copy the baseline and the temp render into `/tmp/`, open both in
+  Preview side by side. If the diff is real (layout shifted, section
+  metrics changed, padding moved), the prior commit's claim was
+  wrong and the failure is the snapshot test doing its job. If the
+  diff is invisible to you (everything looks identical), it's
+  AA/cold-cache drift and `perceptualPrecision` is the fix.
+
+**Evidence.** `RecurrenceEditorSnapshotTests` assertions now use
+`precision: 0.99, perceptualPrecision: 0.98`. Verified 10× consecutive
+clean runs (including a fresh `swift package clean && rm -rf .build`)
+after the change with no failures.
+
 ## 2026-05-17 — Plan 20 shared polish & accessibility nits
 
 **Context.** Plan 20 closed the cross-platform and a11y LOW/NIT
