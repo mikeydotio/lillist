@@ -24,6 +24,30 @@ public final class SmartFilterStore: @unchecked Sendable {
         public var position: Double
         public var createdAt: Date?
         public var modifiedAt: Date?
+
+        public init(
+            id: UUID,
+            name: String,
+            group: PredicateGroup,
+            tintColor: String? = nil,
+            sortField: SortField,
+            sortAscending: Bool,
+            isPinned: Bool,
+            position: Double,
+            createdAt: Date? = nil,
+            modifiedAt: Date? = nil
+        ) {
+            self.id = id
+            self.name = name
+            self.group = group
+            self.tintColor = tintColor
+            self.sortField = sortField
+            self.sortAscending = sortAscending
+            self.isPinned = isPinned
+            self.position = position
+            self.createdAt = createdAt
+            self.modifiedAt = modifiedAt
+        }
     }
 
     /// Mutable view passed to `update`'s closure.
