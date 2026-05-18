@@ -4,6 +4,111 @@ Append-only log of cross-cutting engineering lessons learned while building
 Lillist. Each entry captures a non-obvious gotcha — usually one that took real
 investigation to find — so future work doesn't re-learn it the hard way.
 
+## 2026-05-17 — Plan 20a IOSScreenTourTests refactor: container/presenter split for testable iOS screens
+
+**Context.** Plan 20a executed the deferred Task 4 from Plan 20. The
+five primary iOS Tab screens (`TodayView`, `AllTagsView`,
+`FiltersListView`, `SearchView`, `SettingsTab`) used to live entirely
+in `Apps/Lillist-iOS/Sources/` because they read `@Environment(AppEnvironment.self)`
+and the iOS app bundle is not `@testable import`-able from the
+LillistUI snapshot suite. The tour at
+`Packages/LillistUI/Tests/LillistUITests/Tour/IOSScreenTourTests.swift`
+worked around the gap by rebuilding each screen visually from inline
+mock chrome (`tabScaffold`/`navBar`/`tabBar`/`tagRow`/`filterRow`/etc.) —
+which meant the tour was testing *fake* screens, not the real
+composition users see.
+
+Plan 20a's goal: make the tour test the real screens. The migration
+moves each screen's composition into
+`Packages/LillistUI/Sources/LillistUI/iOS/Screens/<Tab>Screen.swift`,
+turns the app-target view into a thin wrapper that owns the
+`AppEnvironment` machinery, and rewrites the tour to instantiate the
+real Screens with frozen mock data.
+
+**Rules.**
+
+- **Container/presenter split is the right pattern when a SwiftUI
+  view's "data needs" can't cross a test boundary.** The migrated
+  Screens are *pure presentation*: data + action closures in via
+  `init`, no `@State`, no `.task`. The app wrapper owns the
+  `@State results`, the `.task { await reload() }`, the AppEnvironment
+  reads, and the `.navigationDestination` (the destination view
+  references iOS-app types like `TaskDetailView` that LillistUI can't
+  import). The tour test then constructs the Screen with hardcoded
+  records, no async loader to race. This produces deterministic
+  snapshot tests — no Combine timing flake risk, no need for
+  `Task.yield()` barriers (which aren't happens-before barriers
+  anyway, per the May 12 entry).
+- **Settings is the awkward case — pull only the chrome up, leave
+  the env-coupled sections down.** The iOS Settings sub-sections
+  (`GeneralSection`, `NotificationsSection`, `TrashSection`,
+  `QuickCaptureSection`, `CrashReportingSection`, `AdvancedSection`)
+  reach deep into `AppEnvironment` (NotificationPermissions,
+  NotificationScheduler, TaskStore.purgeAll, Persistence, build/os
+  metadata, and debounced `.task(id:)` writebacks). Migrating *those*
+  into LillistUI would be a scope explosion. The right design is a
+  `SettingsScreen<SectionsContent: View>` generic that owns the
+  NavigationStack + Form + title + Done toolbar but takes the sections
+  as a ViewBuilder; the iOS app target passes the real sections in,
+  and the tour passes mock placeholders. `[AnyView]` was rejected
+  because it erases section identity and breaks Form's grouped
+  styling.
+- **DTOs without explicit public memberwise inits aren't actually
+  public.** `SmartFilterStore.SmartFilterRecord` had only
+  `public var` fields and relied on Swift's synthesized memberwise
+  init, which is `internal` by default even when all fields are
+  public. Constructing one from the tour suite failed with
+  "initializer is inaccessible due to 'internal' protection level."
+  `TaskStore.TaskRecord` already had a hand-written public init —
+  the gap shows up only the day a caller outside the defining
+  module needs to fabricate the type. Cure: every public DTO with
+  public fields needs an explicit public init.
+- **SwiftUI `View` static helpers default to MainActor; mark pure
+  ones `nonisolated`.** `SearchResultRowView` is a `View`, so all
+  members inherit `@MainActor` isolation in Swift 6. The
+  `highlightedTitle(title:query:)` helper is pure string math —
+  callers (`SearchHighlightTests`) hit "main actor-isolated static
+  method in a synchronous nonisolated context" when invoking it from
+  an XCTestCase. Cure: `public nonisolated static func` — keeps the
+  helper available off the main actor without leaking isolation
+  through the View conformance.
+- **Cross-target environment values live in the shared module.**
+  The iOS shells (`TabShell`, `SplitShell`) supply
+  `\.taskSelectionBinding` and `\.quickCaptureAction` via
+  `.environment(\..., ...)`; the leaf screens read those values.
+  Before Plan 20a the `EnvironmentKey` definitions were in
+  `Apps/Lillist-iOS/Sources/Common/`. Moving the screens into
+  LillistUI required moving the env keys with them. The shell setters
+  still live in the iOS app target — only the *type* moves to where
+  the consumer lives.
+- **Multiple `.navigationDestination(for: UUID.self)` registrations
+  in the same NavigationStack scope would collide, but each
+  Tab gets its own NavigationStack — collisions don't actually
+  happen.** The old `TagDestination` / `FilterDestination` wrapper
+  types existed to disambiguate tag-UUID vs filter-UUID vs task-UUID
+  destinations within a single NavigationStack. After the Plan-16
+  TabShell refactor (each tab is its own NavigationStack), the
+  disambiguation became dead weight. Plan 20a drops both wrappers;
+  `TodayView`, `AllTagsView`, `FiltersListView`, `SearchView`, and
+  `FilterResultsView` each register their own `for: UUID.self`
+  handler against their own NavigationStack.
+- **Tour snapshots after migration are visually *different* — that's
+  the point.** The old mock chrome (custom navBar with title +
+  subtitle, custom tabBar at bottom, etc.) approximated iOS's native
+  navigation chrome. The new tour wraps the real Screens in a
+  NavigationStack, which renders system chrome (large titles, system
+  tab bar would render if the test included a TabView host, etc.).
+  The plan explicitly accepts re-recording. The six baselines
+  affected are test_01 through test_05 and test_08; test_06/07/09/10
+  cover surfaces Plan 20a did not migrate and their baselines are
+  unchanged.
+
+**Evidence.** Plan 20a commits on `main`: one commit per task (4a–4f).
+Full `swift test --package-path Packages/LillistCore` (572 tests),
+`swift test --package-path Packages/LillistUI` (31 host-platform
+tests; iOS-only tests run via the Lillist-iOS xcodebuild scheme),
+plus both app-target builds, all clean after the migration.
+
 ## 2026-05-17 — Closing the iOS LillistUITests scheme gap
 
 **Context.** `LillistUITests/iOS/iOSSnapshotTests.swift` (14 tests) and
