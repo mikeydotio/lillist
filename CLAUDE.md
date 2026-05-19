@@ -78,10 +78,10 @@ After moving/deleting source files, regenerate the matching pbxproj:
 - **Treat build warnings as errors.** Across SPM and Xcode targets. Fix
   warnings at the architecture level — don't paper over them with
   attribute or pragma noise.
-- **SOLID, DRY, YAGNI, separation of concerns.** Standard.
-- **Read a file before a fresh set of edits** — it may have moved since
-  the last visit.
-- **Never force-push without explicit confirmation.**
+- **Follow SOLID, DRY, YAGNI, separation of concerns.** You are an excellent engineer. Write software that we can be truly proud of publishing.
+- **Read a file before a fresh set of edits** It may have moved or been edited by the user since the last visit.
+- **Never force-push without explicit user permission on a per-case basis.**
+- **Write robust tests designed to enforce high quality standards.** The job of tests is not to pass. The job of tests is to hold us accountable to writing excellent and defect-resistant software, and if the tests are poorly designed or give us a false sense of success, then we have failed our task.
 
 ## Code conventions
 
