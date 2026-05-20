@@ -74,6 +74,38 @@ struct PersistenceControllerCloudKitTests {
         }
         #expect(attr.allowsExternalBinaryDataStorage == true)
     }
+
+    @Test("LocalOnly on-disk configuration has no CloudKit container options")
+    func description_localOnly_hasNoCloudKitOptions() {
+        let url = URL(fileURLWithPath: "/tmp/Lillist-fake.sqlite")
+        let cfg = StoreConfiguration.onDisk(url: url, syncMode: .localOnly)
+        let desc = PersistenceController.makeStoreDescription(for: cfg)
+        #expect(desc.cloudKitContainerOptions == nil)
+        // Persistent-history + remote-change flags stay enabled even in
+        // LocalOnly so the description stays mode-swappable without
+        // recreating the store file.
+        #expect(desc.isOptionTrue(NSPersistentHistoryTrackingKey))
+        #expect(desc.isOptionTrue(NSPersistentStoreRemoteChangeNotificationPostOptionKey))
+    }
+
+    @Test("iCloudSync on-disk configuration carries the private-scope container options")
+    func description_iCloudSync_hasCloudKitOptions() {
+        let url = URL(fileURLWithPath: "/tmp/Lillist-fake.sqlite")
+        let cfg = StoreConfiguration.onDisk(url: url, syncMode: .iCloudSync)
+        let desc = PersistenceController.makeStoreDescription(for: cfg)
+        #expect(desc.cloudKitContainerOptions != nil)
+        #expect(desc.cloudKitContainerOptions?.containerIdentifier == StoreConfiguration.defaultCloudKitContainerIdentifier)
+        #expect(desc.cloudKitContainerOptions?.databaseScope == .private)
+    }
+
+    @Test("On-disk containers are always NSPersistentCloudKitContainer regardless of mode")
+    func container_onDisk_isAlwaysCloudKitSubclass_regardlessOfMode() throws {
+        let url = URL(fileURLWithPath: "/tmp/Lillist-mode.sqlite")
+        let local = try PersistenceController.makeContainer(for: .onDisk(url: url, syncMode: .localOnly))
+        let cloud = try PersistenceController.makeContainer(for: .onDisk(url: url, syncMode: .iCloudSync))
+        #expect(local is NSPersistentCloudKitContainer)
+        #expect(cloud is NSPersistentCloudKitContainer)
+    }
 }
 
 private extension NSPersistentStoreDescription {
