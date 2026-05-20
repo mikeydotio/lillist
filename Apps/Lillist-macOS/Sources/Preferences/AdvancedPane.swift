@@ -13,7 +13,9 @@ import LillistCore
 struct AdvancedPane: View {
     @Environment(AppEnvironment.self) private var environment
     @State private var isExporting = false
+    @State private var isImporting = false
     @State private var lastExportError: String?
+    @State private var importSummary: Importer.ImportSummary?
 
     var body: some View {
         Form {
@@ -28,6 +30,23 @@ struct AdvancedPane: View {
                     }
                 }
                 .disabled(isExporting)
+
+                Button {
+                    Task { await runImport() }
+                } label: {
+                    if isImporting {
+                        ProgressView().controlSize(.small)
+                    } else {
+                        Text("Import Data…")
+                    }
+                }
+                .disabled(isImporting)
+
+                if let summary = importSummary {
+                    Text("Imported \(summary.tasksInserted) tasks, updated \(summary.tasksUpdated), skipped \(summary.tasksSkipped).")
+                        .font(.callout)
+                        .foregroundStyle(.secondary)
+                }
 
                 Button("Reveal store in Finder") {
                     revealStoreInFinder()
@@ -78,6 +97,25 @@ struct AdvancedPane: View {
             NSWorkspace.shared.activateFileViewerSelecting([dir])
         } catch {
             lastExportError = "Export failed: \(error.localizedDescription)"
+        }
+    }
+
+    private func runImport() async {
+        let panel = NSOpenPanel()
+        panel.title = "Choose a Lillist export folder"
+        panel.canChooseDirectories = true
+        panel.canChooseFiles = false
+        panel.canCreateDirectories = false
+        panel.prompt = "Import"
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+        isImporting = true
+        defer { isImporting = false }
+        let importer = Importer(persistence: environment.persistence)
+        do {
+            importSummary = try await importer.importBundle(at: url, conflictPolicy: .skipExisting)
+            lastExportError = nil
+        } catch {
+            lastExportError = "Import failed: \(error.localizedDescription)"
         }
     }
 
