@@ -49,6 +49,19 @@
     "Export now…" : {
 
     },
+    "Import Data…" : {
+
+    },
+    "Imported %@ new tasks, updated %@, skipped %@." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Imported %1$@ new tasks, updated %2$@, skipped %3$@."
+          }
+        }
+      }
+    },
     "Journal" : {
 
     },
@@ -92,9 +105,6 @@
 
     },
     "Trash" : {
-
-    },
-    "Try again" : {
 
     },
     "Use the Share sheet from any app to attach a file, image, or link." : {
