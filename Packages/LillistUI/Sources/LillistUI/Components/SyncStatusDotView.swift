@@ -1,28 +1,47 @@
 import SwiftUI
+import LillistCore
 
 public struct SyncStatusDotView: View {
     public var indicator: SyncIndicator
     public var onRetry: () -> Void
+    public var onPausedTap: () -> Void
     @State private var showPopover = false
     @Environment(\.accessibilityDifferentiateWithoutColor) private var systemDifferentiate
     @Environment(\.differentiateWithoutColorOverride) private var overrideDifferentiate
 
-    public init(indicator: SyncIndicator, onRetry: @escaping () -> Void) {
+    public init(
+        indicator: SyncIndicator,
+        onRetry: @escaping () -> Void,
+        onPausedTap: @escaping () -> Void = {}
+    ) {
         self.indicator = indicator
         self.onRetry = onRetry
+        self.onPausedTap = onPausedTap
     }
 
     public var body: some View {
         let differentiate = overrideDifferentiate ?? systemDifferentiate
-        Button { showPopover.toggle() } label: {
+        Button {
+            if case .paused = indicator {
+                onPausedTap()
+            } else {
+                showPopover.toggle()
+            }
+        } label: {
             ZStack {
-                Circle()
-                    .fill(indicator.color)
-                    .frame(width: LillistSpacing.s, height: LillistSpacing.s)
-                if differentiate {
-                    Image(systemName: indicator.differentiatedSystemImage)
-                        .font(.system(size: 7, weight: .bold))
-                        .foregroundStyle(.white)
+                if case .paused = indicator {
+                    Image(systemName: indicator.systemImage)
+                        .font(.system(size: LillistSpacing.s, weight: .regular))
+                        .foregroundStyle(indicator.color)
+                } else {
+                    Circle()
+                        .fill(indicator.color)
+                        .frame(width: LillistSpacing.s, height: LillistSpacing.s)
+                    if differentiate {
+                        Image(systemName: indicator.differentiatedSystemImage)
+                            .font(.system(size: 7, weight: .bold))
+                            .foregroundStyle(.white)
+                    }
                 }
             }
             .accessibilityLabel(label)
@@ -56,6 +75,11 @@ public struct SyncStatusDotView: View {
                     String(localized: "Sync error: \(msg)", bundle: .module),
                     priority: .high
                 )
+            case .paused(let reason):
+                AccessibilityAnnouncements.post(
+                    String(localized: "Sync paused: \(reasonDescription(reason))", bundle: .module),
+                    priority: .high
+                )
             }
         }
     }
@@ -73,6 +97,19 @@ public struct SyncStatusDotView: View {
             return String(localized: "Syncing…", bundle: .module)
         case .error(let msg, _):
             return String(localized: "Sync error: \(msg)", bundle: .module)
+        case .paused(let reason):
+            return String(localized: "Sync paused: \(reasonDescription(reason))", bundle: .module)
+        }
+    }
+
+    private func reasonDescription(_ reason: PauseReason) -> String {
+        switch reason {
+        case .noAccount: return String(localized: "iCloud is not signed in.", bundle: .module)
+        case .restricted: return String(localized: "iCloud is restricted on this device.", bundle: .module)
+        case .accountChanged: return String(localized: "Your iCloud account changed.", bundle: .module)
+        case .noNetwork: return String(localized: "No internet connection.", bundle: .module)
+        case .iCloudDriveDisabled: return String(localized: "iCloud Drive is turned off for Lillist.", bundle: .module)
+        case .unknown: return String(localized: "Sync is paused.", bundle: .module)
         }
     }
 

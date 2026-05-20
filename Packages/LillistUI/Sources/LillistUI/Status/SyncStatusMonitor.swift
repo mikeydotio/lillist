@@ -1,11 +1,18 @@
 import Foundation
 import Observation
+import LillistCore
 
-/// Sync indicator states per design Section 8.
+/// Sync indicator states per design Section 8 + Plan 21 paused
+/// indicator.
 public enum SyncIndicator: Sendable, Equatable {
     case idle(lastSync: Date?)
     case inProgress
     case error(message: String, lastSuccess: Date?)
+    /// Plan 21: iCloud sync is paused because of a known condition
+    /// (`PauseReason`). The badge renders the cloud-with-slash glyph
+    /// and the explainer dialog opens on tap. The app keeps working
+    /// locally throughout.
+    case paused(reason: PauseReason)
 }
 
 /// Protocol the UI reads from. Plan 2 provides the real CloudKit-backed
