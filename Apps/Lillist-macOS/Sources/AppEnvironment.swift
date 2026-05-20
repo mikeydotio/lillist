@@ -233,13 +233,13 @@ final class AppEnvironment {
         // Idempotent; subsequent launches no-op.
         _ = try? await preferencesPartitionMigrator.runIfNeeded()
         await notificationScheduler.bootstrap()
-        // Plan 9: start the canary for *this* run. detectAndPrepare()
-        // (called by CrashReporterHost on first render) will read any
-        // stale canary the prior crashed process left and then re-arm.
-        // We call start() defensively in case the host never gets a
-        // chance to render (e.g. some failure between env.make() and
-        // first paint) — the cost of an extra fresh canary write is nil.
-        try? await crashReporter.start()
+        // The canary is armed lazily by `CrashReporterHost.task` calling
+        // `detectAndPrepare()`. Bootstrap *used* to call `start()` here
+        // "defensively in case the host never gets a chance to render,"
+        // but that wrote a canary which `detectAndPrepare()` then read
+        // back as if it were a prior crash — popping the report sheet
+        // on every launch. macOS's `applicationWillTerminate` hook in
+        // AppDelegate continues to delete the canary on clean exit.
         // Hydrate crashPromptsEnabled from device-local preferences.
         self.crashPromptsEnabled = await devicePreferences.crashPromptsEnabled()
         // Plan 10: prime the iCloud account-state cache so the onboarding

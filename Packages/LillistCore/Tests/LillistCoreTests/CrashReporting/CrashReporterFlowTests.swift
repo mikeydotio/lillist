@@ -56,6 +56,25 @@ struct CrashReporterFlowTests {
         #expect(fresh != stale)
     }
 
+    @Test("Self-pid canary on launch ⇒ no pending crash (a pre-armed canary isn't a crash)")
+    func selfPidCanary_isNotPending() async throws {
+        // Regression: bootstrap and lifecycle observers can pre-arm
+        // the canary before `detectAndPrepare` runs; that write must
+        // not be surfaced as a "prior crash."
+        let recording = RecordingTransport()
+        let (reporter, url) = await makeReporter(transport: recording)
+        defer { try? FileManager.default.removeItem(at: url) }
+        let selfCanary = CrashCanary(
+            pid: ProcessInfo.processInfo.processIdentifier,
+            startedAt: Date(timeIntervalSince1970: 999_000),
+            buildVersion: "1.0 (1)",
+            hostname: "host"
+        )
+        try CanaryFile(url: url).writeFresh(selfCanary)
+        let pending = try await reporter.detectAndPrepare()
+        #expect(pending == nil)
+    }
+
     @Test("Don't-send: transport is not invoked")
     func dontSend_noTransport() async throws {
         let recording = RecordingTransport()

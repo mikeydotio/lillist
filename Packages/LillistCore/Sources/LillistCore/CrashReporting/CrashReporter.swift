@@ -64,9 +64,18 @@ public actor CrashReporter {
     /// On launch, return a `CrashCanary` if the previous run did
     /// not exit cleanly. Replaces the canary with a fresh one for
     /// the current run.
+    ///
+    /// A canary whose `pid` matches the current process is a
+    /// self-write from earlier in this same launch — possible if a
+    /// lifecycle observer (iOS foreground transition) armed the
+    /// canary before `detectAndPrepare` ran, or if a caller pre-armed
+    /// via `start()`. Cross-process canaries (real prior crashes)
+    /// have a different `pid`, so the filter is safe.
     public func detectAndPrepare() throws -> CrashCanary? {
         let prior = try canaryFile.readIfPresent()
         try start()
+        let currentPID = ProcessInfo.processInfo.processIdentifier
+        if let prior, prior.pid == currentPID { return nil }
         return prior
     }
 

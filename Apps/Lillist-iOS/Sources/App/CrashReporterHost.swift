@@ -7,9 +7,11 @@ import MessageUI
 #endif
 
 struct CrashReporterHost<Content: View>: View {
-    @State private var pending: CrashCanary?
+    /// `.sheet(item:)` binds presentation directly to model presence —
+    /// the sheet cannot appear without a non-nil `CrashReportViewModel`,
+    /// which structurally rules out the "empty modal" failure mode that
+    /// `.sheet(isPresented:) + if let model` permitted.
     @State private var model: CrashReportViewModel?
-    @State private var presenting = false
     @State private var mailPending: MailComposerTransport.Pending?
     @State private var clipboardConfirmation: String?
 
@@ -30,19 +32,15 @@ struct CrashReporterHost<Content: View>: View {
                 guard crashPromptsEnabled else { return }
                 let p = try? await reporter.detectAndPrepare()
                 guard let p else { return }
-                pending = p
                 model = CrashReportViewModel(pending: p, reporter: reporter)
-                presenting = true
             }
-            .sheet(isPresented: $presenting) {
-                if let model {
-                    CrashReportSheet(
-                        model: model,
-                        buildVersion: buildVersion,
-                        osVersion: osVersion,
-                        deviceModel: deviceModel
-                    )
-                }
+            .sheet(item: $model) { model in
+                CrashReportSheet(
+                    model: model,
+                    buildVersion: buildVersion,
+                    osVersion: osVersion,
+                    deviceModel: deviceModel
+                )
             }
             .sheet(item: Binding<MailComposerTransport.Pending?>(
                 get: { mailPending },
