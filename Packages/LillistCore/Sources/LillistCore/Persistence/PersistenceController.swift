@@ -75,18 +75,25 @@ public final class PersistenceController: @unchecked Sendable {
     /// Exposed as a static factory so tests can verify the description's
     /// CloudKit options, persistent-history flag, and remote-change-notification
     /// flag without instantiating a real container.
+    ///
+    /// Plan 21: CloudKit options are attached only when both the store
+    /// is on-disk and the configuration's `syncMode == .iCloudSync`.
+    /// LocalOnly on-disk stores keep persistent-history tracking and
+    /// remote-change notifications enabled (they're required for
+    /// CloudKit and harmless on plain stores) so the mode swap is a
+    /// pure description mutation, never a structural one.
     public static func makeStoreDescription(for configuration: StoreConfiguration) -> NSPersistentStoreDescription {
         let description: NSPersistentStoreDescription
-        let attachCloudKitOptions: Bool
+        let canAttachCloudKitOptions: Bool
         switch configuration.storeKind {
         case .inMemory:
             description = NSPersistentStoreDescription(url: URL(fileURLWithPath: "/dev/null"))
             description.type = NSSQLiteStoreType
-            attachCloudKitOptions = false
+            canAttachCloudKitOptions = false
         case .onDisk(let url):
             description = NSPersistentStoreDescription(url: url)
             description.type = NSSQLiteStoreType
-            attachCloudKitOptions = true
+            canAttachCloudKitOptions = true
         }
         description.shouldMigrateStoreAutomatically = true
         description.shouldInferMappingModelAutomatically = true
@@ -96,7 +103,7 @@ public final class PersistenceController: @unchecked Sendable {
         description.setOption(true as NSNumber, forKey: NSPersistentStoreRemoteChangeNotificationPostOptionKey)
 
         // CloudKit options — private database, single custom zone (design Section 3).
-        if attachCloudKitOptions {
+        if canAttachCloudKitOptions && configuration.syncMode == .iCloudSync {
             let options = NSPersistentCloudKitContainerOptions(containerIdentifier: configuration.cloudKitContainerIdentifier)
             options.databaseScope = CKDatabase.Scope.private
             description.cloudKitContainerOptions = options
