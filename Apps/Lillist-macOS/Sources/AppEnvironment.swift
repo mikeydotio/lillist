@@ -15,8 +15,11 @@ final class AppEnvironment {
     /// Plan 21: stable container indirection — see iOS counterpart.
     let persistenceHost: PersistenceHost
     let persistence: PersistenceController
+    let storeURL: URL?
     let syncModeStore: SyncModeStore
     let migrationJournalStore: any MigrationJournalStore
+    let migrationCoordinator: MigrationCoordinator
+    let pauseReasonClassifier: PauseReasonClassifier
     var currentSyncMode: SyncMode = .default
     /// Plan 21: latest classification by `PauseReasonClassifier`.
     var pauseReason: PauseReason?
@@ -56,6 +59,7 @@ final class AppEnvironment {
     private init(
         persistenceHost: PersistenceHost,
         persistence: PersistenceController,
+        storeURL: URL?,
         initialSyncMode: SyncMode,
         syncModeStore: SyncModeStore,
         migrationJournalStore: any MigrationJournalStore,
@@ -64,6 +68,7 @@ final class AppEnvironment {
     ) {
         self.persistenceHost = persistenceHost
         self.persistence = persistence
+        self.storeURL = storeURL
         self.syncModeStore = syncModeStore
         self.migrationJournalStore = migrationJournalStore
         self.currentSyncMode = initialSyncMode
@@ -87,8 +92,9 @@ final class AppEnvironment {
         // prefs lookup fails (or this is a brand-new install), we fall
         // back to `GlobalHotkeyMonitor.defaultCombo`.
         self.hotkeyMonitor = GlobalHotkeyMonitor(initialCombo: initialHotkeyCombo)
+        let ckContainerID = StoreConfiguration.defaultCloudKitContainerIdentifier
         self.accountStateMonitor = AccountStateMonitor(
-            provider: CloudKitAccountStatusProvider(container: CKContainer.default())
+            provider: CloudKitAccountStatusProvider(container: CKContainer(identifier: ckContainerID))
         )
         let specStore = NotificationSpecStore(persistence: persistence)
         self.notificationSpecStore = specStore
@@ -155,6 +161,26 @@ final class AppEnvironment {
         self.taskStore.breadcrumbs = breadcrumbs
         self.tagStore.breadcrumbs = breadcrumbs
         self.journalStore.breadcrumbs = breadcrumbs
+
+        // Plan 21: assemble the migration machinery + classifier.
+        let quarantineRoot = storeURL.map { $0.deletingLastPathComponent() }
+            ?? FileManager.default.temporaryDirectory
+        let quarantine = QuarantineManager(rootDirectory: quarantineRoot)
+        let quiesceMonitor = SyncQuiesceMonitor(bridge: persistence.cloudKitEventBridge)
+        self.pauseReasonClassifier = PauseReasonClassifier(
+            accountMonitor: accountStateMonitor,
+            networkMonitor: ConstantNetworkReachability(reachable: true)
+        )
+        self.migrationCoordinator = MigrationCoordinator(
+            host: persistenceHost,
+            journal: migrationJournalStore,
+            quarantine: quarantine,
+            zoneEraser: LiveCloudKitZoneEraser(),
+            quiesceMonitor: quiesceMonitor,
+            notificationScheduler: scheduler,
+            syncModeStore: syncModeStore,
+            cloudKitContainerIdentifier: ckContainerID
+        )
     }
 
     /// App Group identifier shared with the iOS app, extensions, and CLI.
@@ -183,9 +209,12 @@ final class AppEnvironment {
         // see the default — that's the intended one-launch lag rather
         // than a regression.
         let combo = await devicePreferences.quickCaptureHotkey()
+        let storeURL: URL?
+        if case .onDisk(let url) = baseConfig.storeKind { storeURL = url } else { storeURL = nil }
         let env = AppEnvironment(
             persistenceHost: host,
             persistence: persistence,
+            storeURL: storeURL,
             initialSyncMode: initialMode,
             syncModeStore: syncModeStore,
             migrationJournalStore: journal,

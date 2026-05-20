@@ -83,14 +83,21 @@ struct LillistApp: App {
 
 /// iOS counterpart of macOS's onboarding presentation modifier.
 /// Drives a one-time evaluation on first .task fire, then layers
-/// either OnboardingScreen or ICloudRequiredScreen on top of the
-/// root tab shell via full-screen covers.
+/// either OnboardingScreen or the new ICloudUnavailableScreen on top
+/// of the root tab shell. Plan 21 replaces the blocking
+/// ICloudRequiredScreen — the app is never gated behind iCloud now;
+/// the unavailable screen is informational and the user continues
+/// into LocalOnly.
+///
+/// The modifier also surfaces `SyncMigrationRecoverySheet` when a
+/// crashed previous migration left the `MigrationJournal` non-idle.
 private struct OnboardingPresentationModifier: ViewModifier {
     let environment: AppEnvironment
 
     @State private var showOnboarding = false
-    @State private var showICloudRequired = false
+    @State private var showICloudUnavailable = false
     @State private var didEvaluate = false
+    @State private var recoveryJournal: MigrationJournal?
 
     func body(content: Content) -> some View {
         content
@@ -99,9 +106,20 @@ private struct OnboardingPresentationModifier: ViewModifier {
                 didEvaluate = true
                 await evaluate()
             }
-            .fullScreenCover(isPresented: $showICloudRequired) {
-                ICloudRequiredScreen(accountMonitor: environment.accountStateMonitor)
-                    .interactiveDismissDisabled(true)
+            .fullScreenCover(isPresented: $showICloudUnavailable) {
+                ICloudUnavailableScreen {
+                    Task {
+                        // Plan 21: a fresh install without iCloud
+                        // available → default to LocalOnly so the
+                        // user doesn't see a paused indicator on
+                        // launch.
+                        await environment.syncModeStore.setMode(.localOnly)
+                        try? await environment.persistenceHost.reconfigure(to: .localOnly)
+                        showICloudUnavailable = false
+                        showOnboarding = true
+                    }
+                }
+                .interactiveDismissDisabled(true)
             }
             .fullScreenCover(isPresented: $showOnboarding) {
                 OnboardingScreen(
@@ -112,21 +130,45 @@ private struct OnboardingPresentationModifier: ViewModifier {
                 )
                 .interactiveDismissDisabled(true)
             }
-            .onChange(of: environment.accountState) { _, new in
-                if showICloudRequired, isAvailable(new) {
-                    showICloudRequired = false
-                    showOnboarding = true
-                }
+            .fullScreenCover(item: $recoveryJournal) { journal in
+                SyncMigrationRecoverySheet(
+                    journal: journal,
+                    onRestoreFromBackup: {
+                        Task {
+                            let url = environment.storeURL
+                                ?? FileManager.default.temporaryDirectory.appendingPathComponent("Lillist.sqlite")
+                            try? await environment.migrationCoordinator.restoreFromBackup(targetURL: url)
+                            recoveryJournal = nil
+                        }
+                    },
+                    onTryAgain: {
+                        // Retry path: just clear the journal so the
+                        // user can re-attempt from Settings.
+                        try? environment.migrationJournalStore.clear()
+                        recoveryJournal = nil
+                    }
+                )
+                .interactiveDismissDisabled(true)
             }
     }
 
     private func evaluate() async {
+        // Plan 21: recovery sheet supersedes onboarding when a crashed
+        // migration is on disk.
+        let journal = try? environment.migrationJournalStore.read()
+        if let journal, journal.isInFlight {
+            recoveryJournal = journal
+            return
+        }
         let done = await environment.onboardingState.hasCompletedOnboarding()
         guard !done else { return }
         if isAvailable(environment.accountState) {
+            // iCloud available + first launch → silently keep
+            // iCloudSync as the chosen mode, advance to onboarding.
+            await environment.syncModeStore.setMode(.iCloudSync)
             showOnboarding = true
         } else {
-            showICloudRequired = true
+            showICloudUnavailable = true
         }
     }
 
@@ -135,5 +177,15 @@ private struct OnboardingPresentationModifier: ViewModifier {
         case .available: return true
         case .noAccount, .restricted, .accountChanged: return false
         }
+    }
+}
+
+extension MigrationJournal: @retroactive Identifiable {
+    /// Identifier the SwiftUI sheet binding needs. The journal is a
+    /// singleton on disk so any non-empty identifier suffices; the
+    /// failure-reason fingerprint changes between attempts which
+    /// keeps the sheet re-presenting when the user retries.
+    public var id: String {
+        "\(state.rawValue)-\(operation?.rawValue ?? "")-\(startedAt?.timeIntervalSince1970 ?? 0)"
     }
 }
