@@ -34,7 +34,25 @@ extension CLIBridge {
             guard fm.fileExists(atPath: url.path) else {
                 throw LillistError.storeUnavailable(reason: "Lillist store not found at \(url.path). Run the Lillist app at least once to initialize the store.")
             }
-            return try await PersistenceController(configuration: .onDisk(url: url))
+            // Plan 21: consult the MigrationGate so the CLI doesn't
+            // race a foreground sync-mode migration. Non-idle journal
+            // throws `LillistError.storeUnavailable(reason:)`; idle
+            // proceeds with whichever `SyncMode` the user has on disk.
+            let modeStore = SyncModeStore(appGroupID: identifier)
+            guard let journal = FileMigrationJournalStore(appGroupID: identifier) else {
+                // Falling back to the legacy default if we can't reach
+                // the journal directory — the CLI was working before
+                // the journal existed, no reason to break it now.
+                return try await PersistenceController(configuration: .onDisk(url: url))
+            }
+            let gate = MigrationGate(journal: journal, modeStore: modeStore)
+            switch await gate.evaluate() {
+            case .abort(let message):
+                throw LillistError.storeUnavailable(reason: message)
+            case .proceed(let mode):
+                let config = StoreConfiguration.onDisk(url: url, syncMode: mode)
+                return try await PersistenceController(configuration: config)
+            }
         }
     }
 }
