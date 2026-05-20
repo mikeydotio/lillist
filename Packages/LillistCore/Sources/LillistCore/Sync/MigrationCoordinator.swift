@@ -36,6 +36,8 @@ public final class MigrationCoordinator {
     private let quiesceMonitor: SyncQuiesceMonitor
     private let notificationScheduler: NotificationScheduler?
     private let syncModeStore: SyncModeStore
+    /// Plan 21 Wave 8.1: optional breadcrumb buffer for telemetry.
+    private let breadcrumbs: BreadcrumbBuffer?
     /// CloudKit container identifier used by `zoneEraser`. Inherits
     /// from `host` at init.
     private let cloudKitContainerIdentifier: String
@@ -50,6 +52,7 @@ public final class MigrationCoordinator {
         quiesceMonitor: SyncQuiesceMonitor,
         notificationScheduler: NotificationScheduler?,
         syncModeStore: SyncModeStore,
+        breadcrumbs: BreadcrumbBuffer? = nil,
         cloudKitContainerIdentifier: String = StoreConfiguration.defaultCloudKitContainerIdentifier
     ) {
         self.host = host
@@ -59,7 +62,15 @@ public final class MigrationCoordinator {
         self.quiesceMonitor = quiesceMonitor
         self.notificationScheduler = notificationScheduler
         self.syncModeStore = syncModeStore
+        self.breadcrumbs = breadcrumbs
         self.cloudKitContainerIdentifier = cloudKitContainerIdentifier
+    }
+
+    /// Fire-and-forget breadcrumb emit. Failures are silenced
+    /// (breadcrumbs are diagnostic-only).
+    private func breadcrumb(_ action: String, success: Bool = true) {
+        guard let buffer = breadcrumbs else { return }
+        Task { try? await buffer.record(action: action, success: success) }
     }
 
     /// AsyncStream of phase events. Subscribed to by the progress
@@ -129,6 +140,7 @@ public final class MigrationCoordinator {
     // MARK: - Core migration runner
 
     private func runMigration(op: ModeTransitionOp, targetMode: SyncMode, storeURL: URL) async throws {
+        breadcrumb("sync mode change start \(op.rawValue)")
         // 1. preparing — cancel notifications first so a destructive
         //    op doesn't leave stale fires pointing at deleted rows
         //    (skeptic G9).
@@ -200,12 +212,14 @@ public final class MigrationCoordinator {
 
             try journal.clear()
             emit(.completed)
+            breadcrumb("sync mode change completed \(op.rawValue)")
         } catch {
             entry.state = .failed
             entry.failureReason = "\(error)"
             entry.lastHeartbeatAt = Date()
             try? journal.write(entry)
             emit(.failed(reason: "\(error)"))
+            breadcrumb("sync mode change failed \(op.rawValue)", success: false)
             throw error
         }
     }

@@ -1446,3 +1446,126 @@ revealed two distinct ordering hazards in
 **Generalize when.** Any new use of `AsyncStream { ... }` inside an actor,
 any test that observes downstream effects across actor boundaries, any
 `Task { }` you're about to write inside an already-actor-isolated function.
+
+
+## Offline mode / sync-mode switching (Plan 21)
+
+**Context.** Pre-Plan-21 the app hard-required iCloud — first launch
+gated behind `ICloudRequiredScreen` blocked everything until the user
+signed in. Plan 21 introduces an explicit per-device sync mode
+(`SyncMode.localOnly` / `.iCloudSync`) so the app stays usable
+without iCloud, with destructive but explicit migration when the user
+opts into mirroring.
+
+### Architectural rule: never re-instantiate `NSPersistentCloudKitContainer`
+
+The framework's `_loadStoreDescriptions` / `PFCloudKitSetupAssistant`
+have documented internal races that fire when multiple container
+instances spin up in close succession. Plan 21 sidesteps the whole
+class by keeping the **same** container instance for the app's
+lifetime and implementing mode change as a store-level remove+re-add
+on its coordinator with different `cloudKitContainerOptions`. The
+`PersistenceHost` actor (in `LillistCore/Persistence/PersistenceHost.swift`)
+is the only place in the codebase that mutates the coordinator after
+initial bring-up. Every Store still reads
+`controller.container.viewContext` exactly as before — the context
+survives the swap because it stays attached to the same coordinator.
+
+The `Wave 1.6 store-level mode swap` spike in
+`StoreLevelModeSwapSpike.swift` is the decision gate. The
+description-contrast assertions run everywhere; the live-swap tests
+are gated behind a bundle-ID check because swift-test crashes on
+`NSCloudKitMirroringDelegate` dealloc (no `CFBundleIdentifier` in the
+swift-test binary; `PKPushRegistry` faults). Run the gated tests via
+`xcodebuild test` to validate live behavior.
+
+### `MigrationJournal` is a file, not a UserDefaults bool
+
+Mid-migration state lives in `<AppGroup>/Lillist/migration.json`,
+written atomically via `Data.write(options: .atomic)`. Three reasons:
+
+1. **Atomic cross-process visibility.** `UserDefaults` writes go
+   through a flush boundary that isn't immediate to other processes;
+   a file is visible to extension readers as soon as the rename
+   returns.
+2. **Failure-mode richness.** Recovery needs to know which `op` was
+   in flight, when the heartbeat last fired, what mode to revert to,
+   and which quarantine backup to restore. A bool can't carry that.
+3. **Heartbeat semantics.** A crashed process leaves the journal
+   non-idle; the recovery flow classifies a stale heartbeat as
+   "recoverable" rather than "in-flight migration; back off."
+
+### Quiesce heuristic for migration completion
+
+`NSPersistentCloudKitContainer.eventChangedNotification` doesn't emit
+a terminal "all done" event. `SyncQuiesceMonitor` uses a quiesce
+heuristic: a watcher Task drains the event bridge and updates
+`lastEventAt` for every real `.import` / `.export`; a polling loop
+returns `.quiesced` when no event has arrived for at least
+`minQuietWindow` (default 5s) or `.timedOut` when `hardTimeout`
+(default 300s) elapses first. On timeout the progress sheet
+dismisses and the app surfaces "Still syncing in background." —
+mode flips even though CloudKit may still be catching up.
+
+This is intentionally not bulletproof. Live integration testing
+against a real CloudKit account is required at least once per
+release (Wave 7 runbook in the Plan 21 spec).
+
+### CLI App Group ID mismatch fix
+
+The CLI used `"group.com.mikeydotio.lillist"` (a typo) where every
+other target used `"group.io.mikeydotio.Lillist"`. The CLI therefore
+read a totally separate (empty) container from the apps. Plan 21
+Wave 0 fixes the constant in `CLIBridge/StoreLocator.swift`. The
+test `appGroupIdentifier_matchesAppsAndExtensions` locks the
+correct value in to prevent regression.
+
+### `DevicePreferencesStore` partition
+
+Plan 21 splits the pre-existing `AppPreferences` row in Core Data
+into two stores:
+
+- **`DevicePreferencesStore`** (App Group UserDefaults): per-device
+  fields that must survive a destructive sync-mode wipe — onboarding
+  completion, Quick Capture enable/hotkey, macOS status-bar
+  visibility, crash-prompt opt-in.
+- **`PreferencesStore`** (Core Data, CloudKit-mirrored): account-wide
+  fields — notification cadence, trash retention, default sort,
+  default tag tint.
+
+`AppPreferencesPartitionMigrator` copies the device-local fields
+forward on first launch after the partition lands, with a sticky
+marker so it's a one-shot. The legacy Core Data attributes are
+intentionally **not** removed — eliminating them can wait for a
+future model version bump (so the build-plugin caching gotcha
+documented above doesn't fire as a side effect).
+
+### `MigrationGate` for extensions + CLI
+
+Background helpers (Share Extension, App Intents, the `lillist`
+CLI) consult `MigrationGate.evaluate()` before opening the store.
+A non-idle journal aborts with the message "Sync settings are being
+changed. Try again in a moment." — the user sees the message
+inline and can retry. This prevents a foreground sync-mode change
+from racing a Share-sheet write that might land against a
+half-swapped store.
+
+### Files of interest
+
+- `Packages/LillistCore/Sources/LillistCore/Sync/SyncMode.swift`
+- `Packages/LillistCore/Sources/LillistCore/Sync/SyncModeStore.swift`
+- `Packages/LillistCore/Sources/LillistCore/Sync/MigrationJournal.swift`
+- `Packages/LillistCore/Sources/LillistCore/Sync/MigrationJournalStore.swift`
+- `Packages/LillistCore/Sources/LillistCore/Sync/MigrationCoordinator.swift`
+- `Packages/LillistCore/Sources/LillistCore/Sync/MigrationGate.swift`
+- `Packages/LillistCore/Sources/LillistCore/Sync/CloudKitZoneEraser.swift` (+ Impl)
+- `Packages/LillistCore/Sources/LillistCore/Sync/SyncQuiesceMonitor.swift`
+- `Packages/LillistCore/Sources/LillistCore/Sync/PauseReason.swift` (+ Classifier)
+- `Packages/LillistCore/Sources/LillistCore/Persistence/PersistenceHost.swift`
+- `Packages/LillistCore/Sources/LillistCore/Preferences/DevicePreferencesStore.swift`
+- `Packages/LillistCore/Sources/LillistCore/Preferences/AppPreferencesPartitionMigrator.swift`
+- `Packages/LillistCore/Sources/LillistCore/Export/Importer.swift`
+- `Packages/LillistUI/Sources/LillistUI/Onboarding/ICloudUnavailableScreen.swift`
+- `Packages/LillistUI/Sources/LillistUI/Settings/ICloudSyncSettingsSection.swift`
+- `Packages/LillistUI/Sources/LillistUI/Sync/PauseExplainerDialog.swift`
+- `Packages/LillistUI/Sources/LillistUI/Sync/SyncMigration*Sheet.swift`

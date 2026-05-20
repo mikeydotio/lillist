@@ -188,6 +188,7 @@ final class AppEnvironment {
             quiesceMonitor: quiesceMonitor,
             notificationScheduler: scheduler,
             syncModeStore: syncModeStore,
+            breadcrumbs: breadcrumbs,
             cloudKitContainerIdentifier: ckContainerID
         )
     }
