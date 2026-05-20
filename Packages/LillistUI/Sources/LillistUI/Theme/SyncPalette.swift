@@ -1,4 +1,5 @@
 import SwiftUI
+import LillistCore
 
 /// Canonical sync-indicator palette. Single source of truth for
 /// `SyncIndicator → (Color, SF Symbol)` across macOS (`SyncStatusDotView`)
@@ -30,6 +31,8 @@ public extension SyncIndicator {
             return .blue
         case .error:
             return .red
+        case .paused:
+            return .yellow
         }
     }
 
@@ -39,11 +42,13 @@ public extension SyncIndicator {
     /// - `.idle` → `checkmark`
     /// - `.inProgress` → `arrow.triangle.2.circlepath`
     /// - `.error` → `exclamationmark.triangle.fill`
+    /// - `.paused` → `icloud.slash`
     var systemImage: String {
         switch self {
         case .idle: return "checkmark"
         case .inProgress: return "arrow.triangle.2.circlepath"
         case .error: return "exclamationmark.triangle.fill"
+        case .paused: return "icloud.slash"
         }
     }
 
@@ -59,6 +64,7 @@ public extension SyncIndicator {
             return Date().timeIntervalSince(last) < Self.recencyWindow ? "circle.fill" : "circle.dotted"
         case .inProgress: return "arrow.triangle.2.circlepath"
         case .error: return "exclamationmark.triangle.fill"
+        case .paused: return "icloud.slash"
         }
     }
 }

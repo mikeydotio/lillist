@@ -18,6 +18,8 @@ final class AppEnvironment {
     let syncModeStore: SyncModeStore
     let migrationJournalStore: any MigrationJournalStore
     var currentSyncMode: SyncMode = .default
+    /// Plan 21: latest classification by `PauseReasonClassifier`.
+    var pauseReason: PauseReason?
     let taskStore: TaskStore
     let tagStore: TagStore
     let journalStore: JournalStore

@@ -31,6 +31,9 @@ final class AppEnvironment {
     /// Latest resolved sync mode, mirrored off the actor so SwiftUI
     /// can observe it.
     var currentSyncMode: SyncMode = .default
+    /// Plan 21: latest classification by `PauseReasonClassifier`. `nil`
+    /// when sync is active or the app is in LocalOnly mode.
+    var pauseReason: PauseReason?
     let taskStore: TaskStore
     let tagStore: TagStore
     let journalStore: JournalStore
