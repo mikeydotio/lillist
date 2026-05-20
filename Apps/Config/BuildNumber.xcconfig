@@ -1,0 +1,5 @@
+// Tracked in git — the single source of truth for Lillist's build number.
+// Incremented automatically by the Lillist-iOS scheme's Archive
+// pre-action (Tools/Deploy/bump-build-number.sh). Commit after each
+// archive so the counter never regresses.
+CURRENT_PROJECT_VERSION = 12

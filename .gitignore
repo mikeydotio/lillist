@@ -135,3 +135,7 @@ iOSInjectionProject/
 
 # Local signing overrides — see Apps/Config/Signing.local.xcconfig.example.
 Apps/Config/Signing.local.xcconfig
+
+# Per-machine deploy config (none today, defensive).
+# Build artifacts live in ~/Library/Application Support/Lillist-Deploy/.
+Tools/Deploy/*.local.*

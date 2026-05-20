@@ -22,7 +22,10 @@ settings:
     GCC_TREAT_WARNINGS_AS_ERRORS: YES
     ENABLE_USER_SCRIPT_SANDBOXING: YES
     GENERATE_INFOPLIST_FILE: NO
-    CURRENT_PROJECT_VERSION: "1"
+    # CURRENT_PROJECT_VERSION lives in Apps/Config/BuildNumber.xcconfig
+    # (tracked, auto-incremented by the Archive pre-action). Keeping it
+    # out of settings.base lets the xcconfig actually take effect —
+    # project-level pbxproj settings outrank project xcconfig.
     MARKETING_VERSION: "0.1.0"
     DEAD_CODE_STRIPPING: YES
 
@@ -163,6 +166,16 @@ schemes:
         Lillist-iOSTests: [test]
     run:
       config: Debug
+    archive:
+      config: Debug
+      preActions:
+        # Bumps CFBundleVersion via Apps/Config/BuildNumber.xcconfig
+        # before every Archive (Xcode UI or `xcodebuild archive`).
+        # Pre-actions run with $PROJECT_DIR pointing at Apps/Lillist-iOS/.
+        - script: |
+            "$PROJECT_DIR/../../Tools/Deploy/bump-build-number.sh"
+          name: Bump build number
+          settingsTarget: Lillist-iOS
     test:
       config: Debug
       targets:
