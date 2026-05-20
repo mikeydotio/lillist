@@ -301,6 +301,22 @@ public actor NotificationScheduler: NotificationReconciling {
         await center.setNotificationCategories(categories)
     }
 
+    /// Plan 21: cancel every pending Lillist notification at the OS
+    /// level. The migration coordinator calls this before destructive
+    /// sync-mode operations so a fire-time pointing at a since-deleted
+    /// row doesn't leak past the wipe.
+    ///
+    /// The full reconciliation path (`reconcile(taskID:)` per
+    /// `NotificationSpec`) re-installs the notifications after the
+    /// store reaches its post-migration steady state.
+    public func cancelAllPending() async {
+        let pending = await center.pendingNotificationRequests()
+        let ids = pending.map(\.identifier)
+        if !ids.isEmpty {
+            await center.removePendingNotificationRequests(withIdentifiers: ids)
+        }
+    }
+
     // MARK: - Preference change
 
     /// Update the default all-day notification time. Reconciles every task
