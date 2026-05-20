@@ -121,7 +121,7 @@ private struct OnboardingPresentationModifier: ViewModifier {
     }
 
     private func evaluate() async {
-        let done = (try? await environment.onboardingState.hasCompletedOnboarding()) ?? false
+        let done = await environment.onboardingState.hasCompletedOnboarding()
         guard !done else { return }
         if isAvailable(environment.accountState) {
             showOnboarding = true

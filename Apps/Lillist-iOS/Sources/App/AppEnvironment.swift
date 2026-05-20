@@ -23,6 +23,8 @@ final class AppEnvironment {
     let journalStore: JournalStore
     let attachmentStore: AttachmentStore
     let preferencesStore: PreferencesStore
+    let devicePreferences: DevicePreferencesStore
+    let preferencesPartitionMigrator: AppPreferencesPartitionMigrator
     let seriesStore: SeriesStore
     let smartFilterStore: SmartFilterStore
     let notificationSpecStore: NotificationSpecStore
@@ -45,7 +47,7 @@ final class AppEnvironment {
     let osVersion: String
     let deviceModel: String
 
-    private init(persistence: PersistenceController) {
+    private init(persistence: PersistenceController, devicePreferences: DevicePreferencesStore) {
         self.persistence = persistence
         self.taskStore = TaskStore(persistence: persistence)
         self.tagStore = TagStore(persistence: persistence)
@@ -53,10 +55,15 @@ final class AppEnvironment {
         self.attachmentStore = AttachmentStore(persistence: persistence)
         let preferencesStore = PreferencesStore(persistence: persistence)
         self.preferencesStore = preferencesStore
+        self.devicePreferences = devicePreferences
+        self.preferencesPartitionMigrator = AppPreferencesPartitionMigrator(
+            preferences: preferencesStore,
+            devicePreferences: devicePreferences
+        )
         self.seriesStore = SeriesStore(persistence: persistence)
         let smartFilterStore = SmartFilterStore(persistence: persistence)
         self.smartFilterStore = smartFilterStore
-        self.onboardingState = OnboardingState(preferences: preferencesStore)
+        self.onboardingState = OnboardingState(devicePreferences: devicePreferences)
         self.defaultsInstaller = DefaultsInstaller(filters: smartFilterStore)
         self.accountStateMonitor = AccountStateMonitor(
             provider: CloudKitAccountStatusProvider(container: CKContainer.default())
@@ -141,7 +148,8 @@ final class AppEnvironment {
             config = try StoreConfiguration.defaultOnDisk
         }
         let persistence = try await PersistenceController(configuration: config)
-        return AppEnvironment(persistence: persistence)
+        let devicePreferences = DevicePreferencesStore(appGroupID: appGroupID)
+        return AppEnvironment(persistence: persistence, devicePreferences: devicePreferences)
     }
 
     /// In-memory variant for tests and previews. Mirrors `make()` but uses
@@ -149,20 +157,25 @@ final class AppEnvironment {
     /// `PersistenceController.init(configuration:)` is.
     static func inMemory() async throws -> AppEnvironment {
         let persistence = try await PersistenceController(configuration: .inMemory)
-        return AppEnvironment(persistence: persistence)
+        let suite = "AppEnvironment.inMemory-\(UUID().uuidString)"
+        UserDefaults(suiteName: suite)?.removePersistentDomain(forName: suite)
+        let devicePreferences = DevicePreferencesStore(suiteName: suite)
+        return AppEnvironment(persistence: persistence, devicePreferences: devicePreferences)
     }
 
     /// One-shot async bootstrap: registers UNNotificationCategory set so
     /// snooze actions on the Lock Screen dispatch correctly.
     func bootstrap() async {
+        // Plan 21: ensure the AppPreferences row's device-local fields
+        // have been copied into App Group UserDefaults before any
+        // device-local consumer (OnboardingState, hotkey monitor, etc.)
+        // reads from `DevicePreferencesStore`.
+        _ = try? await preferencesPartitionMigrator.runIfNeeded()
         await notificationScheduler.bootstrap()
         // Plan 9: arm canary; observer in CrashReporterHost picks up
         // any stale canary via detectAndPrepare on first paint.
         try? await crashReporter.start()
-        let prefs = try? await preferencesStore.read()
-        if let prefs {
-            self.crashPromptsEnabled = prefs.crashPromptsEnabled
-        }
+        self.crashPromptsEnabled = await devicePreferences.crashPromptsEnabled()
         // Plan 10: prime the iCloud account-state cache so the
         // onboarding gate has a non-default value to read.
         try? await accountStateMonitor.refresh()

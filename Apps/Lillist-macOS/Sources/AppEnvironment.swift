@@ -18,6 +18,8 @@ final class AppEnvironment {
     let journalStore: JournalStore
     let seriesStore: SeriesStore
     let preferencesStore: PreferencesStore
+    let devicePreferences: DevicePreferencesStore
+    let preferencesPartitionMigrator: AppPreferencesPartitionMigrator
     let smartFilterStore: SmartFilterStore
     let notificationSpecStore: NotificationSpecStore
     let snoozeRegistry: SnoozeRegistry
@@ -46,6 +48,7 @@ final class AppEnvironment {
 
     private init(
         persistence: PersistenceController,
+        devicePreferences: DevicePreferencesStore,
         initialHotkeyCombo: String = GlobalHotkeyMonitor.defaultCombo
     ) {
         self.persistence = persistence
@@ -55,9 +58,14 @@ final class AppEnvironment {
         self.seriesStore = SeriesStore(persistence: persistence)
         let preferencesStore = PreferencesStore(persistence: persistence)
         self.preferencesStore = preferencesStore
+        self.devicePreferences = devicePreferences
+        self.preferencesPartitionMigrator = AppPreferencesPartitionMigrator(
+            preferences: preferencesStore,
+            devicePreferences: devicePreferences
+        )
         let smartFilterStore = SmartFilterStore(persistence: persistence)
         self.smartFilterStore = smartFilterStore
-        self.onboardingState = OnboardingState(preferences: preferencesStore)
+        self.onboardingState = OnboardingState(devicePreferences: devicePreferences)
         self.defaultsInstaller = DefaultsInstaller(filters: smartFilterStore)
         // Plan 11 Task 18: arm the hotkey monitor with the user's stored
         // combo before `AppDelegate.bootstrap()` calls `install()`. If
@@ -134,23 +142,41 @@ final class AppEnvironment {
         self.journalStore.breadcrumbs = breadcrumbs
     }
 
+    /// App Group identifier shared with the iOS app, extensions, and CLI.
+    static let appGroupID = "group.io.mikeydotio.Lillist"
+
     /// Async-friendly constructor. Loads the Core Data store and wires up
     /// every store / scheduler used by the SwiftUI hierarchy.
     static func make() async throws -> AppEnvironment {
         let persistence = try await PersistenceController(configuration: .defaultOnDisk)
+        // Plan 21: device-local preferences live in App Group
+        // UserDefaults so they survive destructive sync-mode migrations
+        // and stay readable from the CLI / extensions.
+        let devicePreferences = DevicePreferencesStore(appGroupID: appGroupID)
         // Plan 11 Task 18: read the user's saved hotkey combo before
         // instantiating so the monitor is armed with the right combo
-        // when `AppDelegate.bootstrap()` calls `install()`. A failed
-        // read (e.g. fresh install) falls back to the default.
-        let prefsStore = PreferencesStore(persistence: persistence)
-        let combo = (try? await prefsStore.read().quickCaptureHotkey) ?? GlobalHotkeyMonitor.defaultCombo
-        let env = AppEnvironment(persistence: persistence, initialHotkeyCombo: combo)
+        // when `AppDelegate.bootstrap()` calls `install()`. Plan 21
+        // moves the hotkey to `DevicePreferencesStore`; the partition
+        // migrator (run during `bootstrap()`) ensures the App Group
+        // copy is fresh on the next launch, so on first launch we may
+        // see the default — that's the intended one-launch lag rather
+        // than a regression.
+        let combo = await devicePreferences.quickCaptureHotkey()
+        let env = AppEnvironment(
+            persistence: persistence,
+            devicePreferences: devicePreferences,
+            initialHotkeyCombo: combo
+        )
         return env
     }
 
     /// One-shot async bootstrap: registers UNNotificationCategory set so
     /// snooze actions on the Lock Screen dispatch correctly.
     func bootstrap() async {
+        // Plan 21: copy the AppPreferences row's device-local fields
+        // forward into App Group UserDefaults if we haven't already.
+        // Idempotent; subsequent launches no-op.
+        _ = try? await preferencesPartitionMigrator.runIfNeeded()
         await notificationScheduler.bootstrap()
         // Plan 9: start the canary for *this* run. detectAndPrepare()
         // (called by CrashReporterHost on first render) will read any
@@ -159,11 +185,8 @@ final class AppEnvironment {
         // chance to render (e.g. some failure between env.make() and
         // first paint) — the cost of an extra fresh canary write is nil.
         try? await crashReporter.start()
-        // Hydrate crashPromptsEnabled from the user's preferences.
-        let prefs = try? await preferencesStore.read()
-        if let prefs {
-            self.crashPromptsEnabled = prefs.crashPromptsEnabled
-        }
+        // Hydrate crashPromptsEnabled from device-local preferences.
+        self.crashPromptsEnabled = await devicePreferences.crashPromptsEnabled()
         // Plan 10: prime the iCloud account-state cache so the onboarding
         // gate has a non-default value to read. Errors fall through; the
         // gate handles `.noAccount` as the "iCloud unavailable" branch.
