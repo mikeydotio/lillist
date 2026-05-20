@@ -14,6 +14,7 @@ struct SettingsTab: View {
 
     var body: some View {
         SettingsScreen(onDone: { dismiss() }) {
+            ICloudSyncSection()
             if let b = binding {
                 GeneralSection(prefs: b)
                 NotificationsSection(prefs: b)

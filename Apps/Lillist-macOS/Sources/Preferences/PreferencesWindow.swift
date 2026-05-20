@@ -8,6 +8,8 @@ import LillistCore
 struct PreferencesWindow: View {
     var body: some View {
         TabView {
+            ICloudSyncPane()
+                .tabItem { Label("iCloud Sync", systemImage: "icloud") }
             GeneralPane()
                 .tabItem { Label("General", systemImage: "gearshape") }
             NotificationsPane()

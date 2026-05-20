@@ -26,8 +26,15 @@ final class AppEnvironment {
     /// SwiftUI surfaces and existing call sites keep their pre-Plan-21
     /// shape: `environment.persistence.container.viewContext`.
     let persistence: PersistenceController
+    /// Plan 21: on-disk URL of the live SQLite store (or `nil` in
+    /// tests using the in-memory store). `MigrationCoordinator`
+    /// needs this so it can quarantine the file before a destructive
+    /// op and restore it during recovery.
+    let storeURL: URL?
     let syncModeStore: SyncModeStore
     let migrationJournalStore: any MigrationJournalStore
+    let migrationCoordinator: MigrationCoordinator
+    let pauseReasonClassifier: PauseReasonClassifier
     /// Latest resolved sync mode, mirrored off the actor so SwiftUI
     /// can observe it.
     var currentSyncMode: SyncMode = .default
@@ -66,6 +73,7 @@ final class AppEnvironment {
     private init(
         persistenceHost: PersistenceHost,
         persistence: PersistenceController,
+        storeURL: URL?,
         initialSyncMode: SyncMode,
         syncModeStore: SyncModeStore,
         migrationJournalStore: any MigrationJournalStore,
@@ -73,6 +81,7 @@ final class AppEnvironment {
     ) {
         self.persistenceHost = persistenceHost
         self.persistence = persistence
+        self.storeURL = storeURL
         self.syncModeStore = syncModeStore
         self.migrationJournalStore = migrationJournalStore
         self.currentSyncMode = initialSyncMode
@@ -92,8 +101,9 @@ final class AppEnvironment {
         self.smartFilterStore = smartFilterStore
         self.onboardingState = OnboardingState(devicePreferences: devicePreferences)
         self.defaultsInstaller = DefaultsInstaller(filters: smartFilterStore)
+        let ckContainerID = StoreConfiguration.defaultCloudKitContainerIdentifier
         self.accountStateMonitor = AccountStateMonitor(
-            provider: CloudKitAccountStatusProvider(container: CKContainer.default())
+            provider: CloudKitAccountStatusProvider(container: CKContainer(identifier: ckContainerID))
         )
         let specStore = NotificationSpecStore(persistence: persistence)
         self.notificationSpecStore = specStore
@@ -157,6 +167,29 @@ final class AppEnvironment {
         self.tagStore.breadcrumbs = breadcrumbs
         self.journalStore.breadcrumbs = breadcrumbs
         self.attachmentStore.breadcrumbs = breadcrumbs
+
+        // Plan 21: assemble the migration machinery and pause reason
+        // classifier. These dangle off the env so the settings
+        // surface can drive a real coordinator without crossing
+        // platform boundaries.
+        let quarantineRoot = storeURL.map { $0.deletingLastPathComponent() }
+            ?? FileManager.default.temporaryDirectory
+        let quarantine = QuarantineManager(rootDirectory: quarantineRoot)
+        let quiesceMonitor = SyncQuiesceMonitor(bridge: persistence.cloudKitEventBridge)
+        self.pauseReasonClassifier = PauseReasonClassifier(
+            accountMonitor: accountStateMonitor,
+            networkMonitor: ConstantNetworkReachability(reachable: true)
+        )
+        self.migrationCoordinator = MigrationCoordinator(
+            host: persistenceHost,
+            journal: migrationJournalStore,
+            quarantine: quarantine,
+            zoneEraser: LiveCloudKitZoneEraser(),
+            quiesceMonitor: quiesceMonitor,
+            notificationScheduler: scheduler,
+            syncModeStore: syncModeStore,
+            cloudKitContainerIdentifier: ckContainerID
+        )
     }
 
     /// App Group identifier shared between the main app, Share Extension,
@@ -183,9 +216,12 @@ final class AppEnvironment {
         let devicePreferences = DevicePreferencesStore(appGroupID: appGroupID)
         let journal = FileMigrationJournalStore(appGroupID: appGroupID)
             ?? FileMigrationJournalStore(url: FileManager.default.temporaryDirectory.appendingPathComponent("Lillist-migration.json"))
+        let storeURL: URL?
+        if case .onDisk(let url) = config.storeKind { storeURL = url } else { storeURL = nil }
         return AppEnvironment(
             persistenceHost: host,
             persistence: persistence,
+            storeURL: storeURL,
             initialSyncMode: initialMode,
             syncModeStore: syncModeStore,
             migrationJournalStore: journal,
@@ -207,6 +243,7 @@ final class AppEnvironment {
         return AppEnvironment(
             persistenceHost: host,
             persistence: persistence,
+            storeURL: nil,
             initialSyncMode: .iCloudSync,
             syncModeStore: syncModeStore,
             migrationJournalStore: journal,

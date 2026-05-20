@@ -55,7 +55,7 @@
 		883E82B069F58DB56B18C7C4 /* LillistUI in Frameworks */ = {isa = PBXBuildFile; productRef = FE69D0E9A4ADB1CDB38E1E3A /* LillistUI */; };
 		947D4EE0DFF95B690ABADDF4 /* RootSplitView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5FF6CA37C3301C81C8947230 /* RootSplitView.swift */; };
 		9674C4C2BAEC11A6B734FB61 /* PreferencesWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = BC4034CAF7C667207F94C76D /* PreferencesWindow.swift */; };
-		9F391934C274739419CEE25E /* ICloudRequiredView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0170278028A77220944FD21B /* ICloudRequiredView.swift */; };
+		A07F1FC798E9F823475074FE /* ICloudSyncPane.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9C2910A714C814F69236C7B4 /* ICloudSyncPane.swift */; };
 		A6252DAED612CEFA721DAC35 /* PinnedSidebarIntegrationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D86C5C049217ECDE9095EF97 /* PinnedSidebarIntegrationTests.swift */; };
 		A8953EC19E865A2EDEF9B85D /* JournalStreamView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4E67786671223711890742F9 /* JournalStreamView.swift */; };
 		ADB800B781E7E9C7D30BEBA6 /* JournalComposerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 44D7A4355E919A190BED242F /* JournalComposerView.swift */; };
@@ -89,7 +89,6 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
-		0170278028A77220944FD21B /* ICloudRequiredView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ICloudRequiredView.swift; sourceTree = "<group>"; };
 		07756C86343C55B654BB65B1 /* SubtaskOutlineView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SubtaskOutlineView.swift; sourceTree = "<group>"; };
 		0914C02F19D5D32DBFCB3C8E /* TrashPane.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrashPane.swift; sourceTree = "<group>"; };
 		0ABBB27058E889BD296D6C36 /* Signing.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Signing.xcconfig; sourceTree = "<group>"; };
@@ -134,6 +133,7 @@
 		95FC2DAA17C7F98B4F907832 /* HotkeyKeyTable.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HotkeyKeyTable.swift; sourceTree = "<group>"; };
 		996D14F2AE9898FB76C7696C /* UIStatePersistence.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UIStatePersistence.swift; sourceTree = "<group>"; };
 		9A4DD99AC3C19CA70493DAA1 /* ToolbarPersistenceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ToolbarPersistenceTests.swift; sourceTree = "<group>"; };
+		9C2910A714C814F69236C7B4 /* ICloudSyncPane.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ICloudSyncPane.swift; sourceTree = "<group>"; };
 		9F8B217F0E070121B95D2E56 /* LillistUI */ = {isa = PBXFileReference; lastKnownFileType = folder; name = LillistUI; path = ../Packages/LillistUI; sourceTree = SOURCE_ROOT; };
 		A11533C6477F2D2A981B7E22 /* TaskOutlineNode.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TaskOutlineNode.swift; sourceTree = "<group>"; };
 		A2EFA693098EDBDA8867F2C1 /* MenuBarExtraScene.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MenuBarExtraScene.swift; sourceTree = "<group>"; };
@@ -235,7 +235,6 @@
 		37B5B7691A22F7149CDE6F7D /* Onboarding */ = {
 			isa = PBXGroup;
 			children = (
-				0170278028A77220944FD21B /* ICloudRequiredView.swift */,
 				4939196DF6130616743D37DC /* OnboardingSheet.swift */,
 			);
 			path = Onboarding;
@@ -258,6 +257,7 @@
 				4785BD3BA4D67F4C69F79D09 /* AdvancedPane.swift */,
 				FA80085EB3BB242379E92790 /* CrashReportingPane.swift */,
 				40F8F1B3826FD9A436D73201 /* GeneralPane.swift */,
+				9C2910A714C814F69236C7B4 /* ICloudSyncPane.swift */,
 				F9E0C4B2D659722AE215A0B8 /* NotificationsPane.swift */,
 				BC4034CAF7C667207F94C76D /* PreferencesWindow.swift */,
 				23D285C988F042A513BC9303 /* QuickCapturePane.swift */,
@@ -548,7 +548,7 @@
 				7F57439EAB3BC0D4FBB91F2C /* GlobalHotkeyMonitor.swift in Sources */,
 				66EE57111151096A6E2C968C /* HotkeyKeyTable.swift in Sources */,
 				CA6F82635F86657E263F03BF /* HotkeyRecorder.swift in Sources */,
-				9F391934C274739419CEE25E /* ICloudRequiredView.swift in Sources */,
+				A07F1FC798E9F823475074FE /* ICloudSyncPane.swift in Sources */,
 				B02F8738FD6A6A2791FD3C89 /* IndexingMappers.swift in Sources */,
 				03ECCE2AB2C0A232CB15A26B /* IndexingService.swift in Sources */,
 				F46A68730B52D3C00F76D896 /* InlineCreateField.swift in Sources */,
