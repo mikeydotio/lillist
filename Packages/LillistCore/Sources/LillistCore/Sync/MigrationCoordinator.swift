@@ -1,0 +1,212 @@
+import Foundation
+
+/// High-level wrapper that selects which mode-change operation the
+/// user kicked off.
+public enum EnableDirection: Sendable, Equatable {
+    /// Replace whatever is in iCloud with this device's local data.
+    case replaceICloud
+    /// Replace this device's local data with what's in iCloud.
+    case replaceLocal
+}
+
+/// Whether disable-iCloud syncs first or disconnects immediately.
+public enum DisableStrategy: Sendable, Equatable {
+    case syncFirst
+    case now
+}
+
+/// Orchestrates the phase sequence around a `PersistenceHost`
+/// `reconfigure(to:)` call: pre-flight (cancel notifications,
+/// quarantine the live store, mark the journal), the structural
+/// swap, post-flight (CloudKit zone erase, sync quiesce), and on
+/// failure leaves the journal `.failed` for the recovery sheet.
+///
+/// `MigrationPhase` events flow into `progressStream` so the iOS
+/// `SyncMigrationProgressSheet` (Wave 5) can render each step.
+///
+/// The coordinator is `@MainActor` because callers are SwiftUI
+/// views; internal phase work hops onto the embedded actors as
+/// needed.
+@MainActor
+public final class MigrationCoordinator {
+    private let host: PersistenceHost
+    private let journal: any MigrationJournalStore
+    private let quarantine: QuarantineManager
+    private let zoneEraser: CloudKitZoneEraser
+    private let quiesceMonitor: SyncQuiesceMonitor
+    private let notificationScheduler: NotificationScheduler?
+    private let syncModeStore: SyncModeStore
+    /// CloudKit container identifier used by `zoneEraser`. Inherits
+    /// from `host` at init.
+    private let cloudKitContainerIdentifier: String
+
+    private var progressContinuations: [UUID: AsyncStream<MigrationPhase>.Continuation] = [:]
+
+    public init(
+        host: PersistenceHost,
+        journal: any MigrationJournalStore,
+        quarantine: QuarantineManager,
+        zoneEraser: CloudKitZoneEraser,
+        quiesceMonitor: SyncQuiesceMonitor,
+        notificationScheduler: NotificationScheduler?,
+        syncModeStore: SyncModeStore,
+        cloudKitContainerIdentifier: String = StoreConfiguration.defaultCloudKitContainerIdentifier
+    ) {
+        self.host = host
+        self.journal = journal
+        self.quarantine = quarantine
+        self.zoneEraser = zoneEraser
+        self.quiesceMonitor = quiesceMonitor
+        self.notificationScheduler = notificationScheduler
+        self.syncModeStore = syncModeStore
+        self.cloudKitContainerIdentifier = cloudKitContainerIdentifier
+    }
+
+    /// AsyncStream of phase events. Subscribed to by the progress
+    /// sheet for live updates.
+    public var progressStream: AsyncStream<MigrationPhase> {
+        AsyncStream { continuation in
+            let id = UUID()
+            self.progressContinuations[id] = continuation
+            continuation.onTermination = { @Sendable [weak self] _ in
+                Task { @MainActor in
+                    self?.progressContinuations[id] = nil
+                }
+            }
+        }
+    }
+
+    private func emit(_ phase: MigrationPhase) {
+        for continuation in progressContinuations.values {
+            continuation.yield(phase)
+        }
+    }
+
+    // MARK: - Enable (LocalOnly → iCloudSync)
+
+    public func beginEnable(direction: EnableDirection, storeURL: URL) async throws {
+        let op: ModeTransitionOp = direction == .replaceICloud ? .replaceICloudWithLocal : .replaceLocalWithICloud
+        try await runMigration(op: op, targetMode: .iCloudSync, storeURL: storeURL)
+    }
+
+    // MARK: - Disable (iCloudSync → LocalOnly)
+
+    public func beginDisable(strategy: DisableStrategy, storeURL: URL) async throws {
+        let op: ModeTransitionOp = strategy == .syncFirst ? .syncFirstThenDisable : .disableNow
+        try await runMigration(op: op, targetMode: .localOnly, storeURL: storeURL)
+    }
+
+    // MARK: - Recovery
+
+    /// Read the journal on launch. If non-idle, surface the recovery
+    /// path to the UI by emitting `.failed` and leaving the journal
+    /// intact. The actual recovery (restore from backup, retry)
+    /// is driven by user choice.
+    public func resumeOrRecover() async throws -> MigrationJournal {
+        let current = try journal.read()
+        if current.isInFlight {
+            emit(.failed(reason: current.failureReason ?? "Migration interrupted"))
+        }
+        return current
+    }
+
+    /// Restore from the most-recent quarantine backup and revert
+    /// `syncMode` to whatever was active before the failed
+    /// migration. Clears the journal on success.
+    public func restoreFromBackup(filename: String = "Lillist.sqlite", targetURL: URL) async throws {
+        guard let backup = try quarantine.latestQuarantinedStore(filename: filename) else {
+            throw LillistError.storeUnavailable(reason: "No quarantine backup available")
+        }
+        emit(.removingLocalStore)
+        try quarantine.restore(quarantinedStore: backup, to: targetURL)
+        let prev = (try journal.read()).previousMode ?? .localOnly
+        await syncModeStore.setMode(prev)
+        try await host.reconfigure(to: prev)
+        try journal.clear()
+        emit(.completed)
+    }
+
+    // MARK: - Core migration runner
+
+    private func runMigration(op: ModeTransitionOp, targetMode: SyncMode, storeURL: URL) async throws {
+        // 1. preparing — cancel notifications first so a destructive
+        //    op doesn't leave stale fires pointing at deleted rows
+        //    (skeptic G9).
+        emit(.preparing)
+        if let scheduler = notificationScheduler {
+            await scheduler.cancelAllPending()
+        }
+
+        // 2. journal: starting
+        var entry = MigrationJournal(
+            state: .preparing,
+            operation: op,
+            startedAt: Date(),
+            lastHeartbeatAt: Date(),
+            previousMode: await host.currentMode
+        )
+        try journal.write(entry)
+
+        do {
+            // 3. quarantine the live store as a recovery anchor.
+            emit(.backingUp)
+            entry.state = .quarantining
+            entry.lastHeartbeatAt = Date()
+            try journal.write(entry)
+            if FileManager.default.fileExists(atPath: storeURL.path) {
+                let backupID = UUID()
+                entry.quarantineBackupID = backupID
+                try quarantine.quarantineStore(at: storeURL)
+                try journal.write(entry)
+            }
+
+            // 4. cloudkit-side mutation (only for replaceICloudWithLocal).
+            if op == .replaceICloudWithLocal {
+                entry.state = .mutatingCloudKit
+                entry.lastHeartbeatAt = Date()
+                try journal.write(entry)
+                emit(.erasingICloud(progress: 0))
+                _ = try await zoneEraser.eraseManagedZones(
+                    in: cloudKitContainerIdentifier,
+                    progress: { [weak self] fraction in
+                        await MainActor.run { self?.emit(.erasingICloud(progress: fraction)) }
+                    }
+                )
+            }
+
+            // 5. structural swap.
+            entry.state = .reconfiguringStore
+            entry.lastHeartbeatAt = Date()
+            try journal.write(entry)
+            emit(.reconfiguringStore)
+            try await host.reconfigure(to: targetMode)
+            await syncModeStore.setMode(targetMode)
+
+            // 6. wait for CloudKit to settle (only when going to
+            //    iCloudSync; LocalOnly has nothing to wait on).
+            if targetMode == .iCloudSync {
+                entry.state = .awaitingSync
+                entry.lastHeartbeatAt = Date()
+                try journal.write(entry)
+                emit(op == .replaceICloudWithLocal ? .uploading(progress: nil) : .downloading(progress: nil))
+                _ = await quiesceMonitor.waitForQuiesce(minQuietWindow: 5, hardTimeout: 300)
+            }
+
+            // 7. finalize.
+            entry.state = .finalizing
+            entry.lastHeartbeatAt = Date()
+            try journal.write(entry)
+            emit(.finalizing)
+
+            try journal.clear()
+            emit(.completed)
+        } catch {
+            entry.state = .failed
+            entry.failureReason = "\(error)"
+            entry.lastHeartbeatAt = Date()
+            try? journal.write(entry)
+            emit(.failed(reason: "\(error)"))
+            throw error
+        }
+    }
+}
