@@ -17,7 +17,20 @@ import LillistUI
 @MainActor
 @Observable
 final class AppEnvironment {
+    /// Plan 21: the single, lifecycle-stable host wrapping the
+    /// Core Data container. Mode swaps go through this; stores read
+    /// `persistenceHost.controller.container.viewContext` exactly as
+    /// they did when the host was a raw `PersistenceController`.
+    let persistenceHost: PersistenceHost
+    /// Convenience accessor that shadows the host's controller.
+    /// SwiftUI surfaces and existing call sites keep their pre-Plan-21
+    /// shape: `environment.persistence.container.viewContext`.
     let persistence: PersistenceController
+    let syncModeStore: SyncModeStore
+    let migrationJournalStore: any MigrationJournalStore
+    /// Latest resolved sync mode, mirrored off the actor so SwiftUI
+    /// can observe it.
+    var currentSyncMode: SyncMode = .default
     let taskStore: TaskStore
     let tagStore: TagStore
     let journalStore: JournalStore
@@ -47,8 +60,19 @@ final class AppEnvironment {
     let osVersion: String
     let deviceModel: String
 
-    private init(persistence: PersistenceController, devicePreferences: DevicePreferencesStore) {
+    private init(
+        persistenceHost: PersistenceHost,
+        persistence: PersistenceController,
+        initialSyncMode: SyncMode,
+        syncModeStore: SyncModeStore,
+        migrationJournalStore: any MigrationJournalStore,
+        devicePreferences: DevicePreferencesStore
+    ) {
+        self.persistenceHost = persistenceHost
         self.persistence = persistence
+        self.syncModeStore = syncModeStore
+        self.migrationJournalStore = migrationJournalStore
+        self.currentSyncMode = initialSyncMode
         self.taskStore = TaskStore(persistence: persistence)
         self.tagStore = TagStore(persistence: persistence)
         self.journalStore = JournalStore(persistence: persistence)
@@ -139,17 +163,31 @@ final class AppEnvironment {
 
     /// Async-friendly constructor. Loads the Core Data store inside the
     /// App Group's shared container so the Share Extension and App
-    /// Intents extension see the same data.
+    /// Intents extension see the same data. The initial sync mode is
+    /// resolved from `SyncModeStore` (defaults to iCloudSync when no
+    /// value is persisted yet — preserving Plan 20 upgrade behavior).
     static func make() async throws -> AppEnvironment {
-        let config: StoreConfiguration
-        if let group = StoreConfiguration.appGroupOnDisk(groupID: appGroupID) {
+        let syncModeStore = SyncModeStore(appGroupID: appGroupID)
+        let initialMode = await syncModeStore.currentMode()
+        var config: StoreConfiguration
+        if let group = StoreConfiguration.appGroupOnDisk(groupID: appGroupID, syncMode: initialMode) {
             config = group
         } else {
-            config = try StoreConfiguration.defaultOnDisk
+            config = try StoreConfiguration.defaultOnDisk.withSyncMode(initialMode)
         }
         let persistence = try await PersistenceController(configuration: config)
+        let host = PersistenceHost(controller: persistence, initialMode: initialMode)
         let devicePreferences = DevicePreferencesStore(appGroupID: appGroupID)
-        return AppEnvironment(persistence: persistence, devicePreferences: devicePreferences)
+        let journal = FileMigrationJournalStore(appGroupID: appGroupID)
+            ?? FileMigrationJournalStore(url: FileManager.default.temporaryDirectory.appendingPathComponent("Lillist-migration.json"))
+        return AppEnvironment(
+            persistenceHost: host,
+            persistence: persistence,
+            initialSyncMode: initialMode,
+            syncModeStore: syncModeStore,
+            migrationJournalStore: journal,
+            devicePreferences: devicePreferences
+        )
     }
 
     /// In-memory variant for tests and previews. Mirrors `make()` but uses
@@ -157,10 +195,20 @@ final class AppEnvironment {
     /// `PersistenceController.init(configuration:)` is.
     static func inMemory() async throws -> AppEnvironment {
         let persistence = try await PersistenceController(configuration: .inMemory)
+        let host = PersistenceHost(controller: persistence, initialMode: .iCloudSync)
         let suite = "AppEnvironment.inMemory-\(UUID().uuidString)"
         UserDefaults(suiteName: suite)?.removePersistentDomain(forName: suite)
         let devicePreferences = DevicePreferencesStore(suiteName: suite)
-        return AppEnvironment(persistence: persistence, devicePreferences: devicePreferences)
+        let syncModeStore = SyncModeStore(suiteName: suite)
+        let journal = InMemoryMigrationJournalStore()
+        return AppEnvironment(
+            persistenceHost: host,
+            persistence: persistence,
+            initialSyncMode: .iCloudSync,
+            syncModeStore: syncModeStore,
+            migrationJournalStore: journal,
+            devicePreferences: devicePreferences
+        )
     }
 
     /// One-shot async bootstrap: registers UNNotificationCategory set so
@@ -181,6 +229,7 @@ final class AppEnvironment {
         try? await accountStateMonitor.refresh()
         self.accountState = await accountStateMonitor.currentState
         startObservingAccountState()
+        startObservingSyncMode()
         // Observe willTerminate so we delete the canary on clean exit.
         NotificationCenter.default.addObserver(
             forName: UIApplication.willTerminateNotification,
@@ -206,6 +255,21 @@ final class AppEnvironment {
             for await state in await monitor.stateStream {
                 await MainActor.run {
                     self?.accountState = state
+                }
+            }
+        }
+    }
+
+    /// Plan 21: bridge `SyncModeStore.modeStream` onto the
+    /// `@Observable` mirror so views (settings toggle, status bar
+    /// indicator) react immediately to mode changes from any path
+    /// (Settings UI, migration coordinator, recovery flow).
+    private func startObservingSyncMode() {
+        let store = self.syncModeStore
+        Task { [weak self] in
+            for await mode in await store.modeStream {
+                await MainActor.run {
+                    self?.currentSyncMode = mode
                 }
             }
         }
