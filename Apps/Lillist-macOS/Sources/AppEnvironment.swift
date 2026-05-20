@@ -12,7 +12,12 @@ import LillistUI
 @MainActor
 @Observable
 final class AppEnvironment {
+    /// Plan 21: stable container indirection — see iOS counterpart.
+    let persistenceHost: PersistenceHost
     let persistence: PersistenceController
+    let syncModeStore: SyncModeStore
+    let migrationJournalStore: any MigrationJournalStore
+    var currentSyncMode: SyncMode = .default
     let taskStore: TaskStore
     let tagStore: TagStore
     let journalStore: JournalStore
@@ -47,11 +52,19 @@ final class AppEnvironment {
     let deviceModel: String
 
     private init(
+        persistenceHost: PersistenceHost,
         persistence: PersistenceController,
+        initialSyncMode: SyncMode,
+        syncModeStore: SyncModeStore,
+        migrationJournalStore: any MigrationJournalStore,
         devicePreferences: DevicePreferencesStore,
         initialHotkeyCombo: String = GlobalHotkeyMonitor.defaultCombo
     ) {
+        self.persistenceHost = persistenceHost
         self.persistence = persistence
+        self.syncModeStore = syncModeStore
+        self.migrationJournalStore = migrationJournalStore
+        self.currentSyncMode = initialSyncMode
         self.taskStore = TaskStore(persistence: persistence)
         self.tagStore = TagStore(persistence: persistence)
         self.journalStore = JournalStore(persistence: persistence)
@@ -148,11 +161,17 @@ final class AppEnvironment {
     /// Async-friendly constructor. Loads the Core Data store and wires up
     /// every store / scheduler used by the SwiftUI hierarchy.
     static func make() async throws -> AppEnvironment {
-        let persistence = try await PersistenceController(configuration: .defaultOnDisk)
+        let syncModeStore = SyncModeStore(appGroupID: appGroupID)
+        let initialMode = await syncModeStore.currentMode()
+        let baseConfig = try StoreConfiguration.defaultOnDisk.withSyncMode(initialMode)
+        let persistence = try await PersistenceController(configuration: baseConfig)
+        let host = PersistenceHost(controller: persistence, initialMode: initialMode)
         // Plan 21: device-local preferences live in App Group
         // UserDefaults so they survive destructive sync-mode migrations
         // and stay readable from the CLI / extensions.
         let devicePreferences = DevicePreferencesStore(appGroupID: appGroupID)
+        let journal = FileMigrationJournalStore(appGroupID: appGroupID)
+            ?? FileMigrationJournalStore(url: FileManager.default.temporaryDirectory.appendingPathComponent("Lillist-migration.json"))
         // Plan 11 Task 18: read the user's saved hotkey combo before
         // instantiating so the monitor is armed with the right combo
         // when `AppDelegate.bootstrap()` calls `install()`. Plan 21
@@ -163,7 +182,11 @@ final class AppEnvironment {
         // than a regression.
         let combo = await devicePreferences.quickCaptureHotkey()
         let env = AppEnvironment(
+            persistenceHost: host,
             persistence: persistence,
+            initialSyncMode: initialMode,
+            syncModeStore: syncModeStore,
+            migrationJournalStore: journal,
             devicePreferences: devicePreferences,
             initialHotkeyCombo: combo
         )
@@ -193,6 +216,7 @@ final class AppEnvironment {
         try? await accountStateMonitor.refresh()
         self.accountState = await accountStateMonitor.currentState
         startObservingAccountState()
+        startObservingSyncMode()
     }
 
     /// Plan 10: stream account-state changes off the actor into the
@@ -203,6 +227,20 @@ final class AppEnvironment {
             for await state in await monitor.stateStream {
                 await MainActor.run {
                     self?.accountState = state
+                }
+            }
+        }
+    }
+
+    /// Plan 21: bridge `SyncModeStore.modeStream` onto the
+    /// `@Observable` mirror so the Preferences pane and status
+    /// surfaces react immediately to mode changes.
+    private func startObservingSyncMode() {
+        let store = self.syncModeStore
+        Task { [weak self] in
+            for await mode in await store.modeStream {
+                await MainActor.run {
+                    self?.currentSyncMode = mode
                 }
             }
         }
