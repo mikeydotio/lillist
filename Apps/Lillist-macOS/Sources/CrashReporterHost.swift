@@ -5,8 +5,10 @@ import LillistUI
 /// Sits at the root of the macOS scene and presents the crash
 /// report sheet on first appearance if a stale canary was detected.
 struct CrashReporterHost<Content: View>: View {
-    @State private var pendingCanary: CrashCanary?
-    @State private var presenting = false
+    /// `.sheet(item:)` binds presentation directly to model presence —
+    /// the sheet cannot appear without a non-nil `CrashReportViewModel`,
+    /// which structurally rules out the "empty modal" failure mode that
+    /// `.sheet(isPresented:) + if let model` permitted.
     @State private var model: CrashReportViewModel?
 
     let reporter: CrashReporter
@@ -22,19 +24,15 @@ struct CrashReporterHost<Content: View>: View {
                 guard crashPromptsEnabled else { return }
                 let pending = try? await reporter.detectAndPrepare()
                 guard let pending else { return }
-                pendingCanary = pending
                 model = CrashReportViewModel(pending: pending, reporter: reporter)
-                presenting = true
             }
-            .sheet(isPresented: $presenting) {
-                if let model {
-                    CrashReportSheet(
-                        model: model,
-                        buildVersion: buildVersion,
-                        osVersion: osVersion,
-                        deviceModel: deviceModel
-                    )
-                }
+            .sheet(item: $model) { model in
+                CrashReportSheet(
+                    model: model,
+                    buildVersion: buildVersion,
+                    osVersion: osVersion,
+                    deviceModel: deviceModel
+                )
             }
     }
 }

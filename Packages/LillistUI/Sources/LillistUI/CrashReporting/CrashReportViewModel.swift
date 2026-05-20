@@ -6,7 +6,12 @@ import LillistCore
 /// stays purely declarative.
 @MainActor
 @Observable
-public final class CrashReportViewModel {
+public final class CrashReportViewModel: Identifiable {
+    /// Stable identity for SwiftUI's `.sheet(item:)` binding. A fresh
+    /// UUID per instance is sufficient — there is at most one model
+    /// alive per `CrashReporterHost` at a time.
+    public nonisolated let id = UUID()
+
     public var userDescription: String = ""
     public var includeLogs: Bool = true
     public var includeBreadcrumbs: Bool = true

@@ -261,9 +261,13 @@ final class AppEnvironment {
         // reads from `DevicePreferencesStore`.
         _ = try? await preferencesPartitionMigrator.runIfNeeded()
         await notificationScheduler.bootstrap()
-        // Plan 9: arm canary; observer in CrashReporterHost picks up
-        // any stale canary via detectAndPrepare on first paint.
-        try? await crashReporter.start()
+        // Bootstrap does *not* arm the canary anymore — that races
+        // `CrashReporterHost.detectAndPrepare()`, which would then read
+        // the just-written canary as if it were a prior crash and pop
+        // the report sheet on every launch. The canary is owned by the
+        // foreground-lifecycle observer below; `detectAndPrepare()`
+        // sees an empty disk on a clean cold launch and a real stale
+        // canary only after a true foreground crash.
         self.crashPromptsEnabled = await devicePreferences.crashPromptsEnabled()
         // Plan 10: prime the iCloud account-state cache so the
         // onboarding gate has a non-default value to read.
@@ -271,13 +275,40 @@ final class AppEnvironment {
         self.accountState = await accountStateMonitor.currentState
         startObservingAccountState()
         startObservingSyncMode()
-        // Observe willTerminate so we delete the canary on clean exit.
+        installCanaryLifecycleObservers()
+    }
+
+    /// iOS canary lifecycle: write on foreground (didBecomeActive),
+    /// delete on backgrounding (willResignActive). `willTerminate` is
+    /// the wrong hook on iOS — the OS suspends apps and then kills
+    /// them without firing it, so every "normal" exit would otherwise
+    /// leave a stale canary behind and trigger a false crash report on
+    /// the next launch.
+    ///
+    /// Installation happens at the end of `bootstrap()`, which on the
+    /// iOS launch path completes after the initial `didBecomeActive`
+    /// has already fired — so this observer doesn't write a canary on
+    /// cold launch (that's `CrashReporterHost.detectAndPrepare()`'s
+    /// job) and only fires on subsequent foreground returns.
+    private func installCanaryLifecycleObservers() {
+        let reporter = self.crashReporter
         NotificationCenter.default.addObserver(
-            forName: UIApplication.willTerminateNotification,
+            forName: UIApplication.didBecomeActiveNotification,
             object: nil,
             queue: nil
-        ) { [weak self] _ in
-            guard let reporter = self?.crashReporter else { return }
+        ) { _ in
+            Task { try? await reporter.start() }
+        }
+        NotificationCenter.default.addObserver(
+            forName: UIApplication.willResignActiveNotification,
+            object: nil,
+            queue: nil
+        ) { _ in
+            // Block briefly to give `markCleanExit` a chance to land
+            // before the OS suspends us; mirrors the previous
+            // `willTerminate` pattern. Without this the canary file
+            // could remain on disk if suspension happens before the
+            // Task runs, producing a false stale-crash next launch.
             let group = DispatchGroup()
             group.enter()
             Task {

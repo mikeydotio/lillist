@@ -1661,3 +1661,108 @@ locked to the user's tailnet.
   `BuildNumber.xcconfig` via `#include?`.
 - `Apps/Lillist-iOS/project.yml` — defines the
   `schemes.Lillist-iOS.archive.preActions` that invokes the bumper.
+
+## 2026-05-20 — Crash-canary lifecycle on iOS, and the `.sheet(item:)` rule
+
+**Context.** Lillist popped an empty card sheet (no title, no buttons,
+no body) on every iOS cold launch — dismissable, but useless. The
+bug had two intertwined causes worth recording together because
+either one alone is plausible architecture that hides the other.
+
+**Empty-sheet root cause: `.sheet(isPresented:) + if let model`.**
+`CrashReporterHost` modeled presentation with two pieces of state —
+`@State var presenting: Bool` *and* `@State var model: CrashReportViewModel?` —
+and bound the sheet to `presenting`, guarding the body with
+`if let model { … }`. Any state where `presenting == true` while
+`model == nil` produces an empty sheet because the `if let` evaluates
+to `EmptyView`. The three-line assignment in `.task`
+(`pending = …; model = …; presenting = true`) *looks* atomic, but a
+SwiftUI render pass can land between them, and the dismiss path
+lowers `presenting` while `model` stays set — so any later flip of
+`presenting` re-presents whatever the inner `if let` resolves to.
+
+**Rule.** A modal whose content is *optional* must bind directly to
+that content. Use `.sheet(item: $model) { model in … }` (or
+`.fullScreenCover(item:)`) so SwiftUI cannot present the sheet
+without a non-nil value. Never combine `.sheet(isPresented:)` with an
+inner `if let` for an optional model; the failure mode is "empty
+modal" and it'll happen.
+
+**Why-it-fires-at-all root cause: bootstrap pre-armed the canary.**
+`AppEnvironment.bootstrap()` used to call `try? await
+crashReporter.start()` "defensively in case the host never gets a
+chance to render." But `CrashReporter.detectAndPrepare()` (the
+caller in `CrashReporterHost.task`) read whatever canary was on disk
+and treated it as the prior run's. The bootstrap-written canary
+*was* on disk by the time `detectAndPrepare` ran — so every launch
+looked like a crashed prior run. On iOS this race is deterministic
+(LillistApp `await`s `bootstrap` before setting `environment`); on
+macOS it's a coin-flip.
+
+**iOS canary lifecycle.** iOS apps are usually killed from a
+suspended background state without `UIApplication.willTerminateNotification`
+ever firing, so a `willTerminate`-based `markCleanExit` hook leaves
+the canary on disk for nearly every "normal" exit. Use the
+foreground transition hooks instead:
+
+- `didBecomeActiveNotification` → `crashReporter.start()` (re-arm).
+- `willResignActiveNotification` → `crashReporter.markCleanExit()`
+  (delete). Block briefly with a `DispatchGroup` so the delete lands
+  before the OS suspends the app; otherwise the canary survives and
+  next launch shows a false stale-crash.
+
+A real foreground crash leaves the canary on disk (no
+`willResignActive` ever fires for a SIGKILL/abort). A normal
+"backgrounded then OS-killed later" sequence runs `willResignActive`
+*before* suspension, deleting the canary — so the next launch sees
+nothing on disk.
+
+**Defense in depth: pid-aware `detectAndPrepare`.**
+`CrashReporter.detectAndPrepare` now drops any canary whose `pid`
+matches the current process. A same-pid canary is impossible across
+processes, so it must be a self-write from earlier in this same
+launch (a lifecycle observer firing before `detectAndPrepare`, or
+some future caller pre-arming again). This closes the
+"background-during-bootstrap then return" edge case without
+constraining the call order.
+
+**macOS is similar but simpler.** `applicationWillTerminate` fires
+reliably on macOS (Cmd-Q), so the macOS `AppDelegate` keeps its
+`markCleanExit` hook there. `crashReporter.start()` has been
+removed from macOS `bootstrap()` too — `detectAndPrepare()` is the
+sole launch-time canary writer on both platforms now.
+
+**Rules.**
+
+- **iOS canary lifecycle uses foreground transitions, not termination.**
+  Wire `didBecomeActive` → `start()` and `willResignActive` →
+  `markCleanExit()`. Don't add a `willTerminate` observer on iOS —
+  it nearly never fires for a real exit.
+- **Bootstrap never pre-arms the canary.** `detectAndPrepare()` owns
+  arming on launch; lifecycle observers own it thereafter. A
+  bootstrap-time `start()` will be read back by `detectAndPrepare`
+  and surface as a phantom prior crash.
+- **`detectAndPrepare` filters self-pid canaries.** Tests planting a
+  canary as a "prior crash" must use a pid that is not the test
+  process's pid (e.g., 1 or 99) — same-pid canaries will be dropped
+  as self-writes.
+
+**Files of interest**
+
+- `Apps/Lillist-iOS/Sources/App/CrashReporterHost.swift` — `.sheet(item: $model)`.
+- `Apps/Lillist-macOS/Sources/CrashReporterHost.swift` — same pattern.
+- `Packages/LillistUI/Sources/LillistUI/CrashReporting/CrashReportViewModel.swift`
+  — `Identifiable` conformance (UUID id) so the model can drive
+  `.sheet(item:)`.
+- `Apps/Lillist-iOS/Sources/App/AppEnvironment.swift` — drops
+  bootstrap `start()`; installs `didBecomeActive`/`willResignActive`
+  observers via `installCanaryLifecycleObservers()`.
+- `Apps/Lillist-macOS/Sources/AppEnvironment.swift` — drops
+  bootstrap `start()`.
+- `Apps/Lillist-macOS/Sources/AppDelegate.swift` — unchanged;
+  `applicationWillTerminate` continues to delete the canary on
+  Cmd-Q.
+- `Packages/LillistCore/Sources/LillistCore/CrashReporting/CrashReporter.swift`
+  — pid-aware `detectAndPrepare`.
+- `Packages/LillistCore/Tests/LillistCoreTests/CrashReporting/CrashReporterFlowTests.swift`
+  — `selfPidCanary_isNotPending` regression test.
