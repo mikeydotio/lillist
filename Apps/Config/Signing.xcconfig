@@ -11,5 +11,9 @@
 // New contributors: see Apps/Config/Signing.local.xcconfig.example.
 
 #include? "Signing.local.xcconfig"
+// BuildNumber.xcconfig is tracked in git and incremented on every
+// Archive by Tools/Deploy/bump-build-number.sh. xcconfig precedence
+// puts this value above project.yml's settings.base fallback.
+#include "BuildNumber.xcconfig"
 
 DEVELOPMENT_TEAM = $(LOCAL_DEVELOPMENT_TEAM)

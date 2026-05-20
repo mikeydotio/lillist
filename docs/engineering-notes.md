@@ -1569,3 +1569,95 @@ half-swapped store.
 - `Packages/LillistUI/Sources/LillistUI/Settings/ICloudSyncSettingsSection.swift`
 - `Packages/LillistUI/Sources/LillistUI/Sync/PauseExplainerDialog.swift`
 - `Packages/LillistUI/Sources/LillistUI/Sync/SyncMigration*Sheet.swift`
+
+## 2026-05-19 — On-demand iOS test build deploy (`Tools/Deploy/`)
+
+**Context.** Lillist has no TestFlight presence and no App Store
+Connect record. To still get iterative builds onto the user's iPhone,
+`Tools/Deploy/deploy-ios.sh` archives the `Lillist-iOS` scheme, exports
+a **Development**-method `.ipa`, and stages it for OTA install via
+Tailscale Serve. Round-trip is ≈3–5 min, end-to-end. Distribution is
+locked to the user's tailnet.
+
+**Non-obvious bits.**
+
+- **Development signing supports OTA install.** The folklore that
+  "iTMS-services OTA install requires Ad-Hoc method" is outdated. The
+  actual gate is "is the device's UDID in the embedded profile" —
+  Development-method profiles on a paid Apple Developer account
+  include the team's registered devices, so a Development-signed
+  `.ipa` installs OTA on anything you've already plugged into Xcode.
+  Ad-Hoc method would also work but requires extra App Store Connect
+  setup; Development is one less moving part.
+- **`-allowProvisioningUpdates` depends on a live Apple ID 2FA
+  session.** When the session expires (silently, after a few weeks
+  without Xcode use), the next headless `xcodebuild archive` dies
+  with `No profiles for ... were found`. There is no scriptable
+  recovery: the fix is to open Xcode → Settings → Accounts and
+  re-enter the 2FA code. The deploy script's error block names this
+  case explicitly so future-you doesn't spend an hour diagnosing it.
+- **Tailscale Serve as HTTPS source — proxy mode, not path mode.**
+  OTA manifest *and* `.ipa` must be served over trusted HTTPS or iOS
+  silently refuses to install. Tailscale Serve fronts the local
+  origin with a real Let's Encrypt cert tied to
+  `<machine>.<tailnet>.ts.net` — the iPhone, when on the tailnet,
+  trusts it natively. No domain, no ACME, no public exposure. The
+  **Mac App Store variant of Tailscale cannot serve filesystem paths
+  directly** (sandbox restriction — see
+  <https://tailscale.com/kb/1065/macos-variants>). The workaround:
+  run `python3 -m http.server --bind 127.0.0.1 --directory <serve>
+  <port>` as a localhost backend, and configure Tailscale Serve to
+  proxy to that port (`tailscale serve --bg <port>`). The deploy
+  script spawns the Python server with `nohup` in pre-flight, so it
+  survives terminal close. Reboot kills it; the next deploy
+  re-spawns it idempotently.
+- **Build-number bump runs as an Archive scheme pre-action.** The
+  `Lillist-iOS` scheme's Archive pre-action calls
+  `Tools/Deploy/bump-build-number.sh`, which reads the current
+  `CURRENT_PROJECT_VERSION` from `Apps/Config/BuildNumber.xcconfig`
+  and writes back `current + 1`. The counter is a plain integer
+  representing the cumulative archive count for the whole project.
+  **`BuildNumber.xcconfig` is tracked in git** so the counter is
+  monotonic across machines and never regresses — commit the bump
+  after each archive. `Apps/Config/Signing.xcconfig` includes it via
+  a required `#include` (not `#include?`) so a missing file is a
+  loud build error, not a silent fallback. xcconfig precedence in
+  Xcode is above `settings.base` in `project.yml`, so the bumped
+  value wins over the `CURRENT_PROJECT_VERSION: "1"` fallback there.
+  Xcode 26+ runs scheme pre-actions for **both** the IDE and
+  `xcodebuild archive` from the CLI, so the single pre-action
+  covers every archive path — verified empirically (older threads
+  online claim the CLI ignores pre-actions; that's stale for the
+  Xcode-26 era). Don't add a redundant explicit invocation in the
+  deploy script: doing so double-bumps the counter, and the second
+  bump happens *after* Info.plist resolves, so the archive ships
+  the lower value while the file moves up two — a confusing 1-off
+  gap that's a real footgun if you try to "make sure" the bump
+  runs. The three iOS Info.plists
+  (`Apps/Lillist-iOS/Info.plist`,
+  `Extensions/ShareExtension-iOS/Info.plist`,
+  `Extensions/ShortcutsActions/Info.plist`) all reference
+  `$(CURRENT_PROJECT_VERSION)`, so they stay in lockstep —
+  extensions matching the parent app is required by App Store
+  validation.
+- **Manifest `bundle-version` ↔ marketing version, not build number.**
+  The OTA install dialog reads `bundle-version` from the manifest
+  and displays it as the version string. The deploy script
+  substitutes `MARKETING_VERSION` (from `project.yml`), not
+  `CURRENT_PROJECT_VERSION`. iOS's "is this an upgrade?" decision
+  uses the `.ipa`'s own Info.plist; the manifest is for display only.
+
+**Files of interest**
+
+- `Tools/Deploy/deploy-ios.sh` — orchestrator.
+- `Tools/Deploy/bump-build-number.sh` — Archive scheme pre-action;
+  writes `Apps/Config/BuildNumber.xcconfig`.
+- `Tools/Deploy/ExportOptions.plist` — `method: development`, automatic
+  signing.
+- `Tools/Deploy/manifest.template.plist` — OTA manifest template.
+- `Tools/Deploy/index.template.html` — phone landing page template.
+- `Tools/Deploy/README.md` — one-time setup, troubleshooting.
+- `Apps/Config/Signing.xcconfig` — includes the gitignored
+  `BuildNumber.xcconfig` via `#include?`.
+- `Apps/Lillist-iOS/project.yml` — defines the
+  `schemes.Lillist-iOS.archive.preActions` that invokes the bumper.
