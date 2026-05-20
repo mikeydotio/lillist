@@ -118,7 +118,7 @@ struct OnboardingScreen: View {
         defer { isCompleting = false }
         do {
             try await installer.installIfNeeded()
-            try await onboardingState.markCompleted()
+            await onboardingState.markCompleted()
             onCompleted()
         } catch {
             let message = String(

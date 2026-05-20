@@ -20,15 +20,15 @@ final class NotificationPermissionFlowTests: XCTestCase {
     func test_grantedPath_completesOnboarding() async throws {
         let env = try await makeEnvironment(grantedOnPrompt: true)
 
-        var done = try await env.onboardingState.hasCompletedOnboarding()
+        var done = await env.onboardingState.hasCompletedOnboarding()
         XCTAssertFalse(done)
 
         let status = await env.notificationPermissions.requestAuthorization()
         XCTAssertEqual(status, .authorized)
         try await env.defaultsInstaller.installIfNeeded()
-        try await env.onboardingState.markCompleted()
+        await env.onboardingState.markCompleted()
 
-        done = try await env.onboardingState.hasCompletedOnboarding()
+        done = await env.onboardingState.hasCompletedOnboarding()
         XCTAssertTrue(done)
         let filters = try await env.smartFilters.list().map(\.name).sorted()
         XCTAssertEqual(filters, ["No Tags", "Recently Closed", "Stale", "This Week", "Today"])
@@ -40,9 +40,9 @@ final class NotificationPermissionFlowTests: XCTestCase {
         let status = await env.notificationPermissions.requestAuthorization()
         XCTAssertEqual(status, .denied)
         try await env.defaultsInstaller.installIfNeeded()
-        try await env.onboardingState.markCompleted()
+        await env.onboardingState.markCompleted()
 
-        let done = try await env.onboardingState.hasCompletedOnboarding()
+        let done = await env.onboardingState.hasCompletedOnboarding()
         XCTAssertTrue(done)
     }
 
@@ -60,7 +60,11 @@ final class NotificationPermissionFlowTests: XCTestCase {
         let p = try await PersistenceController(configuration: .inMemory)
         let prefs = PreferencesStore(persistence: p)
         let filters = SmartFilterStore(persistence: p)
-        let onboarding = OnboardingState(preferences: prefs)
+        // Plan 21: onboarding flag lives in App Group UserDefaults.
+        let suite = "NotificationPermissionFlowTests-\(UUID().uuidString)"
+        UserDefaults(suiteName: suite)?.removePersistentDomain(forName: suite)
+        let devicePrefs = DevicePreferencesStore(suiteName: suite)
+        let onboarding = OnboardingState(devicePreferences: devicePrefs)
         let installer = DefaultsInstaller(filters: filters)
         let center = MockNotificationCenter(grantedOnPrompt: grantedOnPrompt)
         let perms = NotificationPermissions(center: center)

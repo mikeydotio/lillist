@@ -9,7 +9,7 @@ extension CLIBridge {
     /// the locator throws `LillistError.storeUnavailable` with a friendly
     /// install pointer.
     public enum StoreLocator {
-        public static let appGroupIdentifier = "group.com.mikeydotio.lillist"
+        public static let appGroupIdentifier = "group.io.mikeydotio.Lillist"
 
         public static let sqliteFilename = "Lillist.sqlite"
 
