@@ -238,10 +238,11 @@ file. See `docs/engineering-notes.md` for the full post-mortem.
 
 ## Git workflow
 
-Branch off `main`, PR back via `gh`. Repo lives under `mikeydotio`.
-Use conventional-commit prefixes (`feat:`, `fix:`, `refactor:`,
-`test:`, `docs:`, `chore:`) and land small, focused commits. HTTPS
-push and never-force-push rules are in `~/.claude/CLAUDE.md`.
+Solo project — commit and push directly to `main`. No PR review is
+required (and none is performed). Repo lives under `mikeydotio`. Use
+conventional-commit prefixes (`feat:`, `fix:`, `refactor:`, `test:`,
+`docs:`, `chore:`) and land small, focused commits. HTTPS push and
+never-force-push rules are in `~/.claude/CLAUDE.md`.
 
 ## When in doubt
 
