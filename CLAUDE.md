@@ -33,8 +33,10 @@ in-house crash reporter.
   `group.io.mikeydotio.Lillist`.
 - **CLI** — `lillist-cli` target under `Packages/LillistCore`,
   `swift-argument-parser`-based; handlers thin-wrap stores.
-- **`Tools/Deploy/`** — `deploy-ios.sh` builds an unsigned test IPA and
-  serves it over Tailscale Serve for OTA install. See `Tools/Deploy/README.md`.
+- **`Tools/Deploy/`** — `deploy-ios.sh` archives Lillist-iOS, exports a
+  Development-signed `.ipa`, and serves it over Tailscale Serve for OTA
+  install on registered devices. See *Deploy (iOS test builds)* below
+  and `Tools/Deploy/README.md` for one-time setup.
 
 ## Design and history
 
@@ -181,6 +183,58 @@ resolves at build time, so `xcodegen generate` is idempotent and the
 team ID never lands in the pbxproj. **Never put `DEVELOPMENT_TEAM`
 into `project.yml`'s `settings: base:`** — that breaks the indirection.
 `CODE_SIGN_STYLE: Automatic` in `project.yml` is fine.
+
+## Deploy (iOS test builds)
+
+`./Tools/Deploy/deploy-ios.sh` is the one command. It archives
+`Lillist-iOS`, exports a Development-signed `.ipa`, stages it under
+`$HOME/Library/Application Support/Lillist-Deploy/serve/`, and prints
+a landing URL + QR code for OTA install. Round-trip is ~3–5 min. The
+`.ipa` never leaves the contributor's tailnet.
+
+**Required (per-contributor):**
+
+- `Apps/Config/Signing.local.xcconfig` populated (see *Code signing*).
+- The target iPhone's UDID is in the team's Development provisioning
+  profile — i.e., the device has been used with Xcode on this team
+  at least once. Development-method signing installs OTA on
+  registered devices without Ad-Hoc.
+- Tailscale Serve fronts a local HTTP backend on `127.0.0.1:8729`.
+  Full setup is in `Tools/Deploy/README.md`; the daemon persists the
+  proxy across reboots, the Python HTTP backend doesn't (the script
+  re-spawns it as needed).
+- `LILLIST_DEPLOY_BASE_URL` exported in your shell rc, matching the
+  Tailscale-served URL with no trailing slash, e.g.:
+  ```bash
+  export LILLIST_DEPLOY_BASE_URL="https://<host>.<tailnet>.ts.net/lillist"
+  ```
+  Run the script with no env var set once — it prints the exact
+  value to copy, derived from `tailscale status`.
+
+**Run:**
+
+```bash
+./Tools/Deploy/deploy-ios.sh
+```
+
+**After every successful deploy, commit the bumped
+`Apps/Config/BuildNumber.xcconfig`.** The `Lillist-iOS` scheme's
+Archive *pre-action* (`Tools/Deploy/bump-build-number.sh`) increments
+`CURRENT_PROJECT_VERSION` on every archive. The file is tracked in
+git so the counter is monotonic across machines and never regresses
+— a `chore(deploy): bump iOS build number to N` commit per deploy
+keeps it that way. **Do not** add a redundant `bump-build-number.sh`
+call inside `deploy-ios.sh`: the pre-action already fires for both
+the IDE and `xcodebuild archive` from the CLI, and a second
+invocation double-bumps and desyncs the resolved Info.plist from the
+file. See `docs/engineering-notes.md` for the full post-mortem.
+
+**On the iPhone:**
+
+1. Open the printed landing URL in Safari (bookmark it the first time).
+2. Tap **Install**.
+3. First time on a fresh profile: Settings → General → VPN & Device
+   Management → trust the developer profile, then retry the install.
 
 ## Git workflow
 
