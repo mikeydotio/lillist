@@ -230,9 +230,40 @@ export_ipa() {
 
 stage_serve() {
   say "Stage serve dir"
-  mkdir -p "$SERVE_DIR"
 
-  mv -f "$EXPORT_DIR/Lillist.ipa" "$SERVE_DIR/Lillist.ipa"
+  # On-disk layout under $SERVE_DIR must mirror the URL path. Tailscale
+  # Serve proxies the tailnet root to 127.0.0.1:$SERVE_PORT, so a base
+  # URL like `https://host/lillist` requires files at
+  # `$SERVE_DIR/lillist/`. Extract the path component from the base URL
+  # so callers can host at any prefix (or none) without re-editing
+  # this script.
+  local stage_subdir stage_root
+  stage_subdir=$(python3 - "$LILLIST_DEPLOY_BASE_URL" <<'PY'
+import sys
+from urllib.parse import urlparse
+print(urlparse(sys.argv[1]).path.strip("/"))
+PY
+)
+
+  if [[ -n $stage_subdir ]]; then
+    stage_root="$SERVE_DIR/$stage_subdir"
+    # Wipe previous content at this path so stale files don't linger,
+    # and sweep any same-named siblings older versions of this script
+    # left at the SERVE_DIR root — those would otherwise keep getting
+    # served at the bare host URL alongside the new build.
+    rm -rf "$stage_root"
+    rm -f "$SERVE_DIR/Lillist.ipa" \
+          "$SERVE_DIR/manifest.plist" \
+          "$SERVE_DIR/index.html"
+  else
+    stage_root="$SERVE_DIR"
+    rm -f "$stage_root/Lillist.ipa" \
+          "$stage_root/manifest.plist" \
+          "$stage_root/index.html"
+  fi
+  mkdir -p "$stage_root"
+
+  mv -f "$EXPORT_DIR/Lillist.ipa" "$stage_root/Lillist.ipa"
 
   local ipa_url="$LILLIST_DEPLOY_BASE_URL/Lillist.ipa"
   local manifest_url="$LILLIST_DEPLOY_BASE_URL/manifest.plist"
@@ -245,7 +276,7 @@ stage_serve() {
     -e "s|{{IPA_URL}}|$(sed_escape "$ipa_url")|g" \
     -e "s|{{TITLE}}|$(sed_escape "Lillist")|g" \
     "$SCRIPT_DIR/manifest.template.plist" \
-    > "$SERVE_DIR/manifest.plist"
+    > "$stage_root/manifest.plist"
 
   sed \
     -e "s|{{INSTALL_URL}}|$(sed_escape "$itms_url_html")|g" \
@@ -253,9 +284,9 @@ stage_serve() {
     -e "s|{{COMMIT}}|$(sed_escape "$COMMIT_SHORT")|g" \
     -e "s|{{TIMESTAMP}}|$(sed_escape "$TIMESTAMP")|g" \
     "$SCRIPT_DIR/index.template.html" \
-    > "$SERVE_DIR/index.html"
+    > "$stage_root/index.html"
 
-  if grep -l '{{' "$SERVE_DIR"/*.plist "$SERVE_DIR"/*.html 2>/dev/null; then
+  if grep -l '{{' "$stage_root"/*.plist "$stage_root"/*.html 2>/dev/null; then
     die "Unsubstituted placeholders remain in serve dir."
   fi
 
