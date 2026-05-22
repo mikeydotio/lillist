@@ -9,7 +9,7 @@ import LillistCore
 // Plan 20a Task 4f: the five Tab screens (Today, All, Filters, Search,
 // Settings) now render the real `LillistUI.*Screen` structs wrapped in
 // a NavigationStack — no more inline mock chrome for those. The
-// remaining tests (TaskDetail, QuickCapture sheet, Onboarding, iCloud
+// remaining tests (TaskDetail, QuickCapture dialog, Onboarding, iCloud
 // gate) still compose inline because they cover surfaces Plan 20a
 // did not migrate.
 @MainActor
@@ -247,39 +247,18 @@ final class IOSScreenTourTests: XCTestCase {
         assertScreen(view, name: "06-task-detail-light", colorScheme: .light, size: phoneSize)
     }
 
-    func test_07_quickCaptureSheet_dark() {
-        let view = ZStack(alignment: .bottom) {
-            Color.black.opacity(0.4).ignoresSafeArea()
-            VStack(spacing: 0) {
-                Capsule()
-                    .fill(.tertiary)
-                    .frame(width: 38, height: 5)
-                    .padding(.top, 8)
-                VStack(alignment: .leading, spacing: 12) {
-                    Text("New task")
-                        .font(.system(size: 17, weight: .semibold))
-                    QuickCaptureField(
-                        text: .constant("Buy lemons #errands ^tomorrow"),
-                        tagSuggestions: ["errands", "shopping", "groceries"],
-                        dateSuggestions: ["today", "tomorrow", "weekend"],
-                        onSubmit: { _ in }
-                    )
-                    HStack {
-                        Spacer()
-                        Text("Save · ⏎")
-                            .font(.caption)
-                            .foregroundStyle(.tertiary)
-                    }
-                }
-                .padding(20)
-            }
-            .background(.regularMaterial)
-            .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-            .padding(.horizontal, 8)
-            .padding(.bottom, 24)
+    func test_07_quickCaptureDialog_dark() {
+        let view = ZStack(alignment: .top) {
+            Color.black.opacity(0.35).ignoresSafeArea()
+            QuickCaptureDialog(
+                text: .constant("Buy lemons #errands ^tomorrow"),
+                onSubmit: {}
+            )
+            .padding(.top, 80)
+            .padding(.horizontal, 24)
         }
         .frame(width: phoneSize.width, height: phoneSize.height)
-        assertScreen(view, name: "07-quick-capture-sheet-dark", colorScheme: .dark, size: phoneSize)
+        assertScreen(view, name: "07-quick-capture-dialog-dark", colorScheme: .dark, size: phoneSize)
     }
 
     func test_09_onboarding_light() {

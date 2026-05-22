@@ -2,11 +2,11 @@ import XCTest
 import LillistCore
 import LillistUI
 
-/// Integration test mirroring what `QuickCaptureSheet.submit()` does on
-/// submission: parse, create task, resolve+assign tags, resolve+set deadline.
-/// Cannot `@testable import Lillist_iOS` from the standalone test bundle (no
-/// signed app host); exercises the equivalent path through LillistCore +
-/// LillistUI's `QuickCaptureParser`.
+/// Integration test mirroring what `QuickCaptureDialogHost.submit()` does
+/// on submission: parse, create task, resolve+assign tags, resolve+set
+/// deadline. Cannot `@testable import Lillist_iOS` from the standalone
+/// test bundle (no signed app host); exercises the equivalent path
+/// through LillistCore + LillistUI's `QuickCaptureParser`.
 final class QuickCaptureFlowTests: XCTestCase {
     func test_parse_create_resolve_tag_and_deadline() async throws {
         let persistence = try await PersistenceController(configuration: .inMemory)
