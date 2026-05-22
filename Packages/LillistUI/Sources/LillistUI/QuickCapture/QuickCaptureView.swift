@@ -41,10 +41,11 @@ public struct QuickCaptureView: View {
                     .foregroundStyle(.tertiary)
             }
 
-            // Date-token chips. Single source of truth shared with the
-            // iOS QuickCaptureSheet via QuickCaptureDateSuggestions;
-            // tapping appends `^token` to the text field for the inline
-            // parser to pick up.
+            // Date-token chips. Sourced from QuickCaptureDateSuggestions
+            // — historically shared with the iOS sheet's chip row, but
+            // the iOS dialog redesign (Plan 22) dropped the row. Tapping
+            // appends `^token` to the text field for the inline parser
+            // to pick up.
             HStack(spacing: 6) {
                 ForEach(QuickCaptureDateSuggestions.default, id: \.self) { token in
                     Button {

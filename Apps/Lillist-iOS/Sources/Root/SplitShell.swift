@@ -14,8 +14,6 @@ struct SplitShell: View {
     @Environment(\.selectedSectionBinding) private var selection
     @State private var taskSelection: UUID?
     @State private var isSettingsPresented = false
-    @AppStorage("hasCapturedTask") private var hasCapturedTask = false
-    @State private var quickCaptureDetent: PresentationDetent = .large
 
     var body: some View {
         NavigationSplitView {
@@ -72,17 +70,7 @@ struct SplitShell: View {
         }
         .environment(\.taskSelectionBinding, $taskSelection)
         .environment(\.quickCaptureAction, { isQuickCapturePresented.wrappedValue = true })
-        .sheet(isPresented: isQuickCapturePresented) {
-            QuickCaptureSheet()
-                .presentationDetents(
-                    [.fraction(0.35), .medium, .large],
-                    selection: $quickCaptureDetent
-                )
-                .presentationDragIndicator(.visible)
-                .onAppear {
-                    quickCaptureDetent = hasCapturedTask ? .fraction(0.35) : .large
-                }
-        }
+        .modifier(QuickCaptureDialogHost(isPresented: isQuickCapturePresented))
         .sheet(isPresented: $isSettingsPresented) {
             SettingsTab()
         }

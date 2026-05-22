@@ -4,7 +4,8 @@
    version = "1.7">
    <BuildAction
       parallelizeBuildables = "YES"
-      buildImplicitDependencies = "YES">
+      buildImplicitDependencies = "YES"
+      runPostActionsOnFailure = "NO">
       <BuildActionEntries>
          <BuildActionEntry
             buildForTesting = "YES"
@@ -15,7 +16,7 @@
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "EC14F602879EBAC8291EE6AB"
-               BuildableName = "Lillist.app"
+               BuildableName = "Lillist-iOS.app"
                BlueprintName = "Lillist-iOS"
                ReferencedContainer = "container:Lillist-iOS.xcodeproj">
             </BuildableReference>
@@ -68,12 +69,13 @@
       buildConfiguration = "Debug"
       selectedDebuggerIdentifier = "Xcode.DebuggerFoundation.Debugger.LLDB"
       selectedLauncherIdentifier = "Xcode.DebuggerFoundation.Launcher.LLDB"
-      shouldUseLaunchSchemeArgsEnv = "YES">
+      shouldUseLaunchSchemeArgsEnv = "YES"
+      onlyGenerateCoverageForSpecifiedTargets = "NO">
       <MacroExpansion>
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "EC14F602879EBAC8291EE6AB"
-            BuildableName = "Lillist.app"
+            BuildableName = "Lillist-iOS.app"
             BlueprintName = "Lillist-iOS"
             ReferencedContainer = "container:Lillist-iOS.xcodeproj">
          </BuildableReference>
@@ -102,6 +104,8 @@
             </BuildableReference>
          </TestableReference>
       </Testables>
+      <CommandLineArguments>
+      </CommandLineArguments>
    </TestAction>
    <LaunchAction
       buildConfiguration = "Debug"
@@ -118,11 +122,13 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "EC14F602879EBAC8291EE6AB"
-            BuildableName = "Lillist.app"
+            BuildableName = "Lillist-iOS.app"
             BlueprintName = "Lillist-iOS"
             ReferencedContainer = "container:Lillist-iOS.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
+      <CommandLineArguments>
+      </CommandLineArguments>
    </LaunchAction>
    <ProfileAction
       buildConfiguration = "Release"
@@ -135,7 +141,7 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "EC14F602879EBAC8291EE6AB"
-            BuildableName = "Lillist.app"
+            BuildableName = "Lillist-iOS.app"
             BlueprintName = "Lillist-iOS"
             ReferencedContainer = "container:Lillist-iOS.xcodeproj">
          </BuildableReference>
@@ -157,7 +163,7 @@
                   <BuildableReference
                      BuildableIdentifier = "primary"
                      BlueprintIdentifier = "EC14F602879EBAC8291EE6AB"
-                     BuildableName = "Lillist.app"
+                     BuildableName = "Lillist-iOS.app"
                      BlueprintName = "Lillist-iOS"
                      ReferencedContainer = "container:Lillist-iOS.xcodeproj">
                   </BuildableReference>

@@ -30,7 +30,9 @@ import Foundation
 /// - **`DragDrop/`** — cross-platform drag/drop helpers.
 /// - **`CrashReporting/`** — shared crash-report submission sheet.
 /// - **`iOS/`** — iOS-only views/helpers (`FloatingAddButton`,
-///   `QuickCaptureField`, `SizeClassRouter`, `SyncStatusBadge`).
+///   `QuickCaptureDialog` + `quickCaptureDialog(isPresented:)`
+///   modifier, `QuickCaptureDiscardToast`, `SizeClassRouter`,
+///   `SyncStatusBadge`).
 ///
 /// ## Convention
 ///

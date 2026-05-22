@@ -1,9 +1,13 @@
 import Foundation
 
-/// Canonical Quick Capture date-token chip list. Both the macOS
-/// `QuickCaptureView` and the iOS `QuickCaptureSheet` render chips
-/// from this list, so adding a token surfaces on both platforms
-/// simultaneously.
+/// Canonical Quick Capture date-token chip list. The macOS
+/// `QuickCaptureView` renders chips from this list.
+///
+/// The iOS surface stopped rendering these chips in Plan 22 (the
+/// Spotlight-style dialog redesign): the streamlined empty state has
+/// no suggestion row, only a dim footer legend teaching the `#tag` /
+/// `^date` syntax. The list is still kept here as the single source
+/// of truth for any future iOS resurrection of the chip row.
 ///
 /// Every token in `default` must round-trip through
 /// `LillistCore.RelativeDate.parse(_:)`. Adding a token here without
