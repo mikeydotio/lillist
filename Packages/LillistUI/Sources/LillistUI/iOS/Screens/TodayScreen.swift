@@ -16,6 +16,7 @@ public struct TodayScreen: View {
     public var results: [TaskStore.TaskRecord]
     public var loadError: String?
     public var syncIndicator: SyncIndicator
+    public var buildVersion: String?
     public var onRefresh: @MainActor () async -> Void
     public var onStatusClick: @MainActor (TaskStore.TaskRecord) -> Void
     public var onStatusSet: @MainActor (TaskStore.TaskRecord, Status) -> Void
@@ -30,6 +31,7 @@ public struct TodayScreen: View {
         results: [TaskStore.TaskRecord],
         loadError: String? = nil,
         syncIndicator: SyncIndicator = .idle(lastSync: nil),
+        buildVersion: String? = nil,
         onRefresh: @escaping @MainActor () async -> Void = {},
         onStatusClick: @escaping @MainActor (TaskStore.TaskRecord) -> Void = { _ in },
         onStatusSet: @escaping @MainActor (TaskStore.TaskRecord, Status) -> Void = { _, _ in },
@@ -40,6 +42,7 @@ public struct TodayScreen: View {
         self.results = results
         self.loadError = loadError
         self.syncIndicator = syncIndicator
+        self.buildVersion = buildVersion
         self.onRefresh = onRefresh
         self.onStatusClick = onStatusClick
         self.onStatusSet = onStatusSet
@@ -82,6 +85,11 @@ public struct TodayScreen: View {
             }
         }
         .refreshable { await onRefresh() }
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            if let buildVersion {
+                BuildVersionLabel(version: buildVersion)
+            }
+        }
     }
 
     @ViewBuilder
