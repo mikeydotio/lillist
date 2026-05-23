@@ -115,6 +115,7 @@ struct TaskListView: View {
                     }
                 }
             }
+            BuildVersionLabel(version: env.buildVersion)
         }
         .task(id: anchorIdentity) {
             if let saved = uiState.sort(for: sourceKey) {

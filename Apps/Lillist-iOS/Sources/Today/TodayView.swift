@@ -20,6 +20,7 @@ struct TodayView: View {
             results: results,
             loadError: loadError,
             syncIndicator: env.syncMonitor.indicator,
+            buildVersion: env.buildVersion,
             onRefresh: { await reload() },
             onStatusClick: { record in Task { await cycle(record) } },
             onStatusSet: { record, newStatus in

@@ -86,7 +86,8 @@ final class IOSScreenTourTests: XCTestCase {
         let view = phoneShell(fab: true) {
             TodayScreen(
                 results: todayRecords(),
-                syncIndicator: .idle(lastSync: nil)
+                syncIndicator: .idle(lastSync: nil),
+                buildVersion: "0.1.0 (16)"
             )
         }
         assertScreen(view, name: "01-today-light", colorScheme: .light, size: phoneSize)
@@ -96,7 +97,8 @@ final class IOSScreenTourTests: XCTestCase {
         let view = phoneShell(fab: true) {
             TodayScreen(
                 results: todayRecords(),
-                syncIndicator: .idle(lastSync: nil)
+                syncIndicator: .idle(lastSync: nil),
+                buildVersion: "0.1.0 (16)"
             )
         }
         assertScreen(view, name: "02-today-dark", colorScheme: .dark, size: phoneSize)
