@@ -235,6 +235,15 @@ public enum NSPredicateCompiler {
     // MARK: - Tags
 
     static func compileTag(op: Op, value: Value) -> NSPredicate {
+        // `isSet` / `isUnset` ask about cardinality, not membership — handle
+        // them before the `uuidSet` guard so the "No Tags" default smart
+        // filter's `tag.isUnset` leaf (paired with `.bool(true)`) compiles to
+        // a real predicate instead of falling through to `false`.
+        switch op {
+        case .isUnset: return NSPredicate(format: "tags.@count == 0")
+        case .isSet: return NSPredicate(format: "tags.@count > 0")
+        default: break
+        }
         guard case .uuidSet(let ids) = value else { return NSPredicate(value: false) }
         let idArr = Array(ids)
         switch op {

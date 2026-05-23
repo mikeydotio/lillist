@@ -193,6 +193,68 @@ struct NSPredicateCompilerSubqueryTests {
         #expect(f.contains("NONE") || f.contains("NOT") || f.contains("== 0"))
     }
 
+    @Test("tag isUnset compiles to tags.@count == 0")
+    func tagIsUnset() {
+        let group = PredicateGroup(combinator: .all, predicates: [
+            .leaf(.init(field: .tag, op: .isUnset, value: .bool(true)))
+        ])
+        let p = NSPredicateCompiler.compile(group)
+        let f = p.predicateFormat
+        #expect(f.contains("tags"))
+        #expect(f.contains("== 0"))
+    }
+
+    @Test("tag isSet compiles to tags.@count > 0")
+    func tagIsSet() {
+        let group = PredicateGroup(combinator: .all, predicates: [
+            .leaf(.init(field: .tag, op: .isSet, value: .bool(true)))
+        ])
+        let p = NSPredicateCompiler.compile(group)
+        let f = p.predicateFormat
+        #expect(f.contains("tags"))
+        #expect(f.contains("> 0"))
+    }
+
+    @Test("End-to-end: tag isUnset returns only the tagless task")
+    func tagIsUnsetEndToEnd() async throws {
+        let controller = try await TestStore.make()
+        let ctx = controller.container.viewContext
+        let tagged = UUID()
+        let untagged = UUID()
+        try await ctx.perform {
+            let tag = Tag(context: ctx)
+            tag.id = UUID()
+            tag.name = "work"
+
+            let withTag = LillistTask(context: ctx)
+            withTag.id = tagged
+            withTag.title = "Tagged"
+            withTag.notes = ""
+            withTag.status = .todo
+            withTag.createdAt = Date(); withTag.modifiedAt = Date()
+            withTag.addToTags(tag)
+
+            let withoutTag = LillistTask(context: ctx)
+            withoutTag.id = untagged
+            withoutTag.title = "Untagged"
+            withoutTag.notes = ""
+            withoutTag.status = .todo
+            withoutTag.createdAt = Date(); withoutTag.modifiedAt = Date()
+
+            try ctx.save()
+        }
+        let group = PredicateGroup(combinator: .all, predicates: [
+            .leaf(.init(field: .tag, op: .isUnset, value: .bool(true)))
+        ])
+        let results = try await ctx.perform {
+            let req = NSFetchRequest<LillistTask>(entityName: "LillistTask")
+            req.predicate = NSPredicateCompiler.compile(group)
+            return try ctx.fetch(req)
+        }
+        let ids = Set(results.compactMap { $0.id })
+        #expect(ids == [untagged])
+    }
+
     @Test("ancestor isDescendantOf uses parent traversal predicate")
     func ancestorIsDescendantOf() {
         let id = UUID()
