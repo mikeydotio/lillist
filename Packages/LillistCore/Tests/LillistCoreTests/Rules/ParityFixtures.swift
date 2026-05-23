@@ -443,6 +443,30 @@ enum ParityFixtures {
                 SeedTask(id: id2, createdAt: days(-5))
             ],
             expected: [id1]
+        ),
+        // 31. tag isUnset — the "No Tags" default filter's leaf
+        ParityFixture(
+            name: "tag isUnset",
+            group: .init(combinator: .all, predicates: [
+                .leaf(.init(field: .tag, op: .isUnset, value: .bool(true)))
+            ]),
+            seeds: [
+                SeedTask(id: id1, tagIDs: []),
+                SeedTask(id: id2, tagIDs: [tagWork])
+            ],
+            expected: [id1]
+        ),
+        // 32. tag isSet
+        ParityFixture(
+            name: "tag isSet",
+            group: .init(combinator: .all, predicates: [
+                .leaf(.init(field: .tag, op: .isSet, value: .bool(true)))
+            ]),
+            seeds: [
+                SeedTask(id: id1, tagIDs: []),
+                SeedTask(id: id2, tagIDs: [tagWork])
+            ],
+            expected: [id2]
         )
     ]
 }

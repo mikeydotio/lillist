@@ -150,6 +150,14 @@ public enum SwiftEvaluator {
     // MARK: - Relational matchers
 
     static func matchTag(_ tagIDs: Set<UUID>, op: Op, value: Value) -> Bool {
+        // `isSet` / `isUnset` ask about cardinality, not membership — handle
+        // them before the `uuidSet` guard so parity with `compileTag` is
+        // preserved for the "No Tags" default smart filter.
+        switch op {
+        case .isUnset: return tagIDs.isEmpty
+        case .isSet: return !tagIDs.isEmpty
+        default: break
+        }
         guard case .uuidSet(let ids) = value else { return false }
         switch op {
         case .includesAny: return !tagIDs.isDisjoint(with: ids)
