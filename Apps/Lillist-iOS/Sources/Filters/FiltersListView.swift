@@ -19,7 +19,20 @@ struct FiltersListView: View {
             others: others,
             loadError: loadError,
             syncIndicator: env.syncMonitor.indicator,
-            onRefresh: { await reload() }
+            onRefresh: { await reload() },
+            trailingSections: {
+                // The 3-tab restructure moves the tag tree out of the tab
+                // bar and parks it here as a single "Tags" entry. Discovery
+                // stays one level deeper but the top-level information
+                // architecture (Today / All / Filters) stays focused.
+                Section(String(localized: "Tags")) {
+                    NavigationLink {
+                        AllTagsView()
+                    } label: {
+                        Label(String(localized: "Tags"), systemImage: "tag")
+                    }
+                }
+            }
         )
         .navigationDestination(for: UUID.self) { id in
             FilterResultsView(filterID: id)

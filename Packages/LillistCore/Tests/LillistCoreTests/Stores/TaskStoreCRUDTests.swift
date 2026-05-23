@@ -97,4 +97,18 @@ struct TaskStoreCRUDTests {
         let tagIDs = try await tasks.tagIDs(forTask: taskID)
         #expect(tagIDs.filter { $0 == tagID }.count == 1)
     }
+
+    /// Round-trip guard: a freshly-created root task must be readable via
+    /// `children(of: nil)` on the same persistence controller. Catches a
+    /// silent save-but-not-readable regression independently of any UI
+    /// layer — if this ever fails, the bug is in `TaskStore`/`PersistenceController`,
+    /// not in a screen.
+    @Test("Created root task appears in children(of: nil)")
+    func createIsReadableAsRootChild() async throws {
+        let p = try await TestStore.make()
+        let store = TaskStore(persistence: p)
+        let id = try await store.create(title: "round-trip")
+        let roots = try await store.children(of: nil)
+        #expect(roots.contains { $0.id == id })
+    }
 }

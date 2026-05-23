@@ -37,6 +37,20 @@
          </BuildActionEntry>
          <BuildActionEntry
             buildForTesting = "YES"
+            buildForRunning = "NO"
+            buildForProfiling = "NO"
+            buildForArchiving = "NO"
+            buildForAnalyzing = "NO">
+            <BuildableReference
+               BuildableIdentifier = "primary"
+               BlueprintIdentifier = "648195162A0C0DAF753BC099"
+               BuildableName = "Lillist-iOSUITests.xctest"
+               BlueprintName = "Lillist-iOSUITests"
+               ReferencedContainer = "container:Lillist-iOS.xcodeproj">
+            </BuildableReference>
+         </BuildActionEntry>
+         <BuildActionEntry
+            buildForTesting = "YES"
             buildForRunning = "YES"
             buildForProfiling = "YES"
             buildForArchiving = "YES"
@@ -89,6 +103,17 @@
                BlueprintIdentifier = "362AE712D24A2B04332EE3DE"
                BuildableName = "Lillist-iOSTests.xctest"
                BlueprintName = "Lillist-iOSTests"
+               ReferencedContainer = "container:Lillist-iOS.xcodeproj">
+            </BuildableReference>
+         </TestableReference>
+         <TestableReference
+            skipped = "NO"
+            parallelizable = "NO">
+            <BuildableReference
+               BuildableIdentifier = "primary"
+               BlueprintIdentifier = "648195162A0C0DAF753BC099"
+               BuildableName = "Lillist-iOSUITests.xctest"
+               BlueprintName = "Lillist-iOSUITests"
                ReferencedContainer = "container:Lillist-iOS.xcodeproj">
             </BuildableReference>
          </TestableReference>

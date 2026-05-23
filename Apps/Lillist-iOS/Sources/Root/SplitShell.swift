@@ -11,6 +11,7 @@ import LillistUI
 /// to them. SplitShell reads them via env values.
 struct SplitShell: View {
     @Environment(\.isQuickCapturePresentedBinding) private var isQuickCapturePresented
+    @Environment(\.isSearchPresentedBinding) private var isSearchPresentedEnv
     @Environment(\.selectedSectionBinding) private var selection
     @State private var taskSelection: UUID?
     @State private var isSettingsPresented = false
@@ -24,6 +25,15 @@ struct SplitShell: View {
             }
             .navigationTitle("Lillist")
             .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button {
+                        isSearchPresentedEnv.wrappedValue = true
+                    } label: {
+                        Image(systemName: "magnifyingglass")
+                    }
+                    .accessibilityLabel(String(localized: "Search"))
+                    .accessibilityIdentifier("SearchToolbarButton")
+                }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button {
                         isSettingsPresented = true
@@ -38,9 +48,8 @@ struct SplitShell: View {
             NavigationStack {
                 switch selection.wrappedValue ?? .today {
                 case .today: TodayView()
-                case .all: AllTagsView()
+                case .all: AllView()
                 case .filters: FiltersListView()
-                case .search: SearchView()
                 }
             }
             .toolbar {
@@ -73,6 +82,9 @@ struct SplitShell: View {
         .modifier(QuickCaptureDialogHost(isPresented: isQuickCapturePresented))
         .sheet(isPresented: $isSettingsPresented) {
             SettingsTab()
+        }
+        .sheet(isPresented: isSearchPresentedEnv) {
+            SearchSheet()
         }
     }
 }

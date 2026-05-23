@@ -18,6 +18,7 @@ import LillistUI
 /// shared list/detail observers.
 struct LillistCommands: Commands {
     @Binding var isQuickCapturePresented: Bool
+    @Binding var isSearchPresented: Bool
     @Binding var selectedSection: iPadSection?
 
     var body: some Commands {
@@ -29,18 +30,19 @@ struct LillistCommands: Commands {
 
             Divider()
 
+            // RCA / 3-tab restructure: Search is no longer a section.
+            // ⌘1/2/3 remain on the three primary sections; ⌘⇧F opens
+            // the Search sheet which lives at the shell level.
             Button("Today") { selectedSection = .today }
                 .keyboardShortcut("1", modifiers: .command)
             Button("All") { selectedSection = .all }
                 .keyboardShortcut("2", modifiers: .command)
             Button("Filters") { selectedSection = .filters }
                 .keyboardShortcut("3", modifiers: .command)
-            Button("Search") { selectedSection = .search }
-                .keyboardShortcut("4", modifiers: .command)
 
             Divider()
 
-            Button("Find in Lillist…") { selectedSection = .search }
+            Button("Find in Lillist…") { isSearchPresented = true }
                 .keyboardShortcut("f", modifiers: [.command, .shift])
         }
 

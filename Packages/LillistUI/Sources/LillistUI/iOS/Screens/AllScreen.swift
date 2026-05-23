@@ -2,17 +2,16 @@
 import SwiftUI
 import LillistCore
 
-/// Built-in "Today" smart-filter surface — pure presentation. The
-/// hosting iOS app's `TodayView` wraps this with @State for results +
-/// loading, `.task` for first load, and the `.navigationDestination`
-/// that turns a tapped row's UUID into a `TaskDetailView`.
+/// "All" tab — every open, non-trashed task. Pure presentation; the
+/// hosting iOS app's `AllView` owns the fetch + reload state and the
+/// `.navigationDestination` that turns a tapped row's UUID into a
+/// `TaskDetailView`.
 ///
-/// `TodayScreen` reads `\.quickCaptureAction` and
-/// `\.taskSelectionBinding` from the environment (set by the iOS
-/// shells); everything else is an init parameter so the
-/// `IOSScreenTourTests` snapshot suite can render the screen with
-/// frozen mock data and no live store dependency.
-public struct TodayScreen: View {
+/// Mirrors `TodayScreen`'s shape. The two screens are kept as parallel
+/// files (rather than sharing a parameterised base) so each can evolve
+/// its own copy, sort, and toolbar surface without dragging the other
+/// along. Plan: RCA — iOS new-task flow / 3-tab restructure.
+public struct AllScreen: View {
     public var results: [TaskStore.TaskRecord]
     public var loadError: String?
     public var syncIndicator: SyncIndicator
@@ -55,16 +54,16 @@ public struct TodayScreen: View {
         Group {
             if let loadError {
                 ContentUnavailableView(
-                    "Could not load Today",
+                    "Could not load tasks",
                     systemImage: "exclamationmark.triangle",
                     description: Text(loadError)
                 )
             } else if results.isEmpty {
                 ContentUnavailableView {
-                    Label(String(localized: "Nothing for today", bundle: .module),
-                          systemImage: "sparkles")
+                    Label(String(localized: "No tasks yet", bundle: .module),
+                          systemImage: "checklist")
                 } description: {
-                    Text("Tasks with a start or deadline of today show up here.")
+                    Text("Every open task shows up here. Capture one to get started.")
                 } actions: {
                     Button {
                         quickCaptureAction()
@@ -73,13 +72,13 @@ public struct TodayScreen: View {
                               systemImage: "plus.circle.fill")
                     }
                     .buttonStyle(.borderedProminent)
-                    .accessibilityIdentifier("TodayEmptyStateCaptureButton")
+                    .accessibilityIdentifier("AllEmptyStateCaptureButton")
                 }
             } else {
                 listBody
             }
         }
-        .navigationTitle(Text(String(localized: "Today", bundle: .module)))
+        .navigationTitle(Text(String(localized: "All", bundle: .module)))
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 SyncStatusBadge(indicator: syncIndicator)
