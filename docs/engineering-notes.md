@@ -1766,3 +1766,44 @@ sole launch-time canary writer on both platforms now.
   — pid-aware `detectAndPrepare`.
 - `Packages/LillistCore/Tests/LillistCoreTests/CrashReporting/CrashReporterFlowTests.swift`
   — `selfPidCanary_isNotPending` regression test.
+
+## 2026-05-23 — `Tools/Deploy/deploy-ios.sh` retired; deploys now go through the `deployit` plugin
+
+**Context.** The 2026-05-19 entry above documented the in-repo
+`Tools/Deploy/deploy-ios.sh` infrastructure: archive → export →
+local Python HTTP server → Tailscale Serve → OTA install. That whole
+flow has been replaced by the **`deployit` plugin** (`/deployit
+deploy`), which the user now uses across multiple projects (Lillist,
+moshtail, …). The plugin does the same archive/export/serve work,
+plus indexes every build into the shared `mikeydotio/deployit-index`
+repo and exposes `bootstrap` / `list` / `url` / `status` / `gc`
+subcommands.
+
+**Why this matters.** The 2026-05-19 entry is now historical — useful
+for *why* the deploy infrastructure exists at all, but not for *how*
+to use it today. Don't follow its filenames or commands; follow
+`/deployit` instead.
+
+**What survived.** Build-number bumping stays in-repo. The Archive
+*pre-action* on the `Lillist-iOS` scheme still invokes
+`Tools/Deploy/bump-build-number.sh`, which writes
+`Apps/Config/BuildNumber.xcconfig`. The plugin reads the resolved
+`CFBundleVersion` off the built `Info.plist` and never writes the
+version. So the monotonic-build-number invariant from the 2026-05-19
+entry still holds, and the same "commit `BuildNumber.xcconfig` after
+every successful deploy" discipline applies.
+
+**Deleted files** (2026-05-23 migration):
+- `Tools/Deploy/deploy-ios.sh`
+- `Tools/Deploy/ExportOptions.plist`
+- `Tools/Deploy/index.template.html`
+- `Tools/Deploy/manifest.template.plist`
+
+`Tools/Deploy/README.md` was rewritten as a brief pointer to the
+plugin. `CLAUDE.md`'s *Deploy (iOS test builds)* section was
+rewritten the same day.
+
+**Env-var hygiene.** Contributors who set
+`LILLIST_DEPLOY_BASE_URL` in their shell rc as required by the old
+script can remove it — the plugin owns its own Tailscale Serve
+config and doesn't read any project-specific env var.
