@@ -8,25 +8,28 @@ import LillistCore
 /// the `.task` that fetches them, and the `.navigationDestination`
 /// that turns a tapped filter's UUID into a `FilterResultsView`.
 /// Plan 20a Task 4c.
-public struct FiltersListScreen: View {
+public struct FiltersListScreen<TrailingSections: View>: View {
     public var pinned: [SmartFilterStore.SmartFilterRecord]
     public var others: [SmartFilterStore.SmartFilterRecord]
     public var loadError: String?
     public var syncIndicator: SyncIndicator
     public var onRefresh: @MainActor () async -> Void
+    @ViewBuilder public var trailingSections: () -> TrailingSections
 
     public init(
         pinned: [SmartFilterStore.SmartFilterRecord],
         others: [SmartFilterStore.SmartFilterRecord],
         loadError: String? = nil,
         syncIndicator: SyncIndicator = .idle(lastSync: nil),
-        onRefresh: @escaping @MainActor () async -> Void = {}
+        onRefresh: @escaping @MainActor () async -> Void = {},
+        @ViewBuilder trailingSections: @escaping () -> TrailingSections = { EmptyView() }
     ) {
         self.pinned = pinned
         self.others = others
         self.loadError = loadError
         self.syncIndicator = syncIndicator
         self.onRefresh = onRefresh
+        self.trailingSections = trailingSections
     }
 
     public var body: some View {
@@ -37,7 +40,7 @@ public struct FiltersListScreen: View {
                     systemImage: "exclamationmark.triangle",
                     description: Text(loadError)
                 )
-            } else if pinned.isEmpty && others.isEmpty {
+            } else if pinned.isEmpty && others.isEmpty && (TrailingSections.self == EmptyView.self) {
                 ContentUnavailableView {
                     Label(String(localized: "No filters yet", bundle: .module),
                           systemImage: "line.3.horizontal.decrease.circle")
@@ -66,6 +69,7 @@ public struct FiltersListScreen: View {
                             }
                         }
                     }
+                    trailingSections()
                 }
             }
         }
@@ -76,6 +80,27 @@ public struct FiltersListScreen: View {
             }
         }
         .refreshable { await onRefresh() }
+    }
+}
+
+extension FiltersListScreen where TrailingSections == EmptyView {
+    /// Convenience for callers (and snapshot tests) that don't need to
+    /// inject any additional sections.
+    public init(
+        pinned: [SmartFilterStore.SmartFilterRecord],
+        others: [SmartFilterStore.SmartFilterRecord],
+        loadError: String? = nil,
+        syncIndicator: SyncIndicator = .idle(lastSync: nil),
+        onRefresh: @escaping @MainActor () async -> Void = {}
+    ) {
+        self.init(
+            pinned: pinned,
+            others: others,
+            loadError: loadError,
+            syncIndicator: syncIndicator,
+            onRefresh: onRefresh,
+            trailingSections: { EmptyView() }
+        )
     }
 }
 

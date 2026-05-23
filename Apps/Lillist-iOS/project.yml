@@ -126,7 +126,8 @@ targets:
     platform: iOS
     deploymentTarget: "26.0"
     sources:
-      - path: Tests
+      - path: Tests/IntegrationTests
+      - path: Tests/UnitTests
       # Co-compile the SharePayload source so the tests can exercise its
       # decode() logic without needing a separate ShareExtension test
       # bundle. SharePayload has no UIKit-only behavior when initialised
@@ -156,6 +157,27 @@ targets:
         # to inherit one, auto-generate it.
         GENERATE_INFOPLIST_FILE: YES
 
+  # UI-test target — the only way to verify the real `AppEnvironment.make()`
+  # path (on-disk store, App Group, sandbox, signed host) actually
+  # persists a task end-to-end. The standalone `Lillist-iOSTests` bundle
+  # above cannot reach that code because it has no app host.
+  Lillist-iOSUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    deploymentTarget: "26.0"
+    sources:
+      - path: Tests/UITests
+    dependencies:
+      - target: Lillist-iOS
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: io.mikeydotio.Lillist.uitests
+        IPHONEOS_DEPLOYMENT_TARGET: "26.0"
+        TARGETED_DEVICE_FAMILY: "1,2"
+        TEST_TARGET_NAME: Lillist-iOS
+        GENERATE_INFOPLIST_FILE: YES
+        CODE_SIGN_STYLE: Automatic
+
 schemes:
   Lillist-iOS:
     build:
@@ -164,6 +186,7 @@ schemes:
         ShareExtension-iOS: all
         ShortcutsActions: all
         Lillist-iOSTests: [test]
+        Lillist-iOSUITests: [test]
     run:
       config: Debug
     archive:
@@ -180,6 +203,7 @@ schemes:
       config: Debug
       targets:
         - Lillist-iOSTests
+        - Lillist-iOSUITests
         # SPM test bundle from Packages/LillistUI. Includes iOS-only
         # snapshot tests guarded by `#if os(iOS)` that compile out on
         # macOS hosts — wiring them into the iOS scheme is the only way

@@ -1,14 +1,17 @@
 import SwiftUI
 import LillistUI
 
-/// Compact-size shell: a tab bar with Today / All / Filters / Search,
-/// matching design Section 7's iOS subsection.
+/// Compact-size shell: a three-tab bar — Today / All / Filters.
+/// Search lifts out of the tab bar into a top-leading toolbar sheet
+/// available on every section (RCA / 3-tab restructure). The tag tree
+/// that used to be the "All" tab moves under Filters.
 ///
-/// Plan 16 Task 29: `isQuickCapturePresented` and `selection` are
-/// owned by `LillistApp` (so `LillistCommands` can bind to them from
-/// outside any view); TabShell reads them via env values.
+/// `isQuickCapturePresented` and `selection` are owned by `LillistApp`
+/// so `LillistCommands` (Scene-level) can bind to them from outside any
+/// view; TabShell reads them via env values.
 struct TabShell: View {
     @Environment(\.isQuickCapturePresentedBinding) private var isQuickCapturePresented
+    @Environment(\.isSearchPresentedBinding) private var isSearchPresentedEnv
     @Environment(\.selectedSectionBinding) private var selectedSection
     @State private var isSettingsPresented = false
 
@@ -27,31 +30,27 @@ struct TabShell: View {
         TabView(selection: selection) {
             NavigationStack {
                 TodayView()
+                    .modifier(SearchToolbarItem(isPresented: isSearchPresentedEnv))
                     .modifier(SettingsToolbarItem(isPresented: $isSettingsPresented))
             }
-            .tabItem { Label("Today", systemImage: "sun.max") }
+            .tabItem { Label("Today", systemImage: iPadSection.today.systemImage) }
             .tag(iPadSection.today)
 
             NavigationStack {
-                AllTagsView()
+                AllView()
+                    .modifier(SearchToolbarItem(isPresented: isSearchPresentedEnv))
                     .modifier(SettingsToolbarItem(isPresented: $isSettingsPresented))
             }
-            .tabItem { Label("All", systemImage: "tag") }
+            .tabItem { Label("All", systemImage: iPadSection.all.systemImage) }
             .tag(iPadSection.all)
 
             NavigationStack {
                 FiltersListView()
+                    .modifier(SearchToolbarItem(isPresented: isSearchPresentedEnv))
                     .modifier(SettingsToolbarItem(isPresented: $isSettingsPresented))
             }
-            .tabItem { Label("Filters", systemImage: "line.3.horizontal.decrease.circle") }
+            .tabItem { Label("Filters", systemImage: iPadSection.filters.systemImage) }
             .tag(iPadSection.filters)
-
-            NavigationStack {
-                SearchView()
-                    .modifier(SettingsToolbarItem(isPresented: $isSettingsPresented))
-            }
-            .tabItem { Label("Search", systemImage: "magnifyingglass") }
-            .tag(iPadSection.search)
         }
         .environment(\.quickCaptureAction, { isQuickCapturePresented.wrappedValue = true })
         .tabViewBottomAccessory {
@@ -61,6 +60,9 @@ struct TabShell: View {
         .modifier(QuickCaptureDialogHost(isPresented: isQuickCapturePresented))
         .sheet(isPresented: $isSettingsPresented) {
             SettingsTab()
+        }
+        .sheet(isPresented: isSearchPresentedEnv) {
+            SearchSheet()
         }
     }
 }

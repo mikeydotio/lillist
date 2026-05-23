@@ -30,6 +30,12 @@ struct CrashReporterHost<Content: View>: View {
                     Task { @MainActor in self.mailPending = staged }
                 }
                 guard crashPromptsEnabled else { return }
+                // UI-test seam: never pop the crash-report sheet during
+                // automated runs — a killed test process always looks like
+                // a crash to the canary and would block every UITest.
+                if ProcessInfo.processInfo.arguments.contains("--ui-test-bypass-gates") {
+                    return
+                }
                 let p = try? await reporter.detectAndPrepare()
                 guard let p else { return }
                 model = CrashReportViewModel(pending: p, reporter: reporter)

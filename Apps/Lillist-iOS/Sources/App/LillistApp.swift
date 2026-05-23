@@ -7,18 +7,21 @@ struct LillistApp: App {
     @State private var environment: AppEnvironment?
     @State private var loadError: String?
     @State private var isQuickCapturePresented = false
+    @State private var isSearchPresented = false
     @State private var selectedSection: iPadSection? = .today
 
     var body: some Scene {
         WindowGroup {
             content
                 .environment(\.isQuickCapturePresentedBinding, $isQuickCapturePresented)
+                .environment(\.isSearchPresentedBinding, $isSearchPresented)
                 .environment(\.selectedSectionBinding, $selectedSection)
                 .task { await loadEnvironmentIfNeeded() }
         }
         .commands {
             LillistCommands(
                 isQuickCapturePresented: $isQuickCapturePresented,
+                isSearchPresented: $isSearchPresented,
                 selectedSection: $selectedSection
             )
         }
@@ -58,6 +61,13 @@ struct LillistApp: App {
     private func loadEnvironmentIfNeeded() async {
         guard environment == nil, loadError == nil else { return }
         do {
+            // UI-test seam (Plan: RCA — iOS new-task flow). The wipe arg
+            // is independent from the gate-bypass arg so a relaunch in
+            // the same test can skip onboarding/crash gates *without*
+            // wiping the data we're trying to verify persisted.
+            if ProcessInfo.processInfo.arguments.contains("--ui-test-reset-store") {
+                await Self.uiTestResetState()
+            }
             let env = try await AppEnvironment.make()
             await env.bootstrap()
             // Plan 10: invoke the defaults installer once on every cold
@@ -78,6 +88,52 @@ struct LillistApp: App {
         } catch {
             loadError = "\(error)"
         }
+    }
+
+    /// UI-test seam: wipe on-disk store + App Group defaults and pre-mark
+    /// onboarding complete in LocalOnly mode. Only invoked when the host is
+    /// launched with the `--ui-test-reset-store` argument by
+    /// `Lillist-iOSUITests`. Production code paths never call this.
+    ///
+    /// Order matters: wipe the file-backed stores, wipe the App Group
+    /// defaults, force the wipe to flush (`synchronize`), then write the
+    /// bypass values. Without the synchronize the wipe can be buffered
+    /// and clobber the bypass writes, leaving the onboarding flag false
+    /// and the modifier showing the Welcome screen.
+    private static func uiTestResetState() async {
+        let fm = FileManager.default
+        if let group = fm.containerURL(
+            forSecurityApplicationGroupIdentifier: AppEnvironment.appGroupID
+        ) {
+            try? fm.removeItem(at: group.appendingPathComponent("Lillist", isDirectory: true))
+            // The crash-report canary lives at the App Group root (not
+            // inside `Lillist/`). A killed test run leaves it on disk and
+            // the next launch's CrashReporterHost pops the "What will be
+            // sent" sheet over the app, blocking the UI test.
+            try? fm.removeItem(at: group.appendingPathComponent("launch.canary"))
+        }
+        if let appSupport = try? fm.url(
+            for: .applicationSupportDirectory,
+            in: .userDomainMask,
+            appropriateFor: nil,
+            create: false
+        ) {
+            try? fm.removeItem(at: appSupport.appendingPathComponent("Lillist", isDirectory: true))
+        }
+        if let groupDefaults = UserDefaults(suiteName: AppEnvironment.appGroupID) {
+            groupDefaults.removePersistentDomain(forName: AppEnvironment.appGroupID)
+            groupDefaults.synchronize()
+        }
+        // Pre-mark onboarding complete + switch to LocalOnly so the test
+        // bypasses OnboardingPresentationModifier's `fullScreenCover`s.
+        await DevicePreferencesStore(appGroupID: AppEnvironment.appGroupID)
+            .setHasCompletedOnboarding(true)
+        await SyncModeStore(appGroupID: AppEnvironment.appGroupID).setMode(.localOnly)
+        // Belt-and-suspenders: belt and force-flush the suite again after
+        // the bypass writes so the next `UserDefaults(suiteName:)` read
+        // sees them. UserDefaults cross-suite caching has historically
+        // bitten this exact pattern.
+        UserDefaults(suiteName: AppEnvironment.appGroupID)?.synchronize()
     }
 }
 
@@ -153,6 +209,15 @@ private struct OnboardingPresentationModifier: ViewModifier {
     }
 
     private func evaluate() async {
+        // UI-test seam: explicit, in-process bypass that doesn't depend on
+        // UserDefaults timing across actor boundaries. The synchronize-based
+        // approach in `LillistApp.uiTestResetState` was racing this method.
+        // The gate-bypass arg is independent of the wipe arg so a relaunch
+        // in the same test (verifying persistence) can skip onboarding
+        // without wiping the data being verified.
+        if ProcessInfo.processInfo.arguments.contains("--ui-test-bypass-gates") {
+            return
+        }
         // Plan 21: recovery sheet supersedes onboarding when a crashed
         // migration is on disk.
         let journal = try? environment.migrationJournalStore.read()

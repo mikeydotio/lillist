@@ -100,6 +100,15 @@ struct QuickCaptureDialogHost: ViewModifier {
                     String(localized: "Couldn't create task: \(error.localizedDescription)"),
                     priority: .high
                 )
+                // Belt and suspenders for the silent-failure class of bug:
+                // if a future regression swallows the error before it
+                // reaches `errorMessage` (e.g., a `try?` slipped into the
+                // path), the crash-report payload still records that
+                // submit failed.
+                try? await env.breadcrumbs.record(
+                    action: "quick_capture.submit_failed",
+                    success: false
+                )
                 submitting = false
             }
         }
