@@ -91,4 +91,33 @@ final class UIStatePersistence {
         case .trash:                return "trash"
         }
     }
+
+    /// Clear `sidebarSelection` if its UUID no longer resolves in the
+    /// live stores. CloudKit sync can delete the underlying filter,
+    /// tag, or task between launches; without this, `RootSplitView`
+    /// would briefly highlight a phantom row in the sidebar before the
+    /// `TaskListView` resolved to "not found".
+    ///
+    /// Existence checks are passed in as closures so this method
+    /// stays sync and the caller decides how to resolve IDs (typically
+    /// by `try? await store.fetch(id:)`).
+    /// Plan: state-restoration audit.
+    func pruneStaleSidebarSelection(
+        filterExists: (UUID) -> Bool,
+        tagExists: (UUID) -> Bool,
+        taskExists: (UUID) -> Bool
+    ) {
+        guard let current = sidebarSelection else { return }
+        let resolves: Bool
+        switch current {
+        case .pinnedTask(let id):   resolves = taskExists(id)
+        case .pinnedFilter(let id): resolves = filterExists(id)
+        case .tag(let id):          resolves = tagExists(id)
+        case .filter(let id):       resolves = filterExists(id)
+        case .trash:                resolves = true
+        }
+        if !resolves {
+            sidebarSelection = nil
+        }
+    }
 }

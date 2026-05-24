@@ -13,6 +13,7 @@ struct SplitShell: View {
     @Environment(\.isQuickCapturePresentedBinding) private var isQuickCapturePresented
     @Environment(\.isSearchPresentedBinding) private var isSearchPresentedEnv
     @Environment(\.selectedSectionBinding) private var selection
+    @Environment(\.filtersPathBinding) private var filtersPath
     @State private var taskSelection: UUID?
     @State private var isSettingsPresented = false
 
@@ -45,7 +46,14 @@ struct SplitShell: View {
             }
             .navigationSplitViewColumnWidth(min: 200, ideal: 240)
         } content: {
-            NavigationStack {
+            // The content column's NavigationStack binds its path to
+            // the scene-level `filtersPath` so a drilled-in Filters
+            // destination survives across launches *and* across
+            // section switches within a session. When the active
+            // section is Today/All the path is dormant (no matching
+            // `.navigationDestination`); switching back to Filters
+            // re-resolves it.
+            NavigationStack(path: filtersPath) {
                 switch selection.wrappedValue ?? .today {
                 case .today: TodayView()
                 case .all: AllView()

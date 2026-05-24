@@ -25,10 +25,12 @@ struct FiltersListView: View {
                 // bar and parks it here as a single "Tags" entry. Discovery
                 // stays one level deeper but the top-level information
                 // architecture (Today / All / Filters) stays focused.
+                //
+                // State-restoration: push a typed `FiltersDestination`
+                // value (instead of an inline destination view) so the
+                // owning NavigationStack's path stays `Codable`-clean.
                 Section(String(localized: "Tags")) {
-                    NavigationLink {
-                        AllTagsView()
-                    } label: {
+                    NavigationLink(value: FiltersDestination.allTags) {
                         Label(String(localized: "Tags"), systemImage: "tag")
                     }
                 }
@@ -36,6 +38,11 @@ struct FiltersListView: View {
         )
         .navigationDestination(for: UUID.self) { id in
             FilterResultsView(filterID: id)
+        }
+        .navigationDestination(for: FiltersDestination.self) { destination in
+            switch destination {
+            case .allTags: AllTagsView()
+            }
         }
         .task { await reload() }
     }
