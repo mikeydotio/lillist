@@ -22,6 +22,19 @@ struct IsSearchPresentedBindingKey: EnvironmentKey {
     static let defaultValue: Binding<Bool> = .constant(false)
 }
 
+/// Filters-tab `NavigationStack` path lifted to `LillistApp` so it can
+/// be encoded into / decoded from `@AppStorage` for state restoration
+/// (Plan: state-restoration). Both `TabShell` and `SplitShell` bind
+/// their Filters-tab NavigationStack to this single source of truth.
+struct FiltersPathBindingKey: EnvironmentKey {
+    // `Binding<NavigationPath>` isn't `Sendable` (NavigationPath has
+    // no `Sendable` conformance), but `EnvironmentKey.defaultValue`
+    // must be nonisolated. The value is a `.constant(...)` no-op
+    // binding — it never mutates — so the data-race risk the checker
+    // warns about doesn't exist here.
+    nonisolated(unsafe) static let defaultValue: Binding<NavigationPath> = .constant(NavigationPath())
+}
+
 extension EnvironmentValues {
     var isQuickCapturePresentedBinding: Binding<Bool> {
         get { self[IsQuickCapturePresentedBindingKey.self] }
@@ -36,5 +49,10 @@ extension EnvironmentValues {
     var isSearchPresentedBinding: Binding<Bool> {
         get { self[IsSearchPresentedBindingKey.self] }
         set { self[IsSearchPresentedBindingKey.self] = newValue }
+    }
+
+    var filtersPathBinding: Binding<NavigationPath> {
+        get { self[FiltersPathBindingKey.self] }
+        set { self[FiltersPathBindingKey.self] = newValue }
     }
 }

@@ -124,8 +124,35 @@ struct RootSplitView: View {
                 Task { await refreshPrincipalTitle(for: sidebarSelection) }
             }
         }
-        .task { await refreshPrincipalTitle(for: sidebarSelection) }
+        .task {
+            await pruneStaleSidebarSelectionIfNeeded()
+            await refreshPrincipalTitle(for: sidebarSelection)
+        }
         .focusedValue(\.listColumn, focusedColumn)
+    }
+
+    /// Clear `sidebarSelection` if its underlying record was deleted
+    /// between launches (CloudKit sync from another device, or a
+    /// destructive action on the CLI). Resolves a single store fetch
+    /// based on the current selection's UUID — cheap, no scan.
+    /// Plan: state-restoration audit.
+    private func pruneStaleSidebarSelectionIfNeeded() async {
+        guard let current = sidebarSelection else { return }
+        let stillExists: Bool
+        switch current {
+        case .pinnedTask(let id):
+            stillExists = (try? await env.taskStore.fetch(id: id)) != nil
+        case .pinnedFilter(let id), .filter(let id):
+            stillExists = (try? await env.smartFilterStore.fetch(id: id)) != nil
+        case .tag(let id):
+            stillExists = (try? await env.tagStore.fetch(id: id)) != nil
+        case .trash:
+            stillExists = true
+        }
+        if !stillExists {
+            sidebarSelection = nil
+            uiState.sidebarSelection = nil
+        }
     }
 
     private func refreshPrincipalTitle(for selection: SidebarSelection?) async {

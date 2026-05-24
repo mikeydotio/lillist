@@ -8,23 +8,84 @@ struct LillistApp: App {
     @State private var loadError: String?
     @State private var isQuickCapturePresented = false
     @State private var isSearchPresented = false
-    @State private var selectedSection: iPadSection? = .today
+
+    /// Persisted selected tab. Plan: state-restoration.
+    /// Stored as the raw enum value; `Binding<iPadSection?>` is computed
+    /// over it so the `LillistCommands` and shell bindings keep their
+    /// existing nil-safe shape. Multi-window iPad shares this value —
+    /// acceptable for v1 (Mikey hasn't asked for per-window).
+    @AppStorage("lillist.ios.section")
+    private var selectedSectionRaw: String = iPadSection.today.rawValue
+
+    /// Persisted Filters-tab `NavigationPath`. Stored as
+    /// JSON-encoded `NavigationPath.CodableRepresentation`. Empty
+    /// `Data` = "no stored path" (start at the Filters root).
+    /// Plan: state-restoration.
+    @AppStorage("lillist.ios.filters.path")
+    private var filtersPathData: Data = Data()
+
+    /// Live `NavigationPath` mirrored to `filtersPathData` via
+    /// `.onChange`. Initial decode runs once on first scene `.task`.
+    @State private var filtersPath = NavigationPath()
+    @State private var didRestoreFiltersPath = false
+
+    private var selectedSectionBinding: Binding<iPadSection?> {
+        Binding(
+            get: { iPadSection(rawValue: selectedSectionRaw) ?? .today },
+            set: { selectedSectionRaw = ($0 ?? .today).rawValue }
+        )
+    }
 
     var body: some Scene {
         WindowGroup {
             content
                 .environment(\.isQuickCapturePresentedBinding, $isQuickCapturePresented)
                 .environment(\.isSearchPresentedBinding, $isSearchPresented)
-                .environment(\.selectedSectionBinding, $selectedSection)
-                .task { await loadEnvironmentIfNeeded() }
+                .environment(\.selectedSectionBinding, selectedSectionBinding)
+                .environment(\.filtersPathBinding, $filtersPath)
+                .task {
+                    await loadEnvironmentIfNeeded()
+                    restoreFiltersPathIfNeeded()
+                }
+                .onChange(of: filtersPath) { _, newValue in
+                    persistFiltersPath(newValue)
+                }
         }
         .commands {
             LillistCommands(
                 isQuickCapturePresented: $isQuickCapturePresented,
                 isSearchPresented: $isSearchPresented,
-                selectedSection: $selectedSection
+                selectedSection: selectedSectionBinding
             )
         }
+    }
+
+    /// Decode the persisted path exactly once per scene cold-start.
+    /// Guarded by `didRestoreFiltersPath` so subsequent `.task` fires
+    /// (e.g. after backgrounding) don't clobber the live path with
+    /// the stale on-disk snapshot.
+    private func restoreFiltersPathIfNeeded() {
+        guard !didRestoreFiltersPath else { return }
+        didRestoreFiltersPath = true
+        guard !filtersPathData.isEmpty,
+              let representation = try? JSONDecoder().decode(
+                  NavigationPath.CodableRepresentation.self,
+                  from: filtersPathData
+              ) else { return }
+        filtersPath = NavigationPath(representation)
+    }
+
+    /// Encode the live path into `@AppStorage` so the next launch
+    /// restores it. Skipped before the initial decode runs to avoid
+    /// blanking the stored path on cold-start.
+    private func persistFiltersPath(_ path: NavigationPath) {
+        guard didRestoreFiltersPath else { return }
+        guard let representation = path.codable,
+              let data = try? JSONEncoder().encode(representation) else {
+            filtersPathData = Data()
+            return
+        }
+        filtersPathData = data
     }
 
     @ViewBuilder
@@ -124,6 +185,12 @@ struct LillistApp: App {
             groupDefaults.removePersistentDomain(forName: AppEnvironment.appGroupID)
             groupDefaults.synchronize()
         }
+        // State-restoration keys live in UserDefaults.standard (not the
+        // App Group). Clear them so a fresh UI-test run starts on the
+        // Today tab with no filters drill-in.
+        let standard = UserDefaults.standard
+        standard.removeObject(forKey: "lillist.ios.section")
+        standard.removeObject(forKey: "lillist.ios.filters.path")
         // Pre-mark onboarding complete + switch to LocalOnly so the test
         // bypasses OnboardingPresentationModifier's `fullScreenCover`s.
         await DevicePreferencesStore(appGroupID: AppEnvironment.appGroupID)

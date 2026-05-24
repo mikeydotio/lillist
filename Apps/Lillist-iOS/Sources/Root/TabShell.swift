@@ -13,6 +13,7 @@ struct TabShell: View {
     @Environment(\.isQuickCapturePresentedBinding) private var isQuickCapturePresented
     @Environment(\.isSearchPresentedBinding) private var isSearchPresentedEnv
     @Environment(\.selectedSectionBinding) private var selectedSection
+    @Environment(\.filtersPathBinding) private var filtersPath
     @State private var isSettingsPresented = false
 
     /// `TabView(selection:)` wants a non-optional `iPadSection`; the
@@ -44,7 +45,12 @@ struct TabShell: View {
             .tabItem { Label("All", systemImage: iPadSection.all.systemImage) }
             .tag(iPadSection.all)
 
-            NavigationStack {
+            // Filters tab's NavigationStack binds its path to the
+            // scene-level `filtersPath` so the drilled-in destination
+            // (`FiltersDestination.allTags` and onwards) survives
+            // app relaunches. Other tabs intentionally use a fresh
+            // stack each launch (per scope: no Task-Detail restore).
+            NavigationStack(path: filtersPath) {
                 FiltersListView()
                     .modifier(SearchToolbarItem(isPresented: isSearchPresentedEnv))
                     .modifier(SettingsToolbarItem(isPresented: $isSettingsPresented))
