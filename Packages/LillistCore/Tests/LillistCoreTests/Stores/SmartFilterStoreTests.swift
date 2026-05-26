@@ -196,6 +196,58 @@ struct SmartFilterStoreEvaluateTests {
         #expect(results.map(\.id) == [t1, t2])
     }
 
+    @Test("evaluate(group:) excludes archived rows by default")
+    func evaluateExcludesArchivedByDefault() async throws {
+        let controller = try await TestStore.make()
+        let smartStore = SmartFilterStore(persistence: controller)
+        let taskStore = TaskStore(persistence: controller)
+        let visible = try await taskStore.create(title: "visible")
+        let hidden = try await taskStore.create(title: "hidden")
+        _ = try await taskStore.archive(ids: [hidden])
+
+        // Match-everything filter.
+        let group = PredicateGroup(combinator: .all, predicates: [])
+        let ids = Set(try await smartStore.evaluate(group: group).map(\.id))
+
+        #expect(ids.contains(visible))
+        #expect(!ids.contains(hidden))
+    }
+
+    @Test("evaluate(group: includeArchived: true) returns archived rows")
+    func evaluateIncludesArchivedWhenAsked() async throws {
+        let controller = try await TestStore.make()
+        let smartStore = SmartFilterStore(persistence: controller)
+        let taskStore = TaskStore(persistence: controller)
+        let active = try await taskStore.create(title: "active")
+        let archived = try await taskStore.create(title: "archived")
+        _ = try await taskStore.archive(ids: [archived])
+
+        let group = PredicateGroup(combinator: .all, predicates: [])
+        let ids = Set(try await smartStore.evaluate(group: group, includeArchived: true).map(\.id))
+
+        #expect(ids.contains(active))
+        #expect(ids.contains(archived))
+    }
+
+    @Test("evaluate(id:) (persisted filter) always excludes archived rows")
+    func persistedFilterExcludesArchived() async throws {
+        let controller = try await TestStore.make()
+        let smartStore = SmartFilterStore(persistence: controller)
+        let taskStore = TaskStore(persistence: controller)
+        let visible = try await taskStore.create(title: "visible")
+        let hidden = try await taskStore.create(title: "hidden")
+        _ = try await taskStore.archive(ids: [hidden])
+
+        let fid = try await smartStore.create(
+            name: "All",
+            group: PredicateGroup(combinator: .all, predicates: [])
+        )
+        let ids = Set(try await smartStore.evaluate(id: fid).map(\.id))
+
+        #expect(ids.contains(visible))
+        #expect(!ids.contains(hidden))
+    }
+
     @Test("SmartFilter evaluate result surfaces seriesID for recurring tasks")
     func evaluateSurfacesSeriesID() async throws {
         let persistence = try await TestStore.make()

@@ -157,6 +157,56 @@ final class IOSScreenTourTests: XCTestCase {
         assertScreen(view, name: "04-tasks-sort-due-light", colorScheme: .light, size: phoneSize)
     }
 
+    /// Closed root tasks are now visible in the default list — the
+    /// pull-to-refresh "archive" gesture is what hides them. This
+    /// snapshot guards the new "completed stays in place" UX.
+    func test_11_tasks_completed_rows_visible_light() {
+        var roots = sampleRoots()
+        roots.append(node(task("Buy milk", status: .closed)))
+        roots.append(node(task("Read DDIA ch. 6", status: .closed)))
+        let view = phoneShell(fab: true) {
+            TasksScreen(
+                roots: roots,
+                syncIndicator: .idle(lastSync: nil),
+                buildVersion: "0.1.0 (16)",
+                sort: .constant(.personalized),
+                isFilterHeaderExpanded: .constant(false),
+                searchText: .constant(""),
+                selectedTokens: .constant([]),
+                selectedSavedFilters: .constant([]),
+                savedFilters: savedFilterChips()
+            )
+        }
+        assertScreen(view, name: "11-tasks-completed-rows-visible-light",
+                     colorScheme: .light, size: phoneSize)
+    }
+
+    /// "21 tasks archived. Tap to undo." banner pinned to the bottom
+    /// after a pull-to-refresh archive sweep. The `reduceTransparencyOverride`
+    /// is set so the toast's `accessibleMaterial` paints its opaque
+    /// fallback — system materials don't render in the headless test
+    /// host, leaving the capsule invisible without this override.
+    func test_12_tasks_archive_toast_light() {
+        let view = phoneShell(fab: true) {
+            TasksScreen(
+                roots: sampleRoots(),
+                syncIndicator: .idle(lastSync: nil),
+                buildVersion: "0.1.0 (16)",
+                sort: .constant(.personalized),
+                isFilterHeaderExpanded: .constant(false),
+                searchText: .constant(""),
+                selectedTokens: .constant([]),
+                selectedSavedFilters: .constant([]),
+                isArchiveToastPresented: .constant(true),
+                savedFilters: savedFilterChips(),
+                archivedCount: 21
+            )
+        }
+        .environment(\.reduceTransparencyOverride, true)
+        assertScreen(view, name: "12-tasks-archive-toast-light",
+                     colorScheme: .light, size: phoneSize)
+    }
+
     func test_05_tasks_empty_state_light() {
         let view = phoneShell(fab: true) {
             TasksScreen(

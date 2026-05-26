@@ -25,8 +25,10 @@ public struct TasksScreen: View {
     @Binding public var searchText: String
     @Binding public var selectedTokens: Set<QuickFilterToken>
     @Binding public var selectedSavedFilters: Set<UUID>
+    @Binding public var isArchiveToastPresented: Bool
     public var savedFilters: [SavedFilterChipSpec]
     public var collapsedNodeIDs: Set<UUID>
+    public var archivedCount: Int
 
     public var onToggleCollapsed: (UUID) -> Void
     public var onRefresh: @MainActor () async -> Void
@@ -36,6 +38,7 @@ public struct TasksScreen: View {
     public var onMoveSiblings: @MainActor (_ parentID: UUID?, _ indices: IndexSet, _ destination: Int) -> Void
     public var onClearFilter: @MainActor () -> Void
     public var onOpenSettings: @MainActor () -> Void
+    public var onUndoArchive: @MainActor () -> Void
 
     @Environment(\.quickCaptureAction) private var quickCaptureAction
 
@@ -49,8 +52,10 @@ public struct TasksScreen: View {
         searchText: Binding<String>,
         selectedTokens: Binding<Set<QuickFilterToken>>,
         selectedSavedFilters: Binding<Set<UUID>>,
+        isArchiveToastPresented: Binding<Bool> = .constant(false),
         savedFilters: [SavedFilterChipSpec] = [],
         collapsedNodeIDs: Set<UUID> = [],
+        archivedCount: Int = 0,
         onToggleCollapsed: @escaping (UUID) -> Void = { _ in },
         onRefresh: @escaping @MainActor () async -> Void = {},
         onStatusClick: @escaping @MainActor (TaskStore.TaskRecord) -> Void = { _ in },
@@ -58,7 +63,8 @@ public struct TasksScreen: View {
         onDelete: @escaping @MainActor (TaskStore.TaskRecord) -> Void = { _ in },
         onMoveSiblings: @escaping @MainActor (UUID?, IndexSet, Int) -> Void = { _, _, _ in },
         onClearFilter: @escaping @MainActor () -> Void = {},
-        onOpenSettings: @escaping @MainActor () -> Void = {}
+        onOpenSettings: @escaping @MainActor () -> Void = {},
+        onUndoArchive: @escaping @MainActor () -> Void = {}
     ) {
         self.roots = roots
         self.loadError = loadError
@@ -69,8 +75,10 @@ public struct TasksScreen: View {
         self._searchText = searchText
         self._selectedTokens = selectedTokens
         self._selectedSavedFilters = selectedSavedFilters
+        self._isArchiveToastPresented = isArchiveToastPresented
         self.savedFilters = savedFilters
         self.collapsedNodeIDs = collapsedNodeIDs
+        self.archivedCount = archivedCount
         self.onToggleCollapsed = onToggleCollapsed
         self.onRefresh = onRefresh
         self.onStatusClick = onStatusClick
@@ -79,6 +87,7 @@ public struct TasksScreen: View {
         self.onMoveSiblings = onMoveSiblings
         self.onClearFilter = onClearFilter
         self.onOpenSettings = onOpenSettings
+        self.onUndoArchive = onUndoArchive
     }
 
     // MARK: - Derived
@@ -127,6 +136,13 @@ public struct TasksScreen: View {
             if let buildVersion {
                 BuildVersionLabel(version: buildVersion)
             }
+        }
+        .overlay(alignment: .bottom) {
+            ArchiveToast(
+                count: archivedCount,
+                isPresented: $isArchiveToastPresented,
+                onUndo: onUndoArchive
+            )
         }
         .animation(.easeInOut(duration: 0.2), value: isFilterHeaderExpanded)
     }

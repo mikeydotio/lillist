@@ -283,16 +283,27 @@ extension SmartFilterStore {
     /// a `SmartFilter`) and return matching `TaskStore.TaskRecord`s. Used by
     /// iOS Search and any caller that needs to run a filter without first
     /// saving it.
+    ///
+    /// Archived rows (`archivedAt != nil`) are excluded by default; pass
+    /// `includeArchived: true` to surface them — the iOS Tasks view does
+    /// this when the `.done` quick filter is selected so the "history"
+    /// view shows everything completed.
     public func evaluate(
         group: PredicateGroup,
         sort: SortField = .modifiedAt,
         ascending: Bool = false,
         now: Date = Date(),
-        calendar: Calendar = .current
+        calendar: Calendar = .current,
+        includeArchived: Bool = false
     ) async throws -> [TaskStore.TaskRecord] {
         try await context.perform { [self] in
             let req = NSFetchRequest<LillistTask>(entityName: "LillistTask")
-            req.predicate = NSPredicateCompiler.compile(group, now: now, calendar: calendar)
+            req.predicate = NSPredicateCompiler.compile(
+                group,
+                now: now,
+                calendar: calendar,
+                includeArchived: includeArchived
+            )
             req.sortDescriptors = Self.sortDescriptors(field: sort, ascending: ascending)
             let tasks = try context.fetch(req)
             return tasks.map { Self.record(from: $0) }
@@ -347,6 +358,7 @@ extension SmartFilterStore {
             createdAt: m.createdAt,
             modifiedAt: m.modifiedAt,
             closedAt: m.closedAt,
+            archivedAt: m.archivedAt,
             deletedAt: m.deletedAt,
             seriesID: m.series?.id
         )
