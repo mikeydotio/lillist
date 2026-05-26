@@ -1,12 +1,21 @@
 import XCTest
 
 /// Diagnostic UI tests for the iOS new-task flow. Verifies that a task
-/// created via Quick Capture is reachable via Search inside the same
-/// launch *and* after a relaunch. Designed in service of an RCA — if
-/// either assertion fails the bug is in the iOS-app persistence wiring
-/// (App Group / sandbox / CloudKit container init), since the equivalent
-/// `LillistCore` round-trip is already verified by
-/// `TaskStoreCRUDTests.createIsReadableAsRootChild`.
+/// created via Quick Capture is reachable via the in-place filter
+/// search inside the same launch *and* after a relaunch. Designed in
+/// service of an RCA — if either assertion fails the bug is in the
+/// iOS-app persistence wiring (App Group / sandbox / CloudKit container
+/// init), since the equivalent `LillistCore` round-trip is already
+/// verified by `TaskStoreCRUDTests.createIsReadableAsRootChild`.
+///
+/// The UI surface this drives changed in the 3-tab restructure:
+/// - Quick Capture is now reached via the bottom-trailing floating
+///   action button (identifier `TasksQuickCaptureFAB`) on the single
+///   primary surface, or via the empty-state capture button
+///   (`TasksEmptyStateCaptureButton`) when the list is empty.
+/// - Search lives inside the expanding filter header rather than a
+///   dedicated sheet — tap `TasksFilterToggle` to expand, then type
+///   into `FilterSearchField` to filter the same list view.
 @MainActor
 final class QuickCaptureFlowUITests: XCTestCase {
     override func setUp() {
@@ -27,11 +36,11 @@ final class QuickCaptureFlowUITests: XCTestCase {
         assertFound(in: relaunched, query: unique, contextMessage: "after relaunch")
     }
 
-    func test_quickCapture_via_today_empty_state_persists_and_is_searchable() throws {
+    func test_quickCapture_via_empty_state_persists_and_is_searchable() throws {
         let unique = "uitest-\(UUID().uuidString.prefix(8))"
 
         let app = launchFresh()
-        openQuickCapture(in: app, via: .todayEmptyState)
+        openQuickCapture(in: app, via: .emptyState)
         typeAndSubmit(in: app, text: unique)
         assertFound(in: app, query: unique, contextMessage: "same launch")
         app.terminate()
@@ -69,12 +78,12 @@ final class QuickCaptureFlowUITests: XCTestCase {
     /// onboarding fullScreenCover can present asynchronously up to a few
     /// seconds after launch (env init → modifier .task → evaluate →
     /// showOnboarding = true). Race-proof by polling for either the
-    /// tab bar (post-onboarding) or the Skip button (onboarding active)
-    /// up to a generous deadline before proceeding.
+    /// settings button (post-onboarding) or the Skip button (onboarding
+    /// active) up to a generous deadline before proceeding.
     private func dismissOnboardingIfPresent(in app: XCUIApplication) {
         let deadline = Date().addingTimeInterval(8)
         while Date() < deadline {
-            if app.tabBars.firstMatch.exists {
+            if app.buttons["TasksSettingsButton"].exists {
                 return
             }
             let skip = app.buttons["Skip for now"]
@@ -88,7 +97,7 @@ final class QuickCaptureFlowUITests: XCTestCase {
 
     private enum CaptureEntryPoint {
         case floatingPlus
-        case todayEmptyState
+        case emptyState
     }
 
     private func openQuickCapture(in app: XCUIApplication, via entry: CaptureEntryPoint) {
@@ -98,16 +107,16 @@ final class QuickCaptureFlowUITests: XCTestCase {
         let timeout: TimeInterval = 20
         switch entry {
         case .floatingPlus:
-            let plus = app.buttons["QuickCaptureAccessory"]
+            let plus = app.buttons["TasksQuickCaptureFAB"]
             if !plus.waitForExistence(timeout: timeout) {
                 XCTFail("Floating + button missing. App tree:\n\(app.debugDescription)")
                 return
             }
             plus.tap()
-        case .todayEmptyState:
-            let emptyState = app.buttons["TodayEmptyStateCaptureButton"]
+        case .emptyState:
+            let emptyState = app.buttons["TasksEmptyStateCaptureButton"]
             if !emptyState.waitForExistence(timeout: timeout) {
-                XCTFail("Today empty-state Capture button missing. App tree:\n\(app.debugDescription)")
+                XCTFail("Tasks empty-state Capture button missing. App tree:\n\(app.debugDescription)")
                 return
             }
             emptyState.tap()
@@ -128,50 +137,29 @@ final class QuickCaptureFlowUITests: XCTestCase {
         )
     }
 
+    /// Find the captured task via the expanding filter header's search
+    /// field. Search now filters the primary list in-place rather than
+    /// presenting a sheet.
     private func assertFound(in app: XCUIApplication, query: String, contextMessage: String) {
-        // Post-RCA-restructure: Search lives in a top-leading toolbar
-        // sheet on every primary section, not as its own tab.
-        let searchButton = app.buttons["SearchToolbarButton"]
-        XCTAssertTrue(searchButton.waitForExistence(timeout: 5),
-                      "Search toolbar button missing")
-        searchButton.tap()
+        let filterToggle = app.buttons["TasksFilterToggle"]
+        XCTAssertTrue(filterToggle.waitForExistence(timeout: 5),
+                      "Filter toggle missing")
+        filterToggle.tap()
 
-        // `.searchable` on iOS 26 is rendered in a way that XCUI does not
-        // expose as either `.searchField` or `.textField` to the test
-        // process — see screen recording in `~/Enderchest/Lillist/...`.
-        // The field is auto-focused on Search-tab landing (keyboard up,
-        // cursor in field), so route the query through the keyboard via
-        // `app.typeText` directly. If a future iOS update exposes it
-        // again, prefer the typed-field path.
-        if let field = firstSearchableField(in: app), field.waitForExistence(timeout: 2) {
-            if !field.hasFocus { field.tap() }
-            field.typeText(query)
-        } else {
-            // Give the search-tab transition a beat to settle and focus
-            // to land in the field.
-            Thread.sleep(forTimeInterval: 0.5)
-            app.typeText(query)
-        }
+        let field = app.textFields["FilterSearchField"]
+        XCTAssertTrue(field.waitForExistence(timeout: 5),
+                      "FilterSearchField missing after expanding the filter header")
+        if !field.hasFocus { field.tap() }
+        field.typeText(query)
 
-        // SearchView debounces 250ms; allow generous wait for the row to render.
+        // The list reload debounces 250ms; allow generous wait for the row to render.
         let row = app.cells.containing(NSPredicate(format: "label CONTAINS[c] %@", query)).firstMatch
         let found = row.waitForExistence(timeout: 8)
         XCTAssertTrue(
             found,
-            "Created task '\(query)' was not found in Search (\(contextMessage)). " +
+            "Created task '\(query)' was not found in the filtered list (\(contextMessage)). " +
             "This indicates the task did not persist via the iOS AppEnvironment path."
         )
-    }
-
-    /// Returns whichever search-style input exists on screen. SwiftUI
-    /// `.searchable` may register as either `.searchField` or `.textField`
-    /// depending on placement and OS version; returns `nil` if neither.
-    private func firstSearchableField(in app: XCUIApplication) -> XCUIElement? {
-        let asSearch = app.searchFields.firstMatch
-        if asSearch.exists { return asSearch }
-        let asText = app.textFields.firstMatch
-        if asText.exists { return asText }
-        return nil
     }
 
     private func waitForDisappearance(of element: XCUIElement, timeout: TimeInterval) -> Bool {

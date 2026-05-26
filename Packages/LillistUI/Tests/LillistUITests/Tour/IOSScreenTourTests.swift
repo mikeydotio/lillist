@@ -5,13 +5,13 @@ import SnapshotTesting
 import LillistCore
 @testable import LillistUI
 
-// Renders iPhone-sized approximations of the iOS app's screens.
-// Plan 20a Task 4f: the five Tab screens (Today, All, Filters, Search,
-// Settings) now render the real `LillistUI.*Screen` structs wrapped in
-// a NavigationStack — no more inline mock chrome for those. The
-// remaining tests (TaskDetail, QuickCapture dialog, Onboarding, iCloud
-// gate) still compose inline because they cover surfaces Plan 20a
-// did not migrate.
+// Renders iPhone-sized approximations of the iOS app's screens after
+// the 3-tab restructure. The five Tab-era screens (Today, All, Filters,
+// Search, AllTags) collapsed into a single primary `TasksScreen` with
+// an expanding filter header, sort menu, outline list, and trailing-
+// only delete swipe. The TaskDetail, QuickCapture, Onboarding, and
+// iCloud-required screens remain as parallel surfaces and keep their
+// inline-composed snapshots from the previous suite.
 @MainActor
 final class IOSScreenTourTests: XCTestCase {
 
@@ -21,19 +21,28 @@ final class IOSScreenTourTests: XCTestCase {
 
     private func task(
         _ title: String,
+        id: UUID = UUID(),
+        parent: UUID? = nil,
         status: Status = .todo,
-        deadline: Date? = nil
+        deadline: Date? = nil,
+        modifiedAt: Date? = Date(timeIntervalSince1970: 1_780_000_000)
     ) -> TaskStore.TaskRecord {
         TaskStore.TaskRecord(
-            id: UUID(), title: title, notes: "", status: status,
+            id: id, title: title, notes: "", status: status,
             start: nil, startHasTime: false,
             deadline: deadline, deadlineHasTime: deadline != nil,
-            position: 0, isPinned: false, parentID: nil,
+            position: 0, isPinned: false, parentID: parent,
             createdAt: Date(timeIntervalSince1970: 1_780_000_000),
-            modifiedAt: Date(timeIntervalSince1970: 1_780_000_000),
+            modifiedAt: modifiedAt,
             closedAt: status == .closed ? Date(timeIntervalSince1970: 1_780_000_000) : nil,
             deletedAt: nil
         )
+    }
+
+    private func node(_ record: TaskStore.TaskRecord,
+                      tagNames: [String] = [],
+                      children: [TaskNode] = []) -> TaskNode {
+        TaskNode(record: record, tagNames: tagNames, children: children)
     }
 
     private func taskRow(
@@ -49,109 +58,120 @@ final class IOSScreenTourTests: XCTestCase {
         )
     }
 
-    private func todayRecords() -> [TaskStore.TaskRecord] {
-        [
-            task("Buy milk"),
-            task("Draft launch email", status: .started),
-            task("Ship 1.0 release", status: .blocked,
+    private func sampleRoots() -> [TaskNode] {
+        let shipID = UUID()
+        let shipNode = node(
+            task("Ship 1.0 release", id: shipID, status: .blocked,
                  deadline: Date(timeIntervalSince1970: 1_780_300_000)),
-            task("Reply to investors"),
-            task("Sync with design", status: .started),
-            task("Pay rent", status: .closed),
-            task("Renew domain"),
-            task("Read DDIA ch. 6")
-        ]
-    }
-
-    private func filterRecord(
-        _ name: String, isPinned: Bool, position: Double
-    ) -> SmartFilterStore.SmartFilterRecord {
-        SmartFilterStore.SmartFilterRecord(
-            id: UUID(),
-            name: name,
-            group: PredicateGroup(combinator: .all, predicates: []),
-            tintColor: nil,
-            sortField: .manualPosition,
-            sortAscending: true,
-            isPinned: isPinned,
-            position: position,
-            createdAt: nil,
-            modifiedAt: nil
+            children: [
+                node(task("Pull metrics from beta", parent: shipID, status: .closed)),
+                node(task("Draft hero paragraph", parent: shipID, status: .started)),
+                node(task("Get screenshots from QA", parent: shipID, status: .blocked))
+            ]
         )
-    }
-
-    // MARK: - Migrated Tab screens (Plan 20a)
-
-    func test_01_today_light() {
-        let view = phoneShell(fab: true) {
-            TodayScreen(
-                results: todayRecords(),
-                syncIndicator: .idle(lastSync: nil),
-                buildVersion: "0.1.0 (16)"
-            )
-        }
-        assertScreen(view, name: "01-today-light", colorScheme: .light, size: phoneSize)
-    }
-
-    func test_02_today_dark() {
-        let view = phoneShell(fab: true) {
-            TodayScreen(
-                results: todayRecords(),
-                syncIndicator: .idle(lastSync: nil),
-                buildVersion: "0.1.0 (16)"
-            )
-        }
-        assertScreen(view, name: "02-today-dark", colorScheme: .dark, size: phoneSize)
-    }
-
-    func test_03_allTags_light() {
-        let tree: [AllTagsScreen.TagNode] = [
-            .init(id: UUID(), name: "work"),
-            .init(id: UUID(), name: "errands"),
-            .init(id: UUID(), name: "personal"),
-            .init(id: UUID(), name: "reading"),
-            .init(id: UUID(), name: "urgent"),
-            .init(id: UUID(), name: "ideas"),
-            .init(id: UUID(), name: "watch-later")
+        return [
+            node(task("Buy milk")),
+            node(task("Draft launch email", status: .started)),
+            shipNode,
+            node(task("Reply to investors")),
+            node(task("Sync with design", status: .started)),
+            node(task("Renew domain")),
+            node(task("Read DDIA ch. 6"))
         ]
-        let view = phoneShell(fab: true) {
-            AllTagsScreen(tree: tree)
-        }
-        assertScreen(view, name: "03-all-tags-light", colorScheme: .light, size: phoneSize)
     }
 
-    func test_04_filters_light() {
-        let pinned = [filterRecord("Today", isPinned: true, position: 0)]
-        let others = [
-            filterRecord("Upcoming", isPinned: false, position: 1),
-            filterRecord("Overdue", isPinned: false, position: 2),
-            filterRecord("Inbox", isPinned: false, position: 3),
-            filterRecord("Completed", isPinned: false, position: 4),
-            filterRecord("Blocked on me", isPinned: false, position: 5),
-            filterRecord("This week at work", isPinned: false, position: 6)
+    private func savedFilterChips() -> [SavedFilterChipSpec] {
+        [
+            SavedFilterChipSpec(id: UUID(), title: "Inbox"),
+            SavedFilterChipSpec(id: UUID(), title: "Upcoming")
         ]
-        let view = phoneShell(fab: true) {
-            FiltersListScreen(pinned: pinned, others: others)
-        }
-        assertScreen(view, name: "04-filters-light", colorScheme: .light, size: phoneSize)
     }
 
-    func test_05_search_light() {
+    // MARK: - TasksScreen states
+
+    func test_01_tasks_default_light() {
         let view = phoneShell(fab: true) {
-            SearchScreen(
-                query: .constant("launch"),
-                scope: .constant(.all),
-                results: [
-                    task("Draft launch email", status: .started),
-                    task("Pre-launch retrospective notes"),
-                    task("Launch checklist v3"),
-                    task("Ship 1.0 release", status: .blocked,
-                         deadline: Date(timeIntervalSince1970: 1_780_300_000))
-                ],
-                recents: []
+            TasksScreen(
+                roots: sampleRoots(),
+                syncIndicator: .idle(lastSync: nil),
+                buildVersion: "0.1.0 (16)",
+                sort: .constant(.personalized),
+                isFilterHeaderExpanded: .constant(false),
+                searchText: .constant(""),
+                selectedTokens: .constant([]),
+                selectedSavedFilters: .constant([]),
+                savedFilters: savedFilterChips()
             )
         }
-        assertScreen(view, name: "05-search-light", colorScheme: .light, size: phoneSize)
+        assertScreen(view, name: "01-tasks-default-light", colorScheme: .light, size: phoneSize)
+    }
+
+    func test_02_tasks_default_dark() {
+        let view = phoneShell(fab: true) {
+            TasksScreen(
+                roots: sampleRoots(),
+                syncIndicator: .idle(lastSync: nil),
+                buildVersion: "0.1.0 (16)",
+                sort: .constant(.personalized),
+                isFilterHeaderExpanded: .constant(false),
+                searchText: .constant(""),
+                selectedTokens: .constant([]),
+                selectedSavedFilters: .constant([]),
+                savedFilters: savedFilterChips()
+            )
+        }
+        assertScreen(view, name: "02-tasks-default-dark", colorScheme: .dark, size: phoneSize)
+    }
+
+    func test_03_tasks_filter_expanded_today_token_light() {
+        let view = phoneShell(fab: true) {
+            TasksScreen(
+                roots: sampleRoots(),
+                syncIndicator: .idle(lastSync: nil),
+                buildVersion: "0.1.0 (16)",
+                sort: .constant(.personalized),
+                isFilterHeaderExpanded: .constant(true),
+                searchText: .constant("ship"),
+                selectedTokens: .constant([.today]),
+                selectedSavedFilters: .constant([]),
+                savedFilters: savedFilterChips()
+            )
+        }
+        assertScreen(view, name: "03-tasks-filter-expanded-light", colorScheme: .light, size: phoneSize)
+    }
+
+    func test_04_tasks_sort_due_light() {
+        let view = phoneShell(fab: true) {
+            TasksScreen(
+                roots: sampleRoots(),
+                syncIndicator: .idle(lastSync: nil),
+                buildVersion: "0.1.0 (16)",
+                sort: .constant(.due),
+                isFilterHeaderExpanded: .constant(false),
+                searchText: .constant(""),
+                selectedTokens: .constant([]),
+                selectedSavedFilters: .constant([]),
+                savedFilters: savedFilterChips()
+            )
+        }
+        assertScreen(view, name: "04-tasks-sort-due-light", colorScheme: .light, size: phoneSize)
+    }
+
+    func test_05_tasks_empty_state_light() {
+        let view = phoneShell(fab: true) {
+            TasksScreen(
+                roots: [],
+                syncIndicator: .idle(lastSync: nil),
+                buildVersion: "0.1.0 (16)",
+                sort: .constant(.personalized),
+                isFilterHeaderExpanded: .constant(false),
+                searchText: .constant(""),
+                selectedTokens: .constant([]),
+                selectedSavedFilters: .constant([]),
+                savedFilters: savedFilterChips()
+            )
+        }
+        assertScreen(view, name: "05-tasks-empty-state-light", colorScheme: .light, size: phoneSize)
     }
 
     func test_08_settings_light() {
@@ -184,7 +204,7 @@ final class IOSScreenTourTests: XCTestCase {
         assertScreen(view, name: "08-settings-light", colorScheme: .light, size: phoneSize)
     }
 
-    // MARK: - Non-Tab screens (kept inline — out of Plan 20a scope)
+    // MARK: - Non-Tasks screens (inline-composed)
 
     func test_06_taskDetail_light() {
         let view = ZStack(alignment: .bottomTrailing) {
@@ -339,9 +359,9 @@ final class IOSScreenTourTests: XCTestCase {
         assertScreen(view, name: "10-icloud-required-light", colorScheme: .light, size: phoneSize)
     }
 
-    // MARK: - Shell helper (Plan 20a)
+    // MARK: - Shell helper
 
-    /// Wraps a migrated Tab screen in a NavigationStack, sized to the
+    /// Wraps a migrated screen in a NavigationStack, sized to the
     /// iPhone tour viewport, with the FloatingAddButton overlay the
     /// real iOS shell paints.
     @ViewBuilder

@@ -50,16 +50,16 @@ public struct StatusIndicatorView: View {
             }
         } label: {
             Image(systemName: StatusGlyph.symbol(for: status))
-                .font(LillistTypography.statusGlyph)
+                .font(.system(size: 32, weight: .regular))
                 .foregroundStyle(StatusPalette.color(for: status))
-                .frame(width: LillistSpacing.xl - 2, height: LillistSpacing.xl - 2)
+                .frame(width: 44, height: 44)
                 .contentShape(Rectangle())
         } primaryAction: {
             onClick()
         }
         .menuStyle(.borderlessButton)
         .menuIndicator(.hidden)  // hide the macOS disclosure chevron — the glyph is the affordance
-        .frame(width: 44, height: 44)
+        .frame(width: 48, height: 48)
         .contentShape(Rectangle())
         .accessibilityLabel(StatusGlyph.accessibilityLabel(for: status))
         .accessibilityAddTraits(.isButton)

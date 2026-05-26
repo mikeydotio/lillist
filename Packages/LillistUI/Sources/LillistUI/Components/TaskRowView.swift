@@ -39,11 +39,10 @@ public struct TaskRowView: View {
                 onSetStatus: onStatusSet
             )
 
-            VStack(alignment: .leading, spacing: LillistSpacing.xs / 2) {
+            VStack(alignment: .leading, spacing: 1) {
                 Text(task.title)
                     .strikethrough(task.status == .closed)
                     .foregroundStyle(task.status == .closed ? .secondary : .primary)
-                    .lineLimit(1)
 
                 if !tagNames.isEmpty || task.deadline != nil {
                     HStack(spacing: LillistSpacing.xs) {
@@ -58,11 +57,8 @@ public struct TaskRowView: View {
                 }
             }
             Spacer(minLength: 0)
-            Image(systemName: "line.3.horizontal")
-                .foregroundStyle(.tertiary)
-                .accessibilityLabel(String(localized: "Drag handle", bundle: .module))
         }
-        .padding(.vertical, LillistSpacing.xs)
+        .padding(.vertical, 2)
         .padding(.horizontal, LillistSpacing.xs + 2)
         .contentShape(Rectangle())
         .accessibilityElement(children: .combine)
