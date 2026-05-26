@@ -7,32 +7,18 @@ struct LillistApp: App {
     @State private var environment: AppEnvironment?
     @State private var loadError: String?
     @State private var isQuickCapturePresented = false
-    @State private var isSearchPresented = false
 
-    /// Persisted selected tab. Plan: state-restoration.
-    /// Stored as the raw enum value; `Binding<iPadSection?>` is computed
-    /// over it so the `LillistCommands` and shell bindings keep their
-    /// existing nil-safe shape. Multi-window iPad shares this value —
-    /// acceptable for v1 (Mikey hasn't asked for per-window).
-    @AppStorage("lillist.ios.section")
-    private var selectedSectionRaw: String = iPadSection.today.rawValue
+    /// Persisted sort selection for the single primary `TasksView`.
+    /// Default is `.personalized` (user-controlled drag order). Stored
+    /// as `rawValue`; the `Binding<TasksSort>` is computed over it so
+    /// downstream views read/write a typed value.
+    @AppStorage("lillist.ios.sort")
+    private var sortRaw: String = TasksSort.personalized.rawValue
 
-    /// Persisted Filters-tab `NavigationPath`. Stored as
-    /// JSON-encoded `NavigationPath.CodableRepresentation`. Empty
-    /// `Data` = "no stored path" (start at the Filters root).
-    /// Plan: state-restoration.
-    @AppStorage("lillist.ios.filters.path")
-    private var filtersPathData: Data = Data()
-
-    /// Live `NavigationPath` mirrored to `filtersPathData` via
-    /// `.onChange`. Initial decode runs once on first scene `.task`.
-    @State private var filtersPath = NavigationPath()
-    @State private var didRestoreFiltersPath = false
-
-    private var selectedSectionBinding: Binding<iPadSection?> {
+    private var sortBinding: Binding<TasksSort> {
         Binding(
-            get: { iPadSection(rawValue: selectedSectionRaw) ?? .today },
-            set: { selectedSectionRaw = ($0 ?? .today).rawValue }
+            get: { TasksSort(rawValue: sortRaw) ?? .personalized },
+            set: { sortRaw = $0.rawValue }
         )
     }
 
@@ -40,52 +26,12 @@ struct LillistApp: App {
         WindowGroup {
             content
                 .environment(\.isQuickCapturePresentedBinding, $isQuickCapturePresented)
-                .environment(\.isSearchPresentedBinding, $isSearchPresented)
-                .environment(\.selectedSectionBinding, selectedSectionBinding)
-                .environment(\.filtersPathBinding, $filtersPath)
-                .task {
-                    await loadEnvironmentIfNeeded()
-                    restoreFiltersPathIfNeeded()
-                }
-                .onChange(of: filtersPath) { _, newValue in
-                    persistFiltersPath(newValue)
-                }
+                .environment(\.sortBinding, sortBinding)
+                .task { await loadEnvironmentIfNeeded() }
         }
         .commands {
-            LillistCommands(
-                isQuickCapturePresented: $isQuickCapturePresented,
-                isSearchPresented: $isSearchPresented,
-                selectedSection: selectedSectionBinding
-            )
+            LillistCommands(isQuickCapturePresented: $isQuickCapturePresented)
         }
-    }
-
-    /// Decode the persisted path exactly once per scene cold-start.
-    /// Guarded by `didRestoreFiltersPath` so subsequent `.task` fires
-    /// (e.g. after backgrounding) don't clobber the live path with
-    /// the stale on-disk snapshot.
-    private func restoreFiltersPathIfNeeded() {
-        guard !didRestoreFiltersPath else { return }
-        didRestoreFiltersPath = true
-        guard !filtersPathData.isEmpty,
-              let representation = try? JSONDecoder().decode(
-                  NavigationPath.CodableRepresentation.self,
-                  from: filtersPathData
-              ) else { return }
-        filtersPath = NavigationPath(representation)
-    }
-
-    /// Encode the live path into `@AppStorage` so the next launch
-    /// restores it. Skipped before the initial decode runs to avoid
-    /// blanking the stored path on cold-start.
-    private func persistFiltersPath(_ path: NavigationPath) {
-        guard didRestoreFiltersPath else { return }
-        guard let representation = path.codable,
-              let data = try? JSONEncoder().encode(representation) else {
-            filtersPathData = Data()
-            return
-        }
-        filtersPathData = data
     }
 
     @ViewBuilder
@@ -122,29 +68,12 @@ struct LillistApp: App {
     private func loadEnvironmentIfNeeded() async {
         guard environment == nil, loadError == nil else { return }
         do {
-            // UI-test seam (Plan: RCA — iOS new-task flow). The wipe arg
-            // is independent from the gate-bypass arg so a relaunch in
-            // the same test can skip onboarding/crash gates *without*
-            // wiping the data we're trying to verify persisted.
             if ProcessInfo.processInfo.arguments.contains("--ui-test-reset-store") {
                 await Self.uiTestResetState()
             }
             let env = try await AppEnvironment.make()
             await env.bootstrap()
-            // Plan 10: invoke the defaults installer once on every cold
-            // launch. The onboarding completion path runs the same
-            // installer; running here is a safety net for returning
-            // users who already passed onboarding before this code
-            // landed, and is harmless on subsequent launches (idempotent
-            // by name).
             try? await env.defaultsInstaller.installIfNeeded()
-            // Plan 10 deviation note: Plan 8's
-            // `await env.notificationPermissions.requestAuthorization()`
-            // unconditional first-launch prompt is removed. Plan 10's
-            // onboarding flow now owns the prompt — first-launch users
-            // see the explanation in OnboardingScreen and tap "Set up
-            // notifications" to consent. Returning users who already
-            // dismissed onboarding never see a re-prompt.
             environment = env
         } catch {
             loadError = "\(error)"
@@ -155,22 +84,12 @@ struct LillistApp: App {
     /// onboarding complete in LocalOnly mode. Only invoked when the host is
     /// launched with the `--ui-test-reset-store` argument by
     /// `Lillist-iOSUITests`. Production code paths never call this.
-    ///
-    /// Order matters: wipe the file-backed stores, wipe the App Group
-    /// defaults, force the wipe to flush (`synchronize`), then write the
-    /// bypass values. Without the synchronize the wipe can be buffered
-    /// and clobber the bypass writes, leaving the onboarding flag false
-    /// and the modifier showing the Welcome screen.
     private static func uiTestResetState() async {
         let fm = FileManager.default
         if let group = fm.containerURL(
             forSecurityApplicationGroupIdentifier: AppEnvironment.appGroupID
         ) {
             try? fm.removeItem(at: group.appendingPathComponent("Lillist", isDirectory: true))
-            // The crash-report canary lives at the App Group root (not
-            // inside `Lillist/`). A killed test run leaves it on disk and
-            // the next launch's CrashReporterHost pops the "What will be
-            // sent" sheet over the app, blocking the UI test.
             try? fm.removeItem(at: group.appendingPathComponent("launch.canary"))
         }
         if let appSupport = try? fm.url(
@@ -185,21 +104,16 @@ struct LillistApp: App {
             groupDefaults.removePersistentDomain(forName: AppEnvironment.appGroupID)
             groupDefaults.synchronize()
         }
-        // State-restoration keys live in UserDefaults.standard (not the
-        // App Group). Clear them so a fresh UI-test run starts on the
-        // Today tab with no filters drill-in.
+        // State-restoration keys live in UserDefaults.standard. Clear
+        // both the old (pre-UI-refresh) section/path keys and the new
+        // sort key so a fresh UI-test run starts clean.
         let standard = UserDefaults.standard
         standard.removeObject(forKey: "lillist.ios.section")
         standard.removeObject(forKey: "lillist.ios.filters.path")
-        // Pre-mark onboarding complete + switch to LocalOnly so the test
-        // bypasses OnboardingPresentationModifier's `fullScreenCover`s.
+        standard.removeObject(forKey: "lillist.ios.sort")
         await DevicePreferencesStore(appGroupID: AppEnvironment.appGroupID)
             .setHasCompletedOnboarding(true)
         await SyncModeStore(appGroupID: AppEnvironment.appGroupID).setMode(.localOnly)
-        // Belt-and-suspenders: belt and force-flush the suite again after
-        // the bypass writes so the next `UserDefaults(suiteName:)` read
-        // sees them. UserDefaults cross-suite caching has historically
-        // bitten this exact pattern.
         UserDefaults(suiteName: AppEnvironment.appGroupID)?.synchronize()
     }
 }
@@ -232,10 +146,6 @@ private struct OnboardingPresentationModifier: ViewModifier {
             .fullScreenCover(isPresented: $showICloudUnavailable) {
                 ICloudUnavailableScreen {
                     Task {
-                        // Plan 21: a fresh install without iCloud
-                        // available → default to LocalOnly so the
-                        // user doesn't see a paused indicator on
-                        // launch.
                         await environment.syncModeStore.setMode(.localOnly)
                         try? await environment.persistenceHost.reconfigure(to: .localOnly)
                         showICloudUnavailable = false
@@ -265,8 +175,6 @@ private struct OnboardingPresentationModifier: ViewModifier {
                         }
                     },
                     onTryAgain: {
-                        // Retry path: just clear the journal so the
-                        // user can re-attempt from Settings.
                         try? environment.migrationJournalStore.clear()
                         recoveryJournal = nil
                     }
@@ -276,17 +184,9 @@ private struct OnboardingPresentationModifier: ViewModifier {
     }
 
     private func evaluate() async {
-        // UI-test seam: explicit, in-process bypass that doesn't depend on
-        // UserDefaults timing across actor boundaries. The synchronize-based
-        // approach in `LillistApp.uiTestResetState` was racing this method.
-        // The gate-bypass arg is independent of the wipe arg so a relaunch
-        // in the same test (verifying persistence) can skip onboarding
-        // without wiping the data being verified.
         if ProcessInfo.processInfo.arguments.contains("--ui-test-bypass-gates") {
             return
         }
-        // Plan 21: recovery sheet supersedes onboarding when a crashed
-        // migration is on disk.
         let journal = try? environment.migrationJournalStore.read()
         if let journal, journal.isInFlight {
             recoveryJournal = journal
@@ -295,8 +195,6 @@ private struct OnboardingPresentationModifier: ViewModifier {
         let done = await environment.onboardingState.hasCompletedOnboarding()
         guard !done else { return }
         if isAvailable(environment.accountState) {
-            // iCloud available + first launch → silently keep
-            // iCloudSync as the chosen mode, advance to onboarding.
             await environment.syncModeStore.setMode(.iCloudSync)
             showOnboarding = true
         } else {

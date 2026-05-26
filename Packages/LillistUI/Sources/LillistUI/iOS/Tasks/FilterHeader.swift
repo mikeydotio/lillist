@@ -1,0 +1,151 @@
+#if os(iOS)
+import SwiftUI
+import LillistCore
+
+/// One of the three built-in filter tokens. `Done` is special-cased by
+/// `TasksView`: it replaces the default `status != closed` baseline
+/// rather than AND-ing with it (otherwise the result is always empty).
+public enum QuickFilterToken: String, CaseIterable, Identifiable, Sendable {
+    case today
+    case thisWeek
+    case done
+
+    public var id: String { rawValue }
+
+    public var title: String {
+        switch self {
+        case .today: return String(localized: "Today", bundle: .module)
+        case .thisWeek: return String(localized: "This Week", bundle: .module)
+        case .done: return String(localized: "Done", bundle: .module)
+        }
+    }
+}
+
+/// Pinned-saved-filter chip. Lives separately from `QuickFilterToken`
+/// so the header can render both groups with the same `FilterChip`
+/// without confusing the binding state.
+public struct SavedFilterChipSpec: Identifiable, Hashable, Sendable {
+    public let id: UUID
+    public let title: String
+
+    public init(id: UUID, title: String) {
+        self.id = id
+        self.title = title
+    }
+}
+
+/// Expanding filter header rendered above the Tasks list via
+/// `safeAreaInset(edge: .top)`. Pure presentation — all state is owned
+/// by the host (`TasksView`).
+public struct FilterHeader: View {
+    @Binding public var searchText: String
+    @Binding public var selectedTokens: Set<QuickFilterToken>
+    @Binding public var selectedSavedFilters: Set<UUID>
+    public let savedFilters: [SavedFilterChipSpec]
+    public let onClear: () -> Void
+
+    public init(
+        searchText: Binding<String>,
+        selectedTokens: Binding<Set<QuickFilterToken>>,
+        selectedSavedFilters: Binding<Set<UUID>>,
+        savedFilters: [SavedFilterChipSpec],
+        onClear: @escaping () -> Void
+    ) {
+        self._searchText = searchText
+        self._selectedTokens = selectedTokens
+        self._selectedSavedFilters = selectedSavedFilters
+        self.savedFilters = savedFilters
+        self.onClear = onClear
+    }
+
+    public var body: some View {
+        VStack(spacing: 10) {
+            searchField
+            chipScroll
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 10)
+        .background(.regularMaterial)
+        .overlay(alignment: .bottom) {
+            Divider()
+        }
+    }
+
+    private var searchField: some View {
+        HStack(spacing: 8) {
+            Image(systemName: "magnifyingglass")
+                .foregroundStyle(.secondary)
+            TextField(
+                String(localized: "Search", bundle: .module),
+                text: $searchText
+            )
+            .textFieldStyle(.plain)
+            .autocorrectionDisabled()
+            .textInputAutocapitalization(.never)
+            .accessibilityIdentifier("FilterSearchField")
+
+            if !searchText.isEmpty || !selectedTokens.isEmpty || !selectedSavedFilters.isEmpty {
+                Button {
+                    onClear()
+                } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .foregroundStyle(.secondary)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(String(localized: "Clear filter", bundle: .module))
+            }
+        }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 8)
+        .background {
+            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                .fill(Color(.tertiarySystemFill))
+        }
+    }
+
+    private var chipScroll: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                ForEach(QuickFilterToken.allCases) { token in
+                    FilterChip(
+                        title: token.title,
+                        isSelected: selectedTokens.contains(token)
+                    ) {
+                        toggleToken(token)
+                    }
+                }
+                if !savedFilters.isEmpty {
+                    Divider()
+                        .frame(height: 18)
+                        .padding(.horizontal, 4)
+                }
+                ForEach(savedFilters) { spec in
+                    FilterChip(
+                        title: spec.title,
+                        isSelected: selectedSavedFilters.contains(spec.id)
+                    ) {
+                        toggleSavedFilter(spec.id)
+                    }
+                }
+            }
+            .padding(.horizontal, 2)
+        }
+    }
+
+    private func toggleToken(_ token: QuickFilterToken) {
+        if selectedTokens.contains(token) {
+            selectedTokens.remove(token)
+        } else {
+            selectedTokens.insert(token)
+        }
+    }
+
+    private func toggleSavedFilter(_ id: UUID) {
+        if selectedSavedFilters.contains(id) {
+            selectedSavedFilters.remove(id)
+        } else {
+            selectedSavedFilters.insert(id)
+        }
+    }
+}
+#endif

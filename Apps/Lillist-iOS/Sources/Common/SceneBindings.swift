@@ -2,37 +2,21 @@ import SwiftUI
 import LillistUI
 
 /// Scene-level state bindings owned by `LillistApp` and consumed by
-/// shells / commands deep in the view tree. Plan 16 Task 29 moves the
-/// Quick-Capture trigger and the active-section selection up to the
-/// Scene so `LillistCommands` (a `Commands` struct) can bind to them
-/// from outside any specific view.
+/// shells / commands deep in the view tree. The 3-tab restructure
+/// replaced the previous tab/section selection plumbing with a single
+/// primary `TasksView`; this file now carries only the two bindings
+/// still in active use:
+///
+/// - `isQuickCapturePresentedBinding`: drives the Quick Capture sheet
+///   from both `LillistCommands` (⌘⇧N) and the bottom-trailing FAB.
+/// - `sortBinding`: `@AppStorage("lillist.ios.sort")`-backed sort
+///   selection threaded down to `TasksView`.
 struct IsQuickCapturePresentedBindingKey: EnvironmentKey {
     static let defaultValue: Binding<Bool> = .constant(false)
 }
 
-struct SelectedSectionBindingKey: EnvironmentKey {
-    static let defaultValue: Binding<iPadSection?> = .constant(nil)
-}
-
-/// RCA / 3-tab restructure: Search lives in a sheet presented from the
-/// top-leading toolbar button on every primary section. The binding is
-/// owned by `LillistApp` so `LillistCommands` (Scene-level) can also
-/// trigger it via ⌘⇧F.
-struct IsSearchPresentedBindingKey: EnvironmentKey {
-    static let defaultValue: Binding<Bool> = .constant(false)
-}
-
-/// Filters-tab `NavigationStack` path lifted to `LillistApp` so it can
-/// be encoded into / decoded from `@AppStorage` for state restoration
-/// (Plan: state-restoration). Both `TabShell` and `SplitShell` bind
-/// their Filters-tab NavigationStack to this single source of truth.
-struct FiltersPathBindingKey: EnvironmentKey {
-    // `Binding<NavigationPath>` isn't `Sendable` (NavigationPath has
-    // no `Sendable` conformance), but `EnvironmentKey.defaultValue`
-    // must be nonisolated. The value is a `.constant(...)` no-op
-    // binding — it never mutates — so the data-race risk the checker
-    // warns about doesn't exist here.
-    nonisolated(unsafe) static let defaultValue: Binding<NavigationPath> = .constant(NavigationPath())
+struct SortBindingKey: EnvironmentKey {
+    static let defaultValue: Binding<TasksSort> = .constant(.personalized)
 }
 
 extension EnvironmentValues {
@@ -41,18 +25,8 @@ extension EnvironmentValues {
         set { self[IsQuickCapturePresentedBindingKey.self] = newValue }
     }
 
-    var selectedSectionBinding: Binding<iPadSection?> {
-        get { self[SelectedSectionBindingKey.self] }
-        set { self[SelectedSectionBindingKey.self] = newValue }
-    }
-
-    var isSearchPresentedBinding: Binding<Bool> {
-        get { self[IsSearchPresentedBindingKey.self] }
-        set { self[IsSearchPresentedBindingKey.self] = newValue }
-    }
-
-    var filtersPathBinding: Binding<NavigationPath> {
-        get { self[FiltersPathBindingKey.self] }
-        set { self[FiltersPathBindingKey.self] = newValue }
+    var sortBinding: Binding<TasksSort> {
+        get { self[SortBindingKey.self] }
+        set { self[SortBindingKey.self] = newValue }
     }
 }
