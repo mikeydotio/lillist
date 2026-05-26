@@ -8,6 +8,12 @@ import CoreData
 /// The implicit-trash rule (design Section 5): unless the group contains a
 /// leaf with `field == .inTrash`, the compiled top-level predicate
 /// conjoins `deletedAt == nil` so smart filters never surface Trash.
+///
+/// The implicit-archive rule: unless `includeArchived: true` is passed,
+/// the compiled top-level predicate also conjoins `archivedAt == nil` so
+/// archived rows stay hidden. The archive concept is system-level and
+/// has no user-facing `Field`, so the opt-in is a parameter rather than
+/// an in-group leaf.
 public enum NSPredicateCompiler {
     /// Top-level entry point. `now` and `calendar` are used to resolve
     /// `RelativeDate` values at compile time. Callers wishing live-updating
@@ -16,14 +22,19 @@ public enum NSPredicateCompiler {
     public static func compile(
         _ group: PredicateGroup,
         now: Date = Date(),
-        calendar: Calendar = .current
+        calendar: Calendar = .current,
+        includeArchived: Bool = false
     ) -> NSPredicate {
         let base = compileGroup(group, now: now, calendar: calendar)
-        if containsField(.inTrash, in: group) {
-            return base
+        var clauses: [NSPredicate] = [base]
+        if !containsField(.inTrash, in: group) {
+            clauses.append(NSPredicate(format: "deletedAt == nil"))
         }
-        let trashFilter = NSPredicate(format: "deletedAt == nil")
-        return NSCompoundPredicate(andPredicateWithSubpredicates: [base, trashFilter])
+        if !includeArchived {
+            clauses.append(NSPredicate(format: "archivedAt == nil"))
+        }
+        guard clauses.count > 1 else { return base }
+        return NSCompoundPredicate(andPredicateWithSubpredicates: clauses)
     }
 
     static func compileGroup(

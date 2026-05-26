@@ -14,6 +14,7 @@
         <attribute name="createdAt" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
         <attribute name="modifiedAt" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
         <attribute name="closedAt" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="archivedAt" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
         <attribute name="deletedAt" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
         <relationship name="parent" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="LillistTask" inverseName="children" inverseEntity="LillistTask"/>
         <relationship name="children" optional="YES" toMany="YES" deletionRule="Cascade" destinationEntity="LillistTask" inverseName="parent" inverseEntity="LillistTask"/>

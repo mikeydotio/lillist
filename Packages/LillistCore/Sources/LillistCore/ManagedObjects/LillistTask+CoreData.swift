@@ -16,6 +16,7 @@ public final class LillistTask: NSManagedObject {
     @NSManaged public var createdAt: Date?
     @NSManaged public var modifiedAt: Date?
     @NSManaged public var closedAt: Date?
+    @NSManaged public var archivedAt: Date?
     @NSManaged public var deletedAt: Date?
 
     @NSManaged public var parent: LillistTask?

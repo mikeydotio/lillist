@@ -25,6 +25,14 @@ struct TasksView: View {
 
     @State private var searchDebounceTask: Task<Void, Never>?
 
+    // Pull-to-refresh archive state. `lastArchivedBatch` is the IDs the
+    // most recent refresh actually flipped — undo only restores those,
+    // so a quick second pull doesn't accidentally resurrect an older
+    // batch the user thought they'd dismissed.
+    @State private var isArchiveToastPresented = false
+    @State private var lastArchivedCount: Int = 0
+    @State private var lastArchivedBatch: [UUID] = []
+
     var body: some View {
         TasksScreen(
             roots: tree,
@@ -36,8 +44,10 @@ struct TasksView: View {
             searchText: $searchText,
             selectedTokens: $selectedTokens,
             selectedSavedFilters: $selectedSavedFilters,
+            isArchiveToastPresented: $isArchiveToastPresented,
             savedFilters: savedFilterSpecs,
             collapsedNodeIDs: collapsedNodeIDs,
+            archivedCount: lastArchivedCount,
             onToggleCollapsed: { id in
                 if collapsedNodeIDs.contains(id) {
                     collapsedNodeIDs.remove(id)
@@ -45,7 +55,7 @@ struct TasksView: View {
                     collapsedNodeIDs.insert(id)
                 }
             },
-            onRefresh: { await reload() },
+            onRefresh: { await performRefreshArchive() },
             onStatusClick: { record in Task { await cycle(record) } },
             onStatusSet: { record, newStatus in
                 Task { await setStatus(record, to: newStatus) }
@@ -66,7 +76,8 @@ struct TasksView: View {
             },
             onOpenSettings: {
                 isSettingsPresented = true
-            }
+            },
+            onUndoArchive: { Task { await undoArchive() } }
         )
         .sheet(isPresented: $isSettingsPresented) {
             SettingsTab()
@@ -135,7 +146,8 @@ struct TasksView: View {
             records = try await env.smartFilterStore.evaluate(
                 group: group,
                 sort: storeSortField,
-                ascending: storeSortAscending
+                ascending: storeSortAscending,
+                includeArchived: selectedTokens.contains(.done)
             )
             loadError = nil
         } catch {
@@ -146,21 +158,18 @@ struct TasksView: View {
 
     // MARK: - Predicate composition
 
-    /// Combine the default `status != closed` baseline with whatever
-    /// quick tokens / saved filters / search text the user has applied.
-    /// The `done` token is special — it replaces the closed-exclusion
-    /// rather than AND-ing with it (otherwise the result would always
-    /// be empty).
+    /// Compose the active predicate from the user's quick tokens, saved
+    /// filters, and search text. Completed tasks are *not* filtered out
+    /// by default — they stay visible in the list until the user
+    /// pull-to-refreshes to archive them. The `.done` token still asks
+    /// the store for closed-only and instructs `evaluate` to include
+    /// archived rows so it acts as a full "history" view.
     private func buildActivePredicateGroup() -> PredicateGroup {
         var predicates: [LillistCore.Predicate] = []
 
         if selectedTokens.contains(.done) {
             predicates.append(
                 .leaf(Leaf(field: .status, op: .is, value: .statusSet([.closed])))
-            )
-        } else {
-            predicates.append(
-                .leaf(Leaf(field: .status, op: .isNot, value: .statusSet([.closed])))
             )
         }
 
@@ -213,6 +222,41 @@ struct TasksView: View {
         case .personalized, .due: return true
         case .modified: return false
         }
+    }
+
+    // MARK: - Pull-to-refresh archive
+
+    /// Pull-to-refresh handler. In the default view, archives every
+    /// currently-visible closed task and triggers the undo banner. In the
+    /// Done view (where the user is intentionally browsing completed
+    /// tasks) it falls back to a plain reload so the gesture doesn't hide
+    /// the very thing the user is trying to look at.
+    private func performRefreshArchive() async {
+        guard !selectedTokens.contains(.done) else {
+            await reload()
+            return
+        }
+        let candidates = records.compactMap { $0.status == .closed ? $0.id : nil }
+        guard !candidates.isEmpty else {
+            await reload()
+            return
+        }
+        let archived = (try? await env.taskStore.archive(ids: candidates)) ?? []
+        await reload()
+        guard !archived.isEmpty else { return }
+        lastArchivedBatch = archived
+        lastArchivedCount = archived.count
+        isArchiveToastPresented = true
+    }
+
+    private func undoArchive() async {
+        let ids = lastArchivedBatch
+        guard !ids.isEmpty else { return }
+        try? await env.taskStore.unarchive(ids: ids)
+        lastArchivedBatch = []
+        lastArchivedCount = 0
+        isArchiveToastPresented = false
+        await reload()
     }
 
     // MARK: - Mutations

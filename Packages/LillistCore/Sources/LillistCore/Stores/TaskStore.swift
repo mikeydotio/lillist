@@ -47,6 +47,7 @@ public final class TaskStore: @unchecked Sendable {
         public var createdAt: Date?
         public var modifiedAt: Date?
         public var closedAt: Date?
+        public var archivedAt: Date?
         public var deletedAt: Date?
         public var seriesID: UUID?
 
@@ -65,6 +66,7 @@ public final class TaskStore: @unchecked Sendable {
             createdAt: Date?,
             modifiedAt: Date?,
             closedAt: Date?,
+            archivedAt: Date? = nil,
             deletedAt: Date?,
             seriesID: UUID? = nil
         ) {
@@ -82,6 +84,7 @@ public final class TaskStore: @unchecked Sendable {
             self.createdAt = createdAt
             self.modifiedAt = modifiedAt
             self.closedAt = closedAt
+            self.archivedAt = archivedAt
             self.deletedAt = deletedAt
             self.seriesID = seriesID
         }
@@ -285,6 +288,10 @@ public final class TaskStore: @unchecked Sendable {
                 m.closedAt = m.modifiedAt
             } else if oldStatus == .closed {
                 m.closedAt = nil
+                // Reopening a previously archived task resurfaces it —
+                // a user explicitly un-completing is the signal that
+                // they want it back in the active view.
+                m.archivedAt = nil
             }
 
             // System journal entry for the transition.
@@ -316,6 +323,61 @@ public final class TaskStore: @unchecked Sendable {
             if let spawnedID {
                 await scheduler.reconcile(taskID: spawnedID)
             }
+        }
+    }
+
+    // MARK: - Archive
+
+    /// Stamp `archivedAt = now` on every task in `ids` that doesn't already
+    /// have a value. Returns just the IDs that were actually flipped, so
+    /// callers (notably the iOS pull-to-refresh undo affordance) can scope
+    /// "undo" to the rows their action created without trampling earlier
+    /// archive batches.
+    ///
+    /// Note: archive is independent of status. Closing a task does not
+    /// auto-archive it; the UI batches and archives explicitly. Reopening a
+    /// closed task does, however, clear `archivedAt` (see `transition`).
+    @discardableResult
+    public func archive(ids: [UUID]) async throws -> [UUID] {
+        do {
+            let affected: [UUID] = try await context.perform { [self] in
+                var flipped: [UUID] = []
+                let now = Date()
+                for id in ids {
+                    let m = try fetchManagedObject(id: id, in: context)
+                    guard m.archivedAt == nil else { continue }
+                    m.archivedAt = now
+                    m.modifiedAt = now
+                    flipped.append(id)
+                }
+                try context.save()
+                return flipped
+            }
+            await recordCrumb("task.archive", success: true)
+            return affected
+        } catch {
+            await recordCrumb("task.archive", success: false)
+            throw error
+        }
+    }
+
+    /// Clear `archivedAt` on every task in `ids`. Idempotent — rows already
+    /// at `archivedAt == nil` are left untouched.
+    public func unarchive(ids: [UUID]) async throws {
+        do {
+            try await context.perform { [self] in
+                for id in ids {
+                    let m = try fetchManagedObject(id: id, in: context)
+                    guard m.archivedAt != nil else { continue }
+                    m.archivedAt = nil
+                    m.modifiedAt = Date()
+                }
+                try context.save()
+            }
+            await recordCrumb("task.unarchive", success: true)
+        } catch {
+            await recordCrumb("task.unarchive", success: false)
+            throw error
         }
     }
 
@@ -506,6 +568,7 @@ public final class TaskStore: @unchecked Sendable {
             createdAt: m.createdAt,
             modifiedAt: m.modifiedAt,
             closedAt: m.closedAt,
+            archivedAt: m.archivedAt,
             deletedAt: m.deletedAt,
             seriesID: m.series?.id
         )
