@@ -8,18 +8,23 @@ import SwiftUI
 public enum DragControllerState: Equatable, Sendable {
     case idle
     case dragging(DragSession)
+    /// Reserved for a future drop-animation phase: phantom animates to its
+    /// destination while the gap closes. Not currently emitted —
+    /// `endDrag()` transitions directly from `.dragging` to `.idle`.
+    /// See `docs/plans/2026-05-26-drag-reorder-redesign-design.md` §"Animation and gap behavior".
     case dropping(DragSession, DragTarget)
 }
 
 /// `@MainActor` `ObservableObject` driving the custom drag-reorder
 /// system. Lives in the platform-agnostic `DragReorder/` module.
 ///
-/// State machine: `idle → dragging → dropping → idle`, with cancel
-/// paths. Geometry, flatRows, and sortMode are inputs the screen
-/// populates before each drop resolution is triggered (Task 5).
-/// `onDrop` fires once on a successful release with a resolved target;
-/// the owning container translates that into the appropriate store
-/// call.
+/// State machine: `idle → dragging → idle`. A `.dropping` transition is
+/// reserved for the future animated-drop phase (see design doc).
+/// Geometry, flatRows, and sortMode are inputs the screen populates
+/// before each drop resolution is triggered (Task 5). The configured
+/// drop handler is invoked once on a successful release with a resolved
+/// target; the owning container translates that into the appropriate
+/// store call.
 @MainActor
 public final class DragController: ObservableObject {
 
@@ -97,8 +102,8 @@ public final class DragController: ObservableObject {
         state = .dragging(session)
     }
 
-    /// Complete the drag: call `onDrop` if the target is actionable,
-    /// then transition back to `.idle`.
+    /// Complete the drag: invoke the drop handler if the target is
+    /// actionable, then transition back to `.idle`.
     public func endDrag() {
         guard case .dragging(let session) = state else { return }
         let target = session.target

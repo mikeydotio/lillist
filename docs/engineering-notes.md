@@ -1807,3 +1807,26 @@ rewritten the same day.
 `LILLIST_DEPLOY_BASE_URL` in their shell rc as required by the old
 script can remove it — the plugin owns its own Tailscale Serve
 config and doesn't read any project-specific env var.
+
+## 2026-05-26 — Drag-reorder coordinate space and platform gesture wiring
+
+`DragReorder/` uses a single named SwiftUI coordinate space
+(`DragCoordinateSpace.name = "TaskListDrag"`) shared by the list
+container, each row's geometry reporter, and the gesture's
+`.coordinateSpace(.named(...))`. All three must agree or row frames
+report in the wrong space and the overlay positions wrong.
+
+iOS gesture activation is `LongPressGesture(0.3s, 4pt slop).sequenced(before:
+DragGesture(0pt))`. The macOS gesture is a bare `DragGesture(minDist: 4)`.
+The unification point is `DragReorderableModifier`'s `#if os(iOS) / #else`
+branches — both call into the same `DragController` methods.
+
+`DragController.state.dropping` is reserved for a future drop-animation
+phase; today `endDrag()` transitions directly from `.dragging` to `.idle`.
+See `docs/plans/2026-05-26-drag-reorder-redesign-design.md`
+§"Animation and gap behavior" for the full intended sequence.
+
+Auto-scroll near list edges (design §"Auto-scroll near edges") is not yet
+implemented. Implementing it requires a `ScrollViewProxy.scrollTo(...)` on
+a timer driven by `DragController`, gated on cursor proximity to the
+list's top/bottom edge.
