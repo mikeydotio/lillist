@@ -102,4 +102,121 @@ public final class DragController: ObservableObject {
     public func cancelDrag() {
         state = .idle
     }
+
+    // MARK: - Resolution
+
+    /// Compute the drop target for a cursor y-position. Pure function of
+    /// the controller's `flatRows`, `geometry`, `sortMode`,
+    /// `isFilterActive`, and the dragged row id.
+    public func resolveTarget(forDraggedID draggedID: UUID, atY y: CGFloat) -> DragTarget {
+        if isFilterActive { return .none }
+        guard !flatRows.isEmpty else { return .none }
+
+        // 1. Find the row whose frame contains y.
+        if let hit = flatRows.first(where: { row in
+            guard let frame = geometry[row.id] else { return false }
+            return y >= frame.minY && y < frame.maxY
+        }) {
+            let frame = geometry[hit.id]!
+            let zone = classifyZone(y: y, in: frame)
+            return resolve(zone: zone, hit: hit, draggedID: draggedID)
+        }
+
+        // 2. Below the last row — treat as drop at root end.
+        if let last = flatRows.last,
+           let lastFrame = geometry[last.id],
+           y >= lastFrame.maxY,
+           sortMode == .personalized {
+            return finalize(
+                target: .between(beforeID: nil, afterID: last.id, parentID: nil),
+                draggedID: draggedID
+            )
+        }
+
+        return .none
+    }
+
+    private enum Zone { case top25, middle50, bottom25 }
+
+    private func classifyZone(y: CGFloat, in frame: CGRect) -> Zone {
+        let topBand    = frame.minY + frame.height * 0.25
+        let bottomBand = frame.minY + frame.height * 0.75
+        if y < topBand    { return .top25 }
+        if y >= bottomBand { return .bottom25 }
+        return .middle50
+    }
+
+    private func resolve(zone: Zone, hit: DragReorderRow, draggedID: UUID) -> DragTarget {
+        switch zone {
+        case .middle50:
+            return finalize(target: .onto(targetID: hit.id), draggedID: draggedID)
+        case .top25:
+            guard sortMode == .personalized else { return .none }
+            return finalize(target: resolveBetweenAbove(hit), draggedID: draggedID)
+        case .bottom25:
+            guard sortMode == .personalized else { return .none }
+            return finalize(target: resolveBetweenBelow(hit), draggedID: draggedID)
+        }
+    }
+
+    /// Dragged row will sit BEFORE `hit` (drop in hit's top 25%).
+    /// beforeID = hit; afterID = previous flat row that's a sibling of hit (same parent), if any.
+    private func resolveBetweenAbove(_ hit: DragReorderRow) -> DragTarget {
+        let parent = hit.parentID
+        let previous = flatRows
+            .prefix(while: { $0.id != hit.id })
+            .reversed()
+            .first(where: { $0.parentID == parent })
+        return .between(beforeID: hit.id, afterID: previous?.id, parentID: parent)
+    }
+
+    /// Dragged row will sit AFTER `hit` (drop in hit's bottom 25%).
+    /// Three sub-cases based on the next flat row:
+    /// - next has hit as parent (hit is expanded, next is first child):
+    ///     dragged becomes first child of hit. beforeID = next, afterID = nil, parent = hit.
+    /// - next has same parent as hit: between them at hit's depth.
+    /// - depth decreases (or no next): sibling-after hit, last in its sibling group.
+    private func resolveBetweenBelow(_ hit: DragReorderRow) -> DragTarget {
+        guard let hitIndex = flatRows.firstIndex(where: { $0.id == hit.id }) else {
+            return .none
+        }
+        let nextIndex = hitIndex + 1
+        if nextIndex >= flatRows.count {
+            return .between(beforeID: nil, afterID: hit.id, parentID: hit.parentID)
+        }
+        let next = flatRows[nextIndex]
+        if next.parentID == hit.id {
+            return .between(beforeID: next.id, afterID: nil, parentID: hit.id)
+        } else if next.parentID == hit.parentID {
+            return .between(beforeID: next.id, afterID: hit.id, parentID: hit.parentID)
+        } else {
+            return .between(beforeID: nil, afterID: hit.id, parentID: hit.parentID)
+        }
+    }
+
+    /// Apply cycle-rejection on top of a resolved target.
+    private func finalize(target: DragTarget, draggedID: UUID) -> DragTarget {
+        switch target {
+        case .onto(let id) where isSelfOrDescendant(id, of: draggedID):
+            return .rejected
+        case .between(_, _, let parentID?) where isSelfOrDescendant(parentID, of: draggedID):
+            return .rejected
+        default:
+            return target
+        }
+    }
+
+    /// Walk the parent chain from `candidate` upward. Returns `true` if
+    /// `candidate` is `ancestor` itself or any descendant of it.
+    private func isSelfOrDescendant(_ candidate: UUID, of ancestor: UUID) -> Bool {
+        if candidate == ancestor { return true }
+        var cursor: UUID? = candidate
+        var safety = 0
+        while let c = cursor, safety < 1024 {
+            if c == ancestor { return true }
+            cursor = flatRows.first(where: { $0.id == c })?.parentID
+            safety += 1
+        }
+        return false
+    }
 }
