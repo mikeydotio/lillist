@@ -213,6 +213,53 @@ final class IOSScreenTourTests: XCTestCase {
                      colorScheme: .light, size: phoneSize)
     }
 
+    /// Snapshot showing `TasksScreen` with an in-progress `.onto` drag:
+    /// the phantom "Reply to investors" row should appear near "Sync with
+    /// design", which should be rendered with a drop-target border. The
+    /// source row at index 3 is invisible (opacity 0) while dragging.
+    func test_13_tasks_mid_drag_light() {
+        let controller = DragController(onDrop: { _, _ in })
+        let roots = sampleRoots()
+
+        // roots[3] = "Reply to investors", roots[4] = "Sync with design"
+        let draggedID = roots[3].record.id
+        let targetID  = roots[4].record.id
+
+        controller.flatRows = roots.map {
+            DragReorderRow(id: $0.record.id, parentID: nil, depth: 0)
+        }
+        // Synthetic geometry matching the list rendering order.
+        var y: CGFloat = 100
+        for root in roots {
+            controller.geometry[root.record.id] = CGRect(
+                x: 12, y: y, width: 369, height: 44
+            )
+            y += 50
+        }
+        controller.beginDrag(
+            rowID: draggedID,
+            originalHeight: 44,
+            cursorY: controller.geometry[targetID]?.midY ?? 250
+        )
+        controller.setResolvedTarget(.onto(targetID: targetID))
+
+        let view = phoneShell(fab: true) {
+            TasksScreen(
+                roots: roots,
+                syncIndicator: .idle(lastSync: nil),
+                buildVersion: "0.1.0 (16)",
+                sort: .constant(.personalized),
+                isFilterHeaderExpanded: .constant(false),
+                searchText: .constant(""),
+                selectedTokens: .constant([]),
+                selectedSavedFilters: .constant([]),
+                savedFilters: savedFilterChips(),
+                dragController: controller
+            )
+        }
+        assertScreen(view, name: "13-tasks-mid-drag-light", colorScheme: .light, size: phoneSize)
+    }
+
     func test_05_tasks_empty_state_light() {
         let view = phoneShell(fab: true) {
             TasksScreen(
