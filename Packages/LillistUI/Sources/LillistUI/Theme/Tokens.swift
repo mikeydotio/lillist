@@ -77,3 +77,32 @@ public enum LillistTokens {
     /// (macOS). Plan 14 collapsed those into this single constant.
     public static let defaultTagTintHex: String = "#7F8FA6"
 }
+
+/// Visual constants for the custom drag-reorder system in
+/// `LillistUI/DragReorder/`. Adjust here, not at callsites.
+public enum LillistDragTokens {
+    /// Color of the active drop indicator (divider or row border).
+    public static let indicatorColor: Color = .accentColor
+    /// Border color drawn on the phantom row when the resolved target
+    /// is `.rejected` (cycle).
+    public static let rejectionColor: Color = Color.red.opacity(0.8)
+    /// Thickness of the between-row divider when active.
+    public static let dividerThickness: CGFloat = 2.5
+    /// Stroke thickness of the onto-row border when active.
+    public static let rowBorderThickness: CGFloat = 2.0
+    /// Corner radius of the onto-row border highlight.
+    public static let rowBorderCornerRadius: CGFloat = 8
+    /// Outset of the onto-row border from the row's bounds, so the
+    /// stroke does not visually overlap row content.
+    public static let rowBorderOutset: CGFloat = 2
+    /// Scale applied to the dragged-row phantom while in flight.
+    public static let phantomScale: CGFloat = 1.02
+    /// Shadow radius of the dragged-row phantom while in flight.
+    public static let phantomShadowRadius: CGFloat = 12
+    /// Opacity of the dragged-row phantom while in flight.
+    public static let phantomOpacity: Double = 0.95
+    /// Long-press duration (iOS) before drag begins.
+    public static let longPressDuration: TimeInterval = 0.3
+    /// Max allowed finger drift during long-press before it cancels.
+    public static let longPressMaxDistance: CGFloat = 4
+}
