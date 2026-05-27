@@ -18,6 +18,8 @@ struct TaskListView: View {
     @State private var inlineCreateParent: UUID?
     @State private var resolvedSourceTitle: String = ""
 
+    @StateObject private var dragController = DragController()
+
     private var sourceKey: String {
         switch selection {
         case .pinnedTask(let id):   return "pinnedTask.\(id)"
@@ -46,6 +48,13 @@ struct TaskListView: View {
         case .tag:           return "Tag"
         case .filter:        return "Filter"
         case .trash:         return "Trash"
+        }
+    }
+
+    private var draggedID: UUID? {
+        switch dragController.state {
+        case .dragging(let s), .dropping(let s, _): return s.draggedID
+        case .idle: return nil
         }
     }
 
@@ -91,17 +100,9 @@ struct TaskListView: View {
                                 onStatusSet: { newStatus in setStatus(node.id, to: newStatus) }
                             )
                             .tag(node.id)
-                            .onDrop(of: [.lillistTask], delegate: TaskDropDelegate(
-                                targetTaskID: node.id,
-                                rowHeight: 44,
-                                onReorder: { dragged, before in
-                                    Task { await reorder(dragged: dragged, target: node.id, before: before) }
-                                },
-                                onReparent: { dragged, newParent in
-                                    Task { await reparent(dragged: dragged, newParent: newParent) }
-                                }
-                            ))
-                            .draggable(TaskDragPayload(taskID: node.id))
+                            .opacity(node.id == draggedID ? 0 : 1)
+                            .allowsHitTesting(node.id != draggedID)
+                            .dragReorderable(id: node.id, controller: dragController)
                         }
                         if showInlineCreate {
                             InlineCreateField(
@@ -111,6 +112,33 @@ struct TaskListView: View {
                                 onShiftTab: { Task { await outdentInlineCreate() } },
                                 onCancel: { showInlineCreate = false; inlineCreateText = "" }
                             )
+                        }
+                    }
+                    .coordinateSpace(name: DragCoordinateSpace.name)
+                    .onPreferenceChange(RowFramePreferenceKey.self) { frames in
+                        dragController.geometry = frames
+                    }
+                    .onChange(of: rootNodes) { _, newRoots in
+                        syncDragControllerInputs(nodes: newRoots)
+                    }
+                    .onAppear {
+                        dragController.setOnDrop { dragged, target in
+                            Task { await applyDrop(dragged: dragged, target: target) }
+                        }
+                        syncDragControllerInputs(nodes: rootNodes)
+                    }
+                    .overlay {
+                        DragOverlay(controller: dragController) { id in
+                            if let rec = flatRecord(id: id) {
+                                TaskRowView(
+                                    task: rec,
+                                    tagNames: [],
+                                    onStatusClick: {},
+                                    onStatusSet: { _ in }
+                                )
+                                .padding(.horizontal, 8)
+                                .background(Color(nsColor: .windowBackgroundColor))
+                            }
                         }
                     }
                 }
@@ -149,6 +177,59 @@ struct TaskListView: View {
             }
         }
     }
+
+    // MARK: - DragController sync
+
+    private func syncDragControllerInputs(nodes: [TaskOutlineNode]) {
+        dragController.flatRows = flattenForDrag(nodes)
+        dragController.sortMode = (sortField == .manualPosition) ? .personalized : .sortedByOther
+        dragController.isFilterActive = false
+    }
+
+    private func flattenForDrag(_ nodes: [TaskOutlineNode], depth: Int = 0, parent: UUID? = nil) -> [DragReorderRow] {
+        var out: [DragReorderRow] = []
+        for node in nodes {
+            out.append(DragReorderRow(id: node.id, parentID: parent, depth: depth))
+            if let kids = node.children, !kids.isEmpty {
+                out.append(contentsOf: flattenForDrag(kids, depth: depth + 1, parent: node.id))
+            }
+        }
+        return out
+    }
+
+    /// Locate a record by UUID, checking `flatResults` then the outline tree.
+    private func flatRecord(id: UUID) -> TaskStore.TaskRecord? {
+        if let r = flatResults.first(where: { $0.id == id }) { return r }
+        func walk(_ nodes: [TaskOutlineNode]) -> TaskStore.TaskRecord? {
+            for n in nodes {
+                if n.id == id { return n.record }
+                if let kids = n.children, let hit = walk(kids) { return hit }
+            }
+            return nil
+        }
+        return walk(rootNodes)
+    }
+
+    // MARK: - Drop handler
+
+    @MainActor
+    private func applyDrop(dragged: UUID, target: DragTarget) async {
+        do {
+            switch target {
+            case .between(let beforeID, let afterID, _):
+                try await env.taskStore.reorder(id: dragged, after: afterID, before: beforeID)
+            case .onto(let parentID):
+                try await env.taskStore.reparent(id: dragged, newParent: parentID)
+            case .rejected, .none:
+                break
+            }
+            await refresh()
+        } catch {
+            // Matches the existing error-swallowing convention in this file.
+        }
+    }
+
+    // MARK: - Helpers
 
     private var emptyMessage: String {
         switch selection {
@@ -219,20 +300,6 @@ struct TaskListView: View {
             try? await env.taskStore.transition(id: id, to: newStatus)
             await refresh()
         }
-    }
-
-    private func reorder(dragged: UUID, target: UUID, before: Bool) async {
-        if before {
-            try? await env.taskStore.reorder(id: dragged, after: nil, before: target)
-        } else {
-            try? await env.taskStore.reorder(id: dragged, after: target, before: nil)
-        }
-        await refresh()
-    }
-
-    private func reparent(dragged: UUID, newParent: UUID) async {
-        try? await env.taskStore.reparent(id: dragged, newParent: newParent)
-        await refresh()
     }
 
     private func commitInlineCreate(asSiblingOf siblingID: UUID?) async {
