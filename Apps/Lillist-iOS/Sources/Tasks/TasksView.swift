@@ -48,6 +48,7 @@ struct TasksView: View {
             savedFilters: savedFilterSpecs,
             collapsedNodeIDs: collapsedNodeIDs,
             archivedCount: lastArchivedCount,
+            dragController: DragController(onDrop: { _, _ in }),
             onToggleCollapsed: { id in
                 if collapsedNodeIDs.contains(id) {
                     collapsedNodeIDs.remove(id)
@@ -65,9 +66,6 @@ struct TasksView: View {
                     try? await env.taskStore.softDelete(id: record.id)
                     await reload()
                 }
-            },
-            onMoveSiblings: { parentID, sources, destination in
-                Task { await reorderSiblings(parentID: parentID, sources: sources, destination: destination) }
             },
             onClearFilter: {
                 searchText = ""
@@ -272,38 +270,4 @@ struct TasksView: View {
         await reload()
     }
 
-    /// Resolve sibling-relative move semantics: `TaskStore.reorder`
-    /// needs `after` and `before` UUID anchors. We compute them in the
-    /// sibling-only subsequence so cross-parent attempts (already
-    /// rejected upstream in `TasksScreen.performMove`) can't sneak in.
-    @MainActor
-    private func reorderSiblings(parentID: UUID?, sources: IndexSet, destination: Int) async {
-        let flat = TreeFlattener.flatten(tree, collapsed: collapsedNodeIDs)
-        let siblingFlatIndices = flat.indices.filter { flat[$0].parentID == parentID }
-        let siblings = siblingFlatIndices.map { flat[$0].node.record.id }
-
-        let sourceSibIndices = sources.compactMap { siblingFlatIndices.firstIndex(of: $0) }
-        guard !sourceSibIndices.isEmpty else { return }
-
-        let destSibIndex: Int
-        if destination >= flat.count {
-            destSibIndex = siblings.count
-        } else if let pos = siblingFlatIndices.firstIndex(of: destination) {
-            destSibIndex = pos
-        } else {
-            return
-        }
-
-        var newOrder = siblings
-        newOrder.move(fromOffsets: IndexSet(sourceSibIndices), toOffset: destSibIndex)
-
-        for sibIndex in sourceSibIndices {
-            let movedID = siblings[sibIndex]
-            guard let newPos = newOrder.firstIndex(of: movedID) else { continue }
-            let after = newPos > 0 ? newOrder[newPos - 1] : nil
-            let before = newPos < newOrder.count - 1 ? newOrder[newPos + 1] : nil
-            try? await env.taskStore.reorder(id: movedID, after: after, before: before)
-        }
-        await reload()
-    }
 }
