@@ -8,9 +8,9 @@ import LillistCore
 /// trailing-edge full-swipe-to-delete on each row.
 ///
 /// Pure presentation. The hosting `TasksView` owns the Core Data fetch,
-/// the @AppStorage-backed sort selection, the filter state, and the
-/// `.navigationDestination(for: UUID.self) { TaskDetailView(taskID:) }`
-/// that turns a row tap into a detail push.
+/// the @AppStorage-backed sort selection, the filter state, the
+/// `DragController` lifecycle, and the `.navigationDestination(for: UUID.self)
+/// { TaskDetailView(taskID:) }` that turns a row tap into a detail push.
 public struct TasksScreen: View {
 
     // MARK: - Inputs
@@ -30,12 +30,13 @@ public struct TasksScreen: View {
     public var collapsedNodeIDs: Set<UUID>
     public var archivedCount: Int
 
+    @ObservedObject public var dragController: DragController
+
     public var onToggleCollapsed: (UUID) -> Void
     public var onRefresh: @MainActor () async -> Void
     public var onStatusClick: @MainActor (TaskStore.TaskRecord) -> Void
     public var onStatusSet: @MainActor (TaskStore.TaskRecord, Status) -> Void
     public var onDelete: @MainActor (TaskStore.TaskRecord) -> Void
-    public var onMoveSiblings: @MainActor (_ parentID: UUID?, _ indices: IndexSet, _ destination: Int) -> Void
     public var onClearFilter: @MainActor () -> Void
     public var onOpenSettings: @MainActor () -> Void
     public var onUndoArchive: @MainActor () -> Void
@@ -56,12 +57,12 @@ public struct TasksScreen: View {
         savedFilters: [SavedFilterChipSpec] = [],
         collapsedNodeIDs: Set<UUID> = [],
         archivedCount: Int = 0,
+        dragController: DragController,
         onToggleCollapsed: @escaping (UUID) -> Void = { _ in },
         onRefresh: @escaping @MainActor () async -> Void = {},
         onStatusClick: @escaping @MainActor (TaskStore.TaskRecord) -> Void = { _ in },
         onStatusSet: @escaping @MainActor (TaskStore.TaskRecord, Status) -> Void = { _, _ in },
         onDelete: @escaping @MainActor (TaskStore.TaskRecord) -> Void = { _ in },
-        onMoveSiblings: @escaping @MainActor (UUID?, IndexSet, Int) -> Void = { _, _, _ in },
         onClearFilter: @escaping @MainActor () -> Void = {},
         onOpenSettings: @escaping @MainActor () -> Void = {},
         onUndoArchive: @escaping @MainActor () -> Void = {}
@@ -79,12 +80,12 @@ public struct TasksScreen: View {
         self.savedFilters = savedFilters
         self.collapsedNodeIDs = collapsedNodeIDs
         self.archivedCount = archivedCount
+        self.dragController = dragController
         self.onToggleCollapsed = onToggleCollapsed
         self.onRefresh = onRefresh
         self.onStatusClick = onStatusClick
         self.onStatusSet = onStatusSet
         self.onDelete = onDelete
-        self.onMoveSiblings = onMoveSiblings
         self.onClearFilter = onClearFilter
         self.onOpenSettings = onOpenSettings
         self.onUndoArchive = onUndoArchive
@@ -180,20 +181,7 @@ public struct TasksScreen: View {
         }
     }
 
-    /// Personalized = active editMode so SwiftUI's grab handles show on
-    /// the trailing edge. Other sorts disable edit mode so the trailing
-    /// swipe-to-delete action remains available.
-    private var editModeBinding: Binding<EditMode> {
-        let value: EditMode = (sort == .personalized) ? .active : .inactive
-        return .constant(value)
-    }
-
-    private var moveHandler: ((IndexSet, Int) -> Void)? {
-        guard sort == .personalized else { return nil }
-        return { source, destination in
-            performMove(source, to: destination)
-        }
-    }
+    // MARK: - List
 
     @ViewBuilder
     private var listBody: some View {
@@ -201,6 +189,7 @@ public struct TasksScreen: View {
             ForEach(flat) { row in
                 outlineRow(row)
                     .listRowInsets(EdgeInsets(top: 2, leading: 12, bottom: 2, trailing: 12))
+                    .opacity(row.node.record.id == draggedID ? 0 : 1)
                     .swipeActions(edge: .trailing, allowsFullSwipe: true) {
                         Button(role: .destructive) {
                             onDelete(row.node.record)
@@ -211,12 +200,57 @@ public struct TasksScreen: View {
                             )
                         }
                     }
+                    .dragReorderable(id: row.node.record.id, controller: dragController)
             }
-            .onMove(perform: moveHandler)
         }
         .listStyle(.plain)
-        .environment(\.editMode, editModeBinding)
+        .coordinateSpace(name: DragCoordinateSpace.name)
+        .onPreferenceChange(RowFramePreferenceKey.self) { frames in
+            dragController.geometry = frames
+        }
+        .onChange(of: flat) { _, newFlat in
+            syncDragControllerInputs(flat: newFlat)
+        }
+        .onAppear {
+            syncDragControllerInputs(flat: flat)
+        }
+        .overlay {
+            DragOverlay(controller: dragController) { id in
+                phantomRow(forID: id)
+            }
+        }
     }
+
+    private var draggedID: UUID? {
+        switch dragController.state {
+        case .dragging(let s), .dropping(let s, _): return s.draggedID
+        case .idle: return nil
+        }
+    }
+
+    @ViewBuilder
+    private func phantomRow(forID id: UUID) -> some View {
+        if let row = flat.first(where: { $0.node.record.id == id }) {
+            outlineRow(row)
+                .listRowInsets(EdgeInsets(top: 2, leading: 12, bottom: 2, trailing: 12))
+                .padding(.horizontal, 12)
+                .background(Color(.systemBackground))
+        }
+    }
+
+    private func syncDragControllerInputs(flat: [FlatTaskRow]) {
+        dragController.flatRows = flat.map {
+            DragReorderRow(
+                id: $0.node.record.id,
+                parentID: $0.parentID,
+                depth: $0.depth
+            )
+        }
+        dragController.sortMode = (sort == .personalized) ? .personalized : .sortedByOther
+        dragController.isFilterActive = hasActiveFilter
+    }
+
+    // MARK: - Row rendering
 
     @ViewBuilder
     private func outlineRow(_ row: FlatTaskRow) -> some View {
@@ -278,36 +312,6 @@ public struct TasksScreen: View {
             .accessibilityLabel(String(localized: "Filter", bundle: .module))
             .accessibilityIdentifier("TasksFilterToggle")
         }
-    }
-
-    // MARK: - Move
-
-    /// Constrain `.onMove` to siblings of the same parent. If the user
-    /// drops across parents, revert (no-op). All drops within a sibling
-    /// group call `onMoveSiblings` with the resolved parent + indices.
-    @MainActor
-    private func performMove(_ source: IndexSet, to destination: Int) {
-        let snapshot = flat
-        guard let first = source.first else { return }
-        guard first < snapshot.count else { return }
-        let sourceParent = snapshot[first].parentID
-
-        // SwiftUI's `to` destination is in the post-removal coordinate
-        // space. Resolve it back to the equivalent row index in the
-        // current snapshot for parent comparison.
-        let resolvedDestinationIndex = min(max(0, destination), snapshot.count)
-        let neighborIndex = resolvedDestinationIndex == snapshot.count
-            ? snapshot.count - 1
-            : resolvedDestinationIndex
-        guard neighborIndex >= 0, neighborIndex < snapshot.count else { return }
-        let neighborParent = snapshot[neighborIndex].parentID
-        guard sourceParent == neighborParent else { return }
-
-        // All sources must share the same parent for a valid move.
-        let allSameParent = source.allSatisfy { snapshot[$0].parentID == sourceParent }
-        guard allSameParent else { return }
-
-        onMoveSiblings(sourceParent, source, destination)
     }
 }
 #endif
