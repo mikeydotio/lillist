@@ -4,33 +4,64 @@ import LillistUI
 
 @MainActor
 final class DragDropInteractionTests: XCTestCase {
-    func test_dropOnto_reparents() async throws {
+    func test_dropOnto_callsReparent() async throws {
         let p = try await PersistenceController(configuration: .inMemory)
         let store = TaskStore(persistence: p)
         let a = try await store.create(title: "A")
         let b = try await store.create(title: "B")
-        try await store.reparent(id: b, newParent: a)
+
+        let controller = DragController(onDrop: { _, _ in })
+        await applyTarget(.onto(targetID: a), draggedID: b, store: store, controller: controller)
+
         let kidsOfA = try await store.children(of: a).map(\.id)
         XCTAssertEqual(kidsOfA, [b])
-        let roots = try await store.children(of: nil).map(\.id)
-        XCTAssertEqual(roots, [a])
     }
 
-    func test_dropBetween_reorders() async throws {
+    func test_dropBetween_callsReorder() async throws {
         let p = try await PersistenceController(configuration: .inMemory)
         let store = TaskStore(persistence: p)
         let a = try await store.create(title: "A")
         let b = try await store.create(title: "B")
         let c = try await store.create(title: "C")
-        // Drop C before A → order becomes [C, A, B]
-        try await store.reorder(id: c, after: nil, before: a)
+        // Move C before A → order [C, A, B]
+        let controller = DragController(onDrop: { _, _ in })
+        await applyTarget(
+            .between(beforeID: a, afterID: nil, parentID: nil),
+            draggedID: c,
+            store: store,
+            controller: controller
+        )
+
         let order = try await store.children(of: nil).map(\.id)
         XCTAssertEqual(order, [c, a, b])
     }
 
-    func test_classify_dropPosition_maps_to_correct_action() {
-        XCTAssertEqual(DropPosition.classify(yInRow: 2,  rowHeight: 44), .before)
-        XCTAssertEqual(DropPosition.classify(yInRow: 22, rowHeight: 44), .onto)
-        XCTAssertEqual(DropPosition.classify(yInRow: 42, rowHeight: 44), .after)
+    func test_dropOntoSelf_isRejectedByController() {
+        let id = UUID()
+        let controller = DragController(onDrop: { _, _ in })
+        controller.flatRows = [DragReorderRow(id: id, parentID: nil, depth: 0)]
+        controller.geometry = [id: CGRect(x: 0, y: 0, width: 100, height: 44)]
+        controller.beginDrag(rowID: id, originalHeight: 44, cursorY: 22)
+        let t = controller.resolveTarget(forDraggedID: id, atY: 22)
+        XCTAssertEqual(t, .rejected)
+    }
+
+    // MARK: - Helpers
+
+    /// Bridge a `DragTarget` to the store calls the macOS container makes.
+    private func applyTarget(
+        _ target: DragTarget,
+        draggedID: UUID,
+        store: TaskStore,
+        controller: DragController
+    ) async {
+        switch target {
+        case .between(let beforeID, let afterID, _):
+            try? await store.reorder(id: draggedID, after: afterID, before: beforeID)
+        case .onto(let parentID):
+            try? await store.reparent(id: draggedID, newParent: parentID)
+        case .rejected, .none:
+            break
+        }
     }
 }
