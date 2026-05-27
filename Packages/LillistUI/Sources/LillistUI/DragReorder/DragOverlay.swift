@@ -89,10 +89,11 @@ public struct DragOverlay<PhantomContent: View>: View {
         if let y {
             let referenceID = afterID ?? beforeID
             let frame = referenceID.flatMap { controller.geometry[$0] } ?? .zero
+            let inset = LillistDragTokens.dividerHorizontalInset
             Capsule()
                 .fill(LillistDragTokens.indicatorColor)
-                .frame(width: frame.width - 24, height: LillistDragTokens.dividerThickness)
-                .position(x: 12 + (frame.width - 24) / 2, y: y)
+                .frame(width: frame.width - inset * 2, height: LillistDragTokens.dividerThickness)
+                .position(x: frame.midX, y: y)
                 .transition(.opacity)
         }
     }

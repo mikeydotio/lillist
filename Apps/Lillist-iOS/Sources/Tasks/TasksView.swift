@@ -277,7 +277,18 @@ struct TasksView: View {
             case .between(let beforeID, let afterID, _):
                 try await env.taskStore.reorder(id: dragged, after: afterID, before: beforeID)
             case .onto(let parentID):
-                try await env.taskStore.reparent(id: dragged, newParent: parentID)
+                if let firstChild = dragController.flatRows.first(where: { $0.parentID == parentID }) {
+                    // Target is expanded with visible children — drop as first child
+                    // (per "Smart: where the cursor was" semantic).
+                    try await env.taskStore.reorder(
+                        id: dragged,
+                        after: nil,
+                        before: firstChild.id
+                    )
+                } else {
+                    // Target is collapsed or has no children — append.
+                    try await env.taskStore.reparent(id: dragged, newParent: parentID)
+                }
             case .rejected, .none:
                 break
             }

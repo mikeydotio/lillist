@@ -105,4 +105,8 @@ public enum LillistDragTokens {
     public static let longPressDuration: TimeInterval = 0.3
     /// Max allowed finger drift during long-press before it cancels.
     public static let longPressMaxDistance: CGFloat = 4
+    /// Horizontal inset of the between-row divider capsule, matching the
+    /// list row's leading/trailing insets in `TasksScreen` so the divider
+    /// aligns with row content.
+    public static let dividerHorizontalInset: CGFloat = 12
 }
