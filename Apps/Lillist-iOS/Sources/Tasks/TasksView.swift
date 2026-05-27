@@ -25,6 +25,8 @@ struct TasksView: View {
 
     @State private var searchDebounceTask: Task<Void, Never>?
 
+    @StateObject private var dragController = DragController()
+
     // Pull-to-refresh archive state. `lastArchivedBatch` is the IDs the
     // most recent refresh actually flipped — undo only restores those,
     // so a quick second pull doesn't accidentally resurrect an older
@@ -48,7 +50,7 @@ struct TasksView: View {
             savedFilters: savedFilterSpecs,
             collapsedNodeIDs: collapsedNodeIDs,
             archivedCount: lastArchivedCount,
-            dragController: DragController(onDrop: { _, _ in }),
+            dragController: dragController,
             onToggleCollapsed: { id in
                 if collapsedNodeIDs.contains(id) {
                     collapsedNodeIDs.remove(id)
@@ -89,6 +91,11 @@ struct TasksView: View {
         }
         .modifier(QuickCaptureDialogHost(isPresented: isQuickCapturePresented))
         .task { await initialLoad() }
+        .onAppear {
+            dragController.setOnDrop { dragged, target in
+                Task { await applyDrop(dragged: dragged, target: target) }
+            }
+        }
         .onChange(of: sortBinding.wrappedValue) { _, _ in Task { await reload() } }
         .onChange(of: selectedTokens) { _, _ in Task { await reload() } }
         .onChange(of: selectedSavedFilters) { _, _ in Task { await reload() } }
@@ -255,6 +262,29 @@ struct TasksView: View {
         lastArchivedCount = 0
         isArchiveToastPresented = false
         await reload()
+    }
+
+    // MARK: - Drop routing
+
+    /// Route a resolved drag-drop to the appropriate `TaskStore` mutation.
+    /// `.between` maps directly to `reorder` using `beforeID`/`afterID`
+    /// as defined by the `DragTarget` contract: `beforeID` is the row the
+    /// dragged item will sit before; `afterID` is the row it will sit after.
+    @MainActor
+    private func applyDrop(dragged: UUID, target: DragTarget) async {
+        do {
+            switch target {
+            case .between(let beforeID, let afterID, _):
+                try await env.taskStore.reorder(id: dragged, after: afterID, before: beforeID)
+            case .onto(let parentID):
+                try await env.taskStore.reparent(id: dragged, newParent: parentID)
+            case .rejected, .none:
+                break
+            }
+            await reload()
+        } catch {
+            loadError = "\(error)"
+        }
     }
 
     // MARK: - Mutations

@@ -190,6 +190,7 @@ public struct TasksScreen: View {
                 outlineRow(row)
                     .listRowInsets(EdgeInsets(top: 2, leading: 12, bottom: 2, trailing: 12))
                     .opacity(row.node.record.id == draggedID ? 0 : 1)
+                    .allowsHitTesting(row.node.record.id != draggedID)
                     .swipeActions(edge: .trailing, allowsFullSwipe: true) {
                         Button(role: .destructive) {
                             onDelete(row.node.record)

@@ -44,14 +44,27 @@ public final class DragController: ObservableObject {
 
     // MARK: - Callback
 
-    /// Called exactly once per successful drop (target is `.between`
-    /// or `.onto`). Never called for `.rejected` or `.none`.
-    public let onDrop: (_ draggedID: UUID, _ target: DragTarget) -> Void
+    /// Internal drop handler. Called exactly once per successful drop
+    /// (target is `.between` or `.onto`). Never called for `.rejected`
+    /// or `.none`. Late-bound via `setOnDrop(_:)` so SwiftUI containers
+    /// that can't capture `self` in `@StateObject` init can wire the
+    /// real closure from `.onAppear`.
+    private var handler: (UUID, DragTarget) -> Void
 
     // MARK: - Init
 
-    public init(onDrop: @escaping (UUID, DragTarget) -> Void) {
-        self.onDrop = onDrop
+    /// Create a controller with an optional immediate drop handler.
+    /// Pass no argument (or `{ _, _ in }`) when the real handler will
+    /// be supplied via `setOnDrop(_:)` from `.onAppear`.
+    public init(onDrop: @escaping (UUID, DragTarget) -> Void = { _, _ in }) {
+        self.handler = onDrop
+    }
+
+    /// Replace the drop handler. Used by SwiftUI containers that can't
+    /// capture `self` in the `@StateObject` default value at struct-init
+    /// time; they wire the real handler from `.onAppear`.
+    public func setOnDrop(_ closure: @escaping (UUID, DragTarget) -> Void) {
+        self.handler = closure
     }
 
     // MARK: - State transitions
@@ -92,7 +105,7 @@ public final class DragController: ObservableObject {
         state = .idle
         switch target {
         case .between, .onto:
-            onDrop(session.draggedID, target)
+            handler(session.draggedID, target)
         case .rejected, .none:
             break
         }
