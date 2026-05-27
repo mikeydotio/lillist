@@ -100,7 +100,8 @@ final class IOSScreenTourTests: XCTestCase {
                 searchText: .constant(""),
                 selectedTokens: .constant([]),
                 selectedSavedFilters: .constant([]),
-                savedFilters: savedFilterChips()
+                savedFilters: savedFilterChips(),
+                dragController: DragController()
             )
         }
         assertScreen(view, name: "01-tasks-default-light", colorScheme: .light, size: phoneSize)
@@ -117,7 +118,8 @@ final class IOSScreenTourTests: XCTestCase {
                 searchText: .constant(""),
                 selectedTokens: .constant([]),
                 selectedSavedFilters: .constant([]),
-                savedFilters: savedFilterChips()
+                savedFilters: savedFilterChips(),
+                dragController: DragController()
             )
         }
         assertScreen(view, name: "02-tasks-default-dark", colorScheme: .dark, size: phoneSize)
@@ -134,7 +136,8 @@ final class IOSScreenTourTests: XCTestCase {
                 searchText: .constant("ship"),
                 selectedTokens: .constant([.today]),
                 selectedSavedFilters: .constant([]),
-                savedFilters: savedFilterChips()
+                savedFilters: savedFilterChips(),
+                dragController: DragController()
             )
         }
         assertScreen(view, name: "03-tasks-filter-expanded-light", colorScheme: .light, size: phoneSize)
@@ -151,7 +154,8 @@ final class IOSScreenTourTests: XCTestCase {
                 searchText: .constant(""),
                 selectedTokens: .constant([]),
                 selectedSavedFilters: .constant([]),
-                savedFilters: savedFilterChips()
+                savedFilters: savedFilterChips(),
+                dragController: DragController()
             )
         }
         assertScreen(view, name: "04-tasks-sort-due-light", colorScheme: .light, size: phoneSize)
@@ -174,7 +178,8 @@ final class IOSScreenTourTests: XCTestCase {
                 searchText: .constant(""),
                 selectedTokens: .constant([]),
                 selectedSavedFilters: .constant([]),
-                savedFilters: savedFilterChips()
+                savedFilters: savedFilterChips(),
+                dragController: DragController()
             )
         }
         assertScreen(view, name: "11-tasks-completed-rows-visible-light",
@@ -199,7 +204,8 @@ final class IOSScreenTourTests: XCTestCase {
                 selectedSavedFilters: .constant([]),
                 isArchiveToastPresented: .constant(true),
                 savedFilters: savedFilterChips(),
-                archivedCount: 21
+                archivedCount: 21,
+                dragController: DragController()
             )
         }
         .environment(\.reduceTransparencyOverride, true)
@@ -218,7 +224,8 @@ final class IOSScreenTourTests: XCTestCase {
                 searchText: .constant(""),
                 selectedTokens: .constant([]),
                 selectedSavedFilters: .constant([]),
-                savedFilters: savedFilterChips()
+                savedFilters: savedFilterChips(),
+                dragController: DragController()
             )
         }
         assertScreen(view, name: "05-tasks-empty-state-light", colorScheme: .light, size: phoneSize)
