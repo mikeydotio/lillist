@@ -176,12 +176,14 @@ public final class DragController: ObservableObject {
         if isFilterActive { return .none }
         guard !flatRows.isEmpty else { return .none }
 
-        // 1. Find the row whose frame contains y.
-        if let hit = flatRows.first(where: { row in
-            guard let frame = geometry[row.id] else { return false }
-            return y >= frame.minY && y < frame.maxY
-        }) {
-            let frame = geometry[hit.id]!
+        // 1. Find the row whose effective range contains y. Each row's
+        //    effective range claims half of every inter-row gap (gaps
+        //    arise from List's `listRowInsets`). The insertion indicator
+        //    is drawn *inside* such a gap; without this expansion a
+        //    cursor on the indicator line would resolve to `.none` and
+        //    the line would fade out — see engineering-notes.md
+        //    (2026-05-27).
+        if let hit = hitRow(atY: y), let frame = geometry[hit.id] {
             let zone = classifyZone(y: y, in: frame)
             return resolve(zone: zone, hit: hit, draggedID: draggedID)
         }
@@ -198,6 +200,36 @@ public final class DragController: ObservableObject {
         }
 
         return .none
+    }
+
+    /// Locate the row whose effective vertical range contains `y`.
+    /// Effective range = the row's reported frame expanded into half of
+    /// each adjacent inter-row gap (midpoint split). With contiguous
+    /// frames the range equals the original frame, so existing
+    /// in-row behavior is unchanged. Returns `nil` for `y` values above
+    /// the first row or below the last row's bottom edge.
+    private func hitRow(atY y: CGFloat) -> DragReorderRow? {
+        for (i, row) in flatRows.enumerated() {
+            guard let frame = geometry[row.id] else { continue }
+            let minY: CGFloat = {
+                guard i > 0,
+                      let prev = geometry[flatRows[i - 1].id],
+                      prev.maxY < frame.minY
+                else { return frame.minY }
+                return (prev.maxY + frame.minY) / 2
+            }()
+            let maxY: CGFloat = {
+                guard i + 1 < flatRows.count,
+                      let next = geometry[flatRows[i + 1].id],
+                      frame.maxY < next.minY
+                else { return frame.maxY }
+                return (frame.maxY + next.minY) / 2
+            }()
+            if y >= minY && y < maxY {
+                return row
+            }
+        }
+        return nil
     }
 
     private enum Zone { case top25, middle50, bottom25 }
