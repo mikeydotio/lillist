@@ -18,11 +18,24 @@ extension View {
 struct DragReorderableModifier: ViewModifier {
     let id: UUID
     @ObservedObject var controller: DragController
+    @Environment(\.accessibilityReduceMotion) private var systemReduceMotion
+    @Environment(\.reduceMotionOverride) private var overrideReduceMotion
 
     func body(content: Content) -> some View {
         content
             .reportRowGeometry(id: id)
             .gesture(platformGesture)
+    }
+
+    /// Effective reduce-motion: app-level override beats the system
+    /// setting. When `true` the lift/settle animations collapse to
+    /// instant transitions (settleDuration → 0).
+    private var reduceMotion: Bool {
+        overrideReduceMotion ?? systemReduceMotion
+    }
+
+    private var settleDuration: TimeInterval {
+        reduceMotion ? 0 : LillistDragTokens.settleDuration
     }
 
     #if os(iOS)
@@ -44,17 +57,27 @@ struct DragReorderableModifier: ViewModifier {
             case .second(_, let drag?):
                 if case .idle = controller.state {
                     guard let frame = controller.geometry[id] else { break }
+                    // Anchor on the row's natural midY (a reliable value
+                    // in the named coordinate space). Don't use
+                    // `drag.location.y` — at the first `.second` event
+                    // of the sequenced gesture it can be reported in an
+                    // unexpected coordinate space, causing the phantom
+                    // to snap to the viewport top.
                     controller.beginDrag(
                         rowID: id,
                         originalHeight: frame.height,
-                        cursorY: drag.location.y
+                        cursorY: frame.midY
                     )
                     UIImpactFeedbackGenerator(style: .medium).impactOccurred()
                 }
-                controller.updateCursor(y: drag.location.y)
+                // Track motion via translation — the coordinate-space-
+                // invariant delta from drag start — applied on top of
+                // the captured anchor.
+                let cursorY = currentCursorY(translation: drag.translation.height)
+                controller.updateCursor(translation: drag.translation.height)
                 let resolved = controller.resolveTarget(
                     forDraggedID: id,
-                    atY: drag.location.y
+                    atY: cursorY
                 )
                 let previous = currentTarget()
                 if resolved != previous {
@@ -66,7 +89,7 @@ struct DragReorderableModifier: ViewModifier {
             }
         }
         .onEnded { _ in
-            controller.endDrag()
+            controller.endDrag(settleDuration: settleDuration)
         }
     }
     #else
@@ -81,26 +104,39 @@ struct DragReorderableModifier: ViewModifier {
                 controller.beginDrag(
                     rowID: id,
                     originalHeight: frame.height,
-                    cursorY: drag.location.y
+                    cursorY: frame.midY
                 )
                 NSHapticFeedbackManager.defaultPerformer.perform(
                     .alignment, performanceTime: .now
                 )
             }
-            controller.updateCursor(y: drag.location.y)
+            let cursorY = currentCursorY(translation: drag.translation.height)
+            controller.updateCursor(translation: drag.translation.height)
             let resolved = controller.resolveTarget(
                 forDraggedID: id,
-                atY: drag.location.y
+                atY: cursorY
             )
             if resolved != currentTarget() {
                 controller.setResolvedTarget(resolved)
             }
         }
         .onEnded { _ in
-            controller.endDrag()
+            controller.endDrag(settleDuration: settleDuration)
         }
     }
     #endif
+
+    /// Compute the cursor Y the resolver should see for a given
+    /// translation — `initialCursorY + translation`. Falls back to
+    /// the row's current geometry frame if the controller hasn't yet
+    /// transitioned to `.dragging` (shouldn't happen in practice, but
+    /// keeps the resolver call total).
+    private func currentCursorY(translation: CGFloat) -> CGFloat {
+        if case .dragging(let session) = controller.state {
+            return session.initialCursorY + translation
+        }
+        return (controller.geometry[id]?.midY ?? 0) + translation
+    }
 
     private func currentTarget() -> DragTarget {
         if case .dragging(let s) = controller.state { return s.target }

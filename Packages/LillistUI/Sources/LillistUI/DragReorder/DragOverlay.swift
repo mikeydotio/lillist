@@ -3,15 +3,18 @@ import SwiftUI
 /// Drawn as `.overlay` on the task list container. Observes the
 /// `DragController` and renders:
 ///
-/// 1. The floating phantom row at the cursor y-position (scaled +
-///    shadowed). The phantom content is provided by the screen via
-///    the `phantomContent` closure so the overlay stays platform-
-///    agnostic.
-/// 2. The active drop indicator:
+/// 1. The floating phantom row, positioned at the cursor while
+///    dragging and at the resolved settle position while dropping.
+///    The phantom content is supplied by the screen via the
+///    `phantomContent` closure so the overlay stays platform-agnostic.
+///    A single phantom view persists across the `.dragging → .dropping`
+///    transition so SwiftUI can interpolate its scale, opacity, and
+///    position into the settle.
+/// 2. The active drop indicator (during `.dragging` only):
 ///    - `.between(...)` → a `Capsule` divider at the row boundary.
-///    - `.onto(...)` → a stroked `RoundedRectangle` around the target.
-///    - `.rejected` → no indicator; the phantom is bordered red.
-///    - `.none` → nothing.
+///    - `.onto(...)`    → a stroked `RoundedRectangle` around the target.
+///    - `.rejected`     → no indicator; the phantom is bordered red.
+///    - `.none`         → nothing.
 public struct DragOverlay<PhantomContent: View>: View {
     @ObservedObject var controller: DragController
     let phantomContent: (UUID) -> PhantomContent
@@ -25,39 +28,151 @@ public struct DragOverlay<PhantomContent: View>: View {
     }
 
     public var body: some View {
-        ZStack(alignment: .topLeading) {
-            switch controller.state {
-            case .idle:
-                EmptyView()
-            case .dragging(let session):
-                indicator(for: session.target)
-                phantom(for: session)
-            case .dropping(let session, _):
-                phantom(for: session)
+        // The `.coordinateSpace(name:)` is anchored on the List (which
+        // extends behind safe areas), but the `.overlay { … }` content
+        // is laid out *inside* the safe area, so the overlay's local
+        // coord space and the named coord space have different
+        // anchors. `controller.geometry` frames are reported in the
+        // named space; `.position(y:)` calls inside this overlay
+        // interpret y in *overlay-local* space. A `-dy` shift converts
+        // named → local at runtime so the two stay in lockstep no
+        // matter what the safe-area insets are doing.
+        GeometryReader { proxy in
+            let dy = proxy.frame(in: .named(DragCoordinateSpace.name)).minY
+
+            ZStack(alignment: .topLeading) {
+                if let session = activeSession {
+                    Group {
+                        if case .dragging = controller.state {
+                            indicator(for: session.target)
+                        }
+                        phantom(for: session)
+                            .transition(.lift)
+                    }
+                    .offset(y: -dy)
+                }
             }
+            .allowsHitTesting(false)
+            .accessibleAnimation(
+                .easeInOut(duration: LillistDragTokens.liftDuration),
+                value: phantomPresent
+            )
+            .accessibleAnimation(
+                .easeInOut(duration: LillistDragTokens.settleDuration),
+                value: settlePhase
+            )
         }
-        .allowsHitTesting(false)
     }
+
+    // MARK: - Derived state
+
+    /// The session backing the in-flight phantom, if any. Persists
+    /// across `.dragging → .dropping` so the phantom view keeps the
+    /// same SwiftUI identity and its modifiers animate rather than
+    /// being recreated.
+    private var activeSession: DragSession? {
+        switch controller.state {
+        case .idle:                 return nil
+        case .dragging(let s):      return s
+        case .dropping(let s, _):   return s
+        }
+    }
+
+    /// The drop target the overlay is currently honoring. Used to drive
+    /// the rejection stroke on the phantom and the settle destination
+    /// during `.dropping`.
+    private var activeTarget: DragTarget {
+        switch controller.state {
+        case .dragging(let s):      return s.target
+        case .dropping(_, let t):   return t
+        case .idle:                 return .none
+        }
+    }
+
+    /// Discrete animation key — flips when the controller transitions
+    /// from the lifted (`.dragging`) phase to the settling (`.dropping`)
+    /// phase. Keying `.animation(_:value:)` on this — rather than on
+    /// `cursorY` or the whole `state` — confines interpolation to the
+    /// settle, leaving cursor tracking 1:1 with the finger.
+    private var settlePhase: Bool {
+        if case .dropping = controller.state { return true }
+        return false
+    }
+
+    private var isSettling: Bool { settlePhase }
+
+    /// Tracks the *existence* of an active drag (the phantom view).
+    /// Flips when the controller transitions `.idle ↔ .dragging` (or
+    /// `.idle ↔ .dropping`), giving the lift insertion transition an
+    /// animation context to run within.
+    private var phantomPresent: Bool { activeSession != nil }
+
+    // MARK: - Phantom
 
     @ViewBuilder
     private func phantom(for session: DragSession) -> some View {
+        let scale: CGFloat = isSettling ? 1.0 : LillistDragTokens.phantomLiftedScale
+        let opacity: Double = isSettling ? 1.0 : LillistDragTokens.phantomLiftedOpacity
+        let shadow: CGFloat = isSettling ? 0 : LillistDragTokens.phantomShadowRadius
+        let yOffset: CGFloat = isSettling ? 0 : LillistDragTokens.phantomShadowYOffset
+        let y: CGFloat = isSettling
+            ? Self.settlePosition(for: session, target: activeTarget, geometry: controller.geometry)
+            : session.cursorY
+
         phantomContent(session.draggedID)
             .frame(height: session.originalHeight)
-            .scaleEffect(LillistDragTokens.phantomScale)
-            .shadow(radius: LillistDragTokens.phantomShadowRadius, y: 8)
-            .opacity(LillistDragTokens.phantomOpacity)
+            .scaleEffect(scale)
+            .opacity(opacity)
+            .shadow(radius: shadow, y: yOffset)
             .overlay(
                 RoundedRectangle(cornerRadius: LillistDragTokens.rowBorderCornerRadius)
                     .stroke(
                         LillistDragTokens.rejectionColor,
-                        lineWidth: session.target == .rejected ? LillistDragTokens.rowBorderThickness : 0
+                        lineWidth: activeTarget == .rejected ? LillistDragTokens.rowBorderThickness : 0
                     )
             )
             .position(
                 x: phantomCenterX,
-                y: session.cursorY
+                y: y
             )
     }
+
+    /// Computes where the phantom should land as the drag releases.
+    ///
+    /// - `.between(beforeID, afterID, _)` resolves to the boundary line
+    ///   of the gap (just below `afterID` if known, else just above
+    ///   `beforeID`).
+    /// - `.onto(targetID)` resolves to the target row's `midY`.
+    /// - `.rejected` and `.none` resolve to the session's
+    ///   `initialCursorY` — the source row's natural center — so the
+    ///   phantom appears to bounce back.
+    ///
+    /// Exposed as `nonisolated static` so tests can call it without
+    /// rendering the overlay; `geometry` is the same dictionary the
+    /// controller publishes.
+    nonisolated public static func settlePosition(
+        for session: DragSession,
+        target: DragTarget,
+        geometry: [UUID: CGRect]
+    ) -> CGFloat {
+        switch target {
+        case .between(let beforeID, let afterID, _):
+            if let id = afterID, let frame = geometry[id] {
+                return frame.maxY + session.originalHeight / 2
+            }
+            if let id = beforeID, let frame = geometry[id] {
+                return frame.minY - session.originalHeight / 2
+            }
+            return session.initialCursorY
+        case .onto(let id):
+            if let frame = geometry[id] { return frame.midY }
+            return session.initialCursorY
+        case .rejected, .none:
+            return session.initialCursorY
+        }
+    }
+
+    // MARK: - Indicators
 
     @ViewBuilder
     private func indicator(for target: DragTarget) -> some View {
@@ -74,13 +189,12 @@ public struct DragOverlay<PhantomContent: View>: View {
     @ViewBuilder
     private func betweenDivider(beforeID: UUID?, afterID: UUID?) -> some View {
         // Position the capsule at the boundary line:
-        // - prefer beforeID's maxY if available
-        // - else afterID's minY
+        // - prefer afterID's maxY if available
+        // - else beforeID's minY
         // NOTE: the anchor naming follows TaskStore.reorder semantics —
         // `beforeID` is the row the dragged row will sit BEFORE, so the
-        // gap line is at beforeID.minY (above the row dragged lands above).
-        // afterID is the row the dragged row will sit AFTER, so the gap
-        // line is at afterID.maxY.
+        // gap line is at beforeID.minY. `afterID` is the row the dragged
+        // row will sit AFTER, so the gap line is at afterID.maxY.
         let y: CGFloat? = {
             if let id = afterID,  let f = controller.geometry[id] { return f.maxY }
             if let id = beforeID, let f = controller.geometry[id] { return f.minY }
@@ -114,5 +228,47 @@ public struct DragOverlay<PhantomContent: View>: View {
         // Use the first geometry entry's midX as the phantom horizontal center.
         // All rows are full-width so any entry suffices.
         controller.geometry.values.first?.midX ?? 0
+    }
+}
+
+// MARK: - Lift transition
+
+extension AnyTransition {
+    /// **Insertion** (`.idle → .dragging`): the phantom enters at the
+    /// row's *natural* scale/opacity and animates down to the lifted
+    /// values — the visible "lift" the user sees on long-press.
+    ///
+    /// SwiftUI's `scaleEffect` composes multiplicatively, so the
+    /// insertion is built by adding an *inverse* `scaleEffect` on top
+    /// of the permanently-applied lifted `scaleEffect`: at the active
+    /// state the inverse cancels the lifted scale (composite = 1.0),
+    /// and at the identity state the inverse is 1.0 (composite = the
+    /// lifted scale). Opacity is animated via the built-in `.opacity`
+    /// transition; the phantom emerges as the source row is hidden.
+    ///
+    /// **Removal** (`.dropping → .idle`): identity — the phantom has
+    /// already animated to natural appearance and settle position
+    /// during `.dropping`, so the actual unmount is instantaneous and
+    /// the user only sees the in-tree settle.
+    static var lift: AnyTransition {
+        let inverseScale = 1.0 / LillistDragTokens.phantomLiftedScale
+        return .asymmetric(
+            insertion: .modifier(
+                active: LiftInsertionModifier(scaleMultiplier: inverseScale),
+                identity: LiftInsertionModifier(scaleMultiplier: 1.0)
+            ).combined(with: .opacity),
+            removal: .identity
+        )
+    }
+}
+
+/// Multiplies the existing scale via an *additional* `scaleEffect`,
+/// used by the lift insertion transition to cancel the permanently-
+/// applied lifted scale during the animation's active frame.
+private struct LiftInsertionModifier: ViewModifier {
+    let scaleMultiplier: CGFloat
+
+    func body(content: Content) -> some View {
+        content.scaleEffect(scaleMultiplier)
     }
 }
