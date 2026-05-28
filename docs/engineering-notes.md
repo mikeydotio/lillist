@@ -1830,3 +1830,35 @@ Auto-scroll near list edges (design §"Auto-scroll near edges") is not yet
 implemented. Implementing it requires a `ScrollViewProxy.scrollTo(...)` on
 a timer driven by `DragController`, gated on cursor proximity to the
 list's top/bottom edge.
+
+## 2026-05-27 — Drag-reorder hit testing must claim the inter-row gap
+
+SwiftUI `List` rows with `listRowInsets(top: N, …, bottom: N)` produce a
+`2N`-point vertical gap between consecutive rows' reported geometry —
+`RowGeometryReporter` measures the row's *content* frame, not the
+inset row container, so consecutive `controller.geometry` rects are
+non-contiguous. `TasksScreen.listBody` uses `top: 2, bottom: 2`, so
+the gap is 4pt.
+
+The `.between(...)` insertion indicator capsule is drawn *inside*
+that gap (at `afterID.maxY`). A naive strict half-open row hit test
+(`y >= frame.minY && y < frame.maxY`) finds no row for cursors in
+the gap and the resolver returns `.none`, which makes the indicator
+fade out via its `.transition(.opacity)` — i.e. the line vanishes
+exactly when the user hovers their finger on it.
+
+Fix: `DragController.hitRow(atY:)` expands each row's effective
+hit range to claim half of every inter-row gap (midpoint split).
+Zone classification still uses the row's *real* frame, so the
+top/middle/bottom 25/50/25 thresholds inside a row are unchanged.
+Gap positions fall outside the top/bottom-25% bands and naturally
+classify as the edge zone of whichever row owns that half of the
+gap; both halves of any given gap resolve to the same `.between`
+target (or, across a depth change, to two adjacent valid targets —
+never `.none`). Contiguous geometry is a no-op.
+
+Don't try to "fix" this by inflating the reported geometry inside
+`RowGeometryReporter`. The reporter doesn't see neighbors (it's a
+per-row preference) and hardcoding the inset there would couple the
+shared module to one screen's layout. The resolver already
+understands inter-row structure; that's where the fix belongs.
