@@ -95,12 +95,24 @@ public enum LillistDragTokens {
     /// Outset of the onto-row border from the row's bounds, so the
     /// stroke does not visually overlap row content.
     public static let rowBorderOutset: CGFloat = 2
-    /// Scale applied to the dragged-row phantom while in flight.
-    public static let phantomScale: CGFloat = 1.02
-    /// Shadow radius of the dragged-row phantom while in flight.
+    /// Scale applied to the dragged-row phantom while *lifted* — i.e.
+    /// during the active `.dragging` phase. The phantom inserts via a
+    /// transition that animates from the natural scale (1.0) to this
+    /// value, and the settle animation walks it back to 1.0.
+    public static let phantomLiftedScale: CGFloat = 0.85
+    /// Opacity applied to the dragged-row phantom while lifted.
+    public static let phantomLiftedOpacity: Double = 0.70
+    /// Shadow radius of the dragged-row phantom while lifted.
     public static let phantomShadowRadius: CGFloat = 12
-    /// Opacity of the dragged-row phantom while in flight.
-    public static let phantomOpacity: Double = 0.95
+    /// Vertical shadow offset of the dragged-row phantom while lifted.
+    public static let phantomShadowYOffset: CGFloat = 8
+    /// Duration of the lift animation on drag pickup (idle → dragging).
+    public static let liftDuration: TimeInterval = 0.18
+    /// Duration of the settle animation on drag release (dragging →
+    /// dropping → idle). The phantom interpolates from lifted scale/
+    /// opacity back to natural, and from `cursorY` to the resolved
+    /// `settlePosition`, over this window.
+    public static let settleDuration: TimeInterval = 0.22
     /// Long-press duration (iOS) before drag begins.
     public static let longPressDuration: TimeInterval = 0.3
     /// Max allowed finger drift during long-press before it cancels.

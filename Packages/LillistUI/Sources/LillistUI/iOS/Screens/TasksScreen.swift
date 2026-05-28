@@ -185,6 +185,17 @@ public struct TasksScreen: View {
 
     @ViewBuilder
     private var listBody: some View {
+        // `.coordinateSpace(name:)` must be on the List (not a wrapping
+        // ZStack). When the named space is on a parent of the List,
+        // rows' `proxy.frame(in: .named(...))` does not resolve to
+        // positions that match the rows' visual rendering — it appears
+        // SwiftUI's named coord space does not propagate cleanly
+        // through the List's internal UICollectionView. The List's own
+        // frame extends behind safe areas though, so the `.overlay {}`
+        // (which is laid out *inside* the safe area) has its local
+        // anchor offset from the named anchor by `safeAreaTop`;
+        // `DragOverlay` compensates for that with a runtime
+        // `proxy.frame(in: .named(...)).minY` shift.
         List {
             ForEach(flat) { row in
                 outlineRow(row)

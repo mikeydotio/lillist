@@ -76,21 +76,40 @@ public final class DragController: ObservableObject {
 
     /// Transition `idle → dragging`. Ignored if already dragging —
     /// prevents a second long-press from hijacking an in-flight drag.
+    /// `cursorY` is captured as both the **anchor** (`initialCursorY`)
+    /// and the current cursor position. The anchor is fixed for the
+    /// lifetime of the drag and is what `updateCursor(translation:)`
+    /// adds to and what the overlay falls back to as the settle target
+    /// when a drop is rejected.
     public func beginDrag(rowID: UUID, originalHeight: CGFloat, cursorY: CGFloat) {
         guard case .idle = state else { return }
         state = .dragging(DragSession(
             draggedID: rowID,
             originalHeight: originalHeight,
+            initialCursorY: cursorY,
             cursorY: cursorY,
             target: .none
         ))
     }
 
-    /// Update the cursor Y within the current `dragging` session.
+    /// Update the cursor Y absolutely within the current `dragging`
+    /// session. Used by synthetic-geometry tests and snapshot fixtures.
     /// Ignored when not in the `.dragging` state.
     public func updateCursor(y: CGFloat) {
         guard case .dragging(var session) = state else { return }
         session.cursorY = y
+        state = .dragging(session)
+    }
+
+    /// Update the cursor by gesture *translation* — i.e. the delta
+    /// since drag begin. This is the preferred update channel from a
+    /// live `DragGesture` because translation is coordinate-space-
+    /// invariant: it remains correct even when `drag.location` is
+    /// reported in an unexpected coordinate space (as it sometimes is
+    /// at the first event of `LongPressGesture.sequenced(before:)`).
+    public func updateCursor(translation: CGFloat) {
+        guard case .dragging(var session) = state else { return }
+        session.cursorY = session.initialCursorY + translation
         state = .dragging(session)
     }
 
@@ -102,17 +121,44 @@ public final class DragController: ObservableObject {
         state = .dragging(session)
     }
 
-    /// Complete the drag: invoke the drop handler if the target is
-    /// actionable, then transition back to `.idle`.
-    public func endDrag() {
+    /// Complete the drag.
+    ///
+    /// 1. Invoke the drop handler immediately if the target is
+    ///    actionable (`.between` or `.onto`) — data updates are never
+    ///    delayed by the settle animation.
+    /// 2. If `settleDuration > 0`, transition `.dragging → .dropping`
+    ///    so the overlay can animate the phantom from its lifted
+    ///    state at `cursorY` back to natural scale/opacity at the
+    ///    resolved drop position; then asynchronously transition to
+    ///    `.idle` after the window elapses.
+    /// 3. If `settleDuration == 0` (default), transition straight to
+    ///    `.idle`. This preserves the prior behavior for tests that
+    ///    don't care about the animated phase.
+    public func endDrag(settleDuration: TimeInterval = 0) {
         guard case .dragging(let session) = state else { return }
         let target = session.target
-        state = .idle
+
         switch target {
         case .between, .onto:
             handler(session.draggedID, target)
         case .rejected, .none:
             break
+        }
+
+        guard settleDuration > 0 else {
+            state = .idle
+            return
+        }
+
+        state = .dropping(session, target)
+        let draggedID = session.draggedID
+        let nanos = UInt64(settleDuration * 1_000_000_000)
+        Task { @MainActor [weak self] in
+            try? await Task.sleep(nanoseconds: nanos)
+            guard let self else { return }
+            if case .dropping(let s, _) = self.state, s.draggedID == draggedID {
+                self.state = .idle
+            }
         }
     }
 
