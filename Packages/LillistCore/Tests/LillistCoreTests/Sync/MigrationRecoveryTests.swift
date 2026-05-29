@@ -75,6 +75,97 @@ struct MigrationRecoveryTests {
         }
     }
 
+    @Test("restoreFromBackup honors the journal's recorded folder, NOT the latest backup")
+    @MainActor
+    func restoreHonorsRecordedFolder() async throws {
+        let dir = tempDir()
+        let liveURL = dir.appendingPathComponent("Lillist.sqlite")
+
+        // Seed an OLDER backup (the one the journal will record), then a
+        // NEWER backup (the "latest" a naive restore would pick). Drive
+        // distinct folder names AND distinct mtimes via an injected clock
+        // so latestQuarantinedStore can tell them apart.
+        let olderTimestamp = Date(timeIntervalSince1970: 1_700_000_000)
+        let newerTimestamp = Date(timeIntervalSince1970: 1_700_000_100)
+
+        // Older backup: distinctive content "older-recorded".
+        try Data("older-recorded".utf8).write(to: liveURL)
+        let olderQuarantine = QuarantineManager(rootDirectory: dir, clock: { olderTimestamp })
+        let olderBackup = try olderQuarantine.copyStore(at: liveURL)
+
+        // Newer backup: distinctive content "newer-latest".
+        try Data("newer-latest".utf8).write(to: liveURL)
+        let newerQuarantine = QuarantineManager(rootDirectory: dir, clock: { newerTimestamp })
+        let newerBackup = try newerQuarantine.copyStore(at: liveURL)
+
+        // Force the newer backup's folder to have a strictly later mtime
+        // so latestQuarantinedStore would prefer it — proving the
+        // recorded-folder restore is a deliberate choice, not an accident
+        // of ordering.
+        let newerDir = dir.appendingPathComponent("Quarantine/\(newerBackup.folderName)", isDirectory: true)
+        try FileManager.default.setAttributes(
+            [.modificationDate: Date(timeIntervalSince1970: 2_000_000_000)],
+            ofItemAtPath: newerDir.path
+        )
+        let olderDir = dir.appendingPathComponent("Quarantine/\(olderBackup.folderName)", isDirectory: true)
+        try FileManager.default.setAttributes(
+            [.modificationDate: Date(timeIntervalSince1970: 1_000_000_000)],
+            ofItemAtPath: olderDir.path
+        )
+        #expect(olderBackup.folderName != newerBackup.folderName)
+
+        // Sanity: latestQuarantinedStore points at the NEWER backup, so
+        // an honest "use recorded folder" path must override it.
+        let latest = try newerQuarantine.latestQuarantinedStore(filename: "Lillist.sqlite")
+        #expect(try String(contentsOf: latest!, encoding: .utf8) == "newer-latest")
+
+        // Wipe the live store, then record the OLDER folder in the
+        // journal and restore.
+        try FileManager.default.removeItem(at: liveURL)
+        let journal = InMemoryMigrationJournalStore(initial: MigrationJournal(
+            state: .reconfiguringStore,
+            operation: .replaceICloudWithLocal,
+            previousMode: .iCloudSync,
+            quarantineFolderName: olderBackup.folderName
+        ))
+        let (coordinator, recon, _) = makeCoordinator(startMode: .localOnly, journal: journal, quarantineRoot: dir)
+
+        try await coordinator.restoreFromBackup(filename: "Lillist.sqlite", targetURL: liveURL)
+
+        // The OLDER recorded backup's contents must be restored, NOT the
+        // newer "latest" one.
+        #expect(try String(contentsOf: liveURL, encoding: .utf8) == "older-recorded")
+        #expect(await recon.mode == .iCloudSync)
+        #expect(try journal.read() == .idle)
+    }
+
+    @Test("restoreFromBackup falls back to latest when the journal has no folder name (legacy)")
+    @MainActor
+    func restoreFallsBackToLatestWhenNoFolderRecorded() async throws {
+        let dir = tempDir()
+        let liveURL = dir.appendingPathComponent("Lillist.sqlite")
+        try Data("legacy-content".utf8).write(to: liveURL)
+        let quarantine = QuarantineManager(rootDirectory: dir)
+        _ = try quarantine.copyStore(at: liveURL)
+        try FileManager.default.removeItem(at: liveURL)
+
+        // Legacy-style journal: no quarantineFolderName recorded.
+        let journal = InMemoryMigrationJournalStore(initial: MigrationJournal(
+            state: .reconfiguringStore,
+            operation: .replaceICloudWithLocal,
+            previousMode: .iCloudSync,
+            quarantineFolderName: nil
+        ))
+        let (coordinator, recon, _) = makeCoordinator(startMode: .localOnly, journal: journal, quarantineRoot: dir)
+
+        try await coordinator.restoreFromBackup(filename: "Lillist.sqlite", targetURL: liveURL)
+
+        // Falls back to the only (latest) backup.
+        #expect(try String(contentsOf: liveURL, encoding: .utf8) == "legacy-content")
+        #expect(await recon.mode == .iCloudSync)
+        #expect(try journal.read() == .idle)
+    }
+
     @Test("A secondary journal-write failure in the catch does not mask the original error")
     @MainActor
     func secondaryWriteFailureDoesNotMask() async throws {
