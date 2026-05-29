@@ -29,7 +29,7 @@ public enum DisableStrategy: Sendable, Equatable {
 /// needed.
 @MainActor
 public final class MigrationCoordinator {
-    private let host: PersistenceHost
+    private let host: any PersistenceReconfiguring
     private let journal: any MigrationJournalStore
     private let quarantine: QuarantineManager
     private let zoneEraser: CloudKitZoneEraser
@@ -45,7 +45,7 @@ public final class MigrationCoordinator {
     private var progressContinuations: [UUID: AsyncStream<MigrationPhase>.Continuation] = [:]
 
     public init(
-        host: PersistenceHost,
+        host: any PersistenceReconfiguring,
         journal: any MigrationJournalStore,
         quarantine: QuarantineManager,
         zoneEraser: CloudKitZoneEraser,
