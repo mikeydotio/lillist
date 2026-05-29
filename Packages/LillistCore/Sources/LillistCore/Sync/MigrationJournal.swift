@@ -54,10 +54,11 @@ public struct MigrationJournal: Codable, Sendable, Equatable {
     /// revert when restoring from the quarantine backup.
     public var previousMode: SyncMode?
     public var failureReason: String?
-    /// Identifier of the quarantined backup (created during
-    /// `.quarantining`) so the recovery flow knows which archive to
-    /// restore.
-    public var quarantineBackupID: UUID?
+    /// On-disk folder name (under `<root>/Quarantine/`) of the backup
+    /// created during `.quarantining`, so the recovery flow can restore
+    /// the *exact* archive (sync-7). Replaced the prior opaque
+    /// `quarantineBackupID: UUID` which was never tied to the folder.
+    public var quarantineFolderName: String?
 
     public init(
         state: State = .idle,
@@ -66,7 +67,7 @@ public struct MigrationJournal: Codable, Sendable, Equatable {
         lastHeartbeatAt: Date? = nil,
         previousMode: SyncMode? = nil,
         failureReason: String? = nil,
-        quarantineBackupID: UUID? = nil
+        quarantineFolderName: String? = nil
     ) {
         self.state = state
         self.operation = operation
@@ -74,7 +75,46 @@ public struct MigrationJournal: Codable, Sendable, Equatable {
         self.lastHeartbeatAt = lastHeartbeatAt
         self.previousMode = previousMode
         self.failureReason = failureReason
-        self.quarantineBackupID = quarantineBackupID
+        self.quarantineFolderName = quarantineFolderName
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case state, operation, startedAt, lastHeartbeatAt
+        case previousMode, failureReason
+        case quarantineFolderName
+        // Legacy key from the pre-hardening build; decoded but ignored
+        // (the UUID was never tied to a folder, so it can't drive a
+        // restore — recovery falls back to latestQuarantinedStore).
+        case quarantineBackupID
+    }
+
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.state = try c.decode(State.self, forKey: .state)
+        self.operation = try c.decodeIfPresent(ModeTransitionOp.self, forKey: .operation)
+        self.startedAt = try c.decodeIfPresent(Date.self, forKey: .startedAt)
+        self.lastHeartbeatAt = try c.decodeIfPresent(Date.self, forKey: .lastHeartbeatAt)
+        self.previousMode = try c.decodeIfPresent(SyncMode.self, forKey: .previousMode)
+        self.failureReason = try c.decodeIfPresent(String.self, forKey: .failureReason)
+        self.quarantineFolderName = try c.decodeIfPresent(String.self, forKey: .quarantineFolderName)
+        // quarantineBackupID is read-tolerant (decoded and discarded) for
+        // back-compat with journals written before this rename. The old
+        // field was UUID-typed; decode it as such and ignore the value.
+        _ = try c.decodeIfPresent(UUID.self, forKey: .quarantineBackupID)
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(state, forKey: .state)
+        try c.encodeIfPresent(operation, forKey: .operation)
+        try c.encodeIfPresent(startedAt, forKey: .startedAt)
+        try c.encodeIfPresent(lastHeartbeatAt, forKey: .lastHeartbeatAt)
+        try c.encodeIfPresent(previousMode, forKey: .previousMode)
+        try c.encodeIfPresent(failureReason, forKey: .failureReason)
+        try c.encodeIfPresent(quarantineFolderName, forKey: .quarantineFolderName)
+        // quarantineBackupID is intentionally NOT encoded: the legacy key
+        // is only read (for back-compat) and never written — clean
+        // forward writes, tolerant back-reads.
     }
 
     public static let idle = MigrationJournal(state: .idle)
