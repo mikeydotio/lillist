@@ -28,7 +28,6 @@ struct MigrationJournalTests {
     func fileStoreRoundTrip() throws {
         let url = Self.tempJournalURL()
         let store = FileMigrationJournalStore(url: url)
-        let backup = UUID()
         let journal = MigrationJournal(
             state: .quarantining,
             operation: .replaceICloudWithLocal,
@@ -36,13 +35,13 @@ struct MigrationJournalTests {
             lastHeartbeatAt: Date(timeIntervalSince1970: 105),
             previousMode: .iCloudSync,
             failureReason: nil,
-            quarantineBackupID: backup
+            quarantineFolderName: "1700000000"
         )
         try store.write(journal)
         let restored = try store.read()
         #expect(restored.state == .quarantining)
         #expect(restored.operation == .replaceICloudWithLocal)
-        #expect(restored.quarantineBackupID == backup)
+        #expect(restored.quarantineFolderName == "1700000000")
         #expect(restored.previousMode == .iCloudSync)
     }
 
