@@ -1,0 +1,243 @@
+# Foundation Hardening — Master Execution Index
+
+> **For agentic workers:** This is the **orchestration index** for the 22 plans
+> that close the 2026-05-28 foundation review
+> (`docs/reviews/2026-05-28-foundation-review.md`). Each linked plan is a
+> self-contained writing-plans document with checkbox TDD tasks. Execute plans
+> in the **wave order** below; within the per-file **serial chains**, the named
+> plan lands first and later plans **re-Read the file and re-anchor by code
+> structure, not line number**. Use `superpowers:subagent-driven-development`
+> (fresh subagent per task, review between tasks) or `superpowers:executing-plans`.
+
+**Goal:** Take Lillist from `solid-with-gaps` to a rock-solid foundation by
+landing 22 focused plans (171 tasks / ~847 TDD steps) in a dependency-correct
+order that never lets one plan silently revert another.
+
+**Architecture:** Wave-based execution. Waves run in priority order (P0 → P3 +
+ship-blockers). Within a wave, plans on disjoint files run in parallel; plans
+sharing a file run as a serial chain with a designated owner. Five files are
+high-traffic hotspots (`MigrationCoordinator.swift`, `TaskStore.swift`,
+`IntentSupport.swift`, `ShareRootView.swift`, the iOS/macOS `project.yml` +
+`pbxproj`) and have explicit chains below.
+
+**Tech Stack:** Swift 6.2, SwiftUI, Core Data + `NSPersistentCloudKitContainer`,
+CloudKit, XCTest + Swift Testing, xcodegen, GitHub Actions (new).
+
+---
+
+## The 22 plans
+
+| Wave | Plan | Tier | Findings | Closes |
+|------|------|------|----------|--------|
+| 1 | [store-swap-safety](2026-05-28-store-swap-safety.md) | P0 | persist-3, sync-1/3/4/7, conc-4, test-1/2 | Transactional crash-safe store swap **+ executing migration test harness** (keystone) |
+| 1 | [recurrence-input-hardening](2026-05-28-recurrence-input-hardening.md) | P0 | rec-1/2, stores-7 | `interval==0` crash on synced/imported data; count budget counts soft-deleted |
+| 2 | [breadcrumb-truthfulness](2026-05-28-breadcrumb-truthfulness.md) | P1 | conc-1, stores-2, persist-8 | Breadcrumbs record false success on failed mutations |
+| 2 | [fractional-ordering-compaction](2026-05-28-fractional-ordering-compaction.md) | P1 | stores-1/3 | Dead compaction valve → silent position collisions |
+| 2 | [predicate-parity](2026-05-28-predicate-parity.md) | P1 | rules-1…7 | Two evaluators diverge on 4 ops; one-example parity suite; weeksFromNow overflow |
+| 2 | [link-preview-ssrf-guards](2026-05-28-link-preview-ssrf-guards.md) | P1 | linkpreview-1/2/3 | Zero SSRF/scheme/redirect/size validation on pasted URLs |
+| 3 | [cloudkit-convergence](2026-05-28-cloudkit-convergence.md) | P1 | persist-2/5, conc-3, notif-2 | Stable identities, remote-change reconcile, spec dedup, CKError posture |
+| 3 | [resolve-inert-features](2026-05-28-resolve-inert-features.md) | P1 | persist-6, ios-1/4, macos-2, logs-2, crumbs-3, cli-1 | Wire-up or remove inert features |
+| 4 | [concurrency-stress-tests](2026-05-28-concurrency-stress-tests.md) | P1 | conc-2/3, stores-4, notif-3/9, test-3 | CLAUDE.md-mandated actor-crossing stress tests |
+| 4 | [migration-adjacent-correctness](2026-05-28-migration-adjacent-correctness.md) | P2 | notif-1, sync-2/5/6/8 | Morning-summary loss, staleness gate, account contract, reentrancy guard |
+| 4 | [background-context-seam](2026-05-28-background-context-seam.md) | P2 | threading-1, persist-1/4, conc-5, notif-7 | Bulk work off the main-queue viewContext + rollback + history pruning |
+| 5 | [crash-reporter-privacy](2026-05-28-crash-reporter-privacy.md) | P2 | redact-1/5, canary-4, test-6 | Redaction leaks + adversarial fixtures + canary PID fix |
+| 5 | [app-layer-test-rehab](2026-05-28-app-layer-test-rehab.md) | P2 | ios-2/3, macos-4, ext-6 | Replace tautological/substitution tests; `GatedPersistenceResolver` seam |
+| 6 | [extension-persistence-unification](2026-05-28-extension-persistence-unification.md) | P2 | ext-1…6 | Route `TaskEntityQuery` through the gate; Share/Intent correctness |
+| 6 | [export-import-robustness](2026-05-28-export-import-robustness.md) | P3 | import-1/2/3, export-1 | Schema-version guard, orphan-entry skip, transaction contract |
+| 6 | [cli-robustness](2026-05-28-cli-robustness.md) | P3 | cli-2…6 | Atomic batches, golden formats, dead `--exact`, `watch` via FRC |
+| 6 | [performance-budgets-and-paging](2026-05-28-performance-budgets-and-paging.md) | Blind-spot | §761 budget, unbounded fetch | 10k-task perf budget test + `fetchBatchSize`/paging |
+| 6 | [observability-logging](2026-05-28-observability-logging.md) | Blind-spot | logs-2 + no logger/MetricKit | `os.Logger` taxonomy, MetricKit, signposts; makes crash "logs" real |
+| 7 | [privacy-manifest-export-compliance](2026-05-28-privacy-manifest-export-compliance.md) | **Ship-blocker** | critic #3 | `PrivacyInfo.xcprivacy` + `ITSAppUsesNonExemptEncryption` (app + 2 extensions) |
+| 7 | [recovery-hardening](2026-05-28-recovery-hardening.md) | Blind-spot | critic #5 | Disk-space pre-flight, auto-backup, user-visible restore path |
+| 7 | [lillistui-localization-a11y](2026-05-28-lillistui-localization-a11y.md) | P3 | ui-loc-1/2, ui-a11y-1, ui-test-1 | `defaultLocalization`, `.module` strings, reorder-action gating |
+| 7 | [ci-and-build-posture](2026-05-28-ci-and-build-posture.md) | P2 | build-1…5, ui-warn-1, ui-snap-1, test-5 | GitHub Actions CI, warnings-as-errors parity, momc inputs (lands **last**) |
+
+---
+
+## Execution waves
+
+Plans within a wave that touch **disjoint files** run in parallel. Plans sharing
+a file follow the **serial chains** in the next section.
+
+- **Wave 1 (P0 foundation):** `store-swap-safety` (keystone — owns the
+  `runMigration` rewrite, the `PersistenceReconfiguring` seam +
+  `FakePersistenceReconfigurer`, `QuarantineManager.copyStore` +
+  `QuarantinedBackup`, the `MigrationJournal` field rename, and the app-hosted
+  iOS test target; **five later plans rebase onto it**), in parallel with
+  `recurrence-input-hardening` (fully disjoint).
+- **Wave 2 (P1, no hard deps):** `breadcrumb-truthfulness` (must precede
+  `background-context-seam`; re-anchors its 3 MigrationCoordinator crumb calls
+  onto wave-1's rewritten `runMigration`), `fractional-ordering-compaction`,
+  `predicate-parity` (≈zero collisions), `link-preview-ssrf-guards` (its
+  LillistCore/CLI/policy work is independent; its `ShareRootView` gate defers to
+  wave 6).
+- **Wave 3 (P1):** `cloudkit-convergence` (prereq for
+  `concurrency-stress-tests`; establishes `PersistenceController.localTransactionAuthor`),
+  then `resolve-inert-features` (natural home to also wire wave-1's
+  `localStoreRowCount` counter and wave-4's `HistoryPruner.sweep` into
+  `bootstrap()`). Both edit iOS `AppEnvironment.swift` in distinct regions —
+  serialize them.
+- **Wave 4:** `concurrency-stress-tests` (dependsOn `cloudkit-convergence`;
+  reuses wave-1's `FakePersistenceReconfigurer`),
+  `migration-adjacent-correctness` (dependsOn `store-swap-safety`),
+  `background-context-seam` (after `breadcrumb-truthfulness` and
+  `cloudkit-convergence`).
+- **Wave 5 (P2):** `crash-reporter-privacy` (fully isolated),
+  `app-layer-test-rehab` (introduces `GatedPersistenceResolver`; **must precede**
+  `extension-persistence-unification`; starts the iOS `project.yml` chain).
+- **Wave 6:** `extension-persistence-unification` (after `app-layer-test-rehab`),
+  `export-import-robustness` (rebase onto wave-4 Importer/Exporter bodies),
+  `cli-robustness`, `performance-budgets-and-paging`, `observability-logging`
+  (last two coordinate the `TaskStore.children(of:)` signpost+paging+count-log
+  ordering — land together, re-Read `TaskStore.swift` first).
+- **Wave 7 (closing):** `privacy-manifest-export-compliance` (**last
+  `project.yml` editor** — owns the final coordinated `xcodegen generate`),
+  `recovery-hardening` (dependsOn `store-swap-safety`),
+  `lillistui-localization-a11y` (just before CI so its lint becomes a CI job),
+  then `ci-and-build-posture` **dead last** so its pbxproj-drift gate validates
+  the final committed pbxprojs and CI runs the app-hosted tests every earlier
+  plan contributed.
+
+Declared hard dependencies: `concurrency-stress-tests` → `cloudkit-convergence`;
+`migration-adjacent-correctness`, `ci-and-build-posture`, `recovery-hardening` →
+`store-swap-safety`.
+
+---
+
+## Shared-file serial chains (do not parallelize these)
+
+For each hotspot, land in the listed order; every non-owner **re-Reads the file
+and re-anchors by code structure, not the review's line numbers** (wave-1's
+rewrite invalidates line anchors).
+
+1. **`Sync/MigrationCoordinator.swift`** (6 plans) —
+   `store-swap-safety` (owns the `runMigration` rewrite: reconfigure-before-copy,
+   `copyStore` not move, `quarantineFolderName` rename, `localStoreRowCount`
+   precondition, `host: any PersistenceReconfiguring`) → `breadcrumb-truthfulness`
+   (re-locate the 3 `breadcrumb(...)` calls by name, prepend `await`) →
+   `migration-adjacent-correctness` (anchor reentrancy guard on `runMigration`'s
+   first statement, restore call on `.finalizing`, account guard in the
+   `replaceICloudWithLocal` block; **reconcile to ONE entry guard** if
+   store-swap-safety added one) → `cloudkit-convergence` (additive) →
+   `recovery-hardening` (hook disk-check into store-swap-safety's precondition,
+   don't re-introduce a parallel pre-flight) → `observability-logging`
+   (signpost/log brackets).
+2. **`Stores/TaskStore.swift`** (6 plans) — `breadcrumb-truthfulness` (owns the
+   canonical `do/catch` shape on the 4 defer mutators) → `background-context-seam`
+   (**add only `context.rollback()` into the existing catch blocks — do NOT
+   rewrite the bodies**; the plan was revised to do exactly this). Disjoint
+   methods, any order, each re-Reading first: `fractional-ordering-compaction`
+   (`reorder`), `performance-budgets-and-paging` (`children` overload),
+   `recurrence-input-hardening` (test-only), `observability-logging` (`children`
+   signpost).
+3. **`Extensions/ShortcutsActions/IntentSupport.swift` + `ShareRootView.swift`**
+   — `app-layer-test-rehab` (extracts `GatedPersistenceResolver`, routes
+   `makePersistence()` + `save()` through it) → `extension-persistence-unification`
+   (per-process cache + `ShareSaveFlow` **on top of** the resolver; `try?`→`try`
+   on attachment) → `link-preview-ssrf-guards` (wrap `URLPreviewPolicy.isAllowed`
+   around whichever `addLinkPreview` survives).
+4. **iOS `project.yml` + `pbxproj`** (5 plans) — serialize all, run **one
+   authoritative `xcodegen generate`** at the end: `store-swap-safety`
+   (app-hosted target) → `app-layer-test-rehab` → `extension-persistence-unification`
+   (test sources) → `privacy-manifest-export-compliance` (resources) → regenerate
+   once → `ci-and-build-posture`'s drift gate validates the result.
+5. **macOS `Apps/project.yml` + `pbxproj`** — `resolve-inert-features`
+   (`CommandNotifications.swift`) then `privacy-manifest-export-compliance`
+   (resources); one coordinated regenerate.
+6. **`Packages/LillistUI/Package.swift` + `.github/workflows/`** —
+   `ci-and-build-posture` (whole-file `Package.swift` replace; creates `ci.yml`)
+   then `lillistui-localization-a11y` (re-Read, add only `defaultLocalization:
+   "en"`; add its localization-lint as a **job in `ci.yml`**, drop the standalone
+   yml). _Note: this is the one place where the wave order (CI last) and the
+   chain order coincide — land `lillistui-localization-a11y`'s Package.swift +
+   string work in wave 7 just before `ci-and-build-posture`._
+7. **`Persistence/QuarantineManager.swift`** — `store-swap-safety` (`copyStore`,
+   `QuarantinedBackup`, `quarantinedStore(folderName:)`) → `recovery-hardening`
+   (`diskSpaceProbe` param + pre-flight guard at the top of `copyStore`).
+8. **`Persistence/PersistenceController.swift`** — `cloudkit-convergence`
+   (`transactionAuthor`/`localTransactionAuthor` + merge-policy rationale) →
+   `background-context-seam` (`makeBackgroundContext()`; keep
+   `automaticallyMergesChangesFromParent` — it's the active CloudKit channel).
+9. **iOS `AppEnvironment.swift`** (4 plans, distinct regions, serialize) —
+   `migration-adjacent-correctness` (MigrationCoordinator init arg) →
+   `resolve-inert-features` (AutoPurgeJob + `localStoreRowCount` +
+   `HistoryPruner.sweep` into `bootstrap()`; **keeps the `includeLogs` toggle**
+   that `observability-logging` makes honest) → `cloudkit-convergence`
+   (reconciler + `normalizeSingletons`) → `observability-logging`
+   (`metricKitObserver`).
+10. **`Sync/MigrationJournal.swift` + `NotificationSpecStore.swift` +
+    `PersistenceHost.swift` + `docs/engineering-notes.md`** — append-only /
+    distinct-member edits; sequence by wave, re-Read before each append. The
+    `NotificationSpecStore.add` at-most-one-default fix is owned by
+    `cloudkit-convergence`; `concurrency-stress-tests` only adds the stress test
+    that proves it (committed RED until wave 3 lands).
+
+---
+
+## Two plan defects already fixed (2026-05-29)
+
+The consistency critic caught two issues that were corrected in-place before this
+index was written:
+
+- **`background-context-seam` Task 6** previously shipped full method-body
+  rewrites of the four `TaskStore` mutators that would have **reverted**
+  `breadcrumb-truthfulness`. Now shows rollback-only before→after diffs matching
+  breadcrumb-truthfulness's landed shape verbatim, plus a true RED multi-level
+  cascade test for `purgeAll` (Task 5).
+- **`store-swap-safety` Task 3** now explicitly rebuilds the rollback store
+  description via `makeStoreDescription(for:)` so `cloudKitContainerOptions`
+  round-trip, with an ungated test asserting the rolled-back description still
+  carries the original `containerIdentifier` / `databaseScope` (Roadmap #1's
+  "preserving cloudKitContainerOptions" requirement).
+
+## Executor confirm-before-relying callouts
+
+Two plans have honest-but-soft verification the executor must confirm:
+
+- **`background-context-seam` Task 5** — the `purgeAll` `NSBatchDeleteRequest`
+  cascade count math on multi-level trees (batch delete skips delete rules);
+  verify the explicit `CascadeReaper` reproduces the model's Cascade rules
+  (children/journalEntries/attachments/notificationSpecs) for deep trees.
+- **`migration-adjacent-correctness` Tasks 2/4/5** — three findings are proven
+  only by compile + the app-hosted target (introduced by `store-swap-safety`) +
+  CI running the iOS scheme (`ci-and-build-posture`, last wave). Their real
+  executing proof is deferred to wave 7 — don't read their green self-review
+  checkmarks as "verified under bare `swift test`."
+
+## Known residuals / explicit follow-ups (not silently dropped)
+
+These are out of scope of the 22 plans by deliberate decision; capture as backlog
+so coverage isn't overstated:
+
+1. **DNS-rebinding SSRF** (public hostname resolving to a private IP at connect
+   time) — `link-preview-ssrf-guards` blocks literal-IP + well-known names only.
+   Needs sign-off or a follow-up (connect-time IP re-check).
+2. **`mergeByPropertyObjectTrump` last-writer-wins data loss on concurrent
+   cross-device edits** — `cloudkit-convergence` documents the policy as a kept
+   YAGNI decision and handles CKError quota/rate-limit, but no plan implements a
+   per-entity custom `NSMergePolicy`. Decide whether trump is the intended task
+   conflict semantic.
+3. **Orphaned pending `UNNotificationRequest`s on hard-delete/purge** (notif-7
+   residual) — `background-context-seam` reaps `NotificationSpec` rows but no plan
+   cancels the OS-level pending requests for purged tasks. Needs an owner.
+4. **`pause-reason` `.noNetwork` / `.iCloudDriveDisabled`** remain unreachable —
+   `resolve-inert-features` drives the classifier but doesn't add an
+   `NWPathMonitor`-backed reachability provider. Follow-up.
+5. **macOS background purge** — `resolve-inert-features` wires iOS
+   `BGProcessingTask` + launch purge; macOS gets launch-time purge only (no
+   `NSBackgroundActivityScheduler`). Minor.
+6. **App-target string catalogs** — `lillistui-localization-a11y` covers the
+   LillistUI catalog only; the iOS app's catalog and the empty macOS app catalog
+   are un-owned (localization is intentionally out-of-v1 per design §816/842,
+   but the catalogs remain structurally unprepared, per the review).
+7. **`predicate-parity` rules-5** — confirm the executor adds the explicit
+   `RelativeDate.weeksFromNow` integer-overflow clamp, not just operator
+   alignment.
+
+## Suggested commit/PR cadence
+
+Solo project → commit directly to `main` (per CLAUDE.md), one small conventional
+commit per task as each plan prescribes. Land one wave at a time; run the full
+`swift test` for both packages after each plan, and the iOS xcodebuild scheme
+after any plan touching app targets, extensions, or the model. `ci-and-build-posture`
+(wave 7) makes all of this enforced automatically going forward.
