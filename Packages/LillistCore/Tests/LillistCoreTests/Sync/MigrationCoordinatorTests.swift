@@ -46,6 +46,8 @@ struct MigrationCoordinatorTests {
     @Test("Disable Now: iCloud → Local clears journal and flips mode", .enabled(if: liveSwapAllowed))
     func disableNow() async throws {
         let (coordinator, storeURL, host, journal, fakeEraser, modeStore, _) = try await Self.makeCoordinator()
+        // Seed a store file so the reordered copy step in runMigration has a file to copy.
+        try Data("seed".utf8).write(to: storeURL)
         try await coordinator.beginDisable(strategy: .now, storeURL: storeURL)
         #expect(await host.currentMode == .localOnly)
         #expect(await modeStore.currentMode() == .localOnly)
@@ -54,7 +56,7 @@ struct MigrationCoordinatorTests {
         #expect(await fakeEraser.callCount == 0)
     }
 
-    @Test("Replace iCloud with Local calls the zone eraser before reconfiguring", .enabled(if: liveSwapAllowed))
+    @Test("Replace iCloud with Local calls the zone eraser once after reconfiguring", .enabled(if: liveSwapAllowed))
     func replaceICloudWithLocal() async throws {
         // Build coordinator starting from LocalOnly so the enable flow runs.
         let dir = Self.tempDir()
@@ -78,6 +80,9 @@ struct MigrationCoordinatorTests {
             notificationScheduler: nil,
             syncModeStore: modeStore
         )
+        // Seed a store file so the reordered copy step in runMigration has a file to copy.
+        // (reconfigure runs first, removing the store; then the backup copy; then the CloudKit erase)
+        try Data("seed".utf8).write(to: storeURL)
         try await coordinator.beginEnable(direction: .replaceICloud, storeURL: storeURL)
         #expect(await fakeEraser.callCount == 1)
         #expect(await host.currentMode == .iCloudSync)
