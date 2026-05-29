@@ -164,13 +164,12 @@ public actor PersistenceHost: PersistenceReconfiguring {
         // add-failure it re-adds the ORIGINAL description (so a half-added
         // iCloud store rolls back to a *mirroring* store, not a downgraded
         // plain-local one — Roadmap #1) and signals the caller via
-        // `RollbackOccurred`, carrying both the rebuilt rollback
-        // description and the underlying error. The
+        // `RollbackOccurred`, which carries only the underlying error. The
         // `self.lastRollbackDescription` write is HOISTED out of the
         // closure (below): mutating an actor-isolated property from inside
         // the `@Sendable perform` closure is rejected by strict
-        // concurrency, so the closure hands the description back through
-        // the thrown error and the actor-isolated body records it.
+        // concurrency, so the actor-isolated body rebuilds the rollback
+        // description from the Sendable `originalConfig` and records it.
         do {
             try await ctx.perform { [shouldSimulateFailure] in
                 if ctx.hasChanges {
@@ -189,12 +188,17 @@ public actor PersistenceHost: PersistenceReconfiguring {
                     if shouldSimulateFailure {
                         throw LillistError.storeUnavailable(reason: "simulated add failure (test seam)")
                     }
-                    _ = try coordinator.addPersistentStore(
-                        type: NSPersistentStore.StoreType(rawValue: desc.type),
-                        configuration: nil,
-                        at: desc.url!,
-                        options: desc.options
-                    )
+                    // Forward add via the SAME description-taking helper
+                    // the rollback uses: the 4-arg
+                    // `addPersistentStore(type:configuration:at:options:)`
+                    // overload carries only `desc.options`, NOT
+                    // `desc.cloudKitContainerOptions` (a separate property
+                    // on the description), so a forward swap TO .iCloudSync
+                    // would attach a non-mirroring store. Routing through
+                    // `addStore` honors the CloudKit options for iCloudSync
+                    // and is equally correct for localOnly (which has no
+                    // options to carry), unifying both add paths (DRY).
+                    try Self.addStore(desc, to: coordinator)
                 } catch {
                     // Roll back: re-add the ORIGINAL store via the
                     // description-taking API so `cloudKitContainerOptions`
@@ -240,16 +244,31 @@ public actor PersistenceHost: PersistenceReconfiguring {
         let underlying: Error
     }
 
-    /// Re-add a store from a full `NSPersistentStoreDescription` so
+    /// Add a store from a full `NSPersistentStoreDescription` so
     /// `cloudKitContainerOptions` (and every other description-level
     /// field) is honored. `addPersistentStore(with:completionHandler:)`
     /// is `NS_SWIFT_DISABLE_ASYNC`, so we bridge its completion handler;
-    /// for SQLite stores it fires synchronously on the calling queue,
-    /// keeping the call inside the one `perform` critical section.
+    /// for a synchronous add (`shouldAddStoreAsynchronously == false`)
+    /// the handler fires inline on the calling queue, so reading
+    /// `addError` after the call is valid and the add stays inside the
+    /// one `perform` critical section.
+    ///
+    /// The synchronous-completion assumption is **load-bearing**: an
+    /// asynchronous add would fire the handler later, leaving `addError`
+    /// nil and silently treating a *failed* rollback re-add as success on
+    /// the data-loss recovery path. We enforce it as a hard guard rather
+    /// than trust a comment, so a future
+    /// `description.shouldAddStoreAsynchronously = true` edit fails loudly
+    /// instead of corrupting recovery.
     private nonisolated static func addStore(
         _ description: NSPersistentStoreDescription,
         to coordinator: NSPersistentStoreCoordinator
     ) throws {
+        guard description.shouldAddStoreAsynchronously == false else {
+            throw LillistError.storeUnavailable(
+                reason: "addStore requires shouldAddStoreAsynchronously == false: the synchronous-add bridge reads the completion handler's error inline; an asynchronous add would silently treat a failed add as success."
+            )
+        }
         var addError: Error?
         coordinator.addPersistentStore(with: description) { _, error in
             addError = error
