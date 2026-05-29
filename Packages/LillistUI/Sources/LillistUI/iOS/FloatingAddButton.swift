@@ -20,11 +20,12 @@ public struct FloatingAddButton: View {
                 .font(LillistTypography.floatingAddGlyph)
                 .frame(width: LillistSpacing.xxl + LillistSpacing.l, height: LillistSpacing.xxl + LillistSpacing.l)  // 56pt
                 .background {
-                    Circle()
-                        .fill(.tint)
-                        .overlay(Circle().fill(.regularMaterial).opacity(0.15))
+                    Circle().fill(.tint)
                 }
-                .foregroundStyle(.primary)
+                .overlay {
+                    Circle().strokeBorder(.white, lineWidth: 2)
+                }
+                .foregroundStyle(.white)
         }
         .accessibilityLabel(String(localized: "New task", bundle: .module))
         .accessibilityHint(String(localized: "Opens quick capture", bundle: .module))
