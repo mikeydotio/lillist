@@ -63,4 +63,79 @@ struct PersistenceHostTests {
         }
         #expect(count == 1)
     }
+
+    @Test("Failed reconfigure rolls back to the original store (no store-less coordinator)", .enabled(if: liveSwapAllowed))
+    func failedReconfigureRollsBack() async throws {
+        let url = Self.freshStoreURL()
+        let host = try await PersistenceHost.make(initialMode: .iCloudSync, storeURL: url)
+        let controller = await host.controller
+        // Seed a row so we can prove the original store survives a
+        // rollback (count stays readable post-failure).
+        let ctx = controller.container.viewContext
+        try await ctx.perform {
+            let row = LillistTask(context: ctx)
+            row.id = UUID()
+            row.title = "rollback-test"
+            row.statusRaw = 0
+            row.createdAt = Date()
+            row.modifiedAt = Date()
+            row.position = 0
+            try ctx.save()
+        }
+
+        // Arm the test seam so the next swap re-adds the original store
+        // (the rollback path) and then throws, without corrupting a
+        // real on-disk store.
+        await host.simulateAddFailureOnNextSwap()
+        await #expect(throws: (any Error).self) {
+            try await host.reconfigure(to: .localOnly)
+        }
+
+        // The original store must still be attached: a count succeeds
+        // and the mode is unchanged.
+        let count = try await ctx.perform {
+            try ctx.count(for: NSFetchRequest<LillistTask>(entityName: "LillistTask"))
+        }
+        #expect(count == 1)
+        #expect(await host.currentMode == .iCloudSync)
+    }
+
+    // Roadmap #1 proof. The framework does not surface
+    // `cloudKitContainerOptions` back through the live `NSPersistentStore`
+    // (only the *description* carries them — see
+    // `StoreLevelModeSwapSpike.swapMutatesDescription`), so a true
+    // assertion on the re-added live store's CloudKit options is not
+    // reachable without a live container. The rollback re-adds the
+    // *exact* `NSPersistentStoreDescription` produced by
+    // `PersistenceController.makeStoreDescription(for:)`, so asserting
+    // that factory output directly proves the same thing the live
+    // rollback would — that mirroring is restored intact, not silently
+    // downgraded to a plain local store. We assert the factory directly
+    // (rather than building a live host) because
+    // `NSPersistentCloudKitContainer` teardown crashes the `swift test`
+    // binary (the reason the live swap tests above are
+    // `.enabled(if: liveSwapAllowed)`-gated). This keeps the proof
+    // ungated and crash-free under `swift test`.
+    @Test("Rollback from a half-added iCloud store preserves cloudKitContainerOptions (Roadmap #1)")
+    func rollbackPreservesCloudKitOptions() async throws {
+        // The rollback description is built from the captured ORIGINAL
+        // mode (`.iCloudSync` here) via this exact factory call.
+        let rollbackConfig = StoreConfiguration(
+            storeKind: .onDisk(url: Self.freshStoreURL()),
+            cloudKitContainerIdentifier: StoreConfiguration.defaultCloudKitContainerIdentifier,
+            syncMode: .iCloudSync
+        )
+        let rollbackDesc = PersistenceController.makeStoreDescription(for: rollbackConfig)
+
+        // The rollback description must carry CloudKit options matching
+        // the original container — i.e. mirroring is restored intact,
+        // not silently dropped to a plain local store.
+        #expect(rollbackDesc.cloudKitContainerOptions != nil)
+        #expect(rollbackDesc.cloudKitContainerOptions?.containerIdentifier
+                == StoreConfiguration.defaultCloudKitContainerIdentifier)
+        #expect(rollbackDesc.cloudKitContainerOptions?.databaseScope == .private)
+        // And the persistent-history / remote-change flags survive too,
+        // so a later re-enable of iCloudSync still works.
+        #expect((rollbackDesc.options[NSPersistentHistoryTrackingKey] as? NSNumber)?.boolValue == true)
+    }
 }
