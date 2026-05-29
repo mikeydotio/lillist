@@ -178,6 +178,37 @@ targets:
         GENERATE_INFOPLIST_FILE: YES
         CODE_SIGN_STYLE: Automatic
 
+  # App-hosted unit-test target (test-1). Unlike Lillist-iOSTests
+  # (TEST_HOST=""), this bundle is hosted by Lillist-iOS, so
+  # Bundle.main.bundleIdentifier is the app's real ID and the
+  # liveSwapAllowed-gated migration/swap tests actually execute
+  # instead of silently skipping. Co-compiles the gated LillistCore
+  # test sources directly (they @testable-import LillistCore, which
+  # the host app links).
+  Lillist-iOSAppHostedTests:
+    type: bundle.unit-test
+    platform: iOS
+    deploymentTarget: "26.0"
+    sources:
+      - path: Tests/AppHostedTests
+      - path: ../../Packages/LillistCore/Tests/LillistCoreTests/Sync/MigrationCoordinatorTests.swift
+      - path: ../../Packages/LillistCore/Tests/LillistCoreTests/Sync/CloudKitZoneEraserTests.swift
+      - path: ../../Packages/LillistCore/Tests/LillistCoreTests/Sync/FakePersistenceReconfigurer.swift
+      - path: ../../Packages/LillistCore/Tests/LillistCoreTests/Persistence/PersistenceHostTests.swift
+      - path: ../../Packages/LillistCore/Tests/LillistCoreTests/Persistence/StoreLevelModeSwapSpike.swift
+    dependencies:
+      - package: LillistCore
+        product: LillistCore
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: io.mikeydotio.Lillist.appHostedTests
+        IPHONEOS_DEPLOYMENT_TARGET: "26.0"
+        TARGETED_DEVICE_FAMILY: "1,2"
+        TEST_HOST: "$(BUILT_PRODUCTS_DIR)/Lillist.app/Lillist"
+        BUNDLE_LOADER: "$(TEST_HOST)"
+        GENERATE_INFOPLIST_FILE: YES
+        CODE_SIGN_STYLE: Automatic
+
 schemes:
   Lillist-iOS:
     build:
@@ -187,6 +218,7 @@ schemes:
         ShortcutsActions: all
         Lillist-iOSTests: [test]
         Lillist-iOSUITests: [test]
+        Lillist-iOSAppHostedTests: [test]
     run:
       config: Debug
     archive:
@@ -204,6 +236,7 @@ schemes:
       targets:
         - Lillist-iOSTests
         - Lillist-iOSUITests
+        - Lillist-iOSAppHostedTests
         # SPM test bundle from Packages/LillistUI. Includes iOS-only
         # snapshot tests guarded by `#if os(iOS)` that compile out on
         # macOS hosts — wiring them into the iOS scheme is the only way
