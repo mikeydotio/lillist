@@ -71,6 +71,26 @@ xcodebuild -workspace Lillist.xcworkspace -scheme Lillist-{iOS,macOS} \
   CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO build
 ```
 
+The **migration/store-swap tests are app-hosted**: `MigrationCoordinatorTests`,
+`PersistenceHostTests`, and `StoreLevelModeSwapSpike` gate their
+live-container cases on a real `CFBundleIdentifier` (`liveSwapAllowed`),
+which the standalone `LillistCoreTests` SPM bundle and the
+`TEST_HOST=""` `Lillist-iOSTests` bundle both lack — so those cases
+*silently skip* under `swift test`. The `Lillist-iOSAppHostedTests`
+target hosts them inside `Lillist-iOS` (real bundle ID) so they
+actually execute; `LiveSwapHostMetaTests` fails loudly if the host is
+ever misconfigured back to standalone. Run them with:
+
+```bash
+xcodebuild test -workspace Lillist.xcworkspace -scheme Lillist-iOS \
+  -destination 'platform=iOS Simulator,name=iPhone 17,OS=26.2' \
+  -only-testing:Lillist-iOSAppHostedTests
+```
+
+The fully-executing state-machine tests (`MigrationRunnerExecutingTests`,
+`MigrationRecoveryTests`) run under plain `swift test` because they use
+the `PersistenceReconfiguring` fake instead of a live container.
+
 The xcodebuild destination is **iPhone 17 / iOS 26.2** (test runner
 host). Snapshot rendering itself is pinned to **iPhone 16 Pro logical
 size (393×852)** via `phoneSize` in `IOSScreenTourTests.swift` — so
