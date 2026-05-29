@@ -41,6 +41,11 @@ public final class MigrationCoordinator {
     /// CloudKit container identifier used by `zoneEraser`. Inherits
     /// from `host` at init.
     private let cloudKitContainerIdentifier: String
+    /// Returns the current count of user-visible task rows in the live
+    /// store. Used to precondition a non-empty local store before the
+    /// irreversible `replaceICloudWithLocal` erase. Injected so the
+    /// executing tests can drive empty/non-empty without a live store.
+    private let localStoreRowCount: @Sendable () async -> Int
 
     private var progressContinuations: [UUID: AsyncStream<MigrationPhase>.Continuation] = [:]
 
@@ -53,7 +58,8 @@ public final class MigrationCoordinator {
         notificationScheduler: NotificationScheduler?,
         syncModeStore: SyncModeStore,
         breadcrumbs: BreadcrumbBuffer? = nil,
-        cloudKitContainerIdentifier: String = StoreConfiguration.defaultCloudKitContainerIdentifier
+        cloudKitContainerIdentifier: String = StoreConfiguration.defaultCloudKitContainerIdentifier,
+        localStoreRowCount: @escaping @Sendable () async -> Int = { 1 }
     ) {
         self.host = host
         self.journal = journal
@@ -64,6 +70,7 @@ public final class MigrationCoordinator {
         self.syncModeStore = syncModeStore
         self.breadcrumbs = breadcrumbs
         self.cloudKitContainerIdentifier = cloudKitContainerIdentifier
+        self.localStoreRowCount = localStoreRowCount
     }
 
     /// Fire-and-forget breadcrumb emit. Failures are silenced
@@ -143,7 +150,8 @@ public final class MigrationCoordinator {
         breadcrumb("sync mode change start \(op.rawValue)")
         // 1. preparing — cancel notifications first so a destructive
         //    op doesn't leave stale fires pointing at deleted rows
-        //    (skeptic G9).
+        //    (skeptic G9). cancelAllPending MUST precede any
+        //    destructive step.
         emit(.preparing)
         if let scheduler = notificationScheduler {
             await scheduler.cancelAllPending()
@@ -160,19 +168,46 @@ public final class MigrationCoordinator {
         try journal.write(entry)
 
         do {
-            // 3. quarantine the live store as a recovery anchor.
+            // 3. precondition: an irreversible erase must not run
+            //    against an empty local store (sync-7). If the user has
+            //    no local data, "replace iCloud with local" would wipe
+            //    iCloud and leave them with nothing.
+            if op == .replaceICloudWithLocal {
+                let rows = await localStoreRowCount()
+                guard rows > 0 else {
+                    throw LillistError.storeUnavailable(
+                        reason: "Refusing to replace iCloud with an empty local store"
+                    )
+                }
+            }
+
+            // 4. structural swap FIRST so the SQLite connection to the
+            //    old file is closed before we touch the file on disk
+            //    (persist-3). PersistenceHost.reconfigure removes the
+            //    old store from the coordinator (closing the
+            //    connection) and re-adds a fresh description; the old
+            //    on-disk file is left intact for the copy below.
+            entry.state = .reconfiguringStore
+            entry.lastHeartbeatAt = Date()
+            try journal.write(entry)
+            emit(.reconfiguringStore)
+            try await host.reconfigure(to: targetMode)
+            await syncModeStore.setMode(targetMode)
+
+            // 5. quarantine the now-closed old store as a recovery
+            //    anchor — COPY, not move, and only if the file is still
+            //    present. Record the exact folder name in the journal.
             emit(.backingUp)
             entry.state = .quarantining
             entry.lastHeartbeatAt = Date()
             try journal.write(entry)
             if FileManager.default.fileExists(atPath: storeURL.path) {
-                let backupID = UUID()
-                entry.quarantineBackupID = backupID
-                try quarantine.quarantineStore(at: storeURL)
+                let backup = try quarantine.copyStore(at: storeURL)
+                entry.quarantineFolderName = backup.folderName
                 try journal.write(entry)
             }
 
-            // 4. cloudkit-side mutation (only for replaceICloudWithLocal).
+            // 6. cloudkit-side mutation (only for replaceICloudWithLocal).
             if op == .replaceICloudWithLocal {
                 entry.state = .mutatingCloudKit
                 entry.lastHeartbeatAt = Date()
@@ -186,15 +221,7 @@ public final class MigrationCoordinator {
                 )
             }
 
-            // 5. structural swap.
-            entry.state = .reconfiguringStore
-            entry.lastHeartbeatAt = Date()
-            try journal.write(entry)
-            emit(.reconfiguringStore)
-            try await host.reconfigure(to: targetMode)
-            await syncModeStore.setMode(targetMode)
-
-            // 6. wait for CloudKit to settle (only when going to
+            // 7. wait for CloudKit to settle (only when going to
             //    iCloudSync; LocalOnly has nothing to wait on).
             if targetMode == .iCloudSync {
                 entry.state = .awaitingSync
@@ -204,7 +231,7 @@ public final class MigrationCoordinator {
                 _ = await quiesceMonitor.waitForQuiesce(minQuietWindow: 5, hardTimeout: 300)
             }
 
-            // 7. finalize.
+            // 8. finalize.
             entry.state = .finalizing
             entry.lastHeartbeatAt = Date()
             try journal.write(entry)
