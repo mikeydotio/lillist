@@ -1863,7 +1863,7 @@ per-row preference) and hardcoding the inset there would couple the
 shared module to one screen's layout. The resolver already
 understands inter-row structure; that's where the fix belongs.
 
-## 2026-05-29 — Store-swap safety: live empty-store guard + two tracked follow-ups
+## 2026-05-29 — Store-swap safety: live empty-store guard + tracked follow-up
 
 `MigrationCoordinator.runMigration` now refuses the irreversible
 `replaceICloudWithLocal` erase when the local store is empty (sync-7).
@@ -1885,7 +1885,7 @@ intentional — an uncertain count must never bypass a data-loss guard.
 The fetch stays inside `LillistCore` so no `NSManagedObject` escapes
 the module (the app targets only see the `Int`).
 
-Two follow-ups intentionally deferred (not yet done):
+One follow-up intentionally deferred (not yet done):
 
 1. **`wal_checkpoint(TRUNCATE)` around the quarantine copy** — owner:
    recovery-hardening plan. `PersistenceHost.flushAndSwap` re-attaches
@@ -1896,10 +1896,10 @@ Two follow-ups intentionally deferred (not yet done):
    the copy would fold the WAL into the main `.sqlite` so the backup is
    a single self-contained file with no sidecar dependency.
 
-2. **`restoreFromBackup` should restore the *exact* journaled backup**
-   — owner: store-swap-safety Task 8. It currently always calls
-   `quarantine.latestQuarantinedStore(...)`. It should prefer
-   `quarantine.quarantinedStore(folderName: journal.quarantineFolderName)`
-   (the precise folder recorded during `.quarantining`, now that the
-   journal carries the folder name) and fall back to
-   `latestQuarantinedStore` only when the recorded folder is missing.
+A second consideration — `restoreFromBackup` restoring the *exact*
+journaled backup rather than guessing the latest — was implemented in
+this wave (commit `c3d202e`): it now prefers
+`quarantine.quarantinedStore(folderName: journal.quarantineFolderName)`
+and falls back to `latestQuarantinedStore` only when the recorded
+folder is missing or absent (legacy journals). Proven by
+`restoreHonorsRecordedFolder` in `MigrationRecoveryTests`.
