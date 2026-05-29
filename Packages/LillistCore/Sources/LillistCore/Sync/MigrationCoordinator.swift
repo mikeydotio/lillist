@@ -128,16 +128,29 @@ public final class MigrationCoordinator {
         return current
     }
 
-    /// Restore from the most-recent quarantine backup and revert
-    /// `syncMode` to whatever was active before the failed
+    /// Restore from the quarantine backup the journal recorded and
+    /// revert `syncMode` to whatever was active before the failed
     /// migration. Clears the journal on success.
+    ///
+    /// Resolution order (sync-7): prefer the *exact* folder the journal
+    /// recorded in `quarantineFolderName` (written by `runMigration`'s
+    /// copy step) so recovery restores the precise archive tied to this
+    /// migration, not a guess. Legacy journals (and any whose recorded
+    /// folder no longer resolves on disk) fall back to the most-recent
+    /// quarantined store. If neither resolves, surface
+    /// `storeUnavailable`.
     public func restoreFromBackup(filename: String = "Lillist.sqlite", targetURL: URL) async throws {
-        guard let backup = try quarantine.latestQuarantinedStore(filename: filename) else {
+        let entry = try journal.read()
+        let recorded: URL? = try entry.quarantineFolderName.flatMap {
+            try quarantine.quarantinedStore(folderName: $0, filename: filename)
+        }
+        let backup = try recorded ?? quarantine.latestQuarantinedStore(filename: filename)
+        guard let backup else {
             throw LillistError.storeUnavailable(reason: "No quarantine backup available")
         }
         emit(.removingLocalStore)
         try quarantine.restore(quarantinedStore: backup, to: targetURL)
-        let prev = (try journal.read()).previousMode ?? .localOnly
+        let prev = entry.previousMode ?? .localOnly
         await syncModeStore.setMode(prev)
         try await host.reconfigure(to: prev)
         try journal.clear()
