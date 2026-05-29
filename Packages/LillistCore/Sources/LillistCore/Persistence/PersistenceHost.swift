@@ -34,7 +34,7 @@ public enum MigrationPhase: Sendable, Equatable {
 /// Other Stores still read `controller.container.viewContext` exactly
 /// as before — the context survives a `reconfigure(to:)` swap because
 /// it stays attached to the same coordinator.
-public actor PersistenceHost {
+public actor PersistenceHost: PersistenceReconfiguring {
     public private(set) var controller: PersistenceController
     public private(set) var currentMode: SyncMode
 
