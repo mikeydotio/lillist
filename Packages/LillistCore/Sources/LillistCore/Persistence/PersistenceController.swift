@@ -52,6 +52,26 @@ public final class PersistenceController: @unchecked Sendable {
         self.cloudKitEventBridge = bridge
     }
 
+    /// Count user-visible (non-trashed) task rows in the local store.
+    ///
+    /// Used by the migration precondition (sync-7): the irreversible
+    /// "replace iCloud with local" erase must refuse to run against an
+    /// empty local store, or it would wipe iCloud and leave the user
+    /// with nothing. The count runs on the view-context's own queue and
+    /// **fails closed** — any thrown error returns `0`, which the
+    /// coordinator treats as "empty" and uses to *block* the erase. An
+    /// uncertain count must never bypass the guard. Keeping the
+    /// `LillistTask` fetch here honors the module boundary: no
+    /// `NSManagedObject` escapes `LillistCore`.
+    public func localTaskRowCount() async -> Int {
+        let context = container.viewContext
+        return await context.perform {
+            let request = NSFetchRequest<LillistTask>(entityName: "LillistTask")
+            request.predicate = NSPredicate(format: "deletedAt == nil")
+            return (try? context.count(for: request)) ?? 0
+        }
+    }
+
     /// Build the `NSPersistentContainer` (or `NSPersistentCloudKitContainer`)
     /// for a given configuration without loading the stores.
     ///

@@ -1862,3 +1862,44 @@ Don't try to "fix" this by inflating the reported geometry inside
 per-row preference) and hardcoding the inset there would couple the
 shared module to one screen's layout. The resolver already
 understands inter-row structure; that's where the fix belongs.
+
+## 2026-05-29 — Store-swap safety: live empty-store guard + two tracked follow-ups
+
+`MigrationCoordinator.runMigration` now refuses the irreversible
+`replaceICloudWithLocal` erase when the local store is empty (sync-7).
+That guard is only as good as the row counter wired into it. The
+counter is now **live in production**: both `AppEnvironment`s
+(`Apps/Lillist-iOS/Sources/App/AppEnvironment.swift`,
+`Apps/Lillist-macOS/Sources/AppEnvironment.swift`) pass
+`localStoreRowCount: { await persistence.localTaskRowCount() }` into
+the coordinator. The default `{ 1 }` (always "non-empty") survives
+only for tests/previews — production must pass a real counter or the
+guard is inert.
+
+`PersistenceController.localTaskRowCount()` is the canonical counter
+and is deliberately **fail-closed**: it runs a
+`count(for:)` on `LillistTask` where `deletedAt == nil` inside
+`viewContext.perform`, and `(try? …) ?? 0` returns `0` on *any*
+error. Zero means "empty", which *blocks* the erase. This is
+intentional — an uncertain count must never bypass a data-loss guard.
+The fetch stays inside `LillistCore` so no `NSManagedObject` escapes
+the module (the app targets only see the `Int`).
+
+Two follow-ups intentionally deferred (not yet done):
+
+1. **`wal_checkpoint(TRUNCATE)` around the quarantine copy** — owner:
+   recovery-hardening plan. `PersistenceHost.flushAndSwap` re-attaches
+   the store on the same URL, so `QuarantineManager.copyStore` copies a
+   live WAL-mode triplet (`main` + `-wal` + `-shm`); the backup's
+   restorability depends on the `-wal` sidecar being copied
+   consistently. Forcing a `wal_checkpoint(TRUNCATE)` before (or after)
+   the copy would fold the WAL into the main `.sqlite` so the backup is
+   a single self-contained file with no sidecar dependency.
+
+2. **`restoreFromBackup` should restore the *exact* journaled backup**
+   — owner: store-swap-safety Task 8. It currently always calls
+   `quarantine.latestQuarantinedStore(...)`. It should prefer
+   `quarantine.quarantinedStore(folderName: journal.quarantineFolderName)`
+   (the precise folder recorded during `.quarantining`, now that the
+   journal carries the folder name) and fall back to
+   `latestQuarantinedStore` only when the recorded folder is missing.

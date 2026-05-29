@@ -180,6 +180,16 @@ final class AppEnvironment {
             accountMonitor: accountStateMonitor,
             networkMonitor: ConstantNetworkReachability(reachable: true)
         )
+        // sync-7: the irreversible "replace iCloud with local" erase must
+        // refuse to run against an empty local store. Capture the
+        // (Sendable) PersistenceController and count live, non-trashed
+        // task rows via its fail-closed module API — any error returns 0,
+        // which the coordinator treats as "empty" and uses to block the
+        // erase. An uncertain count must never bypass the guard.
+        let countController = persistence
+        let localStoreRowCount: @Sendable () async -> Int = {
+            await countController.localTaskRowCount()
+        }
         self.migrationCoordinator = MigrationCoordinator(
             host: persistenceHost,
             journal: migrationJournalStore,
@@ -189,7 +199,8 @@ final class AppEnvironment {
             notificationScheduler: scheduler,
             syncModeStore: syncModeStore,
             breadcrumbs: breadcrumbs,
-            cloudKitContainerIdentifier: ckContainerID
+            cloudKitContainerIdentifier: ckContainerID,
+            localStoreRowCount: localStoreRowCount
         )
     }
 
