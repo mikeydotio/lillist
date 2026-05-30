@@ -37,12 +37,44 @@ public enum RecurrenceRule: Codable, Sendable, Equatable {
             until: Date? = nil
         ) {
             self.freq = freq
-            self.interval = interval
+            self.interval = Self.normalizedInterval(interval)
             self.byDay = byDay
             self.byMonthDay = byMonthDay
             self.bySetPos = bySetPos
             self.count = count
             self.until = until
+        }
+
+        private enum CodingKeys: String, CodingKey {
+            case freq, interval, byDay, byMonthDay, bySetPos, count, until
+        }
+
+        /// Hand-written decoder so untrusted JSON (CloudKit / Importer / CLI)
+        /// funnels through the same interval normalization as the memberwise
+        /// `init`. The synthesized decoder would assign the raw `interval`
+        /// directly, leaving a `0`/negative value that crashes the expander.
+        public init(from decoder: Decoder) throws {
+            let c = try decoder.container(keyedBy: CodingKeys.self)
+            self.freq = try c.decode(Frequency.self, forKey: .freq)
+            self.interval = Self.normalizedInterval(try c.decode(Int.self, forKey: .interval))
+            self.byDay = try c.decodeIfPresent([Weekday].self, forKey: .byDay)
+            self.byMonthDay = try c.decodeIfPresent([Int].self, forKey: .byMonthDay)
+            self.bySetPos = try c.decodeIfPresent([Int].self, forKey: .bySetPos)
+            self.count = try c.decodeIfPresent(Int.self, forKey: .count)
+            self.until = try c.decodeIfPresent(Date.self, forKey: .until)
+        }
+
+        /// Clamps an interval to the valid `>= 1` range. An interval of `0`
+        /// divide-by-zero-crashes the monthly expander and loop-traps the
+        /// daily/weekly steps; a negative interval walks backwards forever.
+        /// We normalize rather than throw so a single corrupt sync record
+        /// can't strip recurrence off the series entirely (rec-1).
+        private static func normalizedInterval(_ raw: Int) -> Int {
+            guard raw < 1 else { return raw }
+            RecurrenceLog.normalization.warning(
+                "CalendarRule interval \(raw, privacy: .public) out of range; clamped to 1"
+            )
+            return 1
         }
     }
 
