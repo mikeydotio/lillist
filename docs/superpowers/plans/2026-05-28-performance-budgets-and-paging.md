@@ -1,5 +1,11 @@
 # Performance Budgets and Paging Implementation Plan
 
+> **📍 STATUS — ⬜ PENDING — Wave 6.**
+>
+> Part of the **Foundation Hardening** program. **Single source of truth for progress, wave order, and cross-plan coordination:** [`2026-05-29-foundation-hardening-index.md`](2026-05-29-foundation-hardening-index.md). New to this project? Read the index first, then the review ([`docs/reviews/2026-05-28-foundation-review.md`](../../reviews/2026-05-28-foundation-review.md)) for *why* this work exists, then `CLAUDE.md` for conventions + build/test commands. Execute task-by-task with `superpowers:subagent-driven-development`.
+>
+> ⚠️ **Wave 1 (`store-swap-safety`) is merged to `main`.** It changed several shared files (`MigrationCoordinator`, `PersistenceHost`, `QuarantineManager`, `MigrationJournal`, both `AppEnvironment`s, `PersistenceController`). **Re-Read every file before editing and anchor by code structure — the line numbers in this plan may have drifted.**
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Establish an executing, assertion-gated performance-test home that proves the design-doc §761 smart-filter budget (< 100ms against 10,000 tasks), and bound the currently-unbounded main task-list fetches with `fetchBatchSize` plus an explicit paging API so the UI no longer faults+DTO-projects the whole store on every reload.
@@ -350,10 +356,10 @@ Expected: `Test Suite 'SmartFilterPerformanceTests' passed`, `Executed 3 tests, 
 - [ ] **Step 4: Run the full LillistCore suite to confirm no collateral breakage.** Command:
 
 ```bash
-cd /Volumes/Code/mikeyward/Lillist && swift test --package-path Packages/LillistCore --filter PerformanceTests
+cd /Volumes/Code/mikeyward/Lillist && swift test --package-path Packages/LillistCore --filter Perf
 ```
 
-Expected: both perf suites (`SmartFilterPerformanceTests`, plus `PerfFixtureSmokeTests` from Task 1) pass; `with 0 failures`.
+Expected: both perf suites pass — `SmartFilterPerformanceTests` (3 tests) and `PerfFixtureSmokeTests` from Task 1 (2 tests); `with 0 failures`. The filter `Perf` is a substring of all these suite names. (`--filter PerformanceTests` would miss `PerfFixtureSmokeTests` because that class name does not contain the substring "PerformanceTests".)
 
 - [ ] **Step 5: Commit.**
 
@@ -775,11 +781,11 @@ Expected: a COMPILE error — `error: extra arguments at positions #2, #3 in cal
 
 ```bash
 cd /Volumes/Code/mikeyward/Lillist && swift test --package-path Packages/LillistCore --filter SmartFilterPagingTests && \
-swift test --package-path Packages/LillistCore --filter SmartFilterStoreTests && \
+swift test --package-path Packages/LillistCore --filter SmartFilterStore && \
 swift test --package-path Packages/LillistCore --filter TaskStoreQueriesTests
 ```
 
-Expected: all pass with `0 failures`. `SmartFilterStoreTests`/`TaskStoreQueriesTests` confirm the `fetchBatchSize` additions and the new defaulted params didn't change result sets; `SmartFilterPagingTests` (2 tests) passes.
+Expected: all pass with `0 failures`. `--filter SmartFilterStore` matches all three existing suites (`SmartFilterStoreCRUDTests`, `SmartFilterStorePinReorderTests`, `SmartFilterStoreEvaluateTests`) which confirm the `fetchBatchSize` additions and the new defaulted params didn't change result sets; `SmartFilterPagingTests` (2 tests) passes. (`--filter SmartFilterStoreTests` would match zero suites — the Swift Testing structs use `SmartFilterStoreCRUDTests` / `SmartFilterStorePinReorderTests` / `SmartFilterStoreEvaluateTests`.)
 
 - [ ] **Step 5: Commit.**
 
@@ -807,7 +813,7 @@ paging contract test. All existing signatures compile unchanged."
 
 Capture the non-obvious lessons: the §761 budget number, the `swift test`-has-no-`measure()`-baseline gotcha (so future contributors don't "fix" the explicit assertion away), and the `fetchBatchSize`/paging policy.
 
-- [ ] **Step 1: Append the engineering-notes entry.** Add this entry to the END of `docs/engineering-notes.md` (append-only; do not edit prior entries). First read the current tail to find the last entry, then add:
+- [ ] **Step 1: Insert the engineering-notes entry in date order.** The file currently ends with a `## 2026-05-29 — Store-swap safety` entry. The new `## 2026-05-28` entry must be inserted **immediately before that `## 2026-05-29` heading** to preserve ascending date order — do NOT append it at the very end of the file. Read the current tail first to confirm the position, then insert the block above `## 2026-05-29`:
 
 ```markdown
 ## 2026-05-28 — Performance budgets are gated by explicit timed assertions, not `measure()` baselines

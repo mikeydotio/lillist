@@ -1,5 +1,24 @@
 # Recovery Hardening Implementation Plan
 
+> **📍 STATUS — ⬜ PENDING — Wave 7.**
+>
+> Part of the **Foundation Hardening** program. **Single source of truth for progress, wave order, and cross-plan coordination:** [`2026-05-29-foundation-hardening-index.md`](2026-05-29-foundation-hardening-index.md). New to this project? Read the index first, then the review ([`docs/reviews/2026-05-28-foundation-review.md`](../../reviews/2026-05-28-foundation-review.md)) for *why* this work exists, then `CLAUDE.md` for conventions + build/test commands. Execute task-by-task with `superpowers:subagent-driven-development`.
+>
+> ⚠️ **Wave 1 (`store-swap-safety`) is merged to `main`.** It changed several shared files (`MigrationCoordinator`, `PersistenceHost`, `QuarantineManager`, `MigrationJournal`, both `AppEnvironment`s, `PersistenceController`). **Re-Read every file before editing and anchor by code structure — the line numbers in this plan may have drifted.**
+
+> **⚠️ Wave-1 reconciliation:**
+> The store-swap-safety P0 merged (bfd8635..6f008f7) and reordered `runMigration` and replaced the pre-swap backup path. Re-Read every touched file before editing — all line numbers in Tasks 3-5 are stale.
+>
+> **Tasks 6 & 7 are already done — DELETE them.** `Tests/LillistCoreTests/Sync/MigrationRecoveryTests.swift` already has the restoreFromBackup happy-path (lines 39-63) and no-backup `storeUnavailable` (lines 65-76) tests, plus recorded-folder and legacy-fallback cases. test-2 is CLOSED. Do not re-add these or the `PhaseCollector` (one already exists in `MigrationRunnerExecutingTests.swift:187`).
+>
+> **Task 3 targets the wrong method.** `runMigration` no longer moves via `quarantineStore(at:)`; it COPIES via the new `copyStore(at:)` (QuarantineManager.swift:70-89). Put the disk-space pre-flight in `copyStore(at:)` (or factor a shared precondition both call). A check added only to `quarantineStore` never fires during a migration.
+>
+> **Task 4's quoted block no longer exists and its ordering is inverted.** Merged order is reconfigure (step 4) → copyStore (step 5) → erase (step 6); the field is `quarantineFolderName: String?` (not `quarantineBackupID`). Rewrite Task 4 against MigrationCoordinator.swift:210-221.
+>
+> **Task 5's assertions break.** Because the copy/disk-check now runs AFTER `host.reconfigure(to: targetMode)` and `setMode(targetMode)`, an abort there leaves the mode already FLIPPED — so `host.currentMode == .localOnly` and "store never moved" are false. Either (a) move the disk pre-flight to run BEFORE reconfigure in `runMigration` (recommended: a real pre-flight belongs ahead of the irreversible reconfigure, matching the plan's own intent), then keep the assertions; or (b) rewrite the assertions to expect post-reconfigure state. Prefer (a), and inject `FakePersistenceReconfigurer` (Tests/.../Sync/FakePersistenceReconfigurer.swift) rather than a real `PersistenceHost` so the test stays ungated.
+>
+> **Net:** Tasks 1, 2, 8, and 9 stand. Tasks 3-5 need rewriting against the new copy-not-move/reordered flow; Tasks 6-7 should be dropped.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Give the destructive sync-mode swap a real recovery runbook — a pre-flight free-space check before the quarantine copy, a tested restore-from-backup path, and failure-injection tests for the disk-full and successful-restore cases — so a mid-migration failure or crash never strands the user's only data.

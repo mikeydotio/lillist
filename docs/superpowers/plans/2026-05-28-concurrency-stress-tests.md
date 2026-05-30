@@ -1,5 +1,20 @@
 # Concurrency Stress Tests Implementation Plan
 
+> **📍 STATUS — ⬜ PENDING — Wave 4.**
+>
+> Part of the **Foundation Hardening** program. **Single source of truth for progress, wave order, and cross-plan coordination:** [`2026-05-29-foundation-hardening-index.md`](2026-05-29-foundation-hardening-index.md). New to this project? Read the index first, then the review ([`docs/reviews/2026-05-28-foundation-review.md`](../../reviews/2026-05-28-foundation-review.md)) for *why* this work exists, then `CLAUDE.md` for conventions + build/test commands. Execute task-by-task with `superpowers:subagent-driven-development`.
+>
+> ⚠️ **Wave 1 (`store-swap-safety`) is merged to `main`.** It changed several shared files (`MigrationCoordinator`, `PersistenceHost`, `QuarantineManager`, `MigrationJournal`, both `AppEnvironment`s, `PersistenceController`). **Re-Read every file before editing and anchor by code structure — the line numbers in this plan may have drifted.**
+
+> **⚠️ Wave-1 reconciliation:**
+> store-swap-safety (commits bfd8635..6f008f7) is merged to `main` and changed two surfaces this plan references. This is a TEST-ONLY plan, so neither change blocks it — but two anchors are stale and will mis-fire if followed literally.
+> 
+> 1. **Task 3 (`PersistenceHost.swift:95-125`):** `flushAndSwap` is now transactional with a CloudKit-options-preserving rollback and starts at ~line 139, not 95. The line range is documentary; the test only calls the stable public `host.reconfigure(to:)` / `PersistenceHost.make(...)` (both verified present and exercised by `PersistenceHostTests`). Re-Read before quoting, but no code change needed.
+> 
+> 2. **Task 5 (engineering-notes EOF):** the file is now 1905 lines, not 1864. store-swap-safety appended a `## 2026-05-29 — Store-swap safety` section after the drag-reorder note. The plan's expected final line (`...that's where the fix belongs.`) sits at line 1863, NO LONGER at EOF, so the Step-2 Edit anchor would insert the new section MID-FILE ahead of the store-swap entry. Follow the plan's own escape hatch: append after the TRUE final line (currently the `wal_checkpoint(TRUNCATE)`/`copyStore` deferral paragraph) so the new `## Concurrency invariants...` section lands at real EOF and chronological order is preserved. The block content itself is unchanged and self-contained.
+> 
+> Nothing in this plan re-does store-swap-safety work (no localStoreRowCount wiring, no restoreFromBackup tests, no PersistenceReconfiguring/copyStore edits) — it only consumes the unchanged public store API.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Add the CLAUDE.md-mandated concurrency stress tests for every actor-crossing path in `LillistCore` — concurrent notification reconcile, N-concurrent `AsyncStream` subscribers, store-create/fetch during a live store reconfigure, and a real two-context duplicate-tag race — so a future refactor that reintroduces a TOCTOU, a dropped event, or a duplicate row fails the suite loudly instead of shipping green.

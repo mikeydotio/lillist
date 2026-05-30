@@ -1,5 +1,17 @@
 # Breadcrumb Truthfulness Implementation Plan
 
+> **📍 STATUS — ⬜ PENDING — Wave 2.**
+>
+> Part of the **Foundation Hardening** program. **Single source of truth for progress, wave order, and cross-plan coordination:** [`2026-05-29-foundation-hardening-index.md`](2026-05-29-foundation-hardening-index.md). New to this project? Read the index first, then the review ([`docs/reviews/2026-05-28-foundation-review.md`](../../reviews/2026-05-28-foundation-review.md)) for *why* this work exists, then `CLAUDE.md` for conventions + build/test commands. Execute task-by-task with `superpowers:subagent-driven-development`.
+>
+> ⚠️ **Wave 1 (`store-swap-safety`) is merged to `main`.** It changed several shared files (`MigrationCoordinator`, `PersistenceHost`, `QuarantineManager`, `MigrationJournal`, both `AppEnvironment`s, `PersistenceController`). **Re-Read every file before editing and anchor by code structure — the line numbers in this plan may have drifted.**
+
+> **⚠️ Wave-1 reconciliation:**
+> store-swap-safety has merged to main and reflowed `runMigration` in `MigrationCoordinator.swift`, so Task 6's line numbers are stale. Do NOT trust the literal line anchors (helper "69-74/71-74", calls "143/215/222"). The current state:
+> - The `breadcrumb(_:success:)` helper is now at **lines 76-81** — its body still matches the plan's "before" snippet verbatim, so apply Step 1's `async` conversion as written.
+> - The three call sites moved: **line 163** (`...start...`), **line 255** (`...completed...`), **line 262** (`...failed...`, `success: false`). Re-locate each by name and prepend `await` per the plan's own cross-plan note (Task 6 paragraph above Step 1). The call-site text is otherwise unchanged.
+> store-swap-safety did NOT touch breadcrumb recording — the three sites are still detached-`Task` fire-and-forget — so Task 6 is still needed and conflicts with nothing already merged. Tasks 1-5 and Task 7 are clean (no Wave-1 overlap; all line numbers and method bodies verified against main).
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Make every store mutator and the migration coordinator record a breadcrumb whose `success` flag reflects the *actual* outcome of the operation, recorded in operation order, so crash forensics are trustworthy.

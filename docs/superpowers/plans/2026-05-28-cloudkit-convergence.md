@@ -1,5 +1,17 @@
 # CloudKit Cross-Device Convergence Implementation Plan
 
+> **📍 STATUS — ⬜ PENDING — Wave 3.**
+>
+> Part of the **Foundation Hardening** program. **Single source of truth for progress, wave order, and cross-plan coordination:** [`2026-05-29-foundation-hardening-index.md`](2026-05-29-foundation-hardening-index.md). New to this project? Read the index first, then the review ([`docs/reviews/2026-05-28-foundation-review.md`](../../reviews/2026-05-28-foundation-review.md)) for *why* this work exists, then `CLAUDE.md` for conventions + build/test commands. Execute task-by-task with `superpowers:subagent-driven-development`.
+>
+> ⚠️ **Wave 1 (`store-swap-safety`) is merged to `main`.** It changed several shared files (`MigrationCoordinator`, `PersistenceHost`, `QuarantineManager`, `MigrationJournal`, both `AppEnvironment`s, `PersistenceController`). **Re-Read every file before editing and anchor by code structure — the line numbers in this plan may have drifted.**
+
+> **⚠️ Wave-1 reconciliation:**
+> Store-swap-safety merged (commit 2cffb58 last touched the two files this plan also edits: `PersistenceController.swift` and the iOS `AppEnvironment.swift`). No method this plan changes overlaps store-swap-safety's surface (MigrationCoordinator / restoreFromBackup / copyStore / PersistenceReconfiguring / MigrationJournal are untouched here), so nothing in Tasks 1–9 needs to be rebuilt — but two line anchors drifted:
+> - **Task 8 Step 3:** `appGroupID` is NOT in scope in `private init`. Use `Self.appGroupID` (static, declared at `AppEnvironment.swift:210`). The plan's pointer to "the existing `DevicePreferencesStore(appGroupID: appGroupID)` call on line 217" is stale — that call is now at line 228 and lives in `make()`, not `private init`. Substitute `PersistentHistoryTokenStore(appGroupID: Self.appGroupID)`.
+> - **Task 8 anchors:** the construction block is still ~lines 92–133, but `private init` now runs to line 205 (Wave-1 added the MigrationCoordinator + `localStoreRowCount` wiring at 171–204). Re-Read the file and re-anchor before inserting; do NOT add any `localStoreRowCount`/`localTaskRowCount` wiring — that is already done and merged.
+> - **Task 1:** the `mergePolicy` block is now at lines 43–44 (not 43–46); the plan's literal `old_string` still matches exactly, so just use it as-is and ignore the numeric label. `localTaskRowCount()` already exists at `PersistenceController.swift:55–73` — leave it alone.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Make multi-device CloudKit sync converge deterministically — stop `AppPreferences` from flip-flopping across devices, drive notification reconciliation from remote imports, attribute view-context writes for history diffing, enforce one default spec per `(taskID, kind)`, and give steady-state `CKError` quota/rate-limit a real error posture.
@@ -1311,7 +1323,14 @@ The pure pieces are useless until bootstrap runs them. `AppEnvironment` builds t
         // Remote-change-driven reconcile: when CloudKit imports another
         // device's notification fire, reconcile the affected tasks so this
         // device drops its now-stale pending requests.
-        let historyTokens = PersistentHistoryTokenStore(appGroupID: appGroupID)
+        // NOTE: `appGroupID` is a *static* property declared at
+        // AppEnvironment.swift:210 — it is NOT a parameter or local
+        // variable of `private init`, so use `Self.appGroupID` here.
+        // (The same constant is used as `appGroupID` inside `make()`,
+        // ~line 228, where it resolves as a shorthand for `Self.appGroupID`
+        // because `make()` is also a static method — but that is a
+        // different call site in a different method.)
+        let historyTokens = PersistentHistoryTokenStore(appGroupID: Self.appGroupID)
         self.remoteChangeReconciler = RemoteChangeReconciler(
             persistence: persistence,
             tokenStore: historyTokens
@@ -1323,7 +1342,7 @@ The pure pieces are useless until bootstrap runs them. `AppEnvironment` builds t
         }
 ```
 
-(If `appGroupID` is not in scope at this point in `init`, use the same source the existing `DevicePreferencesStore(appGroupID: appGroupID)` call on line 217 uses — confirm in Step 1 and substitute the exact identifier.)
+> **⚠️ Execution gotcha:** `appGroupID` (bare) is NOT in scope inside `private init`. It is a `static let` on `AppEnvironment` (declared at `AppEnvironment.swift:210`). The `DevicePreferencesStore(appGroupID: appGroupID)` shorthand you see at ~line 228 is inside `make()`, which is also a `static func` — static context lets the compiler resolve `appGroupID` without a receiver there. Inside instance `private init` there is no implicit `Self` resolution for static members; you **must** write `Self.appGroupID` (or `AppEnvironment.appGroupID`). Using the bare name will produce a compile error. No xcodegen / pbxproj regeneration is needed for this task: `RemoteChangeReconciler` and `PersistentHistoryTokenStore` live in the `LillistCore` Swift package (SPM), not in the app target's Xcode project.
 
 - [ ] **Step 4: Start it + normalize at launch** — in the launch hook found in Step 1 (the method that already calls `await preferencesPartitionMigrator.runIfNeeded()` / `await notificationScheduler.bootstrap()`), add, after the partition migrator call:
 

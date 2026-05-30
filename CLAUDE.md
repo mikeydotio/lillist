@@ -52,6 +52,15 @@ in-house crash reporter.
   features landed (Plans 1–20 are checked in; Plan 20a is captured in
   engineering-notes; Plan 21 is in flight on branches/commits). Useful
   as archaeology, *not* the current source of truth.
+- **Active program — Foundation Hardening:** the 2026-05-28 code review
+  (`docs/reviews/2026-05-28-foundation-review.md`) and its 22 follow-up
+  plans are tracked **live** in
+  `docs/superpowers/plans/2026-05-29-foundation-hardening-index.md` — the
+  current source of truth for what's done and what's next (Wave 1
+  `store-swap-safety` is merged; `recurrence-input-hardening` is the next
+  task). **New contributors picking this up: start at that index.** Each
+  plan file opens with a status banner; several carry a Wave-1
+  reconciliation note.
 
 ## Build & test
 

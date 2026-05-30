@@ -1,5 +1,17 @@
 # Background Context Seam Implementation Plan
 
+> **📍 STATUS — ⬜ PENDING — Wave 4.**
+>
+> Part of the **Foundation Hardening** program. **Single source of truth for progress, wave order, and cross-plan coordination:** [`2026-05-29-foundation-hardening-index.md`](2026-05-29-foundation-hardening-index.md). New to this project? Read the index first, then the review ([`docs/reviews/2026-05-28-foundation-review.md`](../../reviews/2026-05-28-foundation-review.md)) for *why* this work exists, then `CLAUDE.md` for conventions + build/test commands. Execute task-by-task with `superpowers:subagent-driven-development`.
+>
+> ⚠️ **Wave 1 (`store-swap-safety`) is merged to `main`.** It changed several shared files (`MigrationCoordinator`, `PersistenceHost`, `QuarantineManager`, `MigrationJournal`, both `AppEnvironment`s, `PersistenceController`). **Re-Read every file before editing and anchor by code structure — the line numbers in this plan may have drifted.**
+
+> **⚠️ Wave-1 reconciliation:**
+> Wave-1 (store-swap-safety) is merged. This plan is otherwise independent of it — it does NOT touch any store-swap-safety surface (no `localStoreRowCount` wiring, no `restoreFromBackup`/test-2, no `PersistenceReconfiguring`, no `copyStore`, no `MigrationCoordinator`). Proceed without fear of conflicting with that work.
+> One stale anchor: Wave-1 inserted `PersistenceController.localTaskRowCount()` at lines 55-73 (commit `2cffb58`). So in Task 1, re-Read `PersistenceController.swift` first: insert `makeBackgroundContext()` after `init` closes (line 53) — it will land just before the new `localTaskRowCount()` — and IGNORE the stale "near line 112" / "before makeContainer" hints (line 112 is now mid-`makeStoreDescription`; `makeContainer` is at line 83).
+>
+> **Cross-plan prerequisite (Task 6):** `breadcrumb-truthfulness` (Wave 2) MUST be merged before executing Task 6. Task 6 adds `context.rollback()` to the inline `do/catch` that `breadcrumb-truthfulness` creates in `hardDelete`/`reparent`/`softDelete`/`restore`. On current `main` those four still use `defer { Task { recordCrumb } }` — Task 6's before-snippets will not match and there is no `catch` block to insert into. See the prominent prerequisite note at the top of Task 6.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Move bulk Core Data work (Exporter reads, Importer writes, Trash purges) off the main-queue `viewContext` onto dedicated background contexts, make every batch delete reproduce the cascade-to-children rule explicitly, add `context.rollback()` to mutating `perform` catch paths, and add an idempotent persistent-history sweep for `.localOnly` stores — without disturbing the deliberate single-context-on-main default that CloudKit mirroring depends on.
@@ -796,6 +808,10 @@ Refs: persist-4, threading-1"
 ---
 
 ## Task 6: Add `context.rollback()` to mutating `perform` catch paths + regression test
+
+> **⚠️ PREREQUISITE: `breadcrumb-truthfulness` (Wave 2) MUST be merged before executing this task.**
+>
+> Task 6 adds one `context.rollback()` line to the *existing* `catch` block that `breadcrumb-truthfulness` creates in `hardDelete`, `reparent`, `softDelete`, and `restore`. On current `main` those four methods still use the old `defer { Task { … success: true } }` shape — there is no inline `do/catch` to insert into, and the "before" snippets shown below will **not match the current source**. If `breadcrumb-truthfulness` has not merged, stop and land it first, then return here. Do not attempt to apply Step 3's before/after snippets against the `defer`-based source — you will either get a non-matching edit or accidentally revert breadcrumb-truthfulness's truthful-success work.
 
 **Files:** Create `Packages/LillistCore/Tests/LillistCoreTests/Stores/TaskStoreRollbackTests.swift`; modify `Packages/LillistCore/Sources/LillistCore/Stores/TaskStore.swift` mutating methods.
 

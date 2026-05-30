@@ -1,5 +1,20 @@
 # Observability & Structured Logging Implementation Plan
 
+> **📍 STATUS — ⬜ PENDING — Wave 6.**
+>
+> Part of the **Foundation Hardening** program. **Single source of truth for progress, wave order, and cross-plan coordination:** [`2026-05-29-foundation-hardening-index.md`](2026-05-29-foundation-hardening-index.md). New to this project? Read the index first, then the review ([`docs/reviews/2026-05-28-foundation-review.md`](../../reviews/2026-05-28-foundation-review.md)) for *why* this work exists, then `CLAUDE.md` for conventions + build/test commands. Execute task-by-task with `superpowers:subagent-driven-development`.
+>
+> ⚠️ **Wave 1 (`store-swap-safety`) is merged to `main`.** It changed several shared files (`MigrationCoordinator`, `PersistenceHost`, `QuarantineManager`, `MigrationJournal`, both `AppEnvironment`s, `PersistenceController`). **Re-Read every file before editing and anchor by code structure — the line numbers in this plan may have drifted.**
+
+> **⚠️ Wave-1 reconciliation:**
+> store-swap-safety (bfd8635..6f008f7) is MERGED and rewrote `MigrationCoordinator.runMigration` and `restoreFromBackup`. **Do NOT paste Task 4 Step 2/3's "preserved verbatim" method bodies — they are the pre-Wave-1 code and would revert merged work.**
+> What actually changed on `main`:
+> - `runMigration` was REORDERED: precondition (`localStoreRowCount` guard) → `host.reconfigure(to:)` (closes the store) → `quarantine.copyStore(at:)` (copy-not-move, records `entry.quarantineFolderName = backup.folderName`) → zone erase → quiesce → finalize. There is no longer a `quarantineBackupID = UUID()` step or a move-based `quarantineStore(at:)` in the pre-swap path.
+> - `MigrationJournal.quarantineBackupID: UUID?` is now `quarantineFolderName: String?`.
+> - `restoreFromBackup` now reads the journal and prefers `quarantine.quarantinedStore(folderName: entry.quarantineFolderName)`, falling back to `latestQuarantinedStore` (sync-7, proven by `restoreHonorsRecordedFolder` in `MigrationRecoveryTests`). The plan's `latestQuarantinedStore`-only version drops this.
+> What to do instead for Task 4: **re-Read the CURRENT `MigrationCoordinator.swift` first** (the method bodies start near L142/L162, not the plan's line numbers), then thread the `OSSignposter` interval (wrap the whole `runMigration` body) and additive `LillistLog.sync` notices onto the *current* phases — start/precondition, reconfigure, copy-quarantine, erase, settle, finalize, fail — and two notices around the *current* `restoreFromBackup`. Touch nothing about the journal field, the copyStore call, or the phase ordering.
+> Already DONE by Wave-1 (do not redo): `localStoreRowCount` wiring in both AppEnvironments + the init parameter, the `quarantineFolderName` journal migration, the exact-folder restore, and the store-swap engineering-notes entry (Task 7's append is to a different topic and stays).
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Give Lillist a real field-diagnostics surface — a structured `os.Logger` taxonomy whose subsystem feeds the crash reporter's "Recent app logs" section (today always empty), plus `OSSignposter` timing on the migration and heavy-fetch paths and iOS MetricKit crash/hang/launch capture — so the shipped logs toggle becomes honest and OTA builds are debuggable.
@@ -299,10 +314,10 @@ land on the collected subsystem and reach the crash reporter."
 ## Task 4: Instrument the migration runner with structured logs + an OSSignposter interval
 
 **Files:**
-- Modify `Packages/LillistCore/Sources/LillistCore/Sync/MigrationCoordinator.swift` (runMigration ~L142-225)
+- Modify `Packages/LillistCore/Sources/LillistCore/Sync/MigrationCoordinator.swift` — `runMigration` (the post-Wave-1 reordered runner; ~L162 on the merged file, but **anchor by `grep`/structure, not line number** — Wave 1 shifted these) and `restoreFromBackup` (~L142)
 - Test `Packages/LillistCore/Tests/LillistCoreTests/Sync/MigrationCoordinatorTests.swift` is the neighbor (Swift Testing, `.serialized`, `liveSwapAllowed` gate) — but migration logging is verified by the OSLogFetcher round-trip net (Task 2) plus an unsigned build, since the runner's destructive paths are host-gated. We add **no new assertion** that depends on the gated runner; instead we verify the instrumentation compiles and is non-destructive.
 
-The migration runner is the single most important thing to be able to debug after an OTA crash (it moves a live SQLite file). Add a coordinator-private helper that logs each phase on `LillistLog.sync` and wrap the whole `runMigration` body in an `OSSignposter` interval so Instruments shows migration duration. This is additive — it must not change control flow, the journal sequence, or the emitted `MigrationPhase` events.
+The migration runner is the single most important thing to be able to debug after an OTA crash (it swaps a live SQLite file). Emit a `LillistLog.sync` line at each phase of the **current (post-Wave-1) reordered** runner and wrap the whole `runMigration` body in an `OSSignposter` interval so Instruments shows migration duration. This is additive — it must not change control flow, the journal sequence, the `copyStore`/`quarantineFolderName` calls, the phase ordering, or the emitted `MigrationPhase` events. **Weave the lines into the live method (Steps 2a/2b); never paste a whole method body — the verbatim blocks in older drafts are the stale pre-Wave-1 shape.**
 
 - [ ] **Step 1: Add the imports** — `MigrationCoordinator.swift` currently starts with `import Foundation` (L1). Change L1 from:
 ```swift
@@ -314,8 +329,60 @@ import Foundation
 import os
 ```
 
-- [ ] **Step 2: Instrument `runMigration`** — replace the entire `runMigration` method body (currently L142-225, beginning `private func runMigration(`) with this version. Every original line is preserved verbatim; the additions are the `signpostID`/`interval` bracket and the `LillistLog.sync` lines (already-non-identifying: op raw value, mode, error type):
+- [ ] **Step 2a: Read the CURRENT `runMigration` on `main` FIRST** — store-swap-safety (Wave 1) **reordered** this method, so the body below is **NOT** what is on disk. Before editing, locate and Read the live method:
+```bash
+cd /Volumes/Code/mikeyward/Lillist && grep -n "private func runMigration(" Packages/LillistCore/Sources/LillistCore/Sync/MigrationCoordinator.swift
+```
+Then Read the full method body. Confirm the **current** phase order, which is the order you must weave logs onto (verified against the merged file):
+1. **preparing** — `emit(.preparing)` + `scheduler.cancelAllPending()`
+2. **journal start** — build `MigrationJournal(state: .preparing, …)` and `journal.write(entry)`
+3. **precondition** — for `replaceICloudWithLocal`, the `localStoreRowCount()` guard (Wave-1; throws on empty store)
+4. **structural swap FIRST** — `emit(.reconfiguringStore)` → `host.reconfigure(to: targetMode)` → `syncModeStore.setMode(targetMode)` (closes the SQLite connection *before* touching the file — persist-3)
+5. **copy-quarantine** — `emit(.backingUp)`, state `.quarantining`, then `quarantine.copyStore(at: storeURL)` (COPY-not-move) and record `entry.quarantineFolderName = backup.folderName`
+6. **cloudkit zone erase** — only `replaceICloudWithLocal`: `emit(.erasingICloud…)` + `zoneEraser.eraseManagedZones(…)`
+7. **await settle** — only `iCloudSync`: `quiesceMonitor.waitForQuiesce(…)`
+8. **finalize** — state `.finalizing`, `journal.clear()`, `emit(.completed)`
+9. **catch** — state `.failed`, `emit(.failed…)`, rethrow
+
+If what you Read does not match this order (e.g. you see `quarantineStore(at:)`/`quarantineBackupID`, or `reconfigure` *after* the quarantine), STOP — you are looking at a stale checkout; `git pull` and re-Read before continuing.
+
+- [ ] **Step 2b: Weave the signpost + `LillistLog.sync` lines into the CURRENT body** — do **NOT** paste a whole method. Make these surgical additions to the live method, leaving every existing line, the journal sequence, the `copyStore`/`quarantineFolderName` calls, and the phase ordering untouched (additions are already-non-identifying: op raw value, mode, error type):
+  - **Top of method, before `breadcrumb("sync mode change start …")`:** open the signpost interval spanning the whole runner, and emit the start notice:
+    ```swift
+        let signpostID = LillistLog.signposter.makeSignpostID()
+        let interval = LillistLog.signposter.beginInterval(
+            "migration", id: signpostID,
+            "op=\(op.rawValue, privacy: .public) target=\(targetMode.rawValue, privacy: .public)"
+        )
+        defer { LillistLog.signposter.endInterval("migration", interval) }
+        LillistLog.sync.notice(
+            "migration start op=\(op.rawValue, privacy: .public) target=\(targetMode.rawValue, privacy: .public)"
+        )
+    ```
+  - **Phase 4 (structural swap), immediately after `emit(.reconfiguringStore)` and before `try await host.reconfigure(to: targetMode)`:**
+    ```swift
+            LillistLog.sync.notice("migration reconfiguring store")
+    ```
+  - **Phase 6 (cloudkit zone erase), inside the `if op == .replaceICloudWithLocal` block, after `emit(.erasingICloud(progress: 0))` and before `zoneEraser.eraseManagedZones(…)`:**
+    ```swift
+                LillistLog.sync.notice("migration erasing iCloud zones")
+    ```
+  - **Phase 8 (finalize), in the success path after `emit(.completed)` and before `breadcrumb("sync mode change completed …")`:**
+    ```swift
+            LillistLog.sync.notice("migration completed op=\(op.rawValue, privacy: .public)")
+    ```
+  - **`catch` block, after `emit(.failed(reason: "\(error)"))` and before `breadcrumb(… success: false)`:**
+    ```swift
+            LillistLog.sync.error(
+                "migration failed op=\(op.rawValue, privacy: .public) error=\(String(describing: type(of: error)), privacy: .public)"
+            )
+    ```
+  Note the placement difference from the pre-Wave-1 shape: the "reconfiguring store" notice now lands in phase 4 (before quarantine), and the "erasing iCloud zones" notice lands in phase 6 (after the copy-quarantine), because the current method reconfigures *first* and copies the closed store *second*. Add **no** log line tied to a `quarantineStore`/`quarantineBackupID` step — those no longer exist.
+
+> **⚠️ ILLUSTRATIVE of the OLD (pre-Wave-1) shape — DO NOT paste. Weave the equivalents above into the CURRENT method instead.** The block below is the stale pre-store-swap-safety body and quarantines *before* reconfiguring using the removed move-based `quarantineStore(at:)`/`quarantineBackupID` API. It is kept only to show what the woven log/signpost lines look like in context; pasting it would revert merged Wave-1 work (the reorder, `copyStore`, and `quarantineFolderName`).
 ```swift
+    // ⚠️ OLD SHAPE — illustrative only, DO NOT paste. See Step 2b for where
+    //    each log line lands in the CURRENT (reordered) method.
     private func runMigration(op: ModeTransitionOp, targetMode: SyncMode, storeURL: URL) async throws {
         let signpostID = LillistLog.signposter.makeSignpostID()
         let interval = LillistLog.signposter.beginInterval(
@@ -328,114 +395,45 @@ import os
         )
 
         breadcrumb("sync mode change start \(op.rawValue)")
-        // 1. preparing — cancel notifications first so a destructive
-        //    op doesn't leave stale fires pointing at deleted rows
-        //    (skeptic G9).
         emit(.preparing)
-        if let scheduler = notificationScheduler {
-            await scheduler.cancelAllPending()
-        }
-
-        // 2. journal: starting
-        var entry = MigrationJournal(
-            state: .preparing,
-            operation: op,
-            startedAt: Date(),
-            lastHeartbeatAt: Date(),
-            previousMode: await host.currentMode
+        // … pre-Wave-1 order: quarantine (move) → erase → reconfigure …
+        // (REMOVED on main — kept here only to show the woven log lines)
+        LillistLog.sync.notice("migration erasing iCloud zones")
+        LillistLog.sync.notice("migration reconfiguring store")
+        LillistLog.sync.notice("migration completed op=\(op.rawValue, privacy: .public)")
+        LillistLog.sync.error(
+            "migration failed op=\(op.rawValue, privacy: .public) error=\(String(describing: type(of: error)), privacy: .public)"
         )
-        try journal.write(entry)
-
-        do {
-            // 3. quarantine the live store as a recovery anchor.
-            emit(.backingUp)
-            entry.state = .quarantining
-            entry.lastHeartbeatAt = Date()
-            try journal.write(entry)
-            if FileManager.default.fileExists(atPath: storeURL.path) {
-                let backupID = UUID()
-                entry.quarantineBackupID = backupID
-                try quarantine.quarantineStore(at: storeURL)
-                try journal.write(entry)
-            }
-
-            // 4. cloudkit-side mutation (only for replaceICloudWithLocal).
-            if op == .replaceICloudWithLocal {
-                entry.state = .mutatingCloudKit
-                entry.lastHeartbeatAt = Date()
-                try journal.write(entry)
-                emit(.erasingICloud(progress: 0))
-                LillistLog.sync.notice("migration erasing iCloud zones")
-                _ = try await zoneEraser.eraseManagedZones(
-                    in: cloudKitContainerIdentifier,
-                    progress: { [weak self] fraction in
-                        await MainActor.run { self?.emit(.erasingICloud(progress: fraction)) }
-                    }
-                )
-            }
-
-            // 5. structural swap.
-            entry.state = .reconfiguringStore
-            entry.lastHeartbeatAt = Date()
-            try journal.write(entry)
-            emit(.reconfiguringStore)
-            LillistLog.sync.notice("migration reconfiguring store")
-            try await host.reconfigure(to: targetMode)
-            await syncModeStore.setMode(targetMode)
-
-            // 6. wait for CloudKit to settle (only when going to
-            //    iCloudSync; LocalOnly has nothing to wait on).
-            if targetMode == .iCloudSync {
-                entry.state = .awaitingSync
-                entry.lastHeartbeatAt = Date()
-                try journal.write(entry)
-                emit(op == .replaceICloudWithLocal ? .uploading(progress: nil) : .downloading(progress: nil))
-                _ = await quiesceMonitor.waitForQuiesce(minQuietWindow: 5, hardTimeout: 300)
-            }
-
-            // 7. finalize.
-            entry.state = .finalizing
-            entry.lastHeartbeatAt = Date()
-            try journal.write(entry)
-            emit(.finalizing)
-
-            try journal.clear()
-            emit(.completed)
-            LillistLog.sync.notice("migration completed op=\(op.rawValue, privacy: .public)")
-            breadcrumb("sync mode change completed \(op.rawValue)")
-        } catch {
-            entry.state = .failed
-            entry.failureReason = "\(error)"
-            entry.lastHeartbeatAt = Date()
-            try? journal.write(entry)
-            emit(.failed(reason: "\(error)"))
-            LillistLog.sync.error(
-                "migration failed op=\(op.rawValue, privacy: .public) error=\(String(describing: type(of: error)), privacy: .public)"
-            )
-            breadcrumb("sync mode change failed \(op.rawValue)", success: false)
-            throw error
-        }
     }
 ```
 
-- [ ] **Step 3: Instrument `restoreFromBackup`** — replace the body of `restoreFromBackup` (currently L127-138) with this version, adding two `LillistLog.sync` lines around the irreversible restore (no control-flow change):
-```swift
-    public func restoreFromBackup(filename: String = "Lillist.sqlite", targetURL: URL) async throws {
-        guard let backup = try quarantine.latestQuarantinedStore(filename: filename) else {
+- [ ] **Step 3a: Read the CURRENT `restoreFromBackup` on `main` FIRST** — store-swap-safety (Wave 1) also rewrote this method to prefer the *exact* recorded folder (sync-7). The pre-Wave-1 `latestQuarantinedStore`-only body is gone; do not reintroduce it. Read the live method:
+```bash
+cd /Volumes/Code/mikeyward/Lillist && grep -n "public func restoreFromBackup(" Packages/LillistCore/Sources/LillistCore/Sync/MigrationCoordinator.swift
+```
+Confirm the **current** body (verified against the merged file) does this:
+1. `let entry = try journal.read()`
+2. resolve `recorded` via `entry.quarantineFolderName.flatMap { quarantine.quarantinedStore(folderName: $0, filename: filename) }`
+3. `let backup = try recorded ?? quarantine.latestQuarantinedStore(filename: filename)` then `guard let backup else { throw … }`
+4. `emit(.removingLocalStore)` → `quarantine.restore(quarantinedStore: backup, to: targetURL)`
+5. `let prev = entry.previousMode ?? .localOnly` → `syncModeStore.setMode(prev)` → `host.reconfigure(to: prev)` → `journal.clear()` → `emit(.completed)`
+
+If you instead see a single `guard let backup = try quarantine.latestQuarantinedStore(…)` with no `quarantineFolderName`/`quarantinedStore(folderName:)` preference, STOP — that is the stale pre-Wave-1 checkout; `git pull` and re-Read.
+
+- [ ] **Step 3b: Weave two `LillistLog.sync` lines into the CURRENT body** — additive only, no control-flow, journal, or resolution-order change. Add:
+  - In the `guard let backup else { … }` failure branch, **before** the existing `throw LillistError.storeUnavailable(…)`:
+    ```swift
             LillistLog.sync.error("restoreFromBackup found no quarantine backup")
-            throw LillistError.storeUnavailable(reason: "No quarantine backup available")
-        }
+    ```
+  - Immediately **before** `emit(.removingLocalStore)` (i.e. right after the `guard` succeeds), the "restoring" notice:
+    ```swift
         LillistLog.sync.notice("restoreFromBackup restoring quarantined store")
-        emit(.removingLocalStore)
-        try quarantine.restore(quarantinedStore: backup, to: targetURL)
-        let prev = (try journal.read()).previousMode ?? .localOnly
-        await syncModeStore.setMode(prev)
-        try await host.reconfigure(to: prev)
-        try journal.clear()
-        emit(.completed)
+    ```
+  - As the **last** line of the method, after `emit(.completed)`, the "completed" notice (reuse the already-bound `prev` from step 5 above):
+    ```swift
         LillistLog.sync.notice("restoreFromBackup completed mode=\(prev.rawValue, privacy: .public)")
-    }
-```
+    ```
+  Do **not** re-derive `prev` from `journal.read()` — the current method already binds `prev` from `entry.previousMode` near the end; the completion notice goes after `emit(.completed)` and references that same `prev`.
 
 - [ ] **Step 4: Build LillistCore and run the migration suite, expect pass** —
 ```bash

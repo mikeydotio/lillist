@@ -25,6 +25,92 @@ CloudKit, XCTest + Swift Testing, xcodegen, GitHub Actions (new).
 
 ---
 
+## 📍 Current status & how to pick this up
+
+> **New here? Read this section first, then start the next pending plan.** This
+> file is the **living progress tracker** for the program — keep it current as
+> plans merge.
+
+**As of 2026-05-29:**
+
+- ✅ **Wave 1 · `store-swap-safety`** — **merged to `main`** (commits
+  `bfd8635`..`6f008f7`; 663 LillistCore tests green). Closed persist-3,
+  sync-1/3/4/7, conc-4, test-1/2, Roadmap #1. ⚠️ Its `liveSwapAllowed`-gated
+  *live-container* swap tests execute only on a **code-signed** simulator host
+  (CI or a developer Mac) — verify them there:
+  `xcodebuild test -workspace Lillist.xcworkspace -scheme Lillist-iOS -destination 'platform=iOS Simulator,name=iPhone 17,OS=26.2' -only-testing:Lillist-iOSAppHostedTests`.
+- ⬜ **Wave 1 · `recurrence-input-hardening`** — **NOT done. This is the
+  immediate next task** (P0, HIGH: `interval==0` crashes the recurrence expander
+  on synced / imported / CLI data). Do this *before* any Wave 2 work.
+- ⬜ **Waves 2–7** — all pending. Follow the wave order + serial chains below.
+
+### Progress checklist
+
+- **Wave 1 (P0):** ✅ store-swap-safety · ⬜ **recurrence-input-hardening ← NEXT**
+- **Wave 2 (P1):** ⬜ breadcrumb-truthfulness · ⬜ fractional-ordering-compaction · ⬜ predicate-parity · ⬜ link-preview-ssrf-guards
+- **Wave 3 (P1):** ⬜ cloudkit-convergence · ⬜ resolve-inert-features
+- **Wave 4:** ⬜ concurrency-stress-tests · ⬜ migration-adjacent-correctness · ⬜ background-context-seam
+- **Wave 5 (P2):** ⬜ crash-reporter-privacy · ⬜ app-layer-test-rehab
+- **Wave 6:** ⬜ extension-persistence-unification · ⬜ export-import-robustness · ⬜ cli-robustness · ⬜ performance-budgets-and-paging · ⬜ observability-logging
+- **Wave 7 (closing):** ⬜ privacy-manifest-export-compliance · ⬜ recovery-hardening · ⬜ lillistui-localization-a11y · ⬜ ci-and-build-posture (LAST)
+
+_When a plan merges, flip its box here and update its in-plan status banner._
+
+### How to execute (zero context)
+
+1. **Read** the review [`docs/reviews/2026-05-28-foundation-review.md`](../../reviews/2026-05-28-foundation-review.md)
+   (why this work exists) and `CLAUDE.md` (conventions, build/test, signing).
+2. **Pick** the next ⬜ plan in wave order — respect the **serial chains** and
+   **hard dependencies** below. Each plan opens with a **status banner + (where
+   relevant) a ⚠️ Wave-1 reconciliation note** listing its specific drift.
+3. **Execute** task-by-task with the `superpowers:subagent-driven-development`
+   skill (fresh subagent per task; spec-review then quality-review each).
+   `superpowers:executing-plans` is the alternative.
+4. **Re-Read every file before editing** — Wave 1 changed several shared files,
+   so plan line numbers may have drifted; anchor by code structure, not line
+   number.
+5. **Verify** `swift test --package-path Packages/LillistCore` and `…/LillistUI`;
+   app targets via the `xcodebuild … CODE_SIGNING_ALLOWED=NO build` recipe in
+   `CLAUDE.md`; the host-gated swap tests need a signed simulator run.
+6. **Land** small conventional commits; merge each plan to `main` when its suite
+   is green (solo project — direct to `main`).
+
+### Wave-1 execution learnings (what later plans must know)
+
+`store-swap-safety` changed reality in ways the other plans were authored
+before. Each affected plan now carries a **⚠️ Wave-1 reconciliation** note;
+highlights:
+
+- **`localStoreRowCount` is wired LIVE in production** (both `AppEnvironment`s +
+  `PersistenceController.localTaskRowCount()`, fail-closed) — **no later plan
+  should wire it again.**
+- **`restoreFromBackup` already honors the journal's recorded folder** and
+  **`test-2` is CLOSED** — `recovery-hardening` should DELETE its
+  restoreFromBackup-coverage tasks and focus on disk-space pre-flight +
+  auto-backup + user-facing restore, against the new **`copyStore`** (copy-not-
+  move), not `quarantineStore`.
+- **`runMigration` was reordered** (precondition → reconfigure → `copyStore` →
+  erase → settle → finalize); `MigrationJournal.quarantineBackupID` →
+  `quarantineFolderName`.
+- **`PersistenceReconfiguring`, `FakePersistenceReconfigurer`, the executing
+  migration tests, and the `Lillist-iOSAppHostedTests` target all exist** —
+  reuse them, don't recreate. `ci-and-build-posture` *runs* the app-hosted
+  target; it doesn't create it.
+- **One deferred follow-up** in `docs/engineering-notes.md`:
+  `wal_checkpoint(TRUNCATE)` around `copyStore` — owned by `recovery-hardening`.
+
+### Readiness-audit pass (2026-05-29)
+
+All 22 plans were audited for blind-contributor readiness: every plan got the
+status banner above; 11 received Wave-1 reconciliation notes; and specific
+plan-internal defects (zero-matching `--filter` commands, wrong test-count
+gates, an unsound poison-object test, wrong file pointers, a `Self.appGroupID`
+scope bug, CI app-hosted-signing guidance, a BGTask `@MainActor` hop, a stale
+verbatim method paste, and a `breadcrumb-truthfulness` prerequisite) were
+corrected in the plans.
+
+---
+
 ## The 22 plans
 
 | Wave | Plan | Tier | Findings | Closes |
@@ -73,10 +159,10 @@ a file follow the **serial chains** in the next section.
   wave 6).
 - **Wave 3 (P1):** `cloudkit-convergence` (prereq for
   `concurrency-stress-tests`; establishes `PersistenceController.localTransactionAuthor`),
-  then `resolve-inert-features` (natural home to also wire wave-1's
-  `localStoreRowCount` counter and wave-4's `HistoryPruner.sweep` into
-  `bootstrap()`). Both edit iOS `AppEnvironment.swift` in distinct regions —
-  serialize them.
+  then `resolve-inert-features` (wires `AutoPurgeJob` + wave-4's
+  `HistoryPruner.sweep` into `bootstrap()`; **wave-1 already wired
+  `localStoreRowCount` in production — do NOT re-add it**). Both edit iOS
+  `AppEnvironment.swift` in distinct regions — serialize them.
 - **Wave 4:** `concurrency-stress-tests` (dependsOn `cloudkit-convergence`;
   reuses wave-1's `FakePersistenceReconfigurer`),
   `migration-adjacent-correctness` (dependsOn `store-swap-safety`),
@@ -160,9 +246,10 @@ rewrite invalidates line anchors).
    `automaticallyMergesChangesFromParent` — it's the active CloudKit channel).
 9. **iOS `AppEnvironment.swift`** (4 plans, distinct regions, serialize) —
    `migration-adjacent-correctness` (MigrationCoordinator init arg) →
-   `resolve-inert-features` (AutoPurgeJob + `localStoreRowCount` +
-   `HistoryPruner.sweep` into `bootstrap()`; **keeps the `includeLogs` toggle**
-   that `observability-logging` makes honest) → `cloudkit-convergence`
+   `resolve-inert-features` (AutoPurgeJob + `HistoryPruner.sweep` into
+   `bootstrap()`; **`localStoreRowCount` already wired by wave 1 — don't
+   re-add**; **keeps the `includeLogs` toggle** that `observability-logging`
+   makes honest) → `cloudkit-convergence`
    (reconciler + `normalizeSingletons`) → `observability-logging`
    (`metricKitObserver`).
 10. **`Sync/MigrationJournal.swift` + `NotificationSpecStore.swift` +

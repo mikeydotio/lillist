@@ -1,5 +1,20 @@
 # Migration-Adjacent Correctness Implementation Plan
 
+> **📍 STATUS — ⬜ PENDING — Wave 4.**
+>
+> Part of the **Foundation Hardening** program. **Single source of truth for progress, wave order, and cross-plan coordination:** [`2026-05-29-foundation-hardening-index.md`](2026-05-29-foundation-hardening-index.md). New to this project? Read the index first, then the review ([`docs/reviews/2026-05-28-foundation-review.md`](../../reviews/2026-05-28-foundation-review.md)) for *why* this work exists, then `CLAUDE.md` for conventions + build/test commands. Execute task-by-task with `superpowers:subagent-driven-development`.
+>
+> ⚠️ **Wave 1 (`store-swap-safety`) is merged to `main`.** It changed several shared files (`MigrationCoordinator`, `PersistenceHost`, `QuarantineManager`, `MigrationJournal`, both `AppEnvironment`s, `PersistenceController`). **Re-Read every file before editing and anchor by code structure — the line numbers in this plan may have drifted.**
+
+> **⚠️ Wave-1 reconciliation:**
+> store-swap-safety (merged, bfd8635..6f008f7) reordered `runMigration` and added a new final init parameter to `MigrationCoordinator`. Before executing Tasks 2/4/5, re-Read `MigrationCoordinator.swift` and re-anchor — the pasted line numbers and step-comment numbers in this plan are stale.
+> - The `.finalizing` block is now `// 8. finalize.` at lines 247-255 (not `// 7.`, not ~207-214). Insert Task 2's `restoreSteadyState` call between `emit(.finalizing)` and `try journal.clear()` there; do not paste the `// 7. finalize.` comment.
+> - The `replaceICloudWithLocal` CloudKit-mutation block is now `// 6. cloudkit-side mutation` at lines 223-235 (not `// 4`, not ~176-187). Insert Task 4's pre-erase account guard as the first statement inside `if op == .replaceICloudWithLocal {` there.
+> - The init now ends with `localStoreRowCount: @escaping @Sendable () async -> Int = { 1 }` (the Wave-1 add). Append Task 4's `accountStateProvider:` param AFTER `localStoreRowCount:`, and add its stored property after the existing `localStoreRowCount` property (lines 44-48), not directly after `cloudKitContainerIdentifier`.
+> - Both AppEnvironment `MigrationCoordinator(...)` calls now end with `localStoreRowCount: localStoreRowCount` (iOS:203, macOS:194). When adding `preferencesStore:` after `notificationScheduler:`, KEEP the existing `localStoreRowCount:` line — do not paste the plan's verbatim block, which omits it.
+> - `MigrationJournal.isInFlight` is now at line 124 (the struct gained a custom Codable impl for the `quarantineBackupID`→`quarantineFolderName` rename). Anchor Task 3's `isStale` insert on the verbatim `isInFlight` line, ignore the '~84'.
+> - No test in this plan needs changing for the rename; `quarantineBackupID` is gone but nothing here references it.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Restore correct notification + sync steady-state after a sync-mode migration, make the migration journal report staleness so only the main-app recovery sheet acts on a crashed migration, tell the truth in `PauseReason`'s docstring (with an optional pre-erase account-identity guard), and prevent re-entrant `runMigration` calls from corrupting the journal.
