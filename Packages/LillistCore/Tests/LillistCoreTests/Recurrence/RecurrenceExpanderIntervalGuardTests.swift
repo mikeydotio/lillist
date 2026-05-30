@@ -70,4 +70,40 @@ struct RecurrenceExpanderIntervalGuardTests {
 
     @Test("yearly interval -1 is finite")
     func yearlyNegative() { expectTreatedAsOne(freq: .yearly, invalid: -1) }
+
+    // MARK: - High-side guard (untrusted positive interval)
+    //
+    // The low-side clamp is not enough: a huge POSITIVE interval forced past
+    // the boundary overflows the monthly month-scan bound `12 * n + 1` (a trap)
+    // or forces an O(interval) scan (an effective hang). These force `Int.max`
+    // post-construction and assert the expander still returns a finite,
+    // non-empty result rather than crashing or spinning.
+
+    private func expectFiniteNonEmpty(
+        freq: RecurrenceRule.Frequency,
+        invalid: Int,
+        byDay: [Weekday]? = nil,
+        bySetPos: [Int]? = nil
+    ) {
+        var rule = RecurrenceRule.CalendarRule(
+            freq: freq, interval: 1, byDay: byDay, bySetPos: bySetPos
+        )
+        rule.interval = invalid // defeat the boundary clamp
+        let out = RecurrenceExpander.nextOccurrences(
+            after: seed, rule: rule, calendar: calendar, count: 3
+        )
+        #expect(out.isEmpty == false)
+        #expect(out == out.sorted())
+    }
+
+    @Test("monthly Int.max interval does not overflow-trap the month-scan bound")
+    func monthlyHugeInterval() { expectFiniteNonEmpty(freq: .monthly, invalid: .max) }
+
+    @Test("monthly by-set-pos Int.max interval does not overflow-trap")
+    func monthlyBySetPosHugeInterval() {
+        expectFiniteNonEmpty(freq: .monthly, invalid: .max, byDay: [.monday], bySetPos: [1])
+    }
+
+    @Test("yearly Int.max interval stays finite (no unrepresentable-year spin)")
+    func yearlyHugeInterval() { expectFiniteNonEmpty(freq: .yearly, invalid: .max) }
 }

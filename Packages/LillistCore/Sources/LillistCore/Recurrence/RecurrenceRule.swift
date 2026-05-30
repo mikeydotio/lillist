@@ -64,17 +64,40 @@ public enum RecurrenceRule: Codable, Sendable, Equatable {
             self.until = try c.decodeIfPresent(Date.self, forKey: .until)
         }
 
-        /// Clamps an interval to the valid `>= 1` range. An interval of `0`
+        /// The largest recurrence interval the engine will honor. The recurrence
+        /// editor bounds its stepper to `1...365`, so no first-party rule ever
+        /// approaches this; it exists purely as a backstop for *untrusted*
+        /// `interval` values (CloudKit decode / Importer / CLI). Left unbounded,
+        /// a huge positive interval overflows the expander's `12 * n + 1`
+        /// month-scan bound (a trap) or forces an `O(interval)` month scan (an
+        /// effective hang) — the same untrusted-input-crashes-the-expander class
+        /// the low-side clamp closes, from the high side (rec-1).
+        static let maxInterval = 1000
+
+        /// Clamps a raw interval into the honored `1...maxInterval` range,
+        /// **without** logging. The expander calls this as silent
+        /// defense-in-depth at every step/modulo site, so even a rule whose
+        /// `interval` field is forced out of range *after* construction can
+        /// neither divide-by-zero, integer-overflow, nor loop-trap (rec-2).
+        static func clampedInterval(_ raw: Int) -> Int {
+            min(maxInterval, max(1, raw))
+        }
+
+        /// Clamps an interval to the honored `1...maxInterval` range, logging a
+        /// warning when it has to change the value. An interval of `0`
         /// divide-by-zero-crashes the monthly expander and loop-traps the
-        /// daily/weekly steps; a negative interval walks backwards forever.
-        /// We normalize rather than throw so a single corrupt sync record
-        /// can't strip recurrence off the series entirely (rec-1).
+        /// daily/weekly steps; a negative interval walks backwards forever; a
+        /// huge positive interval overflows/hangs the month scan. We normalize
+        /// rather than throw so a single corrupt sync record can't strip
+        /// recurrence off the series entirely (rec-1).
         private static func normalizedInterval(_ raw: Int) -> Int {
-            guard raw < 1 else { return raw }
-            RecurrenceLog.normalization.warning(
-                "CalendarRule interval \(raw, privacy: .public) out of range; clamped to 1"
-            )
-            return 1
+            let clamped = clampedInterval(raw)
+            if clamped != raw {
+                RecurrenceLog.normalization.warning(
+                    "CalendarRule interval \(raw, privacy: .public) out of range; clamped to \(clamped, privacy: .public)"
+                )
+            }
+            return clamped
         }
     }
 

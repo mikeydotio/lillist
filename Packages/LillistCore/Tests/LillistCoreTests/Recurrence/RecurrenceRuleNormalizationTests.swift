@@ -32,6 +32,20 @@ struct RecurrenceRuleNormalizationTests {
         }
     }
 
+    @Test("init clamps a huge positive interval down to the max")
+    func initClampsHuge() throws {
+        for freq in Self.allFrequencies {
+            let rule = RecurrenceRule.CalendarRule(freq: freq, interval: .max)
+            #expect(rule.interval == RecurrenceRule.CalendarRule.maxInterval)
+        }
+    }
+
+    @Test("init preserves an interval exactly at the max")
+    func initPreservesMax() throws {
+        let rule = RecurrenceRule.CalendarRule(freq: .daily, interval: RecurrenceRule.CalendarRule.maxInterval)
+        #expect(rule.interval == RecurrenceRule.CalendarRule.maxInterval)
+    }
+
     // MARK: - JSON decode boundary (CloudKit / Importer / CLI surface)
 
     /// Builds raw JSON matching `RecurrenceRule`'s discriminator layout with an
@@ -71,6 +85,21 @@ struct RecurrenceRuleNormalizationTests {
                 continue
             }
             #expect(cal.interval == 1)
+        }
+    }
+
+    @Test("decode clamps a huge positive interval down to the max")
+    func decodeClampsHuge() throws {
+        for freq in Self.allFrequencies {
+            let decoded = try JSONDecoder().decode(
+                RecurrenceRule.self,
+                from: calendarJSON(freq: freq, interval: .max)
+            )
+            guard case .calendar(let cal) = decoded else {
+                Issue.record("expected .calendar for \(freq)")
+                continue
+            }
+            #expect(cal.interval == RecurrenceRule.CalendarRule.maxInterval)
         }
     }
 
