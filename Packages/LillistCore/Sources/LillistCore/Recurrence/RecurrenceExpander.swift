@@ -50,7 +50,8 @@ public enum RecurrenceExpander {
     ) -> Date? {
         switch rule.freq {
         case .daily:
-            return calendar.date(byAdding: .day, value: rule.interval, to: previous)
+            let n = max(1, rule.interval)
+            return calendar.date(byAdding: .day, value: n, to: previous)
         case .weekly:
             return weeklyStep(from: previous, rule: rule, calendar: calendar)
         case .monthly:
@@ -65,8 +66,9 @@ public enum RecurrenceExpander {
         rule: RecurrenceRule.CalendarRule,
         calendar: Calendar
     ) -> Date? {
+        let n = max(1, rule.interval)
         guard let byDay = rule.byDay, byDay.isEmpty == false else {
-            return calendar.date(byAdding: .weekOfYear, value: rule.interval, to: previous)
+            return calendar.date(byAdding: .weekOfYear, value: n, to: previous)
         }
         let sortedDays = byDay.sorted { $0.calendarComponent < $1.calendarComponent }
         let previousWeekday = calendar.component(.weekday, from: previous)
@@ -76,7 +78,7 @@ public enum RecurrenceExpander {
         }
         let firstNext = sortedDays.first!
         let daysToEndOfWeek = 7 - previousWeekday + firstNext.calendarComponent
-        let totalDays = daysToEndOfWeek + 7 * (rule.interval - 1)
+        let totalDays = daysToEndOfWeek + 7 * (n - 1)
         return calendar.date(byAdding: .day, value: totalDays, to: previous)
     }
 
@@ -95,13 +97,14 @@ public enum RecurrenceExpander {
                 calendar: calendar
             )
         }
+        let n = max(1, rule.interval)
         let targetDays = rule.byMonthDay ?? [calendar.component(.day, from: previous)]
         var monthOffset = 0
-        while monthOffset <= 12 * max(rule.interval, 1) + 1 {
+        while monthOffset <= 12 * n + 1 {
             guard let monthStart = calendar.date(byAdding: .month, value: monthOffset, to: previous) else {
                 return nil
             }
-            if monthOffset > 0 && monthOffset % rule.interval != 0 {
+            if monthOffset > 0 && monthOffset % n != 0 {
                 monthOffset += 1
                 continue
             }
@@ -123,12 +126,13 @@ public enum RecurrenceExpander {
         interval: Int,
         calendar: Calendar
     ) -> Date? {
+        let n = max(1, interval)
         var monthOffset = 0
-        while monthOffset <= 12 * max(interval, 1) + 1 {
+        while monthOffset <= 12 * n + 1 {
             guard let monthAnchor = calendar.date(byAdding: .month, value: monthOffset, to: previous) else {
                 return nil
             }
-            if monthOffset > 0 && monthOffset % interval != 0 {
+            if monthOffset > 0 && monthOffset % n != 0 {
                 monthOffset += 1
                 continue
             }
@@ -209,7 +213,8 @@ public enum RecurrenceExpander {
         let hour = calendar.component(.hour, from: previous)
         let minute = calendar.component(.minute, from: previous)
         let second = calendar.component(.second, from: previous)
-        var year = calendar.component(.year, from: previous) + rule.interval
+        let n = max(1, rule.interval)
+        var year = calendar.component(.year, from: previous) + n
 
         for _ in 0..<40 {
             var c = DateComponents()
@@ -224,7 +229,7 @@ public enum RecurrenceExpander {
                calendar.component(.month, from: date) == month {
                 return date
             }
-            year += rule.interval
+            year += n
         }
         return nil
     }
