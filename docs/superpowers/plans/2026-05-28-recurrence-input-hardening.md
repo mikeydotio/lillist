@@ -1,6 +1,26 @@
 # Recurrence Input Hardening Implementation Plan
 
-> **📍 STATUS — ⬜ PENDING — **the remaining Wave 1 P0; this is the immediate next task** (HIGH: `interval==0` crash on synced/imported data).**
+> **📍 STATUS — ✅ MERGED to `main`** (commits `758a14b`..`b6b80dd`; full
+> LillistCore suite green, warning-free). Closed **rec-1, rec-2, stores-7**.
+>
+> **Two executor deviations (both verified RED→GREEN):**
+> 1. **Task 4 test rewritten `count=2` → `count=3`.** The plan's `count=2`
+>    scenario *cannot* exercise the soft-delete fix — a `count=2` series reaches
+>    its budget on the first close (seed + spawn = 2 live), nilling
+>    `nextOccurrenceAfter` before any trash matters, and trashing never
+>    recomputes it. The `count=3` test trashes a live instance *while the series
+>    is still spawning*; the source fix matches the plan verbatim.
+> 2. **Added a high-side interval clamp** (`CalendarRule.maxInterval = 1000` +
+>    two-sided `clampedInterval`) after a post-merge adversarial audit found the
+>    plan's `max(1, …)` clamp was *one-sided*: a huge **positive** untrusted
+>    `interval` overflowed the monthly `12 * n + 1` bound (trap) / forced an
+>    O(interval) scan (hang) — the same crash class rec-1 targets, from the high
+>    side. Applied at the boundary (logging) and every expander site (silent).
+> 3. **Two non-crash residuals logged, not silently fixed** (index #8/#9):
+>    non-positive `count` semantics (existing tested behavior is "count=0 ⇒
+>    empty"; a product call) and `byMonthDay`/`bySetPos`/AfterCompletion-interval
+>    range. A `count`-normalization attempt was **reverted** because it reversed
+>    the deliberate, tested `count=0 ⇒ empty` decision without sign-off.
 >
 > Part of the **Foundation Hardening** program. **Single source of truth for progress, wave order, and cross-plan coordination:** [`2026-05-29-foundation-hardening-index.md`](2026-05-29-foundation-hardening-index.md). New to this project? Read the index first, then the review ([`docs/reviews/2026-05-28-foundation-review.md`](../../reviews/2026-05-28-foundation-review.md)) for *why* this work exists, then `CLAUDE.md` for conventions + build/test commands. Execute task-by-task with `superpowers:subagent-driven-development`.
 >

@@ -39,15 +39,26 @@ CloudKit, XCTest + Swift Testing, xcodegen, GitHub Actions (new).
   *live-container* swap tests execute only on a **code-signed** simulator host
   (CI or a developer Mac) — verify them there:
   `xcodebuild test -workspace Lillist.xcworkspace -scheme Lillist-iOS -destination 'platform=iOS Simulator,name=iPhone 17,OS=26.2' -only-testing:Lillist-iOSAppHostedTests`.
-- ⬜ **Wave 1 · `recurrence-input-hardening`** — **NOT done. This is the
-  immediate next task** (P0, HIGH: `interval==0` crashes the recurrence expander
-  on synced / imported / CLI data). Do this *before* any Wave 2 work.
-- ⬜ **Waves 2–7** — all pending. Follow the wave order + serial chains below.
+- ✅ **Wave 1 · `recurrence-input-hardening`** — **merged to `main`** (commits
+  `758a14b`..`b6b80dd`; full LillistCore suite green, warning-free). Closed
+  rec-1, rec-2, stores-7. A post-merge **adversarial audit** found and closed an
+  additional crash the plan's "0 or negative" scope missed: a huge *positive*
+  untrusted `interval` overflowed the monthly `12 * n + 1` bound (trap) / forced
+  an O(interval) scan (hang). Now bounded by `CalendarRule.maxInterval` (1000) +
+  a two-sided `clampedInterval` at the boundary **and** every expander site. Two
+  non-crash follow-ups were logged as residuals (#8, #9 below), **not**
+  silently fixed: non-positive `count` semantics (existing tested behavior is
+  "count=0 ⇒ empty series" — changing it is a product call) and
+  `byMonthDay`/`bySetPos`/AfterCompletion-interval out-of-range.
+- ⬜ **Wave 1 COMPLETE. Next: Wave 2** — `breadcrumb-truthfulness` (must precede
+  `background-context-seam`), parallel with `fractional-ordering-compaction`,
+  `predicate-parity`, `link-preview-ssrf-guards`.
+- ⬜ **Waves 2–7** — pending. Follow the wave order + serial chains below.
 
 ### Progress checklist
 
-- **Wave 1 (P0):** ✅ store-swap-safety · ⬜ **recurrence-input-hardening ← NEXT**
-- **Wave 2 (P1):** ⬜ breadcrumb-truthfulness · ⬜ fractional-ordering-compaction · ⬜ predicate-parity · ⬜ link-preview-ssrf-guards
+- **Wave 1 (P0):** ✅ store-swap-safety · ✅ recurrence-input-hardening
+- **Wave 2 (P1):** ⬜ **breadcrumb-truthfulness ← NEXT** · ⬜ fractional-ordering-compaction · ⬜ predicate-parity · ⬜ link-preview-ssrf-guards
 - **Wave 3 (P1):** ⬜ cloudkit-convergence · ⬜ resolve-inert-features
 - **Wave 4:** ⬜ concurrency-stress-tests · ⬜ migration-adjacent-correctness · ⬜ background-context-seam
 - **Wave 5 (P2):** ⬜ crash-reporter-privacy · ⬜ app-layer-test-rehab
@@ -320,6 +331,21 @@ so coverage isn't overstated:
 7. **`predicate-parity` rules-5** — confirm the executor adds the explicit
    `RelativeDate.weeksFromNow` integer-overflow clamp, not just operator
    alignment.
+8. **Non-positive recurrence `count` semantics** (`recurrence-input-hardening`
+   audit, LOW) — a present-but-non-positive `count` from a corrupt sync record
+   currently yields an **empty/disabled series**, which is the existing *tested*
+   behavior (`RecurrenceExpanderLimitTests."count=0 yields no occurrences"`).
+   The audit noted this is the same "one corrupt record strips recurrence" class
+   the `interval` fix closes, but flipping it to "treat `count <= 0` as unbounded"
+   reverses a deliberate prior decision — a **product call left to the user**, not
+   silently changed. (An attempted fix was reverted for exactly this reason.)
+9. **Recurrence out-of-range field values** (`recurrence-input-hardening` audit,
+   INFO — all confirmed **non-crashing**) — untrusted `byMonthDay` outside
+   `1...31` and `bySetPos == 0`/out-of-range yield a silently *dead* rule (guarded
+   by `range.contains` / `indices.contains`, no trap); a huge-but-finite
+   `AfterCompletionRule.interval` (Double) decodes fine (JSONDecoder rejects
+   `NaN`/`Inf`) and produces a far-future spawn. None crash; left as abuse-
+   resistance hardening if ever prioritized.
 
 ## Suggested commit/PR cadence
 
