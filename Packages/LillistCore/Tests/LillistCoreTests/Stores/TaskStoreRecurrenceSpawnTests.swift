@@ -104,6 +104,48 @@ struct TaskStoreRecurrenceSpawnTests {
         #expect(try await series.fetch(id: seriesID).nextOccurrenceAfter == nil)
     }
 
+    @Test("Trashing an instance does not consume the count budget")
+    func trashedInstanceDoesNotConsumeCount() async throws {
+        let p = try await TestStore.make()
+        let tasks = TaskStore(persistence: p)
+        let series = SeriesStore(persistence: p)
+        let seedID = try await tasks.create(title: "Budgeted")
+        try await tasks.update(id: seedID) { $0.start = Date(timeIntervalSince1970: 1_800_000_000) }
+        // count=3: a count=2 series hits its budget on the very first close
+        // (seed + spawn = 2 live -> nextOccurrenceAfter nil before any trash
+        // can matter). count=3 leaves the series still spawning after the
+        // first close, so trashing a live instance can actually free a slot.
+        let rule = RecurrenceRule.calendar(.init(freq: .daily, interval: 1, count: 3))
+        let seriesID = try await series.create(fromSeedTask: seedID, rule: rule)
+
+        // Close the seed (instance #1) -> spawns instance #2. Two live
+        // instances against a budget of 3, so the series keeps a future
+        // occurrence.
+        try await tasks.transition(id: seedID, to: .closed)
+        let afterFirst = try await tasks.children(of: nil).filter { $0.title == "Budgeted" }
+        #expect(afterFirst.count == 2)
+        #expect(try await series.fetch(id: seriesID).nextOccurrenceAfter != nil)
+
+        // Trash the original seed instance, leaving only instance #2 live. The
+        // trashed seed must NOT count toward the count=3 budget.
+        try await tasks.softDelete(id: seedID)
+
+        // Close the surviving live instance (#2) -> spawns instance #3. Were
+        // the trashed seed still counted (3 total >= 3) the series would stop
+        // here; excluding it (2 live < 3) keeps a future occurrence alive.
+        let liveOpenID = afterFirst.first { $0.id != seedID && $0.status == .todo }!.id
+        try await tasks.transition(id: liveOpenID, to: .closed)
+
+        // Series still has a future occurrence (budget not exhausted by the
+        // trashed instance) -- this is the assertion that distinguishes the
+        // fix from the bug.
+        #expect(try await series.fetch(id: seriesID).nextOccurrenceAfter != nil)
+        // Exactly two LIVE instances exist (#2 closed + #3 todo); the trashed
+        // seed is filtered out of `children(of:)`, which drops deletedAt != nil.
+        let live = try await tasks.children(of: nil).filter { $0.title == "Budgeted" }
+        #expect(live.count == 2)
+    }
+
     @Test("Series with until that has passed spawns no more")
     func untilLimit() async throws {
         let p = try await TestStore.make()
