@@ -43,6 +43,16 @@ public enum RecurrenceExpander {
 
     // MARK: - Frequency dispatch
 
+    /// The effective interval the steppers use: a two-sided clamp into
+    /// `1...maxInterval`. Silent defense-in-depth so that even a `CalendarRule`
+    /// whose `interval` was forced out of range after construction (bypassing
+    /// the boundary normalization) can neither divide-by-zero, integer-overflow
+    /// the `12 * n + 1` month-scan bound, nor loop-trap (rec-1/rec-2).
+    @inline(__always)
+    private static func effectiveInterval(_ raw: Int) -> Int {
+        RecurrenceRule.CalendarRule.clampedInterval(raw)
+    }
+
     private static func step(
         from previous: Date,
         rule: RecurrenceRule.CalendarRule,
@@ -50,7 +60,7 @@ public enum RecurrenceExpander {
     ) -> Date? {
         switch rule.freq {
         case .daily:
-            let n = max(1, rule.interval)
+            let n = effectiveInterval(rule.interval)
             return calendar.date(byAdding: .day, value: n, to: previous)
         case .weekly:
             return weeklyStep(from: previous, rule: rule, calendar: calendar)
@@ -66,7 +76,7 @@ public enum RecurrenceExpander {
         rule: RecurrenceRule.CalendarRule,
         calendar: Calendar
     ) -> Date? {
-        let n = max(1, rule.interval)
+        let n = effectiveInterval(rule.interval)
         guard let byDay = rule.byDay, byDay.isEmpty == false else {
             return calendar.date(byAdding: .weekOfYear, value: n, to: previous)
         }
@@ -97,7 +107,7 @@ public enum RecurrenceExpander {
                 calendar: calendar
             )
         }
-        let n = max(1, rule.interval)
+        let n = effectiveInterval(rule.interval)
         let targetDays = rule.byMonthDay ?? [calendar.component(.day, from: previous)]
         var monthOffset = 0
         while monthOffset <= 12 * n + 1 {
@@ -126,7 +136,7 @@ public enum RecurrenceExpander {
         interval: Int,
         calendar: Calendar
     ) -> Date? {
-        let n = max(1, interval)
+        let n = effectiveInterval(interval)
         var monthOffset = 0
         while monthOffset <= 12 * n + 1 {
             guard let monthAnchor = calendar.date(byAdding: .month, value: monthOffset, to: previous) else {
@@ -213,7 +223,7 @@ public enum RecurrenceExpander {
         let hour = calendar.component(.hour, from: previous)
         let minute = calendar.component(.minute, from: previous)
         let second = calendar.component(.second, from: previous)
-        let n = max(1, rule.interval)
+        let n = effectiveInterval(rule.interval)
         var year = calendar.component(.year, from: previous) + n
 
         for _ in 0..<40 {
