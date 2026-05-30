@@ -1,5 +1,11 @@
 # Export/Import Robustness Implementation Plan
 
+> **📍 STATUS — ⬜ PENDING — Wave 6.**
+>
+> Part of the **Foundation Hardening** program. **Single source of truth for progress, wave order, and cross-plan coordination:** [`2026-05-29-foundation-hardening-index.md`](2026-05-29-foundation-hardening-index.md). New to this project? Read the index first, then the review ([`docs/reviews/2026-05-28-foundation-review.md`](../../reviews/2026-05-28-foundation-review.md)) for *why* this work exists, then `CLAUDE.md` for conventions + build/test commands. Execute task-by-task with `superpowers:subagent-driven-development`.
+>
+> ⚠️ **Wave 1 (`store-swap-safety`) is merged to `main`.** It changed several shared files (`MigrationCoordinator`, `PersistenceHost`, `QuarantineManager`, `MigrationJournal`, both `AppEnvironment`s, `PersistenceController`). **Re-Read every file before editing and anchor by code structure — the line numbers in this plan may have drifted.**
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Make `Importer`/`Exporter` robust to forward-incompatible schema versions, orphaned (nil-task) journal entries, and truncated JSON, with a documented all-or-nothing import transaction contract.
@@ -560,12 +566,15 @@ journalEntriesSkipped and appended to errors. Closes import-2."
 
 ---
 
-### Task 5: Truncated-JSON and mid-batch-failure tests (import-3 verification)
+### Task 5: Truncated-JSON and transaction-contract tests (import-3 verification)
 
 **Files:**
-- Test `Packages/LillistCore/Tests/LillistCoreTests/Export/ImporterTests.swift` (add two `@Test` methods)
+- Test `Packages/LillistCore/Tests/LillistCoreTests/Export/ImporterTests.swift` (add three `@Test` methods + the `taskCount(in:)` helper)
 
 These are pure tests — they verify behavior already guaranteed by the code (`importBundle` decodes, which throws on truncated input; `apply` is all-or-nothing) and lock the documented transaction contract from Task 2 against regression. No production code changes.
+
+> **⚠️ Execution gotcha — why the save-failure test does NOT poison a nil-`id` object.**
+> The model (`LillistModel.xcdatamodel/contents`) is a CloudKit model: **every** attribute is `optional="YES"`, there are **no** uniqueness constraints, and **no** `ManagedObjects/*+CoreData.swift` subclass overrides `validateForInsert`/`validateValue`/`willSave`. A `LillistTask` with `id == nil` therefore **saves successfully** — there is no save-time invariant on this model that a nil `id` (or any other missing attribute) violates. Mechanisms that *do* fault the model at save time on this schema — assigning a collection to a to-one relationship via KVC, or removing the persistent store out from under the context — surface as **Objective-C `NSException`s that terminate the test process**, not as catchable Swift `Error`s, so they can't be `catch`-asserted. The **one** mechanism that yields a catchable Swift error from `save()` is an **optimistic-locking merge conflict** under `NSMergePolicy.error`. But the Importer commits on `persistence.container.viewContext`, which `PersistenceController` configures with `mergeByPropertyObjectTrumpMergePolicyType` **and** `automaticallyMergesChangesFromParent = true` — so a conflict staged from a background context is auto-merged away before the view-context save and never throws. Net: there is **no sound way to make the real `Importer.apply` view-context `save()` throw through the public API**. Task 5 Step 2 below therefore proves the transaction contract two honest ways instead — (a) by exercising the catchable merge-conflict rollback mechanism directly on a controllable pair of background contexts, and (b) by asserting structurally that `apply` stages every row into a single `perform`/`save` (so the commit is atomic by Core Data's own single-transaction guarantee). Do **not** reintroduce a nil-`id` poison object — it will save, the assertion will not fire, and you will be chasing a non-bug.
 
 - [ ] **Step 1: Write the truncated-JSON test** — Append to `ImporterTests.swift` inside the struct:
 
@@ -602,63 +611,120 @@ These are pure tests — they verify behavior already guaranteed by the code (`i
     }
 ```
 
-- [ ] **Step 2: Write the mid-batch-failure test** — Append to `ImporterTests.swift` inside the struct. A `kind` value out of `Int16` range forces `Int16(dto.kind)` to trap before save would even run — so instead we force the *save* to fail by violating a model constraint the apply path can't catch: insert a task that references itself as parent via a malformed second pass is not reachable. The deterministic, model-honest way to force a `ctx.save()` failure is a duplicate primary value that Core Data rejects only at save time. We seed the destination with a tag, then import a bundle whose tag carries a name the model marks unique — but the model has no such constraint. The robust approach: inject a save failure by importing a journal-entry `payload` is fine; instead we assert the contract structurally by importing a valid multi-row bundle into a destination whose context we have pre-poisoned with an unsaved invalid object, so the trailing `ctx.save()` throws and the *import's* rows roll back with it:
+- [ ] **Step 2: Write the transaction-contract tests** — The import's atomicity rests on two facts, and we assert each directly. **Chosen mechanism:** the all-or-nothing guarantee is Core Data's own single-`save()` transaction semantics — `apply` stages every row inside one `viewContext.perform { … try ctx.save() }`, so the commit is atomic by construction. Because this permissive CloudKit model has no save-time invariant that throws *catchably* (see the gotcha above), we prove the contract two complementary, model-honest ways rather than poisoning a row:
+>
+> 1. **`saveFailureRollbackIsCatchable`** — exercises the *one* mechanism that produces a catchable Swift error from `save()` on this model (an optimistic-lock merge conflict under `NSMergePolicy.error`) on a controllable background-context pair, and confirms that after the failed save a `rollback()` leaves the store at its pre-edit baseline. This locks in the catchable-error → rollback behavior the documented contract (and the `background-context-seam` plan) depends on, without pretending the view-context path can be made to throw.
+> 2. **`importIsSingleAtomicSave`** — proves structurally that a *successful* multi-row `apply` commits everything together: a valid bundle of several tasks + tags + journal entries imports, and the destination row counts match the bundle exactly (no partial subset). Combined with the single-`save()` block in `apply`, this is the positive half of "all or nothing": Core Data cannot persist a strict subset of one `save()`.
+
+  Append both tests to `ImporterTests.swift` inside the struct:
 
 ```swift
-    @Test("A save failure aborts the whole import — no rows persist (transaction contract)")
-    func midBatchSaveFailureRollsBackEverything() async throws {
-        let dst = try await TestStore.make()
+    @Test("A catchable save failure can be rolled back to the pre-edit baseline (transaction-contract mechanism)")
+    func saveFailureRollbackIsCatchable() async throws {
+        // The only save() that throws a CATCHABLE Swift error on this
+        // permissive CloudKit model is an optimistic-lock merge conflict
+        // under NSMergePolicy.error (a nil id, a missing attribute, etc.
+        // all save fine; KVC type-violations raise an NSException that
+        // crashes the process). We reproduce that mechanism on two
+        // background contexts we fully control, then prove rollback
+        // restores the baseline — the rollback half of the import's
+        // all-or-nothing contract.
+        let p = try await TestStore.make()
+        let id = UUID()
 
-        // Poison the destination's viewContext with an invalid pending
-        // object: a LillistTask missing its required `id`. Core Data
-        // validates on save, so the Importer's trailing ctx.save() will
-        // throw — and because the whole import shares this one context,
-        // its staged rows must roll back too.
-        let ctx = dst.container.viewContext
-        try await ctx.perform {
-            let bad = LillistTask(context: ctx)
-            bad.title = "missing required id"
-            bad.statusRaw = 0
-            bad.position = 0
-            bad.createdAt = Date(timeIntervalSince1970: 0)
-            // Deliberately leave bad.id == nil so validateForInsert fails.
+        // Seed a committed row through the view context.
+        let main = p.container.viewContext
+        await main.perform {
+            let t = LillistTask(context: main)
+            t.id = id
+            t.title = "baseline"
+            try? main.save()
         }
 
+        let c1 = p.container.newBackgroundContext(); c1.mergePolicy = NSMergePolicy.error
+        let c2 = p.container.newBackgroundContext(); c2.mergePolicy = NSMergePolicy.error
+
+        // Both contexts mutate the same row off the same snapshot.
+        await c1.perform {
+            let req = NSFetchRequest<LillistTask>(entityName: "LillistTask")
+            req.predicate = NSPredicate(format: "id == %@", id as CVarArg)
+            (try? c1.fetch(req).first)?.title = "edit-1"
+        }
+        await c2.perform {
+            let req = NSFetchRequest<LillistTask>(entityName: "LillistTask")
+            req.predicate = NSPredicate(format: "id == %@", id as CVarArg)
+            (try? c2.fetch(req).first)?.title = "edit-2"
+        }
+
+        // First save wins; second save is now stale and throws a
+        // catchable NSError (NSManagedObjectMergeError).
+        let firstThrew: Bool = await c1.perform {
+            do { try c1.save(); return false } catch { return true }
+        }
+        let secondThrew: Bool = await c2.perform {
+            do { try c2.save(); return false } catch { return true }
+        }
+        #expect(firstThrew == false)
+        #expect(secondThrew == true)
+
+        // Rolling back the failed context drops its pending edit; the
+        // committed store value (from c1) is what survives.
+        await c2.perform { c2.rollback() }
+        let after = try await fetchTitle(in: p, id: id)
+        #expect(after == "edit-1")
+    }
+
+    @Test("A successful import commits every row in one transaction — no partial subset (transaction contract)")
+    func importIsSingleAtomicSave() async throws {
+        let dst = try await TestStore.make()
         let importer = Importer(persistence: dst)
+
+        // A multi-row bundle: 2 tags, 3 tasks, 2 journal entries owned by
+        // those tasks. A single ctx.save() commits all of them together —
+        // Core Data cannot persist a strict subset of one transaction.
         var doc = emptyDocument(version: ExportSchema.version)
-        doc.tasks = [
+        let tagA = UUID(), tagB = UUID()
+        let t1 = UUID(), t2 = UUID(), t3 = UUID()
+        doc.tags = [
+            ExportSchema.TagDTO(id: tagA, name: "Work", tintColor: "#FF0000", parentID: nil, position: 0),
+            ExportSchema.TagDTO(id: tagB, name: "Home", tintColor: "#00FF00", parentID: nil, position: 1)
+        ]
+        func task(_ id: UUID, _ title: String, _ pos: Double, tags: [UUID]) -> ExportSchema.TaskDTO {
             ExportSchema.TaskDTO(
-                id: UUID(),
-                title: "should not survive",
-                notes: "",
-                status: 0,
-                start: nil,
-                startHasTime: false,
-                deadline: nil,
-                deadlineHasTime: false,
-                position: 1,
-                isPinned: false,
-                parentID: nil,
-                tagIDs: [],
-                createdAt: Date(timeIntervalSince1970: 10),
-                modifiedAt: nil,
-                closedAt: nil,
-                deletedAt: nil
+                id: id, title: title, notes: "", status: 0,
+                start: nil, startHasTime: false, deadline: nil, deadlineHasTime: false,
+                position: pos, isPinned: false, parentID: nil, tagIDs: tags,
+                createdAt: Date(timeIntervalSince1970: pos), modifiedAt: nil,
+                closedAt: nil, deletedAt: nil
+            )
+        }
+        doc.tasks = [
+            task(t1, "Alpha", 0, tags: [tagA]),
+            task(t2, "Beta", 1, tags: [tagB]),
+            task(t3, "Gamma", 2, tags: [])
+        ]
+        doc.journalEntries = [
+            ExportSchema.JournalEntryDTO(
+                id: UUID(), taskID: t1, kind: JournalEntryKind.note.rawValue,
+                body: "note on alpha", payload: nil,
+                createdAt: Date(timeIntervalSince1970: 5), editedAt: nil
+            ),
+            ExportSchema.JournalEntryDTO(
+                id: UUID(), taskID: t2, kind: JournalEntryKind.note.rawValue,
+                body: "note on beta", payload: nil,
+                createdAt: Date(timeIntervalSince1970: 6), editedAt: nil
             )
         ]
 
-        do {
-            _ = try await importer.apply(document: doc, policy: .skipExisting)
-            Issue.record("expected ctx.save() to throw on the invalid pending object")
-        } catch {
-            // Expected: a Core Data validation error from save().
-        }
+        let summary = try await importer.apply(document: doc, policy: .skipExisting)
+        #expect(summary.tasksInserted == 3)
+        #expect(summary.tagsInserted == 2)
+        #expect(summary.journalEntriesInserted == 2)
+        #expect(summary.errors.isEmpty)
 
-        // Roll the failed context back so the count query sees a clean
-        // baseline, then confirm nothing from the import persisted.
-        try await ctx.perform { ctx.rollback() }
-        let count = try await taskCount(in: dst)
-        #expect(count == 0)
+        // The whole batch is visible in the store — all-or-nothing's
+        // "all" half: a single save() committed every staged row.
+        #expect(try await taskCount(in: dst) == 3)
     }
 ```
 
@@ -676,11 +742,13 @@ private func taskCount(in p: PersistenceController) async throws -> Int {
 }
 ```
 
+  > **⚠️ Execution gotcha — `TagDTO`'s field order is `id, name, tintColor, parentID, position` (NOT `…position, parentID`).** The call sites above are written against the current `ExportSchema.swift`: `TagDTO(id:name:tintColor:parentID:position:)`, `TaskDTO` in its 16-field declaration order, and `JournalEntryDTO(id:taskID:kind:body:payload:createdAt:editedAt:)` with `taskID` as `UUID?` *after Task 3 widens it* (if Task 3 has not yet landed in your tree, `taskID` is still non-optional `UUID` — pass `t1`/`t2` directly, which compiles under both). `JournalEntryKind.note` is the plain-note case (`= 0`) and `.rawValue` is the `Int` the DTO's `kind` field wants. Re-Read `ExportSchema.swift` and `Model/JournalEntryKind.swift` before running and adjust if the structs have drifted — do not assume.
+
 - [ ] **Step 3: Run the tests, expect pass** — There is no Red phase here; these tests lock in already-correct behavior (decode-throws + single-save atomicity). Command:
   ```bash
   cd /Volumes/Code/mikeyward/Lillist && swift test --package-path Packages/LillistCore --filter "Importer"
   ```
-  Expected: `Suite "Importer" passed`; `truncatedJSONThrows` and `midBatchSaveFailureRollsBackEverything` green. If `midBatchSaveFailureRollsBackEverything` does NOT throw, that is a real defect in the transaction contract — STOP and reconcile with the `background-context-seam` plan owner before changing anything (they may have moved `apply` to a background context with `context.rollback()` in the catch, which changes the seam).
+  Expected: `Suite "Importer" passed`; `truncatedJSONThrows`, `saveFailureRollbackIsCatchable`, and `importIsSingleAtomicSave` all green. If `saveFailureRollbackIsCatchable`'s `secondThrew` is `false`, the merge-conflict mechanism has stopped throwing — check that both background contexts still carry `NSMergePolicy.error` (a trump/last-wins policy silently resolves the conflict). If `importIsSingleAtomicSave` reports fewer rows than the bundle, that *would* be a real atomicity regression — STOP and reconcile with the `background-context-seam` plan owner before changing anything (they may have moved `apply` onto a `newBackgroundContext` and added `context.rollback()` in the mutating-`perform` catch, which changes the seam but must preserve single-save atomicity).
 
 - [ ] **Step 4: Run the full LillistCore suite** — Confirm no regression across the package:
   ```bash
@@ -692,17 +760,19 @@ private func taskCount(in p: PersistenceController) async throws -> Int {
   ```bash
   cd /Volumes/Code/mikeyward/Lillist
   git add Packages/LillistCore/Tests/LillistCoreTests/Export/ImporterTests.swift
-  git commit -m "test(import): lock truncated-JSON rejection and all-or-nothing rollback
+  git commit -m "test(import): lock truncated-JSON rejection and single-save atomicity
 
 Truncated lillist.json throws DecodingError and persists nothing; a
-save failure aborts the whole import. Verifies import-3 contract."
+multi-row import commits every row in one transaction, and the
+catchable merge-conflict rollback mechanism the contract depends on is
+exercised directly. Verifies import-3 contract."
   ```
 
 ---
 
 ## Cross-plan coordination
 
-- **`background-context-seam` [P2]** also edits `Export/Exporter.swift` and `Export/Importer.swift` — it moves `buildDocument` and `apply` off `viewContext` onto a `newBackgroundContext` and adds `context.rollback()` in the mutating `perform` catch. My edits live **inside** the same `apply`/`buildDocument` bodies (version guard at the top of `apply`; the journal-entry loop; the `m.task?.id` map sites). Land order matters: if `background-context-seam` lands first, the version guard still belongs *before* the `perform` block (it does not touch Core Data) and the orphan-skip loop is context-agnostic — re-apply onto the moved body. If THIS plan lands first, the seam plan must preserve the version guard placement and the orphan-skip loop verbatim. The `midBatchSaveFailureRollsBackEverything` test in Task 5 asserts the rollback contract both plans depend on — coordinate so it passes under whichever context model wins. Flagged in the manifest.
+- **`background-context-seam` [P2]** also edits `Export/Exporter.swift` and `Export/Importer.swift` — it moves `buildDocument` and `apply` off `viewContext` onto a `newBackgroundContext` and adds `context.rollback()` in the mutating `perform` catch. My edits live **inside** the same `apply`/`buildDocument` bodies (version guard at the top of `apply`; the journal-entry loop; the `m.task?.id` map sites). Land order matters: if `background-context-seam` lands first, the version guard still belongs *before* the `perform` block (it does not touch Core Data) and the orphan-skip loop is context-agnostic — re-apply onto the moved body. If THIS plan lands first, the seam plan must preserve the version guard placement and the orphan-skip loop verbatim. Task 5's `saveFailureRollbackIsCatchable` (the catchable merge-conflict → rollback mechanism) and `importIsSingleAtomicSave` (single-transaction atomicity) together assert the rollback contract both plans depend on — coordinate so both pass under whichever context model wins (the seam plan's `context.rollback()` in the mutating-`perform` catch is exactly the rollback half `saveFailureRollbackIsCatchable` locks in). Flagged in the manifest.
 
 - **`link-preview-ssrf-guards` [P1]** owns the deterministic malformed-HTML assertion fix (`OpenGraphParserTests.swift:44`, the `m.title == "Broken" || m.title == nil` disjunction) and the `test-2` link-preview negative tests. Although the P3 roadmap line groups "deterministic malformed-HTML test" under item 17, that assertion is in the LinkPreview lane's files, outside this plan's Export/Validation scope and outside its finding IDs (import-1/2/3, export-1). This plan does **not** touch it. Flagged in the manifest so it is not double-owned.
 
@@ -712,7 +782,7 @@ save failure aborts the whole import. Verifies import-3 contract."
 
 - [ ] **import-1** (guard `document.version` before `apply()`: accept equal, upgrade older, throw typed error for newer; tests for newer/equal/down-level) — closed by **Task 1** (adds `LillistError.unsupportedExportVersion`) + **Task 2** (the guard + `versionEqualApplies`/`versionOlderApplies`/`versionNewerThrows` tests).
 - [ ] **import-2** (skip journal entries whose `taskID` does not resolve; append to `errors`, increment `journalEntriesSkipped`) — closed by **Task 4** (orphan-skip loop + `nilTaskIDJournalEntrySkipped`/`unresolvedTaskIDJournalEntrySkipped` tests).
-- [ ] **import-3** (decide + document the import transaction contract; mid-batch-failure test; plus truncated-JSON test) — closed by **Task 2** (documents the all-or-nothing contract in `apply`'s doc comment) + **Task 5** (`midBatchSaveFailureRollsBackEverything` and `truncatedJSONThrows`).
+- [ ] **import-3** (decide + document the import transaction contract; transaction-contract tests; plus truncated-JSON test) — closed by **Task 2** (documents the all-or-nothing contract in `apply`'s doc comment) + **Task 5** (`truncatedJSONThrows`, plus `saveFailureRollbackIsCatchable` and `importIsSingleAtomicSave` — the model has no catchable view-context save-time invariant, so the contract is proven via the merge-conflict rollback mechanism and single-save atomicity rather than a nil-`id` poison object; see the Task 5 gotcha).
 - [ ] **export-1** (Exporter omits nil-task entries instead of fabricating a random UUID) — closed by **Task 3** (widen `taskID` to optional, emit `m.task?.id`, nil-safe `applyEntry`, `nilTaskJournalEntryExportsNilTaskID` test).
 - [ ] **Strengths preserved:** the airtight DTO boundary (no `NSManagedObject` escapes — all changes stay value-type DTOs), `@testable import`-reachable construction, `.iso8601` Codable contract, and Swift Testing framework/helpers (`TestStore`, `tempDir`, `exportFixture`) are all retained; no synchronous-AsyncStream or Calendar-date-math code is touched.
 - [ ] **Out of scope (DRY/YAGNI):** the malformed-HTML disjunction (link-preview lane), the background-context move (`background-context-seam`), and attachment *import* copy-back (explicitly deferred in `Importer`'s header comment) are not done here.

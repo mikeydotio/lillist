@@ -1,5 +1,11 @@
 # LillistUI Localization-Readiness & Accessibility Correctness Implementation Plan
 
+> **📍 STATUS — ⬜ PENDING — Wave 7.**
+>
+> Part of the **Foundation Hardening** program. **Single source of truth for progress, wave order, and cross-plan coordination:** [`2026-05-29-foundation-hardening-index.md`](2026-05-29-foundation-hardening-index.md). New to this project? Read the index first, then the review ([`docs/reviews/2026-05-28-foundation-review.md`](../../reviews/2026-05-28-foundation-review.md)) for *why* this work exists, then `CLAUDE.md` for conventions + build/test commands. Execute task-by-task with `superpowers:subagent-driven-development`.
+>
+> ⚠️ **Wave 1 (`store-swap-safety`) is merged to `main`.** It changed several shared files (`MigrationCoordinator`, `PersistenceHost`, `QuarantineManager`, `MigrationJournal`, both `AppEnvironment`s, `PersistenceController`). **Re-Read every file before editing and anchor by code structure — the line numbers in this plan may have drifted.**
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Make `LillistUI` structurally ready for localization (declared default language, `.module`-pinned strings, a populated catalog, and a CI extraction-drift lint) and fix two accessibility-correctness defects (phantom no-op reorder actions hidden behind a false doc comment, and a tautological reorder-action test).
@@ -189,7 +195,7 @@ struct ReorderActionDispatch {
 
 - [ ] **Step 4: Run the test, expect pass** — `swift test --package-path Packages/LillistUI --filter ReorderActionDispatch`. Expected: `Suite "ReorderActionDispatch" passed` with 5 tests passing, run summary `Test run with 5 tests ... passed`.
 
-- [ ] **Step 5: Rewire `ReorderActionsModifier` and fix the false doc comment** — in `Packages/LillistUI/Sources/LillistUI/Components/TaskRowView.swift`, replace the entire block on lines 96–113 (the doc comment + `ReorderActionsModifier`) with the code below. Note: the `Text(String(localized:bundle: .module))` form satisfies ui-loc-2 for these four strings; `dispatch.availableActions` drives a `ForEach`-free explicit loop via `ForEach` over the value type, attaching only wired actions.
+- [ ] **Step 5: Rewire `ReorderActionsModifier` and fix the false doc comment** — in `Packages/LillistUI/Sources/LillistUI/Components/TaskRowView.swift`, replace the entire block on lines 96–113 (the doc comment + `ReorderActionsModifier`) with the code below. Note: the `Text(String(localized:bundle: .module))` form satisfies ui-loc-2 for these four strings; `dispatch.availableActions` drives a `reduce(AnyView(content))` fold over the value type, attaching one `.accessibilityAction` per wired action and wrapping each step in `AnyView` to satisfy the opaque-return requirement.
 
 ```swift
 /// Adds a VoiceOver reorder action for each *wired* closure. An action is
@@ -433,7 +439,7 @@ public enum RecurrenceSummaryFormatter {
 }
 ```
 
-- [ ] **Step 4: Run the tests, expect partial failure (catalog not yet populated)** — `swift test --package-path Packages/LillistUI --filter RecurrenceSummaryFormatter`. Expected: the `never` and `interval == 1` cases pass (those keys resolve to their literal source form even without catalog entries), but the plural cases (`Every 2 days`, `Repeats 7 days after completion`) FAIL with output like `Expectation failed: (text → "Every 2 days") == "Every 2 days"` *only once the catalog plural rules exist*. **At this point the literal `%lld` source string substitutes positionally and yields the correct English** (`"Every %lld days"` → `"Every 2 days"`), so these should actually pass too — confirm the run summary reads `Test run with 6 tests ... passed`. (The catalog plural *variations* in Task 4 make non-English locales correct; English correctness already holds via the source format string. If any case fails, the source format string in `countString`'s key is wrong — fix it, do not paper over.)
+- [ ] **Step 4: Run the tests, expect pass** — `swift test --package-path Packages/LillistUI --filter RecurrenceSummaryFormatter`. The English source format string in `countString` substitutes the `%lld` positionally even before the catalog is populated, so all 5 tests pass at this step: `never` and `interval == 1` keys resolve to their literal source form; the `%lld` keys (`"Every %lld days"` → `"Every 2 days"`, `"Repeats %lld days after completion"` → `"Repeats 7 days after completion"`) resolve correctly via `String(format:locale:)`. Confirm the run summary reads `Test run with 5 tests ... passed`. (The catalog plural *variations* authored in Task 4 Step 5 make non-English locales correct; English correctness already holds via the source format string. If any case fails, the source format string in `countString`'s key is wrong — fix it, do not paper over.)
 
 - [ ] **Step 5: Swap the view model from `humanSummary` to `summary`** — in `Packages/LillistUI/Sources/LillistUI/Recurrence/RecurrenceEditorViewModel.swift`, replace the entire `humanSummary` computed property (lines 99–121, from the `/// Human-readable summary…` doc comment through its closing `}`) with the structured `summary` property below.
 
@@ -536,7 +542,7 @@ Replace it with:
     }
 ```
 
-- [ ] **Step 9: Run LillistUI tests, expect pass** — `swift test --package-path Packages/LillistUI`. Expected: all suites pass; the run summary shows **33 tests** (32 from Task 1 − 6 old `humanSummary` tests + 7 new `summary` tests = 33). Warning-clean.
+- [ ] **Step 9: Run LillistUI tests, expect pass** — `swift test --package-path Packages/LillistUI`. Expected: all suites pass; the run summary shows **38 tests** (32 from Task 1 + 5 new `RecurrenceSummaryFormatterTests` − 6 old `humanSummary` tests + 7 new `summary` tests = 38). Warning-clean.
 
 - [ ] **Step 10: Verify both app targets still build (the `humanSummary` callers were rewired)** —
 ```bash
@@ -607,7 +613,7 @@ grep -rn 'accessibilityAction(named: Text("' Packages/LillistUI/Sources/ || echo
 ```
 Expected: `CLEAN: no bare-Text accessibility actions remain`.
 
-- [ ] **Step 4: Run LillistUI tests, expect pass** — `swift test --package-path Packages/LillistUI`. Expected: still **33 tests**, `Test run with 33 tests ... passed`, warning-clean.
+- [ ] **Step 4: Run LillistUI tests, expect pass** — `swift test --package-path Packages/LillistUI`. Expected: still **38 tests**, `Test run with 38 tests ... passed`, warning-clean.
 
 - [ ] **Step 5: Commit** —
 ```bash
@@ -780,7 +786,7 @@ Expected: `VALID JSON` and `xcstringstool OK` (non-zero exit if the file is malf
 cd /Volumes/Code/mikeyward/Lillist
 swift test --package-path Packages/LillistUI --filter RecurrenceSummaryFormatter 2>&1 | tail -5
 ```
-Expected: `Test run with 6 tests ... passed` — now the formatter's `%lld` plural cases resolve through the catalog's `en` `one`/`other` variations (verifying singular like `Every 1 …` would read correctly were it ever requested, and `Every 2 days` reads plural).
+Expected: `Test run with 5 tests ... passed` — now the formatter's `%lld` plural cases resolve through the catalog's `en` `one`/`other` variations (verifying singular like `Every 1 …` would read correctly were it ever requested, and `Every 2 days` reads plural).
 
 - [ ] **Step 8: Commit** —
 ```bash
@@ -943,7 +949,7 @@ Closes ui-loc-2."
 
 **Files:** none (verification only).
 
-- [ ] **Step 1: Full LillistUI host suite** — `cd /Volumes/Code/mikeyward/Lillist && swift test --package-path Packages/LillistUI 2>&1 | tail -8`. Expected: `Test run with 33 tests ... passed`, warning-clean.
+- [ ] **Step 1: Full LillistUI host suite** — `cd /Volumes/Code/mikeyward/Lillist && swift test --package-path Packages/LillistUI 2>&1 | tail -8`. Expected: `Test run with 38 tests ... passed`, warning-clean.
 
 - [ ] **Step 2: iOS snapshot/tour tests still pass** (TaskRowView/recurrence rendering changed):
 ```bash

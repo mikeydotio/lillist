@@ -1,5 +1,16 @@
 # Resolve Inert Features Implementation Plan
 
+> **📍 STATUS — ⬜ PENDING — Wave 3.**
+>
+> Part of the **Foundation Hardening** program. **Single source of truth for progress, wave order, and cross-plan coordination:** [`2026-05-29-foundation-hardening-index.md`](2026-05-29-foundation-hardening-index.md). New to this project? Read the index first, then the review ([`docs/reviews/2026-05-28-foundation-review.md`](../../reviews/2026-05-28-foundation-review.md)) for *why* this work exists, then `CLAUDE.md` for conventions + build/test commands. Execute task-by-task with `superpowers:subagent-driven-development`.
+>
+> ⚠️ **Wave 1 (`store-swap-safety`) is merged to `main`.** It changed several shared files (`MigrationCoordinator`, `PersistenceHost`, `QuarantineManager`, `MigrationJournal`, both `AppEnvironment`s, `PersistenceController`). **Re-Read every file before editing and anchor by code structure — the line numbers in this plan may have drifted.**
+
+> **⚠️ Wave-1 reconciliation:**
+> store-swap-safety merged (bfd8635..6f008f7) and added the `sync-7` `localStoreRowCount` closure block to BOTH `AppEnvironment.swift` inits, shifting every bootstrap-region line number in Task 8 and Task 10 down by ~11 lines.
+> Re-Read both files and anchor by TEXT, not the plan's line numbers. Verified current anchors: iOS — `await notificationScheduler.bootstrap()` is line 274 (plan says 263); `self.accountState = await accountStateMonitor.currentState` is 286 (plan says 275); `startObservingAccountState()` 287; `installCanaryLifecycleObservers()` 289; `startObservingSyncMode()` 350. macOS — `notificationScheduler.bootstrap()` 246 (plan says 235); `self.accountState = …` 260 (plan says 249); `startObservingSyncMode()` 262 (plan says 251). The named-text insertion points are all still unique and present, so the edits remain valid once re-anchored.
+> No work is duplicated: this plan's findings (persist-6, ios-1, ios-4, macos-2, logs-2, crumbs-3, cli-1) are disjoint from store-swap-safety's closed set, and it does NOT touch MigrationCoordinator, restoreFromBackup, PersistenceReconfiguring, copyStore, or the localStoreRowCount wiring (already done). Do not re-wire localStoreRowCount — it is present in both inits already.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Make every shipped-but-inert feature honest — wire `AutoPurgeJob` into launch and a real iOS background task, drive (or honestly delete) the iOS pause-reason mirror, remove the four dead macOS menu commands and the dead iOS `CommandMenu("Task")` block behind a guard test, strip misleading crash-report logs/breadcrumb copy, and centralize the CLI `time_zone` knob so it actually affects date parsing.
@@ -591,6 +602,18 @@ drift. (persist-6)"
 
 `bootstrap()` will call `autoPurgeJob.run()` (Task 8). Because the standalone iOS test bundle cannot `@testable import Lillist_iOS`, the executable proof lives in `LillistCore`: it constructs the exact `AutoPurgeJob` the env builds, seeds an aged soft-deleted task, runs `.run()`, and asserts the purge. This pins the behavior the launch path invokes. (Task 8 wires the call; this test guarantees the call does the right thing.)
 
+> **Verify before writing (so the test compiles):** the test below pokes the
+> `LillistTask` managed object's `deletedAt` attribute directly and seeds the
+> `trashRetentionDays` pref. Confirm both names are current against the real
+> sources before pasting: `deletedAt` is declared at
+> `Packages/LillistCore/Sources/LillistCore/ManagedObjects/LillistTask+CoreData.swift:20`
+> (`@NSManaged public var deletedAt: Date?`) and `trashRetentionDays` is the
+> pref field used by `AutoPurgeJob` / `PreferencesStore.Prefs` (see
+> `AutoPurgeJob.swift:18` and the sibling `AutoPurgeJobTests.swift`, which use
+> the identical `m.deletedAt = …` poke and `$0.trashRetentionDays = 30` seed).
+> If either name has drifted, fix the test to match before running, or it won't
+> compile.
+
 - [ ] **Step 1: Write the failing test** — create `Packages/LillistCore/Tests/LillistCoreTests/Persistence/AutoPurgeLaunchTests.swift`. It uses the `TestStore.make()` helper and Swift Testing, matching `AutoPurgeJobTests.swift` in the same directory:
 
 ```swift
@@ -763,7 +786,25 @@ bootstrap() paths. (persist-6)"
 import BackgroundTasks
 ```
 
-  Add the `init()` immediately after the stored properties (after the `sortBinding` computed property, before `var body`):
+  Add the `init()` immediately after the stored properties (after the `sortBinding` computed property, before `var body`).
+
+  > **⚠️ Execution gotcha — strict-concurrency isolation of the BGTask handler.**
+  > `LillistApp` is a SwiftUI `App`, so it is **implicitly `@MainActor`**, and
+  > `AppEnvironment` is `@MainActor` too (`Apps/Lillist-iOS/Sources/App/AppEnvironment.swift:17`).
+  > But the closure passed to `BGTaskScheduler.shared.register(forTaskWithIdentifier:using:launchHandler:)`
+  > is **non-isolated and `@Sendable`** — it does NOT inherit `LillistApp`'s MainActor
+  > isolation. So the `@MainActor` work (`AppEnvironment.make()` →
+  > `env.runBackgroundPurge()`) must be hopped onto the MainActor **explicitly** with
+  > `Task { @MainActor in … }`; a bare `Task { … }` started inside that non-isolated
+  > closure runs on the generic executor and will not satisfy the MainActor isolation
+  > the helper requires. Two more constraints the compiler will enforce:
+  > (1) `BGTask` is **not `Sendable`**, so do not capture `task` across the actor hop
+  > — call `task.setTaskCompleted(success:)` and set `task.expirationHandler` on the
+  > non-isolated closure's own thread, and pass only the `Bool` result across the hop;
+  > (2) set `task.expirationHandler` **before** kicking off the work `Task` so an early
+  > expiration can always cancel it. The block below is written to compile under Swift 6
+  > strict concurrency as-is — do not "simplify" it back to a bare `Task {}` or it will
+  > fail to build (warnings are errors here).
 
 ```swift
     init() {
@@ -771,21 +812,48 @@ import BackgroundTasks
         // launch completes (BGTaskScheduler requires registration during
         // app init). The handler builds a short-lived AppEnvironment so it
         // can run without the foreground SwiftUI environment being alive.
+        //
+        // The launch-handler closure is @Sendable / non-isolated (it does
+        // NOT inherit LillistApp's implicit @MainActor), and BGTask is not
+        // Sendable. So we: wire expirationHandler first; run the MainActor
+        // work on an explicit `Task { @MainActor in … }`; and complete the
+        // task back on the closure's own (non-isolated) thread using only
+        // the Bool that crosses the actor hop — never the BGTask itself.
         BGTaskScheduler.shared.register(
             forTaskWithIdentifier: BackgroundPurgeSchedule.taskIdentifier,
             using: nil
         ) { task in
             // `expirationHandler` and `setTaskCompleted` are on the BGTask
             // base class, so no BGProcessingTask cast is needed here.
-            let work = Task {
+            let work = Task { @MainActor in
+                // Hop to the MainActor explicitly: both AppEnvironment.make()
+                // and env.runBackgroundPurge() are @MainActor-isolated.
                 let ok = await Self.runBackgroundPurge()
                 Self.scheduleBackgroundPurge()
+                return ok
+            }
+            // Set expiration before awaiting `work` so an early expiration
+            // can cancel the in-flight purge. `task` stays on this
+            // non-isolated thread; only the Bool result crosses the hop.
+            task.expirationHandler = { work.cancel() }
+            Task {
+                let ok = (try? await work.value) ?? false
                 task.setTaskCompleted(success: ok)
             }
-            task.expirationHandler = { work.cancel() }
         }
     }
 ```
+
+  Notes on the shape above (all load-bearing for the build):
+  - `Self.scheduleBackgroundPurge()` is called **inside** the `@MainActor`
+    work `Task` (it is non-isolated and safe to call from MainActor) so the
+    next request is queued whether or not the purge throws.
+  - The outer `Task { … }` that calls `task.setTaskCompleted(success:)`
+    `await`s `work.value`; `work` never throws (it returns `Bool`), so the
+    `try?` is belt-and-suspenders against cancellation surfacing as an error.
+  - Do not annotate the `init()` itself or add `@MainActor` to the register
+    closure — `register` requires a plain `@Sendable` closure and an
+    isolation annotation there is rejected.
 
   Add the two `static` helpers to `LillistApp` (after `uiTestResetState()`):
 

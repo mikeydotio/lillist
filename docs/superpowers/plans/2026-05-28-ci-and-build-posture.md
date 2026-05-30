@@ -1,5 +1,17 @@
 # CI and Build Posture Implementation Plan
 
+> **📍 STATUS — ⬜ PENDING — Wave 7 (lands LAST).**
+>
+> Part of the **Foundation Hardening** program. **Single source of truth for progress, wave order, and cross-plan coordination:** [`2026-05-29-foundation-hardening-index.md`](2026-05-29-foundation-hardening-index.md). New to this project? Read the index first, then the review ([`docs/reviews/2026-05-28-foundation-review.md`](../../reviews/2026-05-28-foundation-review.md)) for *why* this work exists, then `CLAUDE.md` for conventions + build/test commands. Execute task-by-task with `superpowers:subagent-driven-development`.
+>
+> ⚠️ **Wave 1 (`store-swap-safety`) is merged to `main`.** It changed several shared files (`MigrationCoordinator`, `PersistenceHost`, `QuarantineManager`, `MigrationJournal`, both `AppEnvironment`s, `PersistenceController`). **Re-Read every file before editing and anchor by code structure — the line numbers in this plan may have drifted.**
+
+> **⚠️ Wave-1 reconciliation:**
+> store-swap-safety is MERGED. The `Lillist-iOSAppHostedTests` target already exists and is already wired into the `Lillist-iOS` scheme's `test.targets` (`Apps/Lillist-iOS/project.yml` lines 188-209, 221, 234-239). So the cross-plan dependency is no longer "pending" — rewrite Task 4 Step 2's comment and Task 5's "Cross-plan dependency" note from future tense ("once store-swap-safety lands it") to past tense, and resolve the conditional: it added a *target* on the existing scheme, so **no extra CI job is needed**.
+> BUT this exposes a real bug in Task 4's `ios` job. The app-hosted target uses `TEST_HOST=$(BUILT_PRODUCTS_DIR)/Lillist.app/Lillist` + `BUNDLE_LOADER` + `CODE_SIGN_STYLE: Automatic`; it must launch inside the host `Lillist.app` on the simulator. Task 4 runs `xcodebuild test -scheme Lillist-iOS ... CODE_SIGNING_ALLOWED=NO`, which generally prevents the host app from installing/launching for test-hosting — so the host-gated migration tests the plan claims to "finally execute" would NOT run (or the job fails). Wave-1's own note says this target "needs a code-signed simulator host to actually RUN." Fix the `ios` job: drop the `CODE_SIGNING_ALLOWED=NO`/`CODE_SIGN_IDENTITY=""`/`CODE_SIGNING_REQUIRED=NO` flags for the simulator `test` step (simulator ad-hoc signing works without a real team via the seeded placeholder `Signing.local.xcconfig`), or split `Lillist-iOSAppHostedTests` into its own `-only-testing` step that allows signing. The macOS-`build`-style no-signing recipe from CLAUDE.md applies to `build`, not to host-app `test`.
+> Also fix the `release-archive-smoke` job similarly: `-scheme Lillist-iOS` now pulls in the app-hosted test target's signing requirements; scope the smoke to the app target or otherwise account for `CODE_SIGN_STYLE: Automatic`.
+> Finally, re-anchor Task 5's engineering-notes insertion: the newest entry is now `## 2026-05-29 — Store-swap safety`, not `## 2026-05-17`. Prepend the new CI entry ABOVE the 2026-05-29 entry, and ignore the stale "insert after line 6 / before the 2026-05-17 heading" line numbers. Treat test-1/test-2 as already-closed historical context, not open findings.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Establish a GitHub Actions macOS CI workflow that runs the full test/build matrix post-push on `main`, and align Lillist's build posture so every quality gate (warnings-as-errors, snapshots, pbxproj drift, the Core Data model rebuild) is enforced automatically rather than from memory.
@@ -355,7 +367,9 @@ Closes ui-snap-1."
 
 **Files:** Create `.github/workflows/ci.yml`.
 
-This closes `build-1` (no CI), `build-2` (no pbxproj-drift gate), the CI half of `build-3`/`build-4` (warnings/Release posture enforcement), and `test-5` (the test/build matrix isn't run automatically anywhere — every gate is "what the dev remembers to run locally"). It also closes the completeness-critic blind spot "No CI/CD at all" and is the safety net that finally executes the host-gated migration tests owned by *store-swap-safety* (see the cross-plan coordination note). Triggered **post-push on `main`** because this is a solo project that commits directly to `main` (CLAUDE.md "Git workflow"): there are no PRs to gate, so CI is a post-push verifier with failure surfaced on the run.
+This closes `build-1` (no CI), `build-2` (no pbxproj-drift gate), the CI half of `build-3`/`build-4` (warnings/Release posture enforcement), and `test-5` (the test/build matrix isn't run automatically anywhere — every gate is "what the dev remembers to run locally"). It also closes the completeness-critic blind spot "No CI/CD at all." Triggered **post-push on `main`** because this is a solo project that commits directly to `main` (CLAUDE.md "Git workflow"): there are no PRs to gate, so CI is a post-push verifier with failure surfaced on the run.
+
+> **⚠️ Execution gotcha — read the two execution-gotcha blockquotes inside Step 2 before writing the file.** The `ios` job and the `release-archive-smoke` job both interact with the now-merged `Lillist-iOSAppHostedTests` app-hosted test target (`TEST_HOST=$(BUILT_PRODUCTS_DIR)/Lillist.app/Lillist`, `CODE_SIGN_STYLE: Automatic`) and the `Lillist-iOSUITests` host-app UI-test target. The `CODE_SIGNING_ALLOWED=NO` recipe that works for plain `build` does **not** let an unsigned host `.app` install/launch on the simulator for test-hosting, so as-written the `ios` job would skip (or fail) exactly the host-gated migration/swap tests this plan exists to enforce. Step 2 contains the corrected guidance (Option (a): ad-hoc simulator signing — preferred; or Option (b): scope to standalone bundles + document the limitation) and the scoped Release-smoke build. Whether CI ends up *executing* the host-gated tests depends on which option you choose — do not claim it does until Option (a) is verified green.
 
 - [ ] **Step 1: Confirm there is no existing workflow** — run:
   ```bash
@@ -457,19 +471,65 @@ This closes `build-1` (no CI), `build-2` (no pbxproj-drift gate), the CI half of
           run: cp Apps/Config/Signing.local.xcconfig.example Apps/Config/Signing.local.xcconfig
 
         - name: Test Lillist-iOS scheme
-          # Runs Lillist-iOSTests, Lillist-iOSUITests, and the
+          # Runs Lillist-iOSTests, Lillist-iOSUITests, the
+          # Lillist-iOSAppHostedTests app-hosted bundle (the host-gated
+          # liveSwapAllowed migration/swap tests), and the
           # LillistUI/LillistUITests SPM bundle (iOS snapshot + tour tests
-          # that compile out under `swift test`). When store-swap-safety
-          # lands the app-hosted LillistCore host-gated tests on this scheme,
-          # they execute here too — see cross-plan coordination note.
+          # that compile out under `swift test`).
+          #
+          # ⚠️ The CODE_SIGNING_ALLOWED=NO recipe shown here is a
+          # PLACEHOLDER and is WRONG for this scheme as written — resolve
+          # it per the execution gotcha below BEFORE landing the workflow.
           run: |
             set -o pipefail
+            which xcbeautify || brew install xcbeautify
             xcodebuild test \
               -workspace Lillist.xcworkspace \
               -scheme Lillist-iOS \
               -destination 'platform=iOS Simulator,name=iPhone 17,OS=26.2' \
               CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO \
               | xcbeautify
+  ```
+
+  > **⚠️ Execution gotcha — the `ios` job will NOT run the host-gated tests it claims to, and may fail to build.** Two scheme targets need to **install + launch the host `Lillist.app` on the simulator** to run: `Lillist-iOSAppHostedTests` (`TEST_HOST=$(BUILT_PRODUCTS_DIR)/Lillist.app/Lillist`, `BUNDLE_LOADER=$(TEST_HOST)`, `CODE_SIGN_STYLE: Automatic` — verified in `Apps/Lillist-iOS/project.yml` lines ~187-209) and `Lillist-iOSUITests` (`type: bundle.ui-testing`, `dependencies: Lillist-iOS`, `CODE_SIGN_STYLE: Automatic` — lines ~164-180). Passing `CODE_SIGNING_ALLOWED=NO` strips signing, and an **unsigned host app cannot be installed/launched on the simulator for test-hosting** — so the `liveSwapAllowed`-gated tests (gated on `Bundle.main.bundleIdentifier?.isEmpty == false`, which is only true inside a real host) would silently skip, and the UI-test bundle's launch would error out. This is exactly the constraint engineering-notes records for the macOS lane ("With those flags the test bundle can't load a fully-signed `.app` host" — which is *why* the macOS test target is standalone `TEST_HOST=""`). The iOS app-hosted target has **no** such standalone fallback. Wave 1's own note states this target "needs a code-signed simulator host to actually RUN." Pick ONE of the following and replace the placeholder step accordingly:
+  >
+  > **Option (a) — sign for the simulator so the host-gated tests actually execute (preferred).** Drop `CODE_SIGNING_ALLOWED=NO`/`CODE_SIGN_IDENTITY=""`/`CODE_SIGNING_REQUIRED=NO` from the **simulator `test` step only** and let Xcode ad-hoc-sign for the simulator. GitHub-hosted macOS runners can ad-hoc-sign apps **for the simulator** without an Apple Developer team (simulator builds don't require a provisioning profile or a real signing identity — the simulator accepts ad-hoc `-` signing). Set `CODE_SIGNING_ALLOWED=YES` and let `CODE_SIGN_IDENTITY` default to `-` (ad-hoc); the seeded placeholder `Signing.local.xcconfig` keeps the xcconfig indirection resolvable even though its team value is empty. Verify locally first — run the full `xcodebuild test -scheme Lillist-iOS` on a Mac **without** the no-signing flags and confirm `Lillist-iOSAppHostedTests` and `Lillist-iOSUITests` both *install + launch* the host on the simulator and report their gated tests as **run, not skipped** (look for the `liveSwapAllowed` tests executing). The "no-signing recipe" from CLAUDE.md applies to `xcodebuild **build**`, NOT to host-app `xcodebuild test`. Concretely, the step becomes:
+  > ```yaml
+  >         - name: Test Lillist-iOS scheme (simulator ad-hoc signing)
+  >           run: |
+  >             set -o pipefail
+  >             which xcbeautify || brew install xcbeautify
+  >             xcodebuild test \
+  >               -workspace Lillist.xcworkspace \
+  >               -scheme Lillist-iOS \
+  >               -destination 'platform=iOS Simulator,name=iPhone 17,OS=26.2' \
+  >               CODE_SIGNING_ALLOWED=YES CODE_SIGN_IDENTITY="-" \
+  >               | xcbeautify
+  > ```
+  > If ad-hoc simulator signing turns out to need a `DEVELOPMENT_TEAM`, the team value can be injected from a CI secret into `Signing.local.xcconfig` (write `LOCAL_DEVELOPMENT_TEAM=${{ secrets.DEVELOPMENT_TEAM }}` in the "Provide a placeholder signing team" step) — but try ad-hoc `-` first, as simulator hosting generally does not require a team.
+  >
+  > **Option (b) — if CI cannot sign at all, scope the job and document the real limitation.** Keep `CODE_SIGNING_ALLOWED=NO` but run **only** the targets that work standalone, and EXCLUDE the two host-app targets. The standalone-runnable targets are `Lillist-iOSTests` (`TEST_HOST=""`, verified lines ~124-160) and the `LillistUI/LillistUITests` SPM bundle. `Lillist-iOSUITests` and `Lillist-iOSAppHostedTests` are NOT runnable without signing and must be excluded. Use `-only-testing`:
+  > ```yaml
+  >         - name: Test Lillist-iOS scheme (standalone bundles only — no signing)
+  >           run: |
+  >             set -o pipefail
+  >             which xcbeautify || brew install xcbeautify
+  >             xcodebuild test \
+  >               -workspace Lillist.xcworkspace \
+  >               -scheme Lillist-iOS \
+  >               -destination 'platform=iOS Simulator,name=iPhone 17,OS=26.2' \
+  >               -only-testing:Lillist-iOSTests \
+  >               -only-testing:LillistUITests \
+  >               CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO \
+  >               | xcbeautify
+  > ```
+  > Then EXPLICITLY document in Task 5's engineering-notes entry that the `liveSwapAllowed`-gated migration/swap tests (`Lillist-iOSAppHostedTests`) and the end-to-end UI tests (`Lillist-iOSUITests`) **do not run in CI** — they run only on a developer's signed Mac (`xcodebuild test -scheme Lillist-iOS` with a real `Signing.local.xcconfig`). This is a real, stated limitation, and it matches exactly how Wave 1 verified those tests (on a developer's signed Mac). Update the Self-review checklist and Task 5 cross-plan note to say "host-gated tests run on a signed developer Mac, not in CI" rather than claiming CI "finally executes" them.
+  >
+  > **Decision guidance:** Prefer (a) — it makes the host-gated tests actually enforceable in CI, which is the whole point of this plan. Only fall back to (b) if simulator ad-hoc signing cannot be made to work on the hosted runner after a genuine local attempt. Whichever you pick, the placeholder step above must be replaced — do not ship it as written.
+
+  *(The workflow YAML continues below — this is one file. The `yaml` fence breaks in this step exist only to host the execution-gotcha blockquotes; concatenate the **2-space-indented** top-level `yaml` blocks in Step 2 — in order — into a single `.github/workflows/ci.yml`. The `yaml` snippets *inside* the gotcha blockquotes (Option (a)/(b) test steps) and the more-deeply-indented snippet in the Design-notes "Simulator runtime availability" bullet are alternatives/remedies you splice in **only if** the corresponding gotcha applies — they are NOT part of the base file.)*
+
+  ```yaml
 
     macos:
       name: macOS scheme (xcodebuild test)
@@ -493,8 +553,13 @@ This closes `build-1` (no CI), `build-2` (no pbxproj-drift gate), the CI half of
           run: cp Apps/Config/Signing.local.xcconfig.example Apps/Config/Signing.local.xcconfig
 
         - name: Test Lillist-macOS scheme
+          # macOS test target is standalone (TEST_HOST="" in Apps/project.yml),
+          # so the no-signing recipe is correct here — there is no host .app to
+          # install/launch (see engineering-notes: macOS test bundle made
+          # standalone precisely so CODE_SIGNING_ALLOWED=NO works).
           run: |
             set -o pipefail
+            which xcbeautify || brew install xcbeautify
             xcodebuild test \
               -workspace Lillist.xcworkspace \
               -scheme Lillist-macOS \
@@ -530,15 +595,28 @@ This closes `build-1` (no CI), `build-2` (no pbxproj-drift gate), the CI half of
           # catching Release-only optimizer/dead-code/whole-module issues that
           # Debug never sees. Smoke = compile under Release without signing;
           # not a shippable archive.
+          #
+          # Build the app target by name (NOT the whole scheme) so the
+          # no-signing build never pulls in the app-hosted test target —
+          # see execution gotcha below.
           run: |
             set -o pipefail
+            which xcbeautify || brew install xcbeautify
             xcodebuild build \
               -workspace Lillist.xcworkspace \
               -scheme Lillist-iOS \
+              -target Lillist-iOS \
               -configuration Release \
               -destination 'generic/platform=iOS' \
               CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO \
               | xcbeautify
+  ```
+
+  > **⚠️ Execution gotcha — scope the Release smoke so it never builds the app-hosted test target under no-signing.** With `Lillist-iOSAppHostedTests` (`CODE_SIGN_STYLE: Automatic`) now on the `Lillist-iOS` scheme, a bare `xcodebuild build -scheme Lillist-iOS ... CODE_SIGNING_ALLOWED=NO` may attempt to compile/sign that test target and fail. In the scheme, the app-hosted target is registered as `Lillist-iOSAppHostedTests: [test]` (build phase = *test only*, verified in `Apps/Lillist-iOS/project.yml` scheme `build.targets`), so a `build` action *should* skip it — but do not rely on that silently. **Build the app target explicitly** as shown (`-target Lillist-iOS`), which compiles only the app (and its app/extension dependencies) under Release and leaves every test target out of the no-signing build. Verify locally: `xcodebuild build -scheme Lillist-iOS -target Lillist-iOS -configuration Release -destination 'generic/platform=iOS' CODE_SIGNING_ALLOWED=NO ...` must reach `** BUILD SUCCEEDED **` without any `Lillist-iOSAppHostedTests` or signing-required errors. If `-target` is rejected in combination with `-scheme` on this Xcode, fall back to `-only-testing`-style narrowing is N/A for `build`; instead build via `-workspace`/`-project` + `-target Lillist-iOS` without `-scheme`, or split the app into its own scheme for the smoke. The goal is unchanged: exercise the **Release compile of the app**, nothing test-hosted.
+
+  *(Final YAML block of `.github/workflows/ci.yml` follows — append it after the blocks above.)*
+
+  ```yaml
 
     notify:
       name: Notify on failure
@@ -556,10 +634,21 @@ This closes `build-1` (no CI), `build-2` (no pbxproj-drift gate), the CI half of
   ```
   Design notes (all verified against the repo):
   - `macos-15` is the GitHub-hosted runner image that ships Xcode 26.x; the `xcode-select` step pins `Xcode_26.3.app` to match the local toolchain (Xcode 26.3 / Swift 6.2.4 / iOS 26.2 simulator) — the snapshot tests are simulator-version-sensitive (engineering-notes "canonical simulator pin: iPhone 17 on iOS 26.2"). If a future runner image drops 26.3, this step is the single place to bump.
-  - `xcbeautify` ships preinstalled on the GitHub macOS runner images; `set -o pipefail` ensures a non-zero `xcodebuild` exit survives the pipe.
+  - `xcbeautify` is usually preinstalled on the GitHub macOS runner images, but image contents drift — every step that pipes to it guards with `which xcbeautify || brew install xcbeautify` so a missing binary self-heals instead of failing the run. `set -o pipefail` ensures a non-zero `xcodebuild` exit survives the pipe.
   - The drift gate uses `git diff --exit-code -- '*.xcodeproj/project.pbxproj'` so only the *generated* pbxproj is policed (not the user-data xcodegen also writes). This matches the two `xcodegen generate` invocations in CLAUDE.md.
-  - The Release smoke uses `xcodebuild build -configuration Release -destination 'generic/platform=iOS'` (a device-generic compile) rather than `archive`, because `archive` would trip the build-number bump pre-action and require signing; the goal is to exercise the Release compile path, which deployit's Debug archives never do.
-  - The placeholder team is copied from the committed `Apps/Config/Signing.local.xcconfig.example` (confirmed present per CLAUDE.md "Code signing"); since every CI build sets `CODE_SIGNING_ALLOWED=NO`, the actual team value is irrelevant — the file just has to exist so the `#include?` indirection resolves `$(LOCAL_DEVELOPMENT_TEAM)`.
+  - The Release smoke uses `xcodebuild build -configuration Release -destination 'generic/platform=iOS'` (a device-generic compile) rather than `archive`, because `archive` would trip the build-number bump pre-action and require signing; the goal is to exercise the Release compile path, which deployit's Debug archives never do. It builds the app target explicitly (`-target Lillist-iOS`) so the no-signing build never pulls in the app-hosted test target (see the Release-smoke execution gotcha above).
+  - The placeholder team is copied from the committed `Apps/Config/Signing.local.xcconfig.example` (confirmed present per CLAUDE.md "Code signing"). For the `build`-action jobs (drift, macOS test, Release smoke) every build sets `CODE_SIGNING_ALLOWED=NO`, so the actual team value is irrelevant — the file just has to exist so the `#include?` indirection resolves `$(LOCAL_DEVELOPMENT_TEAM)`. **Exception:** if the `ios` job adopts Option (a) (ad-hoc simulator signing so the host-gated tests run), that job builds *with* signing allowed; the placeholder is still fine for ad-hoc `-` signing, but if a `DEVELOPMENT_TEAM` proves necessary, inject it from a CI secret in the "Provide a placeholder signing team" step (see the `ios` job execution gotcha).
+  - **Simulator runtime availability.** The destination pins `iPhone 17 / iOS 26.2`. The GitHub `macos-15` image with Xcode 26.3 should ship that runtime, but hosted-image contents drift and the exact iOS 26.2 runtime is not guaranteed present. If `xcodebuild test` fails with "Unable to find a destination matching the provided destination specifier" or "iOS 26.2 is not installed", the runtime must be provisioned before the test step. Remedy — add a step before the test that downloads/installs and verifies the runtime:
+    ```yaml
+            - name: Ensure iOS 26.2 simulator runtime
+              run: |
+                xcrun simctl runtime list || true
+                xcodebuild -downloadPlatform iOS -buildVersion 26.2 || \
+                  xcrun simctl runtime add "iOS 26.2" || true
+                xcrun simctl list devices 'iOS 26.2' | grep -q "iPhone 17" || \
+                  xcrun simctl create "iPhone 17" "iPhone 17" "iOS26.2"
+    ```
+    (The exact incantation varies by Xcode version — `xcrun simctl runtime` subcommands and `xcodebuild -downloadPlatform` are both viable; run `xcrun simctl runtime --help` on the runner to confirm. Keep the `|| true` guards so a runtime that is already present doesn't fail the step.) Only add this if the default runtime is actually missing on the chosen image — don't pre-emptively slow every run.
 
 - [ ] **Step 3: Lint the workflow YAML locally** — GitHub Actions YAML must parse; verify with the bundled Python:
   ```bash
@@ -582,6 +671,15 @@ This closes `build-1` (no CI), `build-2` (no pbxproj-drift gate), the CI half of
   ```
   Expect `DRIFT GATE: clean` (exit 0). If the regen produces a diff, the committed pbxproj is already drifted — commit the regenerated pbxproj first (that drift is pre-existing, not caused by this plan) before proceeding, so CI starts green.
 
+- [ ] **Step 4b: Resolve the `ios`-job signing decision locally before pushing** — the SPM/drift checks above do **not** exercise the `Lillist-iOS` xcodebuild scheme, which is where the app-hosted/signing gotcha bites. On a Mac with a populated `Apps/Config/Signing.local.xcconfig`, run the scheme *with signing allowed* and confirm the host-gated tests actually execute (Option (a) path):
+  ```bash
+  cd /Volumes/Code/mikeyward/Lillist && xcodebuild test \
+    -workspace Lillist.xcworkspace -scheme Lillist-iOS \
+    -destination 'platform=iOS Simulator,name=iPhone 17,OS=26.2' \
+    CODE_SIGNING_ALLOWED=YES CODE_SIGN_IDENTITY="-" 2>&1 | tail -40
+  ```
+  Confirm `Lillist-iOSAppHostedTests` and `Lillist-iOSUITests` install + launch the host and that the `liveSwapAllowed`-gated tests report as **run, not skipped**. If ad-hoc `-` signing is rejected, retry with the real local team (omit the signing overrides entirely). Whichever recipe makes the host-gated tests run locally is the one to mirror into the `ios` job's test step (replacing the placeholder). If neither can be made to work on a hosted runner, fall back to Option (b) (scope to standalone bundles + document the limitation in Task 5). **Do not push the workflow with the placeholder `CODE_SIGNING_ALLOWED=NO` iOS step intact.**
+
 - [ ] **Step 5: Commit** —
   ```bash
   cd /Volumes/Code/mikeyward/Lillist && git add .github/workflows/ci.yml && git commit -m "ci: add post-push macOS workflow for the full test/build matrix
@@ -590,10 +688,10 @@ Solo project pushes land on main directly, so CI runs post-push as a
 verifier: swift test for LillistCore + LillistUI, an xcodegen-regen +
 git-diff pbxproj-drift gate, the Lillist-iOS and Lillist-macOS
 xcodebuild test schemes (the iOS scheme transitively runs the
-LillistUI iOS snapshot/tour bundle and, once store-swap-safety lands
-it, the app-hosted host-gated LillistCore tests), and a
-Release-configuration smoke build. deployit archives in Debug for
-iteration; CI is the only Release-config compile.
+LillistUI iOS snapshot/tour bundle and — when the ios job signs for
+the simulator — the now-merged app-hosted host-gated LillistCore
+tests), and a Release-configuration smoke build. deployit archives in
+Debug for iteration; CI is the only Release-config compile.
 
 Closes build-1, build-2, build-3, build-4, test-5; closes the
 'No CI/CD at all' blind spot."
@@ -667,14 +765,39 @@ This is the append-only engineering record (CLAUDE.md mandate) for the cross-cut
     0.98`, consistent with the 2026-05-17 "Form views drift on
     cold-cache runs" entry. Keep new non-Form snapshots strict.
 
-  **Cross-plan dependency.** The `store-swap-safety` plan wires the
-  `LillistCore` migration/store-swap tests into an app-hosted unit-test
-  target on the `Lillist-iOS` scheme (host-gated `liveSwapAllowed`
-  tests, per review findings `test-1`/`test-2`). CI's `ios` job runs
-  that scheme, so once store-swap-safety lands, those previously
-  silently-skipped tests execute in CI automatically — no CI change
-  needed. If store-swap-safety adds a new *scheme* (rather than a target
-  on the existing scheme), add a matching job here.
+  - **Host-gated migration/swap tests need a signed simulator host —
+    `CODE_SIGNING_ALLOWED=NO` is NOT enough for the iOS test job.** The
+    now-merged `store-swap-safety` plan added the
+    `Lillist-iOSAppHostedTests` target to the `Lillist-iOS` scheme. It
+    is `TEST_HOST=$(BUILT_PRODUCTS_DIR)/Lillist.app/Lillist` +
+    `CODE_SIGN_STYLE: Automatic`, so it must install + launch the host
+    `Lillist.app` on the simulator; the `liveSwapAllowed` gate
+    (`Bundle.main.bundleIdentifier?.isEmpty == false`) is only true
+    inside that host. The same is true of the `Lillist-iOSUITests`
+    UI-test bundle (`dependencies: Lillist-iOS`). An unsigned `.app`
+    cannot host tests on the simulator, so the `ios` job uses ad-hoc
+    simulator signing (`CODE_SIGNING_ALLOWED=YES CODE_SIGN_IDENTITY="-"`)
+    rather than the no-signing recipe — that is the only way these
+    tests actually run in CI. This mirrors the macOS lane's lesson in
+    reverse: the macOS test target was made standalone (`TEST_HOST=""`)
+    *because* `CODE_SIGNING_ALLOWED=NO` can't load a signed host; the
+    iOS app-hosted target has no standalone fallback, so it needs
+    signing instead. [If CI could not be made to sign for the
+    simulator, the documented limitation is: `Lillist-iOSAppHostedTests`
+    + `Lillist-iOSUITests` run only on a developer's signed Mac
+    (`xcodebuild test -scheme Lillist-iOS` with a populated
+    `Signing.local.xcconfig`), exactly as Wave 1 verified them. Delete
+    this bracketed sentence if Option (a) signing is in place.]
+
+  **Cross-plan dependency.** The merged `store-swap-safety` plan wired
+  the `LillistCore` migration/store-swap tests into the
+  `Lillist-iOSAppHostedTests` app-hosted unit-test target on the
+  *existing* `Lillist-iOS` scheme (host-gated `liveSwapAllowed` tests,
+  per review findings `test-1`/`test-2`). Because it added a *target*
+  to a scheme CI already runs — not a new scheme — **no extra CI job is
+  needed**; the `ios` job runs them as long as it signs for the
+  simulator (see the rule above). If a future plan adds a new *scheme*,
+  add a matching job here.
 
   **Evidence.** `.github/workflows/ci.yml` with five matrix jobs + a
   failure-notify job; `Packages/LillistUI/Package.swift` at swift-tools
@@ -746,6 +869,6 @@ Build & test."
 - [ ] **build-5** (`CompileCoreDataModel` keys on the `.xcdatamodeld` dir mtime, not the inner `contents`) — closed by **Task 2** (declares inner `*.xcdatamodel/contents` + `.xccurrentversion` as `inputFiles`; Step 3 proves `momc` re-runs on a `contents`-only mtime change).
 - [ ] **ui-warn-1** (standing "found 83 file(s) unhandled" LillistUI manifest warning) — closed by **Task 1** (excludes the six test `__Snapshots__` dirs; Step 3 asserts the unhandled-file count drops to 0).
 - [ ] **ui-snap-1** (brittle exact-pixel LillistUI snapshots) — closed by **Task 3** (scopes the `precision: 0.99, perceptualPrecision: 0.98` relaxation to the single Form-bearing tour snapshot `test_08_settings_light`; all other tour snapshots stay exact-pixel).
-- [ ] **test-5** (the test/build matrix is run only from memory, never automatically) — closed by **Task 4** (CI executes `swift test` ×2, both xcodebuild schemes, the drift gate, and the Release smoke on every push to `main`; the `ios` job transitively runs the iOS snapshot/tour bundle and, via the cross-plan dependency, the app-hosted host-gated LillistCore tests).
+- [ ] **test-5** (the test/build matrix is run only from memory, never automatically) — closed by **Task 4** (CI executes `swift test` ×2, both xcodebuild schemes, the drift gate, and the Release smoke on every push to `main`; the `ios` job transitively runs the iOS snapshot/tour bundle). The app-hosted host-gated `Lillist-iOSAppHostedTests` and the `Lillist-iOSUITests` run in CI **only if** the `ios` job signs for the simulator (Option (a)); if CI cannot sign (Option (b)), those two run on a developer's signed Mac, which Task 5 must state as an explicit limitation — they are not silently dropped, they are scoped out and documented.
 
-**Strengths preserved (not refactored away):** the idempotent signing xcconfig indirection (Task 4 only *reads* the `.example` placeholder and builds with `CODE_SIGNING_ALLOWED=NO`); the canonical iPhone 17 / iOS 26.2 simulator pin and the iPhone 16 Pro logical render size (Task 4 uses the documented destination verbatim); the monotonic tracked build-number counter (Task 4's Release smoke is a `build`, not an `archive`, so it never triggers the bump pre-action); LillistCore's existing strict-concurrency + warnings-as-error posture (Task 1 mirrors it onto LillistUI rather than altering LillistCore); the snapshot suite's overall strictness (Task 3 widens tolerance for exactly one Form-bearing snapshot, leaving every other baseline strict).
+**Strengths preserved (not refactored away):** the idempotent signing xcconfig indirection (Task 4 only *reads* the `.example` placeholder; the `build`-action jobs use `CODE_SIGNING_ALLOWED=NO`, while the `ios` test job uses ad-hoc simulator signing under Option (a) so the host-gated tests can run); the canonical iPhone 17 / iOS 26.2 simulator pin and the iPhone 16 Pro logical render size (Task 4 uses the documented destination verbatim); the monotonic tracked build-number counter (Task 4's Release smoke is a `build`, not an `archive`, so it never triggers the bump pre-action); LillistCore's existing strict-concurrency + warnings-as-error posture (Task 1 mirrors it onto LillistUI rather than altering LillistCore); the snapshot suite's overall strictness (Task 3 widens tolerance for exactly one Form-bearing snapshot, leaving every other baseline strict).

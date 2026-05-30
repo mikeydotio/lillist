@@ -1,5 +1,11 @@
 # App-Layer Test Rehab Implementation Plan
 
+> **📍 STATUS — ⬜ PENDING — Wave 5.**
+>
+> Part of the **Foundation Hardening** program. **Single source of truth for progress, wave order, and cross-plan coordination:** [`2026-05-29-foundation-hardening-index.md`](2026-05-29-foundation-hardening-index.md). New to this project? Read the index first, then the review ([`docs/reviews/2026-05-28-foundation-review.md`](../../reviews/2026-05-28-foundation-review.md)) for *why* this work exists, then `CLAUDE.md` for conventions + build/test commands. Execute task-by-task with `superpowers:subagent-driven-development`.
+>
+> ⚠️ **Wave 1 (`store-swap-safety`) is merged to `main`.** It changed several shared files (`MigrationCoordinator`, `PersistenceHost`, `QuarantineManager`, `MigrationJournal`, both `AppEnvironment`s, `PersistenceController`). **Re-Read every file before editing and anchor by code structure — the line numbers in this plan may have drifted.**
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Replace test-substitution and tautological app-layer tests with real wiring coverage — extracting the gate-resolution, parse-persist, drag-mapping, and focus-gating logic into pure, injectable helpers and unit-testing *those*, then deleting the tests that assert literals against themselves.
@@ -28,7 +34,8 @@
 - `Extensions/ShareExtension-iOS/ShareRootView.swift` — `save()` delegates to `GatedPersistenceResolver` for the gated config resolution.
 - `Apps/Lillist-macOS/Sources/Views/TaskList/TaskListView.swift` (`applyDrop`, ~lines 215–241) — dispatch via `DragDropResolver.resolve`.
 - `Apps/Lillist-iOS/Sources/Tasks/TasksView.swift` (`applyDrop`, ~lines 273–299) — dispatch via `DragDropResolver.resolve`.
-- `Apps/Lillist-macOS/Sources/Views/TaskList/TaskListView.swift` — extract the focus-gating predicate to a `TaskListShortcutGate` namespace (same file or a small new type local to the macOS target — see Task 6). *(If `ListColumn` lives in another file in the macOS target, the gate type goes beside it; verify at implementation time.)*
+- `Apps/Lillist-macOS/Sources/Commands/FocusedListColumn.swift` — extract the focus-gating predicate to a `TaskListShortcutGate` namespace beside the `ListColumn` enum (which is declared in *this* file). This file is already co-compiled into the standalone `Lillist-macOSTests` bundle, so the gate type lands where the test can reach it. See Task 6.
+- `Apps/Lillist-macOS/Sources/Commands/LillistCommands.swift` — update the five `.disabled(listColumn == nil)` shortcut callsites to `TaskListShortcutGate.isDisabled(listColumn: listColumn)`. *(These callsites live here, not in `TaskListView.swift`. They are built only by the macOS **app** target, not the standalone test bundle — see Task 6 and the Task 10 macOS scheme run.)*
 - `Apps/Lillist-iOS/project.yml` (`Lillist-iOSTests` sources, ~lines 128–139) — co-compile `IntentSupport.swift` so the gate-resolution wrapper is reachable from the standalone iOS test bundle.
 - `Apps/Lillist-iOS/Tests/IntegrationTests/QuickCaptureFlowTests.swift` — rename file + class to `LillistCoreQuickCaptureCompositionTests` (honest name: it exercises LillistCore composition, not `QuickCaptureDialogHost`).
 - `Apps/Lillist-iOS/Tests/IntegrationTests/ShareExtensionPayloadTests.swift` — rename file + class to `LillistCoreSharePayloadCompositionTests`.
@@ -621,29 +628,38 @@ onto branch; DragDropResolverTests now covers the real logic. (macos-4, ios-3)"
 ## Task 6: Extract + test the macOS focus-gating predicate; delete the re-typed test — `macos-4`
 
 **Files:**
-- Modify `Apps/Lillist-macOS/Sources/Views/TaskList/TaskListView.swift` (add `TaskListShortcutGate` namespace beside the `ListColumn`-based gating) — *verify at implementation time where `ListColumn` is declared; the gate type goes in the same file as `ListColumn`.*
+- Modify `Apps/Lillist-macOS/Sources/Commands/FocusedListColumn.swift` (add the `TaskListShortcutGate` namespace beside the `ListColumn` enum, which is declared in *this* file). This source is **already** co-compiled into the standalone `Lillist-macOSTests` bundle (verified in `Apps/project.yml`, line 88), so placing the gate here is what makes it reachable from the test with a bare `import` — no `@testable import` and no new co-compile entry needed.
+- Modify `Apps/Lillist-macOS/Sources/Commands/LillistCommands.swift` (the five `.disabled(listColumn == nil)` callsites — lines 38, 43, 48, 55, 60). These live here, *not* in `TaskListView.swift`.
 - Create `Apps/Lillist-macOS/Tests/FocusedShortcutGatingPredicateTests.swift`
 - Delete `Apps/Lillist-macOS/Tests/FocusedShortcutGatingTests.swift`
 
-The existing `FocusedShortcutGatingTests` re-types the predicate `listColumn == nil` inline (`none == nil`, etc.) — it asserts the test's own copy, not the shipping predicate. Extract the predicate into a named `nonisolated static func` and test *that*.
+The existing `FocusedShortcutGatingTests` re-types the predicate `listColumn == nil` inline (`none == nil`, etc.) — it asserts the test's own copy, not the shipping predicate. Extract the predicate into a named `static func` and test *that*.
+
+> **⚠️ Execution gotcha:** `Lillist-macOSTests` is a **standalone** bundle (`TEST_HOST: ""` / `BUNDLE_LOADER: ""` in `Apps/project.yml`, lines 127–128). It does **not** `@testable import` the app module — it co-compiles a hand-picked list of individual source files. So two things must hold: (1) the extracted `TaskListShortcutGate` **must** be added to `FocusedListColumn.swift` (already on the co-compile list) — if it landed in `LillistCommands.swift` or `TaskListView.swift` the test could not see it; and (2) the test file uses **bare imports** (`import XCTest` plus `import SwiftUI`), matching the existing `FocusedShortcutGatingTests.swift` — `@testable import Lillist_macOS` will **not** compile in this bundle.
 
 - [ ] **Step 1: Locate `ListColumn` and the gating predicate.** Run:
   ```
   cd /Volumes/Code/mikeyward/Lillist && grep -rn "enum ListColumn\|listColumn == nil\|\.disabled(listColumn\|FocusedValue" Apps/Lillist-macOS/Sources/
   ```
-  Confirm the file declaring `enum ListColumn` and every shortcut callsite that gates on `listColumn == nil`. The new `TaskListShortcutGate` type is added to that same file.
+  Expected (verified against the real tree): `enum ListColumn` is declared in `Apps/Lillist-macOS/Sources/Commands/FocusedListColumn.swift`, and the five `.disabled(listColumn == nil)` callsites are in `Apps/Lillist-macOS/Sources/Commands/LillistCommands.swift` (lines 38, 43, 48, 55, 60). These are **two different files** — the new `TaskListShortcutGate` type goes in `FocusedListColumn.swift` (beside `ListColumn`, and on the test bundle's co-compile list), while the callsite edits happen in `LillistCommands.swift`.
 
 - [ ] **Step 2: Write the failing test.** Create `Apps/Lillist-macOS/Tests/FocusedShortcutGatingPredicateTests.swift`:
 
 ```swift
 import XCTest
-@testable import Lillist_macOS
+import SwiftUI
 
 /// Asserts the *shipping* focus-gating predicate — not a re-typed copy.
 /// `TaskListShortcutGate.isDisabled(listColumn:)` is the single source the
 /// Space / Cmd-Return / Cmd-. / Tab / Shift-Tab `.disabled(...)` modifiers
 /// call; gating those shortcuts off only when no list column holds focus
 /// keeps them from firing while a TextField is first responder.
+///
+/// Bare imports (`XCTest` + `SwiftUI`), matching the existing
+/// `FocusedShortcutGatingTests.swift` — the `Lillist-macOSTests` bundle is
+/// standalone (no app test host) and co-compiles `FocusedListColumn.swift`
+/// directly, so both `ListColumn` and `TaskListShortcutGate` are in-scope
+/// without a `@testable import`.
 @MainActor
 final class FocusedShortcutGatingPredicateTests: XCTestCase {
     func test_nilColumn_disablesShortcuts() {
@@ -665,9 +681,9 @@ final class FocusedShortcutGatingPredicateTests: XCTestCase {
 }
 ```
 
-  *Note for implementer:* confirm the macOS test bundle's `@testable import` module name. The existing macOS tests do not all `@testable import` the app, so verify the module name from `Apps/Lillist-macOS/project.yml` (`PRODUCT_MODULE_NAME` / target name) and adjust `Lillist_macOS` if it differs. If the macOS test bundle is standalone (no app host, like iOS), the gate type and `ListColumn` must be reachable — co-compile the declaring source file into the test target the same way iOS co-compiles `SharePayload.swift` (mirror the existing pattern in `Apps/Lillist-macOS/project.yml`).
+  *Note for implementer:* the bundle is standalone — do **not** add an `@testable import`. `ListColumn` and `TaskListShortcutGate` are both visible because `FocusedListColumn.swift` is already on the co-compile list in `Apps/project.yml` (line 88, the `Lillist-macOS` test target — note the macOS test target's sources live in `Apps/project.yml`, *not* in `Apps/Lillist-macOS/project.yml`). No new co-compile entry is required for this task; you are adding a type to a file that is already compiled into the bundle.
 
-- [ ] **Step 3: Implement the extraction.** In the file declaring `enum ListColumn` (per Step 1), add:
+- [ ] **Step 3: Implement the extraction.** In `Apps/Lillist-macOS/Sources/Commands/FocusedListColumn.swift` (where `enum ListColumn` is declared, per Step 1), add:
 
 ```swift
 /// Single source of truth for whether the list-navigation keyboard
@@ -682,7 +698,9 @@ enum TaskListShortcutGate {
 }
 ```
 
-  Then update every shortcut `.disabled(...)` callsite found in Step 1 from `listColumn == nil` to `TaskListShortcutGate.isDisabled(listColumn: listColumn)`. *(If the callsites reference a focused-value binding name other than `listColumn`, substitute the real binding name — the predicate body stays `listColumn == nil`.)*
+  Then, in `Apps/Lillist-macOS/Sources/Commands/LillistCommands.swift`, update all five `.disabled(listColumn == nil)` callsites (lines 38, 43, 48, 55, 60) to `.disabled(TaskListShortcutGate.isDisabled(listColumn: listColumn))`. The focused-value binding is named `listColumn` here; if a re-Read shows it differs, substitute the real binding name — the predicate body stays `listColumn == nil`.
+
+> **⚠️ Execution gotcha:** the `.disabled(...)` callsites in `LillistCommands.swift` are compiled **only by the macOS app target**, not by the standalone `Lillist-macOSTests` bundle (`LillistCommands.swift` is not on the bundle's co-compile list). A typo or arity mismatch in those callsites will therefore **not** surface in the `-only-testing:` run in Step 5 — only a full macOS-app or macOS-scheme build catches it. **Task 10, Step 4** (`xcodebuild test ... -scheme Lillist-macOS`, which builds `Lillist-macOS: all`) is the real guard for the callsite edits; do not consider this task verified until that full scheme run is green.
 
 - [ ] **Step 4: Delete the re-typed test.** Run:
   ```
@@ -699,7 +717,9 @@ enum TaskListShortcutGate {
 
 - [ ] **Step 6: Commit.**
   ```
-  git add Apps/Lillist-macOS/Sources/Views/TaskList/ Apps/Lillist-macOS/Tests/FocusedShortcutGatingPredicateTests.swift \
+  git add Apps/Lillist-macOS/Sources/Commands/FocusedListColumn.swift \
+          Apps/Lillist-macOS/Sources/Commands/LillistCommands.swift \
+          Apps/Lillist-macOS/Tests/FocusedShortcutGatingPredicateTests.swift \
           Apps/Lillist-macOS/Lillist-macOS.xcodeproj Apps/Lillist.xcodeproj
   git rm Apps/Lillist-macOS/Tests/FocusedShortcutGatingTests.swift
   git commit -m "refactor(macos): extract TaskListShortcutGate predicate and test the real one

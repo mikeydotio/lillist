@@ -1,5 +1,11 @@
 # Privacy Manifest & Export-Compliance Implementation Plan
 
+> **📍 STATUS — ⬜ PENDING — Wave 7 (ship-blocker).**
+>
+> Part of the **Foundation Hardening** program. **Single source of truth for progress, wave order, and cross-plan coordination:** [`2026-05-29-foundation-hardening-index.md`](2026-05-29-foundation-hardening-index.md). New to this project? Read the index first, then the review ([`docs/reviews/2026-05-28-foundation-review.md`](../../reviews/2026-05-28-foundation-review.md)) for *why* this work exists, then `CLAUDE.md` for conventions + build/test commands. Execute task-by-task with `superpowers:subagent-driven-development`.
+>
+> ⚠️ **Wave 1 (`store-swap-safety`) is merged to `main`.** It changed several shared files (`MigrationCoordinator`, `PersistenceHost`, `QuarantineManager`, `MigrationJournal`, both `AppEnvironment`s, `PersistenceController`). **Re-Read every file before editing and anchor by code structure — the line numbers in this plan may have drifted.**
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Add an Apple `PrivacyInfo.xcprivacy` privacy manifest plus the `ITSAppUsesNonExemptEncryption=false` export-compliance key to both apps and both extensions, wire the manifests into xcodegen so every shipping bundle carries them, and add an executing test that proves each manifest exists, parses, and declares the correct required-reason API categories — so TestFlight/App Store submission and OTA install no longer stall on missing-manifest or export-compliance prompts.

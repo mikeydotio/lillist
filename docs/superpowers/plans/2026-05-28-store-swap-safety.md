@@ -1,5 +1,21 @@
 # Store-Swap Safety Implementation Plan
 
+> **📍 STATUS — ✅ DONE — merged to `main` on 2026-05-29 (commits `bfd8635`..`6f008f7`). The `liveSwapAllowed`-gated live-container swap tests execute only on a code-signed Mac/CI.**
+>
+> Part of the **Foundation Hardening** program. **Single source of truth for progress, wave order, and cross-plan coordination:** [`2026-05-29-foundation-hardening-index.md`](2026-05-29-foundation-hardening-index.md). New to this project? Read the index first, then the review ([`docs/reviews/2026-05-28-foundation-review.md`](../../reviews/2026-05-28-foundation-review.md)) for *why* this work exists, then `CLAUDE.md` for conventions + build/test commands. Execute task-by-task with `superpowers:subagent-driven-development`.
+>
+> ⚠️ **Wave 1 (`store-swap-safety`) is merged to `main`.** It changed several shared files (`MigrationCoordinator`, `PersistenceHost`, `QuarantineManager`, `MigrationJournal`, both `AppEnvironment`s, `PersistenceController`). **Re-Read every file before editing and anchor by code structure — the line numbers in this plan may have drifted.**
+
+> **⚠️ Wave-1 reconciliation:**
+> This plan IS store-swap-safety, and it is COMPLETE and MERGED to `main` (commits bfd8635..6f008f7). Do NOT execute it. Every task here is already done.
+> - All 7 "Create" files exist; all "Modify" edits landed. Re-running any Create/Replace step would clobber merged code.
+> - Every line-number anchor is stale — re-Read each file before believing any "line N" reference. flushAndSwap is now at PersistenceHost.swift:139 (gained a `shouldAddStoreAsynchronously == false` guard in `addStore` and a hoisted-out `lastRollbackDescription` write, commit d39c6b2); restoreFromBackup is at MigrationCoordinator.swift:142 and already honors `quarantineFolderName` with a `latestQuarantinedStore` fallback (commit c3d202e); copyStore is QuarantineManager.swift:70.
+> - The Task-6 `localStoreRowCount` seam is already wired in PRODUCTION via `PersistenceController.localTaskRowCount()` in BOTH AppEnvironment.swift files (commit 2cffb58) — the plan's `{ 1 }` default is no longer the live value. Do not wire it again.
+> - test-2 (restoreFromBackup coverage) is CLOSED: MigrationRecoveryTests has happy-path, no-backup, AND exact-folder tests. Skip Task 8's restore tests.
+> - All source findings (persist-3, sync-1, sync-3, sync-4, sync-7, conc-4, test-1, test-2, Roadmap #1) are closed. The only deferred item — `wal_checkpoint(TRUNCATE)` around copyStore — belongs to the recovery-hardening plan, not here.
+> - The single remaining caveat: the app-hosted `Lillist-iOSAppHostedTests` target EXISTS but needs a code-signed simulator host (CI / signed Mac) to actually RUN the liveSwapAllowed-gated tests; building it is done.
+> Action for a fresh contributor: treat this file as archaeology only and move to the immediate next Wave-1 P0, recurrence-input-hardening.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Make the destructive LocalOnly↔iCloudSync store swap transactional and crash-safe, and give the migration state machine real executing test coverage with failure injection so the swap fix is actually verified.
