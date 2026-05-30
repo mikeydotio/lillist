@@ -115,13 +115,17 @@ enum RecurrenceSpawner {
 
     /// True if the rule's `count` budget would be consumed after this spawn.
     /// The seed is instance #1; each spawned instance counts toward `count`.
+    /// Soft-deleted (trashed) instances are excluded so trashing an instance
+    /// of a `count = N` series doesn't permanently stall the series one short
+    /// of its budget (stores-7).
     private static func countReached(
         series: Series,
         rule: RecurrenceRule
     ) -> Bool {
         guard case .calendar(let cal) = rule, let count = cal.count else { return false }
-        let existing = (series.instances as? Set<LillistTask>)?.count ?? 0
-        // existing already includes the new spawn (we set spawn.series = series above).
-        return existing >= count
+        let instances = (series.instances as? Set<LillistTask>) ?? []
+        let live = instances.filter { $0.deletedAt == nil }.count
+        // `live` already includes the new spawn (we set spawn.series = series above).
+        return live >= count
     }
 }
