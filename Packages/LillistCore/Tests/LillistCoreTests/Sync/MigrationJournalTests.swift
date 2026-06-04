@@ -96,4 +96,66 @@ struct MigrationJournalTests {
         try store.clear()
         #expect(try store.read() == .idle)
     }
+
+    @Test("Idle journal is never stale")
+    func idleNeverStale() {
+        let now = Date(timeIntervalSince1970: 10_000)
+        #expect(MigrationJournal.idle.isStale(now: now, threshold: 600) == false)
+    }
+
+    @Test("In-flight journal with a recent heartbeat is not stale")
+    func freshInFlightNotStale() {
+        let now = Date(timeIntervalSince1970: 10_000)
+        let j = MigrationJournal(
+            state: .awaitingSync,
+            operation: .replaceLocalWithICloud,
+            startedAt: now.addingTimeInterval(-120),
+            lastHeartbeatAt: now.addingTimeInterval(-120)
+        )
+        #expect(j.isStale(now: now, threshold: 600) == false)
+    }
+
+    @Test("In-flight journal whose heartbeat predates the threshold is stale")
+    func crashedInFlightIsStale() {
+        let now = Date(timeIntervalSince1970: 10_000)
+        let j = MigrationJournal(
+            state: .reconfiguringStore,
+            operation: .disableNow,
+            startedAt: now.addingTimeInterval(-1_000),
+            lastHeartbeatAt: now.addingTimeInterval(-1_000)
+        )
+        #expect(j.isStale(now: now, threshold: 600) == true)
+    }
+
+    @Test("In-flight journal with no heartbeat falls back to startedAt for staleness")
+    func missingHeartbeatUsesStartedAt() {
+        let now = Date(timeIntervalSince1970: 10_000)
+        let j = MigrationJournal(
+            state: .preparing,
+            operation: .syncFirstThenDisable,
+            startedAt: now.addingTimeInterval(-1_000),
+            lastHeartbeatAt: nil
+        )
+        #expect(j.isStale(now: now, threshold: 600) == true)
+    }
+
+    @Test("In-flight journal with neither heartbeat nor startedAt is treated as stale")
+    func missingBothTimestampsIsStale() {
+        let now = Date(timeIntervalSince1970: 10_000)
+        let j = MigrationJournal(state: .failed)
+        #expect(j.isStale(now: now, threshold: 600) == true)
+    }
+
+    @Test("Default threshold sits above the 300s quiesce hard timeout")
+    func defaultThresholdAboveQuiesceTimeout() {
+        let now = Date(timeIntervalSince1970: 10_000)
+        let j = MigrationJournal(
+            state: .awaitingSync,
+            operation: .replaceLocalWithICloud,
+            startedAt: now.addingTimeInterval(-310),
+            lastHeartbeatAt: now.addingTimeInterval(-310)
+        )
+        #expect(j.isStale(now: now) == false)
+        #expect(MigrationJournal.staleThreshold > 300)
+    }
 }

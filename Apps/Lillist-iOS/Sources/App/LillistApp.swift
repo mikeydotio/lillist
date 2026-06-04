@@ -247,7 +247,14 @@ private struct OnboardingPresentationModifier: ViewModifier {
         }
         let journal = try? environment.migrationJournalStore.read()
         if let journal, journal.isInFlight {
-            recoveryJournal = journal
+            // Only offer recovery for a *stale* (crashed) migration. A
+            // fresh in-flight journal belongs to a migration that may still
+            // be completing in another process/launch; surfacing recovery
+            // would race it. The MigrationGate keeps blocking new work
+            // either way.
+            if journal.isStale() {
+                recoveryJournal = journal
+            }
             return
         }
         let done = await environment.onboardingState.hasCompletedOnboarding()
