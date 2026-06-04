@@ -258,7 +258,14 @@ public enum SwiftEvaluator {
         guard case .string(let needle) = value else { return false }
         switch op {
         case .contains: return haystack.localizedStandardContains(needle)
-        case .equals: return haystack.localizedCaseInsensitiveCompare(needle) == .orderedSame
+        case .equals:
+            // Match the compiler's `==[cd]`: case- AND diacritic-insensitive.
+            return haystack.compare(
+                needle,
+                options: [.caseInsensitive, .diacriticInsensitive],
+                range: nil,
+                locale: nil
+            ) == .orderedSame
         case .startsWith:
             return haystack.range(of: needle, options: [.caseInsensitive, .diacriticInsensitive, .anchored]) != nil
         default: return false

@@ -59,6 +59,19 @@ struct SwiftEvaluatorTests {
         #expect(SwiftEvaluator.evaluate(group: g, against: snapshot(title: "inbox")) == true)
     }
 
+    @Test("title equals is diacritic-insensitive (matches NS ==[cd])")
+    func titleEqualsDiacriticInsensitive() {
+        let g = PredicateGroup(combinator: .all, predicates: [
+            .leaf(.init(field: .title, op: .equals, value: .string("cafe")))
+        ])
+        // ==[cd] folds diacritics: "café" must equal "cafe".
+        #expect(SwiftEvaluator.evaluate(group: g, against: snapshot(title: "café")) == true)
+        // And case must still fold both ways.
+        #expect(SwiftEvaluator.evaluate(group: g, against: snapshot(title: "CAFÉ")) == true)
+        // A genuinely different string must not match.
+        #expect(SwiftEvaluator.evaluate(group: g, against: snapshot(title: "cafeteria")) == false)
+    }
+
     @Test("status is statusSet")
     func statusIs() {
         let g = PredicateGroup(combinator: .all, predicates: [
