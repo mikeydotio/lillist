@@ -1,6 +1,6 @@
 # Migration-Adjacent Correctness Implementation Plan
 
-> **📍 STATUS — ⬜ PENDING — Wave 4.**
+> **📍 STATUS — ✅ MERGED to `main` — Wave 4** (commits `af7c29f`..`3a676d8`; 791 LillistCore tests green, warning-free; iOS + macOS apps build clean; app-hosted target compiles). Closed notif-1, sync-2, sync-5, sync-6, sync-8. `MigrationGate` untouched (headless callers still abort on any non-idle journal). The new `MigrationCoordinatorRestoreTests` (Tasks 2/4/5) are **live-swap-gated** — they skip under `swift test` and were **wired into `Lillist-iOSAppHostedTests`** (alongside `FakeUserNotificationCenter.swift`) so they execute under a real bundle ID; their real executing proof is on a code-signed simulator host (CI / dev Mac), per the index's executor-confirm callout. Anchors matched verbatim throughout (no reconciliation needed — `runMigration` had no pre-existing reentrancy guard).
 >
 > Part of the **Foundation Hardening** program. **Single source of truth for progress, wave order, and cross-plan coordination:** [`2026-05-29-foundation-hardening-index.md`](2026-05-29-foundation-hardening-index.md). New to this project? Read the index first, then the review ([`docs/reviews/2026-05-28-foundation-review.md`](../../reviews/2026-05-28-foundation-review.md)) for *why* this work exists, then `CLAUDE.md` for conventions + build/test commands. Execute task-by-task with `superpowers:subagent-driven-development`.
 >
