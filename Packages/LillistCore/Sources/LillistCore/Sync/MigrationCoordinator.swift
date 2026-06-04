@@ -180,6 +180,17 @@ public final class MigrationCoordinator {
     // MARK: - Core migration runner
 
     private func runMigration(op: ModeTransitionOp, targetMode: SyncMode, storeURL: URL) async throws {
+        // Reentrancy guard: although @MainActor serializes execution,
+        // runMigration suspends at every `await`, so a second begin* call
+        // can interleave and clobber the in-flight journal entry. Reject
+        // any new migration while one is already recorded as in flight.
+        // Read synchronously *before* the first suspension so the check
+        // can't race itself. Leaves the existing journal untouched.
+        if let current = try? journal.read(), current.isInFlight {
+            throw LillistError.storeUnavailable(
+                reason: "A sync-mode migration is already in progress."
+            )
+        }
         await breadcrumb("sync mode change start \(op.rawValue)")
         // 1. preparing — cancel notifications first so a destructive
         //    op doesn't leave stale fires pointing at deleted rows
