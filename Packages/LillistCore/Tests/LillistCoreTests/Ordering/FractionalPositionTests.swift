@@ -53,4 +53,32 @@ struct FractionalPositionTests {
     func normalGap() {
         #expect(FractionalPosition.gapIsTooSmall(after: 1.0, before: 2.0) == false)
     }
+
+    @Test("anchorsAreOutOfOrder is true only when after >= before")
+    func anchorOrdering() {
+        #expect(FractionalPosition.anchorsAreOutOfOrder(after: 3.0, before: 2.0) == true)
+        #expect(FractionalPosition.anchorsAreOutOfOrder(after: 2.0, before: 2.0) == true)
+        #expect(FractionalPosition.anchorsAreOutOfOrder(after: 2.0, before: 3.0) == false)
+    }
+
+    @Test("anchorsAreOutOfOrder is false when either anchor is nil")
+    func anchorOrderingWithNil() {
+        #expect(FractionalPosition.anchorsAreOutOfOrder(after: nil, before: 2.0) == false)
+        #expect(FractionalPosition.anchorsAreOutOfOrder(after: 2.0, before: nil) == false)
+        #expect(FractionalPosition.anchorsAreOutOfOrder(after: nil, before: nil) == false)
+    }
+
+    @Test("needsCompaction fires only when both real neighbors are too close")
+    func needsCompactionTwoNeighbors() {
+        let after = 1.0
+        #expect(FractionalPosition.needsCompaction(after: after, before: after.nextUp) == true)
+        #expect(FractionalPosition.needsCompaction(after: 1.0, before: 2.0) == false)
+    }
+
+    @Test("needsCompaction is false at the head or tail (nil neighbor)")
+    func needsCompactionEdges() {
+        #expect(FractionalPosition.needsCompaction(after: nil, before: 1.0) == false)
+        #expect(FractionalPosition.needsCompaction(after: 1.0, before: nil) == false)
+        #expect(FractionalPosition.needsCompaction(after: nil, before: nil) == false)
+    }
 }
