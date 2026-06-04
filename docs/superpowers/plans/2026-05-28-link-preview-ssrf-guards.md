@@ -1,6 +1,14 @@
 # Link-Preview SSRF Guards Implementation Plan
 
-> **📍 STATUS — ⬜ PENDING — Wave 2.**
+> **📍 STATUS — ◧ PARTIALLY MERGED to `main` (2026-06-04) — Wave 2.** Tasks 1–5
+> landed (commits `356ed97`..`4bb6154`); 738 LillistCore tests green, warning-free.
+> Closed linkpreview-1, linkpreview-2, and the policy/fetcher/CLI halves of
+> linkpreview-3 (`URLPreviewPolicy` + fetcher pre-check/streaming-cap/`RedirectGuard`
+> + `LinkHandler` ingest gate). **Task 6 (iOS Share Extension `ShareRootView` gate)
+> is DEFERRED to Wave 6** per index chain #3 (that file is restructured first by
+> `app-layer-test-rehab`/`extension-persistence-unification`) — tracked as index
+> residual #10. Task 5's zero-attachment assertion uses `attachments(forTask:).isEmpty`
+> (no `count(forTask:)` exists). Do NOT re-run Tasks 1–5; execute only Task 6 in Wave 6.
 >
 > Part of the **Foundation Hardening** program. **Single source of truth for progress, wave order, and cross-plan coordination:** [`2026-05-29-foundation-hardening-index.md`](2026-05-29-foundation-hardening-index.md). New to this project? Read the index first, then the review ([`docs/reviews/2026-05-28-foundation-review.md`](../../reviews/2026-05-28-foundation-review.md)) for *why* this work exists, then `CLAUDE.md` for conventions + build/test commands. Execute task-by-task with `superpowers:subagent-driven-development`.
 >
