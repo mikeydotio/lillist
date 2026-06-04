@@ -472,24 +472,11 @@ public final class TaskStore: @unchecked Sendable {
     @discardableResult
     public func purgeAll() async throws -> Int {
         do {
-            let count: Int = try await context.perform { [self] in
-                let req = NSFetchRequest<LillistTask>(entityName: "LillistTask")
-                req.predicate = NSPredicate(format: "deletedAt != nil")
-                let trashed = try context.fetch(req)
-                // Only count/iterate trashed roots — tasks whose parent isn't
-                // itself trashed. Descendants are already cascade-soft-deleted
-                // via `applySoftDelete`, so iterating every trashed row would
-                // double-count children once via `countDescendants(of: parent)`
-                // and again when the child appears in `trashed` directly.
-                let trashedRoots = trashed.filter { $0.parent?.deletedAt == nil }
-                var count = 0
-                for t in trashedRoots {
-                    count += 1 + countDescendants(of: t)
-                    context.delete(t) // cascades to children via the Core Data rule
-                }
-                try context.save()
-                return count
-            }
+            // `deletedAt != nil` takes no arguments, so the args array is empty.
+            let count: Int = try await batchPurge(
+                predicateFormat: "deletedAt != nil",
+                arguments: []
+            )
             await recordCrumb("task.purge_all", success: true)
             return count
         } catch {
@@ -498,9 +485,62 @@ public final class TaskStore: @unchecked Sendable {
         }
     }
 
-    private func countDescendants(of t: LillistTask) -> Int {
-        guard let kids = t.children as? Set<LillistTask>, !kids.isEmpty else { return 0 }
-        return kids.reduce(0) { $0 + 1 + countDescendants(of: $1) }
+    /// Hard-deletes every `LillistTask` matching `predicateFormat` off the
+    /// main-queue `viewContext`, on a background context, in a single
+    /// `NSBatchDeleteRequest`.
+    ///
+    /// The predicate is rebuilt *inside* the `@Sendable` background-context
+    /// closure from its Sendable format string + argument list — an
+    /// `NSPredicate` is not `Sendable` and so cannot be captured across the
+    /// actor boundary (the same hoist-and-rebuild pattern `PersistenceHost`
+    /// uses for `NSPersistentStoreDescription`).
+    ///
+    /// - Parameters:
+    ///   - predicateFormat: `NSPredicate(format:)` string selecting the
+    ///     victim rows.
+    ///   - arguments: The substitution arguments for `predicateFormat`.
+    ///     Must be `Sendable` so they survive the actor-boundary capture.
+    /// - Returns: The number of `LillistTask` rows removed (roots plus every
+    ///   cascade-reachable descendant task).
+    private func batchPurge(
+        predicateFormat: String,
+        arguments: [any Sendable]
+    ) async throws -> Int {
+        let ctx = persistence.makeBackgroundContext()
+        let viewContext = persistence.container.viewContext
+        let deletedIDs: [NSManagedObjectID] = try await ctx.perform {
+            let predicate = NSPredicate(
+                format: predicateFormat,
+                argumentArray: arguments
+            )
+            let req = NSFetchRequest<LillistTask>(entityName: "LillistTask")
+            req.predicate = predicate
+            let matched = try ctx.fetch(req)
+            let roots = matched.filter { task in
+                guard let parent = task.parent else { return true }
+                return !predicate.evaluate(with: parent)
+            }
+            // `NSBatchDeleteRequest` bypasses Core Data's Cascade delete
+            // rules, so expand each root to every cascade-reachable
+            // objectID (descendants, journal entries, attachments,
+            // notification specs), then delete that closure entity-by-entity
+            // (a single batch is restricted to one entity). The returned IDs
+            // are merged into the viewContext below so it invalidates the
+            // corresponding in-memory objects and callers see no dangling
+            // faults.
+            let ids = CascadeReaper.objectIDs(forDeleting: roots)
+            return try CascadeReaper.batchDelete(objectIDs: ids, in: ctx)
+        }
+        guard !deletedIDs.isEmpty else { return 0 }
+        await viewContext.perform {
+            NSManagedObjectContext.mergeChanges(
+                fromRemoteContextSave: [NSDeletedObjectsKey: deletedIDs],
+                into: [viewContext]
+            )
+        }
+        return await ctx.perform {
+            deletedIDs.filter { $0.entity.name == "LillistTask" }.count
+        }
     }
 
     private func applySoftDelete(to m: LillistTask, at now: Date) {
