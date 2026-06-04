@@ -28,6 +28,8 @@ struct SeedTask: Sendable {
     var tagIDs: [UUID] = []
     var journalNoteBodies: [String] = []
     var attachmentKinds: [AttachmentKind] = []
+    var isRecurring: Bool = false
+    var hasNudges: Bool = false
 }
 
 enum ParityFixtures {
@@ -497,6 +499,30 @@ enum ParityFixtures {
             // PredicateLimits.maxAncestorDepth == 8: depths 1...8 are reachable,
             // depth 9 is beyond the ceiling for both evaluators.
             expected: Set((1...8).map { chainNode($0) })
+        ),
+        // 34. recurrence is true — must surface only the recurring task in BOTH.
+        ParityFixture(
+            name: "recurrence is true",
+            group: .init(combinator: .all, predicates: [
+                .leaf(.init(field: .recurrence, op: .is, value: .bool(true)))
+            ]),
+            seeds: [
+                SeedTask(id: id1, title: "weekly review", isRecurring: true),
+                SeedTask(id: id2, title: "one-off", isRecurring: false)
+            ],
+            expected: [id1]
+        ),
+        // 35. hasNudges is true — must surface only the nudged task in BOTH.
+        ParityFixture(
+            name: "hasNudges is true",
+            group: .init(combinator: .all, predicates: [
+                .leaf(.init(field: .hasNudges, op: .is, value: .bool(true)))
+            ]),
+            seeds: [
+                SeedTask(id: id1, title: "reminder set", hasNudges: true),
+                SeedTask(id: id2, title: "no reminder", hasNudges: false)
+            ],
+            expected: [id1]
         )
     ]
 }

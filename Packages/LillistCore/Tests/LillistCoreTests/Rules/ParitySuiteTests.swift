@@ -74,6 +74,23 @@ struct ParitySuiteTests {
                     a.task = byID[seed.id]
                 }
             }
+            // Recurrence (a Series seed) and nudges (a NotificationSpec).
+            for seed in fixture.seeds {
+                guard let t = byID[seed.id] else { continue }
+                if seed.isRecurring {
+                    let series = Series(context: ctx)
+                    series.id = UUID()
+                    series.ruleJSON = nil
+                    t.series = series
+                }
+                if seed.hasNudges {
+                    let spec = NotificationSpec(context: ctx)
+                    spec.id = UUID()
+                    spec.kind = .defaultStart
+                    spec.createdAt = Date()
+                    spec.task = t
+                }
+            }
             try ctx.save()
         }
 
