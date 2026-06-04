@@ -172,12 +172,10 @@ public enum SwiftEvaluator {
         switch op {
         case .isDescendantOf: return !ancestorIDs.isDisjoint(with: ids)
         case .isAncestorOf:
-            // Symmetry: a snapshot of an ancestor task has the descendant ids
-            // in `ancestorIDs`? No — `isAncestorOf` asks "is THIS task an
-            // ancestor of any of the given ids?" That requires the caller
-            // to supply descendant-id reachability; not represented in the
-            // snapshot today. Return false; the parity suite excludes this
-            // op for SwiftEvaluator until a snapshot extension is added.
+            // No surfaced caller (YAGNI): `NSPredicateCompiler.compileAncestor`
+            // and this matcher both stub `false`. Wire up reverse-reachability
+            // in both places together if a feature ever needs it. The parity
+            // suite pins the symmetric `false`.
             return false
         default: return false
         }
