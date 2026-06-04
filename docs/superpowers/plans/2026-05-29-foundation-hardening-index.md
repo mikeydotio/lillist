@@ -139,7 +139,7 @@ CloudKit, XCTest + Swift Testing, xcodegen, GitHub Actions (new).
 - **Wave 1 (P0):** ✅ store-swap-safety · ✅ recurrence-input-hardening
 - **Wave 2 (P1):** ✅ breadcrumb-truthfulness · ✅ fractional-ordering-compaction · ✅ predicate-parity · ◧ link-preview-ssrf-guards (Tasks 1–5 done; **Task 6 Share-Extension gate → Wave 6**)
 - **Wave 3 (P1):** ✅ cloudkit-convergence · ✅ resolve-inert-features
-- **Wave 4:** ⬜ **concurrency-stress-tests ← NEXT** · ⬜ migration-adjacent-correctness · ⬜ background-context-seam
+- **Wave 4:** ✅ concurrency-stress-tests · ⬜ **migration-adjacent-correctness ← NEXT** · ⬜ background-context-seam
 - **Wave 5 (P2):** ⬜ crash-reporter-privacy · ⬜ app-layer-test-rehab
 - **Wave 6:** ⬜ extension-persistence-unification · ⬜ export-import-robustness · ⬜ cli-robustness · ⬜ performance-budgets-and-paging · ⬜ observability-logging
 - **Wave 7 (closing):** ⬜ privacy-manifest-export-compliance · ⬜ recovery-hardening · ⬜ lillistui-localization-a11y · ⬜ ci-and-build-posture (LAST)
