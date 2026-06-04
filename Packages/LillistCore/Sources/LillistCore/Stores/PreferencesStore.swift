@@ -2,6 +2,17 @@ import Foundation
 import CoreData
 
 public final class PreferencesStore: @unchecked Sendable {
+    /// Well-known, stable identity for the single `AppPreferences` row.
+    ///
+    /// Before this, `fetchOrCreateSingleton` minted a fresh `UUID()` on every
+    /// device, so CloudKit mirrored *two distinct records* for the "singleton"
+    /// and the two devices' preferences flip-flopped (review persist-2). Using
+    /// one constant id means both devices converge on the same CloudKit record;
+    /// `mergeByPropertyObjectTrump` then reconciles property-by-property instead
+    /// of duplicating the whole row. The value is a fixed UUID literal — never
+    /// regenerate it; existing stores depend on it.
+    public static let singletonID = UUID(uuidString: "5111A570-0000-4000-8000-000000000001")!
+
     private let persistence: PersistenceController
     private var context: NSManagedObjectContext { persistence.container.viewContext }
 
@@ -172,13 +183,26 @@ public final class PreferencesStore: @unchecked Sendable {
     }
 
     private func fetchOrCreateSingleton(in ctx: NSManagedObjectContext) throws -> AppPreferences {
-        let req = NSFetchRequest<AppPreferences>(entityName: "AppPreferences")
-        req.fetchLimit = 1
-        if let existing = try ctx.fetch(req).first {
+        // Prefer the canonical well-known-id row. Falling back to "any row"
+        // keeps a legacy random-UUID store readable until `normalizeSingletons`
+        // collapses it (called once at bootstrap).
+        let canonical = NSFetchRequest<AppPreferences>(entityName: "AppPreferences")
+        canonical.predicate = NSPredicate(format: "id == %@", Self.singletonID as CVarArg)
+        canonical.fetchLimit = 1
+        if let existing = try ctx.fetch(canonical).first {
             return existing
         }
+        let anyReq = NSFetchRequest<AppPreferences>(entityName: "AppPreferences")
+        anyReq.fetchLimit = 1
+        if let legacy = try ctx.fetch(anyReq).first {
+            // Adopt the legacy row's identity in place so we don't strand a
+            // CloudKit record; `normalizeSingletons` handles the multi-row case.
+            legacy.id = Self.singletonID
+            try ctx.save()
+            return legacy
+        }
         let row = AppPreferences(context: ctx)
-        row.id = UUID()
+        row.id = Self.singletonID
         row.defaultAllDayNotificationHour = 9
         row.defaultAllDayNotificationMinute = 0
         row.morningSummaryEnabled = true
@@ -194,5 +218,32 @@ public final class PreferencesStore: @unchecked Sendable {
         row.defaultTagTintHex = "#7F8FA6"
         try ctx.save()
         return row
+    }
+
+    /// One-time-per-launch convergence pass: collapse every `AppPreferences`
+    /// row down to a single canonical row carrying `singletonID`.
+    ///
+    /// Pre-fix stores (and any device that synced before this fix shipped) can
+    /// hold multiple random-UUID rows. We keep the row that sorts first by id
+    /// (deterministic across devices), reassign it `singletonID`, and delete the
+    /// rest. Idempotent: on an already-canonical store this fetches one row and
+    /// returns without writing. Safe to call on every bootstrap.
+    public func normalizeSingletons() async throws {
+        try await context.perform { [self] in
+            let req = NSFetchRequest<AppPreferences>(entityName: "AppPreferences")
+            req.sortDescriptors = [NSSortDescriptor(key: "id", ascending: true)]
+            let rows = try context.fetch(req)
+            guard let survivor = rows.first else { return }       // empty store
+            if rows.count == 1 && survivor.id == Self.singletonID {
+                return                                            // already canonical
+            }
+            survivor.id = Self.singletonID
+            for extra in rows.dropFirst() {
+                context.delete(extra)
+            }
+            if context.hasChanges {
+                try context.save()
+            }
+        }
     }
 }
