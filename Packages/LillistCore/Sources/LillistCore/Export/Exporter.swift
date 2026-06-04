@@ -37,10 +37,19 @@ public final class Exporter: @unchecked Sendable {
     }
 
     private func buildDocument(assetsDir: URL) async throws -> ExportSchema.Document {
-        let ctx = persistence.container.viewContext
+        let ctx = persistence.makeBackgroundContext()
         let prefs = try await preferences.read()
 
-        return try await ctx.perform {
+        // Attachment bytes are read into value types INSIDE perform; the
+        // files themselves are written to disk OUTSIDE perform so no file
+        // I/O happens while holding the Core Data context queue.
+        struct PendingAsset {
+            let filename: String
+            let bytes: Data
+            let dto: ExportSchema.AttachmentDTO
+        }
+
+        let (document, pendingAssets): (ExportSchema.Document, [PendingAsset]) = try await ctx.perform {
             // Tasks (including trashed — full backup)
             let taskReq = NSFetchRequest<LillistTask>(entityName: "LillistTask")
             taskReq.sortDescriptors = [NSSortDescriptor(key: "createdAt", ascending: true)]
@@ -93,13 +102,26 @@ public final class Exporter: @unchecked Sendable {
             }
 
             let attReq = NSFetchRequest<Attachment>(entityName: "Attachment")
+            var pending: [PendingAsset] = []
             let attDTOs = try ctx.fetch(attReq).map { m -> ExportSchema.AttachmentDTO in
                 var path: String?
                 if let data = m.data {
                     let filename = "\(m.id?.uuidString ?? UUID().uuidString)-\(m.filename ?? "asset")"
-                    let url = assetsDir.appendingPathComponent(filename)
-                    try? data.write(to: url)
                     path = "assets/\(filename)"
+                    let dto = ExportSchema.AttachmentDTO(
+                        id: m.id ?? UUID(),
+                        taskID: m.task?.id ?? UUID(),
+                        journalEntryID: m.journalEntry?.id,
+                        kind: Int(m.kindRaw),
+                        filename: m.filename ?? "",
+                        uti: m.uti ?? "",
+                        byteSize: m.byteSize,
+                        dataPath: path,
+                        linkPreviewJSON: m.linkPreviewJSON,
+                        createdAt: m.createdAt
+                    )
+                    pending.append(PendingAsset(filename: filename, bytes: data, dto: dto))
+                    return dto
                 }
                 return ExportSchema.AttachmentDTO(
                     id: m.id ?? UUID(),
@@ -125,7 +147,7 @@ public final class Exporter: @unchecked Sendable {
                 defaultTaskListSort: prefs.defaultTaskListSort.rawValue
             )
 
-            return ExportSchema.Document(
+            let doc = ExportSchema.Document(
                 version: ExportSchema.version,
                 exportedAt: Date(),
                 tasks: taskDTOs,
@@ -134,6 +156,15 @@ public final class Exporter: @unchecked Sendable {
                 attachments: attDTOs,
                 preferences: prefsDTO
             )
+            return (doc, pending)
         }
+
+        // File I/O OUTSIDE the Core Data context queue.
+        for asset in pendingAssets {
+            let url = assetsDir.appendingPathComponent(asset.filename)
+            try asset.bytes.write(to: url)
+        }
+
+        return document
     }
 }

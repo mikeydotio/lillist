@@ -86,4 +86,43 @@ struct ExporterTests {
             try await exporter.export(to: dir)
         }
     }
+
+    @Test("Export does not mutate or block the main-queue viewContext")
+    func usesBackgroundContext() async throws {
+        let p = try await TestStore.make()
+        let tasks = TaskStore(persistence: p)
+        let attach = AttachmentStore(persistence: p)
+        let task = try await tasks.create(title: "Has asset")
+        let bytes = Data([0x01, 0x02, 0x03, 0x04])
+        _ = try await attach.addFile(taskID: task, filename: "blob.bin", uti: "public.data", data: bytes)
+
+        let prefs = PreferencesStore(persistence: p)
+        let exporter = Exporter(persistence: p, preferences: prefs)
+        let dir = FileManager.default.temporaryDirectory
+            .appendingPathComponent("lillist-export-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: dir) }
+
+        try await exporter.export(to: dir)
+
+        let viewHasChanges: Bool = await p.container.viewContext.perform {
+            p.container.viewContext.hasChanges
+        }
+        #expect(viewHasChanges == false)
+
+        let doc = try decodeDocument(in: dir)
+        #expect(doc.attachments.count == 1)
+        let path = try #require(doc.attachments[0].dataPath)
+        let assetURL = dir.appendingPathComponent(path)
+        #expect(try Data(contentsOf: assetURL) == bytes)
+    }
+
+    private func decodeDocument(in dir: URL) throws -> ExportSchema.Document {
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        return try decoder.decode(
+            ExportSchema.Document.self,
+            from: try Data(contentsOf: dir.appendingPathComponent("lillist.json"))
+        )
+    }
 }
