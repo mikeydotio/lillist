@@ -56,3 +56,45 @@ struct RelativeDateParityTests {
         #expect(nsResults == swiftResults, "withinNextDays(\(n)) diverged: NS=\(nsResults.count), Swift=\(swiftResults.count)")
     }
 }
+
+@Suite("RelativeDate weeksFromNow overflow guard")
+struct RelativeDateWeeksOverflowTests {
+    /// `weeksFromNow(Int.max)` would trap on `n * 7`. The resolver must
+    /// saturate the multiply and return a defined date (the start-of-today
+    /// fallback when the day count overflows the calendar's range).
+    @Test("weeksFromNow(Int.max) does not trap")
+    func maxWeeksNoTrap() {
+        let now = ParityFixtures.now
+        let cal = ParityFixtures.calendar
+        // Must not crash. Calendar.date(byAdding:) returns nil for an
+        // out-of-range day count, so resolve falls back to start-of-today.
+        let resolved = RelativeDateResolver.resolve(.weeksFromNow(Int.max), now: now, calendar: cal)
+        #expect(resolved == cal.startOfDay(for: now))
+    }
+
+    @Test("weeksFromNow(Int.min) does not trap")
+    func minWeeksNoTrap() {
+        let now = ParityFixtures.now
+        let cal = ParityFixtures.calendar
+        let startOfToday = cal.startOfDay(for: now)
+        let resolved = RelativeDateResolver.resolve(.weeksFromNow(Int.min), now: now, calendar: cal)
+        // The clamp's job is "no arithmetic trap" — reaching this line at all
+        // proves that. We additionally pin a directional property that holds
+        // under Foundation's asymmetric out-of-range handling: a hugely
+        // negative week offset can never move the date forward. Note the
+        // asymmetry — Int.max days makes Calendar.date(byAdding:) return nil,
+        // so resolve falls back to start-of-today; Int.min days makes Calendar
+        // return a *defined* far-past Date (not nil), so the `?? startOfToday`
+        // fallback never fires. Hence `<=` rather than `==`.
+        #expect(resolved <= startOfToday)
+    }
+
+    @Test("weeksFromNow(2) still resolves to +14 days")
+    func smallWeeksUnchanged() {
+        let now = ParityFixtures.now
+        let cal = ParityFixtures.calendar
+        let resolved = RelativeDateResolver.resolve(.weeksFromNow(2), now: now, calendar: cal)
+        let expected = cal.date(byAdding: .day, value: 14, to: cal.startOfDay(for: now))!
+        #expect(resolved == expected)
+    }
+}
