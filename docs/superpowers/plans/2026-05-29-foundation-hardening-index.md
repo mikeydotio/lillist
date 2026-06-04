@@ -97,17 +97,32 @@ CloudKit, XCTest + Swift Testing, xcodegen, GitHub Actions (new).
   — tracked as residual #10 below. (Test used `attachments(forTask:).isEmpty` —
   `AttachmentStore` exposes no `count(forTask:)`.)
 - ✅ **Wave 2 COMPLETE** (modulo the link-preview Share-Extension gate explicitly
-  carried to Wave 6). **Next: Wave 3** — `cloudkit-convergence` (prereq for
-  `concurrency-stress-tests`; establishes `PersistenceController.localTransactionAuthor`),
-  then `resolve-inert-features`. Both edit iOS `AppEnvironment.swift` in distinct
-  regions — serialize them.
-- ⬜ **Waves 3–7** — pending. Follow the wave order + serial chains below.
+  carried to Wave 6).
+- ✅ **Wave 3 · `cloudkit-convergence`** — **merged to `main`** (commits
+  `795290c`..`cc9e581`; 760 LillistCore tests green, iOS app builds clean,
+  warning-free). Closed persist-2, conc-3, notif-2, persist-5. Established
+  `PersistenceController.localTransactionAuthor` (the hard dep for Wave 4
+  `concurrency-stress-tests`), well-known `AppPreferences.singletonID` +
+  `normalizeSingletons`, one-default-spec-per-(task,kind) guard,
+  `PersistentHistoryTokenStore` + `RemoteChangeReconciler`, `CloudKitErrorClassifier`,
+  and wired the reconciler + normalization into the iOS launch path. Three faithful
+  compile-fixes to the plan's verbatim source were needed (a non-Sendable
+  `NSPersistentHistoryToken` captured across a `@Sendable` `perform` boundary ×2;
+  an unused outer `try`; `fetchHistory(after: nil)` overload ambiguity) — none
+  changed behavior or weakened a test. **⚠️ A pre-existing, rare, test-only SIGSEGV
+  in heavy parallel in-memory store creation was investigated during verification
+  — see residual #11; not a Wave-3 regression (760 green ×10).**
+- ⬜ **Next: Wave 3 (last)** — `resolve-inert-features` (wires `AutoPurgeJob` +
+  Wave-4's `HistoryPruner.sweep` into `bootstrap()`; edits iOS `AppEnvironment.swift`
+  in a region distinct from cloudkit-convergence — re-Read first; **do NOT re-add
+  `localStoreRowCount`**, already wired by Wave 1).
+- ⬜ **Waves 4–7** — pending. Follow the wave order + serial chains below.
 
 ### Progress checklist
 
 - **Wave 1 (P0):** ✅ store-swap-safety · ✅ recurrence-input-hardening
 - **Wave 2 (P1):** ✅ breadcrumb-truthfulness · ✅ fractional-ordering-compaction · ✅ predicate-parity · ◧ link-preview-ssrf-guards (Tasks 1–5 done; **Task 6 Share-Extension gate → Wave 6**)
-- **Wave 3 (P1):** ⬜ **cloudkit-convergence ← NEXT** · ⬜ resolve-inert-features
+- **Wave 3 (P1):** ✅ cloudkit-convergence · ⬜ **resolve-inert-features ← NEXT**
 - **Wave 3 (P1):** ⬜ cloudkit-convergence · ⬜ resolve-inert-features
 - **Wave 4:** ⬜ concurrency-stress-tests · ⬜ migration-adjacent-correctness · ⬜ background-context-seam
 - **Wave 5 (P2):** ⬜ crash-reporter-privacy · ⬜ app-layer-test-rehab
@@ -411,6 +426,19 @@ so coverage isn't overstated:
     persist an SSRF-bait URL as a link attachment (the *fetch* is already blocked by
     the merged fetcher guard, so no request is made — only the row persists). Owner:
     Wave 6, alongside `extension-persistence-unification`.
+11. **Intermittent test-suite SIGSEGV under heavy parallel in-memory store
+    creation** (investigated 2026-06-04, `cloudkit-convergence` verification) —
+    `swift test` rarely (~1/15–20 full runs) aborts with signal 11 in a
+    `ParitySuiteTests` case. Root cause: Swift Testing runs ~100+ parameterized
+    cases in parallel, each creating an in-memory `NSPersistentContainer` that
+    shares one cached `NSManagedObjectModel`; concurrent `loadPersistentStores`
+    races Core Data's framework-internal lazy `NSEntityDescription` setup. **Test-
+    only** (production makes one container), **not reproducible on demand**, **not
+    a product bug**. No source fix applied (unverifiable for a timing-dependent
+    crash; the trigger is cross-suite peak concurrency, not one suite). **Owner:
+    Wave 7 `ci-and-build-posture`** — bound test parallelism (`--num-workers N` /
+    `--no-parallel` on container-heavy suites) and/or add SIGSEGV crash-retry.
+    Full analysis in `docs/engineering-notes.md` (2026-06-04 entry).
 
 ## Suggested commit/PR cadence
 

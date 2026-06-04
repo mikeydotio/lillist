@@ -1,6 +1,15 @@
 # CloudKit Cross-Device Convergence Implementation Plan
 
-> **📍 STATUS — ⬜ PENDING — Wave 3.**
+> **📍 STATUS — ✅ MERGED to `main` (2026-06-04) — Wave 3.** All 10 tasks landed
+> (commits `795290c`..`cc9e581`); 760 LillistCore tests green, iOS app builds
+> clean, warning-free. Closed persist-2, conc-3, notif-2, persist-5. Established
+> `PersistenceController.localTransactionAuthor` (hard dep for Wave 4). Three
+> faithful compile-fixes to the plan's verbatim source were required against the
+> strict-concurrency target (non-Sendable `NSPersistentHistoryToken` captured
+> across a `@Sendable perform` ×2; an unused outer `try`; `fetchHistory(after: nil)`
+> overload ambiguity) — none changed behavior or weakened a test. A pre-existing,
+> rare, test-only SIGSEGV in heavy parallel in-memory store creation was
+> investigated during verification (index residual #11) — not a Wave-3 regression.
 >
 > Part of the **Foundation Hardening** program. **Single source of truth for progress, wave order, and cross-plan coordination:** [`2026-05-29-foundation-hardening-index.md`](2026-05-29-foundation-hardening-index.md). New to this project? Read the index first, then the review ([`docs/reviews/2026-05-28-foundation-review.md`](../../reviews/2026-05-28-foundation-review.md)) for *why* this work exists, then `CLAUDE.md` for conventions + build/test commands. Execute task-by-task with `superpowers:subagent-driven-development`.
 >
