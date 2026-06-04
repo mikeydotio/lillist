@@ -11,6 +11,7 @@ public struct CountCommand: AsyncParsableCommand {
     public init() {}
     public func run() async throws {
         let p = try await CLIBridge.StoreLocator.openAppGroup()
+        let cfg = try CLIBridge.Config.read(from: CLIBridge.Config.defaultLocation())
         var flags = CLIBridge.FilterFlags()
         flags.tags = tag
         flags.statuses = try status.map {
@@ -21,7 +22,7 @@ public struct CountCommand: AsyncParsableCommand {
         }
         flags.includeTrash = includeTrash
         let n = try await CLIBridge.CountHandler.run(
-            flags: flags, savedFilterName: saved, persistence: p, now: Date(), calendar: Calendar.current
+            flags: flags, savedFilterName: saved, persistence: p, now: Date(), calendar: cfg.resolvedCalendar()
         )
         print(n)
     }

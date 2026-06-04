@@ -29,11 +29,12 @@ public struct EditCommand: AsyncParsableCommand {
 
     public func run() async throws {
         let p = try await CLIBridge.StoreLocator.openAppGroup()
+        let cfg = try CLIBridge.Config.read(from: CLIBridge.Config.defaultLocation())
         try await CLIBridge.EditHandler.run(
             token: token,
             newTitle: title, newNotes: notes,
             startToken: start, deadlineToken: deadline,
-            persistence: p, now: Date(), calendar: Calendar.current
+            persistence: p, now: Date(), calendar: cfg.resolvedCalendar()
         )
     }
 }

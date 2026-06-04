@@ -9,6 +9,7 @@ public struct EvalCommand: AsyncParsableCommand {
     public init() {}
     public func run() async throws {
         let p = try await CLIBridge.StoreLocator.openAppGroup()
+        let cfg = try CLIBridge.Config.read(from: CLIBridge.Config.defaultLocation())
         let json: String
         if StdinReader.isStdinSentinel(expression) {
             json = StdinReader.readAllLines().joined(separator: "\n")
@@ -16,7 +17,7 @@ public struct EvalCommand: AsyncParsableCommand {
             json = expression
         }
         let records = try await CLIBridge.EvalHandler.run(
-            groupJSON: json, persistence: p, now: Date(), calendar: Calendar.current
+            groupJSON: json, persistence: p, now: Date(), calendar: cfg.resolvedCalendar()
         )
         switch globals.resolveOutputFormat(default: .ndjson) {
         case .json: print(try CLIBridge.TaskRenderer.jsonString(records))
