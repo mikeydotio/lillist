@@ -35,6 +35,7 @@ public struct AddCommand: AsyncParsableCommand {
 
     public func run() async throws {
         let p = try await CLIBridge.StoreLocator.openAppGroup()
+        let cfg = try CLIBridge.Config.read(from: CLIBridge.Config.defaultLocation())
         let id = try await CLIBridge.AddHandler.run(
             title: title,
             notes: notes,
@@ -45,7 +46,7 @@ public struct AddCommand: AsyncParsableCommand {
             statusToken: status,
             persistence: p,
             now: Date(),
-            calendar: Calendar.current
+            calendar: cfg.resolvedCalendar()
         )
         if globals.quiet == false {
             print(id.uuidString)

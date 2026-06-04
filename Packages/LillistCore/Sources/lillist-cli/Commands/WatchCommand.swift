@@ -21,6 +21,7 @@ public struct WatchCommand: AsyncParsableCommand {
 
     public func run() async throws {
         let p = try await CLIBridge.StoreLocator.openAppGroup()
+        let cfg = try CLIBridge.Config.read(from: CLIBridge.Config.defaultLocation())
         var flags = CLIBridge.FilterFlags()
         flags.tags = tag
         flags.statuses = try status.map {
@@ -31,7 +32,7 @@ public struct WatchCommand: AsyncParsableCommand {
         }
         try await CLIBridge.WatchHandler.run(
             flags: flags, savedFilterName: saved,
-            persistence: p, now: Date(), calendar: Calendar.current
+            persistence: p, now: Date(), calendar: cfg.resolvedCalendar()
         ) { event in
             let encoder = JSONEncoder()
             encoder.outputFormatting = [.sortedKeys]

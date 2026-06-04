@@ -9,7 +9,8 @@ public struct NudgeCommand: AsyncParsableCommand {
     public init() {}
     public func run() async throws {
         let p = try await CLIBridge.StoreLocator.openAppGroup()
-        let id = try await CLIBridge.NudgeHandler.run(token: token, atToken: at, persistence: p, now: Date(), calendar: Calendar.current)
+        let cfg = try CLIBridge.Config.read(from: CLIBridge.Config.defaultLocation())
+        let id = try await CLIBridge.NudgeHandler.run(token: token, atToken: at, persistence: p, now: Date(), calendar: cfg.resolvedCalendar())
         print(id.uuidString)
     }
 }

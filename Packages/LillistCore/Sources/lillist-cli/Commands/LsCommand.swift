@@ -88,7 +88,7 @@ public struct LsCommand: AsyncParsableCommand {
 
         let records = try await CLIBridge.LsHandler.run(
             flags: flags, savedFilterName: saved, sort: sortField,
-            persistence: p, now: Date(), calendar: Calendar.current
+            persistence: p, now: Date(), calendar: cfg.resolvedCalendar()
         )
 
         let format = globals.resolveOutputFormat(default: cfg.outputFormat)

@@ -62,7 +62,7 @@ public struct FiltersCommand: AsyncParsableCommand {
                 sortField = cfg.sort
             }
             let records = try await CLIBridge.FiltersHandler.run(
-                name: name, sort: sortField, persistence: p, now: Date(), calendar: Calendar.current
+                name: name, sort: sortField, persistence: p, now: Date(), calendar: cfg.resolvedCalendar()
             )
             switch globals.resolveOutputFormat(default: cfg.outputFormat) {
             case .json: print(try CLIBridge.TaskRenderer.jsonString(records))
@@ -82,6 +82,7 @@ public struct FiltersCommand: AsyncParsableCommand {
         public init() {}
         public func run() async throws {
             let p = try await CLIBridge.StoreLocator.openAppGroup()
+            let cfg = try CLIBridge.Config.read(from: CLIBridge.Config.defaultLocation())
             var flags = CLIBridge.FilterFlags()
             flags.tags = tag
             flags.statuses = try status.map {
@@ -90,7 +91,7 @@ public struct FiltersCommand: AsyncParsableCommand {
                 }
                 return s
             }
-            let group = try await flags.toPredicateGroup(persistence: p, now: Date(), calendar: Calendar.current)
+            let group = try await flags.toPredicateGroup(persistence: p, now: Date(), calendar: cfg.resolvedCalendar())
             let sortField: SortField
             if let s = sort {
                 guard let v = SortField(rawValue: s) else {
