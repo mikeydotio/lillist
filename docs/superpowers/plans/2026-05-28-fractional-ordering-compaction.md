@@ -1,6 +1,11 @@
 # Fractional-Ordering Compaction Implementation Plan
 
-> **📍 STATUS — ⬜ PENDING — Wave 2.**
+> **📍 STATUS — ✅ MERGED to `main` (2026-06-04) — Wave 2.** All 6 tasks landed
+> (commits `3ecd71d`..`20f4126`); 712 LillistCore tests green, warning-free.
+> Closed stores-1, stores-3. With the anchor guard landing before the compaction
+> tasks, the stores-1 underflow now surfaces as a thrown `anchors out of order`
+> one step earlier (instead of duplicate positions) — same root collision; the
+> 60-insert compaction tests still gate it.
 >
 > Part of the **Foundation Hardening** program. **Single source of truth for progress, wave order, and cross-plan coordination:** [`2026-05-29-foundation-hardening-index.md`](2026-05-29-foundation-hardening-index.md). New to this project? Read the index first, then the review ([`docs/reviews/2026-05-28-foundation-review.md`](../../reviews/2026-05-28-foundation-review.md)) for *why* this work exists, then `CLAUDE.md` for conventions + build/test commands. Execute task-by-task with `superpowers:subagent-driven-development`.
 >
