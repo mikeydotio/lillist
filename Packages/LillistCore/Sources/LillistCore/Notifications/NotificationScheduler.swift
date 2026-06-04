@@ -301,17 +301,24 @@ public actor NotificationScheduler: NotificationReconciling {
         await center.setNotificationCategories(categories)
     }
 
-    /// Plan 21: cancel every pending Lillist notification at the OS
-    /// level. The migration coordinator calls this before destructive
-    /// sync-mode operations so a fire-time pointing at a since-deleted
-    /// row doesn't leak past the wipe.
+    /// Plan 21: cancel every pending *per-task* Lillist notification at
+    /// the OS level. The migration coordinator calls this before
+    /// destructive sync-mode operations so a fire-time pointing at a
+    /// since-deleted row doesn't leak past the wipe.
+    ///
+    /// The repeating morning-summary request is intentionally preserved:
+    /// it is device-local, content-extension-filled at delivery, and not
+    /// tied to any task row, so a migration never invalidates it.
+    /// `restoreSteadyState(...)` re-derives it from preferences anyway.
     ///
     /// The full reconciliation path (`reconcile(taskID:)` per
-    /// `NotificationSpec`) re-installs the notifications after the
+    /// `NotificationSpec`) re-installs the per-task notifications after the
     /// store reaches its post-migration steady state.
     public func cancelAllPending() async {
         let pending = await center.pendingNotificationRequests()
-        let ids = pending.map(\.identifier)
+        let ids = pending
+            .map(\.identifier)
+            .filter { $0 != MorningSummary.requestID }
         if !ids.isEmpty {
             await center.removePendingNotificationRequests(withIdentifiers: ids)
         }
@@ -341,6 +348,27 @@ public actor NotificationScheduler: NotificationReconciling {
             )
             let tasks = (try? ctx.fetch(req)) ?? []
             return tasks.compactMap(\.id)
+        }
+    }
+
+    /// Every distinct task ID that still owns at least one
+    /// `NotificationSpec` row. Used by `restoreSteadyState` to re-install
+    /// per-task notifications after a migration cleared the OS-level
+    /// pending set. Built like `tasksWithAllDayDefaults` — a single
+    /// `viewContext.perform` returning a Sendable `[UUID]` snapshot.
+    private func tasksWithSpecs() async -> [UUID] {
+        let ctx = persistence.container.viewContext
+        return await ctx.perform {
+            let req = NSFetchRequest<NotificationSpec>(entityName: "NotificationSpec")
+            req.predicate = NSPredicate(format: "task != nil")
+            let specs = (try? ctx.fetch(req)) ?? []
+            var seen = Set<UUID>()
+            var out: [UUID] = []
+            for spec in specs {
+                guard let taskID = spec.task?.id else { continue }
+                if seen.insert(taskID).inserted { out.append(taskID) }
+            }
+            return out
         }
     }
 
@@ -398,6 +426,27 @@ public actor NotificationScheduler: NotificationReconciling {
 
     public func uninstallMorningSummary() async {
         await center.removePendingNotificationRequests(withIdentifiers: [MorningSummary.requestID])
+    }
+
+    /// Post-migration steady-state restore. After a sync-mode migration
+    /// the coordinator has OS-cancelled every per-task pending request
+    /// (`cancelAllPending`). Once the store has reconfigured, the
+    /// surviving `NotificationSpec` rows are the source of truth: sweep
+    /// every task that still owns a spec back through `reconcile(taskID:)`
+    /// to re-install its pending requests, then (re)install or uninstall
+    /// the daily morning summary from the persisted preference.
+    ///
+    /// Idempotent: `reconcile` is a desired-vs-pending diff, so calling
+    /// this twice yields the same pending set.
+    public func restoreSteadyState(morningSummaryEnabled: Bool, hour: Int, minute: Int) async {
+        for taskID in await tasksWithSpecs() {
+            await reconcile(taskID: taskID)
+        }
+        if morningSummaryEnabled {
+            await installMorningSummary(hour: hour, minute: minute)
+        } else {
+            await uninstallMorningSummary()
+        }
     }
 
     // MARK: - Public Nudge API
