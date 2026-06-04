@@ -5,9 +5,28 @@ import CoreData
 
 @Suite("Parity: NSPredicate vs SwiftEvaluator over the fixture set")
 struct ParitySuiteTests {
-    @Test("Every fixture matches expected set in both evaluators",
-          arguments: ParityFixtures.all)
-    func parity(_ fixture: ParityFixture) async throws {
+    /// A named calendar context the parity run is executed under. Running the
+    /// same fixtures under UTC and a DST-straddling America/New_York calendar
+    /// catches day-window math that only breaks across a 23-hour day.
+    struct CalendarContext: Sendable, CustomStringConvertible {
+        let name: String
+        let now: Date
+        let calendar: Calendar
+        var description: String { name }
+    }
+
+    static let contexts: [CalendarContext] = [
+        CalendarContext(name: "UTC", now: ParityFixtures.now, calendar: ParityFixtures.calendar),
+        CalendarContext(name: "America/New_York (DST)", now: ParityFixtures.nyNow, calendar: ParityFixtures.nyCalendar)
+    ]
+
+    /// The full fixture set: the hand-written behavioural fixtures plus the
+    /// generated Field × Op × Value matrix.
+    static let fixtures: [ParityFixture] = ParityFixtures.all + ParityMatrix.all
+
+    @Test("Every fixture matches expected set in both evaluators, under each calendar",
+          arguments: fixtures, contexts)
+    func parity(_ fixture: ParityFixture, _ ctxInfo: CalendarContext) async throws {
         // --- NSPredicate path ---
         let controller = try await TestStore.make()
         let ctx = controller.container.viewContext
@@ -20,11 +39,15 @@ struct ParitySuiteTests {
                 t.title = seed.title
                 t.notes = seed.notes
                 t.status = seed.status
-                t.start = seed.start
-                t.deadline = seed.deadline
+                // Date fields resolve calendar-relative offsets against THIS
+                // run's calendar/now (offset wins over the fixed Date?), so a
+                // window fixture keeps the same relative seed→window relationship
+                // — and thus the same expected membership — under every calendar.
+                t.start = seed.resolvedStart(now: ctxInfo.now, calendar: ctxInfo.calendar)
+                t.deadline = seed.resolvedDeadline(now: ctxInfo.now, calendar: ctxInfo.calendar)
                 t.createdAt = seed.createdAt
                 t.modifiedAt = seed.modifiedAt
-                t.closedAt = seed.closedAt
+                t.closedAt = seed.resolvedClosedAt(now: ctxInfo.now, calendar: ctxInfo.calendar)
                 t.deletedAt = seed.deletedAt
                 t.isPinned = seed.isPinned
                 byID[seed.id] = t
@@ -98,8 +121,8 @@ struct ParitySuiteTests {
             let req = NSFetchRequest<LillistTask>(entityName: "LillistTask")
             req.predicate = NSPredicateCompiler.compile(
                 fixture.group,
-                now: ParityFixtures.now,
-                calendar: ParityFixtures.calendar
+                now: ctxInfo.now,
+                calendar: ctxInfo.calendar
             )
             let tasks = try ctx.fetch(req)
             return Set(tasks.compactMap { $0.id })
@@ -115,8 +138,8 @@ struct ParitySuiteTests {
                 if SwiftEvaluator.evaluate(
                     group: fixture.group,
                     against: snap,
-                    now: ParityFixtures.now,
-                    calendar: ParityFixtures.calendar
+                    now: ctxInfo.now,
+                    calendar: ctxInfo.calendar
                 ) {
                     if let id = m.id { out.insert(id) }
                 }
@@ -125,8 +148,8 @@ struct ParitySuiteTests {
         }
 
         // --- Assertions ---
-        #expect(nsResults == fixture.expected, "[\(fixture.name)] NSPredicate path mismatch: got \(nsResults), expected \(fixture.expected)")
-        #expect(swiftResults == fixture.expected, "[\(fixture.name)] SwiftEvaluator path mismatch: got \(swiftResults), expected \(fixture.expected)")
-        #expect(nsResults == swiftResults, "[\(fixture.name)] paths diverged: NSPredicate=\(nsResults), Swift=\(swiftResults)")
+        #expect(nsResults == fixture.expected, "[\(ctxInfo)] [\(fixture.name)] NSPredicate path mismatch: got \(nsResults), expected \(fixture.expected)")
+        #expect(swiftResults == fixture.expected, "[\(ctxInfo)] [\(fixture.name)] SwiftEvaluator path mismatch: got \(swiftResults), expected \(fixture.expected)")
+        #expect(nsResults == swiftResults, "[\(ctxInfo)] [\(fixture.name)] paths diverged: NSPredicate=\(nsResults), Swift=\(swiftResults)")
     }
 }
