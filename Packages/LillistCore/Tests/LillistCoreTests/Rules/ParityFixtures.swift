@@ -523,6 +523,20 @@ enum ParityFixtures {
                 SeedTask(id: id2, title: "no reminder", hasNudges: false)
             ],
             expected: [id1]
+        ),
+        // 36. ancestor isAncestorOf {id1}: no surfaced caller, so BOTH
+        // evaluators stub `false` — a parent of id1 must NOT be returned.
+        ParityFixture(
+            name: "ancestor isAncestorOf is unsupported (false in both)",
+            group: .init(combinator: .all, predicates: [
+                .leaf(.init(field: .ancestor, op: .isAncestorOf, value: .uuidSet([id1])))
+            ]),
+            seeds: [
+                SeedTask(id: parentA, title: "Parent"),
+                SeedTask(id: id1, parentID: parentA),
+                SeedTask(id: id2, parentID: nil)
+            ],
+            expected: []
         )
     ]
 }
