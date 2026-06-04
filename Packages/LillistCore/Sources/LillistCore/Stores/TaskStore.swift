@@ -283,6 +283,17 @@ public final class TaskStore: @unchecked Sendable {
                 }
                 m.parent = newParent
             }
+
+            // If the target gap underflows, re-space all siblings evenly,
+            // then recompute against the freshly-spaced neighbors. Recompaction
+            // and the target update persist together in this one perform block.
+            if FractionalPosition.needsCompaction(
+                after: afterTask?.position,
+                before: beforeTask?.position
+            ) {
+                recompactSiblings(ofParent: newParent)
+            }
+
             m.position = FractionalPosition.position(
                 after: afterTask?.position,
                 before: beforeTask?.position
@@ -575,6 +586,31 @@ public final class TaskStore: @unchecked Sendable {
         req.fetchLimit = 1
         let lastPosition = try context.fetch(req).first?.position
         return FractionalPosition.position(after: lastPosition, before: nil)
+    }
+
+    /// Re-space every non-trashed sibling under `parent` to even 1.0 gaps,
+    /// preserving their current order. Mutates the managed objects in place;
+    /// the caller's `context.save()` persists them. Must run inside the
+    /// reorder `perform` block so recompaction and the target update commit
+    /// atomically. The anchor managed objects the caller is holding pick up
+    /// their new `position` values, so a post-recompaction
+    /// `FractionalPosition.position` call sees the widened gaps.
+    private func recompactSiblings(ofParent parent: LillistTask?) {
+        let req = NSFetchRequest<LillistTask>(entityName: "LillistTask")
+        if let parent {
+            req.predicate = NSPredicate(format: "parent == %@ AND deletedAt == nil", parent)
+        } else {
+            req.predicate = NSPredicate(format: "parent == nil AND deletedAt == nil")
+        }
+        req.sortDescriptors = [
+            NSSortDescriptor(key: "position", ascending: true),
+            NSSortDescriptor(key: "createdAt", ascending: true)
+        ]
+        guard let siblings = try? context.fetch(req) else { return }
+        let respaced = PositionCompactor.recompact(positions: siblings.map(\.position))
+        for (sibling, newPosition) in zip(siblings, respaced) {
+            sibling.position = newPosition
+        }
     }
 
     func validateTitle(_ title: String) throws {

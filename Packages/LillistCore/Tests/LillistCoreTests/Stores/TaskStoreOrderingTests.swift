@@ -68,4 +68,35 @@ struct TaskStoreOrderingTests {
             try await store.reorder(id: c, after: b, before: a)
         }
     }
+
+    @Test("60 successive same-region inserts keep positions strictly increasing")
+    func repeatedSameGapInsertsCompact() async throws {
+        let p = try await TestStore.make()
+        let store = TaskStore(persistence: p)
+        let parent = try await store.create(title: "P")
+        // Two stable bookends; every insert targets the gap between them.
+        let head = try await store.create(title: "head", parent: parent)
+        let tail = try await store.create(title: "tail", parent: parent)
+
+        // Repeatedly drop a fresh row into the (head, currentSecond) gap.
+        // Without compaction the midpoint underflows and positions collide.
+        for i in 0..<60 {
+            let row = try await store.create(title: "row\(i)", parent: parent)
+            let children = try await store.children(of: parent)
+            // The row immediately after `head` in current order is the
+            // "before" anchor; `head` is the "after" anchor.
+            let afterID = head
+            let beforeID = children.first { $0.id != head && $0.id != row }!.id
+            try await store.reorder(id: row, after: afterID, before: beforeID)
+        }
+
+        let positions = (try await store.children(of: parent)).map(\.position)
+        // Strictly increasing — no collisions, no underflow.
+        for i in 1..<positions.count {
+            #expect(positions[i] > positions[i - 1])
+        }
+        // All distinct.
+        #expect(Set(positions).count == positions.count)
+        _ = tail
+    }
 }
