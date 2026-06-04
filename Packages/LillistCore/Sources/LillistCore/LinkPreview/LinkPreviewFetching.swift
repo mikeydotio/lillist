@@ -17,4 +17,9 @@ public protocol LinkPreviewFetching: Sendable {
 public enum LinkPreviewLimits {
     public static let timeout: TimeInterval = 10
     public static let bodyCapBytes: Int = 5 * 1024 * 1024
+
+    /// Maximum number of HTTP redirects the fetcher will follow before
+    /// giving up. Bounds redirect-chain abuse (linkpreview-2) while still
+    /// permitting the common one- or two-hop canonical-URL redirects.
+    public static let redirectHopLimit: Int = 5
 }
