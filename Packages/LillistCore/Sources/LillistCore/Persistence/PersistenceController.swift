@@ -24,6 +24,14 @@ public final class PersistenceController: @unchecked Sendable {
     /// underlying container is plain (no events ever fire).
     public let cloudKitEventBridge: CloudKitEventBridge
 
+    /// Transaction author stamped on every `viewContext` write. Lets the
+    /// persistent-history diff in `RemoteChangeReconciler` ignore
+    /// self-originated transactions and react only to CloudKit imports
+    /// (which carry Core Data's reserved import author). Value is an opaque
+    /// stable string, not the device fingerprint — per-device identity isn't
+    /// needed here, only "this app vs. the CloudKit mirror".
+    public static let localTransactionAuthor = "Lillist.app"
+
     public init(configuration: StoreConfiguration) async throws {
         self.configuration = configuration
         let container = try Self.makeContainer(for: configuration)
@@ -41,7 +49,23 @@ public final class PersistenceController: @unchecked Sendable {
         }
 
         container.viewContext.automaticallyMergesChangesFromParent = true
+        // Store-wide conflict policy. `mergeByPropertyObjectTrump` keeps the
+        // *in-memory* (just-written) value when a CloudKit import collides on a
+        // property — last-writer-on-this-device wins per attribute. This is the
+        // pragmatic default for a single-user multi-device account: edits made
+        // here while offline survive a re-pull. The known cost (review persist-5)
+        // is that a *concurrent edit on another device* to the same property is
+        // silently discarded on merge; per-record field-level CRDT reconciliation
+        // is out of scope (YAGNI) until a real conflict report appears. Documented
+        // in engineering-notes.md so the choice is explicit, not inherited.
         container.viewContext.mergePolicy = NSMergePolicy(merge: .mergeByPropertyObjectTrumpMergePolicyType)
+        // Attribute every write made through `viewContext` so the persistent-history
+        // stream can distinguish our own local transactions from CloudKit imports
+        // (whose author is the reserved `NSCloudKitMirroringDelegate.import`).
+        // `RemoteChangeReconciler` keys off this author to skip self-originated
+        // history when deciding which tasks to reconcile after a remote pull.
+        container.viewContext.transactionAuthor = Self.localTransactionAuthor
+        container.viewContext.name = Self.localTransactionAuthor
 
         self.container = container
 

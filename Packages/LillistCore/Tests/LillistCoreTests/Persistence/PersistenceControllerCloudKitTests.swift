@@ -106,6 +106,13 @@ struct PersistenceControllerCloudKitTests {
         #expect(local is NSPersistentCloudKitContainer)
         #expect(cloud is NSPersistentCloudKitContainer)
     }
+
+    @Test("viewContext carries a stable transaction author + name after store load")
+    func viewContextTransactionAuthorIsSet() async throws {
+        let controller = try await PersistenceController(configuration: .inMemory)
+        #expect(controller.container.viewContext.transactionAuthor == PersistenceController.localTransactionAuthor)
+        #expect(controller.container.viewContext.name == PersistenceController.localTransactionAuthor)
+    }
 }
 
 private extension NSPersistentStoreDescription {
