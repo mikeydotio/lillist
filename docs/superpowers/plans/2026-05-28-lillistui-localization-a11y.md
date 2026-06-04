@@ -4,7 +4,7 @@
 >
 > Part of the **Foundation Hardening** program. **Single source of truth for progress, wave order, and cross-plan coordination:** [`2026-05-29-foundation-hardening-index.md`](2026-05-29-foundation-hardening-index.md). New to this project? Read the index first, then the review ([`docs/reviews/2026-05-28-foundation-review.md`](../../reviews/2026-05-28-foundation-review.md)) for *why* this work exists, then `CLAUDE.md` for conventions + build/test commands. Execute task-by-task with `superpowers:subagent-driven-development`.
 >
-> ⚠️ **Wave 1 (`store-swap-safety`) is merged to `main`.** It changed several shared files (`MigrationCoordinator`, `PersistenceHost`, `QuarantineManager`, `MigrationJournal`, both `AppEnvironment`s, `PersistenceController`). **Re-Read every file before editing and anchor by code structure — the line numbers in this plan may have drifted.**
+> **Pre-flight (run before any edit):** Confirm Waves 1–6 are on `main` (`git log --oneline main | head -20`). Read `docs/superpowers/handoffs/wave-6.md`. Re-Read every file you touch and anchor by code **structure**, not line number — each wave shifts the shared hotspot files. On completion, write `docs/superpowers/handoffs/wave-7.md`.
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
@@ -15,6 +15,8 @@
 **Tech Stack:** Swift 6, SwiftUI, Swift Testing (`import Testing`, `@Test`/`#expect`), SwiftPM resource catalogs (`Localizable.xcstrings`), `xcrun xcstringstool` + `swiftc -emit-localized-strings`, GitHub Actions, `jq`.
 
 **Source findings:** `ui-loc-1`, `ui-loc-2`, `ui-a11y-1`, `ui-test-1` (Roadmap item #19).
+
+**Out of scope:** Residual #6 — populating the iOS-app and macOS-app target string catalogs (`Apps/Lillist-iOS/.../Localizable.xcstrings`, `Apps/Lillist-macOS/.../Localizable.xcstrings`). This plan covers the **LillistUI** catalog only (`Packages/LillistUI/Sources/LillistUI/Resources/Localizable.xcstrings`) plus its `defaultLocalization` and extraction-drift lint. The app-target catalogs are a separate effort.
 
 ---
 
@@ -27,7 +29,7 @@
 - `Packages/LillistUI/Tests/LillistUITests/Recurrence/RecurrenceSummaryFormatterTests.swift` — Swift Testing suite covering every frequency, interval-1 vs interval-N pluralization, and after-completion singular/plural.
 - `Packages/LillistUI/Tests/LillistUITests/Components/ReorderActionDispatchTests.swift` — Swift Testing suite proving each closure fires, that `nil` closures are inert, and that the set of *available* actions equals only the non-nil ones (the real replacement for the tautological test).
 - `Tools/CI/check-lillistui-localization.sh` — CI lint script: builds LillistUI with `-emit-localized-strings`, collects extracted keys, and fails on any key missing from the catalog.
-- `.github/workflows/lillistui-localization.yml` — GitHub Actions workflow invoking the lint on macOS. *(See cross-plan coordination: `ci-and-build-posture` owns `.github/workflows/`; if that plan has already created a workflow file, add the lint as a job there instead and delete this standalone file.)*
+- `.github/workflows/lillistui-localization.yml` — GitHub Actions workflow invoking the lint on macOS. Create it standalone here; `ci-and-build-posture` (the last Wave-7 plan) must later fold this `localization-lint` job into its consolidated `ci.yml` and **delete** this standalone file. *(See cross-plan coordination in Task 5.)*
 
 ### Modify
 - `Packages/LillistUI/Package.swift` (lines 4–9) — add `defaultLocalization: "en"`. *(Shared file with `ci-and-build-posture`; see cross-plan coordination.)*
@@ -542,7 +544,7 @@ Replace it with:
     }
 ```
 
-- [ ] **Step 9: Run LillistUI tests, expect pass** — `swift test --package-path Packages/LillistUI`. Expected: all suites pass; the run summary shows **38 tests** (32 from Task 1 + 5 new `RecurrenceSummaryFormatterTests` − 6 old `humanSummary` tests + 7 new `summary` tests = 38). Warning-clean.
+- [ ] **Step 9: Run LillistUI tests, expect pass** — `swift test --package-path Packages/LillistUI`. Expected: all suites pass; the run summary shows **33 tests** (32 from Task 1 − 6 old `humanSummary` tests + 7 new `summary` tests = 33). Warning-clean.
 
 - [ ] **Step 10: Verify both app targets still build (the `humanSummary` callers were rewired)** —
 ```bash
@@ -613,7 +615,7 @@ grep -rn 'accessibilityAction(named: Text("' Packages/LillistUI/Sources/ || echo
 ```
 Expected: `CLEAN: no bare-Text accessibility actions remain`.
 
-- [ ] **Step 4: Run LillistUI tests, expect pass** — `swift test --package-path Packages/LillistUI`. Expected: still **38 tests**, `Test run with 38 tests ... passed`, warning-clean.
+- [ ] **Step 4: Run LillistUI tests, expect pass** — `swift test --package-path Packages/LillistUI`. Expected: still **33 tests**, `Test run with 33 tests ... passed`, warning-clean.
 
 - [ ] **Step 5: Commit** —
 ```bash
@@ -640,7 +642,7 @@ Part of ui-loc-2."
 
 The package has no `defaultLocalization`, so SwiftPM treats the resource catalog as un-localized and `String(localized:bundle: .module)` cannot resolve regional variants. We declare `en`, then populate the empty catalog from the compiler's extraction output and hand-author the plural variations for the recurrence-count keys.
 
-> **Cross-plan coordination:** `Packages/LillistUI/Package.swift` is also edited by **`ci-and-build-posture`** (which bumps `swift-tools-version` to 6.2 and adds `.treatAllWarnings(as: .error)` to `swiftSettings`). Both edits are additive and non-overlapping. If `ci-and-build-posture` lands first, re-read the file and add only the `defaultLocalization` argument; if this plan lands first, leave `swift-tools-version` and `swiftSettings` untouched. Whoever is second should `git pull`/re-read before editing.
+> **Cross-plan coordination:** `Packages/LillistUI/Package.swift` is also edited by **`ci-and-build-posture`** (which bumps `swift-tools-version` to 6.2 and adds `.treatAllWarnings(as: .error)` to `swiftSettings`). Both edits are additive and non-overlapping: this plan adds the `defaultLocalization: "en"` argument to the `Package(` initializer; `ci-and-build-posture` touches the tools-version pragma and `swiftSettings`. This plan runs first, so leave `swift-tools-version` (`6.0`) and `swiftSettings` untouched here. `ci-and-build-posture` lands after and **must preserve the `defaultLocalization: "en"` argument** — its edits do not overlap it. Whoever edits second should re-read the file first.
 
 - [ ] **Step 1: Add `defaultLocalization: "en"`** — in `Packages/LillistUI/Package.swift`, change the `Package(` initializer header. Replace:
 ```swift
@@ -814,7 +816,7 @@ Part of ui-loc-2."
 
 A populated catalog rots silently: the next contributor adds a `String(localized:…)` and forgets the catalog. The lint re-runs the compiler extraction and fails when any extracted key is missing from the committed catalog. We deliberately *don't* rely on `xcstringstool sync` (it merges nothing for SPM `.stringsdata` in this toolchain — verified during planning); instead we diff extracted keys against catalog keys with `jq`.
 
-> **Cross-plan coordination:** `.github/workflows/` is owned by **`ci-and-build-posture`**. If that plan has already created a macOS CI workflow, add a `localization-lint` *job* to it that runs `Tools/CI/check-lillistui-localization.sh`, and do NOT create the standalone `lillistui-localization.yml`. The shell script in `Tools/CI/` is the durable, plan-owned artifact either way.
+> **Cross-plan coordination:** `ci-and-build-posture` is the **last** Wave-7 plan, so it has not created `.github/workflows/` yet when this plan runs — create the standalone `lillistui-localization.yml` here as written. When `ci-and-build-posture` lands, it must fold this `localization-lint` job into its consolidated `ci.yml` and **delete** the standalone `lillistui-localization.yml`. The shell script in `Tools/CI/` is the durable, plan-owned artifact and stays put either way.
 
 - [ ] **Step 1: Create the lint script** — create `Tools/CI/check-lillistui-localization.sh` with the complete content below, then make it executable.
 
@@ -879,19 +881,26 @@ cd /Volumes/Code/mikeyward/Lillist
 ```
 Expected: ends with `==> OK: all <N> extracted keys are present in the catalog` and exit code 0 (the catalog was populated in Task 4).
 
-- [ ] **Step 3: Prove the lint actually fails on drift (negative check)** — temporarily add an unregistered string, confirm the lint catches it, then revert:
+- [ ] **Step 3: Prove the lint actually fails on drift (negative check)** — temporarily add an unregistered string, confirm the lint catches it, then revert. The revert uses `git checkout -- StatusGlyph.swift`, which discards the *whole file* back to HEAD — so first **abort if that file already has uncommitted edits** (no Task in this plan touches it, so a clean tree is the expected state; if it's dirty, stop and resolve those edits before running the canary):
 ```bash
 cd /Volumes/Code/mikeyward/Lillist
+GLYPH=Packages/LillistUI/Sources/LillistUI/Theme/StatusGlyph.swift
+# Guard: refuse to run if StatusGlyph.swift is already dirty — the revert
+# below would otherwise clobber unrelated uncommitted work.
+if ! git diff --quiet -- "$GLYPH" || ! git diff --cached --quiet -- "$GLYPH"; then
+  echo "ABORT: $GLYPH has uncommitted changes; the canary revert would discard them. Resolve first." >&2
+  exit 1
+fi
 # Inject a deliberately-unregistered string into a source file.
 printf '\n// loc-lint canary\nlet _locLintCanary = String(localized: "ZZ lint canary string", bundle: .module)\n' \
-  >> Packages/LillistUI/Sources/LillistUI/Theme/StatusGlyph.swift
+  >> "$GLYPH"
 set +e; ./Tools/CI/check-lillistui-localization.sh; RC=$?; set -e
-git checkout -- Packages/LillistUI/Sources/LillistUI/Theme/StatusGlyph.swift
+git checkout -- "$GLYPH"
 test "${RC}" -ne 0 && echo "GOOD: lint failed on drift as expected" || (echo "BAD: lint did not catch drift" && exit 1)
 ```
-Expected: the lint prints `- ZZ lint canary string` under the missing-keys list, exits non-zero, and the final line is `GOOD: lint failed on drift as expected`. (The `git checkout` reverts the canary before the assertion.)
+Expected: the lint prints `- ZZ lint canary string` under the missing-keys list, exits non-zero, and the final line is `GOOD: lint failed on drift as expected`. (The `git checkout` reverts the canary before the assertion; the guard above ensures it only discards the canary, never real work.)
 
-- [ ] **Step 4: Create the GitHub Actions workflow** — create `.github/workflows/lillistui-localization.yml` with the complete content below. *(Skip this file and add a job to the shared workflow if `ci-and-build-posture` already created `.github/workflows/`; see cross-plan note.)*
+- [ ] **Step 4: Create the GitHub Actions workflow** — create `.github/workflows/lillistui-localization.yml` with the complete content below. This plan runs before `ci-and-build-posture`, so `.github/workflows/` does not exist yet — create it. *(`ci-and-build-posture` later folds this job into `ci.yml` and deletes this standalone file; see cross-plan note above.)*
 
 ```yaml
 name: LillistUI Localization Lint
@@ -949,7 +958,7 @@ Closes ui-loc-2."
 
 **Files:** none (verification only).
 
-- [ ] **Step 1: Full LillistUI host suite** — `cd /Volumes/Code/mikeyward/Lillist && swift test --package-path Packages/LillistUI 2>&1 | tail -8`. Expected: `Test run with 38 tests ... passed`, warning-clean.
+- [ ] **Step 1: Full LillistUI host suite** — `cd /Volumes/Code/mikeyward/Lillist && swift test --package-path Packages/LillistUI 2>&1 | tail -8`. Expected: `Test run with 33 tests ... passed`, warning-clean.
 
 - [ ] **Step 2: iOS snapshot/tour tests still pass** (TaskRowView/recurrence rendering changed):
 ```bash

@@ -4,16 +4,7 @@
 >
 > Part of the **Foundation Hardening** program. **Single source of truth for progress, wave order, and cross-plan coordination:** [`2026-05-29-foundation-hardening-index.md`](2026-05-29-foundation-hardening-index.md). New to this project? Read the index first, then the review ([`docs/reviews/2026-05-28-foundation-review.md`](../../reviews/2026-05-28-foundation-review.md)) for *why* this work exists, then `CLAUDE.md` for conventions + build/test commands. Execute task-by-task with `superpowers:subagent-driven-development`.
 >
-> ⚠️ **Wave 1 (`store-swap-safety`) is merged to `main`.** It changed several shared files (`MigrationCoordinator`, `PersistenceHost`, `QuarantineManager`, `MigrationJournal`, both `AppEnvironment`s, `PersistenceController`). **Re-Read every file before editing and anchor by code structure — the line numbers in this plan may have drifted.**
-
-> **⚠️ Wave-1 reconciliation:**
-> store-swap-safety (merged, bfd8635..6f008f7) reordered `runMigration` and added a new final init parameter to `MigrationCoordinator`. Before executing Tasks 2/4/5, re-Read `MigrationCoordinator.swift` and re-anchor — the pasted line numbers and step-comment numbers in this plan are stale.
-> - The `.finalizing` block is now `// 8. finalize.` at lines 247-255 (not `// 7.`, not ~207-214). Insert Task 2's `restoreSteadyState` call between `emit(.finalizing)` and `try journal.clear()` there; do not paste the `// 7. finalize.` comment.
-> - The `replaceICloudWithLocal` CloudKit-mutation block is now `// 6. cloudkit-side mutation` at lines 223-235 (not `// 4`, not ~176-187). Insert Task 4's pre-erase account guard as the first statement inside `if op == .replaceICloudWithLocal {` there.
-> - The init now ends with `localStoreRowCount: @escaping @Sendable () async -> Int = { 1 }` (the Wave-1 add). Append Task 4's `accountStateProvider:` param AFTER `localStoreRowCount:`, and add its stored property after the existing `localStoreRowCount` property (lines 44-48), not directly after `cloudKitContainerIdentifier`.
-> - Both AppEnvironment `MigrationCoordinator(...)` calls now end with `localStoreRowCount: localStoreRowCount` (iOS:203, macOS:194). When adding `preferencesStore:` after `notificationScheduler:`, KEEP the existing `localStoreRowCount:` line — do not paste the plan's verbatim block, which omits it.
-> - `MigrationJournal.isInFlight` is now at line 124 (the struct gained a custom Codable impl for the `quarantineBackupID`→`quarantineFolderName` rename). Anchor Task 3's `isStale` insert on the verbatim `isInFlight` line, ignore the '~84'.
-> - No test in this plan needs changing for the rename; `quarantineBackupID` is gone but nothing here references it.
+> **Pre-flight (run before any edit):** Confirm Waves 1–3 are on `main` (`git log --oneline main | head -20`). Read `docs/superpowers/handoffs/wave-3.md`. Re-Read every file you touch and anchor by code **structure**, not line number — each wave shifts the shared hotspot files. On completion, write `docs/superpowers/handoffs/wave-4.md`.
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
@@ -254,10 +245,10 @@ Closes notif-1 (partial; coordinator wiring in follow-up commit)."
 ## Task 2: Wire post-migration restore into `MigrationCoordinator.finalize` (notif-1, sync-2)
 
 **Files:**
-- Modify `Packages/LillistCore/Sources/LillistCore/Sync/MigrationCoordinator.swift` (add `preferencesStore` stored property + init param ~lines 38/55; call `restoreSteadyState` in the `.finalizing` phase ~lines 207–214).
+- Modify `Packages/LillistCore/Sources/LillistCore/Sync/MigrationCoordinator.swift` (add the `preferencesStore` stored property right after the `notificationScheduler` member, before `syncModeStore`; add the matching init param after `notificationScheduler:` and before `syncModeStore:`; call `restoreSteadyState` in the **finalize** phase — the `// 8. finalize.` block, ~lines 249–257, between `emit(.finalizing)` and `try journal.clear()`).
 - Create `Packages/LillistCore/Tests/LillistCoreTests/Sync/MigrationCoordinatorRestoreTests.swift`.
 
-> **Cross-plan coordination:** `store-swap-safety` (P0) also edits `MigrationCoordinator.swift` and is assumed to land first. The two changes are disjoint — store-swap-safety reorders the quarantine/reconfigure phases (steps 3–5 of `runMigration`); this task only adds an init parameter and appends work to the existing `.finalizing` phase (step 7). If store-swap-safety renumbered or relocated the `.finalizing` block, anchor on the `entry.state = .finalizing` / `emit(.finalizing)` lines rather than absolute line numbers.
+> **Anchor by structure, not line number.** `runMigration` is the shared hotspot file; each wave shifts it. The finalize block is the `// 8. finalize.` comment between `emit(.finalizing)` and `try journal.clear()`. Anchor on the `entry.state = .finalizing` / `emit(.finalizing)` statements rather than absolute line numbers, and keep the existing `// 8. finalize.` comment — do not paste a `// 7. finalize.` comment.
 
 - [ ] **Step 1: Write the failing test** — create `Packages/LillistCore/Tests/LillistCoreTests/Sync/MigrationCoordinatorRestoreTests.swift` with the COMPLETE code below. It matches `MigrationCoordinatorTests.swift` (Swift Testing, `.serialized`, `liveSwapAllowed` gate, `PersistenceHost.make`, `QuarantineManager`, `FakeCloudKitZoneEraser`, `SyncModeStore`) and uses the notification helpers from Task 1.
 
@@ -382,9 +373,9 @@ struct MigrationCoordinatorRestoreTests {
         self.syncModeStore = syncModeStore
   ```
 
-  3c. In the `.finalizing` phase of `runMigration` (the block at lines ~207–214), insert the restore call between the journal write and `journal.clear()`:
+  3c. In the finalize phase of `runMigration` (the `// 8. finalize.` block, ~lines 249–257), insert the restore call between `emit(.finalizing)` and `journal.clear()`. Keep the existing `// 8. finalize.` comment and the already-awaited `await breadcrumb(...)` call — `breadcrumb(_:success:)` is `async` and awaited inline; do **not** change it:
   ```swift
-            // 7. finalize.
+            // 8. finalize.
             entry.state = .finalizing
             entry.lastHeartbeatAt = Date()
             try journal.write(entry)
@@ -406,10 +397,10 @@ struct MigrationCoordinatorRestoreTests {
 
             try journal.clear()
             emit(.completed)
-            breadcrumb("sync mode change completed \(op.rawValue)")
+            await breadcrumb("sync mode change completed \(op.rawValue)")
   ```
 
-  3d. Wire the new parameter at both app composition roots so production passes the real store. In `Apps/Lillist-iOS/Sources/App/AppEnvironment.swift` (the `MigrationCoordinator(` call at ~line 183) add `preferencesStore: preferencesStore,` after `notificationScheduler: scheduler,`:
+  3d. Wire the new parameter at both app composition roots so production passes the real store. Both calls already end with `localStoreRowCount: localStoreRowCount` — KEEP that line; only insert `preferencesStore: preferencesStore,` after `notificationScheduler: scheduler,`. In `Apps/Lillist-iOS/Sources/App/AppEnvironment.swift` (the `MigrationCoordinator(` call at ~line 222):
   ```swift
         self.migrationCoordinator = MigrationCoordinator(
             host: persistenceHost,
@@ -421,10 +412,11 @@ struct MigrationCoordinatorRestoreTests {
             preferencesStore: preferencesStore,
             syncModeStore: syncModeStore,
             breadcrumbs: breadcrumbs,
-            cloudKitContainerIdentifier: ckContainerID
+            cloudKitContainerIdentifier: ckContainerID,
+            localStoreRowCount: localStoreRowCount
         )
   ```
-  And in `Apps/Lillist-macOS/Sources/AppEnvironment.swift` (the `MigrationCoordinator(` call at ~line 174) make the verbatim-equivalent edit:
+  And in `Apps/Lillist-macOS/Sources/AppEnvironment.swift` (the `MigrationCoordinator(` call at ~line 188) make the verbatim-equivalent edit:
   ```swift
         self.migrationCoordinator = MigrationCoordinator(
             host: persistenceHost,
@@ -436,10 +428,11 @@ struct MigrationCoordinatorRestoreTests {
             preferencesStore: preferencesStore,
             syncModeStore: syncModeStore,
             breadcrumbs: breadcrumbs,
-            cloudKitContainerIdentifier: ckContainerID
+            cloudKitContainerIdentifier: ckContainerID,
+            localStoreRowCount: localStoreRowCount
         )
   ```
-  > If either AppEnvironment names its `PreferencesStore` local differently than `preferencesStore`, grep for `PreferencesStore(` / `self.preferencesStore` in that file and pass the existing local — do not construct a second instance.
+  > Both AppEnvironments name their `PreferencesStore` local `preferencesStore` (assigned to `self.preferencesStore`); pass that existing local — do not construct a second instance.
 
 - [ ] **Step 4: Run the test, expect pass** — run:
   ```bash
@@ -476,7 +469,7 @@ Closes notif-1, sync-2."
 ## Task 3: `MigrationJournal.isStale(now:threshold:)` + docstring fix; recovery-sheet-only consumption (sync-5)
 
 **Files:**
-- Modify `Packages/LillistCore/Sources/LillistCore/Sync/MigrationJournal.swift` (fix the doc-comment "30s" line ~34; add `isStale` after `isInFlight` ~line 84).
+- Modify `Packages/LillistCore/Sources/LillistCore/Sync/MigrationJournal.swift` (fix the doc-comment "30s" bullet in the struct header, ~lines 33–36; add `isStale` directly after the `isInFlight` computed property, ~line 124). Anchor the `isStale` insert on the verbatim `public var isInFlight: Bool { state != .idle }` line.
 - Modify `Packages/LillistCore/Tests/LillistCoreTests/Sync/MigrationJournalTests.swift` (append `isStale` cases).
 - Modify `Apps/Lillist-iOS/Sources/App/LillistApp.swift` and `Apps/Lillist-macOS/Sources/LillistApp.swift` (recovery `evaluate()` consumes `isStale`).
 
@@ -571,7 +564,7 @@ Closes notif-1, sync-2."
     ///    still aborts headless callers on any non-idle journal.
   ```
 
-  3b. Add `staleThreshold` and `isStale(now:threshold:)` directly after `isInFlight` (after line ~84):
+  3b. Add `staleThreshold` and `isStale(now:threshold:)` directly after the `isInFlight` computed property (~line 124):
   ```swift
     /// Whether the journal represents an in-flight (or crashed)
     /// migration that the app should not start a new one on top of.
@@ -608,7 +601,7 @@ Closes notif-1, sync-2."
   ```
   Expect: `Test Suite 'MigrationJournal + MigrationJournalStore' passed` with all original tests plus the 6 new `isStale` tests passing, 0 failures.
 
-- [ ] **Step 5: Consume `isStale` in the recovery sheets (main app only).** In `Apps/Lillist-iOS/Sources/App/LillistApp.swift`, the `evaluate()` method currently surfaces the sheet for any in-flight journal (lines ~189–193). Tighten it so a *fresh* (non-stale) in-flight journal is left to finish — the gate already blocks new work — while a *stale* (crashed) journal triggers recovery:
+- [ ] **Step 5: Consume `isStale` in the recovery sheets (main app only).** In `Apps/Lillist-iOS/Sources/App/LillistApp.swift`, the `evaluate()` method currently surfaces the sheet for any in-flight journal (the `if let journal, journal.isInFlight { recoveryJournal = journal; return }` block, ~lines 248–252). Tighten it so a *fresh* (non-stale) in-flight journal is left to finish — the gate already blocks new work — while a *stale* (crashed) journal triggers recovery:
   ```swift
         let journal = try? environment.migrationJournalStore.read()
         if let journal, journal.isInFlight {
@@ -623,7 +616,7 @@ Closes notif-1, sync-2."
             return
         }
   ```
-  Then make the verbatim-equivalent edit in `Apps/Lillist-macOS/Sources/LillistApp.swift` (the macOS `evaluate()` has the same `if let journal, journal.isInFlight { recoveryJournal = journal; return }` shape near line ~190 — confirm by grepping `journal.isInFlight` in that file first, then apply the identical block).
+  Then make the verbatim-equivalent edit in `Apps/Lillist-macOS/Sources/LillistApp.swift` (the macOS `evaluate()` has the same `if let journal, journal.isInFlight { recoveryJournal = journal; return }` shape near line ~181 — confirm by grepping `journal.isInFlight` in that file first, then apply the identical block).
 
 - [ ] **Step 6: Verify both apps still compile** — run:
   ```bash
@@ -650,8 +643,8 @@ Closes sync-5."
 ## Task 4: `PauseReason` docstring correction + optional pre-erase account-identity guard (sync-6)
 
 **Files:**
-- Modify `Packages/LillistCore/Sources/LillistCore/Sync/PauseReason.swift` (correct the `.accountChanged` doc-comment lines ~16–18).
-- Modify `Packages/LillistCore/Sources/LillistCore/Sync/MigrationCoordinator.swift` (add optional `accountStateProvider` injection + pre-erase guard before `replaceICloudWithLocal`).
+- Modify `Packages/LillistCore/Sources/LillistCore/Sync/PauseReason.swift` (correct the `.accountChanged` doc-comment, ~lines 13–15).
+- Modify `Packages/LillistCore/Sources/LillistCore/Sync/MigrationCoordinator.swift` (add optional `accountStateProvider` injection — the stored property goes after `localStoreRowCount` and the init param after `localStoreRowCount:`; add the pre-erase guard as the first statement inside the `// 6. cloudkit-side mutation` `if op == .replaceICloudWithLocal {` block, before `zoneEraser.eraseManagedZones`).
 - Add tests to `Packages/LillistCore/Tests/LillistCoreTests/Sync/MigrationCoordinatorRestoreTests.swift` (created in Task 2).
 
 > **Why:** The current `.accountChanged` docstring claims "`MigrationCoordinator` aborts any active op and surfaces a dedicated recovery flow." No such code exists — the coordinator never reads account identity. This is a truthfulness defect (the review's `sync-6`). The fix is (a) correct the docstring to describe real behavior, and (b) add the *optional* guard the docstring used to lie about: refuse the irreversible CloudKit zone erase when the account has changed out from under us.
@@ -736,7 +729,7 @@ Closes sync-5."
 
 - [ ] **Step 3: Implement the minimal change.**
 
-  3a. In `PauseReason.swift`, replace the `.accountChanged` doc-comment (lines ~16–18) with truthful text:
+  3a. In `PauseReason.swift`, replace the `.accountChanged` doc-comment (~lines 13–15) with truthful text:
   ```swift
     /// The signed-in iCloud account changed since the last sync. The
     /// status badge surfaces this and `PauseExplainerDialog` explains it;
@@ -747,7 +740,7 @@ Closes sync-5."
     case accountChanged
   ```
 
-  3b. In `MigrationCoordinator.swift`, add a `Sendable` provider closure type alias and stored property + init param. Add the type alias just above the `@MainActor public final class MigrationCoordinator {` declaration (after line ~29):
+  3b. In `MigrationCoordinator.swift`, add a `Sendable` provider closure type alias and stored property + init param. Add the type alias just above the `@MainActor public final class MigrationCoordinator {` declaration (~line 30):
   ```swift
 /// Closure that reports the current iCloud account state. Injected so
 /// `MigrationCoordinator` can refuse a destructive erase when the
@@ -756,32 +749,34 @@ Closes sync-5."
 /// "unknown — proceed" (the conservative default keeps current behavior).
 public typealias AccountStateProviding = @Sendable () async -> iCloudAccountState?
   ```
-  Add the stored property after `cloudKitContainerIdentifier` (after line ~43):
+  Add the stored property after the existing `localStoreRowCount` property (~lines 44–48), so it sits last in the member list:
   ```swift
-    /// CloudKit container identifier used by `zoneEraser`. Inherits
-    /// from `host` at init.
-    private let cloudKitContainerIdentifier: String
+    /// Returns the current count of user-visible task rows in the live
+    /// store. Used to precondition a non-empty local store before the
+    /// irreversible `replaceICloudWithLocal` erase. Injected so the
+    /// executing tests can drive empty/non-empty without a live store.
+    private let localStoreRowCount: @Sendable () async -> Int
     /// Optional account-identity probe consulted before the irreversible
     /// CloudKit zone erase. `nil` → no pre-flight (legacy behavior).
     private let accountStateProvider: AccountStateProviding?
   ```
-  Add the init param after `cloudKitContainerIdentifier:` (line ~56) and assign it:
+  Add the init param after `localStoreRowCount:` (~line 62) and assign it:
   ```swift
-        breadcrumbs: BreadcrumbBuffer? = nil,
         cloudKitContainerIdentifier: String = StoreConfiguration.defaultCloudKitContainerIdentifier,
+        localStoreRowCount: @escaping @Sendable () async -> Int = { 1 },
         accountStateProvider: AccountStateProviding? = nil
     ) {
   ```
-  and in the init body (after `self.cloudKitContainerIdentifier = cloudKitContainerIdentifier`):
+  and in the init body (after `self.localStoreRowCount = localStoreRowCount`):
   ```swift
-        self.cloudKitContainerIdentifier = cloudKitContainerIdentifier
+        self.localStoreRowCount = localStoreRowCount
         self.accountStateProvider = accountStateProvider
     }
   ```
 
-  3c. Add the pre-erase guard inside the `if op == .replaceICloudWithLocal {` block in `runMigration` (the CloudKit-mutation step, currently lines ~176–187), as the first thing inside that block — *before* setting `entry.state = .mutatingCloudKit`:
+  3c. Add the pre-erase guard inside the `if op == .replaceICloudWithLocal {` block in `runMigration` (the `// 6. cloudkit-side mutation` step, ~lines 225–237), as the first thing inside that block — *before* setting `entry.state = .mutatingCloudKit`. Keep the existing `// 6. cloudkit-side mutation` comment:
   ```swift
-            // 4. cloudkit-side mutation (only for replaceICloudWithLocal).
+            // 6. cloudkit-side mutation (only for replaceICloudWithLocal).
             if op == .replaceICloudWithLocal {
                 // Pre-flight: never erase if the signed-in account changed
                 // out from under us — that would wipe the wrong account's
@@ -839,7 +834,7 @@ Closes sync-6."
 
 > **Why:** Although the coordinator is `@MainActor`, `runMigration` has multiple `await` suspension points. A second `beginEnable`/`beginDisable` call (e.g. a double-tap, or a programmatic retry while one is mid-flight) can interleave at a suspension and clobber the journal `entry` written by the first run, corrupting recovery state. A cheap synchronous-read guard at the top — *before* any suspension — rejects a re-entrant call when the journal is already non-idle.
 
-> **Cross-plan coordination:** `store-swap-safety` (P0) also edits `runMigration`. This guard is purely additive at the function's first line and does not conflict with phase reordering. If store-swap-safety added its own entry guard, reconcile to a single guard rather than duplicating.
+> **One guard only.** `runMigration` currently has **no** explicit reentrancy guard — it relies on `journal.isInFlight` being checked by callers. Add exactly one synchronous guard as the function's first statement. Re-Read `runMigration` first: if a re-Read shows an entry guard already present (e.g. added by an earlier wave), reconcile to a single guard rather than duplicating it. Do **not** touch `MigrationGate` — headless callers still abort on any in-flight journal.
 
 - [ ] **Step 1: Write the failing test** — append this `@Test` to `MigrationCoordinatorRestoreTests.swift` (inside the same `@Suite` struct). It seeds an already-in-flight journal and asserts a fresh migration attempt is rejected without mutating that journal or running the eraser.
 
@@ -895,7 +890,7 @@ Closes sync-6."
   ```
   Expect failure: without the guard, `beginEnable` proceeds, overwrites the journal to `.preparing` and beyond, so `throws` is not satisfied and `journal.read() == preexisting` fails (the journal was clobbered). The expectation `await #expect(throws:)` reports the missing error.
 
-- [ ] **Step 3: Implement the minimal change** — add the guard as the first statement of `runMigration`, before the existing `breadcrumb(...)` call (line ~142–143):
+- [ ] **Step 3: Implement the minimal change** — add the guard as the first statement of `runMigration`, before the existing `await breadcrumb(...)` call (~line 165). `breadcrumb(_:success:)` is `async` and awaited inline — keep the `await`:
   ```swift
     private func runMigration(op: ModeTransitionOp, targetMode: SyncMode, storeURL: URL) async throws {
         // Reentrancy guard: although @MainActor serializes execution,
@@ -909,7 +904,7 @@ Closes sync-6."
                 reason: "A sync-mode migration is already in progress."
             )
         }
-        breadcrumb("sync mode change start \(op.rawValue)")
+        await breadcrumb("sync mode change start \(op.rawValue)")
   ```
 
 - [ ] **Step 4: Run the test, expect pass** — run:

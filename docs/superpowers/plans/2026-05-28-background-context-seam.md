@@ -4,13 +4,7 @@
 >
 > Part of the **Foundation Hardening** program. **Single source of truth for progress, wave order, and cross-plan coordination:** [`2026-05-29-foundation-hardening-index.md`](2026-05-29-foundation-hardening-index.md). New to this project? Read the index first, then the review ([`docs/reviews/2026-05-28-foundation-review.md`](../../reviews/2026-05-28-foundation-review.md)) for *why* this work exists, then `CLAUDE.md` for conventions + build/test commands. Execute task-by-task with `superpowers:subagent-driven-development`.
 >
-> ⚠️ **Wave 1 (`store-swap-safety`) is merged to `main`.** It changed several shared files (`MigrationCoordinator`, `PersistenceHost`, `QuarantineManager`, `MigrationJournal`, both `AppEnvironment`s, `PersistenceController`). **Re-Read every file before editing and anchor by code structure — the line numbers in this plan may have drifted.**
-
-> **⚠️ Wave-1 reconciliation:**
-> Wave-1 (store-swap-safety) is merged. This plan is otherwise independent of it — it does NOT touch any store-swap-safety surface (no `localStoreRowCount` wiring, no `restoreFromBackup`/test-2, no `PersistenceReconfiguring`, no `copyStore`, no `MigrationCoordinator`). Proceed without fear of conflicting with that work.
-> One stale anchor: Wave-1 inserted `PersistenceController.localTaskRowCount()` at lines 55-73 (commit `2cffb58`). So in Task 1, re-Read `PersistenceController.swift` first: insert `makeBackgroundContext()` after `init` closes (line 53) — it will land just before the new `localTaskRowCount()` — and IGNORE the stale "near line 112" / "before makeContainer" hints (line 112 is now mid-`makeStoreDescription`; `makeContainer` is at line 83).
->
-> **Cross-plan prerequisite (Task 6):** `breadcrumb-truthfulness` (Wave 2) MUST be merged before executing Task 6. Task 6 adds `context.rollback()` to the inline `do/catch` that `breadcrumb-truthfulness` creates in `hardDelete`/`reparent`/`softDelete`/`restore`. On current `main` those four still use `defer { Task { recordCrumb } }` — Task 6's before-snippets will not match and there is no `catch` block to insert into. See the prominent prerequisite note at the top of Task 6.
+> **Pre-flight (run before any edit):** Confirm Waves 1–3 are on `main` (`git log --oneline main | head -20`). Read `docs/superpowers/handoffs/wave-3.md`. Re-Read every file you touch and anchor by code **structure**, not line number — each wave shifts the shared hotspot files. On completion, write `docs/superpowers/handoffs/wave-4.md`.
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
@@ -40,18 +34,18 @@
 
 | Path | Responsibility | Lines |
 |------|----------------|-------|
-| `Packages/LillistCore/Sources/LillistCore/Persistence/PersistenceController.swift` | Add `newBackgroundContext()`-vending helper configured to match the production merge policy. | append after line 53 (end of `init`) / new method near line 112 |
+| `Packages/LillistCore/Sources/LillistCore/Persistence/PersistenceController.swift` | Add `newBackgroundContext()`-vending helper configured to match the production merge policy. | new method after `localTaskRowCount()` closes (~line 97) |
 | `Packages/LillistCore/Sources/LillistCore/Export/Exporter.swift` | Run reads on a background context; read attachment bytes into value types *inside* `perform`, write files to disk *outside* `perform`. | `buildDocument`, lines 39–138 |
 | `Packages/LillistCore/Sources/LillistCore/Export/Importer.swift` | Run writes on a dedicated background context instead of `viewContext`; roll back on save failure. | `apply(document:policy:)`, lines 81–207 |
-| `Packages/LillistCore/Sources/LillistCore/Stores/TaskStore.swift` | `purgeAll` → explicit-cascade `NSBatchDeleteRequest` merged into `viewContext`; add `rollback()` to the catch paths of the mutating `perform` blocks. | `purgeAll` lines 429–455; `create` 112–139; `update` 153–188; `softDelete` 386–397; `restore` 399–410; `archive` 340–362; `unarchive` 366–382; `reparent` 220–241; `hardDelete` 192–199 |
-| `Packages/LillistCore/Sources/LillistCore/Persistence/AutoPurgeJob.swift` | Explicit-cascade `NSBatchDeleteRequest` on a background context merged into `viewContext`. | `run(now:)`, lines 15–28 |
+| `Packages/LillistCore/Sources/LillistCore/Stores/TaskStore.swift` | `purgeAll` → explicit-cascade `NSBatchDeleteRequest` merged into `viewContext`; add `rollback()` to the catch paths of the mutating `perform` blocks. Anchor each method by `func <name>` (find `func purgeAll` ~473, `func create` ~107, `func update` ~153, `func softDelete` ~420, `func restore` ~438, `func archive` ~375, `func unarchive` ~400, `func reparent` ~225, `func hardDelete` ~192). |
+| `Packages/LillistCore/Sources/LillistCore/Persistence/AutoPurgeJob.swift` | Explicit-cascade `NSBatchDeleteRequest` on a background context merged into `viewContext`. | `run(now:)`, ~lines 16–29 |
 | `docs/engineering-notes.md` | Append the deliberate single-context design rationale + the targeted background-context seam + the batch-delete-cascade-skip gotcha. | append |
 
 ---
 
 ## Task 1: Add the background-context helper
 
-**Files:** Modify `Packages/LillistCore/Sources/LillistCore/Persistence/PersistenceController.swift` (insert a new method after `init` ends at line 53).
+**Files:** Modify `Packages/LillistCore/Sources/LillistCore/Persistence/PersistenceController.swift` (insert a new method **after `localTaskRowCount()` closes**, ~line 97). Anchor by structure: find `public func localTaskRowCount()` and place `makeBackgroundContext()` immediately after its closing brace, before `static func makeContainer`.
 
 The single shared `viewContext` stays the default for all interactive store mutations (it is the context CloudKit mirroring merges remote changes into, via `automaticallyMergesChangesFromParent = true`). This helper vends a *separate* `newBackgroundContext()` only for the three long-running batch jobs (export/import/purge). Auto-merge is left ON on the background context's parent (`viewContext`) by configuring the background context to push its saves up so the UI sees import results without a manual refetch.
 
@@ -98,7 +92,7 @@ struct BackgroundContextTests {
 
 - [ ] **Step 2: Run the test, expect failure** — `cd /Volumes/Code/mikeyward/Lillist && swift test --package-path Packages/LillistCore --filter "PersistenceController.background context"`. Expected failure: compile error `value of type 'PersistenceController' has no member 'makeBackgroundContext'`.
 
-- [ ] **Step 3: Implement the minimal change** — add this method to `PersistenceController` immediately after the closing brace of `init(configuration:)` (after line 53), before `makeContainer`:
+- [ ] **Step 3: Implement the minimal change** — add this method to `PersistenceController` immediately after the closing brace of `localTaskRowCount()` (~line 97), before `static func makeContainer`:
 
 ```swift
     /// A dedicated private-queue context for bulk work (export, import,
@@ -604,9 +598,13 @@ Refs: persist-4"
 
 ## Task 5: Convert `purgeAll` and `AutoPurgeJob` to explicit-cascade batch delete
 
-**Files:** Modify `Packages/LillistCore/Sources/LillistCore/Stores/TaskStore.swift` (`purgeAll`, lines 429–455) and `Packages/LillistCore/Sources/LillistCore/Persistence/AutoPurgeJob.swift` (`run`, lines 15–28).
+**Files:** Modify `Packages/LillistCore/Sources/LillistCore/Stores/TaskStore.swift` (`purgeAll`, ~lines 473–499) and `Packages/LillistCore/Sources/LillistCore/Persistence/AutoPurgeJob.swift` (`run`, ~lines 16–29). Anchor `purgeAll` by `func purgeAll` and `run` by `func run(now:`.
 
 Both currently iterate `ctx.delete(_:)` on the main-queue `viewContext`. Move to a background context, gather victim roots, expand via `CascadeReaper`, batch-delete the full set, and merge `resultTypeObjectIDs` into the `viewContext`. The count semantics are preserved (`purgeAll` counts trashed roots + descendants; `AutoPurgeJob` counts top-level matched tasks + cascades).
+
+> **Soft verification (do before Step 5):** confirm `CascadeReaper` reproduces the model's `Cascade` rules on a **deep** tree — `children` (recursive) → `journalEntries` → `attachments` → `notificationSpecs`, plus `JournalEntry.attachments`. Build a parent → child → grandchild → great-grandchild fixture with a journal entry + attachment + notification spec at each level and assert the reaped objectID set covers every cascade-reachable row (the `reapsFullCascade` test in Task 4 covers one level; spot-check the multi-level shape here so a missed recursion can't ship). The Cascade rules live in `LillistModel.xcdatamodel/contents` — read them, don't assume.
+
+> **Acknowledged limitation (out of scope here):** the purge reaps `NotificationSpec` *rows* but does **not** cancel the OS-level pending `UNNotificationRequest`s those specs scheduled. A purged task whose notification fire-date is still in the future will still fire its banner until the OS naturally drops it. Wiring purge → `notificationScheduler` cancellation is a named follow-up (track it in the Foundation Hardening index), not part of this plan — adding it here would couple the batch-delete path to the notification actor and widen the blast radius beyond the threading/cascade fix this plan owns.
 
 - [ ] **Step 1: Write the tests** — add **two** tests to `Packages/LillistCore/Tests/LillistCoreTests/Stores/TaskStorePurgeAllTests.swift` (inside `@Suite("TaskStore.purgeAll") struct TaskStorePurgeAllTests`, before the closing brace). The first is a **regression GUARD** (passes both before and after the refactor — it pins the cascade contract so a botched refactor can't silently drop it). The second is a genuine **RED** test that asserts the multi-level cascade *count math* and descendant removal; it **fails** against a naive batch delete that names only the matched roots and skips the `CascadeReaper` expansion (delete rules are bypassed by `NSBatchDeleteRequest`, so the unexpanded children survive in the store and the returned count is short).
 
@@ -670,7 +668,7 @@ Genuine RED — multi-level (parent → child → grandchild) cascade count math
 
 - [ ] **Step 2: Run the tests, expect the GUARD green and the RED red** — `cd /Volumes/Code/mikeyward/Lillist && swift test --package-path Packages/LillistCore --filter "TaskStore.purgeAll"`. Expected before Step 3: `purgeCascadesToJournalEntries` (the GUARD) **passes** against the current per-object `ctx.delete` implementation — per-object delete honors cascade rules, so it is a regression guard, not a RED→GREEN driver; its value is failing if the refactor in Step 3 forgets to expand via `CascadeReaper`. The current per-object implementation also makes `purgeCountMatchesMultiLevelCascade` pass (per-object delete cascades correctly), so to see it RED against the *naive* batch delete it guards against, implement Step 3 *without* the `CascadeReaper.objectIDs(forDeleting:)` expansion first (name only `roots` in the `NSBatchDeleteRequest`): the count returns 1 and the survivor query returns 2, both failing — then add the expansion to turn it GREEN. This is the genuine RED the batch-delete refactor must satisfy.
 
-- [ ] **Step 3: Implement the minimal change** — replace `purgeAll` (lines 429–455) in `TaskStore.swift`:
+- [ ] **Step 3: Implement the minimal change** — replace the **entire** `purgeAll` method (find `func purgeAll`, ~lines 473–499; replace the whole `@discardableResult public func purgeAll() ... }` body, not a line-range slice) in `TaskStore.swift` with the two methods below (the new `purgeAll` plus its `batchPurge`/`predicateMatches` helpers):
 
 ```swift
     @discardableResult
@@ -739,15 +737,15 @@ Genuine RED — multi-level (parent → child → grandchild) cascade count math
     }
 ```
 
-Then replace the `countDescendants` helper at lines 457–460 — it is now only used by the removed loop; remove it. Verify with a follow-up grep in Step 4 that no other caller references it before deleting:
+Then delete the `countDescendants` helper (find `private func countDescendants`, ~lines 501–504) — it is now only used by the removed loop. Verify with a follow-up grep in Step 4 that no other caller references it before deleting:
 
 ```bash
 grep -n "countDescendants" Packages/LillistCore/Sources/LillistCore/Stores/TaskStore.swift
 ```
 
-If the only remaining reference is the definition, delete lines 457–460 (the `countDescendants` function). If any other caller exists, leave it in place.
+If the only remaining reference is the definition, delete the `countDescendants` function. If any other caller exists, leave it in place.
 
-Now replace `AutoPurgeJob.run(now:)` (lines 15–28) in `AutoPurgeJob.swift`:
+Now replace the **entire** `run(now:)` method (find `func run(now:`, ~lines 16–29) in `AutoPurgeJob.swift`:
 
 ```swift
     @discardableResult
@@ -809,15 +807,15 @@ Refs: persist-4, threading-1"
 
 ## Task 6: Add `context.rollback()` to mutating `perform` catch paths + regression test
 
-> **⚠️ PREREQUISITE: `breadcrumb-truthfulness` (Wave 2) MUST be merged before executing this task.**
+> **⚠️ HIGHEST-RISK TASK — add exactly ONE line per method; do NOT rewrite any method body.**
 >
-> Task 6 adds one `context.rollback()` line to the *existing* `catch` block that `breadcrumb-truthfulness` creates in `hardDelete`, `reparent`, `softDelete`, and `restore`. On current `main` those four methods still use the old `defer { Task { … success: true } }` shape — there is no inline `do/catch` to insert into, and the "before" snippets shown below will **not match the current source**. If `breadcrumb-truthfulness` has not merged, stop and land it first, then return here. Do not attempt to apply Step 3's before/after snippets against the `defer`-based source — you will either get a non-matching edit or accidentally revert breadcrumb-truthfulness's truthful-success work.
+> All eight mutating methods already ship as inline `do/catch` on `main`: `create`/`update`/`archive`/`unarchive` landed that way independently, and `hardDelete`/`reparent`/`softDelete`/`restore` were converted by `breadcrumb-truthfulness` (Wave 2, merged) — they record the **true** success flag in operation order, with the success crumb *inside* the `do` block (after the `perform`, and for `softDelete`/`restore` after `notificationScheduler.reconcile`). The only edit this task makes to each method is inserting `await context.perform { [self] in context.rollback() }` as the **first statement of the existing `catch` block**, before its failure `recordCrumb`. Do **not** restructure, re-order, or rewrite any method body — moving the success crumb back outside the `do` would revert breadcrumb-truthfulness's truthful-success work. Match each before-snippet verbatim; if one doesn't match, stop and reconcile rather than blind-replacing.
 
 **Files:** Create `Packages/LillistCore/Tests/LillistCoreTests/Stores/TaskStoreRollbackTests.swift`; modify `Packages/LillistCore/Sources/LillistCore/Stores/TaskStore.swift` mutating methods.
 
 A failed `ctx.save()` inside a mutating `perform` leaves the dirtied objects pending in the shared `viewContext`; the next op then re-attempts (or compounds) the failed change. The fix: every mutating method rolls the context back on failure.
 
-**Precondition — this plan lands AFTER `breadcrumb-truthfulness`.** That plan already converted all four `defer`-based mutators (`hardDelete`, `reparent`, `softDelete`, `restore`) — plus `transition` — from `defer { Task { recordCrumb(success: true) } }` into an inline `do { … ; await recordCrumb(action, success: true) } catch { await recordCrumb(action, success: false); throw error }` that records the **true** success flag in operation order (the success crumb fires *inside* the `do` block, after the `perform` and, for `softDelete`/`restore`, after the `notificationScheduler.reconcile`). Do **not** re-write those method bodies from scratch — that would revert breadcrumb-truthfulness's truthful-success work by moving the success crumb back outside the `do`. This task adds **only** one line to each: a `context.rollback()` at the head of the *existing* `catch` block.
+**Prerequisite — SATISFIED on current `main`.** The four mutators `hardDelete`, `reparent`, `softDelete`, `restore` already use the inline `do { … ; await recordCrumb(action, success: true) } catch { await recordCrumb(action, success: false); throw error }` shape (breadcrumb-truthfulness, Wave 2, merged) — the success crumb fires *inside* the `do`, after the `perform` and, for `softDelete`/`restore`, after the `notificationScheduler.reconcile`. The before-snippets below match the current source. Add **only** the one `context.rollback()` line at the head of each existing `catch`; never re-write the method bodies.
 
 `create`, `update`, `archive`, and `unarchive` already shipped as inline do/catch independently of breadcrumb-truthfulness; their rollback additions (below) are unchanged.
 
@@ -892,14 +890,14 @@ struct TaskStoreRollbackTests {
 }
 ```
 
-- [ ] **Step 2: Run the test, expect failure** — `cd /Volumes/Code/mikeyward/Lillist && swift test --package-path Packages/LillistCore --filter "TaskStore rollback on save failure"`. Expected failure: `Expectation failed: (hasChanges → true) == false` — `update`'s catch path (post-breadcrumb-truthfulness it records `success: false` and rethrows, lines 184–187) never calls `rollback()`, so the dirtied `viewContext` stays pending.
+- [ ] **Step 2: Run the test, expect failure** — `cd /Volumes/Code/mikeyward/Lillist && swift test --package-path Packages/LillistCore --filter "TaskStore rollback on save failure"`. Expected failure: `Expectation failed: (hasChanges → true) == false` — `update`'s `catch` (~lines 184–187) records `success: false` and rethrows but never calls `rollback()`, so the dirtied `viewContext` stays pending.
 
 - [ ] **Step 3: Implement the minimal change** — add `await context.perform { [self] in context.rollback() }` as the *first* statement of each mutating method's *existing* `catch` block, before its failure `recordCrumb`. `rollback()` must run on the context queue and the throw escapes the `perform`, so hop back on via a small `perform`. Two groups:
 
   - **`create` / `update` / `archive` / `unarchive`** already ship as inline do/catch (independent of breadcrumb-truthfulness). Replace just their existing `catch` block — the surrounding method body is unchanged.
   - **`hardDelete` / `reparent` / `softDelete` / `restore`** were converted to inline do/catch by breadcrumb-truthfulness (precondition above). Their bodies and breadcrumb shape are already correct — do **not** rewrite them. Add only the `rollback()` line into the catch the *before* snippet shows.
 
-`create` (replace lines 136–139, the existing `catch`):
+`create` (find `func create`; replace its existing `catch`, ~lines 136–139):
 ```swift
         } catch {
             await context.perform { [self] in context.rollback() }
@@ -908,7 +906,7 @@ struct TaskStoreRollbackTests {
         }
 ```
 
-`update` (replace lines 184–187, the existing `catch`):
+`update` (find `func update`; replace its existing `catch`, ~lines 184–187):
 ```swift
         } catch {
             await context.perform { [self] in context.rollback() }
@@ -917,7 +915,7 @@ struct TaskStoreRollbackTests {
         }
 ```
 
-`archive` (replace lines 358–361, the existing `catch`):
+`archive` (find `func archive`; replace its existing `catch`, ~lines 392–395):
 ```swift
         } catch {
             await context.perform { [self] in context.rollback() }
@@ -926,7 +924,7 @@ struct TaskStoreRollbackTests {
         }
 ```
 
-`unarchive` (replace lines 378–381, the existing `catch`):
+`unarchive` (find `func unarchive`; replace its existing `catch`, ~lines 412–415):
 ```swift
         } catch {
             await context.perform { [self] in context.rollback() }
@@ -935,7 +933,7 @@ struct TaskStoreRollbackTests {
         }
 ```
 
-For the four breadcrumb-truthfulness mutators, the edit is a single-line insertion into the existing `catch`. Each pair below shows breadcrumb-truthfulness's **landed** shape (before) and the same method with `context.rollback()` added (after). Match the before-snippet verbatim before editing; if it doesn't match, breadcrumb-truthfulness has not landed (or was reflowed) — stop and reconcile rather than blind-replacing.
+For the four breadcrumb-truthfulness mutators, the edit is a single-line insertion into the existing `catch`. Each pair below shows the **landed** shape on `main` (before) and the same method with `context.rollback()` added (after). Match the before-snippet verbatim before editing; if it doesn't match, the method has been reflowed since — stop and reconcile rather than blind-replacing.
 
 `hardDelete` — before (breadcrumb-truthfulness's landed shape):
 ```swift
@@ -1145,6 +1143,8 @@ Refs: conc-5"
 
 **Files:** Create `Packages/LillistCore/Sources/LillistCore/Persistence/HistoryPruner.swift` and `Packages/LillistCore/Tests/LillistCoreTests/Persistence/HistoryPrunerTests.swift`.
 
+> **Ownership:** `HistoryPruner.sweep` is **this plan's** work — `resolve-inert-features` deliberately did *not* wire it (its plan banner says so), and the Foundation Hardening index assigns it here. This task creates and unit-tests the `HistoryPruner` type; wiring its `sweep()` into the iOS/macOS launch path (`AppEnvironment.bootstrap()`, alongside the already-wired `AutoPurgeJob`/`RemoteChangeReconciler`) is part of this plan's responsibility — see Step 6 below.
+
 When `syncMode == .iCloudSync`, `NSPersistentCloudKitContainer` owns history pruning (it tracks which transactions have been exported and trims behind itself). When `.localOnly`, persistent-history tracking is still ON (the store description keeps `NSPersistentHistoryTrackingKey` so the mode swap is non-structural — see `PersistenceController.makeStoreDescription`), so history accumulates forever with nothing to trim it. `HistoryPruner` reads the current token, deletes everything before it, and persists the token as `Data` so a re-run is idempotent.
 
 Concurrency note (verified): `NSPersistentHistoryToken` is **not** `Sendable`. The token must be read, used in `deleteHistory(before:)`, and archived to `Data` all *inside* one `perform`; only the `Data` may cross the closure boundary.
@@ -1300,6 +1300,21 @@ because NSPersistentCloudKitContainer owns its own pruning.
 Refs: notif-7, persist-1"
 ```
 
+- [ ] **Step 6: Wire `sweep()` into the launch path** — `HistoryPruner` is inert until something calls `sweep()`. Wire it into the same launch path that already drives `AutoPurgeJob` and `RemoteChangeReconciler`: `Apps/Lillist-iOS/Sources/App/AppEnvironment.swift` `bootstrap()` (anchor by `func bootstrap`; `AutoPurgeJob` is wired ~line 111, `appGroupID` is `Self.appGroupID` = `group.io.mikeydotio.Lillist`) and the macOS equivalent. Construct it with the resolved `syncMode` and the App Group `UserDefaults` (use the `convenience init?(persistence:syncMode:appGroupID:)` overload), and `try? await pruner.sweep()` fire-and-forget after the purge runs — a failed prune must never block launch. Re-Read `bootstrap()` first; do **not** disturb the already-wired `AutoPurgeJob`/`RemoteChangeReconciler`/`normalizeSingletons`/`localStoreRowCount` calls. Add a launch-path contract test mirroring the existing `AutoPurgeJob` launch-path test. Commit separately:
+```bash
+cd /Volumes/Code/mikeyward/Lillist
+git add Apps/Lillist-iOS/Sources/App/AppEnvironment.swift \
+        Apps/Lillist-macOS \
+        Packages/LillistCore/Tests
+git commit -m "feat(app): run HistoryPruner.sweep at launch for localOnly stores
+
+bootstrap() now fires a fire-and-forget HistoryPruner.sweep after the
+trash purge so localOnly persistent history never grows unbounded. Gated
+internally to syncMode == .localOnly; a failed prune never blocks launch.
+
+Refs: notif-7, persist-1"
+```
+
 ---
 
 ## Task 8: Document the single-context design and the background-context seam
@@ -1399,8 +1414,9 @@ Refs: threading-1, persist-4, conc-5, notif-7, persist-1"
 - [ ] **`threading-1`** (Exporter/Importer on a dedicated background context) — closed by **Task 1** (`makeBackgroundContext` helper), **Task 2** (Exporter reads on background context; attachment bytes read inside `perform`, files written outside), **Task 3** (Importer writes on background context), and **Task 5** (purges on background context).
 - [ ] **`persist-4`** (`NSBatchDeleteRequest` reproducing cascade rules explicitly for `purgeAll`/`AutoPurgeJob`) — closed by **Task 4** (`CascadeReaper` enumerates the full cascade graph) and **Task 5** (`purgeAll` and `AutoPurgeJob` use batch delete with `resultTypeObjectIDs` merged into `viewContext`).
 - [ ] **`conc-5`** (`context.rollback()` in every mutating `perform` catch + regression test) — closed by **Task 6** (rollback added to `create`/`update`/`archive`/`unarchive`/`hardDelete`/`reparent`/`softDelete`/`restore`; regression test forces a real save conflict and asserts the context is clean) and **Task 3** (Importer rollback on save failure).
-- [ ] **`notif-7`** (periodic `NSPersistentHistoryChangeRequest.deleteHistory` sweep for `.localOnly` only, idempotent via stored token) — closed by **Task 7** (`HistoryPruner`, gated to `.localOnly`, token persisted as `Data`).
+- [ ] **`notif-7`** (periodic `NSPersistentHistoryChangeRequest.deleteHistory` sweep for `.localOnly` only, idempotent via stored token) — closed by **Task 7** (`HistoryPruner`, gated to `.localOnly`, token persisted as `Data`, `sweep()` wired into `bootstrap()` in Step 6). This plan owns `HistoryPruner.sweep` end to end — `resolve-inert-features` deliberately did not wire it.
 - [ ] **`persist-1`** (history pruning for `.localOnly` stores) — closed by **Task 7** (same `HistoryPruner`).
+- [ ] **Residual #3 acknowledged:** purge reaps `NotificationSpec` rows but does not cancel pending OS-level `UNNotificationRequest`s — recorded as a named out-of-scope follow-up in **Task 5**, not silently dropped.
 - [ ] **Design preserved:** single main-queue `viewContext` default kept; `automaticallyMergesChangesFromParent` is documented as *active* (the CloudKit merge channel), never cited as dead — **Task 8**.
 - [ ] **Strengths protected:** DTO boundary untouched (no `NSManagedObject` escapes `LillistCore`; export/import still return value types and `ImportSummary`); date math untouched; the synchronous AsyncStream registration untouched.
 - [ ] **No `.xcdatamodel` edit** — this plan adds no model changes, so the `CompileCoreDataModel` mtime touch ritual is not needed.

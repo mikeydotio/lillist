@@ -4,7 +4,7 @@
 >
 > Part of the **Foundation Hardening** program. **Single source of truth for progress, wave order, and cross-plan coordination:** [`2026-05-29-foundation-hardening-index.md`](2026-05-29-foundation-hardening-index.md). New to this project? Read the index first, then the review ([`docs/reviews/2026-05-28-foundation-review.md`](../../reviews/2026-05-28-foundation-review.md)) for *why* this work exists, then `CLAUDE.md` for conventions + build/test commands. Execute task-by-task with `superpowers:subagent-driven-development`.
 >
-> ⚠️ **Wave 1 (`store-swap-safety`) is merged to `main`.** It changed several shared files (`MigrationCoordinator`, `PersistenceHost`, `QuarantineManager`, `MigrationJournal`, both `AppEnvironment`s, `PersistenceController`). **Re-Read every file before editing and anchor by code structure — the line numbers in this plan may have drifted.**
+> **Pre-flight (run before any edit):** Confirm Waves 1–5 are on `main` (`git log --oneline main | head -20`). Read `docs/superpowers/handoffs/wave-5.md`. Re-Read every file you touch and anchor by code **structure**, not line number — each wave shifts the shared hotspot files. On completion, write `docs/superpowers/handoffs/wave-6.md`.
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
@@ -33,13 +33,15 @@
 
 | Path | Lines (current) | Change |
 |------|-----------------|--------|
-| `Packages/LillistCore/Sources/LillistCore/Stores/TaskStore.swift` | `children(of:)` at 203-218; `nextPosition` fetch at 534-545 | Add `fetchBatchSize` to the `children` fetch; add a `children(of:limit:offset:)` paged overload that delegates to the existing one's body. |
-| `Packages/LillistCore/Sources/LillistCore/Stores/TaskStore+Queries.swift` | `tasks(forTag:)` fetch at 49-54; `pinned()` fetch at 13-19 | Add `fetchBatchSize` to both list fetches. |
-| `Packages/LillistCore/Sources/LillistCore/Stores/SmartFilterStore.swift` | `evaluate(id:)` 267-280; `evaluate(group:)` 291-311 | Add `fetchBatchSize`; add `limit`/`offset` paging params to `evaluate(group:)` (mapping to `fetchLimit`/`fetchOffset`). |
+| `Packages/LillistCore/Sources/LillistCore/Stores/TaskStore.swift` | `children(of:)` (the `// MARK: - Hierarchy` section, ~208-223); `nextPosition` fetch ~578-589 | Add `fetchBatchSize` to the `children` fetch; add a `children(of:limit:offset:)` paged overload that delegates to the existing one's body. |
+| `Packages/LillistCore/Sources/LillistCore/Stores/TaskStore+Queries.swift` | `tasks(forTag:)` fetch ~49-54; `pinned()` fetch ~13-19 | Add `fetchBatchSize` to both list fetches. |
+| `Packages/LillistCore/Sources/LillistCore/Stores/SmartFilterStore.swift` | `evaluate(id:)` ~299-312; `evaluate(group:)` ~323-343 | Add `fetchBatchSize`; add `limit`/`offset` paging params to `evaluate(group:)` (mapping to `fetchLimit`/`fetchOffset`). |
 | `Packages/LillistCore/Sources/LillistCore/Rules/NSPredicateCompiler.swift` | doc comment 4-16 | Tighten the existing "suitable for `NSFetchedResultsController`" note to point at the new paging policy doc; no behavior change. |
 | `docs/engineering-notes.md` | append-only, after the last entry | New dated entry documenting the §761 budget contract, the `swift test`-has-no-baseline gotcha, and the `fetchBatchSize`/paging policy. |
 
-> **Cross-plan note:** `TaskStore.swift` is also edited by `breadcrumb-truthfulness` [P1], `fractional-ordering-compaction` [P1], and `background-context-seam` [P2]. This plan touches only the `children(of:)` fetch (lines ~203-218) and adds a new `children(of:limit:offset:)` method + a `fetchBatchSize` constant — it does **not** touch the mutator `defer`/breadcrumb sites, the `reorder` body, or `purgeAll`. `SmartFilterStore.swift` is also edited by `fractional-ordering-compaction` (its `reorder`, not its `evaluate` extension). Land additively; if a conflict arises, the additive `fetchBatchSize` line and the new overload rebase cleanly onto either.
+> **Cross-plan note:** This plan touches only the `children(of:)` fetch (the `// MARK: - Hierarchy` section, ~208-223) and adds a new `children(of:limit:offset:)` **overload** (additive, defaulted — NOT a rename) plus a `fetchBatchSize` constant. The `TaskStore` mutators (`hardDelete`/`reparent`/`softDelete`/`restore`) use inline `do`/`catch` with a true success flag for breadcrumb truthfulness — this plan does **not** touch those mutator sites, the `reorder` body, or `purgeAll`. `SmartFilterStore.swift`'s `reorder` is owned elsewhere; this plan touches only its `evaluate` extension.
+>
+> **Co-landing with `observability-logging` (chain #2).** Both this plan and `observability-logging` (also Wave 6) edit `TaskStore.children(of:)` — that plan wraps it in a signpost bracket, this plan adds the paged overload + `fetchBatchSize`. **Land them together and re-Read `TaskStore.swift` immediately before editing** so the signpost bracket and the paging overload don't clobber each other. Because the paging change is a *new overload* (not a rewrite of the existing method's signature), it rebases cleanly onto the signpost-wrapped `children(of:)`.
 
 ---
 
@@ -553,7 +555,7 @@ change."
 ### Task 4: Add `fetchBatchSize` and a paged `children` overload to TaskStore
 
 **Files:**
-- Modify `Packages/LillistCore/Sources/LillistCore/Stores/TaskStore.swift` (`children(of:)` at lines 203-218; add new overload + a private batch-size constant)
+- Modify `Packages/LillistCore/Sources/LillistCore/Stores/TaskStore.swift` (`children(of:)` in the `// MARK: - Hierarchy` section, ~208-223; add new overload + a private batch-size constant)
 
 The production fix for the unbounded main-queue funnel: faulting in pages via `fetchBatchSize`, plus an additive paged API so callers that only need a window don't project the whole store. The existing `children(of:)` keeps its signature so all 100+ call sites compile unchanged.
 
@@ -567,7 +569,7 @@ cd /Volumes/Code/mikeyward/Lillist && swift test --package-path Packages/Lillist
 
 Expected: a compile error referencing `children(of:limit:offset:)` / extra arguments — the suite does not build.
 
-- [ ] **Step 3: Implement `fetchBatchSize` + the paged overload.** Replace the existing `children(of:)` method (currently lines 203-218) in `Packages/LillistCore/Sources/LillistCore/Stores/TaskStore.swift` with the COMPLETE replacement below. It (a) adds a module-private default batch size, (b) routes the existing API through a shared `childrenFetchRequest` builder that sets `fetchBatchSize`, and (c) adds the additive `children(of:limit:offset:)` overload:
+- [ ] **Step 3: Implement `fetchBatchSize` + the paged overload.** Replace the existing `children(of:)` method (in the `// MARK: - Hierarchy` section, ~208-223 — but re-Read first: if `observability-logging` has already wrapped it in a signpost bracket, preserve that bracket and add the overload alongside) in `Packages/LillistCore/Sources/LillistCore/Stores/TaskStore.swift` with the COMPLETE replacement below. It (a) adds a module-private default batch size, (b) routes the existing API through a shared `childrenFetchRequest` builder that sets `fetchBatchSize`, and (c) adds the additive `children(of:limit:offset:)` overload:
 
 ```swift
     public func children(of parentID: UUID?) async throws -> [TaskRecord] {
@@ -616,7 +618,7 @@ Expected: a compile error referencing `children(of:limit:offset:)` / extra argum
     }
 ```
 
-Then add the batch-size constant. Insert it immediately after the `breadcrumbs` property declaration (currently ends at line 20, `public var breadcrumbs: BreadcrumbBuffer?`), before the `recordCrumb` helper:
+Then add the batch-size constant. Insert it immediately after the `breadcrumbs` property declaration (`public var breadcrumbs: BreadcrumbBuffer?`, ~20), before the `recordCrumb` helper:
 
 ```swift
     /// Page size for list fetches. Core Data returns rows as faults in
@@ -659,8 +661,8 @@ finding."
 ### Task 5: Add `fetchBatchSize` to the remaining list fetches and paging to `evaluate(group:)`
 
 **Files:**
-- Modify `Packages/LillistCore/Sources/LillistCore/Stores/TaskStore+Queries.swift` (`pinned()` 13-19; `tasks(forTag:)` 49-54)
-- Modify `Packages/LillistCore/Sources/LillistCore/Stores/SmartFilterStore.swift` (`evaluate(id:)` 274-279; `evaluate(group:)` 300-310)
+- Modify `Packages/LillistCore/Sources/LillistCore/Stores/TaskStore+Queries.swift` (`pinned()` ~10-21; `tasks(forTag:)` ~27 onward, its list fetch at ~49-54)
+- Modify `Packages/LillistCore/Sources/LillistCore/Stores/SmartFilterStore.swift` (`evaluate(id:)` ~299-312; `evaluate(group:)` ~323-343)
 
 Round out the batching: the tag/pinned fetches and both `evaluate` overloads get `fetchBatchSize`, and `evaluate(group:)` (used by iOS Search) gains optional `limit`/`offset` paging.
 
@@ -708,7 +710,7 @@ Expected: a COMPILE error — `error: extra arguments at positions #2, #3 in cal
 
 - [ ] **Step 3: Implement the batching + paging.** Three edits:
 
-  **(3a)** In `Packages/LillistCore/Sources/LillistCore/Stores/SmartFilterStore.swift`, replace the `evaluate(group:)` method (currently lines 291-311) with the COMPLETE replacement that adds `limit`/`offset` + `fetchBatchSize`:
+  **(3a)** In `Packages/LillistCore/Sources/LillistCore/Stores/SmartFilterStore.swift`, replace the `evaluate(group:)` method (~323-343) with the COMPLETE replacement that adds `limit`/`offset` + `fetchBatchSize`:
 
 ```swift
     public func evaluate(
@@ -739,7 +741,7 @@ Expected: a COMPILE error — `error: extra arguments at positions #2, #3 in cal
     }
 ```
 
-  **(3b)** In the same file, add `fetchBatchSize` to `evaluate(id:)`. Replace its body's request setup (currently lines 274-276) — change:
+  **(3b)** In the same file, add `fetchBatchSize` to `evaluate(id:)`. Replace its body's request setup (~306-308) — change:
 
 ```swift
             let req = NSFetchRequest<LillistTask>(entityName: "LillistTask")
@@ -756,7 +758,7 @@ Expected: a COMPILE error — `error: extra arguments at positions #2, #3 in cal
             req.fetchBatchSize = TaskStore.listFetchBatchSize
 ```
 
-  **(3c)** In `Packages/LillistCore/Sources/LillistCore/Stores/TaskStore+Queries.swift`, add `fetchBatchSize` to the two list fetches. In `pinned()` (lines 13-18), after the `sortDescriptors` assignment add the batch-size line:
+  **(3c)** In `Packages/LillistCore/Sources/LillistCore/Stores/TaskStore+Queries.swift`, add `fetchBatchSize` to the two list fetches. In `pinned()` (its request setup at ~13-18), after the `sortDescriptors` assignment add the batch-size line:
 
 ```swift
             let req = NSFetchRequest<LillistTask>(entityName: "LillistTask")
@@ -768,7 +770,7 @@ Expected: a COMPILE error — `error: extra arguments at positions #2, #3 in cal
             req.fetchBatchSize = TaskStore.listFetchBatchSize
 ```
 
-  and in `tasks(forTag:)` (lines 49-51), after its `sortDescriptors` assignment:
+  and in `tasks(forTag:)` (its list fetch at ~49-51), after its `sortDescriptors` assignment:
 
 ```swift
             let req = NSFetchRequest<LillistTask>(entityName: "LillistTask")
@@ -808,15 +810,15 @@ paging contract test. All existing signatures compile unchanged."
 ### Task 6: Document the budget contract and paging policy in engineering-notes
 
 **Files:**
-- Modify `docs/engineering-notes.md` (append a new dated entry at the end)
-- Modify `Packages/LillistCore/Sources/LillistCore/Rules/NSPredicateCompiler.swift` (doc comment, lines 4-16)
+- Modify `docs/engineering-notes.md` (append a new dated entry at the true end of file)
+- Modify `Packages/LillistCore/Sources/LillistCore/Rules/NSPredicateCompiler.swift` (top doc comment, ~4-6)
 
 Capture the non-obvious lessons: the §761 budget number, the `swift test`-has-no-`measure()`-baseline gotcha (so future contributors don't "fix" the explicit assertion away), and the `fetchBatchSize`/paging policy.
 
-- [ ] **Step 1: Insert the engineering-notes entry in date order.** The file currently ends with a `## 2026-05-29 — Store-swap safety` entry. The new `## 2026-05-28` entry must be inserted **immediately before that `## 2026-05-29` heading** to preserve ascending date order — do NOT append it at the very end of the file. Read the current tail first to confirm the position, then insert the block above `## 2026-05-29`:
+- [ ] **Step 1: Append the engineering-notes entry at the true end of file.** `engineering-notes.md` is append-only and its headings are *not* in strict date order — the last entry is `## 2026-06-04 — Intermittent SIGSEGV under heavy parallel in-memory store creation`. Read the current tail first to confirm the true EOF, then append the block below after that last entry (do NOT try to slot it earlier by date):
 
 ```markdown
-## 2026-05-28 — Performance budgets are gated by explicit timed assertions, not `measure()` baselines
+## 2026-06-04 — Performance budgets are gated by explicit timed assertions, not `measure()` baselines
 
 **Context.** Design §761 promises an assertion-tested smart-filter budget
 ("< 100ms against 10,000 tasks"). The perf suite lives at
@@ -865,7 +867,7 @@ YAGNI until a real screen needs it.
 cd /Volumes/Code/mikeyward/Lillist && tail -40 docs/engineering-notes.md && echo "---heading count---" && grep -c "^## " docs/engineering-notes.md
 ```
 
-Expected: the new `## 2026-05-28 — Performance budgets…` heading appears at the tail; the heading count incremented by exactly 1 versus before.
+Expected: the new `## 2026-06-04 — Performance budgets…` heading appears at the tail (after the SIGSEGV entry); the heading count incremented by exactly 1 versus before.
 
 - [ ] **Step 3: Tighten the NSPredicateCompiler doc comment.** In `Packages/LillistCore/Sources/LillistCore/Rules/NSPredicateCompiler.swift`, replace the second sentence of the top doc comment (currently lines 5-6):
 

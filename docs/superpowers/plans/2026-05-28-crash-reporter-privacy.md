@@ -4,12 +4,9 @@
 >
 > Part of the **Foundation Hardening** program. **Single source of truth for progress, wave order, and cross-plan coordination:** [`2026-05-29-foundation-hardening-index.md`](2026-05-29-foundation-hardening-index.md). New to this project? Read the index first, then the review ([`docs/reviews/2026-05-28-foundation-review.md`](../../reviews/2026-05-28-foundation-review.md)) for *why* this work exists, then `CLAUDE.md` for conventions + build/test commands. Execute task-by-task with `superpowers:subagent-driven-development`.
 >
-> ⚠️ **Wave 1 (`store-swap-safety`) is merged to `main`.** It changed several shared files (`MigrationCoordinator`, `PersistenceHost`, `QuarantineManager`, `MigrationJournal`, both `AppEnvironment`s, `PersistenceController`). **Re-Read every file before editing and anchor by code structure — the line numbers in this plan may have drifted.**
-
-> **⚠️ Wave-1 reconciliation:**
-> store-swap-safety (merged to main) appended a new final entry to `docs/engineering-notes.md`: `## 2026-05-29 — Store-swap safety: live empty-store guard + tracked follow-up` (now ~line 1866). Task 9's stated anchor — "after the existing final 'Drag-reorder hit testing' entry" — is therefore stale; that Drag-reorder entry (~line 1834) is no longer the file's tail.
-> What to do: follow the operative instruction ("add this block at the very end of the file") literally — append AFTER the new Store-swap-safety entry, not after Drag-reorder. The append is purely additive; the `git diff --stat` check in Task 9 Step 2 (insertions only, no deletions) still holds.
-> Everything else in this plan is clean. The CrashReporting source/test files store-swap-safety did NOT touch — `LogRedactor.swift`, `CrashReporter.swift`, `LogRedactorTests.swift`, `CrashReporterFlowTests.swift`, `Package.swift` line 37 — all match the plan's exact line numbers and quoted snippets verbatim, so no re-anchoring of code edits is needed. None of the closed Wave-1 findings (persist/sync/conc/test-1/test-2) overlap this plan's findings (redact-1, redact-5, canary-4, test-6); no work here was already done by store-swap-safety.
+> **Pre-flight (run before any edit):** Confirm Waves 1–4 are on `main` (`git log --oneline main | head -20`). Read `docs/superpowers/handoffs/wave-4.md`. Re-Read every file you touch and anchor by code **structure**, not line number — each wave shifts the shared hotspot files. On completion, write `docs/superpowers/handoffs/wave-5.md`.
+>
+> This lane is fully isolated: it touches only the `CrashReporting/` source and test files (`LogRedactor.swift`, `CrashReporter.swift`, `LogRedactorTests.swift`, `CrashReporterFlowTests.swift`) plus `docs/engineering-notes.md`. None of those overlap the shared store/sync/migration hotspots reshaped by Waves 1–4, so this plan's findings (redact-1, redact-5, canary-4, test-6) are wholly unaddressed by prior waves.
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
@@ -862,7 +859,7 @@ transport on dontSend. Closes test-6 (error-path half)."
 
 This is append-only documentation per CLAUDE.md (a future contributor would otherwise re-derive both lessons the hard way: that the key=value passes are intentionally single-token, and why the canary filter cannot trust PID alone). No code change, no TDD cycle.
 
-- [ ] **Step 1: Append the entry** — add this block at the very end of `docs/engineering-notes.md` (after the existing final "Drag-reorder hit testing" entry), preserving the existing trailing content:
+- [ ] **Step 1: Append the entry** — add this block at the very end of `docs/engineering-notes.md`, after whatever the current final entry is (the file's tail moves with each wave — re-Read the tail and append below it; do not anchor on a named entry), preserving the existing trailing content:
 
 ```markdown
 

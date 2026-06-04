@@ -4,22 +4,13 @@
 >
 > Part of the **Foundation Hardening** program. **Single source of truth for progress, wave order, and cross-plan coordination:** [`2026-05-29-foundation-hardening-index.md`](2026-05-29-foundation-hardening-index.md). New to this project? Read the index first, then the review ([`docs/reviews/2026-05-28-foundation-review.md`](../../reviews/2026-05-28-foundation-review.md)) for *why* this work exists, then `CLAUDE.md` for conventions + build/test commands. Execute task-by-task with `superpowers:subagent-driven-development`.
 >
-> ⚠️ **Wave 1 (`store-swap-safety`) is merged to `main`.** It changed several shared files (`MigrationCoordinator`, `PersistenceHost`, `QuarantineManager`, `MigrationJournal`, both `AppEnvironment`s, `PersistenceController`). **Re-Read every file before editing and anchor by code structure — the line numbers in this plan may have drifted.**
-
-> **⚠️ Wave-1 reconciliation:**
-> store-swap-safety (commits bfd8635..6f008f7) is merged to `main` and changed two surfaces this plan references. This is a TEST-ONLY plan, so neither change blocks it — but two anchors are stale and will mis-fire if followed literally.
-> 
-> 1. **Task 3 (`PersistenceHost.swift:95-125`):** `flushAndSwap` is now transactional with a CloudKit-options-preserving rollback and starts at ~line 139, not 95. The line range is documentary; the test only calls the stable public `host.reconfigure(to:)` / `PersistenceHost.make(...)` (both verified present and exercised by `PersistenceHostTests`). Re-Read before quoting, but no code change needed.
-> 
-> 2. **Task 5 (engineering-notes EOF):** the file is now 1905 lines, not 1864. store-swap-safety appended a `## 2026-05-29 — Store-swap safety` section after the drag-reorder note. The plan's expected final line (`...that's where the fix belongs.`) sits at line 1863, NO LONGER at EOF, so the Step-2 Edit anchor would insert the new section MID-FILE ahead of the store-swap entry. Follow the plan's own escape hatch: append after the TRUE final line (currently the `wal_checkpoint(TRUNCATE)`/`copyStore` deferral paragraph) so the new `## Concurrency invariants...` section lands at real EOF and chronological order is preserved. The block content itself is unchanged and self-contained.
-> 
-> Nothing in this plan re-does store-swap-safety work (no localStoreRowCount wiring, no restoreFromBackup tests, no PersistenceReconfiguring/copyStore edits) — it only consumes the unchanged public store API.
+> **Pre-flight (run before any edit):** Confirm Waves 1–3 are on `main` (`git log --oneline main | head -20`). Read `docs/superpowers/handoffs/wave-3.md`. Re-Read every file you touch and anchor by code **structure**, not line number — each wave shifts the shared hotspot files. On completion, write `docs/superpowers/handoffs/wave-4.md`.
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Add the CLAUDE.md-mandated concurrency stress tests for every actor-crossing path in `LillistCore` — concurrent notification reconcile, N-concurrent `AsyncStream` subscribers, store-create/fetch during a live store reconfigure, and a real two-context duplicate-tag race — so a future refactor that reintroduces a TOCTOU, a dropped event, or a duplicate row fails the suite loudly instead of shipping green.
 
-**Architecture:** All tests live under `Packages/LillistCore/Tests/LillistCoreTests/` and use the existing helpers (`TestStore`, `FakeUserNotificationCenter`, `SnoozeRegistry`) and the repo's two test frameworks (Swift Testing for the in-memory tests; the xcodebuild-gated reconfigure test mirrors `StoreLevelModeSwapSpike`'s `liveSwapAllowed` bundle-ID gate). The reconcile TOCTOU is *driven* (high-iteration `withTaskGroup`) so the at-most-one-default-spec invariant is asserted as a behavioural property; the duplicate-tag race is *genuinely reproduced* by driving a second `NSManagedObjectContext` against the same coordinator so the single-context atomicity claim is tested for real rather than assumed. The actual TOCTOU **fix** in `materializeDefaultSpecs` is owned by the `cloudkit-convergence` plan (NotificationSpecStore at-most-one-default enforcement); this plan supplies the failing stress test that proves it and a coordination note so the two land together.
+**Architecture:** All tests live under `Packages/LillistCore/Tests/LillistCoreTests/` and use the existing helpers (`TestStore`, `FakeUserNotificationCenter`, `SnoozeRegistry`) and the repo's two test frameworks (Swift Testing for the in-memory tests; the xcodebuild-gated reconfigure test mirrors `StoreLevelModeSwapSpike`'s `liveSwapAllowed` bundle-ID gate). The reconcile TOCTOU is *driven* (high-iteration `withTaskGroup`) so the at-most-one-default-spec invariant is asserted as a behavioural property; the duplicate-tag race is *genuinely reproduced* by driving a second `NSManagedObjectContext` against the same coordinator so the single-context atomicity claim is tested for real rather than assumed. The at-most-one-default-spec enforcement lives in `NotificationSpecStore.add` (Wave 3 `cloudkit-convergence`, merged — commit 893c359); this plan supplies the concurrency stress test that verifies it holds under contention and self-heals duplicates.
 
 **Tech Stack:** Swift 6.2, Swift Testing (`import Testing`, `@Test`/`#expect`/`#require`), XCTest-free; CoreData (`NSManagedObjectContext`, `newBackgroundContext`); `withTaskGroup`; `NSPersistentCloudKitContainer` store-level swap (xcodebuild only).
 
@@ -35,7 +26,7 @@
 | Create | `Packages/LillistCore/Tests/LillistCoreTests/Sync/CloudKitEventBridgeConcurrentSubscriberTests.swift` | N-concurrent-subscriber `AsyncStream` stress: interleaved subscribe/record/terminate, asserting no dropped events to live subscribers and no continuation leak after termination. Closes conc-3. |
 | Create | `Packages/LillistCore/Tests/LillistCoreTests/Persistence/StoreReconfigureConcurrencyTests.swift` | xcodebuild-gated stress hammering `TaskStore.create`/`fetch` while `PersistenceHost.reconfigure` swaps the store underneath. Closes stores-4 / test-3. |
 | Create | `Packages/LillistCore/Tests/LillistCoreTests/Stores/TagStoreFindOrCreateRaceTests.swift` | Two-context duplicate-tag tripwire: drives `findOrCreate` and a SECOND `NSManagedObjectContext` insert concurrently to expose the genuine race the single-context path papers over. Closes test-3 (tag-race half). |
-| Modify | `docs/engineering-notes.md` (append one section at EOF, after line 1864) | Document the single-context find-or-create invariant, the at-most-one-default-spec TOCTOU, and why the `Tag(parent,name)` unique constraint was/wasn't adopted. |
+| Modify | `docs/engineering-notes.md` (append one section at the true EOF, after the latest dated entry) | Document the single-context find-or-create invariant, the at-most-one-default-spec TOCTOU, and why the `Tag(parent,name)` unique constraint was/wasn't adopted. |
 
 ---
 
@@ -44,9 +35,9 @@
 **Files:**
 - Test (Create): `Packages/LillistCore/Tests/LillistCoreTests/Notifications/NotificationSchedulerConcurrentReconcileTests.swift`
 
-This test drives the `NotificationScheduler.materializeDefaultSpecs` check-then-add TOCTOU (`NotificationScheduler.swift:151-175`): concurrent reconciles of the same task can each observe `existingDefaultDeadline == nil` and both insert, producing two `.defaultDeadline` specs. The test asserts the invariant — **exactly one** default spec and a single pending request — so it is RED until `cloudkit-convergence` adds at-most-one-default enforcement in `NotificationSpecStore`. See the coordination note in the manifest.
+This test drives the `NotificationScheduler.materializeDefaultSpecs` check-then-add path (`materializeDefaultSpecs`, ~151-175) under heavy concurrency: concurrent reconciles of the same task can each observe `existingDefaultDeadline == nil` and both attempt to insert. The enforcement that collapses those into a single row lives in `NotificationSpecStore.add` (`add`, ~34-83 — the `kind == .defaultStart || .defaultDeadline` guard at ~52-67 fetches existing specs, returns the survivor, and deletes any duplicates a prior race created), shipped in Wave 3 `cloudkit-convergence` (commit 893c359) and live on `main`. This test asserts the invariant — **exactly one** default spec and a single pending request hold under contention, verifying that live enforcement. It is a regression guard: if the enforcement is ever weakened, these assertions fail loudly.
 
-- [ ] **Step 1: Write the failing test** — full file:
+- [ ] **Step 1: Write the regression-guard test** — full file:
 
 ```swift
 import Testing
@@ -62,9 +53,11 @@ import UserNotifications
 /// The load-bearing invariant is at-most-one default spec per
 /// `(taskID, kind)`. `materializeDefaultSpecs` does a check-then-add
 /// (`specs(forTask:)` → `add(...)`); two interleaved reconciles can both
-/// miss the row and both insert. Enforcement of the invariant lands in the
-/// `cloudkit-convergence` plan (NotificationSpecStore at-most-one-default);
-/// this suite is the proving test and is RED until that ships.
+/// miss the row and both attempt to insert. The invariant is enforced in
+/// `NotificationSpecStore.add` (Wave 3 `cloudkit-convergence`, merged): the
+/// default-kind guard returns the existing survivor and self-heals any
+/// duplicates a prior race created. This suite is the regression guard
+/// verifying that enforcement holds under concurrency.
 @Suite("NotificationScheduler — concurrent reconcile stress", .serialized)
 struct NotificationSchedulerConcurrentReconcileTests {
     /// High iteration count per CLAUDE.md "add stress repetitions for any
@@ -190,13 +183,13 @@ struct NotificationSchedulerConcurrentReconcileTests {
 }
 ```
 
-- [ ] **Step 2: Run the test, expect failure** — command:
+- [ ] **Step 2: Run the test, expect pass** — command:
   ```bash
   cd /Volumes/Code/mikeyward/Lillist && swift test --package-path Packages/LillistCore --filter NotificationSchedulerConcurrentReconcileTests
   ```
-  Expected: `concurrentReconcileSingleDefaultSpec` and `concurrentReconcileSinglePendingRequest` FAIL on at least one iteration with a message like `iteration N: expected exactly one defaultDeadline spec, got 2`. (`concurrentReconcileClearsDeadline` should pass — clearing is idempotent and delete-by-id is safe under contention.) The two failing assertions are the proof the TOCTOU exists.
+  Expected: `Test Suite 'NotificationSchedulerConcurrentReconcileTests' passed` with 3 tests across all 50 iterations. The at-most-one-default enforcement in `NotificationSpecStore.add` collapses any racing inserts, so `concurrentReconcileSingleDefaultSpec` and `concurrentReconcileSinglePendingRequest` hold; `concurrentReconcileClearsDeadline` passes because clearing is idempotent and delete-by-id is safe under contention. A failure here means the enforcement has regressed.
 
-- [ ] **Step 3: Document the RED state — DO NOT fix here.** The fix (`NotificationSpecStore` at-most-one-default-spec enforcement inside the `add`/materialize path) is owned by the `cloudkit-convergence` plan. Add this comment ABOVE the `@Suite` line so an executor doesn't "fix" it in the wrong file (replace the existing block-doc opening — paste the COMPLETE doc comment):
+- [ ] **Step 3: Document that the enforcement seam is `NotificationSpecStore`, not the scheduler.** Add this comment ABOVE the `@Suite` line so an executor who sees a (hypothetical) future failure doesn't "fix" it by adding a lock or dedup inside the scheduler's reconcile loop (replace the existing block-doc opening — paste the COMPLETE doc comment):
 
 ```swift
 /// CLAUDE.md mandates stress repetitions for any code that crosses actor
@@ -207,34 +200,28 @@ struct NotificationSchedulerConcurrentReconcileTests {
 /// The load-bearing invariant is at-most-one default spec per
 /// `(taskID, kind)`. `materializeDefaultSpecs` does a check-then-add
 /// (`specs(forTask:)` → `add(...)`); two interleaved reconciles can both
-/// miss the row and both insert.
+/// miss the row and both attempt to insert.
 ///
-/// COORDINATION: the enforcement of this invariant lives in the
-/// `cloudkit-convergence` plan (NotificationSpecStore at-most-one-default-
-/// spec per `(taskID, kind)`). This suite is the *proving* test. Until that
-/// plan lands, `concurrentReconcileSingleDefaultSpec` and
-/// `concurrentReconcileSinglePendingRequest` are RED — that is by design and
-/// is the whole point. Do NOT relax the assertion or add the dedup here;
-/// fix it in `NotificationSpecStore`.
+/// ENFORCEMENT: the invariant is enforced in `NotificationSpecStore.add`
+/// (Wave 3 `cloudkit-convergence`, merged): the default-kind guard returns
+/// the existing survivor and self-heals any duplicate rows a prior race
+/// created. This suite is the regression guard verifying that enforcement.
+/// Do NOT "fix" a failure here by adding a lock or dedup inside the
+/// scheduler's reconcile loop; the per-(task,kind) row guard in
+/// `NotificationSpecStore` is the correct seam — restore it there.
 ```
 
-- [ ] **Step 4: After cloudkit-convergence lands, re-run, expect pass** — command:
-  ```bash
-  cd /Volumes/Code/mikeyward/Lillist && swift test --package-path Packages/LillistCore --filter NotificationSchedulerConcurrentReconcileTests
-  ```
-  Expected: `Test Suite 'NotificationSchedulerConcurrentReconcileTests' passed` with 3 tests passing across all 50 iterations.
-
-- [ ] **Step 5: Commit** — command (commit the test in its RED-proving state; it documents the bug and is the regression guard):
+- [ ] **Step 4: Commit** — command (commit the test as a regression guard verifying the live enforcement):
   ```bash
   cd /Volumes/Code/mikeyward/Lillist && \
   git add Packages/LillistCore/Tests/LillistCoreTests/Notifications/NotificationSchedulerConcurrentReconcileTests.swift && \
   git commit -m "test(notifications): stress concurrent reconcile for one-default-spec invariant
 
-Drives the materializeDefaultSpecs check-then-add TOCTOU with a 16-wide
+Drives the materializeDefaultSpecs check-then-add path with a 16-wide
 withTaskGroup across 50 fresh-store iterations. Asserts exactly one
-defaultDeadline spec and one pending request survive. RED until the
-NotificationSpecStore at-most-one-default enforcement (cloudkit-convergence)
-lands; that fix is verified by this suite.
+defaultDeadline spec and one pending request survive. Regression guard for
+the NotificationSpecStore at-most-one-default enforcement (Wave 3
+cloudkit-convergence, commit 893c359) under contention.
 
 Closes conc-2, notif-3, notif-9."
   ```
@@ -246,7 +233,7 @@ Closes conc-2, notif-3, notif-9."
 **Files:**
 - Test (Create): `Packages/LillistCore/Tests/LillistCoreTests/Sync/CloudKitEventBridgeConcurrentSubscriberTests.swift`
 
-`CloudKitEventBridge` (`Sync/CloudKitEventBridge.swift:35-109`) is the canonical synchronous-registration `AsyncStream` actor (`continuations: [UUID: ...]`, `register`/`unregister`, `recordEvent` fan-out). The existing `preSubscriptionEventBuffering` test guards the *single*-subscriber drop race. This suite adds the **N-subscriber** dimension: many concurrent subscribers each receiving every event, interleaved with terminations that must `unregister` cleanly (no leak, no yield-to-dead-continuation). It protects the "do not revert to deferred-Task registration" strength.
+`CloudKitEventBridge` (`Sync/CloudKitEventBridge.swift`, the `actor CloudKitEventBridge` body, ~36-108) is the canonical synchronous-registration `AsyncStream` actor (`continuations: [UUID: ...]`, the `eventStream` getter that calls `register` synchronously, `register`/`unregister`, `recordEvent` fan-out). The existing `preSubscriptionEventBuffering` test guards the *single*-subscriber drop race. This suite adds the **N-subscriber** dimension: many concurrent subscribers each receiving every event, interleaved with terminations that must `unregister` cleanly (no leak, no yield-to-dead-continuation). It protects the "do not revert to deferred-Task registration" strength.
 
 - [ ] **Step 1: Write the failing test** — full file:
 
@@ -409,7 +396,7 @@ struct CloudKitEventBridgeConcurrentSubscriberTests {
   ```
   Expected: `Test Suite 'CloudKitEventBridgeConcurrentSubscriberTests' passed` with 3 tests. (The synchronous-registration fix is already in place, so these are GREEN regression guards. If any FAIL, the fix has been reverted to deferred-`Task` registration — that is the regression this suite exists to catch.)
 
-- [ ] **Step 3: Prove the guard bites — temporary revert check (verification only, revert immediately).** Temporarily reintroduce the bug to confirm the test catches it. Edit `Packages/LillistCore/Sources/LillistCore/Sync/CloudKitEventBridge.swift` line 66 from `self.register(id: id, continuation: continuation)` to `Task { self.register(id: id, continuation: continuation) }`, re-run the filter, confirm `allSubscribersReceiveAllEventsInOrder` FAILS (events dropped before registration), then restore line 66 exactly. Verification command after restore:
+- [ ] **Step 3: Prove the guard bites — temporary revert check (verification only, revert immediately).** Temporarily reintroduce the bug to confirm the test catches it. In `Packages/LillistCore/Sources/LillistCore/Sync/CloudKitEventBridge.swift`, inside the `eventStream` getter (the synchronous `register` call, ~line 66), change `self.register(id: id, continuation: continuation)` to `Task { self.register(id: id, continuation: continuation) }`, re-run the filter, confirm `allSubscribersReceiveAllEventsInOrder` FAILS (events dropped before registration), then restore the synchronous call exactly. Verification command after restore:
   ```bash
   cd /Volumes/Code/mikeyward/Lillist && git diff --exit-code Packages/LillistCore/Sources/LillistCore/Sync/CloudKitEventBridge.swift && echo "RESTORED CLEAN"
   ```
@@ -442,7 +429,7 @@ Closes conc-3."
 **Files:**
 - Test (Create): `Packages/LillistCore/Tests/LillistCoreTests/Persistence/StoreReconfigureConcurrencyTests.swift`
 
-The store-swap path (`PersistenceHost.reconfigure` → `flushAndSwap`, `PersistenceHost.swift:95-125`) does `coordinator.remove(store)` then `addPersistentStore(...)`. Stores read `controller.container.viewContext` on the main queue. This test interleaves `TaskStore.create`/`fetch` with repeated `reconfigure` toggles and asserts the container never crashes and rows survive each completed swap. It must run under `xcodebuild` (the `NSCloudKitMirroringDelegate.dealloc` SPM limitation documented in `StoreLevelModeSwapSpike` — gated by the same `liveSwapAllowed` bundle-ID check).
+The store-swap path (`PersistenceHost.reconfigure` → `flushAndSwap`, ~123/~139) does `coordinator.remove(store)` then `addPersistentStore(...)`. `flushAndSwap` is now transactional with a CloudKit-options-preserving rollback — but that is **documentary** here: this test makes **no code change** and only calls the stable public `host.reconfigure(to:)` / `PersistenceHost.make(...)` (both exercised by `PersistenceHostTests`). Stores read `controller.container.viewContext` on the main queue. This test interleaves `TaskStore.create`/`fetch` with repeated `reconfigure` toggles and asserts the container never crashes and rows survive each completed swap. It must run under `xcodebuild` (the `NSCloudKitMirroringDelegate.dealloc` SPM limitation documented in `StoreLevelModeSwapSpike` — gated by the same `liveSwapAllowed` bundle-ID check).
 
 - [ ] **Step 1: Write the failing/guard test** — full file:
 
@@ -600,7 +587,7 @@ Closes stores-4, test-3 (reconfigure half)."
 **Files:**
 - Test (Create): `Packages/LillistCore/Tests/LillistCoreTests/Stores/TagStoreFindOrCreateRaceTests.swift`
 
-`TagStore.findOrCreate` (`Stores/TagStore+FindOrCreate.swift:14-53`) is atomic **only** because read+write run in one `viewContext.perform` and every caller shares that single context. The existing `TagStoreFindOrCreateTests` exercise the happy path on one context. This test drives a **second** `NSManagedObjectContext` (`newBackgroundContext`) against the same coordinator to genuinely test the duplicate-tag race the single-context guarantee papers over — proving (a) single-context concurrent `findOrCreate` stays atomic and (b) a true second writer *can* produce a duplicate, documenting that the invariant rests on the single-context discipline.
+`TagStore.findOrCreate` (`Stores/TagStore+FindOrCreate.swift`, the `findOrCreate(name:parent:tintColor:)` method, ~14-53) is atomic **only** because read+write run in one `viewContext.perform` and every caller shares that single context. The existing `TagStoreFindOrCreateTests` exercise the happy path on one context. This test drives a **second** `NSManagedObjectContext` (`newBackgroundContext`) against the same coordinator to genuinely test the duplicate-tag race the single-context guarantee papers over — proving (a) single-context concurrent `findOrCreate` stays atomic and (b) a true second writer *can* produce a duplicate, documenting that the invariant rests on the single-context discipline.
 
 - [ ] **Step 1: Write the test** — full file:
 
@@ -759,17 +746,17 @@ Closes test-3 (tag-race half)."
 ### Task 5: Document the concurrency invariants in engineering-notes
 
 **Files:**
-- Modify (append at EOF): `docs/engineering-notes.md` (current EOF is line 1864)
+- Modify (append at the true EOF, after the latest dated entry): `docs/engineering-notes.md`
 
 Append-only per CLAUDE.md: record the non-obvious invariants a future contributor would otherwise rediscover the hard way — the single-context find-or-create guarantee, the at-most-one-default-spec TOCTOU and where its fix lives, and why the `Tag(parent, name)` unique constraint was declined.
 
-- [ ] **Step 1: Read the current EOF before editing** — command (confirm the last line is unchanged from this plan's assumption):
+- [ ] **Step 1: Read the current EOF before editing** — command (anchor on whatever the last dated entry currently is; the file grows wave-to-wave):
   ```bash
-  cd /Volumes/Code/mikeyward/Lillist && tail -3 docs/engineering-notes.md
+  cd /Volumes/Code/mikeyward/Lillist && tail -8 docs/engineering-notes.md
   ```
-  Expected last line: `shared module to one screen's layout. The resolver already / understands inter-row structure; that's where the fix belongs.` (If the tail differs, the file grew — append after the true EOF regardless; the content below is self-contained.)
+  The append goes after the TRUE final line of the latest dated entry, so the new `## Concurrency invariants...` section lands at real EOF and chronological order is preserved. The block below is self-contained regardless of what the current tail is.
 
-- [ ] **Step 2: Append the section** — append EXACTLY this block to the end of `docs/engineering-notes.md` (use the Edit tool: match the current final line `shared module to one screen's layout. The resolver already\nunderstands inter-row structure; that's where the fix belongs.` and append the block after it, or use Write to re-emit the file with this appended — prefer Edit appending after the final line):
+- [ ] **Step 2: Append the section** — append EXACTLY this block to the true EOF of `docs/engineering-notes.md` (use the Edit tool: Read the file, match its current final line, and append the block after it; or use Write to re-emit the file with this appended — prefer Edit appending after the final line):
 
 ```markdown
 
@@ -813,18 +800,22 @@ constraint and update this note.
 `NotificationScheduler.materializeDefaultSpecs` does a check-then-add:
 `specStore.specs(forTask:)` → (if absent) `specStore.add(...)`. Two
 interleaved `reconcile(taskID:)` calls can each observe the default spec
-absent and both insert, producing two `.defaultStart`/`.defaultDeadline`
-rows and a duplicate pending notification.
+absent and both attempt to insert.
 `NotificationSchedulerConcurrentReconcileTests` drives this with a
 16-wide `withTaskGroup` across 50 fresh-store iterations and asserts
-exactly one default spec + one pending request.
+exactly one default spec + one pending request hold under contention.
 
 The **enforcement** of the invariant (at-most-one default spec per
-`(taskID, kind)`) lives in `NotificationSpecStore` and is owned by the
-`cloudkit-convergence` work, not the test plan — the test is the proving
-harness, the store is where the dedup belongs. Do not "fix" the TOCTOU by
-adding a lock or a dedup inside the scheduler's reconcile loop; the row
-constraint is the correct seam.
+`(taskID, kind)`) lives in `NotificationSpecStore.add` (the
+default-kind guard fetches existing specs, returns the survivor, and
+deletes any duplicate rows a prior race created — shipped in
+`cloudkit-convergence`, commit 893c359). The store is where the dedup
+belongs — it scopes via a `task == %@` predicate rather than a
+model-level unique constraint, so it composes with CloudKit (which
+doesn't honor uniqueness constraints). Do not "fix" a regression here by
+adding a lock or a dedup inside the scheduler's reconcile loop; restore
+the per-(task,kind) row guard in `NotificationSpecStore` — that is the
+correct seam.
 
 ### AsyncStream synchronous registration is load-bearing under N subscribers
 
@@ -874,7 +865,7 @@ Closes test-3 (documentation half)."
 
 ## Self-review checklist
 
-- [ ] **conc-2** (concurrent reconcile reentrancy / TOCTOU) — covered by **Task 1** (`NotificationSchedulerConcurrentReconcileTests`: 16-wide `withTaskGroup`, 50 iterations, asserts one default spec + one pending request). The test is RED until `cloudkit-convergence` adds the enforcement; coordination noted.
+- [ ] **conc-2** (concurrent reconcile reentrancy / TOCTOU) — covered by **Task 1** (`NotificationSchedulerConcurrentReconcileTests`: 16-wide `withTaskGroup`, 50 iterations, asserts one default spec + one pending request). Regression guard verifying the `NotificationSpecStore.add` at-most-one-default enforcement (Wave 3 `cloudkit-convergence`, merged) holds under contention.
 - [ ] **conc-3** (N-concurrent-subscriber AsyncStream, no drops/leaks) — covered by **Task 2** (`CloudKitEventBridgeConcurrentSubscriberTests`: fan-out, churn, terminate-without-starvation; revert-check proves the guard bites).
 - [ ] **stores-4** (stress create/fetch during reconfigure) — covered by **Task 3** (`StoreReconfigureConcurrencyTests`, xcodebuild-gated): create/fetch interleaved with 10 reconfigure swaps + concurrent-fetch-during-swap burst.
 - [ ] **notif-3** (reconcile TOCTOU on default-spec materialization) — covered by **Task 1** (same suite asserting exactly one `.defaultDeadline` spec under concurrency) and documented in **Task 5**.
@@ -882,5 +873,6 @@ Closes test-3 (documentation half)."
 - [ ] **test-3** (real second-context find-or-create tripwire + reconfigure coverage + invariant docs) — covered by **Task 4** (`TagStoreFindOrCreateRaceTests` two-context tripwire), **Task 3** (reconfigure stress), and **Task 5** (single-context invariant + declined-unique-constraint rationale).
 - [ ] Strengths preserved: synchronous AsyncStream registration is exercised, never reverted (Task 2); DTO boundary untouched (tests use `record`/`SpecRecord`/`TagRecord` only); no `NSManagedObject` escapes `LillistCore` (the one raw `Tag` insert is inside a `secondContext.perform` in test code, confined to the duplicate-race tripwire); `Calendar`-based date math untouched.
 - [ ] DRY/YAGNI: no production code added; `Tag(parent,name)` unique constraint explicitly declined with recorded rationale (Task 4 Step 3 + Task 5).
-- [ ] Cross-plan coordination: the reconcile TOCTOU **fix** is owned by `cloudkit-convergence` (NotificationSpecStore at-most-one-default); this plan supplies the proving stress test and a code comment + engineering-note pointing at it. Task 3 and `store-swap-safety`/`migration-adjacent-correctness` both touch the reconfigure path — this plan only adds tests, never edits `PersistenceHost.swift`/`MigrationCoordinator.swift`.
+- [ ] Cross-plan coordination: the reconcile-TOCTOU **enforcement** shipped in `cloudkit-convergence` (NotificationSpecStore at-most-one-default, commit 893c359, merged); this plan supplies the regression stress test plus a code comment + engineering-note pointing at that seam. Task 3 touches the reconfigure path that `store-swap-safety` (merged) hardened — this plan only adds tests, never edits `PersistenceHost.swift`/`MigrationCoordinator.swift`.
+- [ ] TEST-ONLY plan: no source changes (the Task 2 Step 3 revert-check is reverted before commit; the `git diff --exit-code` gate proves it). The rare parallel-`swift test` SIGSEGV / timing flake (index residual #11) is owned by Wave 7 `ci-and-build-posture` (runner-level parallelism bound / retry) — a single observed SIGSEGV or one-off contention flake is **not** a suite failure; re-run before treating it as real (see engineering-notes).
 ```

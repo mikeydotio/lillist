@@ -4,7 +4,7 @@
 >
 > Part of the **Foundation Hardening** program. **Single source of truth for progress, wave order, and cross-plan coordination:** [`2026-05-29-foundation-hardening-index.md`](2026-05-29-foundation-hardening-index.md). New to this project? Read the index first, then the review ([`docs/reviews/2026-05-28-foundation-review.md`](../../reviews/2026-05-28-foundation-review.md)) for *why* this work exists, then `CLAUDE.md` for conventions + build/test commands. Execute task-by-task with `superpowers:subagent-driven-development`.
 >
-> ⚠️ **Wave 1 (`store-swap-safety`) is merged to `main`.** It changed several shared files (`MigrationCoordinator`, `PersistenceHost`, `QuarantineManager`, `MigrationJournal`, both `AppEnvironment`s, `PersistenceController`). **Re-Read every file before editing and anchor by code structure — the line numbers in this plan may have drifted.**
+> **Pre-flight (run before any edit):** Confirm Waves 1–5 are on `main` (`git log --oneline main | head -20`). Read `docs/superpowers/handoffs/wave-5.md`. Re-Read every file you touch and anchor by code **structure**, not line number — each wave shifts the shared hotspot files. On completion, write `docs/superpowers/handoffs/wave-6.md`.
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
@@ -117,8 +117,10 @@ Typed error for forward-incompatible export bundles. Closes part of import-1."
 
 ### Task 2: Guard `document.version` before applying (import-1, part 2)
 
+> **`ExportSchema.version` baseline:** the version tests below are written relative to the current `ExportSchema.version` (today `1`, declared in `ExportSchema.swift`). They use `ExportSchema.version`, `… - 1`, and `… + 1` rather than literals so they stay correct as the schema climbs. If `version` is ever bumped, **no test logic changes** — only adjust the bare fixture integers (e.g. `versionOlderApplies`'s comment, or any hand-written literal) to track the new baseline. The down-level case (`version - 1`) assumes every field added since the prior version has a safe default at the DTO boundary, which is the contract the guard's doc comment states.
+
 **Files:**
-- Modify `Packages/LillistCore/Sources/LillistCore/Export/Importer.swift` (`apply(document:policy:)` lines 81-83 — insert the guard at the very top, before reading `viewContext`)
+- Modify `Packages/LillistCore/Sources/LillistCore/Export/Importer.swift` — the `apply(document:policy:)` signature + its first two lines (~81-83): insert the guard at the very top, before reading `viewContext`)
 - Test `Packages/LillistCore/Tests/LillistCoreTests/Export/ImporterTests.swift` (add three `@Test` methods)
 
 - [ ] **Step 1: Write the failing test** — Append these three tests to `ImporterTests.swift` inside the `ImporterTests` struct (after `invalidBundle()`, before the closing `}` on line 154). They construct an `ExportSchema.Document` directly (the synthesized memberwise init is reachable via `@testable import LillistCore`):
@@ -196,7 +198,7 @@ Typed error for forward-incompatible export bundles. Closes part of import-1."
   ```
   Expected: `versionNewerThrows` fails with `Issue.record("expected unsupportedExportVersion to be thrown")` (today `apply` never inspects `version`, so the newer document is happily applied). `versionEqualApplies`/`versionOlderApplies` pass.
 
-- [ ] **Step 3: Implement the minimal change** — In `Importer.swift`, insert the guard as the first statements of `apply(document:policy:)`. Replace lines 81-83:
+- [ ] **Step 3: Implement the minimal change** — In `Importer.swift`, insert the guard as the first statements of `apply(document:policy:)`. Replace the signature + its opening `let ctx`/`perform` lines (~81-83):
 
 ```swift
     public func apply(document: ExportSchema.Document, policy: ConflictPolicy) async throws -> ImportSummary {
@@ -258,8 +260,8 @@ import transaction contract. Closes import-1; documents import-3."
 ### Task 3: Stop the Exporter fabricating UUIDs for nil-task rows (export-1)
 
 **Files:**
-- Modify `Packages/LillistCore/Sources/LillistCore/Export/ExportSchema.swift` (`JournalEntryDTO.taskID` line 46; `AttachmentDTO.taskID` line 56)
-- Modify `Packages/LillistCore/Sources/LillistCore/Export/Exporter.swift` (journal map line 86; attachment map line 106)
+- Modify `Packages/LillistCore/Sources/LillistCore/Export/ExportSchema.swift` (`JournalEntryDTO.taskID` ~46; `AttachmentDTO.taskID` ~56)
+- Modify `Packages/LillistCore/Sources/LillistCore/Export/Exporter.swift` (the `journalDTOs` map's `taskID:` line ~86; the `attDTOs` map's `taskID:` line ~106)
 - Test `Packages/LillistCore/Tests/LillistCoreTests/Export/ExporterTests.swift` (add one `@Test`)
 
 - [ ] **Step 1: Write the failing test** — Append this test to `ExporterTests.swift` inside the `ExporterTests` struct (after `refusesNonEmptyDir()`, before the closing `}` on line 89). It creates a journal entry, then nulls its `task` relationship directly (simulating an orphan that synced/corruption can produce) and asserts the export carries `taskID == nil` rather than a fabricated UUID:
@@ -327,7 +329,7 @@ import CoreData
 
 - [ ] **Step 3: Implement the minimal change** — Two edits.
 
-  (a) In `ExportSchema.swift`, widen the two `taskID` fields. Change `JournalEntryDTO.taskID` (line 46):
+  (a) In `ExportSchema.swift`, widen the two `taskID` fields. Change `JournalEntryDTO.taskID` (~46):
 
 ```swift
     public struct JournalEntryDTO: Codable, Sendable {
@@ -341,7 +343,7 @@ import CoreData
     }
 ```
 
-  Change `AttachmentDTO.taskID` (line 56):
+  Change `AttachmentDTO.taskID` (~56):
 
 ```swift
     public struct AttachmentDTO: Codable, Sendable {
@@ -359,7 +361,7 @@ import CoreData
     }
 ```
 
-  (b) In `Exporter.swift`, stop fabricating. Change the journal map (line 86) from `taskID: m.task?.id ?? UUID(),` to `taskID: m.task?.id,`:
+  (b) In `Exporter.swift`, stop fabricating. Change the journal map (the `journalDTOs` map, ~86) from `taskID: m.task?.id ?? UUID(),` to `taskID: m.task?.id,`:
 
 ```swift
             let journalDTOs = try ctx.fetch(journalReq).map { m in
@@ -375,7 +377,7 @@ import CoreData
             }
 ```
 
-  And the attachment map (line 106) from `taskID: m.task?.id ?? UUID(),` to `taskID: m.task?.id,`:
+  And the attachment map (the `attDTOs` map, ~106) from `taskID: m.task?.id ?? UUID(),` to `taskID: m.task?.id,`:
 
 ```swift
                 return ExportSchema.AttachmentDTO(
@@ -396,40 +398,29 @@ import CoreData
   ```bash
   cd /Volumes/Code/mikeyward/Lillist && swift test --package-path Packages/LillistCore --filter "Exporter"
   ```
-  Expected: `Suite "Exporter" passed`; `nilTaskJournalEntryExportsNilTaskID` green and the existing `fullRoundtrip`/`emptyStore`/`refusesNonEmptyDir` still pass. (The Importer's `applyEntry` at line 256 — `row.task = taskByID[dto.taskID]` — still compiles because `Importer` is fixed in Task 4; if running Exporter-only here it must still build. Note: this step changes `applyEntry`'s `dto.taskID` to optional, breaking that subscript. Sequence Task 4 immediately after — or, to keep the tree compiling at every commit, fold the one-line `applyEntry` fix into THIS commit since it is forced by the type change.)
+  Expected: `nilTaskJournalEntryExportsNilTaskID` green and the existing `fullRoundtrip`/`emptyStore`/`refusesNonEmptyDir` still pass at runtime.
 
-  To keep the build green at this commit, also apply the forced one-line fix in `Importer.swift` `applyEntry` (line 256). Change:
-
-```swift
-    private nonisolated func applyEntry(_ dto: ExportSchema.JournalEntryDTO, into row: JournalEntry, taskByID: [UUID: LillistTask]) {
-        row.task = dto.taskID.flatMap { taskByID[$0] }
-        row.kindRaw = Int16(dto.kind)
-        row.body = dto.body
-        row.payload = dto.payload
-        row.createdAt = dto.createdAt
-        row.editedAt = dto.editedAt
-    }
-```
-
-  Re-run the command above; expected `Suite "Exporter" passed` and a clean build (the `Importer` target now compiles against the optional `taskID`).
+  > **Expected intermediate broken build:** widening `taskID` to optional breaks `Importer.swift` `applyEntry` (~256), which subscripts `taskByID[dto.taskID]` with a now-optional key. **Do not patch `applyEntry` here.** Task 4 owns the full `applyEntry` rewrite (the owner-parameter version), and the orphan-skip loop it adds is what resolves the task. Commit Task 3 with the `Importer` target in this transient non-compiling state and proceed directly into Task 4, which restores a clean build. (Run Task 3's Exporter test only after Task 4 lands if you want a fully green tree; the assertion itself is on the Exporter output, unaffected by the `Importer` break.)
 
 - [ ] **Step 5: Commit** —
   ```bash
   cd /Volumes/Code/mikeyward/Lillist
-  git add Packages/LillistCore/Sources/LillistCore/Export/ExportSchema.swift Packages/LillistCore/Sources/LillistCore/Export/Exporter.swift Packages/LillistCore/Sources/LillistCore/Export/Importer.swift Packages/LillistCore/Tests/LillistCoreTests/Export/ExporterTests.swift
+  git add Packages/LillistCore/Sources/LillistCore/Export/ExportSchema.swift Packages/LillistCore/Sources/LillistCore/Export/Exporter.swift Packages/LillistCore/Tests/LillistCoreTests/Export/ExporterTests.swift
   git commit -m "fix(export): stop fabricating UUIDs for nil-task journal entries
 
 Widen JournalEntryDTO/AttachmentDTO taskID to optional and emit the
-real (possibly nil) owning-task id. applyEntry resolves nil-safely.
-Closes export-1."
+real (possibly nil) owning-task id. Closes export-1. Leaves Importer's
+applyEntry temporarily non-compiling; Task 4 rewrites it."
   ```
 
 ---
 
 ### Task 4: Skip orphan journal entries on import (import-2)
 
+> **Transition from Task 3:** Task 3 widened `JournalEntryDTO.taskID` to `UUID?`, which left `Importer.applyEntry` non-compiling (it subscripts `taskByID[dto.taskID]` with an optional key). This task rewrites the journal-entry handling end to end — the orphan-skip loop resolves the owning task up front, and `applyEntry` becomes a pure setter taking an already-resolved `owner: LillistTask` — which both adds the import-2 behavior and restores a clean build. Start the tree in Task 3's transient broken state; finish this task green.
+
 **Files:**
-- Modify `Packages/LillistCore/Sources/LillistCore/Export/Importer.swift` (journal-entry loop lines 165-191)
+- Modify `Packages/LillistCore/Sources/LillistCore/Export/Importer.swift` (journal-entry loop, ~165-191, and the `applyEntry` helper, ~255-262)
 - Test `Packages/LillistCore/Tests/LillistCoreTests/Export/ImporterTests.swift` (add two `@Test` methods)
 
 - [ ] **Step 1: Write the failing test** — Append these two tests to `ImporterTests.swift` inside the struct (after the version tests added in Task 2). They reuse the `emptyDocument(version:)` helper added in Task 2 by building documents directly with an orphan journal entry:
@@ -533,7 +524,7 @@ Closes export-1."
             }
 ```
 
-  And replace the `applyEntry` helper (the version edited in Task 4 Step 4 — lines 255-262) so the owner is passed in already-resolved (the entry loop now owns resolution, keeping `applyEntry` a pure setter):
+  And rewrite the `applyEntry` helper (currently non-compiling after Task 3 widened `taskID` — ~255-262) so the owner is passed in already-resolved (the entry loop now owns resolution, keeping `applyEntry` a pure setter):
 
 ```swift
     private nonisolated func applyEntry(_ dto: ExportSchema.JournalEntryDTO, into row: JournalEntry, owner: LillistTask) {
@@ -546,7 +537,7 @@ Closes export-1."
     }
 ```
 
-  > Note: the `taskByID` dictionary is built from `document.tasks` during the task loop (lines 130-159) and also captures pre-existing rows found via `fetchTask`. An entry whose `taskID` matches a task already in the store *but absent from the bundle* will still be treated as unresolved, because `taskByID` only holds rows touched by this import. That is the correct conservative behavior for a manual-merge bundle: the bundle is the unit of truth for relationships it declares.
+  > Note: the `taskByID` dictionary is built from `document.tasks` during the task loop (~130-159) and also captures pre-existing rows found via `fetchTask`. An entry whose `taskID` matches a task already in the store *but absent from the bundle* will still be treated as unresolved, because `taskByID` only holds rows touched by this import. That is the correct conservative behavior for a manual-merge bundle: the bundle is the unit of truth for relationships it declares.
 
 - [ ] **Step 4: Run the test, expect pass** — Command:
   ```bash
@@ -748,7 +739,7 @@ private func taskCount(in p: PersistenceController) async throws -> Int {
   ```bash
   cd /Volumes/Code/mikeyward/Lillist && swift test --package-path Packages/LillistCore --filter "Importer"
   ```
-  Expected: `Suite "Importer" passed`; `truncatedJSONThrows`, `saveFailureRollbackIsCatchable`, and `importIsSingleAtomicSave` all green. If `saveFailureRollbackIsCatchable`'s `secondThrew` is `false`, the merge-conflict mechanism has stopped throwing — check that both background contexts still carry `NSMergePolicy.error` (a trump/last-wins policy silently resolves the conflict). If `importIsSingleAtomicSave` reports fewer rows than the bundle, that *would* be a real atomicity regression — STOP and reconcile with the `background-context-seam` plan owner before changing anything (they may have moved `apply` onto a `newBackgroundContext` and added `context.rollback()` in the mutating-`perform` catch, which changes the seam but must preserve single-save atomicity).
+  Expected: `Suite "Importer" passed`; `truncatedJSONThrows`, `saveFailureRollbackIsCatchable`, and `importIsSingleAtomicSave` all green. If `saveFailureRollbackIsCatchable`'s `secondThrew` is `false`, the merge-conflict mechanism has stopped throwing — check that both background contexts still carry `NSMergePolicy.error` (a trump/last-wins policy silently resolves the conflict). If `importIsSingleAtomicSave` reports fewer rows than the bundle, that is a real atomicity regression — STOP and fix it in `apply` before proceeding. `background-context-seam` (Wave 4) already moved `apply` onto a `newBackgroundContext` and added `context.rollback()` in the mutating-`perform` catch; that move must preserve single-`save()` atomicity, so a partial subset means the seam move broke it and the seam code is what to repair — never relax this assertion.
 
 - [ ] **Step 4: Run the full LillistCore suite** — Confirm no regression across the package:
   ```bash
@@ -772,7 +763,11 @@ exercised directly. Verifies import-3 contract."
 
 ## Cross-plan coordination
 
-- **`background-context-seam` [P2]** also edits `Export/Exporter.swift` and `Export/Importer.swift` — it moves `buildDocument` and `apply` off `viewContext` onto a `newBackgroundContext` and adds `context.rollback()` in the mutating `perform` catch. My edits live **inside** the same `apply`/`buildDocument` bodies (version guard at the top of `apply`; the journal-entry loop; the `m.task?.id` map sites). Land order matters: if `background-context-seam` lands first, the version guard still belongs *before* the `perform` block (it does not touch Core Data) and the orphan-skip loop is context-agnostic — re-apply onto the moved body. If THIS plan lands first, the seam plan must preserve the version guard placement and the orphan-skip loop verbatim. Task 5's `saveFailureRollbackIsCatchable` (the catchable merge-conflict → rollback mechanism) and `importIsSingleAtomicSave` (single-transaction atomicity) together assert the rollback contract both plans depend on — coordinate so both pass under whichever context model wins (the seam plan's `context.rollback()` in the mutating-`perform` catch is exactly the rollback half `saveFailureRollbackIsCatchable` locks in). Flagged in the manifest.
+- **HARD DEPENDENCY — `background-context-seam` (Wave 4) lands first.** It is two waves ahead of this plan, so by the time you execute here it is already on `main`: it has moved `buildDocument` and `apply` off `viewContext` onto a `newBackgroundContext` and added `context.rollback()` in the mutating `perform` catch. This plan's edits all live **inside** the moved `apply`/`buildDocument` bodies, so re-anchor onto the relocated code (use the Pre-flight Re-Read; `apply` no longer reads `persistence.container.viewContext` — it builds a background context):
+  - **Version guard** stays *before* the `perform` block, exactly as written in Task 2 — it touches no Core Data, so the surrounding context change is irrelevant to it. Insert it as the first statements of `apply`, ahead of whatever `newBackgroundContext`/`perform` the seam plan introduced.
+  - **Orphan-skip loop** (Task 4) is context-agnostic — it operates on `taskByID` and the DTOs, not on the context object — so transplant it verbatim into the moved journal-entry loop.
+  - **`m.task?.id` map sites** (Task 3) are likewise inside `buildDocument`'s `perform`; apply the one-character edits at their moved positions.
+  - **Tests:** Task 5's `importIsSingleAtomicSave` asserts the seam plan preserved single-`save()` atomicity after the move; `saveFailureRollbackIsCatchable` locks in the catchable merge-conflict → rollback behavior that the seam plan's own `context.rollback()` in the mutating-`perform` catch now implements on the production path. Both must stay green against the post-seam context model — if `importIsSingleAtomicSave` ever sees a partial row subset, that is a real atomicity regression in the seam plan's move; STOP and fix the seam, do not relax the assertion.
 
 - **`link-preview-ssrf-guards` [P1]** owns the deterministic malformed-HTML assertion fix (`OpenGraphParserTests.swift:44`, the `m.title == "Broken" || m.title == nil` disjunction) and the `test-2` link-preview negative tests. Although the P3 roadmap line groups "deterministic malformed-HTML test" under item 17, that assertion is in the LinkPreview lane's files, outside this plan's Export/Validation scope and outside its finding IDs (import-1/2/3, export-1). This plan does **not** touch it. Flagged in the manifest so it is not double-owned.
 
@@ -783,6 +778,6 @@ exercised directly. Verifies import-3 contract."
 - [ ] **import-1** (guard `document.version` before `apply()`: accept equal, upgrade older, throw typed error for newer; tests for newer/equal/down-level) — closed by **Task 1** (adds `LillistError.unsupportedExportVersion`) + **Task 2** (the guard + `versionEqualApplies`/`versionOlderApplies`/`versionNewerThrows` tests).
 - [ ] **import-2** (skip journal entries whose `taskID` does not resolve; append to `errors`, increment `journalEntriesSkipped`) — closed by **Task 4** (orphan-skip loop + `nilTaskIDJournalEntrySkipped`/`unresolvedTaskIDJournalEntrySkipped` tests).
 - [ ] **import-3** (decide + document the import transaction contract; transaction-contract tests; plus truncated-JSON test) — closed by **Task 2** (documents the all-or-nothing contract in `apply`'s doc comment) + **Task 5** (`truncatedJSONThrows`, plus `saveFailureRollbackIsCatchable` and `importIsSingleAtomicSave` — the model has no catchable view-context save-time invariant, so the contract is proven via the merge-conflict rollback mechanism and single-save atomicity rather than a nil-`id` poison object; see the Task 5 gotcha).
-- [ ] **export-1** (Exporter omits nil-task entries instead of fabricating a random UUID) — closed by **Task 3** (widen `taskID` to optional, emit `m.task?.id`, nil-safe `applyEntry`, `nilTaskJournalEntryExportsNilTaskID` test).
+- [ ] **export-1** (Exporter omits nil-task entries instead of fabricating a random UUID) — closed by **Task 3** (widen `taskID` to optional, emit `m.task?.id`, `nilTaskJournalEntryExportsNilTaskID` test); Task 4 then rewrites `applyEntry` to take a resolved owner.
 - [ ] **Strengths preserved:** the airtight DTO boundary (no `NSManagedObject` escapes — all changes stay value-type DTOs), `@testable import`-reachable construction, `.iso8601` Codable contract, and Swift Testing framework/helpers (`TestStore`, `tempDir`, `exportFixture`) are all retained; no synchronous-AsyncStream or Calendar-date-math code is touched.
 - [ ] **Out of scope (DRY/YAGNI):** the malformed-HTML disjunction (link-preview lane), the background-context move (`background-context-seam`), and attachment *import* copy-back (explicitly deferred in `Importer`'s header comment) are not done here.
