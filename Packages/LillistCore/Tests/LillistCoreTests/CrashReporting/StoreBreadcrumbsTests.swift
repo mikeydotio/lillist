@@ -50,4 +50,34 @@ struct StoreBreadcrumbsTests {
         _ = try await store.create(title: "no-crumb")
         // Nothing to assert beyond "didn't throw".
     }
+
+    @Test("JournalStore.appendNote records a journal.append success breadcrumb")
+    func journalAppend_recordsSuccess() async throws {
+        let persistence = try await TestStore.make()
+        let tasks = TaskStore(persistence: persistence)
+        let journals = JournalStore(persistence: persistence)
+        let buffer = BreadcrumbBuffer()
+        journals.breadcrumbs = buffer
+        let task = try await tasks.create(title: "T")
+        _ = try await journals.appendNote(taskID: task, body: "note")
+        let snap = await buffer.snapshot()
+        #expect(snap.contains(where: { $0.action == "journal.append" && $0.success }))
+    }
+
+    @Test("Failed JournalStore.appendNote records a journal.append failure breadcrumb")
+    func journalAppend_recordsFailure() async throws {
+        let persistence = try await TestStore.make()
+        let journals = JournalStore(persistence: persistence)
+        let buffer = BreadcrumbBuffer()
+        journals.breadcrumbs = buffer
+        do {
+            // No such task — fetchTask throws .notFound inside the perform.
+            _ = try await journals.appendNote(taskID: UUID(), body: "orphan")
+            Issue.record("Expected notFound failure")
+        } catch {
+            // Expected.
+        }
+        let snap = await buffer.snapshot()
+        #expect(snap.contains(where: { $0.action == "journal.append" && !$0.success }))
+    }
 }
