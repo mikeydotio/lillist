@@ -145,4 +145,47 @@ struct MigrationCoordinatorRestoreTests {
         #expect(await fakeEraser.callCount == 1)
         #expect(try journal.read() == .idle)
     }
+
+    @Test("runMigration refuses to start when the journal is already in flight", .enabled(if: liveSwapAllowed))
+    @MainActor
+    func rejectsReentrantMigration() async throws {
+        let dir = Self.tempDir()
+        let storeURL = dir.appendingPathComponent("Lillist.sqlite")
+        let host = try await PersistenceHost.make(initialMode: .localOnly, storeURL: storeURL)
+        let preexisting = MigrationJournal(
+            state: .reconfiguringStore,
+            operation: .replaceLocalWithICloud,
+            startedAt: Date(),
+            lastHeartbeatAt: Date(),
+            previousMode: .localOnly
+        )
+        let journal = InMemoryMigrationJournalStore(initial: preexisting)
+        let quarantine = QuarantineManager(rootDirectory: dir)
+        let fakeEraser = FakeCloudKitZoneEraser()
+        let bridge = CloudKitEventBridge()
+        let quiesce = SyncQuiesceMonitor(bridge: bridge)
+        let suite = "MigrationCoordinatorRestoreTests-\(UUID().uuidString)"
+        UserDefaults(suiteName: suite)?.removePersistentDomain(forName: suite)
+        let modeStore = SyncModeStore(suiteName: suite)
+        await modeStore.setMode(.localOnly)
+
+        let coordinator = MigrationCoordinator(
+            host: host,
+            journal: journal,
+            quarantine: quarantine,
+            zoneEraser: fakeEraser,
+            quiesceMonitor: quiesce,
+            notificationScheduler: nil,
+            syncModeStore: modeStore
+        )
+
+        await #expect(throws: LillistError.self) {
+            try await coordinator.beginEnable(direction: .replaceICloud, storeURL: storeURL)
+        }
+        // The pre-existing journal is untouched (not clobbered to .preparing/.failed).
+        #expect(try journal.read() == preexisting)
+        // No destructive work ran.
+        #expect(await fakeEraser.callCount == 0)
+        #expect(await host.currentMode == .localOnly)
+    }
 }
