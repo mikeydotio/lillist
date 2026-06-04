@@ -4,7 +4,7 @@
 >
 > Part of the **Foundation Hardening** program. **Single source of truth for progress, wave order, and cross-plan coordination:** [`2026-05-29-foundation-hardening-index.md`](2026-05-29-foundation-hardening-index.md). New to this project? Read the index first, then the review ([`docs/reviews/2026-05-28-foundation-review.md`](../../reviews/2026-05-28-foundation-review.md)) for *why* this work exists, then `CLAUDE.md` for conventions + build/test commands. Execute task-by-task with `superpowers:subagent-driven-development`.
 >
-> ⚠️ **Wave 1 (`store-swap-safety`) is merged to `main`.** It changed several shared files (`MigrationCoordinator`, `PersistenceHost`, `QuarantineManager`, `MigrationJournal`, both `AppEnvironment`s, `PersistenceController`). **Re-Read every file before editing and anchor by code structure — the line numbers in this plan may have drifted.**
+> **Pre-flight (run before any edit):** Confirm Waves 1–5 are on `main` (`git log --oneline main | head -20`). Read `docs/superpowers/handoffs/wave-5.md`. Re-Read every file you touch and anchor by code **structure**, not line number — each wave shifts the shared hotspot files. On completion, write `docs/superpowers/handoffs/wave-6.md`.
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
@@ -1358,12 +1358,12 @@ cd /Volumes/Code/mikeyward/Lillist && swift build --package-path Packages/Lillis
 
 Expected: a clean build (warnings are errors) and `Test Suite 'CLIBridge.WatchHandler' passed` with 4 tests passing. If the build errors on the captured `var snapshot`, apply the `SnapshotBox` fallback from the note above, then re-run.
 
-- [ ] **Step 5: Update `WatchCommand` to surface errors to stderr.** In `Packages/LillistCore/Sources/lillist-cli/Commands/WatchCommand.swift`, replace the `try await CLIBridge.WatchHandler.run(...)` call (current lines 32–42) with one that passes an `onError` closure:
+- [ ] **Step 5: Update `WatchCommand` to surface errors to stderr.** `WatchCommand.run` already reads a `cfg` and passes `calendar: cfg.resolvedCalendar()` — `Config.resolvedCalendar()` landed in Wave 3 (`resolve-inert-features`). **Keep that call; do not revert it to `Calendar.current` and do not re-add `resolvedCalendar`.** The current call uses the trailing-closure `emit` form; convert it to the explicit-label `emit:`/`onError:` form so errors reach stderr. In `Packages/LillistCore/Sources/lillist-cli/Commands/WatchCommand.swift`, replace the `try await CLIBridge.WatchHandler.run(...) { event in ... }` call (the trailing-closure form ending the method) with:
 
 ```swift
         try await CLIBridge.WatchHandler.run(
             flags: flags, savedFilterName: saved,
-            persistence: p, now: Date(), calendar: Calendar.current,
+            persistence: p, now: Date(), calendar: cfg.resolvedCalendar(),
             emit: { event in
                 let encoder = JSONEncoder()
                 encoder.outputFormatting = [.sortedKeys]

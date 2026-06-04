@@ -4,16 +4,7 @@
 >
 > Part of the **Foundation Hardening** program. **Single source of truth for progress, wave order, and cross-plan coordination:** [`2026-05-29-foundation-hardening-index.md`](2026-05-29-foundation-hardening-index.md). New to this project? Read the index first, then the review ([`docs/reviews/2026-05-28-foundation-review.md`](../../reviews/2026-05-28-foundation-review.md)) for *why* this work exists, then `CLAUDE.md` for conventions + build/test commands. Execute task-by-task with `superpowers:subagent-driven-development`.
 >
-> ⚠️ **Wave 1 (`store-swap-safety`) is merged to `main`.** It changed several shared files (`MigrationCoordinator`, `PersistenceHost`, `QuarantineManager`, `MigrationJournal`, both `AppEnvironment`s, `PersistenceController`). **Re-Read every file before editing and anchor by code structure — the line numbers in this plan may have drifted.**
-
-> **⚠️ Wave-1 reconciliation:**
-> store-swap-safety (bfd8635..6f008f7) is MERGED and rewrote `MigrationCoordinator.runMigration` and `restoreFromBackup`. **Do NOT paste Task 4 Step 2/3's "preserved verbatim" method bodies — they are the pre-Wave-1 code and would revert merged work.**
-> What actually changed on `main`:
-> - `runMigration` was REORDERED: precondition (`localStoreRowCount` guard) → `host.reconfigure(to:)` (closes the store) → `quarantine.copyStore(at:)` (copy-not-move, records `entry.quarantineFolderName = backup.folderName`) → zone erase → quiesce → finalize. There is no longer a `quarantineBackupID = UUID()` step or a move-based `quarantineStore(at:)` in the pre-swap path.
-> - `MigrationJournal.quarantineBackupID: UUID?` is now `quarantineFolderName: String?`.
-> - `restoreFromBackup` now reads the journal and prefers `quarantine.quarantinedStore(folderName: entry.quarantineFolderName)`, falling back to `latestQuarantinedStore` (sync-7, proven by `restoreHonorsRecordedFolder` in `MigrationRecoveryTests`). The plan's `latestQuarantinedStore`-only version drops this.
-> What to do instead for Task 4: **re-Read the CURRENT `MigrationCoordinator.swift` first** (the method bodies start near L142/L162, not the plan's line numbers), then thread the `OSSignposter` interval (wrap the whole `runMigration` body) and additive `LillistLog.sync` notices onto the *current* phases — start/precondition, reconfigure, copy-quarantine, erase, settle, finalize, fail — and two notices around the *current* `restoreFromBackup`. Touch nothing about the journal field, the copyStore call, or the phase ordering.
-> Already DONE by Wave-1 (do not redo): `localStoreRowCount` wiring in both AppEnvironments + the init parameter, the `quarantineFolderName` journal migration, the exact-folder restore, and the store-swap engineering-notes entry (Task 7's append is to a different topic and stays).
+> **Pre-flight (run before any edit):** Confirm Waves 1–5 are on `main` (`git log --oneline main | head -20`). Read `docs/superpowers/handoffs/wave-5.md`. Re-Read every file you touch and anchor by code **structure**, not line number — each wave shifts the shared hotspot files (`MigrationCoordinator`, `TaskStore`, `PersistenceController`, both `AppEnvironment`s). On completion, write `docs/superpowers/handoffs/wave-6.md`.
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
@@ -36,11 +27,11 @@
 - `Apps/Lillist-iOS/Sources/App/MetricKitObserver.swift` — `MXMetricManagerSubscriber` that logs crash/hang/launch diagnostics through `LillistLog` so MetricKit payloads land in the same unified-log stream the crash reporter reads.
 
 ### Modify
-- `Packages/LillistCore/Sources/LillistCore/Sync/MigrationCoordinator.swift` (runMigration runner ~L142-225, restoreFromBackup ~L127-138) — add structured `LillistLog.sync` log lines + an `OSSignposter` interval spanning the whole migration.
-- `Packages/LillistCore/Sources/LillistCore/Stores/TaskStore.swift` (the `children(of:)` heavy-fetch path) — wrap the fetch in an `OSSignposter` interval and emit a `LillistLog.store` line with the row count.
-- `Apps/Lillist-macOS/Sources/Indexing/IndexingService.swift` (L72) — replace `NSLog(...)` with `LillistLog.indexing.error(...)`.
-- `Apps/Lillist-macOS/Sources/Services/LillistServicesProvider.swift` (L57) — replace `NSLog(...)` with `LillistLog.app.error(...)`.
-- `Apps/Lillist-iOS/Sources/App/AppEnvironment.swift` (property block ~L61-72, init tail ~L160-194, `bootstrap()` ~L257-279) — retain a `MetricKitObserver` and register it in `bootstrap()`.
+- `Packages/LillistCore/Sources/LillistCore/Sync/MigrationCoordinator.swift` (`runMigration` runner — anchor by the `private func runMigration(` signature, ~L164; `restoreFromBackup` — anchor by `public func restoreFromBackup(`, ~L144) — add structured `LillistLog.sync` log lines + an `OSSignposter` interval spanning the whole migration.
+- `Packages/LillistCore/Sources/LillistCore/Stores/TaskStore.swift` (anchor by the `public func children(of parentID:)` signature, ~L208 — the heavy-fetch path) — wrap the fetch in an `OSSignposter` interval and emit a `LillistLog.store` line with the row count.
+- `Apps/Lillist-macOS/Sources/Indexing/IndexingService.swift` (the `reindexAll` catch body, ~L72) — replace `NSLog(...)` with `LillistLog.indexing.error(...)`.
+- `Apps/Lillist-macOS/Sources/Services/LillistServicesProvider.swift` (the Services-create catch body, ~L57) — replace `NSLog(...)` with `LillistLog.app.error(...)`.
+- `Apps/Lillist-iOS/Sources/App/AppEnvironment.swift` (property block — anchor by `let crashReporter` / `let mailTransport`, ~L69-70; `bootstrap()` — anchor by `func bootstrap()`, ~L297, and its tail of `startObserving…` / `installCanaryLifecycleObservers()` calls, ~L328-331) — retain a `MetricKitObserver` and register it in `bootstrap()`.
 - `docs/engineering-notes.md` — append one entry documenting the subsystem-pinning contract (logs feed the crash reporter only because `LillistLog`'s subsystem == `CrashReporting.subsystemIdentifier`).
 
 ---
@@ -314,10 +305,10 @@ land on the collected subsystem and reach the crash reporter."
 ## Task 4: Instrument the migration runner with structured logs + an OSSignposter interval
 
 **Files:**
-- Modify `Packages/LillistCore/Sources/LillistCore/Sync/MigrationCoordinator.swift` — `runMigration` (the post-Wave-1 reordered runner; ~L162 on the merged file, but **anchor by `grep`/structure, not line number** — Wave 1 shifted these) and `restoreFromBackup` (~L142)
+- Modify `Packages/LillistCore/Sources/LillistCore/Sync/MigrationCoordinator.swift` — `runMigration` (anchor by the `private func runMigration(` signature, ~L164) and `restoreFromBackup` (anchor by `public func restoreFromBackup(`, ~L144). **Anchor by structure, not line number** — each wave shifts these.
 - Test `Packages/LillistCore/Tests/LillistCoreTests/Sync/MigrationCoordinatorTests.swift` is the neighbor (Swift Testing, `.serialized`, `liveSwapAllowed` gate) — but migration logging is verified by the OSLogFetcher round-trip net (Task 2) plus an unsigned build, since the runner's destructive paths are host-gated. We add **no new assertion** that depends on the gated runner; instead we verify the instrumentation compiles and is non-destructive.
 
-The migration runner is the single most important thing to be able to debug after an OTA crash (it swaps a live SQLite file). Emit a `LillistLog.sync` line at each phase of the **current (post-Wave-1) reordered** runner and wrap the whole `runMigration` body in an `OSSignposter` interval so Instruments shows migration duration. This is additive — it must not change control flow, the journal sequence, the `copyStore`/`quarantineFolderName` calls, the phase ordering, or the emitted `MigrationPhase` events. **Weave the lines into the live method (Steps 2a/2b); never paste a whole method body — the verbatim blocks in older drafts are the stale pre-Wave-1 shape.**
+The migration runner is the single most important thing to be able to debug after an OTA crash (it swaps a live SQLite file). The live phase order is **reconfigure → copy-quarantine → erase**: the runner closes the SQLite connection via `host.reconfigure(to:)` first, then `quarantine.copyStore(at:)` (COPY-not-move, recording `entry.quarantineFolderName`), then the optional zone erase. Emit a `LillistLog.sync` line at each phase and wrap the whole `runMigration` body in an `OSSignposter` interval so Instruments shows migration duration. This is additive — it must not change control flow, the journal sequence, the `copyStore`/`quarantineFolderName` calls, the phase ordering, or the emitted `MigrationPhase` events. **Weave the lines into the live method (Steps 2a/2b); never paste a whole method body. The `breadcrumb(_:success:)` calls are already `async` and awaited inline in the live method — add the `LillistLog` lines around them; do not add or move any `await`.**
 
 - [ ] **Step 1: Add the imports** — `MigrationCoordinator.swift` currently starts with `import Foundation` (L1). Change L1 from:
 ```swift
@@ -329,14 +320,14 @@ import Foundation
 import os
 ```
 
-- [ ] **Step 2a: Read the CURRENT `runMigration` on `main` FIRST** — store-swap-safety (Wave 1) **reordered** this method, so the body below is **NOT** what is on disk. Before editing, locate and Read the live method:
+- [ ] **Step 2a: Read the CURRENT `runMigration` on `main` FIRST** — locate and Read the live method before editing:
 ```bash
 cd /Volumes/Code/mikeyward/Lillist && grep -n "private func runMigration(" Packages/LillistCore/Sources/LillistCore/Sync/MigrationCoordinator.swift
 ```
-Then Read the full method body. Confirm the **current** phase order, which is the order you must weave logs onto (verified against the merged file):
+Then Read the full method body. Confirm the **current** phase order, which is the order you must weave logs onto:
 1. **preparing** — `emit(.preparing)` + `scheduler.cancelAllPending()`
 2. **journal start** — build `MigrationJournal(state: .preparing, …)` and `journal.write(entry)`
-3. **precondition** — for `replaceICloudWithLocal`, the `localStoreRowCount()` guard (Wave-1; throws on empty store)
+3. **precondition** — for `replaceICloudWithLocal`, the `localStoreRowCount()` guard (throws on an empty local store — sync-7)
 4. **structural swap FIRST** — `emit(.reconfiguringStore)` → `host.reconfigure(to: targetMode)` → `syncModeStore.setMode(targetMode)` (closes the SQLite connection *before* touching the file — persist-3)
 5. **copy-quarantine** — `emit(.backingUp)`, state `.quarantining`, then `quarantine.copyStore(at: storeURL)` (COPY-not-move) and record `entry.quarantineFolderName = backup.folderName`
 6. **cloudkit zone erase** — only `replaceICloudWithLocal`: `emit(.erasingICloud…)` + `zoneEraser.eraseManagedZones(…)`
@@ -379,7 +370,7 @@ If what you Read does not match this order (e.g. you see `quarantineStore(at:)`/
     ```
   Note the placement difference from the pre-Wave-1 shape: the "reconfiguring store" notice now lands in phase 4 (before quarantine), and the "erasing iCloud zones" notice lands in phase 6 (after the copy-quarantine), because the current method reconfigures *first* and copies the closed store *second*. Add **no** log line tied to a `quarantineStore`/`quarantineBackupID` step — those no longer exist.
 
-> **⚠️ ILLUSTRATIVE of the OLD (pre-Wave-1) shape — DO NOT paste. Weave the equivalents above into the CURRENT method instead.** The block below is the stale pre-store-swap-safety body and quarantines *before* reconfiguring using the removed move-based `quarantineStore(at:)`/`quarantineBackupID` API. It is kept only to show what the woven log/signpost lines look like in context; pasting it would revert merged Wave-1 work (the reorder, `copyStore`, and `quarantineFolderName`).
+> **⚠️ DO-NOT-PASTE — ILLUSTRATIVE ONLY. This block shows the PRE-Wave-1 phase order (quarantine *before* reconfigure via the removed move-based `quarantineStore(at:)`/`quarantineBackupID` API).** It does NOT match what is on `main`. **Follow the live code, not this block** — the live order is **reconfigure → copy-quarantine → erase** (see Step 2a/2b for where each line lands in the CURRENT method). The block is kept only to show what the woven log/signpost lines look like in context; pasting it would revert merged Wave-1 work (the reorder, `copyStore`, and `quarantineFolderName`).
 ```swift
     // ⚠️ OLD SHAPE — illustrative only, DO NOT paste. See Step 2b for where
     //    each log line lands in the CURRENT (reordered) method.
@@ -407,11 +398,11 @@ If what you Read does not match this order (e.g. you see `quarantineStore(at:)`/
     }
 ```
 
-- [ ] **Step 3a: Read the CURRENT `restoreFromBackup` on `main` FIRST** — store-swap-safety (Wave 1) also rewrote this method to prefer the *exact* recorded folder (sync-7). The pre-Wave-1 `latestQuarantinedStore`-only body is gone; do not reintroduce it. Read the live method:
+- [ ] **Step 3a: Read the CURRENT `restoreFromBackup` on `main` FIRST** — the live method prefers the *exact* recorded folder (`quarantineFolderName`) and falls back to `latestQuarantinedStore` (sync-7); do not reduce it to a `latestQuarantinedStore`-only body. Read the live method:
 ```bash
 cd /Volumes/Code/mikeyward/Lillist && grep -n "public func restoreFromBackup(" Packages/LillistCore/Sources/LillistCore/Sync/MigrationCoordinator.swift
 ```
-Confirm the **current** body (verified against the merged file) does this:
+Confirm the **current** body does this:
 1. `let entry = try journal.read()`
 2. resolve `recorded` via `entry.quarantineFolderName.flatMap { quarantine.quarantinedStore(folderName: $0, filename: filename) }`
 3. `let backup = try recorded ?? quarantine.latestQuarantinedStore(filename: filename)` then `guard let backup else { throw … }`
@@ -460,7 +451,9 @@ debug after an OTA crash."
 - Modify `Packages/LillistCore/Sources/LillistCore/Stores/TaskStore.swift` (the `children(of:)` fetch)
 - Test: verified by an existing TaskStore suite compile + run; the instrumentation is additive (no behavior change), so no new assertion is added against the fetch result. The signpost/log capability is already proven collectable by Task 2.
 
-The main task-list reload funnels through `TaskStore.children(of:)` on the main-queue `viewContext` (the unbounded fetch the critic flagged at `TaskStore.swift:205`). Paging is out of scope here (owned by `performance-budgets-and-paging`). What this plan adds is *visibility*: an `OSSignposter` interval and a `LillistLog.store.debug` line carrying the row count, so a slow reload shows up in Instruments and the log stream. Read the file first to find the exact current method.
+The main task-list reload funnels through `TaskStore.children(of:)` on the main-queue `viewContext` (the unbounded fetch the critic flagged; ~L208 on current `main`). Paging is out of scope here (owned by `performance-budgets-and-paging`). What this plan adds is *visibility*: an `OSSignposter` interval and a `LillistLog.store.debug` line carrying the row count, so a slow reload shows up in Instruments and the log stream. Read the file first to find the exact current method.
+
+> **Chain #2 — coordinate with `performance-budgets-and-paging`.** Both plans edit `TaskStore.children(of:)`. Land them together and re-Read the method immediately before editing: the signpost bracket must wrap whatever final fetch body the paging plan lands, and the row-count log must reflect the returned page. If paging has not yet landed, instrument the current unbounded body; if it has, instrument the paged body — do not re-introduce the unbounded fetch.
 
 - [ ] **Step 1: Locate the current `children(of:)` method** —
 ```bash
@@ -480,22 +473,24 @@ import CoreData
 import os
 ```
 
-- [ ] **Step 3: Instrument `children(of:)`** — wrap the existing fetch body in a signpost interval and emit the count. The concrete edit depends on the body Read in Step 1; apply this pattern, preserving every existing line. For the current shape (an `async throws -> [TaskRecord]` that performs its work and returns `records`), bracket the method body:
+- [ ] **Step 3: Instrument `children(of:)`** — wrap the existing fetch body in a signpost interval and emit the count, preserving every existing line. The current body is a **single `try await context.perform { … }`** that returns `try context.fetch(req).map(record(from:))`. Capture that expression into `let records = …`, bracket it with the signpost, and log the count — do **not** introduce a new helper:
 ```swift
     public func children(of parentID: UUID?) async throws -> [TaskRecord] {
         let signpostID = LillistLog.signposter.makeSignpostID()
         let interval = LillistLog.signposter.beginInterval("taskFetch", id: signpostID)
         defer { LillistLog.signposter.endInterval("taskFetch", interval) }
 
-        // --- existing method body verbatim, capturing the returned
-        //     array into `records` instead of returning inline ---
-        let records = try await fetchChildrenRecords(of: parentID)
+        // --- existing `try await context.perform { … }` body verbatim,
+        //     captured into `records` instead of returned inline ---
+        let records = try await context.perform { [self] in
+            // … existing fetch + record(from:) mapping, unchanged …
+        }
 
         LillistLog.store.debug("children fetch rows=\(records.count, privacy: .public)")
         return records
     }
 ```
-If the current body is short enough to inline (e.g. a single `try await context.perform { ... }` returning the mapped array), do NOT introduce a new `fetchChildrenRecords` helper — instead capture the existing expression into `let records = ...` and add the signpost bracket + log line around it. The helper extraction is only a fallback if the existing body is long and would obscure the diff; pick whichever keeps the change minimal and DRY. Either way the existing fetch/`record(from:)` mapping logic is unchanged.
+Only if the paging plan (chain #2) has already grown the body into a longer multi-statement method should you extract a `fetchChildrenRecords` helper to keep the diff legible — pick whichever keeps the change minimal and DRY. Either way the existing fetch/`record(from:)` mapping logic is unchanged.
 
 - [ ] **Step 4: Build + run the LillistCore store suite, expect pass** —
 ```bash
@@ -519,7 +514,7 @@ the performance-budgets plan."
 
 **Files:**
 - Create `Apps/Lillist-iOS/Sources/App/MetricKitObserver.swift`
-- Modify `Apps/Lillist-iOS/Sources/App/AppEnvironment.swift` (property block ~L61-72, `bootstrap()` ~L257-279)
+- Modify `Apps/Lillist-iOS/Sources/App/AppEnvironment.swift` (property block — anchor by `let crashReporter` / `let mailTransport`, ~L69-70; `bootstrap()` — anchor by `func bootstrap()` and its tail of `startObserving…` / `installCanaryLifecycleObservers()` calls, ~L328-331)
 
 MetricKit (`MXMetricManager`) delivers crash, hang (`MXHangDiagnostic`), and launch (`MXAppLaunchDiagnostic`) reports the day after they occur. We subscribe a retained observer that logs each diagnostic's summary through `LillistLog.metrics`, so they land in the same unified-log stream the crash reporter reads — turning the day-after MetricKit payloads into searchable field diagnostics. MetricKit needs no entitlement; it just needs a retained `MXMetricManagerSubscriber`. App-target changes are verified by an unsigned `xcodebuild build`.
 
@@ -576,7 +571,7 @@ final class MetricKitObserver: NSObject, MXMetricManagerSubscriber {
 }
 ```
 
-- [ ] **Step 2: Add the stored property to `AppEnvironment`** — in `Apps/Lillist-iOS/Sources/App/AppEnvironment.swift`, the `crashReporter` / `mailTransport` properties sit around L62-63. Add a `metricKitObserver` property next to them. Change:
+- [ ] **Step 2: Add the stored property to `AppEnvironment`** — in `Apps/Lillist-iOS/Sources/App/AppEnvironment.swift`, the `crashReporter` / `mailTransport` properties sit around ~L69-70 (anchor by name, not line). Add a `metricKitObserver` property next to them. Change:
 ```swift
     let crashReporter: CrashReporter
     let mailTransport: MailComposerTransport
@@ -590,11 +585,12 @@ to:
     let metricKitObserver = MetricKitObserver()
 ```
 
-- [ ] **Step 3: Register the observer in `bootstrap()`** — `bootstrap()` ends (L276-278) with the three `startObserving…` / `installCanaryLifecycleObservers()` calls. Add the MetricKit registration alongside them. Change:
+- [ ] **Step 3: Register the observer in `bootstrap()`** — `bootstrap()` ends (~L328-331) with the `startObserving…` / `installCanaryLifecycleObservers()` / `startObservingPauseReason()` calls. Re-Read the live tail first (it has shifted across waves — `startObservingPauseReason()` is the current last call) and append the MetricKit registration as the final statement. Change:
 ```swift
         startObservingAccountState()
         startObservingSyncMode()
         installCanaryLifecycleObservers()
+        startObservingPauseReason()
     }
 ```
 to:
@@ -602,14 +598,18 @@ to:
         startObservingAccountState()
         startObservingSyncMode()
         installCanaryLifecycleObservers()
+        startObservingPauseReason()
         metricKitObserver.startReceiving()
     }
 ```
+
+> **MetricKit is iOS-only — do NOT touch the macOS `AppEnvironment`.** Only `Apps/Lillist-iOS/Sources/App/AppEnvironment.swift` gets `metricKitObserver`. The macOS `AppEnvironment.bootstrap()` (`Apps/Lillist-macOS/Sources/AppEnvironment.swift`) is a different file with a different tail (`startObservingAccountState` / `startObservingSyncMode` / `startObservingPauseReason`) and notably does **not** call `remoteChangeReconciler.start()` — that wiring is iOS-only. Verify that before assuming any macOS symmetry; add nothing to the macOS bootstrap here.
 
 - [ ] **Step 4: Build the iOS app target without signing, expect success** —
 ```bash
 cd /Volumes/Code/mikeyward/Lillist && xcodebuild -workspace Lillist.xcworkspace -scheme Lillist-iOS -destination 'platform=iOS Simulator,name=iPhone 17,OS=26.2' CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO build 2>&1 | tail -5
 ```
+(`iPhone 17 / OS=26.2` is the canonical simulator destination per `CLAUDE.md` — do not "fix" it to a lower version.)
 Expected output: `** BUILD SUCCEEDED **`. The new file is auto-discovered by xcodegen's `Apps/Lillist-iOS/Sources/**` glob, so no pbxproj regeneration is required for an *added* file in an existing source group — but if the build errors with "file not found", run the regeneration in Step 5 first and rebuild.
 
 - [ ] **Step 5 (only if Step 4 reports the new file is not in the target): regenerate the pbxproj** —
@@ -723,5 +723,5 @@ Confirm each source finding is closed by a named task before considering this pl
 
 ### Cross-plan coordination
 - [ ] **`crash-reporter-privacy`** (owns `LogRedactor.swift`): this plan's loggers rely on `LogRedactor.redact` as the final scrub before lines leave the device, but emit only non-identifying fields (counts, mode/op raw values, error *type* names) precisely so they survive redaction unharmed. No edit to `LogRedactor` here. The redaction-hardening plan should treat `LillistLog` output as one of its adversarial inputs.
-- [ ] **`resolve-inert-features`** (P1 item #8 "decide crash-reporter logs/breadcrumbs scope: real on-disk buffer or remove the toggles"): THIS plan makes the **logs** toggle real (Task 1+2 wire the subsystem; Tasks 3-6 populate it). `resolve-inert-features` should therefore NOT remove the `includeLogs` toggle — it is now functional. Breadcrumbs truthfulness is owned by `breadcrumb-truthfulness`; this plan does not touch breadcrumb recording.
-- [ ] **`performance-budgets-and-paging`** (owns `TaskStore.swift` paging): Task 5 only *adds a signpost + count log* to `children(of:)`; it does not add `fetchBatchSize`/`fetchLimit`/paging. Coordinate the shared `TaskStore.swift` edit so the signpost bracket stays around whatever fetch body the paging plan lands (the interval should wrap the final fetch, the count log should reflect the returned page).
+- [ ] **`resolve-inert-features`** (merged, Wave 3): it did **not** remove the `includeLogs` toggle — instead it dropped the crash-report *preview's* overpromising "logs/breadcrumbs" lines and pointed the `CrashReportingPane` comment at THIS plan as the owner of the real on-disk buffer decision (commit `fix(crash-report): stop preview promising unavailable breadcrumbs/logs`). The `includeLogs` toggle still ships (`CrashReporter.submit(includeLogs:)`); THIS plan makes it honest — Task 1+2 wire the subsystem, Tasks 3-6 populate it — so the toggle now returns real data and must stay. Breadcrumb recording is owned by `breadcrumb-truthfulness` (merged, Wave 2); this plan does not touch breadcrumbs.
+- [ ] **`performance-budgets-and-paging` (chain #2 — land together, re-Read)** (owns `TaskStore.swift` paging): Task 5 only *adds a signpost + count log* to `children(of:)`; it does not add `fetchBatchSize`/`fetchLimit`/paging. Coordinate the shared `TaskStore.swift` edit so the signpost bracket stays around whatever fetch body the paging plan lands (the interval should wrap the final fetch, the count log should reflect the returned page). Re-Read `children(of:)` immediately before editing.

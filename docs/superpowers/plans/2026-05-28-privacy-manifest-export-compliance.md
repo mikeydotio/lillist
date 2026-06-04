@@ -4,7 +4,9 @@
 >
 > Part of the **Foundation Hardening** program. **Single source of truth for progress, wave order, and cross-plan coordination:** [`2026-05-29-foundation-hardening-index.md`](2026-05-29-foundation-hardening-index.md). New to this project? Read the index first, then the review ([`docs/reviews/2026-05-28-foundation-review.md`](../../reviews/2026-05-28-foundation-review.md)) for *why* this work exists, then `CLAUDE.md` for conventions + build/test commands. Execute task-by-task with `superpowers:subagent-driven-development`.
 >
-> ⚠️ **Wave 1 (`store-swap-safety`) is merged to `main`.** It changed several shared files (`MigrationCoordinator`, `PersistenceHost`, `QuarantineManager`, `MigrationJournal`, both `AppEnvironment`s, `PersistenceController`). **Re-Read every file before editing and anchor by code structure — the line numbers in this plan may have drifted.**
+> **No Wave 1–6 source dependencies.** This plan touches only net-new files (four `PrivacyInfo.xcprivacy` manifests, two test files) and additive edits to the four `Info.plist` files plus the two xcodegen `project.yml`s/pbxprojs. It does not edit `MigrationCoordinator`, `TaskStore`, `PersistenceController`, `AppEnvironment`, or any other Foundation-Hardening hotspot, so the earlier waves' code-shape changes do not affect it.
+>
+> **Pre-flight (run before any edit):** Confirm Waves 1–6 are on `main` (`git log --oneline main | head -20`). Read `docs/superpowers/handoffs/wave-6.md`. Re-Read every file you touch and anchor by code **structure**, not line number — each wave shifts the shared hotspot files. On completion, write `docs/superpowers/handoffs/wave-7.md`.
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
@@ -35,14 +37,16 @@
 
 | Path | Lines | Responsibility |
 |------|-------|----------------|
-| `Apps/Lillist-iOS/Info.plist` | after line 53 (before closing `</dict>`) | Add `ITSAppUsesNonExemptEncryption` = `false`. |
-| `Apps/Lillist-macOS/Info.plist` | after line 49 (before closing `</dict>`) | Add `ITSAppUsesNonExemptEncryption` = `false`. |
-| `Extensions/ShareExtension-iOS/Info.plist` | after line 41 (before closing `</dict>`) | Add `ITSAppUsesNonExemptEncryption` = `false`. |
-| `Extensions/ShortcutsActions/Info.plist` | after line 27 (before closing `</dict>`) | Add `ITSAppUsesNonExemptEncryption` = `false`. |
+| `Apps/Lillist-iOS/Info.plist` | before the closing top-level `</dict>` (~line 62) | Add `ITSAppUsesNonExemptEncryption` = `false`. |
+| `Apps/Lillist-macOS/Info.plist` | before the closing top-level `</dict>` (~line 50) | Add `ITSAppUsesNonExemptEncryption` = `false`. |
+| `Extensions/ShareExtension-iOS/Info.plist` | before the closing top-level `</dict>` (~line 42) | Add `ITSAppUsesNonExemptEncryption` = `false`. |
+| `Extensions/ShortcutsActions/Info.plist` | before the closing top-level `</dict>` (~line 28) | Add `ITSAppUsesNonExemptEncryption` = `false`. |
 | `Apps/Lillist-iOS/project.yml` | `Lillist-iOSTests.sources` (lines 128–139) | Co-compile the four manifests' parent dirs are already in target sources; no manifest co-compile needed (test reads from disk via `#filePath`). Add nothing here unless Step verification fails — see Task 6. |
 | `Apps/project.yml` | n/a | macOS app `Resources` path (line 40–41) already has `buildPhase: resources`; manifest auto-bundles. No edit needed unless Task 7 verification fails. |
 
-> **Note on xcodegen wiring:** Both apps' `Resources/` directories are already declared with `buildPhase: resources` (`Apps/Lillist-iOS/project.yml:45-46`, `Apps/project.yml:40-41`), so dropping `PrivacyInfo.xcprivacy` into `Resources/` bundles it automatically. Both extensions declare their whole source directory as a `sources` path with `excludes` for `Info.plist`/`Lillist.entitlements`/`Tests/**` (`Apps/Lillist-iOS/project.yml:78-83, 102-107`); xcodegen routes the non-buildable `.xcprivacy` to the resources build phase automatically. Tasks 6 and 7 verify the bundling actually happened via `xcodegen generate` + pbxproj grep, and add explicit `buildPhase: resources` declarations only if the auto-routing didn't fire.
+> **Note on xcodegen wiring:** Both apps' `Resources/` directories are already declared with `buildPhase: resources` (`Apps/Lillist-iOS/project.yml:45-46`, `Apps/project.yml:40-41`), so dropping `PrivacyInfo.xcprivacy` into `Resources/` bundles it automatically. Both extensions declare their whole source directory as a `sources` path with `excludes` for `Info.plist`/`Lillist.entitlements`/`Tests/**` (`Apps/Lillist-iOS/project.yml` — `ShareExtension-iOS.sources` ~lines 79–83, `ShortcutsActions.sources` ~lines 103–107); xcodegen routes the non-buildable `.xcprivacy` to the resources build phase automatically. Tasks 6 and 7 verify the bundling actually happened via `xcodegen generate` + pbxproj grep, and add explicit `buildPhase: resources` declarations only if the auto-routing didn't fire.
+>
+> **This is the last `project.yml` editor in both xcodegen chains** (iOS chain #4 and macOS chain #5 in the [index](2026-05-29-foundation-hardening-index.md#shared-file-serial-chains-do-not-parallelize-these)). It owns the final coordinated `xcodegen generate` for each project, so its regenerated pbxprojs are the authoritative committed copies that the `ci-and-build-posture` drift gate validates. Run the regenerate exactly as in Tasks 6/7 and Task 8 Step 5 so the committed pbxprojs reflect every prior wave's source additions, not just this plan's.
 
 ---
 
@@ -350,10 +354,10 @@
 ## Task 5: Add `ITSAppUsesNonExemptEncryption=false` to all four Info.plists
 
 **Files:**
-- Modify `Apps/Lillist-iOS/Info.plist` (insert before `</dict>` at line 54).
-- Modify `Apps/Lillist-macOS/Info.plist` (insert before `</dict>` at line 50).
-- Modify `Extensions/ShareExtension-iOS/Info.plist` (insert before `</dict>` at line 42).
-- Modify `Extensions/ShortcutsActions/Info.plist` (insert before `</dict>` at line 28).
+- Modify `Apps/Lillist-iOS/Info.plist` (insert before the closing top-level `</dict>`, ~line 62).
+- Modify `Apps/Lillist-macOS/Info.plist` (insert before the closing top-level `</dict>`, ~line 50).
+- Modify `Extensions/ShareExtension-iOS/Info.plist` (insert before the closing top-level `</dict>`, ~line 42).
+- Modify `Extensions/ShortcutsActions/Info.plist` (insert before the closing top-level `</dict>`, ~line 28).
 
 > **Why:** Lillist uses only HTTPS (`URLSession` to `https://` for link previews and CloudKit's standard transport) and no custom or otherwise non-exempt cryptography. Declaring `ITSAppUsesNonExemptEncryption=false` lets every TestFlight/App Store upload skip the manual export-compliance prompt — a hard blocker for the OTA goal noted in review §3. Each bundle that is uploaded needs its own copy of the key.
 
@@ -364,7 +368,7 @@
   Expected output: empty. If anything prints, stop and reconcile.
 
 - [ ] **Step 2: Add the key to the iOS app Info.plist.**
-  In `Apps/Lillist-iOS/Info.plist`, the current tail (lines 50–54) is:
+  In `Apps/Lillist-iOS/Info.plist`, the current tail (the `NSUserActivityTypes` block before the closing top-level `</dict>`, ~lines 58–62) is:
   ```xml
       <key>NSUserActivityTypes</key>
       <array>
@@ -384,7 +388,7 @@
   ```
 
 - [ ] **Step 3: Add the key to the macOS app Info.plist.**
-  In `Apps/Lillist-macOS/Info.plist`, the current tail (lines 29–50) ends:
+  In `Apps/Lillist-macOS/Info.plist`, the current tail (the `NSServices` block before the closing top-level `</dict>`, ~lines 29–50) ends:
   ```xml
       <key>NSServices</key>
       <array>
@@ -421,7 +425,7 @@
   ```
 
 - [ ] **Step 4: Add the key to the ShareExtension Info.plist.**
-  In `Extensions/ShareExtension-iOS/Info.plist`, the current tail (lines 37–42) is:
+  In `Extensions/ShareExtension-iOS/Info.plist`, the current tail (the `NSExtension` dict's close before the closing top-level `</dict>`, ~lines 37–42) is:
   ```xml
           <key>NSExtensionPointIdentifier</key>
           <string>com.apple.share-services</string>
@@ -443,7 +447,7 @@
   ```
 
 - [ ] **Step 5: Add the key to the ShortcutsActions Info.plist.**
-  In `Extensions/ShortcutsActions/Info.plist`, the current tail (lines 23–28) is:
+  In `Extensions/ShortcutsActions/Info.plist`, the current tail (the `NSExtension` block before the closing top-level `</dict>`, ~lines 23–28) is:
   ```xml
       <key>NSExtension</key>
       <dict>
@@ -493,7 +497,7 @@
 
 ## Task 6: Wire the iOS bundles' manifests through xcodegen and verify they land in the built bundles
 
-**Files:** Possibly modify `Apps/Lillist-iOS/project.yml` (`ShareExtension-iOS.sources` lines 78–83, `ShortcutsActions.sources` lines 102–107). The iOS app's `Resources` path (lines 45–46) already has `buildPhase: resources` — no edit expected.
+**Files:** Possibly modify `Apps/Lillist-iOS/project.yml` (`ShareExtension-iOS.sources` ~lines 79–83, `ShortcutsActions.sources` ~lines 103–107). The iOS app's `Resources` path (~lines 45–46) already has `buildPhase: resources` — no edit expected.
 
 > This task makes the manifests xcodegen-visible. The apps' `Resources/` dirs are already resource build phases; the extensions declare their whole source dir as a `sources` path. We regenerate the pbxproj, then grep the generated project for each manifest to confirm it's in a resources build phase. We add explicit `buildPhase: resources` declarations only if the auto-routing didn't pick the manifest up.
 
@@ -511,7 +515,7 @@
   Expected: a count of **6 or more** (each of the three iOS-side manifests appears as both a `PBXFileReference` and a `PBXBuildFile`/group entry). If the count is `0`, the auto-routing failed — go to Step 3. If `>= 6`, skip Step 3 and go to Step 4.
 
 - [ ] **Step 3 (only if Step 2 returned 0): Declare the extension manifests as explicit resources.**
-  In `Apps/Lillist-iOS/project.yml`, change the `ShareExtension-iOS` `sources` block (currently lines 78–83):
+  In `Apps/Lillist-iOS/project.yml`, change the `ShareExtension-iOS` `sources` block (currently ~lines 79–83):
   ```yaml
       sources:
         - path: ../../Extensions/ShareExtension-iOS
@@ -532,7 +536,7 @@
         - path: ../../Extensions/ShareExtension-iOS/PrivacyInfo.xcprivacy
           buildPhase: resources
   ```
-  and the `ShortcutsActions` `sources` block (currently lines 102–107):
+  and the `ShortcutsActions` `sources` block (currently ~lines 103–107):
   ```yaml
       sources:
         - path: ../../Extensions/ShortcutsActions
@@ -639,7 +643,7 @@
 - Create `Apps/Lillist-iOS/Tests/UnitTests/PrivacyManifestComplianceTests.swift`.
 - Create `Apps/Lillist-macOS/Tests/PrivacyManifestComplianceTests.swift`.
 
-> **Why a repo-tree-relative test, not a `Bundle.main`/`Bundle.module` lookup:** both app test bundles are *host-less standalone bundles* (`TEST_HOST: ""`, `BUNDLE_LOADER: ""` — `Apps/Lillist-iOS/project.yml:154-155`, `Apps/project.yml:127-128`), so they cannot read the *app's* bundled resources at runtime. The robust contract is "these source files exist on disk, parse, and carry the right declarations" — resolved from `#filePath` so the test is location-independent. Tasks 6/7 already prove the build actually copies them into the bundle, so the two checks together cover both source presence and packaging. The neighbours (`SharePayloadTests.swift`, `DefaultSmartFiltersInstallerTests.swift`, all macOS `*Tests.swift`) use **XCTest** — match that.
+> **Why a repo-tree-relative test, not a `Bundle.main`/`Bundle.module` lookup:** both app test bundles are *host-less standalone bundles* (`TEST_HOST: ""`, `BUNDLE_LOADER: ""` — `Apps/Lillist-iOS/project.yml` ~lines 154–155, `Apps/project.yml` ~lines 132–133), so they cannot read the *app's* bundled resources at runtime. The robust contract is "these source files exist on disk, parse, and carry the right declarations" — resolved from `#filePath` so the test is location-independent. Tasks 6/7 already prove the build actually copies them into the bundle, so the two checks together cover both source presence and packaging. The neighbours (`SharePayloadTests.swift`, `DefaultSmartFiltersInstallerTests.swift`, all macOS `*Tests.swift`) use **XCTest** — match that.
 
 - [ ] **Step 1: Write the failing iOS test.**
   Create `Apps/Lillist-iOS/Tests/UnitTests/PrivacyManifestComplianceTests.swift`:

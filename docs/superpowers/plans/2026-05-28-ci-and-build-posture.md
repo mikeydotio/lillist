@@ -4,23 +4,17 @@
 >
 > Part of the **Foundation Hardening** program. **Single source of truth for progress, wave order, and cross-plan coordination:** [`2026-05-29-foundation-hardening-index.md`](2026-05-29-foundation-hardening-index.md). New to this project? Read the index first, then the review ([`docs/reviews/2026-05-28-foundation-review.md`](../../reviews/2026-05-28-foundation-review.md)) for *why* this work exists, then `CLAUDE.md` for conventions + build/test commands. Execute task-by-task with `superpowers:subagent-driven-development`.
 >
-> ⚠️ **Wave 1 (`store-swap-safety`) is merged to `main`.** It changed several shared files (`MigrationCoordinator`, `PersistenceHost`, `QuarantineManager`, `MigrationJournal`, both `AppEnvironment`s, `PersistenceController`). **Re-Read every file before editing and anchor by code structure — the line numbers in this plan may have drifted.**
-
-> **⚠️ Wave-1 reconciliation:**
-> store-swap-safety is MERGED. The `Lillist-iOSAppHostedTests` target already exists and is already wired into the `Lillist-iOS` scheme's `test.targets` (`Apps/Lillist-iOS/project.yml` lines 188-209, 221, 234-239). So the cross-plan dependency is no longer "pending" — rewrite Task 4 Step 2's comment and Task 5's "Cross-plan dependency" note from future tense ("once store-swap-safety lands it") to past tense, and resolve the conditional: it added a *target* on the existing scheme, so **no extra CI job is needed**.
-> BUT this exposes a real bug in Task 4's `ios` job. The app-hosted target uses `TEST_HOST=$(BUILT_PRODUCTS_DIR)/Lillist.app/Lillist` + `BUNDLE_LOADER` + `CODE_SIGN_STYLE: Automatic`; it must launch inside the host `Lillist.app` on the simulator. Task 4 runs `xcodebuild test -scheme Lillist-iOS ... CODE_SIGNING_ALLOWED=NO`, which generally prevents the host app from installing/launching for test-hosting — so the host-gated migration tests the plan claims to "finally execute" would NOT run (or the job fails). Wave-1's own note says this target "needs a code-signed simulator host to actually RUN." Fix the `ios` job: drop the `CODE_SIGNING_ALLOWED=NO`/`CODE_SIGN_IDENTITY=""`/`CODE_SIGNING_REQUIRED=NO` flags for the simulator `test` step (simulator ad-hoc signing works without a real team via the seeded placeholder `Signing.local.xcconfig`), or split `Lillist-iOSAppHostedTests` into its own `-only-testing` step that allows signing. The macOS-`build`-style no-signing recipe from CLAUDE.md applies to `build`, not to host-app `test`.
-> Also fix the `release-archive-smoke` job similarly: `-scheme Lillist-iOS` now pulls in the app-hosted test target's signing requirements; scope the smoke to the app target or otherwise account for `CODE_SIGN_STYLE: Automatic`.
-> Finally, re-anchor Task 5's engineering-notes insertion: the newest entry is now `## 2026-05-29 — Store-swap safety`, not `## 2026-05-17`. Prepend the new CI entry ABOVE the 2026-05-29 entry, and ignore the stale "insert after line 6 / before the 2026-05-17 heading" line numbers. Treat test-1/test-2 as already-closed historical context, not open findings.
+> **Pre-flight (run before any edit):** Confirm Waves 1–6 are on `main` (`git log --oneline main | head -20`). Read `docs/superpowers/handoffs/wave-6.md`. Re-Read every file you touch and anchor by code **structure**, not line number — each wave shifts the shared hotspot files. On completion, write `docs/superpowers/handoffs/wave-7.md`.
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Establish a GitHub Actions macOS CI workflow that runs the full test/build matrix post-push on `main`, and align Lillist's build posture so every quality gate (warnings-as-errors, snapshots, pbxproj drift, the Core Data model rebuild) is enforced automatically rather than from memory.
 
-**Architecture:** Add one `.github/workflows/ci.yml` that, on push to `main`, runs `swift test` for both SPM packages, regenerates both pbxprojs and fails on drift, runs the iOS xcodebuild test scheme (which transitively runs the app-hosted `LillistCore` host-gated tests owned by *store-swap-safety*), runs the macOS scheme tests, and does a Release-configuration archive smoke build. Separately, three source-tree posture fixes harden the same gates locally: lift `LillistUI/Package.swift` to swift-tools 6.2 with `.treatAllWarnings(as: .error)` on both source and test targets (matching `LillistCore`) while excluding the test `__Snapshots__` dirs to clear the standing manifest warning; teach the `CompileCoreDataModel` plugin to declare the inner `*.xcdatamodel/contents` and `.xccurrentversion` as `inputFiles` so model edits no longer need the manual mtime-touch ritual; and scope the brittle exact-pixel tour-snapshot precision relaxation to the single Form-bearing tour snapshot only.
+**Architecture:** Add one `.github/workflows/ci.yml` that, on push to `main`, runs `swift test` for both SPM packages (with bounded parallelism + a SIGSEGV/timing-flake retry per residual #11), regenerates both pbxprojs and fails on drift, runs the iOS xcodebuild test scheme (which transitively runs the merged app-hosted `LillistCore` host-gated tests in `Lillist-iOSAppHostedTests`), runs the macOS scheme tests, runs the LillistUI localization-lint job folded in from chain #6, and does a Release-configuration archive smoke build. Separately, three source-tree posture fixes harden the same gates locally: lift `LillistUI/Package.swift` to swift-tools 6.2 with `.treatAllWarnings(as: .error)` on both source and test targets (matching `LillistCore`) while excluding the test `__Snapshots__` dirs to clear the standing manifest warning; teach the `CompileCoreDataModel` plugin to declare the inner `*.xcdatamodel/contents` and `.xccurrentversion` as `inputFiles` so model edits no longer need the manual mtime-touch ritual; and scope the brittle exact-pixel tour-snapshot precision relaxation to the single Form-bearing tour snapshot only.
 
 **Tech Stack:** GitHub Actions (macOS runner), Swift Package Manager 6.2, `xcodebuild`, `xcodegen` 2.45, `swift-snapshot-testing`, SwiftPM build-tool plugin API (`PackagePlugin`).
 
-**Source findings:** build-1, build-2, build-3, build-4, build-5, ui-warn-1, ui-snap-1, test-5 (roadmap item #16; closes the "No CI/CD at all" blind spot).
+**Source findings:** build-1, build-2, build-3, build-4, build-5, ui-warn-1, ui-snap-1, test-5 (roadmap item #16; closes the "No CI/CD at all" blind spot). Also absorbs index **residual #11** (bound test parallelism / retry the intermittent parallel-test SIGSEGV + `SyncQuiesceMonitor` timing flake — see `docs/engineering-notes.md` 2026-06-04 entry) and closes **chain #6** (fold `lillistui-localization-a11y`'s standalone workflow into `ci.yml`).
 
 ---
 
@@ -28,18 +22,19 @@
 
 | Path | Create/Modify | Responsibility |
 |------|---------------|----------------|
-| `.github/workflows/ci.yml` | **Create** | Post-push-on-`main` macOS CI: dual `swift test`, pbxproj-drift gate, iOS + macOS xcodebuild test schemes, Release archive smoke build, failure notification on the run. |
-| `Packages/LillistUI/Package.swift` | **Modify** (lines 1, 18-36) | Bump to swift-tools 6.2; add `.treatAllWarnings(as: .error)` to source + test targets; exclude test `__Snapshots__` dirs to clear the 83-file manifest warning. |
-| `Packages/LillistCore/Plugins/CompileCoreDataModel/CompileCoreDataModel.swift` | **Modify** (lines 13-41) | Walk each `.xcdatamodeld` and declare the inner `*.xcdatamodel/contents` + `.xccurrentversion` files as `inputFiles` so editing the model auto-invalidates the `momc` command (retires the mtime-touch ritual). |
-| `Packages/LillistUI/Tests/LillistUITests/Tour/IOSScreenTourTests.swift` | **Modify** (lines 281-309, 558-586) | Relax snapshot precision for the one Form-bearing tour snapshot (`test_08_settings_light`) via an optional `precision`/`perceptualPrecision` param on `assertScreen`; leave all non-Form tour snapshots at exact-pixel. |
-| `docs/engineering-notes.md` | **Modify** (prepend a new dated entry at line 7) | Record the CI design, the deliberate Debug-for-iteration / Release-for-CI split, the retired mtime-touch ritual, and the cross-plan dependency on store-swap-safety's app-hosted test target. |
-| `CLAUDE.md` | **Modify** (the "Build-plugin caching gotcha" + "Build & test" sections) | Note CI runs post-push on `main`; mark the mtime-touch ritual as retired by the plugin fix. |
+| `.github/workflows/ci.yml` | **Create** | Post-push-on-`main` macOS CI: dual `swift test` (with bounded parallelism + a SIGSEGV/timing-flake retry per residual #11), pbxproj-drift gate, iOS + macOS xcodebuild test schemes, Release archive smoke build, the LillistUI localization-lint job folded in from chain #6, and failure notification on the run. |
+| `.github/workflows/lillistui-localization.yml` | **Delete** (Task 6) | `lillistui-localization-a11y` (also Wave 7) creates this standalone workflow; fold its `localization-lint` job into `ci.yml` and delete the standalone file (chain #6). |
+| `Packages/LillistUI/Package.swift` | **Modify** (anchor: `swift-tools-version` line + the `targets:` block; currently swift-tools `6.0`, test target has no `swiftSettings:`) | Bump to swift-tools 6.2; add `.treatAllWarnings(as: .error)` to source + test targets; exclude test `__Snapshots__` dirs to clear the 83-file manifest warning. |
+| `Packages/LillistCore/Plugins/CompileCoreDataModel/CompileCoreDataModel.swift` | **Modify** (anchor: `createBuildCommands` + the `inputFiles:` declaration) | Walk each `.xcdatamodeld` and declare the inner `*.xcdatamodel/contents` + `.xccurrentversion` files as `inputFiles` so editing the model auto-invalidates the `momc` command (retires the mtime-touch ritual). |
+| `Packages/LillistUI/Tests/LillistUITests/Tour/IOSScreenTourTests.swift` | **Modify** (anchor: `test_08_settings_light` body + the `assertScreen` helper) | Relax snapshot precision for the one Form-bearing tour snapshot (`test_08_settings_light`) via an optional `precision`/`perceptualPrecision` param on `assertScreen`; leave all non-Form tour snapshots at exact-pixel. |
+| `docs/engineering-notes.md` | **Modify** (prepend a new dated entry; anchor relative to the *latest existing* entry / true EOF) | Record the CI design, the deliberate Debug-for-iteration / Release-for-CI split, the retired mtime-touch ritual, the bounded-test-parallelism remedy for residual #11, and the cross-plan dependency on store-swap-safety's app-hosted test target. |
+| `CLAUDE.md` | **Modify** (the "Build-plugin caching gotcha" + "Build & test" sections) | Note CI runs post-push on `main`; mark the mtime-touch ritual as retired by the plugin fix; document the bounded-parallelism `swift test` invocation (residual #11). |
 
 ---
 
 ### Task 1: Bump LillistUI to swift-tools 6.2 with warnings-as-error and clear the manifest warning
 
-**Files:** Modify `Packages/LillistUI/Package.swift` (whole file — current lines 1, 18-36).
+**Files:** Modify `Packages/LillistUI/Package.swift` (whole file — the `swift-tools-version` line and the `targets:` block; ~38 lines today).
 
 This closes `ui-warn-1` (the standing "found 83 file(s) which are unhandled" manifest warning — verified live: the warning lists every `Tests/LillistUITests/**/__Snapshots__/*.png` baseline) and the LillistUI half of `build-3`/`build-4` (inconsistent warnings posture vs `LillistCore`). `LillistCore/Package.swift` is the canonical model: swift-tools `6.2`, `.treatAllWarnings(as: .error)` on source, test, executable, and CLI-test targets.
 
@@ -135,7 +130,7 @@ Closes ui-warn-1; aligns build-3/build-4 warnings posture."
 
 ### Task 2: Declare the inner Core Data model files as plugin inputs
 
-**Files:** Modify `Packages/LillistCore/Plugins/CompileCoreDataModel/CompileCoreDataModel.swift` (current lines 13-41).
+**Files:** Modify `Packages/LillistCore/Plugins/CompileCoreDataModel/CompileCoreDataModel.swift` (anchor: the `createBuildCommands` body and its `inputFiles:` declaration — ~lines 13-42 today).
 
 This closes `build-5` and retires the manual mtime-touch ritual documented in CLAUDE.md ("Build-plugin caching gotcha") and `engineering-notes.md`. The current plugin declares `inputFiles: [inputURL]` where `inputURL` is the `.xcdatamodeld` **directory** — SwiftPM/llbuild keys the `momc` command on that directory's mtime, not on the inner `LillistModel.xcdatamodel/contents` file, so editing `contents` does not re-run `momc` and the stale `.momd` is reused (runtime `NSInvalidArgumentException: must have a valid NSEntityDescription`). The fix: keep the `.xcdatamodeld` directory as the `momc` **argument** (momc needs the bundle, not the inner file), but `FileManager`-walk it and add every inner `*.xcdatamodel/contents` plus the `.xccurrentversion` to `inputFiles` so llbuild invalidates the command on a real model edit.
 
@@ -271,7 +266,7 @@ Retires the manual mtime-touch ritual. Closes build-5."
 
 ### Task 3: Scope the brittle tour-snapshot precision relaxation to the Form-bearing snapshot
 
-**Files:** Modify `Packages/LillistUI/Tests/LillistUITests/Tour/IOSScreenTourTests.swift` (the `test_08_settings_light` body at current lines 281-309, and the `assertScreen` helper at current lines 558-586).
+**Files:** Modify `Packages/LillistUI/Tests/LillistUITests/Tour/IOSScreenTourTests.swift` (anchor: the `test_08_settings_light` body — ~line 281 today — and the `private func assertScreen<V: View>` helper — ~line 558 today).
 
 This closes `ui-snap-1` (LillistUI lane: "brittle exact-pixel snapshots"). Verified live: `assertScreen` currently calls `assertSnapshot(of: host, as: .image(size: size, traits: traits), …)` with **no** `precision:`/`perceptualPrecision:` — i.e. exact-pixel (1.0). The engineering-notes entry "Snapshot test reliability: SwiftUI `Form` views drift on cold-cache runs" (2026-05-17) establishes the precedent: **`Form`-rendered snapshots** accumulate per-section AA drift and need `precision: 0.99, perceptualPrecision: 0.98`; non-Form views stay strict so they keep catching real regressions. The scope here is deliberately narrow: only `test_08_settings_light` renders a `Form` (via `SettingsScreen`, whose body is `NavigationStack { Form { … } }`, confirmed). Every other tour snapshot stays exact-pixel.
 
@@ -283,7 +278,7 @@ This closes `ui-snap-1` (LillistUI lane: "brittle exact-pixel snapshots"). Verif
   ```
   Expect: the `assertScreen` call uses `.image(size: size, traits: traits)` (no precision); the only `SettingsScreen` reference is in `test_08_settings_light`; no other `Form` usage in the tour file. This confirms the narrow scope.
 
-- [ ] **Step 2: Add optional precision params to `assertScreen`** — replace the `assertScreen` helper (current lines 558-586, the `private func assertScreen<V: View>( … )` through its closing `}`) with:
+- [ ] **Step 2: Add optional precision params to `assertScreen`** — replace the `assertScreen` helper (the `private func assertScreen<V: View>( … )` through its closing `}`, ~line 558 today — re-anchor by reading) with:
   ```swift
       private func assertScreen<V: View>(
           _ view: V,
@@ -322,7 +317,7 @@ This closes `ui-snap-1` (LillistUI lane: "brittle exact-pixel snapshots"). Verif
   ```
   Note: the defaults (`precision: 1, perceptualPrecision: 1`) are exact-pixel — identical to today's behaviour for every existing call site that doesn't pass them. The `Snapshotting<UIViewController, UIImage>.image(precision:perceptualPrecision:size:traits:)` factory exists in swift-snapshot-testing 1.17 (the version pinned in `Package.swift`); all four params are accepted on iOS.
 
-- [ ] **Step 3: Apply the relaxed precision to the one Form-bearing call** — in `test_08_settings_light`, change the single assertion line (current line 308) from:
+- [ ] **Step 3: Apply the relaxed precision to the one Form-bearing call** — in `test_08_settings_light`, change the single `assertScreen(view, name: "08-settings-light", …)` assertion (~line 308 today) from:
   ```swift
           assertScreen(view, name: "08-settings-light", colorScheme: .light, size: phoneSize)
   ```
@@ -411,11 +406,24 @@ This closes `build-1` (no CI), `build-2` (no pbxproj-drift gate), the CI half of
             swift --version
             xcodebuild -version
 
-        - name: Test LillistCore
-          run: swift test --package-path Packages/LillistCore
+        # LillistCore is container-heavy: dozens of suites build in-memory
+        # NSPersistentContainers in parallel, which intermittently SIGSEGVs
+        # inside Core Data's framework-internal per-entity state, and the
+        # same CPU contention starves SyncQuiesceMonitorTests' timing window
+        # (docs/engineering-notes.md 2026-06-04 "Intermittent SIGSEGV under
+        # heavy parallel in-memory store creation"; index residual #11).
+        # Neither is a product bug — production never creates more than one
+        # container — so the deterministic, verifiable mitigation is at the
+        # runner: bound parallelism (--num-workers) and retry once so a
+        # one-off SIGSEGV / timing flake re-runs instead of failing CI.
+        # See Task 6 for the matching CLAUDE.md note.
+        - name: Test LillistCore (bounded parallelism, retry on flake)
+          run: |
+            swift test --package-path Packages/LillistCore --num-workers 2 \
+              || swift test --package-path Packages/LillistCore --num-workers 2
 
         - name: Test LillistUI (host platform)
-          run: swift test --package-path Packages/LillistUI
+          run: swift test --package-path Packages/LillistUI --num-workers 2
 
     project-drift:
       name: pbxproj drift (xcodegen)
@@ -614,14 +622,35 @@ This closes `build-1` (no CI), `build-2` (no pbxproj-drift gate), the CI half of
 
   > **⚠️ Execution gotcha — scope the Release smoke so it never builds the app-hosted test target under no-signing.** With `Lillist-iOSAppHostedTests` (`CODE_SIGN_STYLE: Automatic`) now on the `Lillist-iOS` scheme, a bare `xcodebuild build -scheme Lillist-iOS ... CODE_SIGNING_ALLOWED=NO` may attempt to compile/sign that test target and fail. In the scheme, the app-hosted target is registered as `Lillist-iOSAppHostedTests: [test]` (build phase = *test only*, verified in `Apps/Lillist-iOS/project.yml` scheme `build.targets`), so a `build` action *should* skip it — but do not rely on that silently. **Build the app target explicitly** as shown (`-target Lillist-iOS`), which compiles only the app (and its app/extension dependencies) under Release and leaves every test target out of the no-signing build. Verify locally: `xcodebuild build -scheme Lillist-iOS -target Lillist-iOS -configuration Release -destination 'generic/platform=iOS' CODE_SIGNING_ALLOWED=NO ...` must reach `** BUILD SUCCEEDED **` without any `Lillist-iOSAppHostedTests` or signing-required errors. If `-target` is rejected in combination with `-scheme` on this Xcode, fall back to `-only-testing`-style narrowing is N/A for `build`; instead build via `-workspace`/`-project` + `-target Lillist-iOS` without `-scheme`, or split the app into its own scheme for the smoke. The goal is unchanged: exercise the **Release compile of the app**, nothing test-hosted.
 
-  *(Final YAML block of `.github/workflows/ci.yml` follows — append it after the blocks above.)*
+  *(Final YAML block of `.github/workflows/ci.yml` follows — append it after the blocks above. The `localization-lint` job is folded in from chain #6; see Task 6 for the standalone-file deletion that pairs with it.)*
 
   ```yaml
+
+    localization-lint:
+      # Folded in from lillistui-localization-a11y (also Wave 7): instead of a
+      # standalone .github/workflows/lillistui-localization.yml, run its lint
+      # as a job here so .github/workflows/ holds exactly one workflow. Task 6
+      # deletes the standalone file. The durable artifact is the plan-owned
+      # Tools/CI/check-lillistui-localization.sh script.
+      name: LillistUI localization extraction-drift lint
+      runs-on: macos-15
+      timeout-minutes: 20
+      steps:
+        - uses: actions/checkout@v4
+
+        - name: Select Xcode 26.3
+          run: sudo xcode-select -switch /Applications/Xcode_26.3.app
+
+        - name: Verify jq is available
+          run: jq --version
+
+        - name: Run LillistUI localization extraction-drift lint
+          run: ./Tools/CI/check-lillistui-localization.sh
 
     notify:
       name: Notify on failure
       runs-on: macos-15
-      needs: [spm, project-drift, ios, macos, release-archive-smoke]
+      needs: [spm, project-drift, ios, macos, release-archive-smoke, localization-lint]
       if: failure()
       steps:
         - name: Mark the run failed
@@ -635,9 +664,12 @@ This closes `build-1` (no CI), `build-2` (no pbxproj-drift gate), the CI half of
   Design notes (all verified against the repo):
   - `macos-15` is the GitHub-hosted runner image that ships Xcode 26.x; the `xcode-select` step pins `Xcode_26.3.app` to match the local toolchain (Xcode 26.3 / Swift 6.2.4 / iOS 26.2 simulator) — the snapshot tests are simulator-version-sensitive (engineering-notes "canonical simulator pin: iPhone 17 on iOS 26.2"). If a future runner image drops 26.3, this step is the single place to bump.
   - `xcbeautify` is usually preinstalled on the GitHub macOS runner images, but image contents drift — every step that pipes to it guards with `which xcbeautify || brew install xcbeautify` so a missing binary self-heals instead of failing the run. `set -o pipefail` ensures a non-zero `xcodebuild` exit survives the pipe.
-  - The drift gate uses `git diff --exit-code -- '*.xcodeproj/project.pbxproj'` so only the *generated* pbxproj is policed (not the user-data xcodegen also writes). This matches the two `xcodegen generate` invocations in CLAUDE.md.
+  - The drift gate uses `git diff --exit-code -- '*.xcodeproj/project.pbxproj'` so only the *generated* pbxproj is policed (not the user-data xcodegen also writes). This matches the two `xcodegen generate` invocations in CLAUDE.md. This plan lands **last** in Wave 7, so the gate validates the *final* committed pbxprojs after every earlier wave that moved/added source files has already regenerated them — Step 4 (and the `project-drift` job on first run) flags any pre-existing drift the prior waves left uncommitted, which must be committed before CI goes green.
+  - The `ios` job **runs the existing** `Lillist-iOSAppHostedTests` target (created and wired onto the `Lillist-iOS` scheme by the merged `store-swap-safety` plan — this plan does not create it). Likewise it does not create `Lillist-iOSUITests` or the scheme; it only executes them.
   - The Release smoke uses `xcodebuild build -configuration Release -destination 'generic/platform=iOS'` (a device-generic compile) rather than `archive`, because `archive` would trip the build-number bump pre-action and require signing; the goal is to exercise the Release compile path, which deployit's Debug archives never do. It builds the app target explicitly (`-target Lillist-iOS`) so the no-signing build never pulls in the app-hosted test target (see the Release-smoke execution gotcha above).
   - The placeholder team is copied from the committed `Apps/Config/Signing.local.xcconfig.example` (confirmed present per CLAUDE.md "Code signing"). For the `build`-action jobs (drift, macOS test, Release smoke) every build sets `CODE_SIGNING_ALLOWED=NO`, so the actual team value is irrelevant — the file just has to exist so the `#include?` indirection resolves `$(LOCAL_DEVELOPMENT_TEAM)`. **Exception:** if the `ios` job adopts Option (a) (ad-hoc simulator signing so the host-gated tests run), that job builds *with* signing allowed; the placeholder is still fine for ad-hoc `-` signing, but if a `DEVELOPMENT_TEAM` proves necessary, inject it from a CI secret in the "Provide a placeholder signing team" step (see the `ios` job execution gotcha).
+  - **Bounded `swift test` parallelism + flake retry (residual #11).** The `spm` job runs both `swift test`s with `--num-workers 2` and retries the LillistCore run once on non-zero exit. This is the runner-level mitigation for the intermittent parallel-test SIGSEGV and the `SyncQuiesceMonitorTests` timing flake documented in `docs/engineering-notes.md` (2026-06-04). Neither is a product bug — production never builds more than one `NSPersistentContainer` — so the fix lives in CI invocation, not source. Task 6 mirrors the same bounded invocation into CLAUDE.md's "Build & test" so local runs match. (If `--num-workers` is unavailable on the pinned toolchain, fall back to `--no-parallel` for LillistCore; confirm with `swift test --help` on the runner.)
+  - **The `localization-lint` job is the merged chain #6 artifact.** `lillistui-localization-a11y` (also Wave 7) produces the durable `Tools/CI/check-lillistui-localization.sh` lint and *would* have shipped a standalone `.github/workflows/lillistui-localization.yml`. Because `.github/workflows/` is owned by this plan, the lint runs as the `localization-lint` job here instead, and Task 6 deletes the standalone file so the repo holds exactly one workflow. The `notify` job's `needs:` includes `localization-lint` so a lint failure also reads as a red run.
   - **Simulator runtime availability.** The destination pins `iPhone 17 / iOS 26.2`. The GitHub `macos-15` image with Xcode 26.3 should ship that runtime, but hosted-image contents drift and the exact iOS 26.2 runtime is not guaranteed present. If `xcodebuild test` fails with "Unable to find a destination matching the provided destination specifier" or "iOS 26.2 is not installed", the runtime must be provisioned before the test step. Remedy — add a step before the test that downloads/installs and verifies the runtime:
     ```yaml
             - name: Ensure iOS 26.2 simulator runtime
@@ -680,48 +712,67 @@ This closes `build-1` (no CI), `build-2` (no pbxproj-drift gate), the CI half of
   ```
   Confirm `Lillist-iOSAppHostedTests` and `Lillist-iOSUITests` install + launch the host and that the `liveSwapAllowed`-gated tests report as **run, not skipped**. If ad-hoc `-` signing is rejected, retry with the real local team (omit the signing overrides entirely). Whichever recipe makes the host-gated tests run locally is the one to mirror into the `ios` job's test step (replacing the placeholder). If neither can be made to work on a hosted runner, fall back to Option (b) (scope to standalone bundles + document the limitation in Task 5). **Do not push the workflow with the placeholder `CODE_SIGNING_ALLOWED=NO` iOS step intact.**
 
+  **Placeholder-detection guard (mandatory — keep this check):** the `ios` job's test step ships as a deliberately-wrong placeholder. Before committing Task 4's `ci.yml`, prove the placeholder is gone — an unscoped `CODE_SIGNING_ALLOWED=NO` `xcodebuild test -scheme Lillist-iOS` step would silently skip the host-gated tests. Run:
+  ```bash
+  cd /Volumes/Code/mikeyward/Lillist && \
+    awk '/^    ios:/{f=1} f&&/^    [a-z].*:/&&!/^    ios:/{f=0} f' .github/workflows/ci.yml \
+      | grep -q "CODE_SIGNING_ALLOWED=NO" \
+      && { echo "FAIL: ios job still has CODE_SIGNING_ALLOWED=NO — resolve Option (a)/(b)"; exit 1; } \
+      || echo "OK: ios job is not the no-signing placeholder"
+  ```
+  If you chose **Option (b)** (signing genuinely impossible on the runner), the `ios` test step *does* keep `CODE_SIGNING_ALLOWED=NO`, but ONLY together with `-only-testing:Lillist-iOSTests` + `-only-testing:LillistUITests` that exclude the two host-app targets — so adjust the guard to additionally require both `-only-testing` flags are present whenever `CODE_SIGNING_ALLOWED=NO` is, and fail if the no-signing flag appears without them. The point is identical either way: a no-signing iOS step that silently drops the host-gated tests must never be committed.
+
 - [ ] **Step 5: Commit** —
   ```bash
   cd /Volumes/Code/mikeyward/Lillist && git add .github/workflows/ci.yml && git commit -m "ci: add post-push macOS workflow for the full test/build matrix
 
 Solo project pushes land on main directly, so CI runs post-push as a
-verifier: swift test for LillistCore + LillistUI, an xcodegen-regen +
+verifier: swift test for LillistCore + LillistUI (bounded --num-workers
+parallelism + a retry, per the 2026-06-04 parallel-test SIGSEGV /
+SyncQuiesceMonitor timing-flake note — residual #11), an xcodegen-regen +
 git-diff pbxproj-drift gate, the Lillist-iOS and Lillist-macOS
 xcodebuild test schemes (the iOS scheme transitively runs the
 LillistUI iOS snapshot/tour bundle and — when the ios job signs for
-the simulator — the now-merged app-hosted host-gated LillistCore
-tests), and a Release-configuration smoke build. deployit archives in
-Debug for iteration; CI is the only Release-config compile.
+the simulator — the merged app-hosted host-gated LillistCore tests in
+Lillist-iOSAppHostedTests), the folded-in LillistUI localization-lint
+job (chain #6), and a Release-configuration smoke build. deployit
+archives in Debug for iteration; CI is the only Release-config compile.
 
 Closes build-1, build-2, build-3, build-4, test-5; closes the
-'No CI/CD at all' blind spot."
+'No CI/CD at all' blind spot; absorbs residual #11."
   ```
+  Note: the `localization-lint` job invokes `Tools/CI/check-lillistui-localization.sh`, which is created by the `lillistui-localization-a11y` plan (also Wave 7). Land that plan before this one (the index sequences `lillistui-localization-a11y` immediately before `ci-and-build-posture` for exactly this reason); the standalone `.github/workflows/lillistui-localization.yml` it ships is removed in Task 6.
 
 ---
 
 ### Task 5: Document the CI design, the Debug/Release split, and the retired ritual
 
-**Files:** Modify `docs/engineering-notes.md` (prepend a new dated entry directly after the header, before the first existing `## 2026-05-17` entry — i.e. insert at the blank line after line 6) and `CLAUDE.md` (the "Build-plugin caching gotcha" and "Build & test" sections).
+**Files:** Modify `docs/engineering-notes.md` (append a new dated entry as the *newest* `##` block — anchor relative to the latest existing entry / true EOF, NOT to any `2026-05-17` heading) and `CLAUDE.md` (the "Build-plugin caching gotcha" and "Build & test" sections).
 
-This is the append-only engineering record (CLAUDE.md mandate) for the cross-cutting decisions made in Tasks 2 and 4 that a future contributor would otherwise rediscover the hard way: why CI is post-push, the deliberate Debug-for-deployit / Release-for-CI split, the retired mtime-touch ritual, and the dependency on *store-swap-safety*'s app-hosted test target. It also keeps the two affected CLAUDE.md sections truthful.
+This is the append-only engineering record (CLAUDE.md mandate) for the cross-cutting decisions made in Tasks 2 and 4 that a future contributor would otherwise rediscover the hard way: why CI is post-push, the deliberate Debug-for-deployit / Release-for-CI split, the retired mtime-touch ritual, the bounded-test-parallelism remedy for residual #11, and the dependency on *store-swap-safety*'s app-hosted test target. It also keeps the two affected CLAUDE.md sections truthful.
 
-- [ ] **Step 1: Read the current top of engineering-notes** — confirm the insertion point:
+- [ ] **Step 1: Find the current newest entry** — the log is chronological, oldest-to-newest, so the newest `##` heading is near EOF (it has been a 2026-06-xx entry as of this writing). Read the tail to confirm what to append after:
   ```bash
-  cd /Volumes/Code/mikeyward/Lillist && sed -n '1,8p' docs/engineering-notes.md
+  cd /Volumes/Code/mikeyward/Lillist && grep -n "^## " docs/engineering-notes.md | tail -3 && tail -5 docs/engineering-notes.md
   ```
-  Expect lines 1-6 to be the file header/intro and line 7 to begin `## 2026-05-17 — Plan 20a …`. The new entry is inserted as a new `##` block immediately before that line.
+  Append the new entry as a fresh `##` block *after* the current last entry (re-anchor by reading — do not key off any hard-coded line number, which drifts every wave).
 
-- [ ] **Step 2: Insert the engineering-notes entry** — using the Edit tool, insert the following block immediately before the existing `## 2026-05-17 — Plan 20a IOSScreenTourTests refactor` heading (so it becomes the newest entry at the top of the dated log):
+- [ ] **Step 2: Append the engineering-notes entry** — using the Edit tool, append the following block as a new `##` block after the current newest entry (so it becomes the newest entry at the bottom of the dated log; match the surrounding blank-line spacing):
   ```markdown
-  ## 2026-05-28 — CI established + build-posture alignment (Plan: ci-and-build-posture)
+  ## 2026-06-05 — CI established + build-posture alignment (Plan: ci-and-build-posture)
 
   **Context.** Until now every quality gate (warnings-as-errors, the
   full test matrix, snapshots, the runtime-gated migration tests, pbxproj
   drift) was enforced only by what the dev remembered to run locally. The
   foundation review's completeness critic named "No CI/CD at all" as a
-  blind spot, and `test-1`/`test-2` proved the most safety-critical tests
-  already silently skip. This entry records the CI design and three
-  build-posture fixes that landed with it.
+  blind spot, and the `test-1` finding showed the most safety-critical
+  tests could silently skip when the host bundle lacked a real
+  `CFBundleIdentifier` — the reason `store-swap-safety` introduced the
+  app-hosted `Lillist-iOSAppHostedTests` target (and `recovery-hardening`
+  closed `test-2` with the live `MigrationRecoveryTests`). This entry
+  records the CI design and three build-posture fixes that landed with
+  it, so those host-gated tests actually run on a schedule, not just from
+  memory.
 
   **Rules.**
 
@@ -764,6 +815,18 @@ This is the append-only engineering record (CLAUDE.md mandate) for the cross-cut
     `NavigationStack + Form`) uses `precision: 0.99, perceptualPrecision:
     0.98`, consistent with the 2026-05-17 "Form views drift on
     cold-cache runs" entry. Keep new non-Form snapshots strict.
+  - **`swift test` runs with bounded parallelism + a retry, by design.**
+    The `spm` job passes `--num-workers 2` and retries the LillistCore
+    run once. This is the deterministic runner-level mitigation for the
+    intermittent parallel-test SIGSEGV (dozens of concurrent in-memory
+    `NSPersistentContainer` loads racing Core Data's framework-internal
+    per-entity state) and the `SyncQuiesceMonitorTests` timing flake,
+    both documented in the 2026-06-04 entry (index residual #11). Neither
+    is a product bug — production never builds more than one container —
+    so the mitigation is in CI invocation, never in shipping code. The
+    CLAUDE.md "Build & test" section mirrors the bounded invocation so
+    local runs match. Do not "fix" this by serializing the parity suite:
+    parity-alone is clean; the trigger is cross-suite peak concurrency.
 
   - **Host-gated migration/swap tests need a signed simulator host —
     `CODE_SIGNING_ALLOWED=NO` is NOT enough for the iOS test job.** The
@@ -793,17 +856,20 @@ This is the append-only engineering record (CLAUDE.md mandate) for the cross-cut
   the `LillistCore` migration/store-swap tests into the
   `Lillist-iOSAppHostedTests` app-hosted unit-test target on the
   *existing* `Lillist-iOS` scheme (host-gated `liveSwapAllowed` tests,
-  per review findings `test-1`/`test-2`). Because it added a *target*
+  addressing review finding `test-1`). Because it added a *target*
   to a scheme CI already runs — not a new scheme — **no extra CI job is
   needed**; the `ios` job runs them as long as it signs for the
   simulator (see the rule above). If a future plan adds a new *scheme*,
   add a matching job here.
 
-  **Evidence.** `.github/workflows/ci.yml` with five matrix jobs + a
-  failure-notify job; `Packages/LillistUI/Package.swift` at swift-tools
-  6.2 with warnings-as-error; `CompileCoreDataModel.swift` declaring
-  inner-model `inputFiles`; `IOSScreenTourTests.assertScreen` precision
-  params. One commit per task on `main`.
+  **Evidence.** `.github/workflows/ci.yml` with six matrix jobs (spm,
+  project-drift, ios, macos, release-archive-smoke, localization-lint) +
+  a failure-notify job; the `spm` job's bounded `--num-workers 2` +
+  retry; the folded-in `localization-lint` job (standalone
+  `lillistui-localization.yml` deleted); `Packages/LillistUI/Package.swift`
+  at swift-tools 6.2 with warnings-as-error; `CompileCoreDataModel.swift`
+  declaring inner-model `inputFiles`; `IOSScreenTourTests.assertScreen`
+  precision params. One commit per task on `main`.
   ```
 
 - [ ] **Step 3: Update the CLAUDE.md mtime-ritual note** — read the section first, then mark the ritual retired. Read:
@@ -812,35 +878,49 @@ This is the append-only engineering record (CLAUDE.md mandate) for the cross-cut
   ```
   Then, using the Edit tool on `CLAUDE.md`, prepend a one-line status note immediately under the `## Build-plugin caching gotcha` heading so the now-historical ritual is clearly marked superseded. Insert this line directly after the heading and before the existing paragraph that begins "SwiftPM's `CompileCoreDataModel` plugin keys on…":
   ```markdown
-  > **Retired 2026-05-28.** The `CompileCoreDataModel` plugin now declares
-  > the inner `*.xcdatamodel/contents` + `.xccurrentversion` as
-  > `inputFiles`, so a model edit auto-invalidates `momc`. The touch
-  > ritual below is no longer required for `swift build`/`swift test`; it
-  > is kept here as historical context. See `docs/engineering-notes.md`
-  > (2026-05-28 entry).
+  > **Retired by `ci-and-build-posture`.** The `CompileCoreDataModel`
+  > plugin now declares the inner `*.xcdatamodel/contents` +
+  > `.xccurrentversion` as `inputFiles`, so a model edit auto-invalidates
+  > `momc`. The touch ritual below is no longer required for
+  > `swift build`/`swift test`; it is kept here as historical context.
+  > See the "CI established + build-posture alignment" entry in
+  > `docs/engineering-notes.md`.
   ```
 
-- [ ] **Step 4: Add a CI pointer to the CLAUDE.md "Build & test" section** — read the section first:
+- [ ] **Step 4: Add a CI pointer + bounded-parallelism note to the CLAUDE.md "Build & test" section** — read the section first:
   ```bash
   cd /Volumes/Code/mikeyward/Lillist && grep -n "## Build & test\|## House rules" CLAUDE.md
   ```
-  Then, using the Edit tool, insert the following note at the end of the `## Build & test` section (immediately before the `## House rules` heading that follows it):
+  Then, using the Edit tool, insert the following note at the end of the `## Build & test` section (immediately before the `## House rules` heading that follows it). It documents both the CI workflow and the bounded-parallelism `swift test` invocation that mirrors CI (residual #11):
   ```markdown
   **CI.** `.github/workflows/ci.yml` runs the full matrix post-push on
   `main` (and via `workflow_dispatch`): `swift test` for both packages, a
   pbxproj-drift gate (`xcodegen generate` + `git diff --exit-code`), the
-  `Lillist-iOS` and `Lillist-macOS` xcodebuild test schemes, and a
-  Release-configuration smoke build. It is a post-push verifier, not a
-  merge gate (solo project, direct-to-`main`). deployit still archives in
-  Debug for iteration — CI is the only Release-config compile.
+  `Lillist-iOS` and `Lillist-macOS` xcodebuild test schemes, a
+  Release-configuration smoke build, and the LillistUI localization-lint
+  job (`Tools/CI/check-lillistui-localization.sh`). It is a post-push
+  verifier, not a merge gate (solo project, direct-to-`main`). deployit
+  still archives in Debug for iteration — CI is the only Release-config
+  compile.
+
+  **Parallel-test flakes (`LillistCore`).** Heavy concurrent in-memory
+  store creation intermittently SIGSEGVs inside Core Data, and the same
+  CPU contention starves `SyncQuiesceMonitorTests`' timing window (see
+  `docs/engineering-notes.md` 2026-06-04). Neither is a product bug.
+  Run the suite with bounded parallelism + a one-shot retry to match CI:
+  `swift test --package-path Packages/LillistCore --num-workers 2`
+  (re-run once on a one-off SIGSEGV / timing flake before treating it as
+  a real failure). If `--num-workers` is unavailable on your toolchain,
+  use `--no-parallel` for `LillistCore`.
   ```
 
 - [ ] **Step 5: Verify the docs render and reference real paths** — run:
   ```bash
   cd /Volumes/Code/mikeyward/Lillist && \
-    grep -c "2026-05-28 — CI established" docs/engineering-notes.md && \
-    grep -c "Retired 2026-05-28" CLAUDE.md && \
-    grep -c "post-push on" CLAUDE.md
+    grep -c "CI established + build-posture alignment" docs/engineering-notes.md && \
+    grep -c "Retired by .ci-and-build-posture." CLAUDE.md && \
+    grep -c "post-push on" CLAUDE.md && \
+    grep -c "num-workers" CLAUDE.md
   ```
   Expect each `grep -c` to print `1` (the entries landed exactly once).
 
@@ -848,14 +928,61 @@ This is the append-only engineering record (CLAUDE.md mandate) for the cross-cut
   ```bash
   cd /Volumes/Code/mikeyward/Lillist && git add docs/engineering-notes.md CLAUDE.md && git commit -m "docs: record CI design, Debug/Release split, retired mtime ritual
 
-Add the 2026-05-28 engineering-notes entry covering: CI is a post-push
-verifier on main (not a PR gate); deployit archives in Debug for
-iteration while CI's smoke job is the only Release-config compile; the
+Add the engineering-notes entry covering: CI is a post-push verifier on
+main (not a PR gate); deployit archives in Debug for iteration while
+CI's smoke job is the only Release-config compile; the
 CompileCoreDataModel mtime-touch ritual is retired by the inputFiles
-fix; the pbxproj-drift gate depends on xcodegen idempotence; and the
-cross-plan dependency on store-swap-safety's app-hosted host-gated
-tests. Mark the CLAUDE.md mtime ritual retired and add a CI pointer to
-Build & test."
+fix; the pbxproj-drift gate depends on xcodegen idempotence; bounded
+swift-test parallelism + retry as the residual-#11 SIGSEGV/timing-flake
+remedy; and the cross-plan dependency on store-swap-safety's app-hosted
+host-gated tests. Mark the CLAUDE.md mtime ritual retired and add a CI
+pointer + bounded-parallelism note to Build & test."
+  ```
+
+---
+
+### Task 6: Fold the LillistUI localization-lint into ci.yml and delete the standalone workflow
+
+**Files:** Delete `.github/workflows/lillistui-localization.yml`.
+
+This closes **chain #6**. The `lillistui-localization-a11y` plan (also Wave 7, sequenced *before* this one in the index) creates the durable lint script `Tools/CI/check-lillistui-localization.sh` and ships a standalone `.github/workflows/lillistui-localization.yml`. Because `.github/workflows/` is owned by *this* plan, Task 4 already folds the lint in as the `localization-lint` job in `ci.yml`; this task removes the now-redundant standalone file so the repo holds exactly one workflow. (If `lillistui-localization-a11y` has not yet merged when this plan runs, land it first — the index orders it immediately before `ci-and-build-posture` precisely so the lint script and standalone workflow already exist.)
+
+- [ ] **Step 1: Confirm both the standalone workflow and the lint script exist** — run:
+  ```bash
+  cd /Volumes/Code/mikeyward/Lillist && \
+    ls .github/workflows/lillistui-localization.yml && \
+    ls Tools/CI/check-lillistui-localization.sh
+  ```
+  Expect both to exist. If `.github/workflows/lillistui-localization.yml` is absent, `lillistui-localization-a11y` already added its lint as a `ci.yml` job (it follows the same cross-plan rule) — there is nothing to delete; skip to Step 4 after confirming `ci.yml` has the `localization-lint` job. If the lint *script* is absent, `lillistui-localization-a11y` has not merged — stop and land it first.
+
+- [ ] **Step 2: Confirm `ci.yml` already carries the folded-in job** — the `localization-lint` job (added in Task 4) must invoke the script before the standalone file is removed, so the lint never stops running:
+  ```bash
+  cd /Volumes/Code/mikeyward/Lillist && \
+    grep -n "localization-lint\|check-lillistui-localization.sh" .github/workflows/ci.yml
+  ```
+  Expect the `localization-lint:` job name and the `./Tools/CI/check-lillistui-localization.sh` invocation. If either is missing, fix Task 4's `ci.yml` first — do not delete the standalone workflow while CI lacks the job.
+
+- [ ] **Step 3: Delete the standalone workflow** — run:
+  ```bash
+  cd /Volumes/Code/mikeyward/Lillist && git rm .github/workflows/lillistui-localization.yml
+  ```
+
+- [ ] **Step 4: Verify `.github/workflows/` holds exactly one workflow** — run:
+  ```bash
+  cd /Volumes/Code/mikeyward/Lillist && ls .github/workflows/
+  ```
+  Expect only `ci.yml`.
+
+- [ ] **Step 5: Commit** —
+  ```bash
+  cd /Volumes/Code/mikeyward/Lillist && git commit -m "ci: fold LillistUI localization lint into ci.yml; drop standalone workflow
+
+lillistui-localization-a11y shipped a standalone
+.github/workflows/lillistui-localization.yml. .github/workflows/ is
+owned by ci-and-build-posture, so the lint now runs as the
+localization-lint job in ci.yml (invoking the durable
+Tools/CI/check-lillistui-localization.sh) and the standalone file is
+removed — one workflow in the repo. Closes chain #6."
   ```
 
 ---
@@ -870,5 +997,7 @@ Build & test."
 - [ ] **ui-warn-1** (standing "found 83 file(s) unhandled" LillistUI manifest warning) — closed by **Task 1** (excludes the six test `__Snapshots__` dirs; Step 3 asserts the unhandled-file count drops to 0).
 - [ ] **ui-snap-1** (brittle exact-pixel LillistUI snapshots) — closed by **Task 3** (scopes the `precision: 0.99, perceptualPrecision: 0.98` relaxation to the single Form-bearing tour snapshot `test_08_settings_light`; all other tour snapshots stay exact-pixel).
 - [ ] **test-5** (the test/build matrix is run only from memory, never automatically) — closed by **Task 4** (CI executes `swift test` ×2, both xcodebuild schemes, the drift gate, and the Release smoke on every push to `main`; the `ios` job transitively runs the iOS snapshot/tour bundle). The app-hosted host-gated `Lillist-iOSAppHostedTests` and the `Lillist-iOSUITests` run in CI **only if** the `ios` job signs for the simulator (Option (a)); if CI cannot sign (Option (b)), those two run on a developer's signed Mac, which Task 5 must state as an explicit limitation — they are not silently dropped, they are scoped out and documented.
+- [ ] **residual #11** (intermittent parallel-test SIGSEGV + `SyncQuiesceMonitorTests` timing flake — see `docs/engineering-notes.md` 2026-06-04) — closed by **Task 4** (`spm` job runs `swift test --num-workers 2` + a one-shot retry) and **Task 5** (records the rationale in engineering-notes and mirrors the bounded invocation into CLAUDE.md "Build & test"). Runner-level mitigation only — no source change, because production never builds more than one container.
+- [ ] **chain #6** (one workflow in `.github/workflows/`) — closed by **Task 4** (folds the `localization-lint` job into `ci.yml`, invoking `lillistui-localization-a11y`'s `Tools/CI/check-lillistui-localization.sh`) and **Task 6** (deletes the standalone `lillistui-localization.yml`). The lint runs in `ci.yml` before the standalone file is removed, so the gate never lapses.
 
 **Strengths preserved (not refactored away):** the idempotent signing xcconfig indirection (Task 4 only *reads* the `.example` placeholder; the `build`-action jobs use `CODE_SIGNING_ALLOWED=NO`, while the `ios` test job uses ad-hoc simulator signing under Option (a) so the host-gated tests can run); the canonical iPhone 17 / iOS 26.2 simulator pin and the iPhone 16 Pro logical render size (Task 4 uses the documented destination verbatim); the monotonic tracked build-number counter (Task 4's Release smoke is a `build`, not an `archive`, so it never triggers the bump pre-action); LillistCore's existing strict-concurrency + warnings-as-error posture (Task 1 mirrors it onto LillistUI rather than altering LillistCore); the snapshot suite's overall strictness (Task 3 widens tolerance for exactly one Form-bearing snapshot, leaving every other baseline strict).
