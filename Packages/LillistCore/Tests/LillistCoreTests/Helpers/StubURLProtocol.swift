@@ -17,6 +17,19 @@ final class StubURLProtocol: URLProtocol, @unchecked Sendable {
         let statusCode: Int
         let headers: [String: String]
         let body: Data
+
+        init(statusCode: Int, headers: [String: String], body: Data) {
+            self.statusCode = statusCode
+            self.headers = headers
+            self.body = body
+        }
+
+        /// Convenience for a 3xx redirect to `location`. The `Location`
+        /// header is what `URLSession` follows, invoking the task
+        /// delegate's `willPerformHTTPRedirection`.
+        static func redirect(to location: String, statusCode: Int = 302) -> Response {
+            Response(statusCode: statusCode, headers: ["Location": location], body: Data())
+        }
     }
 
     private static let lock = NSLock()
@@ -53,6 +66,25 @@ final class StubURLProtocol: URLProtocol, @unchecked Sendable {
             httpVersion: "HTTP/1.1",
             headerFields: response.headers
         )!
+
+        // A 3xx with a Location header is delivered as a redirect so the
+        // session's task delegate gets willPerformHTTPRedirection. Without
+        // a delegate-supplied new request the session would follow it
+        // itself; our fetcher attaches a delegate to gate the hop.
+        if (300..<400).contains(response.statusCode),
+           let location = response.headers["Location"],
+           let nextURL = URL(string: location, relativeTo: url) {
+            var redirected = URLRequest(url: nextURL)
+            redirected.httpMethod = request.httpMethod
+            // Carry the per-session token so the follow-up request is
+            // still routed to this test's responder.
+            if let header = request.value(forHTTPHeaderField: Self.tokenHeader) {
+                redirected.setValue(header, forHTTPHeaderField: Self.tokenHeader)
+            }
+            client?.urlProtocol(self, wasRedirectedTo: redirected, redirectResponse: httpResponse)
+            return
+        }
+
         client?.urlProtocol(self, didReceive: httpResponse, cacheStoragePolicy: .notAllowed)
         client?.urlProtocol(self, didLoad: response.body)
         client?.urlProtocolDidFinishLoading(self)
