@@ -226,6 +226,7 @@ final class AppEnvironment {
             zoneEraser: LiveCloudKitZoneEraser(),
             quiesceMonitor: quiesceMonitor,
             notificationScheduler: scheduler,
+            preferencesStore: preferencesStore,
             syncModeStore: syncModeStore,
             breadcrumbs: breadcrumbs,
             cloudKitContainerIdentifier: ckContainerID,
