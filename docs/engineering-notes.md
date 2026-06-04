@@ -1969,3 +1969,41 @@ future contributor will otherwise rediscover the hard way:
   author — then advances the watermark. The diffing core
   (`RemoteChangeReconciler.affectedTaskIDs`) is a `nonisolated static`
   pure function so it's unit-testable without a live container.
+
+## Intermittent SIGSEGV under heavy parallel in-memory store creation (2026-06-04)
+
+- **Symptom.** `swift test --package-path Packages/LillistCore` occasionally
+  aborts the whole process with `error: Exited with unexpected signal code 11`
+  (SIGSEGV), with the crash trace pointing at a `ParitySuiteTests` parameterized
+  case. It is **rare** (~1 in 15–20 full-suite runs) and **does not reproduce on
+  demand** (parity suite alone: 8/8 clean; full suite: 10/10 clean in a stress
+  loop right after a crash).
+- **Root cause (investigated 2026-06-04, systematic-debugging).** It is **not** a
+  product bug and **not** in our code. Swift Testing runs the package's suites
+  (and parameterized cases) in parallel; very many tests call `TestStore.make()`
+  → `PersistenceController(configuration: .inMemory)`. At peak, dozens of
+  `NSPersistentContainer`s call `loadPersistentStores` concurrently while sharing
+  the single cached `NSManagedObjectModel` (`PersistenceController.sharedModel()`,
+  kept shared on purpose to avoid the "claims Entity" warning). Core Data's
+  framework-internal, lazily-built per-entity state (`NSEntityDescription`)
+  races across the concurrent loads → intermittent memory corruption. This is the
+  plain-container residue of the same class the code already mitigated for
+  `NSPersistentCloudKitContainer` (see `makeContainer`'s in-memory→plain comment),
+  and the reason the other container-heavy suites (`MigrationCoordinatorTests`,
+  `PersistenceHostTests`, `MigrationRunnerExecutingTests`, …) carry `.serialized`.
+  Wave 2's `ParitySuiteTests` matrix added ~100 more concurrent container
+  creations (51 fixtures × 2 calendars) — the densest single contributor to the
+  parallel burst — which is why the crash surfaces there.
+- **Why no code fix was applied.** The crash is timing-dependent and not
+  reproducible on demand, so no source change can be *verified* to remove it with
+  a feasible number of runs; and parity-alone being clean shows the trigger is
+  cross-suite peak concurrency, not any one suite (so a speculative `.serialized`
+  on the parity suite wouldn't reliably target it). Production never creates more
+  than one container, so there is **nothing to fix in shipping code**.
+- **Correct remedy (owned by Wave 7 `ci-and-build-posture`).** Bound test
+  parallelism at the runner — e.g. `swift test --num-workers <small N>` or
+  `--no-parallel` for the container-heavy suites — and/or add a crash-retry so a
+  one-off SIGSEGV re-runs rather than failing CI. That is a deterministic,
+  verifiable runner-level mitigation. Tracked as index residual #11. **A green
+  `swift test` is not undermined by a single observed SIGSEGV — re-run before
+  treating it as a real failure.**
