@@ -164,6 +164,23 @@ public final class SmartFilterStore: @unchecked Sendable {
         return FractionalPosition.position(after: last, before: nil)
     }
 
+    /// Re-space every smart-filter row to even 1.0 gaps, preserving current
+    /// order. Mutates the managed objects in place; the caller's
+    /// `context.save()` persists them. Must run inside the reorder `perform`
+    /// block so recompaction and the target update commit atomically. The
+    /// anchor managed objects the caller holds pick up their new `position`
+    /// values, so a post-recompaction `FractionalPosition.position` call sees
+    /// the widened gaps.
+    private func recompactSiblings() {
+        let req = NSFetchRequest<SmartFilter>(entityName: "SmartFilter")
+        req.sortDescriptors = [NSSortDescriptor(key: "position", ascending: true)]
+        guard let rows = try? context.fetch(req) else { return }
+        let respaced = PositionCompactor.recompact(positions: rows.map(\.position))
+        for (row, newPosition) in zip(rows, respaced) {
+            row.position = newPosition
+        }
+    }
+
     func validateName(_ name: String) throws {
         if name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
             throw LillistError.validationFailed([
@@ -245,14 +262,29 @@ extension SmartFilterStore {
     public func reorder(id: UUID, after: UUID?, before: UUID?) async throws {
         try await context.perform { [self] in
             let target = try fetchManagedObject(id: id, in: context)
-            let afterPos: Double? = try after.map { try fetchManagedObject(id: $0, in: context).position }
-            let beforePos: Double? = try before.map { try fetchManagedObject(id: $0, in: context).position }
-            if FractionalPosition.anchorsAreOutOfOrder(after: afterPos, before: beforePos) {
+            let afterRow = try after.map { try fetchManagedObject(id: $0, in: context) }
+            let beforeRow = try before.map { try fetchManagedObject(id: $0, in: context) }
+            if FractionalPosition.anchorsAreOutOfOrder(
+                after: afterRow?.position,
+                before: beforeRow?.position
+            ) {
                 throw LillistError.validationFailed([
                     .init(field: "reorder", message: "anchors out of order")
                 ])
             }
-            target.position = FractionalPosition.position(after: afterPos, before: beforePos)
+            // If the target gap underflows, re-space all rows evenly, then
+            // recompute against the freshly-spaced neighbors. Recompaction and
+            // the target update persist together in this one perform block.
+            if FractionalPosition.needsCompaction(
+                after: afterRow?.position,
+                before: beforeRow?.position
+            ) {
+                recompactSiblings()
+            }
+            target.position = FractionalPosition.position(
+                after: afterRow?.position,
+                before: beforeRow?.position
+            )
             target.modifiedAt = Date()
             try context.save()
         }
