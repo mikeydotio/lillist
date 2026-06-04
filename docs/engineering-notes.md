@@ -2000,10 +2000,25 @@ future contributor will otherwise rediscover the hard way:
   cross-suite peak concurrency, not any one suite (so a speculative `.serialized`
   on the parity suite wouldn't reliably target it). Production never creates more
   than one container, so there is **nothing to fix in shipping code**.
+- **Second manifestation — timing flakes, not just crashes.** The same
+  parallel-test CPU contention also intermittently fails *wall-clock* tests when a
+  `Task` is starved past a timing window. Confirmed case (2026-06-04):
+  `SyncQuiesceMonitorTests."Times out when events arrive faster than the quiet
+  window"` occasionally gets `.quiesced` instead of `.timedOut` — under load the
+  churner/watcher Task stalls past the 300ms quiet window, so the monitor sees a
+  false quiet gap. This is a **test-fidelity artifact, not a product bug**:
+  `SyncQuiesceMonitor` is an explicit best-effort heuristic ("intentionally not
+  bulletproof; live CloudKit integration testing covers the ground truth"), and
+  real CloudKit events don't get "starved" the way a fake churner Task does.
+  Tightening the churn interval would NOT robustly fix it (a single big stall
+  defeats any interval), and a clock-injection refactor is disproportionate for a
+  best-effort heuristic the migration coordinator depends on — so no source change
+  was made. The systemic remedy is the same: bound test parallelism.
 - **Correct remedy (owned by Wave 7 `ci-and-build-posture`).** Bound test
   parallelism at the runner — e.g. `swift test --num-workers <small N>` or
-  `--no-parallel` for the container-heavy suites — and/or add a crash-retry so a
-  one-off SIGSEGV re-runs rather than failing CI. That is a deterministic,
-  verifiable runner-level mitigation. Tracked as index residual #11. **A green
-  `swift test` is not undermined by a single observed SIGSEGV — re-run before
+  `--no-parallel` for the container-heavy / timing-sensitive suites — and/or add a
+  retry so a one-off SIGSEGV or timing flake re-runs rather than failing CI. That
+  is a deterministic, verifiable runner-level mitigation. Tracked as index
+  residual #11. **A green `swift test` is not undermined by a single observed
+  SIGSEGV or a single `SyncQuiesceMonitor`/contention timing flake — re-run before
   treating it as a real failure.**
