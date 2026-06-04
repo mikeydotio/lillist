@@ -135,6 +135,29 @@ struct SmartFilterStorePinReorderTests {
         try await store.reorder(id: c, after: b, before: nil)
         #expect(try await store.list().map(\.id) == [a, b, c])
     }
+
+    @Test("60 successive same-region inserts keep filter positions strictly increasing")
+    func repeatedSameGapInsertsCompact() async throws {
+        let controller = try await TestStore.make()
+        let store = SmartFilterStore(persistence: controller)
+        let head = try await store.create(name: "head", group: sample())
+        let tail = try await store.create(name: "tail", group: sample())
+
+        for i in 0..<60 {
+            let row = try await store.create(name: "row\(i)", group: sample())
+            let list = try await store.list()
+            let afterID = head
+            let beforeID = list.first { $0.id != head && $0.id != row }!.id
+            try await store.reorder(id: row, after: afterID, before: beforeID)
+        }
+
+        let positions = (try await store.list()).map(\.position)
+        for i in 1..<positions.count {
+            #expect(positions[i] > positions[i - 1])
+        }
+        #expect(Set(positions).count == positions.count)
+        _ = tail
+    }
 }
 
 @Suite("SmartFilterStore — evaluate and count")
