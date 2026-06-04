@@ -79,4 +79,70 @@ struct MigrationCoordinatorRestoreTests {
         #expect((summary?.trigger as? UNCalendarNotificationTrigger)?.dateComponents.hour == 8)
         #expect(try journal.read() == .idle)
     }
+
+    @Test("Replace iCloud with Local aborts before erase when the account changed", .enabled(if: liveSwapAllowed))
+    @MainActor
+    func abortsEraseOnAccountChange() async throws {
+        let dir = Self.tempDir()
+        let storeURL = dir.appendingPathComponent("Lillist.sqlite")
+        let host = try await PersistenceHost.make(initialMode: .localOnly, storeURL: storeURL)
+        let journal = InMemoryMigrationJournalStore()
+        let quarantine = QuarantineManager(rootDirectory: dir)
+        let fakeEraser = FakeCloudKitZoneEraser()
+        let bridge = CloudKitEventBridge()
+        let quiesce = SyncQuiesceMonitor(bridge: bridge)
+        let suite = "MigrationCoordinatorRestoreTests-\(UUID().uuidString)"
+        UserDefaults(suiteName: suite)?.removePersistentDomain(forName: suite)
+        let modeStore = SyncModeStore(suiteName: suite)
+        await modeStore.setMode(.localOnly)
+
+        let coordinator = MigrationCoordinator(
+            host: host,
+            journal: journal,
+            quarantine: quarantine,
+            zoneEraser: fakeEraser,
+            quiesceMonitor: quiesce,
+            notificationScheduler: nil,
+            syncModeStore: modeStore,
+            accountStateProvider: { .accountChanged }
+        )
+
+        await #expect(throws: LillistError.self) {
+            try await coordinator.beginEnable(direction: .replaceICloud, storeURL: storeURL)
+        }
+        #expect(await fakeEraser.callCount == 0)
+        #expect(try journal.read().state == .failed)
+    }
+
+    @Test("Replace iCloud with Local proceeds to erase when the account is available", .enabled(if: liveSwapAllowed))
+    @MainActor
+    func proceedsWhenAccountAvailable() async throws {
+        let dir = Self.tempDir()
+        let storeURL = dir.appendingPathComponent("Lillist.sqlite")
+        let host = try await PersistenceHost.make(initialMode: .localOnly, storeURL: storeURL)
+        let journal = InMemoryMigrationJournalStore()
+        let quarantine = QuarantineManager(rootDirectory: dir)
+        let fakeEraser = FakeCloudKitZoneEraser()
+        let bridge = CloudKitEventBridge()
+        let quiesce = SyncQuiesceMonitor(bridge: bridge)
+        let suite = "MigrationCoordinatorRestoreTests-\(UUID().uuidString)"
+        UserDefaults(suiteName: suite)?.removePersistentDomain(forName: suite)
+        let modeStore = SyncModeStore(suiteName: suite)
+        await modeStore.setMode(.localOnly)
+
+        let coordinator = MigrationCoordinator(
+            host: host,
+            journal: journal,
+            quarantine: quarantine,
+            zoneEraser: fakeEraser,
+            quiesceMonitor: quiesce,
+            notificationScheduler: nil,
+            syncModeStore: modeStore,
+            accountStateProvider: { .available }
+        )
+
+        try await coordinator.beginEnable(direction: .replaceICloud, storeURL: storeURL)
+        #expect(await fakeEraser.callCount == 1)
+        #expect(try journal.read() == .idle)
+    }
 }

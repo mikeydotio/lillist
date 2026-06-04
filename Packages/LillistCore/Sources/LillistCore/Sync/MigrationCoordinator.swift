@@ -27,6 +27,13 @@ public enum DisableStrategy: Sendable, Equatable {
 /// The coordinator is `@MainActor` because callers are SwiftUI
 /// views; internal phase work hops onto the embedded actors as
 /// needed.
+/// Closure that reports the current iCloud account state. Injected so
+/// `MigrationCoordinator` can refuse a destructive erase when the
+/// account changed out from under us without depending on `CloudKit`
+/// directly (keeps the type unit-testable). Returns `nil` to mean
+/// "unknown — proceed" (the conservative default keeps current behavior).
+public typealias AccountStateProviding = @Sendable () async -> iCloudAccountState?
+
 @MainActor
 public final class MigrationCoordinator {
     private let host: any PersistenceReconfiguring
@@ -50,6 +57,9 @@ public final class MigrationCoordinator {
     /// irreversible `replaceICloudWithLocal` erase. Injected so the
     /// executing tests can drive empty/non-empty without a live store.
     private let localStoreRowCount: @Sendable () async -> Int
+    /// Optional account-identity probe consulted before the irreversible
+    /// CloudKit zone erase. `nil` → no pre-flight (legacy behavior).
+    private let accountStateProvider: AccountStateProviding?
 
     private var progressContinuations: [UUID: AsyncStream<MigrationPhase>.Continuation] = [:]
 
@@ -64,7 +74,8 @@ public final class MigrationCoordinator {
         syncModeStore: SyncModeStore,
         breadcrumbs: BreadcrumbBuffer? = nil,
         cloudKitContainerIdentifier: String = StoreConfiguration.defaultCloudKitContainerIdentifier,
-        localStoreRowCount: @escaping @Sendable () async -> Int = { 1 }
+        localStoreRowCount: @escaping @Sendable () async -> Int = { 1 },
+        accountStateProvider: AccountStateProviding? = nil
     ) {
         self.host = host
         self.journal = journal
@@ -77,6 +88,7 @@ public final class MigrationCoordinator {
         self.breadcrumbs = breadcrumbs
         self.cloudKitContainerIdentifier = cloudKitContainerIdentifier
         self.localStoreRowCount = localStoreRowCount
+        self.accountStateProvider = accountStateProvider
     }
 
     /// Breadcrumb emit, awaited inline so phase crumbs land in
@@ -230,6 +242,16 @@ public final class MigrationCoordinator {
 
             // 6. cloudkit-side mutation (only for replaceICloudWithLocal).
             if op == .replaceICloudWithLocal {
+                // Pre-flight: never erase if the signed-in account changed
+                // out from under us — that would wipe the wrong account's
+                // zone. This throws into the catch below, which records
+                // `.failed` for the recovery sheet (PauseReason.accountChanged).
+                if let provider = accountStateProvider,
+                   await provider() == .accountChanged {
+                    throw LillistError.storeUnavailable(
+                        reason: "iCloud account changed; aborting before erase."
+                    )
+                }
                 entry.state = .mutatingCloudKit
                 entry.lastHeartbeatAt = Date()
                 try journal.write(entry)
