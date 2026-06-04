@@ -137,4 +137,45 @@ struct StoreBreadcrumbsTests {
         let snap = await buffer.snapshot()
         #expect(snap.contains(where: { $0.action == "tag.delete" && !$0.success }))
     }
+
+    @Test("AttachmentStore.addImage records an attachment.attach success breadcrumb")
+    func attachmentAttach_recordsSuccess() async throws {
+        let persistence = try await TestStore.make()
+        let tasks = TaskStore(persistence: persistence)
+        let store = AttachmentStore(persistence: persistence)
+        let buffer = BreadcrumbBuffer()
+        store.breadcrumbs = buffer
+        let task = try await tasks.create(title: "T")
+        let png = Data([
+            0x89,0x50,0x4E,0x47,0x0D,0x0A,0x1A,0x0A,
+            0x00,0x00,0x00,0x0D,0x49,0x48,0x44,0x52,
+            0x00,0x00,0x00,0x01,0x00,0x00,0x00,0x01,
+            0x08,0x06,0x00,0x00,0x00,0x1F,0x15,0xC4,
+            0x89,0x00,0x00,0x00,0x0D,0x49,0x44,0x41,
+            0x54,0x78,0x9C,0x63,0x00,0x01,0x00,0x00,
+            0x05,0x00,0x01,0x0D,0x0A,0x2D,0xB4,0x00,
+            0x00,0x00,0x00,0x49,0x45,0x4E,0x44,0xAE,
+            0x42,0x60,0x82
+        ])
+        _ = try await store.addImage(taskID: task, filename: "snap.png", data: png)
+        let snap = await buffer.snapshot()
+        #expect(snap.contains(where: { $0.action == "attachment.attach" && $0.success }))
+    }
+
+    @Test("Failed AttachmentStore.addImage records an attachment.attach failure breadcrumb")
+    func attachmentAttach_recordsFailure() async throws {
+        let persistence = try await TestStore.make()
+        let store = AttachmentStore(persistence: persistence)
+        let buffer = BreadcrumbBuffer()
+        store.breadcrumbs = buffer
+        do {
+            // No such task — fetchTask throws .notFound inside the perform.
+            _ = try await store.addImage(taskID: UUID(), filename: "orphan.png", data: Data([0x00]))
+            Issue.record("Expected notFound failure")
+        } catch {
+            // Expected.
+        }
+        let snap = await buffer.snapshot()
+        #expect(snap.contains(where: { $0.action == "attachment.attach" && !$0.success }))
+    }
 }
