@@ -140,8 +140,6 @@ CloudKit, XCTest + Swift Testing, xcodegen, GitHub Actions (new).
 - **Wave 2 (P1):** ✅ breadcrumb-truthfulness · ✅ fractional-ordering-compaction · ✅ predicate-parity · ◧ link-preview-ssrf-guards (Tasks 1–5 done; **Task 6 Share-Extension gate → Wave 6**)
 - **Wave 3 (P1):** ✅ cloudkit-convergence · ✅ resolve-inert-features
 - **Wave 4:** ⬜ **concurrency-stress-tests ← NEXT** · ⬜ migration-adjacent-correctness · ⬜ background-context-seam
-- **Wave 3 (P1):** ⬜ cloudkit-convergence · ⬜ resolve-inert-features
-- **Wave 4:** ⬜ concurrency-stress-tests · ⬜ migration-adjacent-correctness · ⬜ background-context-seam
 - **Wave 5 (P2):** ⬜ crash-reporter-privacy · ⬜ app-layer-test-rehab
 - **Wave 6:** ⬜ extension-persistence-unification · ⬜ export-import-robustness · ⬜ cli-robustness · ⬜ performance-budgets-and-paging · ⬜ observability-logging
 - **Wave 7 (closing):** ⬜ privacy-manifest-export-compliance · ⬜ recovery-hardening · ⬜ lillistui-localization-a11y · ⬜ ci-and-build-posture (LAST)
@@ -152,20 +150,23 @@ _When a plan merges, flip its box here and update its in-plan status banner._
 
 1. **Read** the review [`docs/reviews/2026-05-28-foundation-review.md`](../../reviews/2026-05-28-foundation-review.md)
    (why this work exists) and `CLAUDE.md` (conventions, build/test, signing).
-2. **Pick** the next ⬜ plan in wave order — respect the **serial chains** and
-   **hard dependencies** below. Each plan opens with a **status banner + (where
-   relevant) a ⚠️ Wave-1 reconciliation note** listing its specific drift.
+2. **Read the prior wave's handoff** — `docs/superpowers/handoffs/wave-(N−1).md`
+   (see *Wave Handoff Protocol*). Then **pick** the next ⬜ plan in wave order —
+   respect the **serial chains** and **hard dependencies** below. Each plan is
+   written to be correct against current `main` (reconciled to post-Wave-3
+   reality on 2026-06-04); start with its standard pre-flight.
 3. **Execute** task-by-task with the `superpowers:subagent-driven-development`
    skill (fresh subagent per task; spec-review then quality-review each).
    `superpowers:executing-plans` is the alternative.
-4. **Re-Read every file before editing** — Wave 1 changed several shared files,
-   so plan line numbers may have drifted; anchor by code structure, not line
+4. **Re-Read every file before editing** — each wave shifts the shared hotspot
+   files, so plan line numbers drift; anchor by code **structure**, not line
    number.
 5. **Verify** `swift test --package-path Packages/LillistCore` and `…/LillistUI`;
    app targets via the `xcodebuild … CODE_SIGNING_ALLOWED=NO build` recipe in
    `CLAUDE.md`; the host-gated swap tests need a signed simulator run.
 6. **Land** small conventional commits; merge each plan to `main` when its suite
-   is green (solo project — direct to `main`).
+   is green (solo project — direct to `main`). **On wave completion, write
+   `docs/superpowers/handoffs/wave-N.md`** for the next executor.
 
 ### Wave-1 execution learnings (what later plans must know)
 
@@ -200,6 +201,66 @@ gates, an unsound poison-object test, wrong file pointers, a `Self.appGroupID`
 scope bug, CI app-hosted-signing guidance, a BGTask `@MainActor` hop, a stale
 verbatim method paste, and a `breadcrumb-truthfulness` prerequisite) were
 corrected in the plans.
+
+### Wave 2–3 reconciliation pass (2026-06-04)
+
+The 2026-05-29 audit predated Waves 2 and 3. After those merged, an 18-agent
+read-only audit (workflow `wf_8ddc8c63-ae5`) re-checked all 14 remaining plans
+against current `main`. The plans were then **rewritten in place to be correct
+as if authored today** — the per-plan Wave-1 reconciliation notes were folded
+into direct prose, stale line anchors refreshed (structural anchors made primary
+on the shared hotspot files), and the following load-bearing fixes applied:
+
+- `concurrency-stress-tests` Task 1 flipped **RED→GREEN** (its
+  at-most-one-default dependency landed in Wave 3, commit `893c359`).
+- `background-context-seam` Task 1 insertion point corrected (after
+  `localTaskRowCount()`), Task 6 rollback re-anchored structurally onto the
+  Wave-2 `do/catch` shape, Task 5 `purgeAll` whole-method replacement; **owns
+  `HistoryPruner.sweep`**; absorbs residual #3 as a documented limitation.
+- `extension-persistence-unification` routes through `GatedPersistenceResolver`
+  (Wave 5) and **absorbs residual #10** (link-preview Task 6 Share-Extension gate).
+- `export-import-robustness` `applyEntry` Task 3/4 signature conflict resolved.
+- `recovery-hardening` retargeted to `copyStore` (not `quarantineStore`) with
+  post-reconfigure Task-5 assertions; Tasks 6–7 stay **deleted** (test-2 closed,
+  `MigrationRecoveryTests.swift` exists).
+- `ci-and-build-posture` **absorbs residual #11** (bound test parallelism / flake
+  retry).
+- `lillistui-localization-a11y` test-count arithmetic fixed (33, not 38).
+
+Two audit findings were **verified false and rejected** (do not reintroduce):
+"`MigrationRecoveryTests.swift` doesn't exist" (it does — keep Tasks 6–7
+deleted) and "iOS 26.2 doesn't exist, use 19.2" (`iPhone 17 / iOS 26.2` is the
+canonical destination per `CLAUDE.md`).
+
+---
+
+## Wave Handoff Protocol
+
+Each wave is executed by a *different* executor in a vacuum. To bridge them,
+**every executor reads the prior wave's handoff before starting and writes its
+own on completion** — `docs/superpowers/handoffs/wave-N.md`. Waves 1–3 are
+backfilled from the status entries above. Template:
+
+```markdown
+# Wave N handoff
+From: Wave N executor   To: Wave N+1 executor   Date: <abs date>
+
+## What landed
+- <plan>: commits <shas>; <N> LillistCore tests green (+ iOS scheme if app-touching). Closed: <findings>.
+
+## Shared files I moved (anchor by structure — line numbers are as-of-landing)
+- <file>: <method/section> now ~<line>; <what changed>
+
+## Assumptions I invalidated for later waves
+- <e.g. runMigration gained a reentrancy guard at its first statement>
+
+## Residuals I opened / closed
+- <#refs>
+
+## Pre-flight the next executor should run
+- git log --oneline main | head -20  (confirm my commits present)
+- <re-Read commands / anchor greps>
+```
 
 ---
 
@@ -340,12 +401,15 @@ rewrite invalidates line anchors).
    `automaticallyMergesChangesFromParent` — it's the active CloudKit channel).
 9. **iOS `AppEnvironment.swift`** (4 plans, distinct regions, serialize) —
    `migration-adjacent-correctness` (MigrationCoordinator init arg) →
-   `resolve-inert-features` (AutoPurgeJob + `HistoryPruner.sweep` into
-   `bootstrap()`; **`localStoreRowCount` already wired by wave 1 — don't
-   re-add**; **keeps the `includeLogs` toggle** that `observability-logging`
-   makes honest) → `cloudkit-convergence`
-   (reconciler + `normalizeSingletons`) → `observability-logging`
-   (`metricKitObserver`).
+   `resolve-inert-features` ✅ (wired AutoPurgeJob into `bootstrap()`;
+   **`HistoryPruner.sweep` is NOT here — it's `background-context-seam`'s, Wave
+   4**; `localStoreRowCount` already wired by wave 1 — don't re-add; **keeps the
+   `includeLogs` toggle** that `observability-logging` makes honest) →
+   `cloudkit-convergence` ✅ (reconciler + `normalizeSingletons`) →
+   `observability-logging` (`metricKitObserver`). *(resolve-inert-features +
+   cloudkit-convergence landed their regions in Wave 3; the remaining editors
+   are `migration-adjacent-correctness` and `observability-logging` — each
+   re-Reads and adds only its own region.)*
 10. **`Sync/MigrationJournal.swift` + `NotificationSpecStore.swift` +
     `PersistenceHost.swift` + `docs/engineering-notes.md`** — append-only /
     distinct-member edits; sequence by wave, re-Read before each append. The
@@ -400,7 +464,10 @@ so coverage isn't overstated:
    conflict semantic.
 3. **Orphaned pending `UNNotificationRequest`s on hard-delete/purge** (notif-7
    residual) — `background-context-seam` reaps `NotificationSpec` rows but no plan
-   cancels the OS-level pending requests for purged tasks. Needs an owner.
+   cancels the OS-level pending requests for purged tasks. **Owner:
+   `background-context-seam` documents it as an acknowledged limitation** (Task 5);
+   cancelling the OS-level requests is out of the 22-plan scope and stays a named
+   follow-up for a future notif-focused micro-fix.
 4. **`pause-reason` `.noNetwork` / `.iCloudDriveDisabled`** remain unreachable —
    `resolve-inert-features` drives the classifier but doesn't add an
    `NWPathMonitor`-backed reachability provider. Follow-up.
