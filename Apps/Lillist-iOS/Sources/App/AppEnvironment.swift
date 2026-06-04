@@ -53,6 +53,9 @@ final class AppEnvironment {
     let notificationSpecStore: NotificationSpecStore
     let snoozeRegistry: SnoozeRegistry
     let notificationScheduler: NotificationScheduler
+    /// Drives notification reconciliation from CloudKit imports (review
+    /// notif-2). Retained for the app's lifetime; deinit removes its observer.
+    let remoteChangeReconciler: RemoteChangeReconciler
     let notificationPermissions: NotificationPermissions
     let accountStateMonitor: AccountStateMonitor
     let onboardingState: OnboardingState
@@ -131,6 +134,27 @@ final class AppEnvironment {
         // Property injection per Plan 5: TaskStore reaches the scheduler
         // here, NOT through a singleton holder.
         self.taskStore.notificationScheduler = scheduler
+
+        // Remote-change-driven reconcile: when CloudKit imports another
+        // device's notification fire, reconcile the affected tasks so this
+        // device drops its now-stale pending requests.
+        // NOTE: `appGroupID` is a *static* property declared at
+        // AppEnvironment.swift:210 — it is NOT a parameter or local
+        // variable of `private init`, so use `Self.appGroupID` here.
+        // (The same constant is used as `appGroupID` inside `make()`,
+        // ~line 228, where it resolves as a shorthand for `Self.appGroupID`
+        // because `make()` is also a static method — but that is a
+        // different call site in a different method.)
+        let historyTokens = PersistentHistoryTokenStore(appGroupID: Self.appGroupID)
+        self.remoteChangeReconciler = RemoteChangeReconciler(
+            persistence: persistence,
+            tokenStore: historyTokens
+        ) { [weak scheduler] affectedTaskIDs in
+            guard let scheduler else { return }
+            for taskID in affectedTaskIDs {
+                await scheduler.reconcile(taskID: taskID)
+            }
+        }
 
         // Plan 2 stub — once the CloudKit-backed monitor is bridged into
         // the UI's SyncIndicatorMonitor protocol, swap this for the live one.
@@ -271,6 +295,12 @@ final class AppEnvironment {
         // device-local consumer (OnboardingState, hotkey monitor, etc.)
         // reads from `DevicePreferencesStore`.
         _ = try? await preferencesPartitionMigrator.runIfNeeded()
+        // One-shot CloudKit singleton convergence + catch-up reconcile for any
+        // imports that arrived while the app wasn't running, then start
+        // observing live remote changes.
+        try? await preferencesStore.normalizeSingletons()
+        await remoteChangeReconciler.processPendingHistory()
+        remoteChangeReconciler.start()
         await notificationScheduler.bootstrap()
         // Bootstrap does *not* arm the canary anymore — that races
         // `CrashReporterHost.detectAndPrepare()`, which would then read
