@@ -47,6 +47,14 @@
         <key>UIApplicationSupportsMultipleScenes</key>
         <true/>
     </dict>
+    <key>UIBackgroundModes</key>
+    <array>
+        <string>processing</string>
+    </array>
+    <key>BGTaskSchedulerPermittedIdentifiers</key>
+    <array>
+        <string>io.mikeydotio.Lillist.autopurge</string>
+    </array>
     <key>NSUserActivityTypes</key>
     <array>
         <string>io.mikeydotio.Lillist.openTask</string>

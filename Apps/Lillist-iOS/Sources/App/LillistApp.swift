@@ -1,6 +1,7 @@
 import SwiftUI
 import LillistCore
 import LillistUI
+import BackgroundTasks
 
 @main
 struct LillistApp: App {
@@ -20,6 +21,45 @@ struct LillistApp: App {
             get: { TasksSort(rawValue: sortRaw) ?? .personalized },
             set: { sortRaw = $0.rawValue }
         )
+    }
+
+    init() {
+        // Persist-6: register the background trash-purge handler before
+        // launch completes (BGTaskScheduler requires registration during
+        // app init). The handler builds a short-lived AppEnvironment so it
+        // can run without the foreground SwiftUI environment being alive.
+        //
+        // The launch-handler closure is @Sendable / non-isolated (it does
+        // NOT inherit LillistApp's implicit @MainActor), and BGTask is not
+        // Sendable. So we: wire expirationHandler first; run the MainActor
+        // work on an explicit `Task { @MainActor in … }`; and complete the
+        // task back on the closure's own (non-isolated) thread using only
+        // the Bool that crosses the actor hop — never the BGTask itself.
+        BGTaskScheduler.shared.register(
+            forTaskWithIdentifier: BackgroundPurgeSchedule.taskIdentifier,
+            using: nil
+        ) { task in
+            // `expirationHandler` and `setTaskCompleted` are on the BGTask
+            // base class, so no BGProcessingTask cast is needed here.
+            let work = Task { @MainActor in
+                // Hop to the MainActor explicitly: both AppEnvironment.make()
+                // and env.runBackgroundPurge() are @MainActor-isolated.
+                let ok = await Self.runBackgroundPurge()
+                Self.scheduleBackgroundPurge()
+                return ok
+            }
+            // Set expiration before awaiting `work` so an early expiration
+            // can cancel the in-flight purge. `task` stays on this
+            // non-isolated thread; only the Bool result crosses the hop.
+            task.expirationHandler = { work.cancel() }
+            Task {
+                // `work` is a non-throwing `Task<Bool, Never>`; awaiting its
+                // value never throws (a cancelled run returns `false` from
+                // `runBackgroundPurge()`), so no `try?` is needed here.
+                let ok = await work.value
+                task.setTaskCompleted(success: ok)
+            }
+        }
     }
 
     var body: some Scene {
@@ -75,6 +115,7 @@ struct LillistApp: App {
             await env.bootstrap()
             try? await env.defaultsInstaller.installIfNeeded()
             environment = env
+            Self.scheduleBackgroundPurge()
         } catch {
             loadError = "\(error)"
         }
@@ -115,6 +156,23 @@ struct LillistApp: App {
             .setHasCompletedOnboarding(true)
         await SyncModeStore(appGroupID: AppEnvironment.appGroupID).setMode(.localOnly)
         UserDefaults(suiteName: AppEnvironment.appGroupID)?.synchronize()
+    }
+
+    /// Build a fresh environment, run the purge, tear it down. Used only by
+    /// the background task — the foreground env is owned by `@State`.
+    private static func runBackgroundPurge() async -> Bool {
+        guard let env = try? await AppEnvironment.make() else { return false }
+        return await env.runBackgroundPurge()
+    }
+
+    /// Submit the next background-processing request. Safe to call after
+    /// every run; the scheduler coalesces duplicate identifiers.
+    static func scheduleBackgroundPurge() {
+        let request = BGProcessingTaskRequest(identifier: BackgroundPurgeSchedule.taskIdentifier)
+        request.requiresNetworkConnectivity = false
+        request.requiresExternalPower = false
+        request.earliestBeginDate = Date(timeIntervalSinceNow: BackgroundPurgeSchedule.earliestBeginInterval)
+        try? BGTaskScheduler.shared.submit(request)
     }
 }
 
