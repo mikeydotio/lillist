@@ -89,4 +89,68 @@ public enum CascadeReaper {
             }
         }
     }
+
+    // MARK: - Batch deletion
+
+    /// Hard-deletes a cascade-expanded set of `objectIDs` (typically the
+    /// output of `objectIDs(forDeleting:)`) on `context`, returning the
+    /// objectIDs the store actually removed.
+    ///
+    /// `NSBatchDeleteRequest(objectIDs:)` requires every ID in a single
+    /// request to belong to **one** entity — passing a heterogeneous set
+    /// throws `NSInvalidArgumentException: mismatched objectIDs in batch
+    /// delete initializer`. Because a cascade closure spans `LillistTask`,
+    /// `JournalEntry`, `Attachment`, and `NotificationSpec`, this groups the
+    /// IDs by entity and issues one batch per entity.
+    ///
+    /// Entities are deleted leaf-first (`Attachment`, `NotificationSpec`,
+    /// `JournalEntry`, then `LillistTask`) so the order never violates a
+    /// store-level foreign-key constraint regardless of whether Core Data
+    /// has FK enforcement enabled.
+    ///
+    /// - Important: Like `objectIDs(forDeleting:)`, this must run on
+    ///   `context`'s queue (inside a `perform`/`performAndWait` block).
+    ///
+    /// - Parameters:
+    ///   - objectIDs: The full cascade closure to delete.
+    ///   - context: The (background) context to execute the batches on.
+    /// - Returns: The union of every objectID the per-entity
+    ///   `NSBatchDeleteResult`s reported, falling back to the input IDs for
+    ///   any entity whose result was empty — suitable for merging into the
+    ///   `viewContext` via `NSDeletedObjectsKey`.
+    /// - Throws: Whatever `context.execute(_:)` throws.
+    public static func batchDelete(
+        objectIDs: [NSManagedObjectID],
+        in context: NSManagedObjectContext
+    ) throws -> [NSManagedObjectID] {
+        guard !objectIDs.isEmpty else { return [] }
+
+        // Group by entity; `NSBatchDeleteRequest(objectIDs:)` is single-entity.
+        var byEntity: [String: [NSManagedObjectID]] = [:]
+        for id in objectIDs {
+            let name = id.entity.name ?? ""
+            byEntity[name, default: []].append(id)
+        }
+
+        // Leaf entities first so no batch ever deletes a parent row before
+        // its children. Any entity not listed here (none expected) trails.
+        let order = ["Attachment", "NotificationSpec", "JournalEntry", "LillistTask"]
+        let orderedNames = byEntity.keys.sorted { lhs, rhs in
+            let li = order.firstIndex(of: lhs) ?? order.count
+            let ri = order.firstIndex(of: rhs) ?? order.count
+            return li < ri
+        }
+
+        var deleted: Set<NSManagedObjectID> = []
+        for name in orderedNames {
+            guard let ids = byEntity[name], !ids.isEmpty else { continue }
+            let batch = NSBatchDeleteRequest(objectIDs: ids)
+            batch.resultType = .resultTypeObjectIDs
+            let result = try context.execute(batch) as? NSBatchDeleteResult
+            let executed = (result?.result as? [NSManagedObjectID]) ?? []
+            // Fall back to the named IDs when the store reports an empty set.
+            deleted.formUnion(executed.isEmpty ? ids : executed)
+        }
+        return Array(deleted)
+    }
 }

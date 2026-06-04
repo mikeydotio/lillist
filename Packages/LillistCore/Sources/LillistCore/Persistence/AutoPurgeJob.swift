@@ -16,14 +16,28 @@ public final class AutoPurgeJob: @unchecked Sendable {
     public func run(now: Date = Date()) async throws -> Int {
         let prefs = try await preferences.read()
         let cutoff = now.addingTimeInterval(-Double(prefs.trashRetentionDays) * 86400)
-        let ctx = persistence.container.viewContext
-        return try await ctx.perform {
+        let ctx = persistence.makeBackgroundContext()
+        let viewContext = persistence.container.viewContext
+        let deletedIDs: [NSManagedObjectID] = try await ctx.perform {
             let req = NSFetchRequest<LillistTask>(entityName: "LillistTask")
             req.predicate = NSPredicate(format: "deletedAt != nil AND deletedAt < %@", cutoff as NSDate)
             let victims = try ctx.fetch(req)
-            for v in victims { ctx.delete(v) }
-            try ctx.save()
-            return victims.count
+            // Batch delete skips Cascade rules, so expand victims to the full
+            // cascade closure and delete it entity-by-entity (a single batch
+            // is restricted to one entity). The IDs are merged into the
+            // viewContext below.
+            let ids = CascadeReaper.objectIDs(forDeleting: victims)
+            return try CascadeReaper.batchDelete(objectIDs: ids, in: ctx)
+        }
+        guard !deletedIDs.isEmpty else { return 0 }
+        await viewContext.perform {
+            NSManagedObjectContext.mergeChanges(
+                fromRemoteContextSave: [NSDeletedObjectsKey: deletedIDs],
+                into: [viewContext]
+            )
+        }
+        return await ctx.perform {
+            deletedIDs.filter { $0.entity.name == "LillistTask" }.count
         }
     }
 }
