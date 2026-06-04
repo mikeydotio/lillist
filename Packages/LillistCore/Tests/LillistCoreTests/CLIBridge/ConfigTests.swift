@@ -68,4 +68,27 @@ struct ConfigTests {
         let url = CLIBridge.Config.defaultLocation()
         #expect(url.path.hasSuffix(".config/lillist/config.toml"))
     }
+
+    @Test("resolvedCalendar uses the configured time zone")
+    func resolvedCalendarUsesConfiguredZone() throws {
+        let url = try writeToml("time_zone = \"America/Los_Angeles\"")
+        let cfg = try CLIBridge.Config.read(from: url)
+        let cal = cfg.resolvedCalendar()
+        #expect(cal.timeZone.identifier == "America/Los_Angeles")
+    }
+
+    @Test("resolvedCalendar falls back to current when no time zone is set")
+    func resolvedCalendarDefaultsToCurrent() throws {
+        let cfg = CLIBridge.Config()
+        let cal = cfg.resolvedCalendar()
+        #expect(cal.timeZone == Calendar.current.timeZone)
+    }
+
+    @Test("Invalid time_zone throws validationFailed")
+    func invalidTimeZone() throws {
+        let url = try writeToml("time_zone = \"Mars/Olympus_Mons\"")
+        #expect(throws: LillistError.self) {
+            _ = try CLIBridge.Config.read(from: url)
+        }
+    }
 }

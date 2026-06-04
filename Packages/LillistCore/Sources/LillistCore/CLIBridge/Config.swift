@@ -15,6 +15,18 @@ extension CLIBridge {
             self.timeZone = timeZone
         }
 
+        /// The calendar date commands should use, honoring the configured
+        /// `time_zone`. Falls back to `Calendar.current` (which carries the
+        /// host's zone) when no `time_zone` key is set. Centralizes what
+        /// every CLI date command previously hardcoded as `Calendar.current`,
+        /// so the parsed `time_zone` actually affects relative-date math.
+        public func resolvedCalendar() -> Calendar {
+            guard let timeZone else { return Calendar.current }
+            var calendar = Calendar.current
+            calendar.timeZone = timeZone
+            return calendar
+        }
+
         /// Reads the config at `url`. A missing file yields defaults.
         public static func read(from url: URL) throws -> Config {
             guard FileManager.default.fileExists(atPath: url.path) else {
@@ -45,7 +57,12 @@ extension CLIBridge {
                     }
                     cfg.sort = s
                 case "time_zone":
-                    cfg.timeZone = TimeZone(identifier: value)
+                    guard let zone = TimeZone(identifier: value) else {
+                        throw LillistError.validationFailed([
+                            .init(field: "time_zone", message: "unknown time zone identifier '\(value)'")
+                        ])
+                    }
+                    cfg.timeZone = zone
                 default:
                     continue
                 }
