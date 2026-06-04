@@ -1,6 +1,13 @@
 # Resolve Inert Features Implementation Plan
 
-> **📍 STATUS — ⬜ PENDING — Wave 3.**
+> **📍 STATUS — ✅ MERGED to `main` (2026-06-04) — Wave 3.** All 10 tasks landed
+> (commits `a2e4ac1`..`aac4435`); 767 LillistCore tests green, iOS + macOS apps
+> build clean, warning-free. Closed persist-6, ios-1, ios-4, macos-2, logs-2,
+> crumbs-3, cli-1. Notes: this plan does **NOT** wire `HistoryPruner.sweep` (that's
+> Wave 4 `background-context-seam` — the earlier index claim was wrong); one
+> faithful Task-9 compile-fix (redundant `try?` on a non-throwing `Task.value`);
+> the plan's stale pbxproj path was corrected to `Apps/Lillist-macOS.xcodeproj`.
+> The Task-3 snapshot re-record step was a confirmed no-op (no baselines touched).
 >
 > Part of the **Foundation Hardening** program. **Single source of truth for progress, wave order, and cross-plan coordination:** [`2026-05-29-foundation-hardening-index.md`](2026-05-29-foundation-hardening-index.md). New to this project? Read the index first, then the review ([`docs/reviews/2026-05-28-foundation-review.md`](../../reviews/2026-05-28-foundation-review.md)) for *why* this work exists, then `CLAUDE.md` for conventions + build/test commands. Execute task-by-task with `superpowers:subagent-driven-development`.
 >

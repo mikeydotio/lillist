@@ -112,17 +112,34 @@ CloudKit, XCTest + Swift Testing, xcodegen, GitHub Actions (new).
   changed behavior or weakened a test. **⚠️ A pre-existing, rare, test-only SIGSEGV
   in heavy parallel in-memory store creation was investigated during verification
   — see residual #11; not a Wave-3 regression (760 green ×10).**
-- ⬜ **Next: Wave 3 (last)** — `resolve-inert-features` (wires `AutoPurgeJob` +
-  Wave-4's `HistoryPruner.sweep` into `bootstrap()`; edits iOS `AppEnvironment.swift`
-  in a region distinct from cloudkit-convergence — re-Read first; **do NOT re-add
-  `localStoreRowCount`**, already wired by Wave 1).
+- ✅ **Wave 3 · `resolve-inert-features`** — **merged to `main`** (commits
+  `a2e4ac1`..`aac4435`; 767 LillistCore tests green, iOS + macOS apps build clean,
+  warning-free). Closed persist-6, ios-1, ios-4, macos-2, logs-2, crumbs-3, cli-1.
+  Wired `AutoPurgeJob` into both `bootstrap()` paths + an iOS `BGProcessingTask`
+  (shared `BackgroundPurgeSchedule` constant + pin test), drove
+  `PauseReasonClassifier` into the `pauseReason` mirror on both platforms, deleted
+  the dead iOS `CommandMenu("Task")` block + four unobserved macOS menu commands
+  (behind a co-compiled observer guard test), stripped the overpromising
+  crash-report breadcrumb/log preview copy, and centralized the CLI `time_zone`
+  via `Config.resolvedCalendar()`. Notes: this plan does **NOT** wire
+  `HistoryPruner.sweep` (the earlier index claim was wrong — that's Wave 4's
+  `background-context-seam`); one faithful compile-fix to the plan's Task-9 BGTask
+  handler (redundant `try?` on a non-throwing `Task.value`, same pattern as
+  cloudkit-convergence); the plan's stale pbxproj path was corrected to
+  `Apps/Lillist-macOS.xcodeproj`.
+- ✅ **Wave 3 COMPLETE. Next: Wave 4** — `concurrency-stress-tests` (dependsOn
+  `cloudkit-convergence` ✅; reuses Wave-1's `FakePersistenceReconfigurer`),
+  `migration-adjacent-correctness` (dependsOn `store-swap-safety` ✅),
+  `background-context-seam` (after `breadcrumb-truthfulness` ✅ and
+  `cloudkit-convergence` ✅; **owns the `HistoryPruner` work**).
 - ⬜ **Waves 4–7** — pending. Follow the wave order + serial chains below.
 
 ### Progress checklist
 
 - **Wave 1 (P0):** ✅ store-swap-safety · ✅ recurrence-input-hardening
 - **Wave 2 (P1):** ✅ breadcrumb-truthfulness · ✅ fractional-ordering-compaction · ✅ predicate-parity · ◧ link-preview-ssrf-guards (Tasks 1–5 done; **Task 6 Share-Extension gate → Wave 6**)
-- **Wave 3 (P1):** ✅ cloudkit-convergence · ⬜ **resolve-inert-features ← NEXT**
+- **Wave 3 (P1):** ✅ cloudkit-convergence · ✅ resolve-inert-features
+- **Wave 4:** ⬜ **concurrency-stress-tests ← NEXT** · ⬜ migration-adjacent-correctness · ⬜ background-context-seam
 - **Wave 3 (P1):** ⬜ cloudkit-convergence · ⬜ resolve-inert-features
 - **Wave 4:** ⬜ concurrency-stress-tests · ⬜ migration-adjacent-correctness · ⬜ background-context-seam
 - **Wave 5 (P2):** ⬜ crash-reporter-privacy · ⬜ app-layer-test-rehab
@@ -426,19 +443,28 @@ so coverage isn't overstated:
     persist an SSRF-bait URL as a link attachment (the *fetch* is already blocked by
     the merged fetcher guard, so no request is made — only the row persists). Owner:
     Wave 6, alongside `extension-persistence-unification`.
-11. **Intermittent test-suite SIGSEGV under heavy parallel in-memory store
-    creation** (investigated 2026-06-04, `cloudkit-convergence` verification) —
-    `swift test` rarely (~1/15–20 full runs) aborts with signal 11 in a
-    `ParitySuiteTests` case. Root cause: Swift Testing runs ~100+ parameterized
-    cases in parallel, each creating an in-memory `NSPersistentContainer` that
-    shares one cached `NSManagedObjectModel`; concurrent `loadPersistentStores`
-    races Core Data's framework-internal lazy `NSEntityDescription` setup. **Test-
-    only** (production makes one container), **not reproducible on demand**, **not
-    a product bug**. No source fix applied (unverifiable for a timing-dependent
-    crash; the trigger is cross-suite peak concurrency, not one suite). **Owner:
-    Wave 7 `ci-and-build-posture`** — bound test parallelism (`--num-workers N` /
-    `--no-parallel` on container-heavy suites) and/or add SIGSEGV crash-retry.
-    Full analysis in `docs/engineering-notes.md` (2026-06-04 entry).
+11. **Intermittent parallel-test instability — rare SIGSEGV + rare timing flakes**
+    (investigated 2026-06-04, `cloudkit-convergence` / `resolve-inert-features`
+    verification). Two manifestations, one root cause (parallel-test CPU
+    contention), one systemic fix. **(a)** `swift test` rarely (~1/15–20 full runs)
+    aborts with signal 11 in a `ParitySuiteTests` case — Swift Testing runs ~100+
+    parameterized cases in parallel, each creating an in-memory
+    `NSPersistentContainer` sharing one cached `NSManagedObjectModel`; concurrent
+    `loadPersistentStores` races Core Data's framework-internal lazy
+    `NSEntityDescription` setup. **(b)** `SyncQuiesceMonitorTests."Times out when
+    events arrive faster than the quiet window"` rarely gets `.quiesced` not
+    `.timedOut` — under load the churner/watcher `Task` stalls past the 300ms quiet
+    window, so the monitor sees a false quiet gap. Both are **test-only**, **not
+    reproducible on demand**, **not product bugs** (production makes one container;
+    real CloudKit events aren't "starved"; `SyncQuiesceMonitor` is an explicit
+    best-effort heuristic). No source fixes applied (unverifiable for timing-
+    dependent failures; a margin tweak/clock-injection would be a symptom band-aid
+    or disproportionate). **Owner: Wave 7 `ci-and-build-posture`** — bound test
+    parallelism (`--num-workers N` / `--no-parallel` on container-heavy +
+    timing-sensitive suites) and/or add a retry for one-off SIGSEGV/timing flakes.
+    Full analysis in `docs/engineering-notes.md` (2026-06-04 entry). **Re-run a
+    full `swift test` before treating a single SIGSEGV/timing flake as a real
+    failure.**
 
 ## Suggested commit/PR cadence
 
