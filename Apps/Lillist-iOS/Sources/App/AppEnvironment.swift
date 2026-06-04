@@ -60,6 +60,10 @@ final class AppEnvironment {
     let accountStateMonitor: AccountStateMonitor
     let onboardingState: OnboardingState
     let defaultsInstaller: DefaultsInstaller
+    /// Persist-6: hard-deletes trash older than the retention window.
+    /// Run opportunistically at launch (`bootstrap()`) and from the iOS
+    /// background-processing task (`runBackgroundPurge()`).
+    let autoPurgeJob: AutoPurgeJob
     let syncMonitor: any SyncIndicatorMonitor
     let breadcrumbs: BreadcrumbBuffer
     let crashReporter: CrashReporter
@@ -104,6 +108,7 @@ final class AppEnvironment {
         self.smartFilterStore = smartFilterStore
         self.onboardingState = OnboardingState(devicePreferences: devicePreferences)
         self.defaultsInstaller = DefaultsInstaller(filters: smartFilterStore)
+        self.autoPurgeJob = AutoPurgeJob(persistence: persistence, preferences: preferencesStore)
         let ckContainerID = StoreConfiguration.defaultCloudKitContainerIdentifier
         self.accountStateMonitor = AccountStateMonitor(
             provider: CloudKitAccountStatusProvider(container: CKContainer(identifier: ckContainerID))
@@ -302,6 +307,9 @@ final class AppEnvironment {
         await remoteChangeReconciler.processPendingHistory()
         remoteChangeReconciler.start()
         await notificationScheduler.bootstrap()
+        // Persist-6: opportunistically clear expired trash at launch.
+        // Errors are non-fatal — a failed purge must never block launch.
+        _ = try? await autoPurgeJob.run()
         // Bootstrap does *not* arm the canary anymore — that races
         // `CrashReporterHost.detectAndPrepare()`, which would then read
         // the just-written canary as if it were a prior crash and pop
