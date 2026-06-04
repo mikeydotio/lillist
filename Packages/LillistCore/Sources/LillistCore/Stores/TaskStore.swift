@@ -190,11 +190,16 @@ public final class TaskStore: @unchecked Sendable {
     // MARK: - Hard delete
 
     public func hardDelete(id: UUID) async throws {
-        defer { Task { [weak self] in await self?.recordCrumb("task.purge", success: true) } }
-        try await context.perform { [self] in
-            let m = try fetchManagedObject(id: id, in: context)
-            context.delete(m)
-            try context.save()
+        do {
+            try await context.perform { [self] in
+                let m = try fetchManagedObject(id: id, in: context)
+                context.delete(m)
+                try context.save()
+            }
+            await recordCrumb("task.purge", success: true)
+        } catch {
+            await recordCrumb("task.purge", success: false)
+            throw error
         }
     }
 
@@ -384,28 +389,38 @@ public final class TaskStore: @unchecked Sendable {
     // MARK: - Soft delete
 
     public func softDelete(id: UUID) async throws {
-        defer { Task { [weak self] in await self?.recordCrumb("task.delete", success: true) } }
-        try await context.perform { [self] in
-            let m = try fetchManagedObject(id: id, in: context)
-            let now = Date()
-            applySoftDelete(to: m, at: now)
-            try context.save()
-        }
-        if let scheduler = notificationScheduler {
-            await scheduler.reconcile(taskID: id)
+        do {
+            try await context.perform { [self] in
+                let m = try fetchManagedObject(id: id, in: context)
+                let now = Date()
+                applySoftDelete(to: m, at: now)
+                try context.save()
+            }
+            if let scheduler = notificationScheduler {
+                await scheduler.reconcile(taskID: id)
+            }
+            await recordCrumb("task.delete", success: true)
+        } catch {
+            await recordCrumb("task.delete", success: false)
+            throw error
         }
     }
 
     public func restore(id: UUID) async throws {
-        defer { Task { [weak self] in await self?.recordCrumb("task.restore", success: true) } }
-        try await context.perform { [self] in
-            let m = try fetchManagedObject(id: id, in: context)
-            guard let deletedAt = m.deletedAt else { return }
-            clearSoftDelete(from: m, matchingDeletedAt: deletedAt)
-            try context.save()
-        }
-        if let scheduler = notificationScheduler {
-            await scheduler.reconcile(taskID: id)
+        do {
+            try await context.perform { [self] in
+                let m = try fetchManagedObject(id: id, in: context)
+                guard let deletedAt = m.deletedAt else { return }
+                clearSoftDelete(from: m, matchingDeletedAt: deletedAt)
+                try context.save()
+            }
+            if let scheduler = notificationScheduler {
+                await scheduler.reconcile(taskID: id)
+            }
+            await recordCrumb("task.restore", success: true)
+        } catch {
+            await recordCrumb("task.restore", success: false)
+            throw error
         }
     }
 

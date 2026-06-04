@@ -178,4 +178,89 @@ struct StoreBreadcrumbsTests {
         let snap = await buffer.snapshot()
         #expect(snap.contains(where: { $0.action == "attachment.attach" && !$0.success }))
     }
+
+    @Test("TaskStore.hardDelete records a task.purge success breadcrumb")
+    func taskHardDelete_recordsSuccess() async throws {
+        let persistence = try await TestStore.make()
+        let store = TaskStore(persistence: persistence)
+        let buffer = BreadcrumbBuffer()
+        store.breadcrumbs = buffer
+        let id = try await store.create(title: "T")
+        try await store.hardDelete(id: id)
+        let snap = await buffer.snapshot()
+        #expect(snap.contains(where: { $0.action == "task.purge" && $0.success }))
+    }
+
+    @Test("Failed TaskStore.hardDelete records a task.purge failure breadcrumb")
+    func taskHardDelete_recordsFailure() async throws {
+        let persistence = try await TestStore.make()
+        let store = TaskStore(persistence: persistence)
+        let buffer = BreadcrumbBuffer()
+        store.breadcrumbs = buffer
+        do {
+            try await store.hardDelete(id: UUID())
+            Issue.record("Expected notFound failure")
+        } catch {
+            // Expected.
+        }
+        let snap = await buffer.snapshot()
+        #expect(snap.contains(where: { $0.action == "task.purge" && !$0.success }))
+    }
+
+    @Test("TaskStore.softDelete records a task.delete success breadcrumb")
+    func taskSoftDelete_recordsSuccess() async throws {
+        let persistence = try await TestStore.make()
+        let store = TaskStore(persistence: persistence)
+        let buffer = BreadcrumbBuffer()
+        store.breadcrumbs = buffer
+        let id = try await store.create(title: "T")
+        try await store.softDelete(id: id)
+        let snap = await buffer.snapshot()
+        #expect(snap.contains(where: { $0.action == "task.delete" && $0.success }))
+    }
+
+    @Test("Failed TaskStore.softDelete records a task.delete failure breadcrumb")
+    func taskSoftDelete_recordsFailure() async throws {
+        let persistence = try await TestStore.make()
+        let store = TaskStore(persistence: persistence)
+        let buffer = BreadcrumbBuffer()
+        store.breadcrumbs = buffer
+        do {
+            try await store.softDelete(id: UUID())
+            Issue.record("Expected notFound failure")
+        } catch {
+            // Expected.
+        }
+        let snap = await buffer.snapshot()
+        #expect(snap.contains(where: { $0.action == "task.delete" && !$0.success }))
+    }
+
+    @Test("TaskStore.restore records a task.restore success breadcrumb")
+    func taskRestore_recordsSuccess() async throws {
+        let persistence = try await TestStore.make()
+        let store = TaskStore(persistence: persistence)
+        let buffer = BreadcrumbBuffer()
+        store.breadcrumbs = buffer
+        let id = try await store.create(title: "T")
+        try await store.softDelete(id: id)
+        try await store.restore(id: id)
+        let snap = await buffer.snapshot()
+        #expect(snap.contains(where: { $0.action == "task.restore" && $0.success }))
+    }
+
+    @Test("Failed TaskStore.restore records a task.restore failure breadcrumb")
+    func taskRestore_recordsFailure() async throws {
+        let persistence = try await TestStore.make()
+        let store = TaskStore(persistence: persistence)
+        let buffer = BreadcrumbBuffer()
+        store.breadcrumbs = buffer
+        do {
+            try await store.restore(id: UUID())
+            Issue.record("Expected notFound failure")
+        } catch {
+            // Expected.
+        }
+        let snap = await buffer.snapshot()
+        #expect(snap.contains(where: { $0.action == "task.restore" && !$0.success }))
+    }
 }
