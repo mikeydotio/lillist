@@ -93,9 +93,10 @@ public enum NSPredicateCompiler {
         case .ancestor:
             return compileAncestor(op: leaf.op, value: leaf.value)
 
-        case .hasNudges, .recurrence:
-            // Wired up by Plans 4 and 5 respectively.
-            return NSPredicate(value: false)
+        case .hasNudges:
+            return compileHasNudges(op: leaf.op, value: leaf.value)
+        case .recurrence:
+            return compileRecurrence(op: leaf.op, value: leaf.value)
         }
     }
 
@@ -150,6 +151,24 @@ public enum NSPredicateCompiler {
         return b
             ? NSPredicate(format: "children.@count > 0")
             : NSPredicate(format: "children.@count == 0")
+    }
+
+    // MARK: - hasNudges
+
+    static func compileHasNudges(op: Op, value: Value) -> NSPredicate {
+        guard case .bool(let b) = value, op == .is else { return NSPredicate(value: false) }
+        return b
+            ? NSPredicate(format: "notificationSpecs.@count > 0")
+            : NSPredicate(format: "notificationSpecs.@count == 0")
+    }
+
+    // MARK: - recurrence
+
+    static func compileRecurrence(op: Op, value: Value) -> NSPredicate {
+        guard case .bool(let b) = value, op == .is else { return NSPredicate(value: false) }
+        return b
+            ? NSPredicate(format: "series != nil")
+            : NSPredicate(format: "series == nil")
     }
 
     // MARK: - Dates

@@ -338,8 +338,8 @@ extension SwiftEvaluator.TaskSnapshot {
             ancestorIDs: ancestorIDs,
             journalNoteBodies: noteBodies,
             attachmentKinds: kinds,
-            hasNudges: false,     // Plan 4
-            isRecurring: false    // Plan 5
+            hasNudges: (m.notificationSpecs?.count ?? 0) > 0,
+            isRecurring: m.series != nil
         )
     }
 }
