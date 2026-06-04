@@ -290,11 +290,12 @@ extension SwiftEvaluator.TaskSnapshot {
             guard let tags = m.tags as? Set<Tag> else { return [] }
             return Set(tags.compactMap { $0.id })
         }()
-        // Ancestor chain (depth-bounded at 32 to match the compiler's safe ceiling)
+        // Ancestor chain, depth-bounded by the shared `PredicateLimits`
+        // ceiling so this walk matches `NSPredicateCompiler.compileAncestor`.
         var ancestorIDs: Set<UUID> = []
         var cursor: LillistTask? = m.parent
         var depth = 0
-        while let p = cursor, depth < 32 {
+        while let p = cursor, depth < PredicateLimits.maxAncestorDepth {
             if let pid = p.id { ancestorIDs.insert(pid) }
             cursor = p.parent
             depth += 1

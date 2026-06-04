@@ -281,22 +281,19 @@ public enum NSPredicateCompiler {
         case .isDescendantOf:
             // Task whose parent (or transitive ancestor) is one of the ids.
             // Core Data does not expose transitive closure in predicate format,
-            // so we OR a fixed depth of parent.id checks. v1 supports depth ≤ 8.
-            let depths = (1...8).map { depth -> NSPredicate in
+            // so we OR a fixed depth of parent.id checks bounded by
+            // `PredicateLimits.maxAncestorDepth` (shared with SwiftEvaluator).
+            let depths = (1...PredicateLimits.maxAncestorDepth).map { depth -> NSPredicate in
                 let keyPath = (0..<depth).map { _ in "parent" }.joined(separator: ".") + ".id"
                 return NSPredicate(format: "%K IN %@", keyPath, Array(ids))
             }
             return NSCompoundPredicate(orPredicateWithSubpredicates: depths)
         case .isAncestorOf:
-            // Task whose `id` is the parent (or transitive ancestor) of one of
-            // the given task ids. Without a reverse traversal helper this
-            // would require a fetch — we fall back to a runtime SUBQUERY over
-            // `children`, again bounded to depth 8.
-            let depths = (1...8).map { depth -> NSPredicate in
-                let keyPath = (0..<depth).map { _ in "children" }.joined(separator: ".") + ".id"
-                return NSPredicate(format: "ANY %K IN %@", keyPath, Array(ids))
-            }
-            return NSCompoundPredicate(orPredicateWithSubpredicates: depths)
+            // Symmetric with SwiftEvaluator.matchAncestor: there is no surfaced
+            // caller for `isAncestorOf` (YAGNI), so both evaluators stub `false`
+            // rather than diverge. Wire up a reverse-reachability traversal in
+            // both places together if a feature ever needs it.
+            return NSPredicate(value: false)
         default:
             return NSPredicate(value: false)
         }
