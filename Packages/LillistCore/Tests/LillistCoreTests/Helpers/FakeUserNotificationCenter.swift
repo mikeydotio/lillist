@@ -36,8 +36,19 @@ final class FakeUserNotificationCenter: UNUserNotificationCenterProtocol, @unche
 
     // MARK: - Protocol surface
 
+    /// Faithful to `UNUserNotificationCenter.add`: a request whose
+    /// identifier matches an existing pending request REPLACES it (the real
+    /// API upserts; it never holds two pending requests with one identifier).
+    /// `NotificationScheduler` relies on this — it builds
+    /// `Dictionary(uniqueKeysWithValues:)` over pending identifiers, which
+    /// traps on duplicates. Appending instead would let the fake accept
+    /// interleavings (concurrent reconciles adding the same identifier) that
+    /// the real center forbids.
     func add(_ request: UNNotificationRequest) async throws {
-        state.withLock { $0.added.append(request) }
+        state.withLock { s in
+            s.added.removeAll { $0.identifier == request.identifier }
+            s.added.append(request)
+        }
     }
 
     func pendingNotificationRequests() async -> [UNNotificationRequest] {
