@@ -1936,3 +1936,36 @@ future contributor will otherwise rediscover the hard way:
    `1...365`, so `maxInterval = 1000` only ever bites untrusted data. The
    high-side half was found by a post-merge adversarial audit, not the
    original plan — see the plan's status banner for the full deviation log.
+
+## CloudKit cross-device convergence (2026-05-28)
+
+- **`AppPreferences` uses a well-known constant id, not `UUID()`.**
+  `PreferencesStore.singletonID` is a fixed UUID literal. Before this,
+  every device minted its own random id, so CloudKit mirrored two
+  distinct "singleton" records and the devices flip-flopped. Never
+  regenerate the literal — existing stores depend on it.
+  `normalizeSingletons()` (called once at bootstrap) collapses any
+  legacy multi-row store down to one canonical row by id-sort, keeping
+  the first and reassigning it `singletonID`. It is idempotent.
+- **`viewContext.transactionAuthor`/`.name` are set to
+  `PersistenceController.localTransactionAuthor` at store load.** This
+  is load-bearing: the persistent-history diff in
+  `RemoteChangeReconciler` separates our own writes from CloudKit
+  imports purely by author. Removing it makes every local write look
+  like a remote change and triggers redundant reconcile cycles.
+- **Steady-state merge policy stays `mergeByPropertyObjectTrump` — on
+  purpose.** `CloudKitErrorClassifier` now gives `CKError` a typed
+  posture, but the conflict policy is intentionally last-writer-wins
+  per property. The known cost is that a concurrent edit to the *same
+  property* on another device is silently discarded on merge; per-field
+  CRDT reconciliation is YAGNI until a real conflict report appears.
+  Documented here so the choice is explicit, not inherited.
+- **History-token diffing resumes from a persisted watermark.**
+  `PersistentHistoryTokenStore` archives the `NSPersistentHistoryToken`
+  (via `NSKeyedArchiver`, `requiringSecureCoding: true`) into App-Group
+  `UserDefaults`. The reconciler fetches `fetchHistory(after:)` the
+  watermark, flattens transactions to `SyntheticChange`s, and only
+  reacts to `NotificationSpec.lastFiredAt` changes from a foreign
+  author — then advances the watermark. The diffing core
+  (`RemoteChangeReconciler.affectedTaskIDs`) is a `nonisolated static`
+  pure function so it's unit-testable without a live container.
