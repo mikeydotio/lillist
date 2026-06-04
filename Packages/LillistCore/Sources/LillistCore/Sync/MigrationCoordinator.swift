@@ -35,6 +35,10 @@ public final class MigrationCoordinator {
     private let zoneEraser: CloudKitZoneEraser
     private let quiesceMonitor: SyncQuiesceMonitor
     private let notificationScheduler: NotificationScheduler?
+    /// Optional source of the persisted morning-summary preference, read
+    /// during `.finalizing` so the post-migration restore re-derives the
+    /// morning summary from durable state rather than guessing.
+    private let preferencesStore: PreferencesStore?
     private let syncModeStore: SyncModeStore
     /// Plan 21 Wave 8.1: optional breadcrumb buffer for telemetry.
     private let breadcrumbs: BreadcrumbBuffer?
@@ -56,6 +60,7 @@ public final class MigrationCoordinator {
         zoneEraser: CloudKitZoneEraser,
         quiesceMonitor: SyncQuiesceMonitor,
         notificationScheduler: NotificationScheduler?,
+        preferencesStore: PreferencesStore? = nil,
         syncModeStore: SyncModeStore,
         breadcrumbs: BreadcrumbBuffer? = nil,
         cloudKitContainerIdentifier: String = StoreConfiguration.defaultCloudKitContainerIdentifier,
@@ -67,6 +72,7 @@ public final class MigrationCoordinator {
         self.zoneEraser = zoneEraser
         self.quiesceMonitor = quiesceMonitor
         self.notificationScheduler = notificationScheduler
+        self.preferencesStore = preferencesStore
         self.syncModeStore = syncModeStore
         self.breadcrumbs = breadcrumbs
         self.cloudKitContainerIdentifier = cloudKitContainerIdentifier
@@ -251,6 +257,20 @@ public final class MigrationCoordinator {
             entry.lastHeartbeatAt = Date()
             try journal.write(entry)
             emit(.finalizing)
+
+            // Re-install the post-migration notification steady state:
+            // surviving per-task specs are reconciled and the morning
+            // summary is re-derived from the persisted preference. The OS
+            // pending set was cleared in step 1; this rebuilds it against
+            // the now-reconfigured store.
+            if let scheduler = notificationScheduler {
+                let summary = try? await preferencesStore?.read()
+                await scheduler.restoreSteadyState(
+                    morningSummaryEnabled: summary?.morningSummaryEnabled ?? false,
+                    hour: Int(summary?.morningSummaryHour ?? 9),
+                    minute: Int(summary?.morningSummaryMinute ?? 0)
+                )
+            }
 
             try journal.clear()
             emit(.completed)
