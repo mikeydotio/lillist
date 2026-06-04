@@ -73,11 +73,13 @@ public final class MigrationCoordinator {
         self.localStoreRowCount = localStoreRowCount
     }
 
-    /// Fire-and-forget breadcrumb emit. Failures are silenced
-    /// (breadcrumbs are diagnostic-only).
-    private func breadcrumb(_ action: String, success: Bool = true) {
+    /// Breadcrumb emit, awaited inline so phase crumbs land in
+    /// operation order (not via a detached Task that could reorder
+    /// start/completed/failed). Failures are silenced — breadcrumbs
+    /// are diagnostic-only.
+    private func breadcrumb(_ action: String, success: Bool = true) async {
         guard let buffer = breadcrumbs else { return }
-        Task { try? await buffer.record(action: action, success: success) }
+        try? await buffer.record(action: action, success: success)
     }
 
     /// AsyncStream of phase events. Subscribed to by the progress
@@ -160,7 +162,7 @@ public final class MigrationCoordinator {
     // MARK: - Core migration runner
 
     private func runMigration(op: ModeTransitionOp, targetMode: SyncMode, storeURL: URL) async throws {
-        breadcrumb("sync mode change start \(op.rawValue)")
+        await breadcrumb("sync mode change start \(op.rawValue)")
         // 1. preparing — cancel notifications first so a destructive
         //    op doesn't leave stale fires pointing at deleted rows
         //    (skeptic G9). cancelAllPending MUST precede any
@@ -252,14 +254,14 @@ public final class MigrationCoordinator {
 
             try journal.clear()
             emit(.completed)
-            breadcrumb("sync mode change completed \(op.rawValue)")
+            await breadcrumb("sync mode change completed \(op.rawValue)")
         } catch {
             entry.state = .failed
             entry.failureReason = "\(error)"
             entry.lastHeartbeatAt = Date()
             try? journal.write(entry)
             emit(.failed(reason: "\(error)"))
-            breadcrumb("sync mode change failed \(op.rawValue)", success: false)
+            await breadcrumb("sync mode change failed \(op.rawValue)", success: false)
             throw error
         }
     }
