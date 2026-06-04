@@ -56,9 +56,10 @@ in-house crash reporter.
   (`docs/reviews/2026-05-28-foundation-review.md`) and its 22 follow-up
   plans are tracked **live** in
   `docs/superpowers/plans/2026-05-29-foundation-hardening-index.md` — the
-  current source of truth for what's done and what's next (Wave 1
-  `store-swap-safety` is merged; `recurrence-input-hardening` is the next
-  task). **New contributors picking this up: start at that index.** Each
+  current source of truth for what's done and what's next (Wave 1 is
+  complete — `store-swap-safety` + `recurrence-input-hardening` merged;
+  Wave 2 `breadcrumb-truthfulness` is next). **New contributors picking
+  this up: start at that index.** Each
   plan file opens with a status banner; several carry a Wave-1
   reconciliation note.
 
@@ -68,6 +69,15 @@ in-house crash reporter.
 # LillistCore and LillistUI on the host platform (macOS):
 swift test --package-path Packages/LillistCore
 swift test --package-path Packages/LillistUI   # iOS-only #if blocks compile out
+
+# ⚠️ LillistUI snapshot tests FAIL under host `swift test`: ~10 deterministic
+# mismatches (plus a few transient cold-cache RecurrenceEditor Form failures
+# that clear on a second run) from cross-host font/anti-aliasing baseline
+# drift — NOT a regression. Baselines are pinned to the snapshot host; the
+# trustworthy run is the `xcodebuild test -scheme Lillist-iOS` recipe below.
+# Use host `swift test --package-path Packages/LillistUI` only to confirm the
+# package compiles + its non-snapshot tests pass. (See engineering-notes.md
+# baseline-drift entries.)
 
 # iOS-only tests (iOSSnapshotTests, IOSScreenTourTests):
 xcodebuild test -workspace Lillist.xcworkspace \
