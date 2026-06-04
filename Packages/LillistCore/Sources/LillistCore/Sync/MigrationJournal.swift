@@ -31,9 +31,12 @@ public enum ModeTransitionOp: String, Codable, Sendable {
 ///    disable), *when* the heartbeat last fired, and *which*
 ///    quarantine backup to restore from. A bool can't carry that.
 /// 3. **Heartbeat semantics.** A crashed process leaves the journal
-///    non-idle. Recovery uses `lastHeartbeatAt > 30s ago` to classify
-///    the state as "stale and recoverable" instead of "another
-///    in-flight migration; back off."
+///    non-idle. Recovery uses `lastHeartbeatAt` against
+///    `staleThreshold` (well above the 300s sync-quiesce hard
+///    timeout) to classify the state as "stale and recoverable"
+///    instead of "another in-flight migration; back off." Only the
+///    main-app recovery sheet acts on staleness — `MigrationGate`
+///    still aborts headless callers on any non-idle journal.
 public struct MigrationJournal: Codable, Sendable, Equatable {
     public enum State: String, Codable, Sendable {
         case idle
@@ -122,4 +125,28 @@ public struct MigrationJournal: Codable, Sendable, Equatable {
     /// Whether the journal represents an in-flight (or crashed)
     /// migration that the app should not start a new one on top of.
     public var isInFlight: Bool { state != .idle }
+
+    /// Default staleness window. Deliberately above the 300s
+    /// `waitForQuiesce` hard timeout in `MigrationCoordinator` so a
+    /// genuinely-running migration (which can legitimately sit in
+    /// `.awaitingSync` for up to 5 minutes) is never misclassified as
+    /// crashed. 600s = 2× the quiesce ceiling, leaving slack for the
+    /// surrounding phases.
+    public static let staleThreshold: TimeInterval = 600
+
+    /// Whether an in-flight journal is *stale* — i.e. its owning process
+    /// almost certainly crashed rather than still running. An idle
+    /// journal is never stale. Staleness is measured from
+    /// `lastHeartbeatAt` when present, falling back to `startedAt`, and
+    /// finally treating a timestamp-less in-flight journal as stale
+    /// (it can't be a live heartbeat-emitting migration).
+    ///
+    /// Consumed **only** by the main-app recovery sheet to decide whether
+    /// to offer restore-from-backup. `MigrationGate` ignores staleness and
+    /// aborts headless callers on any non-idle journal.
+    public func isStale(now: Date = Date(), threshold: TimeInterval = MigrationJournal.staleThreshold) -> Bool {
+        guard isInFlight else { return false }
+        guard let reference = lastHeartbeatAt ?? startedAt else { return true }
+        return now.timeIntervalSince(reference) > threshold
+    }
 }
