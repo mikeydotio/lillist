@@ -38,6 +38,9 @@ final class AppEnvironment {
     let accountStateMonitor: AccountStateMonitor
     let onboardingState: OnboardingState
     let defaultsInstaller: DefaultsInstaller
+    /// Persist-6: hard-deletes trash older than the retention window.
+    /// Run opportunistically at launch (`bootstrap()`). Parity with iOS.
+    let autoPurgeJob: AutoPurgeJob
     /// Plan 11 Task 18: the global hotkey monitor lives on the
     /// environment (alongside the other singletons) so the Quick
     /// Capture preferences pane can call `reregister(combo:)` directly
@@ -87,6 +90,7 @@ final class AppEnvironment {
         self.smartFilterStore = smartFilterStore
         self.onboardingState = OnboardingState(devicePreferences: devicePreferences)
         self.defaultsInstaller = DefaultsInstaller(filters: smartFilterStore)
+        self.autoPurgeJob = AutoPurgeJob(persistence: persistence, preferences: preferencesStore)
         // Plan 11 Task 18: arm the hotkey monitor with the user's stored
         // combo before `AppDelegate.bootstrap()` calls `install()`. If
         // prefs lookup fails (or this is a brand-new install), we fall
@@ -244,6 +248,8 @@ final class AppEnvironment {
         // Idempotent; subsequent launches no-op.
         _ = try? await preferencesPartitionMigrator.runIfNeeded()
         await notificationScheduler.bootstrap()
+        // Persist-6: opportunistically clear expired trash at launch.
+        _ = try? await autoPurgeJob.run()
         // The canary is armed lazily by `CrashReporterHost.task` calling
         // `detectAndPrepare()`. Bootstrap *used* to call `start()` here
         // "defensively in case the host never gets a chance to render,"
