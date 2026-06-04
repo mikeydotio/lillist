@@ -12,6 +12,19 @@ struct ParityFixture: Sendable {
 
 /// A serializable description of a task to seed before running a fixture.
 /// Mirrors `LillistTask`'s queryable fields plus a few relational fan-outs.
+///
+/// Date fields support two seeding modes:
+/// - A **fixed absolute** `Date?` (`start` / `deadline` / `closedAt` /
+///   `createdAt` / `modifiedAt`) — used by fixtures whose predicate is itself
+///   absolute or calendar-insensitive (`isSet`, a fixed `absoluteDate`, …).
+/// - A **relative day offset** (`startDayOffset` / `deadlineDayOffset` /
+///   `closedAtDayOffset`) — resolved against the **running** calendar/`now`
+///   at seed time. Window predicates (`before .today`, `withinNextDays`,
+///   `withinLastDays`, `on .today`) must use the offset form so the seed keeps
+///   the same RELATIVE relationship to the window under every calendar — which
+///   makes the expected MEMBERSHIP set identical across calendars by
+///   construction (no hand-authored per-calendar expecteds). When an offset is
+///   present it wins over the matching fixed `Date?`.
 struct SeedTask: Sendable {
     var id: UUID = UUID()
     var title: String = "task"
@@ -30,6 +43,30 @@ struct SeedTask: Sendable {
     var attachmentKinds: [AttachmentKind] = []
     var isRecurring: Bool = false
     var hasNudges: Bool = false
+
+    // Calendar-relative day offsets (see type doc). `nil` => use the fixed
+    // `Date?` field instead.
+    var startDayOffset: Int? = nil
+    var deadlineDayOffset: Int? = nil
+    var closedAtDayOffset: Int? = nil
+
+    /// Resolve `start` for a given run calendar/now: the relative offset wins.
+    func resolvedStart(now: Date, calendar: Calendar) -> Date? {
+        if let o = startDayOffset { return calendar.date(byAdding: .day, value: o, to: now) }
+        return start
+    }
+
+    /// Resolve `deadline` for a given run calendar/now: the relative offset wins.
+    func resolvedDeadline(now: Date, calendar: Calendar) -> Date? {
+        if let o = deadlineDayOffset { return calendar.date(byAdding: .day, value: o, to: now) }
+        return deadline
+    }
+
+    /// Resolve `closedAt` for a given run calendar/now: the relative offset wins.
+    func resolvedClosedAt(now: Date, calendar: Calendar) -> Date? {
+        if let o = closedAtDayOffset { return calendar.date(byAdding: .day, value: o, to: now) }
+        return closedAt
+    }
 }
 
 enum ParityFixtures {
@@ -48,6 +85,31 @@ enum ParityFixtures {
         c.firstWeekday = 1
         return c
     }()
+
+    /// A non-UTC, DST-straddling reference for the second parity run.
+    /// 2026-03-08 is US spring-forward day in America/New_York (02:00 → 03:00),
+    /// so date windows resolved here exercise a 23-hour day. `now` is the
+    /// morning of spring-forward so `withinNextDays`/`on` windows cross the
+    /// transition.
+    static let nyNow: Date = {
+        var c = DateComponents()
+        c.year = 2026; c.month = 3; c.day = 8
+        c.hour = 9; c.minute = 0
+        c.timeZone = TimeZone(identifier: "America/New_York")
+        return Calendar(identifier: .gregorian).date(from: c)!
+    }()
+
+    static let nyCalendar: Calendar = {
+        var c = Calendar(identifier: .gregorian)
+        c.timeZone = TimeZone(identifier: "America/New_York")!
+        c.firstWeekday = 1
+        return c
+    }()
+
+    /// Day offset helper resolved against the DST calendar/now.
+    static func nyDays(_ n: Int, from date: Date = nyNow) -> Date {
+        nyCalendar.date(byAdding: .day, value: n, to: date)!
+    }
 
     static func days(_ n: Int, from date: Date = now) -> Date {
         calendar.date(byAdding: .day, value: n, to: date)!
@@ -167,8 +229,8 @@ enum ParityFixtures {
                 .leaf(.init(field: .deadline, op: .before, value: .relativeDate(.today)))
             ]),
             seeds: [
-                SeedTask(id: id1, deadline: days(-1)),
-                SeedTask(id: id2, deadline: days(1))
+                SeedTask(id: id1, deadlineDayOffset: -1),
+                SeedTask(id: id2, deadlineDayOffset: 1)
             ],
             expected: [id1]
         ),
@@ -179,8 +241,8 @@ enum ParityFixtures {
                 .leaf(.init(field: .deadline, op: .withinNextDays, value: .dayCount(7)))
             ]),
             seeds: [
-                SeedTask(id: id1, deadline: days(3)),
-                SeedTask(id: id2, deadline: days(10)),
+                SeedTask(id: id1, deadlineDayOffset: 3),
+                SeedTask(id: id2, deadlineDayOffset: 10),
                 SeedTask(id: id3, deadline: nil)
             ],
             expected: [id1]
@@ -192,8 +254,8 @@ enum ParityFixtures {
                 .leaf(.init(field: .start, op: .withinLastDays, value: .dayCount(3)))
             ]),
             seeds: [
-                SeedTask(id: id1, start: days(-1)),
-                SeedTask(id: id2, start: days(-5))
+                SeedTask(id: id1, startDayOffset: -1),
+                SeedTask(id: id2, startDayOffset: -5)
             ],
             expected: [id1]
         ),
@@ -240,8 +302,8 @@ enum ParityFixtures {
                 .leaf(.init(field: .closedAt, op: .withinLastDays, value: .dayCount(7)))
             ]),
             seeds: [
-                SeedTask(id: id1, status: .closed, closedAt: days(-2)),
-                SeedTask(id: id2, status: .closed, closedAt: days(-20))
+                SeedTask(id: id1, status: .closed, closedAtDayOffset: -2),
+                SeedTask(id: id2, status: .closed, closedAtDayOffset: -20)
             ],
             expected: [id1]
         ),
@@ -395,9 +457,9 @@ enum ParityFixtures {
                 .leaf(.init(field: .deadline, op: .withinNextDays, value: .dayCount(3)))
             ]),
             seeds: [
-                SeedTask(id: id1, deadline: days(1)),
+                SeedTask(id: id1, deadlineDayOffset: 1),
                 SeedTask(id: id2, isPinned: true),
-                SeedTask(id: id3, deadline: days(10), isPinned: false)
+                SeedTask(id: id3, isPinned: false, deadlineDayOffset: 10)
             ],
             expected: [id1, id2]
         ),
