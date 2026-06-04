@@ -2022,3 +2022,109 @@ future contributor will otherwise rediscover the hard way:
   residual #11. **A green `swift test` is not undermined by a single observed
   SIGSEGV or a single `SyncQuiesceMonitor`/contention timing flake — re-run before
   treating it as a real failure.**
+
+
+## Concurrency invariants proven by the stress suites (Plan: concurrency-stress-tests, Wave 4)
+
+CLAUDE.md mandates stress repetitions for any code crossing actor
+boundaries. The following invariants are not obvious from the happy-path
+code; each is now pinned by a stress test, and each has a sharp edge a
+refactor can silently break.
+
+### find-or-create single-context invariant
+
+`TagStore.findOrCreate` is atomic **only** because every production caller
+shares the one main-queue `viewContext`: the existence check and the
+optional insert run inside a single `context.perform`, so concurrent callers
+serialize and the later ones observe the row the first inserted. This is a
+property of the *shared context*, not of the `name ==[c]` predicate. Two
+independent `NSManagedObjectContext`s whose find-then-insert interleaves
+(both read the row absent, then both insert) **will** produce a duplicate
+tag — `TagStoreFindOrCreateRaceTests.secondContextCanRace` reproduces it
+**deterministically** (it interleaves the two contexts by hand rather than
+racing a `withTaskGroup`, so it proves the duplicate window every run without
+adding CI timing flakiness).
+
+Consequence: never open a second writer context for tag creation. Route all
+tag creation through the shared `TagStore`. The duplicate-tag race is
+prevented by discipline, not by the schema.
+
+We **declined** a `Tag` `uniquenessConstraints` on `(parent, name)` (YAGNI):
+every production caller already routes through the shared store; a unique
+constraint forces a store-wide merge-conflict policy that would interact with
+the existing `mergeByPropertyObjectTrump`; editing the `.xcdatamodel` triggers
+the CompileCoreDataModel mtime-touch ritual and a model-version bump; and Core
+Data unique constraints are **not** mirrored to CloudKit, so the constraint
+would give false cross-device confidence. If that calculus ever changes,
+`secondContextCanRace` is the signal to flip the test to assert the constraint
+and update this note.
+
+### at-most-one default notification spec per (taskID, kind)
+
+`NotificationScheduler.materializeDefaultSpecs` does a check-then-add:
+`specStore.specs(forTask:)` → (if absent) `specStore.add(...)`. Because
+`NotificationScheduler` is an `actor`, `reconcile(taskID:)` is reentrant at
+every `await`, so two interleaved reconciles can each observe the default spec
+absent and both attempt to insert.
+`NotificationSchedulerConcurrentReconcileTests` drives this with a 16-wide
+`withTaskGroup` across 50 fresh-store iterations and asserts exactly one
+default spec + one pending request hold under contention.
+
+The **enforcement** lives in `NotificationSpecStore.add` (the default-kind
+guard fetches existing specs, returns the survivor, and deletes any duplicate
+rows a prior race created — shipped in `cloudkit-convergence`, commit
+893c359). The store is where the dedup belongs — it scopes via a `task == %@`
+predicate rather than a model-level unique constraint, so it composes with
+CloudKit. Do not "fix" a regression here by adding a lock or dedup inside the
+scheduler's reconcile loop; restore the per-(task,kind) row guard in
+`NotificationSpecStore`.
+
+Test-infra dependency worth knowing: the stress test only holds because the
+test double `FakeUserNotificationCenter.add` is **upsert-faithful** to the real
+`UNUserNotificationCenter.add` (a request whose identifier matches a pending
+one *replaces* it). `NotificationScheduler` builds
+`Dictionary(uniqueKeysWithValues:)` over pending identifiers, which traps on
+duplicates; concurrent reconciles legitimately call `add` with the same
+identifier, and only an upsert-faithful fake (matching the documented real
+API) keeps pending identifiers unique. A fake that appended unconditionally
+crashed the scheduler on a duplicate key — a fake-fidelity bug, not a
+production bug (the real center never holds two pending requests under one
+identifier).
+
+### AsyncStream synchronous registration — what the N-subscriber suite does and does NOT guard
+
+`CloudKitEventBridge` registers its `AsyncStream` continuation **synchronously**
+inside the actor-isolated `eventStream` getter (not via a deferred
+`Task { register }`). That is the fix for the pre-subscription drop (Race A)
+diagnosed in `.rca/sync-status-monitor-event-drop/`.
+
+`CloudKitEventBridgeConcurrentSubscriberTests` guards three real properties
+under contention: N-subscriber fan-out delivers every event in order (no
+drops/reorder), terminating a subscriber unregisters its continuation without
+starving survivors or leaking, and subscribe/terminate churn never wedges the
+actor.
+
+It does **NOT** detect a regression that reverts to deferred `Task { register }`.
+This was verified empirically: with the deferred revert in place, the existing
+`preSubscriptionEventBuffering` test AND all three new tests still pass. The
+reason is structural — via the `recordEvent` test seam every `await` lets the
+enqueued registration Task run before the event is recorded, so actor
+scheduling masks Race A. Race A is a latent *production* hazard on the
+NotificationCenter-driven `handleEvent` path, where events can arrive between
+the getter returning and a deferred registration running. Synchronous
+registration is therefore held by the iterator-pattern design + code review,
+**not** by an executing canary. Do not remove the synchronous registration on
+the strength of "the tests still pass."
+
+### xcodebuild-gated store-reconfigure stress
+
+`StoreReconfigureConcurrencyTests` hammers `TaskStore.create`/`fetch` against a
+live `PersistenceHost.reconfigure` swap. It is gated by the same
+`liveSwapAllowed` bundle-ID check as `StoreLevelModeSwapSpike` because
+`NSCloudKitMirroringDelegate.dealloc` faults under the swift-test binary (no
+`CFBundleIdentifier`), so under `swift test` it skips cleanly. To actually
+*execute* the gated cases it is listed in the `Lillist-iOSAppHostedTests`
+target (real bundle ID); the standalone `LillistCoreTests` bundle skips it even
+under xcodebuild. Its real run is on a code-signed simulator host (CI / dev
+Mac). A fetch that lands mid-swap may throw `.notFound` (no attached store) — a
+tolerable transient; a crash or a lost committed row is not.
