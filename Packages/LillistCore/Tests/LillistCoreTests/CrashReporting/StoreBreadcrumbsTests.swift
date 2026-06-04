@@ -263,4 +263,62 @@ struct StoreBreadcrumbsTests {
         let snap = await buffer.snapshot()
         #expect(snap.contains(where: { $0.action == "task.restore" && !$0.success }))
     }
+
+    @Test("TaskStore.reparent records a task.move success breadcrumb")
+    func taskReparent_recordsSuccess() async throws {
+        let persistence = try await TestStore.make()
+        let store = TaskStore(persistence: persistence)
+        let buffer = BreadcrumbBuffer()
+        store.breadcrumbs = buffer
+        let parent = try await store.create(title: "Parent")
+        let child = try await store.create(title: "Child")
+        try await store.reparent(id: child, newParent: parent)
+        let snap = await buffer.snapshot()
+        #expect(snap.contains(where: { $0.action == "task.move" && $0.success }))
+    }
+
+    @Test("Failed TaskStore.reparent records a task.move failure breadcrumb")
+    func taskReparent_recordsFailure() async throws {
+        let persistence = try await TestStore.make()
+        let store = TaskStore(persistence: persistence)
+        let buffer = BreadcrumbBuffer()
+        store.breadcrumbs = buffer
+        do {
+            // No such task — fetchManagedObject throws .notFound inside the perform.
+            try await store.reparent(id: UUID(), newParent: nil)
+            Issue.record("Expected notFound failure")
+        } catch {
+            // Expected.
+        }
+        let snap = await buffer.snapshot()
+        #expect(snap.contains(where: { $0.action == "task.move" && !$0.success }))
+    }
+
+    @Test("TaskStore.transition records a task.status.change success breadcrumb")
+    func taskTransition_recordsSuccess() async throws {
+        let persistence = try await TestStore.make()
+        let store = TaskStore(persistence: persistence)
+        let buffer = BreadcrumbBuffer()
+        store.breadcrumbs = buffer
+        let id = try await store.create(title: "T")
+        try await store.transition(id: id, to: .started)
+        let snap = await buffer.snapshot()
+        #expect(snap.contains(where: { $0.action == "task.status.change" && $0.success }))
+    }
+
+    @Test("Failed TaskStore.transition records a task.status.change failure breadcrumb")
+    func taskTransition_recordsFailure() async throws {
+        let persistence = try await TestStore.make()
+        let store = TaskStore(persistence: persistence)
+        let buffer = BreadcrumbBuffer()
+        store.breadcrumbs = buffer
+        do {
+            try await store.transition(id: UUID(), to: .started)
+            Issue.record("Expected notFound failure")
+        } catch {
+            // Expected.
+        }
+        let snap = await buffer.snapshot()
+        #expect(snap.contains(where: { $0.action == "task.status.change" && !$0.success }))
+    }
 }

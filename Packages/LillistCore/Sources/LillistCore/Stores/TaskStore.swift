@@ -223,25 +223,30 @@ public final class TaskStore: @unchecked Sendable {
     }
 
     public func reparent(id: UUID, newParent newParentID: UUID?) async throws {
-        defer { Task { [weak self] in await self?.recordCrumb("task.move", success: true) } }
-        try await context.perform { [self] in
-            let m = try fetchManagedObject(id: id, in: context)
-            let newParent: LillistTask?
-            if let newParentID {
-                let candidate = try fetchManagedObject(id: newParentID, in: context)
-                if Validators.wouldCreateCycle(candidate: m, newParent: candidate) {
-                    throw LillistError.validationFailed([
-                        .init(field: "parent", message: "would create a cycle")
-                    ])
+        do {
+            try await context.perform { [self] in
+                let m = try fetchManagedObject(id: id, in: context)
+                let newParent: LillistTask?
+                if let newParentID {
+                    let candidate = try fetchManagedObject(id: newParentID, in: context)
+                    if Validators.wouldCreateCycle(candidate: m, newParent: candidate) {
+                        throw LillistError.validationFailed([
+                            .init(field: "parent", message: "would create a cycle")
+                        ])
+                    }
+                    newParent = candidate
+                } else {
+                    newParent = nil
                 }
-                newParent = candidate
-            } else {
-                newParent = nil
+                m.parent = newParent
+                m.position = try nextPosition(forParent: newParent)
+                m.modifiedAt = Date()
+                try context.save()
             }
-            m.parent = newParent
-            m.position = try nextPosition(forParent: newParent)
-            m.modifiedAt = Date()
-            try context.save()
+            await recordCrumb("task.move", success: true)
+        } catch {
+            await recordCrumb("task.move", success: false)
+            throw error
         }
     }
 
@@ -282,52 +287,57 @@ public final class TaskStore: @unchecked Sendable {
     // MARK: - Status transitions
 
     public func transition(id: UUID, to newStatus: Status) async throws {
-        defer { Task { [weak self] in await self?.recordCrumb("task.status.change", success: true) } }
-        let spawnedID: UUID? = try await context.perform { [self] in
-            let m = try fetchManagedObject(id: id, in: context)
-            let oldStatus = m.status
-            guard oldStatus != newStatus else { return nil }
-            m.status = newStatus
-            m.modifiedAt = Date()
-            if newStatus == .closed {
-                m.closedAt = m.modifiedAt
-            } else if oldStatus == .closed {
-                m.closedAt = nil
-                // Reopening a previously archived task resurfaces it —
-                // a user explicitly un-completing is the signal that
-                // they want it back in the active view.
-                m.archivedAt = nil
-            }
+        do {
+            let spawnedID: UUID? = try await context.perform { [self] in
+                let m = try fetchManagedObject(id: id, in: context)
+                let oldStatus = m.status
+                guard oldStatus != newStatus else { return nil }
+                m.status = newStatus
+                m.modifiedAt = Date()
+                if newStatus == .closed {
+                    m.closedAt = m.modifiedAt
+                } else if oldStatus == .closed {
+                    m.closedAt = nil
+                    // Reopening a previously archived task resurfaces it —
+                    // a user explicitly un-completing is the signal that
+                    // they want it back in the active view.
+                    m.archivedAt = nil
+                }
 
-            // System journal entry for the transition.
-            let entry = JournalEntry(context: context)
-            entry.id = UUID()
-            entry.task = m
-            entry.kind = .statusChange
-            entry.createdAt = m.modifiedAt
-            entry.body = "\(oldStatus) → \(newStatus)"
-            let payload: [String: Int] = ["from": oldStatus.rawValue, "to": newStatus.rawValue]
-            entry.payload = try JSONSerialization.data(withJSONObject: payload)
+                // System journal entry for the transition.
+                let entry = JournalEntry(context: context)
+                entry.id = UUID()
+                entry.task = m
+                entry.kind = .statusChange
+                entry.createdAt = m.modifiedAt
+                entry.body = "\(oldStatus) → \(newStatus)"
+                let payload: [String: Int] = ["from": oldStatus.rawValue, "to": newStatus.rawValue]
+                entry.payload = try JSONSerialization.data(withJSONObject: payload)
 
-            // Recurrence: spawn next instance ONLY on transition-to-closed.
-            // Re-opening (oldStatus == .closed) does NOT undo the spawn,
-            // per design Section 8.
-            var spawnedID: UUID? = nil
-            if newStatus == .closed {
-                spawnedID = RecurrenceSpawner.spawnIfNeeded(forClosedTask: m, in: context)
-            }
+                // Recurrence: spawn next instance ONLY on transition-to-closed.
+                // Re-opening (oldStatus == .closed) does NOT undo the spawn,
+                // per design Section 8.
+                var spawnedID: UUID? = nil
+                if newStatus == .closed {
+                    spawnedID = RecurrenceSpawner.spawnIfNeeded(forClosedTask: m, in: context)
+                }
 
-            try context.save()
-            return spawnedID
-        }
-        // Reconcile *after* the save so the persistent store reflects the
-        // new state. The scheduler is property-injected; absent in tests
-        // that don't care about notifications.
-        if let scheduler = notificationScheduler {
-            await scheduler.reconcile(taskID: id)
-            if let spawnedID {
-                await scheduler.reconcile(taskID: spawnedID)
+                try context.save()
+                return spawnedID
             }
+            // Reconcile *after* the save so the persistent store reflects the
+            // new state. The scheduler is property-injected; absent in tests
+            // that don't care about notifications.
+            if let scheduler = notificationScheduler {
+                await scheduler.reconcile(taskID: id)
+                if let spawnedID {
+                    await scheduler.reconcile(taskID: spawnedID)
+                }
+            }
+            await recordCrumb("task.status.change", success: true)
+        } catch {
+            await recordCrumb("task.status.change", success: false)
+            throw error
         }
     }
 
