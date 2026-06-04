@@ -27,4 +27,24 @@ public enum FractionalPosition {
     public static func gapIsTooSmall(after: Double, before: Double) -> Bool {
         before - after <= after.ulp * 4
     }
+
+    /// True when two real (non-nil) anchors are equal or inverted, i.e. the
+    /// caller asked to drop a row into a degenerate gap. Single source of
+    /// truth for the reorder anchor-validation guard in both stores.
+    /// A nil anchor means "the corresponding list end," which is never
+    /// out of order.
+    public static func anchorsAreOutOfOrder(after: Double?, before: Double?) -> Bool {
+        guard let a = after, let b = before else { return false }
+        return a >= b
+    }
+
+    /// True when the midpoint between `after` and `before` would underflow —
+    /// i.e. both neighbors are real and `gapIsTooSmall`. Head/tail inserts
+    /// (a nil neighbor) place at `±1.0` and never collide, so they return
+    /// `false`. When `true`, the caller must recompact siblings before
+    /// recomputing the target position.
+    public static func needsCompaction(after: Double?, before: Double?) -> Bool {
+        guard let a = after, let b = before else { return false }
+        return gapIsTooSmall(after: a, before: b)
+    }
 }
