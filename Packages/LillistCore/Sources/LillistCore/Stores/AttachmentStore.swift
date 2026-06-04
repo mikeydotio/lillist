@@ -209,30 +209,36 @@ public final class AttachmentStore: @unchecked Sendable {
         data: Data?,
         linkPreviewJSON: String?
     ) async throws -> UUID {
-        defer { Task { [weak self] in await self?.recordCrumb("attachment.attach", success: true) } }
-        return try await context.perform { [self] in
-            let task = try fetchTask(id: taskID, in: context)
-            let journal = JournalEntry(context: context)
-            journal.id = UUID()
-            journal.task = task
-            journal.kind = .attachment
-            journal.createdAt = Date()
-            journal.body = ""
+        do {
+            let id: UUID = try await context.perform { [self] in
+                let task = try fetchTask(id: taskID, in: context)
+                let journal = JournalEntry(context: context)
+                journal.id = UUID()
+                journal.task = task
+                journal.kind = .attachment
+                journal.createdAt = Date()
+                journal.body = ""
 
-            let att = Attachment(context: context)
-            att.id = UUID()
-            att.task = task
-            att.journalEntry = journal
-            att.kind = kind
-            att.filename = filename
-            att.uti = uti
-            att.byteSize = Int64(data?.count ?? 0)
-            att.data = data
-            att.linkPreviewJSON = linkPreviewJSON
-            att.createdAt = journal.createdAt
+                let att = Attachment(context: context)
+                att.id = UUID()
+                att.task = task
+                att.journalEntry = journal
+                att.kind = kind
+                att.filename = filename
+                att.uti = uti
+                att.byteSize = Int64(data?.count ?? 0)
+                att.data = data
+                att.linkPreviewJSON = linkPreviewJSON
+                att.createdAt = journal.createdAt
 
-            try context.save()
-            return att.id!
+                try context.save()
+                return att.id!
+            }
+            await recordCrumb("attachment.attach", success: true)
+            return id
+        } catch {
+            await recordCrumb("attachment.attach", success: false)
+            throw error
         }
     }
 
