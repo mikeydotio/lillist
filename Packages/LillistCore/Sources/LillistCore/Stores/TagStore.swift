@@ -78,14 +78,19 @@ public final class TagStore: @unchecked Sendable {
     // MARK: - Rename
 
     public func rename(id: UUID, to newName: String) async throws {
-        defer { Task { [weak self] in await self?.recordCrumb("tag.rename", success: true) } }
-        try validateName(newName)
-        try await context.perform { [self] in
-            let m = try fetchManagedObject(id: id, in: context)
-            guard m.name != newName else { return }
-            let resolved = try uniqueNameUnder(parent: m.parent, desired: newName, excluding: m)
-            m.name = resolved
-            try context.save()
+        do {
+            try validateName(newName)
+            try await context.perform { [self] in
+                let m = try fetchManagedObject(id: id, in: context)
+                guard m.name != newName else { return }
+                let resolved = try uniqueNameUnder(parent: m.parent, desired: newName, excluding: m)
+                m.name = resolved
+                try context.save()
+            }
+            await recordCrumb("tag.rename", success: true)
+        } catch {
+            await recordCrumb("tag.rename", success: false)
+            throw error
         }
     }
 
@@ -117,11 +122,16 @@ public final class TagStore: @unchecked Sendable {
     // MARK: - Delete
 
     public func delete(id: UUID) async throws {
-        defer { Task { [weak self] in await self?.recordCrumb("tag.delete", success: true) } }
-        try await context.perform { [self] in
-            let m = try fetchManagedObject(id: id, in: context)
-            context.delete(m)
-            try context.save()
+        do {
+            try await context.perform { [self] in
+                let m = try fetchManagedObject(id: id, in: context)
+                context.delete(m)
+                try context.save()
+            }
+            await recordCrumb("tag.delete", success: true)
+        } catch {
+            await recordCrumb("tag.delete", success: false)
+            throw error
         }
     }
 
