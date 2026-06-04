@@ -96,6 +96,27 @@ public final class PersistenceController: @unchecked Sendable {
         }
     }
 
+    /// A dedicated private-queue context for bulk work (export, import,
+    /// Trash purge) that would otherwise block the main-queue
+    /// `viewContext`. The single shared `viewContext` remains the default
+    /// for all interactive mutations — it is the context
+    /// `NSPersistentCloudKitContainer` merges remote changes into via
+    /// `automaticallyMergesChangesFromParent`. This vends a *separate*
+    /// context so a 10k-row export never freezes the UI.
+    ///
+    /// `automaticallyMergesChangesFromParent` is ON so this context sees
+    /// concurrent `viewContext` edits, and its saves propagate up to the
+    /// `viewContext` (which auto-merges them) so callers don't have to
+    /// refetch after an import. The merge policy matches `viewContext`'s
+    /// store-wide trump policy so a background save never silently loses
+    /// to a concurrent main-queue edit.
+    public func makeBackgroundContext() -> NSManagedObjectContext {
+        let context = container.newBackgroundContext()
+        context.automaticallyMergesChangesFromParent = true
+        context.mergePolicy = NSMergePolicy(merge: .mergeByPropertyObjectTrumpMergePolicyType)
+        return context
+    }
+
     /// Build the `NSPersistentContainer` (or `NSPersistentCloudKitContainer`)
     /// for a given configuration without loading the stores.
     ///
