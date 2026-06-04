@@ -327,6 +327,18 @@ final class AppEnvironment {
         installCanaryLifecycleObservers()
     }
 
+    /// Persist-6: entry point for the iOS background-processing task.
+    /// Runs the trash purge off the foreground; returns whether it
+    /// completed without throwing so the `BGTask` can report success.
+    func runBackgroundPurge() async -> Bool {
+        do {
+            _ = try await autoPurgeJob.run()
+            return true
+        } catch {
+            return false
+        }
+    }
+
     /// iOS canary lifecycle: write on foreground (didBecomeActive),
     /// delete on backgrounding (willResignActive). `willTerminate` is
     /// the wrong hook on iOS — the OS suspends apps and then kills
