@@ -12,6 +12,7 @@
 		03FBDEF7777954B9B884E193 /* AppIntents.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = ECE3A50348E57FE59F4366B8 /* AppIntents.framework */; };
 		04DB0667DD4F3B9B95FB9581 /* DragDropInteractionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 42C2D056A53E557FD7C76E00 /* DragDropInteractionTests.swift */; };
 		0549A501B879B11D6FD83BA7 /* TaskListSourceTitleTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1ED479E398D753F384BB3734 /* TaskListSourceTitleTests.swift */; };
+		0D271B6FB8B12700E0AA370B /* CommandNotificationObserverGuardTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5626826E4EED7EAAEDDED61E /* CommandNotificationObserverGuardTests.swift */; };
 		12192573C492F4C19AC7A9AF /* LillistApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2B69FCA7EA5A0AEC03AC528 /* LillistApp.swift */; };
 		1550635670FED00DFA1C4C0A /* UIStatePersistencePruneTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3F20871648F1DA1E64D8E59D /* UIStatePersistencePruneTests.swift */; };
 		1835D5C3561B08CF2C688CD5 /* GlobalHotkeyMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 447BBBCF160E4CA4AF71A686 /* GlobalHotkeyMonitor.swift */; };
@@ -44,6 +45,7 @@
 		65A0C314392C2CF1F96524BA /* AdvancedPane.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4785BD3BA4D67F4C69F79D09 /* AdvancedPane.swift */; };
 		66EE57111151096A6E2C968C /* HotkeyKeyTable.swift in Sources */ = {isa = PBXBuildFile; fileRef = 95FC2DAA17C7F98B4F907832 /* HotkeyKeyTable.swift */; };
 		6BE4BDB01E20FA589DB10BEC /* SourceTitleResolver.swift in Sources */ = {isa = PBXBuildFile; fileRef = 42A85F69009AEE818C5AD30E /* SourceTitleResolver.swift */; };
+		6C77259D87409283472D0452 /* CommandNotifications.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2F793AF35B60DC60A05E5 /* CommandNotifications.swift */; };
 		70EB429F941CB59A033F2530 /* OnboardingSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4939196DF6130616743D37DC /* OnboardingSheet.swift */; };
 		719E3F9F89E009424C9CA367 /* NotesEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 21D24939B908AE453AB3E6C2 /* NotesEditorView.swift */; };
 		72985CB5C5C702D617D4694A /* SourceTitleResolver.swift in Sources */ = {isa = PBXBuildFile; fileRef = 42A85F69009AEE818C5AD30E /* SourceTitleResolver.swift */; };
@@ -86,6 +88,7 @@
 		E844140043C9E82E250EE2FA /* SidebarSection.swift in Sources */ = {isa = PBXBuildFile; fileRef = 895660AD2C33EBCF965A577D /* SidebarSection.swift */; };
 		EC52B77A7309EF0911822A63 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 4FD0FFC71B48B70D0F2AFB67 /* Assets.xcassets */; };
 		F46A68730B52D3C00F76D896 /* InlineCreateField.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF7781804345711C5D1DFA6D /* InlineCreateField.swift */; };
+		F5B6CAD8DCB980073D0130DA /* CommandNotifications.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2F793AF35B60DC60A05E5 /* CommandNotifications.swift */; };
 		FB019BA50063A5268118312E /* IndexingMappers.swift in Sources */ = {isa = PBXBuildFile; fileRef = 68AC792045721B50D4F72F3D /* IndexingMappers.swift */; };
 /* End PBXBuildFile section */
 
@@ -116,6 +119,7 @@
 		4939196DF6130616743D37DC /* OnboardingSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingSheet.swift; sourceTree = "<group>"; };
 		4E67786671223711890742F9 /* JournalStreamView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JournalStreamView.swift; sourceTree = "<group>"; };
 		4FD0FFC71B48B70D0F2AFB67 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		5626826E4EED7EAAEDDED61E /* CommandNotificationObserverGuardTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CommandNotificationObserverGuardTests.swift; sourceTree = "<group>"; };
 		59867850C82C90EBDA587E7A /* TodayPopoverView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TodayPopoverView.swift; sourceTree = "<group>"; };
 		5BDE58C737A0E5123FA07D0F /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		5FF6CA37C3301C81C8947230 /* RootSplitView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootSplitView.swift; sourceTree = "<group>"; };
@@ -138,6 +142,7 @@
 		9C2910A714C814F69236C7B4 /* ICloudSyncPane.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ICloudSyncPane.swift; sourceTree = "<group>"; };
 		9F8B217F0E070121B95D2E56 /* LillistUI */ = {isa = PBXFileReference; lastKnownFileType = folder; name = LillistUI; path = ../Packages/LillistUI; sourceTree = SOURCE_ROOT; };
 		A11533C6477F2D2A981B7E22 /* TaskOutlineNode.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TaskOutlineNode.swift; sourceTree = "<group>"; };
+		A1B2F793AF35B60DC60A05E5 /* CommandNotifications.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CommandNotifications.swift; sourceTree = "<group>"; };
 		A2EFA693098EDBDA8867F2C1 /* MenuBarExtraScene.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MenuBarExtraScene.swift; sourceTree = "<group>"; };
 		AA226DA3844BBFC1DFFDA0CA /* FocusedListColumn.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FocusedListColumn.swift; sourceTree = "<group>"; };
 		B2B69FCA7EA5A0AEC03AC528 /* LillistApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LillistApp.swift; sourceTree = "<group>"; };
@@ -217,6 +222,7 @@
 			isa = PBXGroup;
 			children = (
 				3F0D9EC0691515027BF44021 /* BlockedFollowUpTests.swift */,
+				5626826E4EED7EAAEDDED61E /* CommandNotificationObserverGuardTests.swift */,
 				42C2D056A53E557FD7C76E00 /* DragDropInteractionTests.swift */,
 				1ED0A7A8881D45E8627191BA /* FocusedShortcutGatingTests.swift */,
 				180C19E87D24FC9E1EB9260D /* HotkeyRecorderConflictTests.swift */,
@@ -350,6 +356,7 @@
 		96DC643FB6D30A62EE875517 /* Commands */ = {
 			isa = PBXGroup;
 			children = (
+				A1B2F793AF35B60DC60A05E5 /* CommandNotifications.swift */,
 				AA226DA3844BBFC1DFFDA0CA /* FocusedListColumn.swift */,
 				6D70826CFF84526D54963DB7 /* LillistCommands.swift */,
 			);
@@ -542,6 +549,7 @@
 				65A0C314392C2CF1F96524BA /* AdvancedPane.swift in Sources */,
 				CD807090167A2EB33A3F40BF /* AppDelegate.swift in Sources */,
 				865E2F5846746469D26E9D4B /* AppEnvironment.swift in Sources */,
+				F5B6CAD8DCB980073D0130DA /* CommandNotifications.swift in Sources */,
 				513F80DB225B3198A6B428C6 /* CrashReporterHost.swift in Sources */,
 				5680498D8BF4DFA917500D55 /* CrashReportingPane.swift in Sources */,
 				1A2D780A16C371DC7ED92F77 /* DetailHeaderView.swift in Sources */,
@@ -593,6 +601,8 @@
 			buildActionMask = 2147483647;
 			files = (
 				D18582EAD9CC9DEF45E3D046 /* BlockedFollowUpTests.swift in Sources */,
+				0D271B6FB8B12700E0AA370B /* CommandNotificationObserverGuardTests.swift in Sources */,
+				6C77259D87409283472D0452 /* CommandNotifications.swift in Sources */,
 				04DB0667DD4F3B9B95FB9581 /* DragDropInteractionTests.swift in Sources */,
 				B2F0F266E785E96D6C25B25C /* FocusedListColumn.swift in Sources */,
 				4AC4945ABE79B0437B1676D5 /* FocusedShortcutGatingTests.swift in Sources */,

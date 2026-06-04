@@ -86,6 +86,11 @@ targets:
       # test reference ListColumn without pulling in RootSplitView's
       # AppEnvironment/sidebar dependencies (Plan 13 Task 5).
       - path: Lillist-macOS/Sources/Commands/FocusedListColumn.swift
+      # macos-2: CommandNotifications declares the dependency-free
+      # Notification.Name extension + the postedByCommands registry, so
+      # CommandNotificationObserverGuardTests can read them without a
+      # signed app test host.
+      - path: Lillist-macOS/Sources/Commands/CommandNotifications.swift
       # InlineCreateField is exercised by the empty-tab wiring guard in
       # InlineCreateInteractionTests (Plan 13 Task 6).
       - path: Lillist-macOS/Sources/Views/TaskList/InlineCreateField.swift
