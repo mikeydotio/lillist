@@ -81,8 +81,14 @@ struct MigrationRunnerExecutingTests {
         }
         defer { consumer.cancel() }
         try await body()
-        // Give the consumer a moment to drain the terminal event.
-        try? await Task.sleep(nanoseconds: 50_000_000)
+        // Deterministically wait for the consumer to drain the terminal
+        // (.completed/.failed) event and exit its loop, instead of racing a
+        // fixed sleep. Both migration success paths always emit a terminal
+        // phase, so this cannot hang; if `body()` threw we never reach here
+        // and the defer cancels the consumer. (The prior 50ms sleep was a
+        // flaky race that intermittently dropped the terminal phase under
+        // full-suite scheduling pressure.)
+        await consumer.value
         return await collector.values
     }
 
