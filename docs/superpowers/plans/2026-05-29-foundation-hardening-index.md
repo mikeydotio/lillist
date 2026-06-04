@@ -59,16 +59,24 @@ CloudKit, XCTest + Swift Testing, xcodegen, GitHub Actions (new).
   test helper: `MigrationRunnerExecutingTests.collectPhases` relied on a fixed
   50ms `Task.sleep` to drain the terminal phase, which the new `await` checkpoints
   exposed as a flaky race — replaced with `await consumer.value` (deterministic).
-- ⬜ **Next: Wave 2 (remaining)** — `fractional-ordering-compaction`,
-  `predicate-parity`, `link-preview-ssrf-guards` (all disjoint from
-  breadcrumb-truthfulness's landed files; `fractional-ordering-compaction` shares
-  `TaskStore.swift` but edits the disjoint `reorder` method — re-Read first).
+- ✅ **Wave 2 · `fractional-ordering-compaction`** — **merged to `main`** (commits
+  `3ecd71d`..`20f4126`; 712 LillistCore tests green, warning-free). Closed
+  stores-1, stores-3. Added `FractionalPosition.anchorsAreOutOfOrder` +
+  `needsCompaction` as the shared source of truth; wired the previously-dead
+  `PositionCompactor.recompact` into both `TaskStore.reorder` and
+  `SmartFilterStore.reorder` (recompact-in-same-perform on gap underflow), plus a
+  shared anchor-order guard. Note: with the anchor guard landing first (Tasks 2/3),
+  the stores-1 underflow now surfaces as a thrown `anchors out of order` one step
+  earlier rather than as duplicate positions — same root collision, louder failure;
+  the 60-insert compaction tests still gate it.
+- ⬜ **Next: Wave 2 (remaining)** — `predicate-parity`, `link-preview-ssrf-guards`
+  (both disjoint from all merged Wave-2 files).
 - ⬜ **Waves 3–7** — pending. Follow the wave order + serial chains below.
 
 ### Progress checklist
 
 - **Wave 1 (P0):** ✅ store-swap-safety · ✅ recurrence-input-hardening
-- **Wave 2 (P1):** ✅ breadcrumb-truthfulness · ⬜ **fractional-ordering-compaction ← NEXT** · ⬜ predicate-parity · ⬜ link-preview-ssrf-guards
+- **Wave 2 (P1):** ✅ breadcrumb-truthfulness · ✅ fractional-ordering-compaction · ⬜ **predicate-parity ← NEXT** · ⬜ link-preview-ssrf-guards
 - **Wave 3 (P1):** ⬜ cloudkit-convergence · ⬜ resolve-inert-features
 - **Wave 4:** ⬜ concurrency-stress-tests · ⬜ migration-adjacent-correctness · ⬜ background-context-seam
 - **Wave 5 (P2):** ⬜ crash-reporter-privacy · ⬜ app-layer-test-rehab
