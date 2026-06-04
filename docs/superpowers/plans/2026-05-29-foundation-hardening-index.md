@@ -84,17 +84,30 @@ CloudKit, XCTest + Swift Testing, xcodegen, GitHub Actions (new).
   one-off transient SIGSEGV in the concurrent in-memory Core Data tests appeared
   in one baseline run and never reproduced — flagged as harness flakiness, not a
   regression.)*
-- ⬜ **Next: Wave 2 (last)** — `link-preview-ssrf-guards`. **Scope note:** only
-  Tasks 1–5 (policy + fetcher + CLI ingest) land in Wave 2; **Task 6 (iOS Share
-  Extension `ShareRootView` gate) defers to Wave 6** per chain #3, since
-  `app-layer-test-rehab`/`extension-persistence-unification` restructure that file
-  first.
+- ◧ **Wave 2 · `link-preview-ssrf-guards`** — **Tasks 1–5 merged to `main`**
+  (commits `356ed97`..`4bb6154`; 738 LillistCore tests green, warning-free). Closed
+  linkpreview-1, linkpreview-2, and the policy/fetcher/CLI halves of linkpreview-3.
+  Added the pure-value `URLPreviewPolicy` (http/https scheme allow-list + literal
+  localhost/`*.local`/loopback/link-local/RFC1918/IPv6-ULA/IPv6-LL block-list),
+  enforced it in `URLSessionLinkPreviewFetcher` (pre-check + `bytes(for:delegate:)`
+  streaming 5 MB early-abort + per-task `RedirectGuard` re-applying the policy and
+  capping hops), and gated `CLIBridge.LinkHandler` ingest. **Task 6 (iOS Share
+  Extension `ShareRootView` gate) is DEFERRED to Wave 6** per chain #3 (that file
+  is restructured first by `app-layer-test-rehab`/`extension-persistence-unification`)
+  — tracked as residual #10 below. (Test used `attachments(forTask:).isEmpty` —
+  `AttachmentStore` exposes no `count(forTask:)`.)
+- ✅ **Wave 2 COMPLETE** (modulo the link-preview Share-Extension gate explicitly
+  carried to Wave 6). **Next: Wave 3** — `cloudkit-convergence` (prereq for
+  `concurrency-stress-tests`; establishes `PersistenceController.localTransactionAuthor`),
+  then `resolve-inert-features`. Both edit iOS `AppEnvironment.swift` in distinct
+  regions — serialize them.
 - ⬜ **Waves 3–7** — pending. Follow the wave order + serial chains below.
 
 ### Progress checklist
 
 - **Wave 1 (P0):** ✅ store-swap-safety · ✅ recurrence-input-hardening
-- **Wave 2 (P1):** ✅ breadcrumb-truthfulness · ✅ fractional-ordering-compaction · ✅ predicate-parity · ⬜ **link-preview-ssrf-guards ← NEXT (Tasks 1–5; Task 6 → Wave 6)**
+- **Wave 2 (P1):** ✅ breadcrumb-truthfulness · ✅ fractional-ordering-compaction · ✅ predicate-parity · ◧ link-preview-ssrf-guards (Tasks 1–5 done; **Task 6 Share-Extension gate → Wave 6**)
+- **Wave 3 (P1):** ⬜ **cloudkit-convergence ← NEXT** · ⬜ resolve-inert-features
 - **Wave 3 (P1):** ⬜ cloudkit-convergence · ⬜ resolve-inert-features
 - **Wave 4:** ⬜ concurrency-stress-tests · ⬜ migration-adjacent-correctness · ⬜ background-context-seam
 - **Wave 5 (P2):** ⬜ crash-reporter-privacy · ⬜ app-layer-test-rehab
@@ -267,8 +280,10 @@ rewrite invalidates line anchors).
    — `app-layer-test-rehab` (extracts `GatedPersistenceResolver`, routes
    `makePersistence()` + `save()` through it) → `extension-persistence-unification`
    (per-process cache + `ShareSaveFlow` **on top of** the resolver; `try?`→`try`
-   on attachment) → `link-preview-ssrf-guards` (wrap `URLPreviewPolicy.isAllowed`
-   around whichever `addLinkPreview` survives).
+   on attachment) → `link-preview-ssrf-guards` **Task 6** (wrap
+   `URLPreviewPolicy.isAllowed` around whichever `addLinkPreview` survives — its
+   policy/fetcher/CLI Tasks 1–5 already merged in Wave 2; **only this
+   Share-Extension gate remains, deferred here to Wave 6** — see residual #10).
 4. **iOS `project.yml` + `pbxproj`** (5 plans) — serialize all, run **one
    authoritative `xcodegen generate`** at the end: `store-swap-safety`
    (app-hosted target) → `app-layer-test-rehab` → `extension-persistence-unification`
@@ -386,6 +401,16 @@ so coverage isn't overstated:
    `AfterCompletionRule.interval` (Double) decodes fine (JSONDecoder rejects
    `NaN`/`Inf`) and produces a far-future spawn. None crash; left as abuse-
    resistance hardening if ever prioritized.
+10. **`link-preview-ssrf-guards` Task 6 — iOS Share Extension ingest gate**
+    (DEFERRED, not dropped) — Tasks 1–5 (policy + fetcher + CLI ingest) merged in
+    Wave 2, but Task 6 (wrapping `URLPreviewPolicy.isAllowed` around
+    `ShareRootView`'s `addLinkPreview`) is intentionally carried to **Wave 6**: per
+    chain #3, `app-layer-test-rehab` (Wave 5) and `extension-persistence-unification`
+    (Wave 6) restructure `ShareRootView.swift` first, and Task 6 must wrap whichever
+    `addLinkPreview` survives. Until it lands, the iOS Share Extension can still
+    persist an SSRF-bait URL as a link attachment (the *fetch* is already blocked by
+    the merged fetcher guard, so no request is made — only the row persists). Owner:
+    Wave 6, alongside `extension-persistence-unification`.
 
 ## Suggested commit/PR cadence
 
