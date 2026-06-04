@@ -64,6 +64,12 @@ enum ParityFixtures {
 
     static let parentA = UUID(uuidString: "00000000-0000-0000-0002-000000000001")!
 
+    // Deep-chain ids for the ancestor-depth parity fixture (Task 1).
+    static let chainRoot = UUID(uuidString: "00000000-0000-0000-0003-000000000000")!
+    static func chainNode(_ depth: Int) -> UUID {
+        UUID(uuidString: "00000000-0000-0000-0003-0000000000\(String(format: "%02d", depth))")!
+    }
+
     static let all: [ParityFixture] = [
         // 1. title contains
         ParityFixture(
@@ -467,6 +473,30 @@ enum ParityFixtures {
                 SeedTask(id: id2, tagIDs: [tagWork])
             ],
             expected: [id2]
+        ),
+        // 33. ancestor isDescendantOf over a chain exactly at the depth ceiling.
+        // A node at depth == maxAncestorDepth must match in BOTH evaluators;
+        // a node one level deeper must match in NEITHER. Pre-fix, `from()`
+        // walked 32 levels and the compiler walked 8, so depth-9 diverged.
+        ParityFixture(
+            name: "ancestor isDescendantOf chain at depth ceiling",
+            group: .init(combinator: .all, predicates: [
+                .leaf(.init(field: .ancestor, op: .isDescendantOf, value: .uuidSet([chainRoot])))
+            ]),
+            seeds: {
+                var out: [SeedTask] = [SeedTask(id: chainRoot, title: "root")]
+                var parent = chainRoot
+                // depth 1...9: nine nested children under chainRoot.
+                for depth in 1...9 {
+                    let nodeID = chainNode(depth)
+                    out.append(SeedTask(id: nodeID, title: "depth-\(depth)", parentID: parent))
+                    parent = nodeID
+                }
+                return out
+            }(),
+            // PredicateLimits.maxAncestorDepth == 8: depths 1...8 are reachable,
+            // depth 9 is beyond the ceiling for both evaluators.
+            expected: Set((1...8).map { chainNode($0) })
         )
     ]
 }

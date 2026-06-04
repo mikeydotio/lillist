@@ -242,7 +242,7 @@ extension CLIBridge {
             case .descendantsOf(let rootID), .descendantsOfIncludingClosed(let rootID):
                 var cursor: LillistTask? = task.parent
                 var depth = 0
-                while let node = cursor, depth < 64 {
+                while let node = cursor, depth < PredicateLimits.maxAncestorDepth {
                     if node.id == rootID { return true }
                     cursor = node.parent
                     depth += 1

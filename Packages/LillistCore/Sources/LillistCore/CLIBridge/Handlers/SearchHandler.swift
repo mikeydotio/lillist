@@ -31,7 +31,7 @@ extension CLIBridge {
                     scoped = all.filter { task in
                         var cursor: LillistTask? = task.parent
                         var depth = 0
-                        while let node = cursor, depth < 64 {
+                        while let node = cursor, depth < PredicateLimits.maxAncestorDepth {
                             if node.id == scopeID { return true }
                             cursor = node.parent
                             depth += 1
