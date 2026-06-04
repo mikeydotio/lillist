@@ -247,9 +247,9 @@ extension SmartFilterStore {
             let target = try fetchManagedObject(id: id, in: context)
             let afterPos: Double? = try after.map { try fetchManagedObject(id: $0, in: context).position }
             let beforePos: Double? = try before.map { try fetchManagedObject(id: $0, in: context).position }
-            if let a = afterPos, let b = beforePos, a >= b {
+            if FractionalPosition.anchorsAreOutOfOrder(after: afterPos, before: beforePos) {
                 throw LillistError.validationFailed([
-                    .init(field: "reorder", message: "anchors out of order: after=\(a) before=\(b)")
+                    .init(field: "reorder", message: "anchors out of order")
                 ])
             }
             target.position = FractionalPosition.position(after: afterPos, before: beforePos)
