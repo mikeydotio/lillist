@@ -265,6 +265,14 @@ public final class TaskStore: @unchecked Sendable {
                     .init(field: "neighbors", message: "must share the same parent")
                 ])
             }
+            if FractionalPosition.anchorsAreOutOfOrder(
+                after: afterTask?.position,
+                before: beforeTask?.position
+            ) {
+                throw LillistError.validationFailed([
+                    .init(field: "neighbors", message: "anchors out of order")
+                ])
+            }
             let newParent = afterParent ?? beforeParent ?? m.parent
 
             if m.parent?.objectID != newParent?.objectID {

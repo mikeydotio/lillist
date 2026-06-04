@@ -54,4 +54,18 @@ struct TaskStoreOrderingTests {
             try await store.reorder(id: c, after: a, before: b)
         }
     }
+
+    @Test("Reorder rejects out-of-order anchors")
+    func outOfOrderAnchors() async throws {
+        let p = try await TestStore.make()
+        let store = TaskStore(persistence: p)
+        let parent = try await store.create(title: "P")
+        let a = try await store.create(title: "A", parent: parent)
+        let b = try await store.create(title: "B", parent: parent)
+        let c = try await store.create(title: "C", parent: parent)
+        // Ask to drop C with after=B, before=A — anchors are inverted.
+        await #expect(throws: LillistError.self) {
+            try await store.reorder(id: c, after: b, before: a)
+        }
+    }
 }
