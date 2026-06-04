@@ -32,17 +32,23 @@ public final class JournalStore: @unchecked Sendable {
 
     @discardableResult
     public func appendNote(taskID: UUID, body: String) async throws -> UUID {
-        defer { Task { [weak self] in await self?.recordCrumb("journal.append", success: true) } }
-        return try await context.perform { [self] in
-            let task = try fetchTask(id: taskID, in: context)
-            let entry = JournalEntry(context: context)
-            entry.id = UUID()
-            entry.task = task
-            entry.kind = .note
-            entry.body = body
-            entry.createdAt = Date()
-            try context.save()
-            return entry.id!
+        do {
+            let id: UUID = try await context.perform { [self] in
+                let task = try fetchTask(id: taskID, in: context)
+                let entry = JournalEntry(context: context)
+                entry.id = UUID()
+                entry.task = task
+                entry.kind = .note
+                entry.body = body
+                entry.createdAt = Date()
+                try context.save()
+                return entry.id!
+            }
+            await recordCrumb("journal.append", success: true)
+            return id
+        } catch {
+            await recordCrumb("journal.append", success: false)
+            throw error
         }
     }
 
