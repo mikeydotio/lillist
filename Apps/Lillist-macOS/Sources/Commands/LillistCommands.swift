@@ -46,33 +46,6 @@ struct LillistCommands: Commands {
                 NotificationCenter.default.post(name: .lillistMarkBlocked, object: nil)
             }.keyboardShortcut(".", modifiers: [.command])
               .disabled(listColumn == nil)
-
-            Divider()
-
-            Button("Indent") {
-                NotificationCenter.default.post(name: .lillistIndent, object: nil)
-            }.keyboardShortcut(.tab, modifiers: [])
-              .disabled(listColumn == nil)
-
-            Button("Outdent") {
-                NotificationCenter.default.post(name: .lillistOutdent, object: nil)
-            }.keyboardShortcut(.tab, modifiers: [.shift])
-              .disabled(listColumn == nil)
-        }
-
-        // Plan 15 Task 28: `replacing: .textEditing` destroyed the
-        // standard Find submenu. Switch to `after:` so Find Next /
-        // Find Previous / Use Selection for Find survive; ours append
-        // below them.
-        CommandGroup(after: .textEditing) {
-            Divider()
-            Button("Find in View…") {
-                NotificationCenter.default.post(name: .lillistFindInView, object: nil)
-            }.keyboardShortcut("f", modifiers: [.command])
-
-            Button("Find Everywhere…") {
-                NotificationCenter.default.post(name: .lillistFindEverywhere, object: nil)
-            }.keyboardShortcut("f", modifiers: [.command, .shift])
         }
 
         CommandMenu("View") {
@@ -120,27 +93,4 @@ struct LillistCommands: Commands {
             Link("Lillist Help", destination: URL(string: "https://github.com/mikeydotio/Lillist")!)
         }
     }
-}
-
-extension Notification.Name {
-    static let lillistNewTask           = Notification.Name("lillist.newTask")
-    static let lillistNewSibling        = Notification.Name("lillist.newSibling")
-    static let lillistToggleStarted     = Notification.Name("lillist.toggleStarted")
-    static let lillistMarkClosed        = Notification.Name("lillist.markClosed")
-    static let lillistMarkBlocked       = Notification.Name("lillist.markBlocked")
-    static let lillistIndent            = Notification.Name("lillist.indent")
-    static let lillistOutdent           = Notification.Name("lillist.outdent")
-    static let lillistFindInView        = Notification.Name("lillist.findInView")
-    static let lillistFindEverywhere    = Notification.Name("lillist.findEverywhere")
-    static let lillistFocusSidebar      = Notification.Name("lillist.focusSidebar")
-    static let lillistFocusList         = Notification.Name("lillist.focusList")
-    static let lillistFocusDetail       = Notification.Name("lillist.focusDetail")
-    // Plan 15 Task 20: dock menu navigation.
-    static let lillistSelectTodayFilter = Notification.Name("lillist.selectTodayFilter")
-    static let lillistSelectFilter      = Notification.Name("lillist.selectFilter")
-    // Plan 15 Task 29: ⌃⌘S menu command for sidebar visibility.
-    static let lillistToggleSidebar     = Notification.Name("lillist.toggleSidebar")
-    // Plan 19 Task 12: re-spawn the main window after ⌘W closed it (or
-    // the menu-bar popover's "Show Main Window" button was clicked).
-    static let lillistReopenMainWindow  = Notification.Name("lillist.reopenMainWindow")
 }
