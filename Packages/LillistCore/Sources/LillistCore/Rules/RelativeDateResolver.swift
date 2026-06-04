@@ -20,7 +20,13 @@ public enum RelativeDateResolver {
         case .daysFromNow(let n):
             return calendar.date(byAdding: .day, value: n, to: startOfToday) ?? startOfToday
         case .weeksFromNow(let n):
-            return calendar.date(byAdding: .day, value: n * 7, to: startOfToday) ?? startOfToday
+            // Saturate the week→day multiply so a pathological decoded count
+            // (e.g. Int.max from a corrupt import) never traps. Calendar then
+            // returns nil for an out-of-range day count and we fall back to
+            // start-of-today.
+            let (days, overflow) = n.multipliedReportingOverflow(by: 7)
+            let safeDays = overflow ? (n > 0 ? Int.max : Int.min) : days
+            return calendar.date(byAdding: .day, value: safeDays, to: startOfToday) ?? startOfToday
         case .startOfWeek:
             var comps = calendar.dateComponents([.yearForWeekOfYear, .weekOfYear], from: now)
             comps.weekday = calendar.firstWeekday
