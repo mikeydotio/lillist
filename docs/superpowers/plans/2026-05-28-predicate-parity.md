@@ -1,6 +1,13 @@
 # Predicate-Parity Implementation Plan
 
-> **📍 STATUS — ⬜ PENDING — Wave 2.**
+> **📍 STATUS — ✅ MERGED to `main` (2026-06-04) — Wave 2.** All 7 tasks landed
+> (commits `0be04fa`..`2f7dc3e`); 716 LillistCore tests green ×3, warning-free.
+> Closed rules-1…7 (incl. the `weeksFromNow` overflow clamp, residual #7). Parity
+> suite is matrix-driven under UTC + an America/New_York DST calendar
+> (2026-03-08 spring-forward) with calendar-relative re-seeded date fixtures —
+> **zero divergence between the NSPredicate and Swift evaluators across all 102
+> cases.** Two plan fixture defects (empty-needle `CONTAINS` expectation; the
+> absolute-seed-vs-DST-now invariance premise) were corrected, not papered over.
 >
 > Part of the **Foundation Hardening** program. **Single source of truth for progress, wave order, and cross-plan coordination:** [`2026-05-29-foundation-hardening-index.md`](2026-05-29-foundation-hardening-index.md). New to this project? Read the index first, then the review ([`docs/reviews/2026-05-28-foundation-review.md`](../../reviews/2026-05-28-foundation-review.md)) for *why* this work exists, then `CLAUDE.md` for conventions + build/test commands. Execute task-by-task with `superpowers:subagent-driven-development`.
 >
