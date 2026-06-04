@@ -1903,3 +1903,36 @@ this wave (commit `c3d202e`): it now prefers
 and falls back to `latestQuarantinedStore` only when the recorded
 folder is missing or absent (legacy journals). Proven by
 `restoreHonorsRecordedFolder` in `MigrationRecoveryTests`.
+
+## 2026-06-03 — Recurrence input hardening: `count=0` is intentional; `interval` is two-sided-clamped
+
+`recurrence-input-hardening` (commits `758a14b`..`b6b80dd`) made the
+recurrence engine crash-safe against untrusted `interval`/`count` arriving
+via CloudKit decode, the Importer, or the CLI. Two non-obvious things a
+future contributor will otherwise rediscover the hard way:
+
+1. **Do NOT "normalize" a non-positive `count`.** `count = 0` means *zero
+   occurrences* — a deliberate, **tested** contract
+   (`RecurrenceExpanderLimitTests."count=0 yields no occurrences"`; the
+   mechanism is `hardCap = rule.count.map { min($0, count) } ?? count` in
+   `RecurrenceExpander.nextOccurrences`). A fix that treated `count <= 0`
+   as "unbounded" was written and **reverted** during this wave precisely
+   because it reversed that contract and turned the LimitTests red.
+   `CalendarRule` clamps `interval` but assigns `count` raw — that
+   asymmetry is on purpose. Whether a *corrupt* `count <= 0` from sync
+   should instead fall back to unbounded is a product decision, tracked as
+   residual #8 in the foundation-hardening index, not a bug to silently
+   "fix".
+
+2. **`interval` is clamped on BOTH sides.** `CalendarRule.maxInterval =
+   1000` plus `clampedInterval(_:) = min(maxInterval, max(1, raw))` is
+   applied at the trust boundary (`normalizedInterval`, which logs the
+   change) and silently at every `RecurrenceExpander` step/modulo site
+   (`effectiveInterval`). The low side stops `interval = 0` dividing by
+   zero / a negative interval walking backwards; the **high** side stops a
+   huge positive `interval` (e.g. `Int.max`) overflowing the monthly
+   `12 * n + 1` month-scan bound (a trap) or forcing an `O(interval)` scan
+   (an effective hang). The recurrence editor's stepper is bounded
+   `1...365`, so `maxInterval = 1000` only ever bites untrusted data. The
+   high-side half was found by a post-merge adversarial audit, not the
+   original plan — see the plan's status banner for the full deviation log.

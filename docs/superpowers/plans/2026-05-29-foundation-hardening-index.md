@@ -40,7 +40,7 @@ CloudKit, XCTest + Swift Testing, xcodegen, GitHub Actions (new).
   (CI or a developer Mac) — verify them there:
   `xcodebuild test -workspace Lillist.xcworkspace -scheme Lillist-iOS -destination 'platform=iOS Simulator,name=iPhone 17,OS=26.2' -only-testing:Lillist-iOSAppHostedTests`.
 - ✅ **Wave 1 · `recurrence-input-hardening`** — **merged to `main`** (commits
-  `758a14b`..`b6b80dd`; full LillistCore suite green, warning-free). Closed
+  `758a14b`..`b6b80dd`; 687-test LillistCore suite green, warning-free). Closed
   rec-1, rec-2, stores-7. A post-merge **adversarial audit** found and closed an
   additional crash the plan's "0 or negative" scope missed: a huge *positive*
   untrusted `interval` overflowed the monthly `12 * n + 1` bound (trap) / forced
