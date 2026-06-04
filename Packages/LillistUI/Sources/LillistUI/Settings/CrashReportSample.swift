@@ -35,10 +35,6 @@ public enum CrashReportSample {
         Build: \(env.buildVersion)
         OS: \(env.osVersion)
         Device: \(env.deviceModel)
-        Breadcrumbs:
-          (Anonymized verbs from your last ~50 mutations.)
-        Logs:
-          (System logs from the last ~30 seconds of the crashed run.)
         Sent to: \(env.recipient)
         Method: \(env.methodSuffix)
         """

@@ -87,6 +87,22 @@ final class CrashReportViewModelTests: XCTestCase {
         XCTAssertFalse(model.previewText.isEmpty,
                        "refreshPreview should populate previewText for the bulk preview sheet")
     }
+
+    func test_samplePreview_omitsUnavailablePostCrashSections() {
+        let text = CrashReportSample.preview(.init(
+            buildVersion: "1.0 (1)",
+            osVersion: "iOS 26.2",
+            deviceModel: "iPhone",
+            recipient: "x@y.z",
+            methodSuffix: "Mail."
+        ))
+        XCTAssertFalse(text.contains("last ~50 mutations"),
+                       "Preview must not promise breadcrumbs that don't survive a crash")
+        XCTAssertFalse(text.contains("last ~30 seconds of the crashed run"),
+                       "Preview must not promise crashed-run logs OSLogFetcher can't fetch")
+        XCTAssertTrue(text.contains("Build:"))
+        XCTAssertTrue(text.contains("Sent to:"))
+    }
 }
 
 private struct NoopLogFetcher: LogFetching {
