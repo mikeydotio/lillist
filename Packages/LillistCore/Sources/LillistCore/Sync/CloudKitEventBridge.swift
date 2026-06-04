@@ -117,7 +117,7 @@ public actor CloudKitEventBridge {
         @unknown default: type = .setup
         }
         let started = event.endDate == nil
-        let mapped: LillistError? = event.error.map { LillistError.syncFailure(underlying: ($0 as NSError).localizedDescription) }
+        let mapped: LillistError? = event.error.map { CloudKitErrorClassifier.classify($0) }
         return CloudKitSyncEvent(type: type, started: started, endedAt: event.endDate, error: mapped)
     }
 }
