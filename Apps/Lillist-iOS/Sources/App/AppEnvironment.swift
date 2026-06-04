@@ -322,9 +322,13 @@ final class AppEnvironment {
         // onboarding gate has a non-default value to read.
         try? await accountStateMonitor.refresh()
         self.accountState = await accountStateMonitor.currentState
+        // ios-1: prime the pause-reason mirror so the sync-status badge and
+        // PauseExplainerDialog read a real classification, not a stale nil.
+        self.pauseReason = await pauseReasonClassifier.currentReason()
         startObservingAccountState()
         startObservingSyncMode()
         installCanaryLifecycleObservers()
+        startObservingPauseReason()
     }
 
     /// Persist-6: entry point for the iOS background-processing task.
@@ -403,6 +407,24 @@ final class AppEnvironment {
             for await mode in await store.modeStream {
                 await MainActor.run {
                     self?.currentSyncMode = mode
+                }
+            }
+        }
+    }
+
+    /// ios-1: re-classify the sync pause reason whenever the iCloud
+    /// account state changes. The classifier reads the same
+    /// `AccountStateMonitor`, so reacting to its stream keeps
+    /// `pauseReason` consistent with `accountState`. `nil` means sync is
+    /// active (or LocalOnly); the settings surface renders accordingly.
+    private func startObservingPauseReason() {
+        let monitor = self.accountStateMonitor
+        let classifier = self.pauseReasonClassifier
+        Task { [weak self] in
+            for await _ in await monitor.stateStream {
+                let reason = await classifier.currentReason()
+                await MainActor.run {
+                    self?.pauseReason = reason
                 }
             }
         }

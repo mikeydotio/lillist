@@ -264,8 +264,12 @@ final class AppEnvironment {
         // gate handles `.noAccount` as the "iCloud unavailable" branch.
         try? await accountStateMonitor.refresh()
         self.accountState = await accountStateMonitor.currentState
+        // ios-1 parity: prime the pause-reason mirror the Preferences sync
+        // pane reads, so the macOS classifier stops being dead too.
+        self.pauseReason = await pauseReasonClassifier.currentReason()
         startObservingAccountState()
         startObservingSyncMode()
+        startObservingPauseReason()
     }
 
     /// Plan 10: stream account-state changes off the actor into the
@@ -290,6 +294,22 @@ final class AppEnvironment {
             for await mode in await store.modeStream {
                 await MainActor.run {
                     self?.currentSyncMode = mode
+                }
+            }
+        }
+    }
+
+    /// ios-1 parity: re-classify the sync pause reason on every iCloud
+    /// account-state change so the macOS sync surface mirrors the live
+    /// reason rather than a stale nil.
+    private func startObservingPauseReason() {
+        let monitor = self.accountStateMonitor
+        let classifier = self.pauseReasonClassifier
+        Task { [weak self] in
+            for await _ in await monitor.stateStream {
+                let reason = await classifier.currentReason()
+                await MainActor.run {
+                    self?.pauseReason = reason
                 }
             }
         }
