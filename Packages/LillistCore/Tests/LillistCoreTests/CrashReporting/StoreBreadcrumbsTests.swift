@@ -80,4 +80,61 @@ struct StoreBreadcrumbsTests {
         let snap = await buffer.snapshot()
         #expect(snap.contains(where: { $0.action == "journal.append" && !$0.success }))
     }
+
+    @Test("TagStore.rename records a tag.rename success breadcrumb")
+    func tagRename_recordsSuccess() async throws {
+        let persistence = try await TestStore.make()
+        let store = TagStore(persistence: persistence)
+        let buffer = BreadcrumbBuffer()
+        store.breadcrumbs = buffer
+        let id = try await store.create(name: "Old")
+        try await store.rename(id: id, to: "New")
+        let snap = await buffer.snapshot()
+        #expect(snap.contains(where: { $0.action == "tag.rename" && $0.success }))
+    }
+
+    @Test("Failed TagStore.rename records a tag.rename failure breadcrumb")
+    func tagRename_recordsFailure() async throws {
+        let persistence = try await TestStore.make()
+        let store = TagStore(persistence: persistence)
+        let buffer = BreadcrumbBuffer()
+        store.breadcrumbs = buffer
+        do {
+            // No such tag — fetchManagedObject throws .notFound inside the perform.
+            try await store.rename(id: UUID(), to: "Ghost")
+            Issue.record("Expected notFound failure")
+        } catch {
+            // Expected.
+        }
+        let snap = await buffer.snapshot()
+        #expect(snap.contains(where: { $0.action == "tag.rename" && !$0.success }))
+    }
+
+    @Test("TagStore.delete records a tag.delete success breadcrumb")
+    func tagDelete_recordsSuccess() async throws {
+        let persistence = try await TestStore.make()
+        let store = TagStore(persistence: persistence)
+        let buffer = BreadcrumbBuffer()
+        store.breadcrumbs = buffer
+        let id = try await store.create(name: "Doomed")
+        try await store.delete(id: id)
+        let snap = await buffer.snapshot()
+        #expect(snap.contains(where: { $0.action == "tag.delete" && $0.success }))
+    }
+
+    @Test("Failed TagStore.delete records a tag.delete failure breadcrumb")
+    func tagDelete_recordsFailure() async throws {
+        let persistence = try await TestStore.make()
+        let store = TagStore(persistence: persistence)
+        let buffer = BreadcrumbBuffer()
+        store.breadcrumbs = buffer
+        do {
+            try await store.delete(id: UUID())
+            Issue.record("Expected notFound failure")
+        } catch {
+            // Expected.
+        }
+        let snap = await buffer.snapshot()
+        #expect(snap.contains(where: { $0.action == "tag.delete" && !$0.success }))
+    }
 }
