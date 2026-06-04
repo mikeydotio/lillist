@@ -79,7 +79,7 @@ public actor Importer {
     }
 
     public func apply(document: ExportSchema.Document, policy: ConflictPolicy) async throws -> ImportSummary {
-        let ctx = persistence.container.viewContext
+        let ctx = persistence.makeBackgroundContext()
         return try await ctx.perform { [policy, self] in
             var tagsInserted = 0
             var tagsUpdated = 0
@@ -190,7 +190,12 @@ public actor Importer {
                 }
             }
 
-            try ctx.save()
+            do {
+                try ctx.save()
+            } catch {
+                ctx.rollback()
+                throw error
+            }
             return ImportSummary(
                 tasksInserted: tasksInserted,
                 tasksUpdated: tasksUpdated,

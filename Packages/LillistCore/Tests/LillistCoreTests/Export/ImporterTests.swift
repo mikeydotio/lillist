@@ -151,6 +151,31 @@ struct ImporterTests {
             // Expected.
         }
     }
+
+    @Test("Import leaves the main viewContext with no stranded pending changes")
+    func importDoesNotStrandViewContext() async throws {
+        let src = try await TestStore.make()
+        let srcTasks = TaskStore(persistence: src)
+        _ = try await srcTasks.create(title: "One")
+        _ = try await srcTasks.create(title: "Two")
+        let bundle = try await exportFixture(from: src)
+
+        let dst = try await TestStore.make()
+        let importer = Importer(persistence: dst)
+        let summary = try await importer.importBundle(at: bundle, conflictPolicy: .skipExisting)
+        #expect(summary.tasksInserted == 2)
+
+        let viewHasChanges: Bool = await dst.container.viewContext.perform {
+            dst.container.viewContext.hasChanges
+        }
+        #expect(viewHasChanges == false)
+
+        let count: Int = try await dst.container.viewContext.perform {
+            let req = NSFetchRequest<LillistTask>(entityName: "LillistTask")
+            return try dst.container.viewContext.count(for: req)
+        }
+        #expect(count == 2)
+    }
 }
 
 private extension LillistTask {
