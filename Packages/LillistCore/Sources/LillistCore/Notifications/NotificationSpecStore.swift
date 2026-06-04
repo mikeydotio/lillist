@@ -39,6 +39,32 @@ public final class NotificationSpecStore: @unchecked Sendable {
     ) async throws -> UUID {
         try await context.perform { [self] in
             let task = try fetchTask(id: taskID, in: context)
+            // Default specs are singletons per (task, kind): exactly one
+            // .defaultStart and one .defaultDeadline may exist for a task.
+            // Two overlapping reconcile cycles (or two devices) can each try
+            // to materialize the default; without this guard they'd create a
+            // duplicate that the scheduler would then de-dup at the OS level
+            // only by accident. Returning the existing id keeps `add`
+            // idempotent for defaults while leaving offset/nudge multi-instance
+            // (review notif-2). The dedup is scoped to this task's specs via the
+            // `task == %@` predicate, not a model-level unique constraint, so it
+            // composes with CloudKit (which doesn't honor uniqueness constraints).
+            if kind == .defaultStart || kind == .defaultDeadline {
+                let existing = NSFetchRequest<NotificationSpec>(entityName: "NotificationSpec")
+                existing.predicate = NSPredicate(format: "task == %@ AND kindRaw == %d", task, kind.rawValue)
+                existing.sortDescriptors = [NSSortDescriptor(key: "createdAt", ascending: true)]
+                let found = try context.fetch(existing)
+                if let survivor = found.first {
+                    // Collapse any duplicates a previous race already created so
+                    // the store self-heals on the next add (CloudKit imports
+                    // can deliver a second default before this guard ran).
+                    for dup in found.dropFirst() {
+                        context.delete(dup)
+                    }
+                    if context.hasChanges { try context.save() }
+                    return survivor.id ?? UUID()
+                }
+            }
             let spec = NotificationSpec(context: context)
             let id = UUID()
             spec.id = id
