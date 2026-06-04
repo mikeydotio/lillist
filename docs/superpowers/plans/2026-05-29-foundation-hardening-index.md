@@ -50,15 +50,25 @@ CloudKit, XCTest + Swift Testing, xcodegen, GitHub Actions (new).
   silently fixed: non-positive `count` semantics (existing tested behavior is
   "count=0 ⇒ empty series" — changing it is a product call) and
   `byMonthDay`/`bySetPos`/AfterCompletion-interval out-of-range.
-- ⬜ **Wave 1 COMPLETE. Next: Wave 2** — `breadcrumb-truthfulness` (must precede
-  `background-context-seam`), parallel with `fractional-ordering-compaction`,
-  `predicate-parity`, `link-preview-ssrf-guards`.
-- ⬜ **Waves 2–7** — pending. Follow the wave order + serial chains below.
+- ✅ **Wave 2 · `breadcrumb-truthfulness`** — **merged to `main`** (commits
+  `97ed3a8`..`7c2ebcd` + `collectPhases` determinism fix; 705 LillistCore tests
+  green ×3, warning-free). Closed conc-1, stores-2, persist-8. All nine
+  `defer { Task { recordCrumb(success: true) } }` store sites converted to inline
+  do/catch with a true success flag; the `MigrationCoordinator.breadcrumb` helper
+  is now `async`/awaited inline. A **post-merge follow-up** strengthened a Wave-1
+  test helper: `MigrationRunnerExecutingTests.collectPhases` relied on a fixed
+  50ms `Task.sleep` to drain the terminal phase, which the new `await` checkpoints
+  exposed as a flaky race — replaced with `await consumer.value` (deterministic).
+- ⬜ **Next: Wave 2 (remaining)** — `fractional-ordering-compaction`,
+  `predicate-parity`, `link-preview-ssrf-guards` (all disjoint from
+  breadcrumb-truthfulness's landed files; `fractional-ordering-compaction` shares
+  `TaskStore.swift` but edits the disjoint `reorder` method — re-Read first).
+- ⬜ **Waves 3–7** — pending. Follow the wave order + serial chains below.
 
 ### Progress checklist
 
 - **Wave 1 (P0):** ✅ store-swap-safety · ✅ recurrence-input-hardening
-- **Wave 2 (P1):** ⬜ **breadcrumb-truthfulness ← NEXT** · ⬜ fractional-ordering-compaction · ⬜ predicate-parity · ⬜ link-preview-ssrf-guards
+- **Wave 2 (P1):** ✅ breadcrumb-truthfulness · ⬜ **fractional-ordering-compaction ← NEXT** · ⬜ predicate-parity · ⬜ link-preview-ssrf-guards
 - **Wave 3 (P1):** ⬜ cloudkit-convergence · ⬜ resolve-inert-features
 - **Wave 4:** ⬜ concurrency-stress-tests · ⬜ migration-adjacent-correctness · ⬜ background-context-seam
 - **Wave 5 (P2):** ⬜ crash-reporter-privacy · ⬜ app-layer-test-rehab

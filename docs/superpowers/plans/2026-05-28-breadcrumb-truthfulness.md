@@ -1,6 +1,12 @@
 # Breadcrumb Truthfulness Implementation Plan
 
-> **📍 STATUS — ⬜ PENDING — Wave 2.**
+> **📍 STATUS — ✅ MERGED to `main` (2026-06-04) — Wave 2.** All 7 tasks landed
+> (commits `97ed3a8`..`7c2ebcd`); 705 LillistCore tests green ×3, warning-free.
+> Nine `defer { Task { recordCrumb(success: true) } }` store sites converted to
+> inline do/catch with a true success flag; `MigrationCoordinator.breadcrumb` is
+> now `async` + awaited inline. Post-merge follow-up: replaced
+> `MigrationRunnerExecutingTests.collectPhases`'s flaky 50ms-sleep drain with
+> `await consumer.value` (the new `await` checkpoints exposed the latent race).
 >
 > Part of the **Foundation Hardening** program. **Single source of truth for progress, wave order, and cross-plan coordination:** [`2026-05-29-foundation-hardening-index.md`](2026-05-29-foundation-hardening-index.md). New to this project? Read the index first, then the review ([`docs/reviews/2026-05-28-foundation-review.md`](../../reviews/2026-05-28-foundation-review.md)) for *why* this work exists, then `CLAUDE.md` for conventions + build/test commands. Execute task-by-task with `superpowers:subagent-driven-development`.
 >
