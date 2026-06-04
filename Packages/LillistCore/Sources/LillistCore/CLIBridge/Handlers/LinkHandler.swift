@@ -12,6 +12,14 @@ extension CLIBridge {
             guard let url = URL(string: urlString), url.scheme != nil else {
                 throw LillistError.validationFailed([.init(field: "url", message: "invalid URL '\(urlString)'")])
             }
+            // SSRF ingest guard (linkpreview-1/3): refuse non-http(s)
+            // schemes and private/loopback/link-local hosts before any
+            // attachment row is created.
+            guard URLPreviewPolicy.isAllowed(url) else {
+                throw LillistError.validationFailed([
+                    .init(field: "url", message: "URL is not allowed for link previews: '\(urlString)'")
+                ])
+            }
             let r = try await Resolver.resolve(
                 token: token, scope: .anywhereIncludingClosed,
                 destructiveness: .readOnly, persistence: persistence

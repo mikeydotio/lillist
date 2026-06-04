@@ -32,4 +32,39 @@ struct LinkHandlerTests {
         let decoded = try JSONDecoder().decode(AttachmentStore.LinkPreviewPayload.self, from: bytes)
         #expect(decoded.title == "Linked Title")
     }
+
+    @Test("Run rejects a non-http/https URL at the ingest boundary")
+    func runRejectsBlockedScheme() async throws {
+        let persistence = try await TestStore.make()
+        let tasks = TaskStore(persistence: persistence)
+        let taskID = try await tasks.create(title: "host")
+
+        await #expect(throws: LillistError.self) {
+            _ = try await CLIBridge.LinkHandler.run(
+                token: taskID.uuidString,
+                urlString: "file:///etc/passwd",
+                persistence: persistence,
+                fetcher: nil
+            )
+        }
+    }
+
+    @Test("Run rejects a private-host URL and creates no attachment")
+    func runRejectsPrivateHost() async throws {
+        let persistence = try await TestStore.make()
+        let tasks = TaskStore(persistence: persistence)
+        let taskID = try await tasks.create(title: "host")
+
+        await #expect(throws: LillistError.self) {
+            _ = try await CLIBridge.LinkHandler.run(
+                token: taskID.uuidString,
+                urlString: "http://169.254.169.254/latest/meta-data/",
+                persistence: persistence,
+                fetcher: nil
+            )
+        }
+
+        let attachments = try await AttachmentStore(persistence: persistence).attachments(forTask: taskID)
+        #expect(attachments.isEmpty)
+    }
 }
