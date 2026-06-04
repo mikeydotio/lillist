@@ -10,9 +10,12 @@ public enum PauseReason: Equatable, Sendable {
     case noAccount
     /// iCloud is restricted (Screen Time / MDM / parental controls).
     case restricted
-    /// The signed-in iCloud account changed since the last sync.
-    /// `MigrationCoordinator` aborts any active op and surfaces a
-    /// dedicated recovery flow.
+    /// The signed-in iCloud account changed since the last sync. The
+    /// status badge surfaces this and `PauseExplainerDialog` explains it;
+    /// when an account change is detected, `MigrationCoordinator` refuses
+    /// the irreversible iCloud zone erase (the `replaceICloudWithLocal`
+    /// path) and leaves the journal `.failed` for the recovery sheet,
+    /// rather than wiping the wrong account's data.
     case accountChanged
     /// No internet connection. Resumes automatically.
     case noNetwork
