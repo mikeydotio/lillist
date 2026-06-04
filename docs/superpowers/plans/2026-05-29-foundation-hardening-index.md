@@ -69,14 +69,32 @@ CloudKit, XCTest + Swift Testing, xcodegen, GitHub Actions (new).
   the stores-1 underflow now surfaces as a thrown `anchors out of order` one step
   earlier rather than as duplicate positions — same root collision, louder failure;
   the 60-insert compaction tests still gate it.
-- ⬜ **Next: Wave 2 (remaining)** — `predicate-parity`, `link-preview-ssrf-guards`
-  (both disjoint from all merged Wave-2 files).
+- ✅ **Wave 2 · `predicate-parity`** — **merged to `main`** (commits
+  `0be04fa`..`2f7dc3e`; 716 LillistCore tests green ×3, warning-free). Closed
+  rules-1…7. Unified ancestor-depth limit, diacritic+case-insensitive equals,
+  one source of truth for recurrence/hasNudges, symmetric `isAncestorOf`, and the
+  `weeksFromNow` integer-overflow clamp (residual #7 — **now resolved**). The
+  parity suite is now matrix-driven under **two calendars (UTC + an
+  America/New_York DST run seeded on the 2026-03-08 spring-forward)**; date
+  fixtures re-seed via calendar-relative offsets so expecteds are correct by
+  construction. **Result: zero divergence between the NSPredicate and Swift
+  evaluators across all 102 cases — including window math straddling the 23-hour
+  DST day.** Two plan fixture defects were corrected (empty-needle `CONTAINS`
+  expectation; absolute-seed-vs-DST-now premise), not papered over. *(Note: a
+  one-off transient SIGSEGV in the concurrent in-memory Core Data tests appeared
+  in one baseline run and never reproduced — flagged as harness flakiness, not a
+  regression.)*
+- ⬜ **Next: Wave 2 (last)** — `link-preview-ssrf-guards`. **Scope note:** only
+  Tasks 1–5 (policy + fetcher + CLI ingest) land in Wave 2; **Task 6 (iOS Share
+  Extension `ShareRootView` gate) defers to Wave 6** per chain #3, since
+  `app-layer-test-rehab`/`extension-persistence-unification` restructure that file
+  first.
 - ⬜ **Waves 3–7** — pending. Follow the wave order + serial chains below.
 
 ### Progress checklist
 
 - **Wave 1 (P0):** ✅ store-swap-safety · ✅ recurrence-input-hardening
-- **Wave 2 (P1):** ✅ breadcrumb-truthfulness · ✅ fractional-ordering-compaction · ⬜ **predicate-parity ← NEXT** · ⬜ link-preview-ssrf-guards
+- **Wave 2 (P1):** ✅ breadcrumb-truthfulness · ✅ fractional-ordering-compaction · ✅ predicate-parity · ⬜ **link-preview-ssrf-guards ← NEXT (Tasks 1–5; Task 6 → Wave 6)**
 - **Wave 3 (P1):** ⬜ cloudkit-convergence · ⬜ resolve-inert-features
 - **Wave 4:** ⬜ concurrency-stress-tests · ⬜ migration-adjacent-correctness · ⬜ background-context-seam
 - **Wave 5 (P2):** ⬜ crash-reporter-privacy · ⬜ app-layer-test-rehab
@@ -346,9 +364,13 @@ so coverage isn't overstated:
    LillistUI catalog only; the iOS app's catalog and the empty macOS app catalog
    are un-owned (localization is intentionally out-of-v1 per design §816/842,
    but the catalogs remain structurally unprepared, per the review).
-7. **`predicate-parity` rules-5** — confirm the executor adds the explicit
-   `RelativeDate.weeksFromNow` integer-overflow clamp, not just operator
-   alignment.
+7. **`predicate-parity` rules-5** — ✅ **RESOLVED** (merged `2ba034c`). The explicit
+   `RelativeDate.weeksFromNow` integer-overflow clamp is in
+   `RelativeDateResolver.resolve` (`multipliedReportingOverflow(by: 7)` → saturate
+   to `Int.max`/`Int.min`), proven by `RelativeDateWeeksOverflowTests` (pre-fix:
+   signal-5 trap on `Int.max * 7`; post-fix: no trap). No magnitude/threshold
+   guard added (YAGNI). Both evaluators share the one resolver, so the clamp is
+   parity-safe.
 8. **Non-positive recurrence `count` semantics** (`recurrence-input-hardening`
    audit, LOW) — a present-but-non-positive `count` from a corrupt sync record
    currently yields an **empty/disabled series**, which is the existing *tested*
