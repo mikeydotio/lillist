@@ -196,6 +196,7 @@ targets:
       - path: ../../Packages/LillistCore/Tests/LillistCoreTests/Sync/FakePersistenceReconfigurer.swift
       - path: ../../Packages/LillistCore/Tests/LillistCoreTests/Persistence/PersistenceHostTests.swift
       - path: ../../Packages/LillistCore/Tests/LillistCoreTests/Persistence/StoreLevelModeSwapSpike.swift
+      - path: ../../Packages/LillistCore/Tests/LillistCoreTests/Persistence/StoreReconfigureConcurrencyTests.swift
     dependencies:
       - package: LillistCore
         product: LillistCore

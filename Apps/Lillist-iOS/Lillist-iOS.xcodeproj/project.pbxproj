@@ -60,6 +60,7 @@
 		C1FEEAB56AFC2EFD9C108C47 /* TaskJournalTab.swift in Sources */ = {isa = PBXBuildFile; fileRef = F6C4BEE444B84DDF5F88ABF3 /* TaskJournalTab.swift */; };
 		C37A5B3B5892E493D5874513 /* ReportCrashIntentTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 97A39E4B87749E005F34B7FF /* ReportCrashIntentTests.swift */; };
 		C4286EAF37A8DBFC4CD4C0C8 /* LiveSwapHostMetaTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5F5EAD1E444A07943C9C4297 /* LiveSwapHostMetaTests.swift */; };
+		C560AA398385843ED4A399B6 /* StoreReconfigureConcurrencyTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0BE894E57B833CA2B163D2C1 /* StoreReconfigureConcurrencyTests.swift */; };
 		C83091216C5994A3CDD62AA0 /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = 0F733F28A2D648B9C9B202FF /* Localizable.xcstrings */; };
 		CA4034D690255FE0554C7DE2 /* RootShell.swift in Sources */ = {isa = PBXBuildFile; fileRef = 03C3319AED08244B047F88E4 /* RootShell.swift */; };
 		CB8301504557324D1B671609 /* NotificationsSection.swift in Sources */ = {isa = PBXBuildFile; fileRef = E4D39B252544E335C0CC4FB5 /* NotificationsSection.swift */; };
@@ -127,6 +128,7 @@
 /* Begin PBXFileReference section */
 		013C20AC115F9A9F16F18BA2 /* GeneralSection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GeneralSection.swift; sourceTree = "<group>"; };
 		03C3319AED08244B047F88E4 /* RootShell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootShell.swift; sourceTree = "<group>"; };
+		0BE894E57B833CA2B163D2C1 /* StoreReconfigureConcurrencyTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StoreReconfigureConcurrencyTests.swift; sourceTree = "<group>"; };
 		0C1A35E41C3453E26F4D69EA /* CrashReportingDisclosureGateTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CrashReportingDisclosureGateTests.swift; sourceTree = "<group>"; };
 		0F733F28A2D648B9C9B202FF /* Localizable.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = Localizable.xcstrings; sourceTree = "<group>"; };
 		127316B4280751452F412407 /* SearchTasksIntent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SearchTasksIntent.swift; sourceTree = "<group>"; };
@@ -253,6 +255,7 @@
 			children = (
 				1A059895D7E8E7448C996665 /* PersistenceHostTests.swift */,
 				46C95D1C58187F4123CB2791 /* StoreLevelModeSwapSpike.swift */,
+				0BE894E57B833CA2B163D2C1 /* StoreReconfigureConcurrencyTests.swift */,
 			);
 			path = Persistence;
 			sourceTree = "<group>";
@@ -812,6 +815,7 @@
 				CD5567FD3A2CAA3CE90A24C3 /* MigrationCoordinatorTests.swift in Sources */,
 				226717D0A1CC4CEB70046125 /* PersistenceHostTests.swift in Sources */,
 				2CD2BCA9FCE5990D81C5AE8A /* StoreLevelModeSwapSpike.swift in Sources */,
+				C560AA398385843ED4A399B6 /* StoreReconfigureConcurrencyTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
