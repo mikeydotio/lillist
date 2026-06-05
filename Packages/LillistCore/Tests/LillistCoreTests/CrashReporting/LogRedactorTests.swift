@@ -56,6 +56,21 @@ struct LogRedactorTests {
         #expect(LogRedactor.redact("Tag=Work") == "Tag=<redacted>")
     }
 
+    @Test("iOS container paths redact with lowercase hex and in the App-Group subtree")
+    func containerPaths_caseInsensitiveAndAppGroup() {
+        // redact-1: the container path pass used an uppercase-only hex
+        // class [A-Z0-9-], so a lowercase-UUID Data container leaked its
+        // path prefix and the bytes after the UUID; and it only matched
+        // the `.../Data/Application/` subtree, not the App-Group
+        // `.../Shared/AppGroup/` subtree where the shared store lives.
+        let lowerData =
+            "/var/mobile/Containers/Data/Application/deadbeef-0000-1111-2222-333344445555/Library/x.png"
+        #expect(LogRedactor.redact(lowerData) == "<path>")
+        let appGroup =
+            "/var/mobile/Containers/Shared/AppGroup/aaaa1111-2222-3333-4444-555566667777/db.sqlite"
+        #expect(LogRedactor.redact(appGroup) == "<path>")
+    }
+
     @Test("Empty input → empty output")
     func empty() {
         #expect(LogRedactor.redact("") == "")
