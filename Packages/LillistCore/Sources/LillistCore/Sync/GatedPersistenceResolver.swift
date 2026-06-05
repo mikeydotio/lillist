@@ -3,9 +3,10 @@ import Foundation
 /// Gate-aware resolution of the App-Group on-disk store configuration.
 /// Adopted by the App Intents extension (`IntentSupport`) and the Share
 /// Extension (`ShareRootView`) so the `MigrationGate` abort branch lives in
-/// exactly one tested place. The CLI's `StoreLocator` and the App Intents
-/// `TaskEntityQuery` still build the gate inline today; routing them through
-/// this resolver is Wave-6 work (`extension-persistence-unification`).
+/// exactly one tested place. The App Intents `TaskEntityQuery` is routed
+/// through it in Wave 6 (`extension-persistence-unification`). The CLI's
+/// `StoreLocator` still builds the gate inline; unifying it through this
+/// resolver is an optional follow-up, not currently scoped by any plan.
 ///
 /// Production callers use ``init(appGroupID:)``, which wires the
 /// `FileMigrationJournalStore` + `SyncModeStore` rooted at the App Group
