@@ -13,6 +13,7 @@
 		046D8F27FB3D4AD0970C455F /* AppEnvironment.swift in Sources */ = {isa = PBXBuildFile; fileRef = 297211E1BF6A9D0C7890E078 /* AppEnvironment.swift */; };
 		08374266DF6AA52010E0919E /* ShareLinkPolicyTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 689771DEEAAFB71A995AAE37 /* ShareLinkPolicyTests.swift */; };
 		095DD7CB663AC32D6BC740CB /* QuickCaptureDialogHost.swift in Sources */ = {isa = PBXBuildFile; fileRef = CE3F53A3610ABD48E84AF9CC /* QuickCaptureDialogHost.swift */; };
+		0B64F80E59A3CEEECEC29977 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 7599E85A9499625A6A3322FA /* PrivacyInfo.xcprivacy */; };
 		0D39ED83FD7B9F2AB1F7B7A6 /* TaskNotesTab.swift in Sources */ = {isa = PBXBuildFile; fileRef = 63687CA5DAE8C94F242FB14A /* TaskNotesTab.swift */; };
 		12B0B4969DCF826068F817E2 /* LillistCommands.swift in Sources */ = {isa = PBXBuildFile; fileRef = 320C843DACE915B2A004882D /* LillistCommands.swift */; };
 		19E41567449FAA5BE15E6B32 /* AdvancedSection.swift in Sources */ = {isa = PBXBuildFile; fileRef = EAFB6125227B6A731DA61F20 /* AdvancedSection.swift */; };
@@ -48,6 +49,7 @@
 		70EFAEC895F77C3746EC9826 /* ShortcutsActions.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 3662AC54EFB61DCAB491C63C /* ShortcutsActions.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		736D7D381C885A085BE6C3C6 /* LillistCore in Frameworks */ = {isa = PBXBuildFile; productRef = 8DB8540AD27AC6302E455EF9 /* LillistCore */; };
 		73BE8F1D6EF2D3BE9D67C497 /* StatusAppEnum.swift in Sources */ = {isa = PBXBuildFile; fileRef = F3FB7F9EA7F274415E924EA6 /* StatusAppEnum.swift */; };
+		7737C2756C91D21D583CEEA5 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 590AF55F6A2BA0028259F134 /* PrivacyInfo.xcprivacy */; };
 		7A6D0D29236C8CF6E2FD5EDE /* LillistCore in Frameworks */ = {isa = PBXBuildFile; productRef = 9ED0B06375B70267A31FB5CA /* LillistCore */; };
 		8189623B012D1E3D79C2EC4B /* LillistCore in Frameworks */ = {isa = PBXBuildFile; productRef = 8CDB023B81A1C3EA772D3534 /* LillistCore */; };
 		81C29E7AB4222FEBE0FE34DB /* AppIntents.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 4908E6E0B96502CEFCDF8DB5 /* AppIntents.framework */; };
@@ -71,6 +73,7 @@
 		C83091216C5994A3CDD62AA0 /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = 0F733F28A2D648B9C9B202FF /* Localizable.xcstrings */; };
 		CA4034D690255FE0554C7DE2 /* RootShell.swift in Sources */ = {isa = PBXBuildFile; fileRef = 03C3319AED08244B047F88E4 /* RootShell.swift */; };
 		CB8301504557324D1B671609 /* NotificationsSection.swift in Sources */ = {isa = PBXBuildFile; fileRef = E4D39B252544E335C0CC4FB5 /* NotificationsSection.swift */; };
+		CB9F3A66603FB5F6E0A416DE /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 42F3A033AFC9C83D0B873387 /* PrivacyInfo.xcprivacy */; };
 		CD5567FD3A2CAA3CE90A24C3 /* MigrationCoordinatorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F4DAA00317CF7DF00F86ED30 /* MigrationCoordinatorTests.swift */; };
 		D1EBDE189E3770C0613443D9 /* SuggestedEntitiesLimitTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B4021C550A6EE82CD2799A29 /* SuggestedEntitiesLimitTests.swift */; };
 		D68B04863DB035FBB4CC7D19 /* CompleteTaskIntent.swift in Sources */ = {isa = PBXBuildFile; fileRef = B85AEF08DCB6A6F29677F2F8 /* CompleteTaskIntent.swift */; };
@@ -152,12 +155,14 @@
 		3662AC54EFB61DCAB491C63C /* ShortcutsActions.appex */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = "wrapper.app-extension"; path = ShortcutsActions.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		400AB5E7E52D7AC0BFF18DAE /* CrashReportingSection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CrashReportingSection.swift; sourceTree = "<group>"; };
 		4167EC3BD9F49B2C79556A19 /* ToggleStatusIntent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ToggleStatusIntent.swift; sourceTree = "<group>"; };
+		42F3A033AFC9C83D0B873387 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		46C95D1C58187F4123CB2791 /* StoreLevelModeSwapSpike.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StoreLevelModeSwapSpike.swift; sourceTree = "<group>"; };
 		4908E6E0B96502CEFCDF8DB5 /* AppIntents.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = AppIntents.framework; path = System/Library/Frameworks/AppIntents.framework; sourceTree = SDKROOT; };
 		4BADE4E23B29DACB74971F2E /* MailComposerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MailComposerView.swift; sourceTree = "<group>"; };
 		4C6E6FFD67726D09240CC361 /* ICloudSyncSection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ICloudSyncSection.swift; sourceTree = "<group>"; };
 		4E15BAD0E599EA928403C4A8 /* AppIntentHandlerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppIntentHandlerTests.swift; sourceTree = "<group>"; };
 		5234E07AB0CA951D086A9F6C /* QuickCaptureSection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuickCaptureSection.swift; sourceTree = "<group>"; };
+		590AF55F6A2BA0028259F134 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		59141AA929DFAEEEE436C1FF /* Signing.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Signing.xcconfig; sourceTree = "<group>"; };
 		5B1A1BCFA25E5B795D84C6A7 /* LillistCore */ = {isa = PBXFileReference; lastKnownFileType = folder; name = LillistCore; path = ../../Packages/LillistCore; sourceTree = SOURCE_ROOT; };
 		5D9EA074A9D3F9A86933CEA3 /* DefaultSmartFiltersInstallerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DefaultSmartFiltersInstallerTests.swift; sourceTree = "<group>"; };
@@ -169,6 +174,7 @@
 		689771DEEAAFB71A995AAE37 /* ShareLinkPolicyTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShareLinkPolicyTests.swift; sourceTree = "<group>"; };
 		737996A9942CE2D095EAA6AB /* TaskAttachmentsTab.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TaskAttachmentsTab.swift; sourceTree = "<group>"; };
 		752930BC024A56479687DFAA /* QuickCaptureLockScreenIntent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuickCaptureLockScreenIntent.swift; sourceTree = "<group>"; };
+		7599E85A9499625A6A3322FA /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		7682F5D6476B1BB703DB96DF /* SceneBindings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneBindings.swift; sourceTree = "<group>"; };
 		7A09EF99D4B51FFC48E961F2 /* LillistCoreSharePayloadCompositionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LillistCoreSharePayloadCompositionTests.swift; sourceTree = "<group>"; };
 		804C86DA842B1D2132ED3C7D /* ShareSaveFlow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShareSaveFlow.swift; sourceTree = "<group>"; };
@@ -375,6 +381,7 @@
 				E4C1FA7E921214B499AC7C78 /* IntentSupport.swift */,
 				C879F47AAC9011FEA0721657 /* LillistShortcuts.swift */,
 				A60CEF999A5541D9221BEF8C /* OpenTaskIntent.swift */,
+				42F3A033AFC9C83D0B873387 /* PrivacyInfo.xcprivacy */,
 				752930BC024A56479687DFAA /* QuickCaptureLockScreenIntent.swift */,
 				A319992C5C6111D1848B5549 /* ReportCrashIntent.swift */,
 				127316B4280751452F412407 /* SearchTasksIntent.swift */,
@@ -507,6 +514,7 @@
 			children = (
 				A8F22116451755349886D09A /* Assets.xcassets */,
 				0F733F28A2D648B9C9B202FF /* Localizable.xcstrings */,
+				590AF55F6A2BA0028259F134 /* PrivacyInfo.xcprivacy */,
 			);
 			path = Resources;
 			sourceTree = "<group>";
@@ -604,6 +612,7 @@
 		F8D3A65199D58FD2F0525B35 /* ShareExtension-iOS */ = {
 			isa = PBXGroup;
 			children = (
+				7599E85A9499625A6A3322FA /* PrivacyInfo.xcprivacy */,
 				D2F899010F7F794421F9DB2A /* SharePayload.swift */,
 				BF7C0CBC7BB61226C9ABECE1 /* ShareRootView.swift */,
 				804C86DA842B1D2132ED3C7D /* ShareSaveFlow.swift */,
@@ -677,6 +686,7 @@
 			buildConfigurationList = 87DF3B19191F77CAB088F7F5 /* Build configuration list for PBXNativeTarget "ShortcutsActions" */;
 			buildPhases = (
 				2C3E011831A8FD0F94A3295E /* Sources */,
+				05701D48017AED7A90FEB416 /* Resources */,
 				9FC65BFA90FA483009704A2A /* Frameworks */,
 			);
 			buildRules = (
@@ -720,6 +730,7 @@
 			buildConfigurationList = EBCF6CAB7B4B3D8FCBC98548 /* Build configuration list for PBXNativeTarget "ShareExtension-iOS" */;
 			buildPhases = (
 				A7795C2AC9D3B93F79758D98 /* Sources */,
+				5E9556FCF498C7DB77F36DD8 /* Resources */,
 				C8C261EDEA79BA0942A68DED /* Frameworks */,
 			);
 			buildRules = (
@@ -798,12 +809,29 @@
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
+		05701D48017AED7A90FEB416 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				CB9F3A66603FB5F6E0A416DE /* PrivacyInfo.xcprivacy in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		486B11B03FC22F24C37A46F2 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
 				62AB4F9A61AB494F525F54FF /* Assets.xcassets in Resources */,
 				C83091216C5994A3CDD62AA0 /* Localizable.xcstrings in Resources */,
+				7737C2756C91D21D583CEEA5 /* PrivacyInfo.xcprivacy in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		5E9556FCF498C7DB77F36DD8 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				0B64F80E59A3CEEECEC29977 /* PrivacyInfo.xcprivacy in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
