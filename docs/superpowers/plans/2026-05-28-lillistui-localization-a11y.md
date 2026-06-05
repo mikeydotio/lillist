@@ -2,6 +2,8 @@
 
 > **📍 STATUS — ⬜ PENDING — Wave 7.**
 >
+> **✅ Wave-5 reconciliation (2026-06-05):** Verified clean — Wave 5 (`4dc1f96..0bd7796`) added `DragDropResolver.swift` + 5 `DragDropResolverTests` to LillistUI but touched none of this plan's targets (`Package.swift`, the LillistUI `Localizable.xcstrings`, the reorder-action gating). The test-count check here tracks the **Swift-Testing** run-summary line (`Test run with N tests in M suites passed`); the new `DragDropResolverTests` are **XCTest** cases, which report in the separate `Executed N tests` line and do **not** change that Swift-Testing summary — so the plan's count arithmetic is unaffected.
+>
 > Part of the **Foundation Hardening** program. **Single source of truth for progress, wave order, and cross-plan coordination:** [`2026-05-29-foundation-hardening-index.md`](2026-05-29-foundation-hardening-index.md). New to this project? Read the index first, then the review ([`docs/reviews/2026-05-28-foundation-review.md`](../../reviews/2026-05-28-foundation-review.md)) for *why* this work exists, then `CLAUDE.md` for conventions + build/test commands. Execute task-by-task with `superpowers:subagent-driven-development`.
 >
 > **Pre-flight (run before any edit):** Confirm Waves 1–6 are on `main` (`git log --oneline main | head -20`). Read `docs/superpowers/handoffs/wave-6.md`. Re-Read every file you touch and anchor by code **structure**, not line number — each wave shifts the shared hotspot files. On completion, write `docs/superpowers/handoffs/wave-7.md`.

@@ -1,6 +1,8 @@
 # Extension Persistence Unification & Share/Intent Correctness Implementation Plan
 
-> **📍 STATUS — ⬜ PENDING — Wave 6.**
+> **📍 STATUS — ⬜ PENDING — Wave 6 (FIRST Wave-6 plan).**
+>
+> **⚠️ Wave-5 reconciliation (2026-06-05):** Wave 5 (`app-layer-test-rehab`, commits `4dc1f96..0bd7796`) is on `main` and landed the hard dependency this plan builds on — `GatedPersistenceResolver` exists with the **exact** API Tasks 2/5 assume (`init?(appGroupID:)`, `makePersistence(build:)`, `makePersistence()`), and both `IntentSupport.makePersistence()` and `ShareRootView.save()` already delegate to it (verified; no API-drift edits needed). Three reconciliations applied below: **(1)** The end-to-end Share suite this plan calls `ShareExtensionPayloadTests` was RENAMED by Wave 5 to **`LillistCoreSharePayloadCompositionTests`** (still under `Tests/IntegrationTests/`, so the `-only-testing:Lillist-iOSTests/…` *target* prefix stays — only the class name changed); every `-only-testing:` and prose reference is updated. **(2)** Wave 5 added `../../Extensions/ShortcutsActions/IntentSupport.swift` to the `Lillist-iOSTests` `sources` block (after `ReportCrashIntent.swift`). Task 4's `SharePayload.swift`/`ReportCrashIntent.swift` insertion anchor is intact and the insertion is non-overlapping, but do **NOT** drop that new `IntentSupport.swift` co-compile when you Re-Read and edit the block, and confirm it survives the regenerate. **(3)** `StoreLocator` ownership: the corrected Wave-5 `GatedPersistenceResolver` header (commit `20b6dab`) scopes **this** plan to routing `TaskEntityQuery` (Task 3) only; the CLI's `StoreLocator` stays inline and is an unscoped optional follow-up — do **NOT** add StoreLocator routing here.
 >
 > **⚠️ Wave-4 reconciliation (2026-06-04):** Wave 4 is on `main` and touched three files this plan reads, but verification confirms **no anchor or before-snippet here drifted** — the changes are non-overlapping. Specifics so the executor doesn't blind-apply: **(1) iOS `project.yml` is a shared hotspot.** Wave 4 added three sources to the **`Lillist-iOSAppHostedTests`** target (`StoreReconfigureConcurrencyTests.swift`, `MigrationCoordinatorRestoreTests.swift`, `Helpers/FakeUserNotificationCenter.swift`). Task 4 edits a *different* target — `Lillist-iOSTests` — and its anchor block (`SharePayload.swift` + `ReportCrashIntent.swift`) is intact and unchanged. **Re-Read `project.yml` before editing and do NOT drop the three `Lillist-iOSAppHostedTests` entries; after any `xcodegen generate` (Tasks 4 & 6) diff the pbxproj to confirm those three test sources are still enumerated.** **(2) `TaskStore.swift`** was churned by Wave 4 (rollback in 12 mutators, `purgeAll` rewritten to a batch delete, `countDescendants` deleted) — but this plan only uses the read/create paths (`TaskStore(persistence:)`, `create(title:notes:)`, `fetch(id:)`, all confirmed stable), so it is unaffected. **(3) `PersistenceController.swift`** gained `makeBackgroundContext()` (after `localTaskRowCount()`); this plan only uses `init(configuration:)` (unchanged), so no adaptation is needed. **`SmartFilterStore.swift` (Task 1) was not touched by Wave 4** — the `evaluate(group:…)` overload and its `~323` anchor are byte-accurate. The Wave-5 `GatedPersistenceResolver` hard dependency below is unchanged by Wave 4.
 >
@@ -434,7 +436,7 @@ enum ShareSaveFlow {
 }
 ```
 
-  Then add the helper to the `Lillist-iOSTests` target's `sources` in `Apps/Lillist-iOS/project.yml`. **Re-Read `project.yml` first (Wave 4 added three sources to the *separate* `Lillist-iOSAppHostedTests` target — do NOT touch or drop them).** Edit only the `Lillist-iOSTests` co-compile block (the `SharePayload.swift` + `ReportCrashIntent.swift` entries — anchor by those filenames, the line range shifts wave-to-wave) — replace it with this version that inserts the `ShareSaveFlow.swift` entry between them:
+  Then add the helper to the `Lillist-iOSTests` target's `sources` in `Apps/Lillist-iOS/project.yml`. **Re-Read `project.yml` first (Wave 4 added three sources to the *separate* `Lillist-iOSAppHostedTests` target — do NOT touch or drop them).** Edit only the `Lillist-iOSTests` co-compile block (the `SharePayload.swift` → `ReportCrashIntent.swift` → `IntentSupport.swift` entries — anchor by those filenames, the line range shifts wave-to-wave) — replace it with this version, which inserts the `ShareSaveFlow.swift` entry after `SharePayload.swift` and **keeps the Wave-5 `IntentSupport.swift` co-compile** that trails `ReportCrashIntent.swift`:
 
 ```yaml
       # Co-compile the SharePayload source so the tests can exercise its
@@ -450,6 +452,10 @@ enum ShareSaveFlow {
       # can be exercised from the standalone iOS test bundle without
       # needing a ShortcutsActions extension test host.
       - path: ../../Extensions/ShortcutsActions/ReportCrashIntent.swift
+      # Co-compile IntentSupport (added by app-layer-test-rehab, Wave 5) so
+      # the gate-aware persistence resolution wrapper stays reachable from
+      # the standalone iOS test bundle. Do NOT drop this entry.
+      - path: ../../Extensions/ShortcutsActions/IntentSupport.swift
 ```
 
   Regenerate the iOS pbxproj so the new test source is picked up, then confirm the Wave-4 `Lillist-iOSAppHostedTests` sources survived the regeneration:
@@ -457,7 +463,7 @@ enum ShareSaveFlow {
   cd /Volumes/Code/mikeyward/Lillist/Apps/Lillist-iOS && xcodegen generate --spec project.yml --project .
   cd /Volumes/Code/mikeyward/Lillist && grep -c "StoreReconfigureConcurrencyTests\|MigrationCoordinatorRestoreTests\|FakeUserNotificationCenter" Apps/Lillist-iOS/Lillist-iOS.xcodeproj/project.pbxproj
   ```
-  Expected: the `grep -c` count is non-zero (the three Wave-4 app-hosted test sources are still enumerated — `xcodegen` regenerated from the unchanged `project.yml`, which retains them).
+  Expected: the `grep -c` count is non-zero (the three Wave-4 app-hosted test sources are still enumerated — `xcodegen` regenerated from the unchanged `project.yml`, which retains them). Also confirm the Wave-5 `IntentSupport.swift` co-compile entry in the `Lillist-iOSTests` block is still present (it sits just below `ReportCrashIntent.swift`); your insertion of `ShareSaveFlow.swift` between `SharePayload.swift` and `ReportCrashIntent.swift` must not disturb it.
 
 - [ ] **Step 4: Run the test, expect pass.**
   ```bash
@@ -494,7 +500,7 @@ are unit-tested. Closes ext-6 for the Share flow."
 >
 > **Depends on `app-layer-test-rehab` (Wave 5).** That plan already routed `save()`'s gated config resolution through `GatedPersistenceResolver`, so on `main` `save()` no longer builds `MigrationGate` + `StoreConfiguration` inline. Re-Read the current file first and keep the resolver call; this task adds the `ShareSaveFlow` wiring, stops swallowing the attachment error, and adds the `URLPreviewPolicy` gate on top of it.
 >
-> `ShareRootView` is SwiftUI in the signed share extension and cannot be `@testable import`-ed from the standalone test bundle. The *decision* logic it delegates to is unit-tested in Task 4 (`ShareSaveFlowTests`); the SSRF *policy* it now applies is unit-tested in this task's `ShareLinkPolicyTests`; the *persistence* path it drives (decode → create → attach) is already covered end-to-end by `ShareExtensionPayloadTests`. Correctness of the new wiring is verified by the build plus those suites.
+> `ShareRootView` is SwiftUI in the signed share extension and cannot be `@testable import`-ed from the standalone test bundle. The *decision* logic it delegates to is unit-tested in Task 4 (`ShareSaveFlowTests`); the SSRF *policy* it now applies is unit-tested in this task's `ShareLinkPolicyTests`; the *persistence* path it drives (decode → create → attach) is already covered end-to-end by `LillistCoreSharePayloadCompositionTests` (the Wave-5 rename of `ShareExtensionPayloadTests`). Correctness of the new wiring is verified by the build plus those suites.
 
 - [ ] **Step 1: Add the saved-task-ID state.** In `ShareRootView.swift`, replace the `@State` block (anchor on `@State private var saveError: String?`, `~13–17`) with one that adds `savedTaskID`:
 
@@ -615,7 +621,7 @@ final class ShareLinkPolicyTests: XCTestCase {
   ```bash
   cd /Volumes/Code/mikeyward/Lillist && xcodebuild test -workspace Lillist.xcworkspace -scheme Lillist-iOS \
     -destination 'platform=iOS Simulator,name=iPhone 17,OS=26.2' \
-    -only-testing:Lillist-iOSTests/ShareExtensionPayloadTests \
+    -only-testing:Lillist-iOSTests/LillistCoreSharePayloadCompositionTests \
     -only-testing:Lillist-iOSTests/SharePayloadTests \
     -only-testing:Lillist-iOSTests/ShareSaveFlowTests \
     -only-testing:Lillist-iOSTests/ShareLinkPolicyTests 2>&1 | tail -25
@@ -832,7 +838,7 @@ actually deliver, removing the dead surface. Closes ext-5."
     -destination 'platform=iOS Simulator,name=iPhone 17,OS=26.2' \
     -only-testing:Lillist-iOSTests 2>&1 | tail -25
   ```
-  Expected: `** TEST SUCCEEDED **` with `ShareSaveFlowTests`, `ShareLinkPolicyTests`, `SuggestedEntitiesLimitTests`, `ShareExtensionPayloadTests`, `SharePayloadTests`, and `AppIntentHandlerTests` all green.
+  Expected: `** TEST SUCCEEDED **` with `ShareSaveFlowTests`, `ShareLinkPolicyTests`, `SuggestedEntitiesLimitTests`, `LillistCoreSharePayloadCompositionTests` (Wave-5 rename of `ShareExtensionPayloadTests`), `SharePayloadTests`, and `AppIntentHandlerTests` all green.
 
 - [ ] **Step 4: Confirm warnings-as-errors build of the app + extensions.**
   ```bash
