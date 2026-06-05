@@ -7,6 +7,17 @@ import Foundation
 /// requires that task titles, notes, journal bodies, tag names,
 /// file paths under user dirs, email addresses, and UUIDs are all
 /// stripped before any log text leaves the device.
+///
+/// **PII must be wrapped, not bare.** The authoritative PII passes are
+/// the wrapped-marker forms (`<title>…</title>`, `<notes>…</notes>`,
+/// `<journal>…</journal>`, `<tag>…</tag>`), which redact arbitrary
+/// content *including spaces* via a non-greedy `[\s\S]*?`. The
+/// `key=value` passes are single-token defense-in-depth only: they stop
+/// at the first whitespace, so a bare multi-word or quoted value
+/// (`title=Buy milk`) is **not** fully redacted. Any code that logs
+/// user content must therefore wrap it in a marker; do not rely on the
+/// `key=value` passes to catch unwrapped multi-word PII. The adversarial
+/// golden fixture (`raw-logs-adversarial`) pins this contract.
 public enum LogRedactor {
 
     public static func redact(_ raw: String) -> String {
