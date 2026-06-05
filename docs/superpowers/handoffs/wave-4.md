@@ -97,6 +97,35 @@ From: Wave 4 executor   To: Wave 5 executor   Date: 2026-06-04
   regression (actor scheduling masks Race A in the `recordEvent` seam). Suite kept for the
   fan-out/no-starvation/churn properties it genuinely guards; docs corrected.
 
+## Post-merge cross-cutting review + hardening (same executor, 2026-06-04)
+After all three plans merged, a 4-dimension adversarial review ran over the full
+wave diff. **Two dimensions clean**: no prior-wave regression (breadcrumb-truthfulness
+do/catch shape byte-identical with the rollback lines stripped; cloudkit-convergence /
+store-swap-safety / recurrence-input-hardening untouched), and clean cross-plan
+shared-file composition (TaskStore, both AppEnvironments, MigrationCoordinator,
+engineering-notes, project.yml↔pbxproj all coherent). **Four important findings were
+fixed and re-verified closed** (final state: 808 tests green, both apps build):
+- `18c00ed` — the conc-5 rollback fix had missed `transition` (do/catch, no rollback)
+  and `reorder`/`assignTag`/`unassignTag` (no catch). All four now roll back; the
+  "every mutating method" claim is now true (purgeAll is the sole exclusion — batches
+  on a discarded background context). Test asserts the 133020 merge conflict + covers
+  `transition`.
+- `8e9afe8` — the `runMigration` reentrancy guard had a TOCTOU window (journal not
+  written until after 3 awaits). Added a synchronous `@MainActor isMigrating` flag set
+  before the first suspension + cleared in `defer`; journal-read guard retained for the
+  cross-launch case. Gated concurrent-double-begin test added.
+- `d18ed71` — HistoryPruner tests were near-tautological (asserted only the unconditional
+  localOnly boolean). Now `fetchHistory`-based: prove history actually trimmed
+  (pre>post; on this platform `deleteHistory` leaves its own deletion marker so post=1,
+  pre=2) + idempotent high-water token stable. CascadeReaper `>=6`→`==6`.
+- `479d47a` — `makeBackgroundContext` now stamps `transactionAuthor = localTransactionAuthor`
+  (bulk import/purge writes were authorless → RemoteChangeReconciler could misclassify
+  them as foreign for a future consumer; harmless today). engineering-notes notes the
+  AutoPurgeJob matched+cascade count nuance.
+Remaining review items are info/no-action (CloudKitEventBridge suite verified honest;
+CascadeReaper Tag.children footgun guarded by the `[LillistTask]` signature; residual #3
+already documented).
+
 ## Pre-flight the next executor should run
 - `git log --oneline main | head -25` — confirm Wave-4 commits present (`f093884`..`45b7d7d`).
 - `swift test --package-path Packages/LillistCore` — expect ~805 green; a single
