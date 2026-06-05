@@ -2,12 +2,13 @@ import XCTest
 import LillistCore
 import LillistUI
 
-/// Integration test mirroring what `QuickCaptureDialogHost.submit()` does
-/// on submission: parse, create task, resolve+assign tags, resolve+set
-/// deadline. Cannot `@testable import Lillist_iOS` from the standalone
-/// test bundle (no signed app host); exercises the equivalent path
-/// through LillistCore + LillistUI's `QuickCaptureParser`.
-final class QuickCaptureFlowTests: XCTestCase {
+/// LillistCore + LillistUI composition test for the Quick Capture pipeline.
+/// This bundle cannot `@testable import Lillist_iOS` (no signed app host),
+/// so it does NOT exercise `QuickCaptureDialogHost.submit()` directly — it
+/// re-walks the equivalent parse → create → resolve-tags → resolve-deadline
+/// path through `QuickCaptureParser` + `TaskStore` + `TagStore`. Named to
+/// signal that it covers the composition, not the app-layer view model.
+final class LillistCoreQuickCaptureCompositionTests: XCTestCase {
     func test_parse_create_resolve_tag_and_deadline() async throws {
         let persistence = try await PersistenceController(configuration: .inMemory)
         let taskStore = TaskStore(persistence: persistence)

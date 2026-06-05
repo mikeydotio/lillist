@@ -2,10 +2,13 @@ import XCTest
 import Foundation
 import LillistCore
 
-/// End-to-end check mirroring what `ShareRootView.save()` does on submit:
-/// decode the payload → create a task → attach the URL (when present).
-/// SharePayload is co-compiled into this test bundle (see project.yml).
-final class ShareExtensionPayloadTests: XCTestCase {
+/// LillistCore composition test for the Share Extension persistence path.
+/// This bundle cannot `@testable import` the ShareExtension target, so it
+/// does NOT exercise `ShareRootView.save()` directly — it re-walks the
+/// equivalent decode → create-task → attach-URL path through `SharePayload`
+/// (co-compiled), `TaskStore`, and `AttachmentStore`. Named to signal that
+/// it covers the composition, not the SwiftUI view.
+final class LillistCoreSharePayloadCompositionTests: XCTestCase {
     func test_url_payload_creates_a_task_with_a_link_attachment() async throws {
         let persistence = try await PersistenceController(configuration: .inMemory)
         let taskStore = TaskStore(persistence: persistence)
