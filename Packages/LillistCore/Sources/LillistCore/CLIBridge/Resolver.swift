@@ -81,7 +81,7 @@ extension CLIBridge {
             if candidates.count == 1 {
                 if destructiveness == .destructive {
                     throw LillistError.validationFailed([
-                        .init(field: "task", message: "destructive verbs require a UUID or exact title; got partial match for '\(trimmed)'. Use --exact \"<title>\" or pass a UUID.")
+                        .init(field: "task", message: "destructive verbs require a UUID or exact title; '\(trimmed)' only partially matched. Pass the full title or the task's UUID (run `lillist ls` to find it).")
                     ])
                 }
                 return Resolution(id: candidates[0].id, matchKind: .substring, pickedSilently: true)
@@ -113,20 +113,6 @@ extension CLIBridge {
                 resolutions.append(resolution)
             }
             return resolutions
-        }
-
-        /// Resolves an exact-title bypass token (from `--exact`).
-        public static func resolveExactTitle(
-            _ title: String,
-            scope: Scope,
-            persistence: PersistenceController
-        ) async throws -> Resolution {
-            let candidates = try await fetchTitleCandidates(token: title, scope: scope, persistence: persistence)
-            let lower = title.lowercased()
-            let exact = candidates.filter { $0.title.lowercased() == lower }
-            guard exact.isEmpty == false else { throw LillistError.notFound }
-            if exact.count > 1 { throw LillistError.ambiguous(exact.map(\.id)) }
-            return Resolution(id: exact[0].id, matchKind: .exactTitle, pickedSilently: false)
         }
 
         /// Computes the shortest UUID prefix (lowercased, no dashes) that uniquely
