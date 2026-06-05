@@ -1,0 +1,10 @@
+2026-05-12 10:00:01 [TaskStore] updated Title=Pickup to closed
+2026-05-12 10:00:02 [TaskStore] updated NOTES=Confidential to open
+2026-05-12 10:00:03 [TagStore] linked Tag=Work to task
+2026-05-12 10:00:04 [TaskStore] created <title>Buy groceries on the way home</title>
+2026-05-12 10:00:05 [TaskStore] updated title=Buy milk and bread to closed
+2026-05-12 10:00:06 [Attach] saved to /var/mobile/Containers/Data/Application/deadbeef-0000-1111-2222-333344445555/Library/x.png
+2026-05-12 10:00:07 [Sync] opened /var/mobile/Containers/Shared/AppGroup/aaaa1111-2222-3333-4444-555566667777/db.sqlite
+2026-05-12 10:00:08 [Attach] staged /private/var/folders/ab/cd12/T/temp.png
+2026-05-12 10:00:09 [Export] scratch /tmp/lillist-export.json
+2026-05-12 10:00:10 [Account] iCloud account Mikey.Ward@Example.COM active
