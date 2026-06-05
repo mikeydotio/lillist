@@ -62,6 +62,13 @@ public final class MigrationCoordinator {
     private let accountStateProvider: AccountStateProviding?
 
     private var progressContinuations: [UUID: AsyncStream<MigrationPhase>.Continuation] = [:]
+    /// In-process reentrancy guard. The journal-read guard in `runMigration`
+    /// rejects starting on top of a *persisted* in-flight journal, but the
+    /// journal isn't written until after several `await`s, so two fresh
+    /// concurrent `begin*` calls on this `@MainActor` coordinator could both
+    /// pass that guard. This flag is set synchronously *before* the first
+    /// suspension and cleared on exit, closing the same-process window.
+    private var isMigrating = false
 
     public init(
         host: any PersistenceReconfiguring,
@@ -191,6 +198,17 @@ public final class MigrationCoordinator {
                 reason: "A sync-mode migration is already in progress."
             )
         }
+        // In-process reentrancy: close the window between the journal-read
+        // guard above and the first journal.write below (several awaits later)
+        // where a second concurrent begin* could slip through. Synchronous —
+        // set before any suspension; cleared on every exit path.
+        guard !isMigrating else {
+            throw LillistError.storeUnavailable(
+                reason: "A sync-mode migration is already in progress."
+            )
+        }
+        isMigrating = true
+        defer { isMigrating = false }
         await breadcrumb("sync mode change start \(op.rawValue)")
         // 1. preparing — cancel notifications first so a destructive
         //    op doesn't leave stale fires pointing at deleted rows
