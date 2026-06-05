@@ -2128,3 +2128,78 @@ target (real bundle ID); the standalone `LillistCoreTests` bundle skips it even
 under xcodebuild. Its real run is on a code-signed simulator host (CI / dev
 Mac). A fetch that lands mid-swap may throw `.notFound` (no attached store) — a
 tolerable transient; a crash or a lost committed row is not.
+
+
+## 2026-06-04 — Single shared viewContext is deliberate; bulk work gets a targeted background seam (Plan: background-context-seam, Wave 4)
+
+**The default is one main-queue context.** `PersistenceController`
+exposes a single shared `container.viewContext` and every interactive
+store mutation runs on it via `context.perform`. This is intentional, not
+an oversight: `viewContext.automaticallyMergesChangesFromParent = true`
+is **active** — it is the channel through which
+`NSPersistentCloudKitContainer` merges remote CloudKit changes into the
+UI's context. Do **not** "clean up" by claiming auto-merge is dead or by
+fanning every store onto private contexts; you would break CloudKit
+mirroring's path to the UI.
+
+**The seam.** Three jobs are bulk, not interactive — full-store export,
+full-store import, and Trash purge. Those run on a dedicated
+`PersistenceController.makeBackgroundContext()` (a `newBackgroundContext`
+with auto-merge ON and the same trump merge policy) so a 10k-row pass
+never freezes the main queue. Background saves propagate up to the
+`viewContext`, which auto-merges them, so callers don't refetch after an
+import. Everything else stays on `viewContext`.
+
+**Batch delete skips delete rules — and the result set lies.**
+`NSBatchDeleteRequest` bypasses Core Data's delete-rule machinery. The
+*DB rows* are still cascaded, but `NSBatchDeleteResult`
+(`resultTypeObjectIDs`) reports only the *explicitly-named* objectIDs.
+Merging that partial set into the `viewContext` leaves the cascaded
+children as dangling in-memory objects (rows gone from SQLite, still
+"live" in the context). `CascadeReaper` therefore enumerates every
+cascade-reachable objectID (`children` recursively → `journalEntries` →
+`attachments` / `notificationSpecs`; `JournalEntry.attachments`) and the
+full set is both deleted and merged. `purgeAll` and `AutoPurgeJob` use it.
+Nullify relationships (`tags`, `series`, `parent`) are not reaped.
+
+**`NSBatchDeleteRequest(objectIDs:)` is single-entity.** A non-obvious
+trap the plan's first draft hit: that initializer requires *all* IDs to
+belong to **one** entity — passing the mixed-entity cascade closure throws
+`NSInvalidArgumentException: mismatched objectIDs in batch delete
+initializer` at runtime. So `CascadeReaper.batchDelete(objectIDs:in:)`
+groups the reaped IDs by `entity.name` and issues one batch per entity,
+**leaf-first** (Attachment → NotificationSpec → JournalEntry →
+LillistTask), returning the union of executed IDs to merge. The in-memory
+test store is SQLite-at-`/dev/null` (not `NSInMemoryStoreType`), so the
+batch-delete + FK-cascade path is exercised with production fidelity.
+
+**Rollback on save failure.** A failed `ctx.save()` inside a mutating
+`perform` leaves the dirtied objects pending in the shared `viewContext`;
+the next op then inherits or compounds the failed change. Every mutating
+`TaskStore` method calls `context.rollback()` (hopped back onto
+`context.perform`) as the first line of its catch — a single inserted line
+that does **not** disturb the breadcrumb-truthfulness success/failure crumb
+shape. To test deterministically: pin `viewContext` at a stale row version
+(auto-merge OFF + a pending change + `NSMergePolicy.error`), bump the row
+from a second context, then call the mutator — the save throws
+`NSCocoaErrorDomain` 133020 and the catch's rollback leaves the context
+clean. (`transition` and `purgeAll` are intentionally out of scope: the
+former isn't covered by this plan; the latter runs the batch on a discarded
+background context, so there's nothing in the shared context to roll back.)
+
+**localOnly history grows unbounded.** `.localOnly` stores keep
+`NSPersistentHistoryTrackingKey` ON (so the sync-mode swap is a pure
+description mutation), but nothing consumes the history. `HistoryPruner`
+sweeps it (token-bounded, idempotent), gated to `.localOnly` —
+`.iCloudSync` trims behind its own export cursor and must not be swept.
+`NSPersistentHistoryToken` is not `Sendable`: read it, use it in
+`deleteHistory(before:)`, and archive it to `Data` all inside one
+`perform`; only the `Data` may escape. `sweep()` is wired fire-and-forget
+into both apps' `bootstrap()` after the launch purge.
+
+**Acknowledged limitation (index residual #3):** the purge reaps
+`NotificationSpec` *rows* but does **not** cancel the OS-level pending
+`UNNotificationRequest`s those specs scheduled — a purged task whose
+fire-date is still future will fire its banner until the OS drops it.
+Cancelling the OS-level requests is a named follow-up, out of this plan's
+threading/cascade scope.
