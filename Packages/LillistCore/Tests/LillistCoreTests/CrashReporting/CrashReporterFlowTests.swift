@@ -66,11 +66,54 @@ struct CrashReporterFlowTests {
         defer { try? FileManager.default.removeItem(at: url) }
         let selfCanary = CrashCanary(
             pid: ProcessInfo.processInfo.processIdentifier,
-            startedAt: Date(timeIntervalSince1970: 999_000),
+            // Recent startedAt (matches the reporter's pinned now of
+            // 1_000_000) so it reads as a same-launch pre-arm, not a
+            // recycled-PID prior crash. See canary-4.
+            startedAt: Date(timeIntervalSince1970: 1_000_000),
             buildVersion: "1.0 (1)",
             hostname: "host"
         )
         try CanaryFile(url: url).writeFresh(selfCanary)
+        let pending = try await reporter.detectAndPrepare()
+        #expect(pending == nil)
+    }
+
+    @Test("Recycled-PID prior crash with an old startedAt IS surfaced")
+    func recycledPidOldStart_isPending() async throws {
+        // canary-4: the OS recycles PIDs. A real prior crash can carry the
+        // same PID as this process. Suppressing purely on PID equality
+        // would silently swallow that crash. The prior canary's startedAt
+        // is from an *earlier* launch, so it is far from this run's now().
+        let recording = RecordingTransport()
+        let (reporter, url) = await makeReporter(transport: recording)
+        defer { try? FileManager.default.removeItem(at: url) }
+        // reporter "now" is 1_000_000; plant a same-PID canary that started
+        // a full hour earlier — unmistakably a prior launch.
+        let recycled = CrashCanary(
+            pid: ProcessInfo.processInfo.processIdentifier,
+            startedAt: Date(timeIntervalSince1970: 1_000_000 - 3600),
+            buildVersion: "0.9",
+            hostname: "old"
+        )
+        try CanaryFile(url: url).writeFresh(recycled)
+        let pending = try await reporter.detectAndPrepare()
+        #expect(pending == recycled)
+    }
+
+    @Test("Self-pre-armed canary with a recent startedAt is NOT surfaced")
+    func selfPidRecentStart_isNotPending() async throws {
+        // canary-4: a pre-arm earlier in *this* launch has startedAt ≈ now,
+        // so it must still be filtered out even though PIDs can recycle.
+        let recording = RecordingTransport()
+        let (reporter, url) = await makeReporter(transport: recording)
+        defer { try? FileManager.default.removeItem(at: url) }
+        let selfRecent = CrashCanary(
+            pid: ProcessInfo.processInfo.processIdentifier,
+            startedAt: Date(timeIntervalSince1970: 1_000_000 - 1), // 1s ago
+            buildVersion: "1.0 (1)",
+            hostname: "host"
+        )
+        try CanaryFile(url: url).writeFresh(selfRecent)
         let pending = try await reporter.detectAndPrepare()
         #expect(pending == nil)
     }
