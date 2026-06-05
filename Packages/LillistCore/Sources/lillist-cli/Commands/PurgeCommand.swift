@@ -10,15 +10,20 @@ public struct PurgeCommand: AsyncParsableCommand {
     public init() {}
     public func run() async throws {
         let p = try await CLIBridge.StoreLocator.openAppGroup()
-        let tokens: [String]
-        if StdinReader.isStdinSentinel(token) {
-            let raw = StdinReader.readAllLines()
-            tokens = allowFuzzy ? raw : (try StdinReader.validateAllUUIDs(raw))
-        } else {
-            tokens = [token]
-        }
-        for t in tokens {
-            try await CLIBridge.PurgeHandler.run(token: t, persistence: p)
+        let tokens = try BatchTokens.resolveInput(
+            token: token,
+            destructiveGate: .requireUUIDs,
+            allowFuzzy: allowFuzzy
+        )
+        let resolutions = try await CLIBridge.Resolver.resolveAll(
+            tokens: tokens,
+            scope: .anywhereIncludingClosed,
+            destructiveness: .destructive,
+            persistence: p
+        )
+        let store = TaskStore(persistence: p)
+        for r in resolutions {
+            try await store.hardDelete(id: r.id)
         }
     }
 }

@@ -30,20 +30,25 @@ public struct StatusCommand: AsyncParsableCommand {
             throw LillistError.validationFailed([.init(field: "status", message: "unknown '\(newStatus)'")])
         }
         let p = try await CLIBridge.StoreLocator.openAppGroup()
-        let tokens: [String]
-        if StdinReader.isStdinSentinel(token) {
-            let raw = StdinReader.readAllLines()
-            // Closed-transition is destructive; require UUIDs unless allowed.
-            if s == .closed && allowFuzzy == false {
-                tokens = try StdinReader.validateAllUUIDs(raw)
-            } else {
-                tokens = raw
+        let destructive = (s == .closed)
+        let tokens = try BatchTokens.resolveInput(
+            token: token,
+            destructiveGate: destructive ? .requireUUIDs : .none,
+            allowFuzzy: allowFuzzy
+        )
+        let resolutions = try await CLIBridge.Resolver.resolveAll(
+            tokens: tokens,
+            scope: .anywhereIncludingClosed,
+            destructiveness: destructive ? .destructive : .readOnly,
+            persistence: p
+        )
+        let tasks = TaskStore(persistence: p)
+        let journal = JournalStore(persistence: p)
+        for r in resolutions {
+            try await tasks.transition(id: r.id, to: s)
+            if let body = note, body.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false {
+                _ = try await journal.appendNote(taskID: r.id, body: body)
             }
-        } else {
-            tokens = [token]
-        }
-        for t in tokens {
-            try await CLIBridge.StatusHandler.run(token: t, to: s, note: note, persistence: p)
         }
     }
 }

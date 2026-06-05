@@ -12,15 +12,34 @@ public struct MoveCommand: AsyncParsableCommand {
     public init() {}
     public func run() async throws {
         let p = try await CLIBridge.StoreLocator.openAppGroup()
-        let tokens: [String]
-        if StdinReader.isStdinSentinel(token) {
-            let raw = StdinReader.readAllLines()
-            tokens = allowFuzzy ? raw : (try StdinReader.validateAllUUIDs(raw))
+        let tokens = try BatchTokens.resolveInput(
+            token: token,
+            destructiveGate: .requireUUIDs,
+            allowFuzzy: allowFuzzy
+        )
+        let newParentID: UUID?
+        if root {
+            newParentID = nil
+        } else if let pt = newParent {
+            let pr = try await CLIBridge.Resolver.resolve(
+                token: pt, scope: .anywhereIncludingClosed,
+                destructiveness: .destructive, persistence: p
+            )
+            newParentID = pr.id
         } else {
-            tokens = [token]
+            throw LillistError.validationFailed([
+                .init(field: "parent", message: "must specify a new parent or --root")
+            ])
         }
-        for t in tokens {
-            try await CLIBridge.MoveHandler.run(token: t, newParentToken: newParent, toRoot: root, persistence: p)
+        let resolutions = try await CLIBridge.Resolver.resolveAll(
+            tokens: tokens,
+            scope: .anywhereIncludingClosed,
+            destructiveness: .destructive,
+            persistence: p
+        )
+        let store = TaskStore(persistence: p)
+        for r in resolutions {
+            try await store.reparent(id: r.id, newParent: newParentID)
         }
     }
 }

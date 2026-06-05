@@ -10,15 +10,22 @@ public struct DeleteCommand: AsyncParsableCommand {
     public init() {}
     public func run() async throws {
         let p = try await CLIBridge.StoreLocator.openAppGroup()
-        let tokens: [String]
-        if StdinReader.isStdinSentinel(token) {
-            let raw = StdinReader.readAllLines()
-            tokens = allowFuzzy ? raw : (try StdinReader.validateAllUUIDs(raw))
-        } else {
-            tokens = [token]
-        }
-        for t in tokens {
-            try await CLIBridge.DeleteHandler.run(token: t, persistence: p)
+        let tokens = try BatchTokens.resolveInput(
+            token: token,
+            destructiveGate: .requireUUIDs,
+            allowFuzzy: allowFuzzy
+        )
+        // Pre-resolve all tokens so a single bad token aborts before any
+        // mutation (all-or-nothing).
+        let resolutions = try await CLIBridge.Resolver.resolveAll(
+            tokens: tokens,
+            scope: .anywhereIncludingClosed,
+            destructiveness: .destructive,
+            persistence: p
+        )
+        let store = TaskStore(persistence: p)
+        for r in resolutions {
+            try await store.softDelete(id: r.id)
         }
     }
 }
