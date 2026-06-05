@@ -2369,3 +2369,41 @@ headless `xcodebuild test` because the scheme also builds the macOS app
 target, which needs a Mac provisioning profile a headless runner cannot
 auto-generate; the iOS standalone bundle ad-hoc-signs on the simulator
 without it.
+
+## 2026-06-05 — Recovery pre-flight: disk-space check lives in QuarantineManager.copyStore, not the coordinator (Plan: recovery-hardening, Wave 7)
+
+The destructive sync-mode swap's only recovery anchor is the quarantine
+copy of the live SQLite store. A copy that runs out of room mid-write is
+worse than no copy — so `QuarantineManager.copyStore(at:)` now runs a
+**pre-flight** disk-space check (via an injectable `DiskSpaceProbing`)
+and throws `LillistError.insufficientDiskSpace` *before touching any
+file*. It requires `2×` the live footprint (`quarantineHeadroomFactor`)
+to cover source+copy coexistence plus WAL-checkpoint inflation. The
+check lives in `copyStore` (not the move-based `quarantineStore`)
+because that is the method `runMigration` calls — a check in
+`quarantineStore` would never fire during a migration.
+
+Two ordering invariants a future refactor must preserve:
+
+1. In `MigrationCoordinator.runMigration` the merged step order is
+   precondition → `reconfigure` (step 4) → `copyStore` (step 5) →
+   CloudKit zone erase (step 6). The disk check is inside `copyStore`
+   (step 5), so a shortfall aborts before the irreversible erase. Do
+   not reorder. NOTE: because `reconfigure` (step 4) precedes the copy,
+   a disk-shortfall abort leaves the sync mode **already flipped to the
+   target** — the recovery sheet's "Try Again" is what re-runs the now
+   partially-applied swap; the user must free space first.
+2. The check uses `volumeAvailableCapacityForImportantUsageKey` (honest
+   "space the OS would free for a real write"), not the raw
+   `.volumeAvailableCapacityKey`.
+
+Residual: a `PRAGMA wal_checkpoint(TRUNCATE)` around `copyStore` would
+shrink the WAL before the copy and tighten the 2× headroom estimate. It
+is **not** implemented here — recorded as a known follow-up so a future
+contributor doesn't assume the copy already checkpoints.
+
+`restoreFromBackup` is covered by ungated `swift test` cases in
+`MigrationRecoveryTests.swift` (the `test-2` gap, already closed before
+this plan). Its happy-path test keeps `previousMode == host.currentMode`
+so `reconfigure` is a no-op early-return and the test doesn't need a real
+bundle id (`liveSwapAllowed`).
