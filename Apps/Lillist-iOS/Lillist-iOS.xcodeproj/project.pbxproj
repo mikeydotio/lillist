@@ -17,6 +17,7 @@
 		12B0B4969DCF826068F817E2 /* LillistCommands.swift in Sources */ = {isa = PBXBuildFile; fileRef = 320C843DACE915B2A004882D /* LillistCommands.swift */; };
 		19E41567449FAA5BE15E6B32 /* AdvancedSection.swift in Sources */ = {isa = PBXBuildFile; fileRef = EAFB6125227B6A731DA61F20 /* AdvancedSection.swift */; };
 		1AA07AE8A116E72F3E34E746 /* LillistCore in Frameworks */ = {isa = PBXBuildFile; productRef = E7E1D757887B9534E4A62704 /* LillistCore */; };
+		1B96F030E5127C52602B1A9E /* MetricKitObserver.swift in Sources */ = {isa = PBXBuildFile; fileRef = B3B86AC31B2BB7EC07B1C643 /* MetricKitObserver.swift */; };
 		1C56CE523F96BDB4ED0163D4 /* AddNudgeIntent.swift in Sources */ = {isa = PBXBuildFile; fileRef = B82728947B00E5DCC963F9A5 /* AddNudgeIntent.swift */; };
 		1F01AB703411576F362D1A03 /* AddTaskIntent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 343B12E0AE009EE4CB0ECBE7 /* AddTaskIntent.swift */; };
 		1F88713EE31954520467B3CB /* LillistUI in Frameworks */ = {isa = PBXBuildFile; productRef = 632F42FE2460074A366178DF /* LillistUI */; };
@@ -184,6 +185,7 @@
 		A8F22116451755349886D09A /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		AB27849294EB47AAC45BE9E6 /* FakePersistenceReconfigurer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FakePersistenceReconfigurer.swift; sourceTree = "<group>"; };
 		B1CF1EBE004127B957F4AB99 /* LillistApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LillistApp.swift; sourceTree = "<group>"; };
+		B3B86AC31B2BB7EC07B1C643 /* MetricKitObserver.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MetricKitObserver.swift; sourceTree = "<group>"; };
 		B3C5475FEB9C980491DF8B93 /* LillistUI */ = {isa = PBXFileReference; lastKnownFileType = folder; name = LillistUI; path = ../../Packages/LillistUI; sourceTree = SOURCE_ROOT; };
 		B4021C550A6EE82CD2799A29 /* SuggestedEntitiesLimitTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SuggestedEntitiesLimitTests.swift; sourceTree = "<group>"; };
 		B82728947B00E5DCC963F9A5 /* AddNudgeIntent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddNudgeIntent.swift; sourceTree = "<group>"; };
@@ -286,6 +288,7 @@
 				B1CF1EBE004127B957F4AB99 /* LillistApp.swift */,
 				F712F10B1BA7CC96F08D684A /* MailComposerTransport.swift */,
 				4BADE4E23B29DACB74971F2E /* MailComposerView.swift */,
+				B3B86AC31B2BB7EC07B1C643 /* MetricKitObserver.swift */,
 			);
 			path = App;
 			sourceTree = "<group>";
@@ -889,6 +892,7 @@
 				12B0B4969DCF826068F817E2 /* LillistCommands.swift in Sources */,
 				FF3DA22F3237CE457042CD1E /* MailComposerTransport.swift in Sources */,
 				F75A71A023C47A17E5C2157E /* MailComposerView.swift in Sources */,
+				1B96F030E5127C52602B1A9E /* MetricKitObserver.swift in Sources */,
 				CB8301504557324D1B671609 /* NotificationsSection.swift in Sources */,
 				AB0DAB0FFB124C1178A0FAB6 /* OnboardingScreen.swift in Sources */,
 				095DD7CB663AC32D6BC740CB /* QuickCaptureDialogHost.swift in Sources */,

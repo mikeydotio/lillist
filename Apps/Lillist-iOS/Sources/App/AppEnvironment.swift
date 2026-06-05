@@ -68,6 +68,9 @@ final class AppEnvironment {
     let breadcrumbs: BreadcrumbBuffer
     let crashReporter: CrashReporter
     let mailTransport: MailComposerTransport
+    /// Retained MetricKit subscriber. MetricKit holds subscribers
+    /// weakly, so the environment owns the strong reference.
+    let metricKitObserver = MetricKitObserver()
     var crashPromptsEnabled: Bool = PreferencesStore.Prefs.crashPromptsDefault
     /// Plan 10: latest known iCloud account state, mirrored off the
     /// `AccountStateMonitor` actor so SwiftUI views can react via
@@ -341,6 +344,7 @@ final class AppEnvironment {
         startObservingSyncMode()
         installCanaryLifecycleObservers()
         startObservingPauseReason()
+        metricKitObserver.startReceiving()
     }
 
     /// Persist-6: entry point for the iOS background-processing task.
