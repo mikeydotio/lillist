@@ -176,6 +176,71 @@ struct ImporterTests {
         }
         #expect(count == 2)
     }
+
+    /// Build a minimal, valid-shaped Document at an arbitrary schema
+    /// version with no rows, so version-guard behavior can be tested in
+    /// isolation from row-merge logic.
+    private func emptyDocument(version: Int) -> ExportSchema.Document {
+        ExportSchema.Document(
+            version: version,
+            exportedAt: Date(timeIntervalSince1970: 0),
+            tasks: [],
+            tags: [],
+            journalEntries: [],
+            attachments: [],
+            preferences: ExportSchema.PreferencesDTO(
+                defaultAllDayHour: 9,
+                defaultAllDayMinute: 0,
+                morningSummaryEnabled: false,
+                morningSummaryHour: 8,
+                morningSummaryMinute: 0,
+                trashRetentionDays: 30,
+                defaultTaskListSort: "manual"
+            )
+        )
+    }
+
+    @Test("Document at the current schema version applies")
+    func versionEqualApplies() async throws {
+        let dst = try await TestStore.make()
+        let importer = Importer(persistence: dst)
+        let summary = try await importer.apply(
+            document: emptyDocument(version: ExportSchema.version),
+            policy: .skipExisting
+        )
+        #expect(summary.errors.isEmpty)
+    }
+
+    @Test("Document at an older schema version applies (forward upgrade)")
+    func versionOlderApplies() async throws {
+        let dst = try await TestStore.make()
+        let importer = Importer(persistence: dst)
+        // ExportSchema.version is 1 today; version 0 stands in for an
+        // older bundle. If/when version climbs this stays a down-level case.
+        let summary = try await importer.apply(
+            document: emptyDocument(version: ExportSchema.version - 1),
+            policy: .skipExisting
+        )
+        #expect(summary.errors.isEmpty)
+    }
+
+    @Test("Document at a newer schema version throws unsupportedExportVersion")
+    func versionNewerThrows() async throws {
+        let dst = try await TestStore.make()
+        let importer = Importer(persistence: dst)
+        do {
+            _ = try await importer.apply(
+                document: emptyDocument(version: ExportSchema.version + 1),
+                policy: .skipExisting
+            )
+            Issue.record("expected unsupportedExportVersion to be thrown")
+        } catch let error as LillistError {
+            #expect(error == .unsupportedExportVersion(
+                found: ExportSchema.version + 1,
+                supported: ExportSchema.version
+            ))
+        }
+    }
 }
 
 private extension LillistTask {
