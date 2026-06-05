@@ -1,5 +1,6 @@
 import Testing
 import Foundation
+import CoreData
 @testable import LillistCore
 
 @Suite("Exporter")
@@ -115,6 +116,42 @@ struct ExporterTests {
         let path = try #require(doc.attachments[0].dataPath)
         let assetURL = dir.appendingPathComponent(path)
         #expect(try Data(contentsOf: assetURL) == bytes)
+    }
+
+    @Test("A journal entry whose task is nil exports as taskID == nil, not a fabricated UUID")
+    func nilTaskJournalEntryExportsNilTaskID() async throws {
+        let p = try await TestStore.make()
+        let tasks = TaskStore(persistence: p)
+        let journals = JournalStore(persistence: p)
+        let prefs = PreferencesStore(persistence: p)
+
+        let task = try await tasks.create(title: "Soon to be orphaned")
+        _ = try await journals.appendNote(taskID: task, body: "orphan me")
+
+        // Sever the journal entry's task relationship in-place to model
+        // a nil-task row (CloudKit can deliver dangling relationships).
+        let ctx = p.container.viewContext
+        try await ctx.perform {
+            let req = NSFetchRequest<JournalEntry>(entityName: "JournalEntry")
+            for entry in try ctx.fetch(req) {
+                entry.task = nil
+            }
+            try ctx.save()
+        }
+
+        let exporter = Exporter(persistence: p, preferences: prefs)
+        let dir = tempDir()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        try await exporter.export(to: dir)
+
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        let doc = try decoder.decode(
+            ExportSchema.Document.self,
+            from: try Data(contentsOf: dir.appendingPathComponent("lillist.json"))
+        )
+        #expect(doc.journalEntries.count == 1)
+        #expect(doc.journalEntries[0].taskID == nil)
     }
 
     private func decodeDocument(in dir: URL) throws -> ExportSchema.Document {

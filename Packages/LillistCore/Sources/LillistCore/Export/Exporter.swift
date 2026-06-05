@@ -92,7 +92,7 @@ public final class Exporter: @unchecked Sendable {
             let journalDTOs = try ctx.fetch(journalReq).map { m in
                 ExportSchema.JournalEntryDTO(
                     id: m.id ?? UUID(),
-                    taskID: m.task?.id ?? UUID(),
+                    taskID: m.task?.id,
                     kind: Int(m.kindRaw),
                     body: m.body ?? "",
                     payload: m.payload,
@@ -110,7 +110,7 @@ public final class Exporter: @unchecked Sendable {
                     path = "assets/\(filename)"
                     let dto = ExportSchema.AttachmentDTO(
                         id: m.id ?? UUID(),
-                        taskID: m.task?.id ?? UUID(),
+                        taskID: m.task?.id,
                         journalEntryID: m.journalEntry?.id,
                         kind: Int(m.kindRaw),
                         filename: m.filename ?? "",
@@ -125,7 +125,7 @@ public final class Exporter: @unchecked Sendable {
                 }
                 return ExportSchema.AttachmentDTO(
                     id: m.id ?? UUID(),
-                    taskID: m.task?.id ?? UUID(),
+                    taskID: m.task?.id,
                     journalEntryID: m.journalEntry?.id,
                     kind: Int(m.kindRaw),
                     filename: m.filename ?? "",
