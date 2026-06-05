@@ -113,7 +113,7 @@ struct TaskDetailView: View {
     }
 
     private var seriesRuleSummary: String {
-        RecurrenceEditorViewModel(rule: seriesRule).humanSummary
+        RecurrenceSummaryFormatter.string(for: RecurrenceEditorViewModel(rule: seriesRule).summary)
     }
 }
 
