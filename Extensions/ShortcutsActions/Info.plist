@@ -25,5 +25,7 @@
         <key>NSExtensionPointIdentifier</key>
         <string>com.apple.appintents-extension</string>
     </dict>
+    <key>ITSAppUsesNonExemptEncryption</key>
+    <false/>
 </dict>
 </plist>

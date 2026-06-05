@@ -59,5 +59,7 @@
     <array>
         <string>io.mikeydotio.Lillist.openTask</string>
     </array>
+    <key>ITSAppUsesNonExemptEncryption</key>
+    <false/>
 </dict>
 </plist>
