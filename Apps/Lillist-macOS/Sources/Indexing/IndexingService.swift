@@ -69,7 +69,9 @@ final class IndexingService {
                     .deleteSearchableItems(withIdentifiers: trashedIDs)
             }
         } catch {
-            NSLog("IndexingService.reindexAll failed: \(error)")
+            LillistLog.indexing.error(
+                "reindexAll failed: \(error.localizedDescription, privacy: .public)"
+            )
         }
     }
 
