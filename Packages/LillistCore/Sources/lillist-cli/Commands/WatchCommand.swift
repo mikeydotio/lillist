@@ -32,14 +32,18 @@ public struct WatchCommand: AsyncParsableCommand {
         }
         try await CLIBridge.WatchHandler.run(
             flags: flags, savedFilterName: saved,
-            persistence: p, now: Date(), calendar: cfg.resolvedCalendar()
-        ) { event in
-            let encoder = JSONEncoder()
-            encoder.outputFormatting = [.sortedKeys]
-            encoder.dateEncodingStrategy = .iso8601
-            if let data = try? encoder.encode(event), let line = String(data: data, encoding: .utf8) {
-                print(line)
+            persistence: p, now: Date(), calendar: cfg.resolvedCalendar(),
+            emit: { event in
+                let encoder = JSONEncoder()
+                encoder.outputFormatting = [.sortedKeys]
+                encoder.dateEncodingStrategy = .iso8601
+                if let data = try? encoder.encode(event), let line = String(data: data, encoding: .utf8) {
+                    print(line)
+                }
+            },
+            onError: { error in
+                FileHandle.standardError.write(Data("watch: re-evaluation failed: \(error.localizedDescription)\n".utf8))
             }
-        }
+        )
     }
 }
