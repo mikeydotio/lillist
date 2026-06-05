@@ -134,6 +134,7 @@ public final class TaskStore: @unchecked Sendable {
             await recordCrumb("task.create", success: true)
             return id
         } catch {
+            await context.perform { [self] in context.rollback() }
             await recordCrumb("task.create", success: false)
             throw error
         }
@@ -182,6 +183,7 @@ public final class TaskStore: @unchecked Sendable {
             }
             await recordCrumb("task.update", success: true)
         } catch {
+            await context.perform { [self] in context.rollback() }
             await recordCrumb("task.update", success: false)
             throw error
         }
@@ -198,6 +200,7 @@ public final class TaskStore: @unchecked Sendable {
             }
             await recordCrumb("task.purge", success: true)
         } catch {
+            await context.perform { [self] in context.rollback() }
             await recordCrumb("task.purge", success: false)
             throw error
         }
@@ -245,6 +248,7 @@ public final class TaskStore: @unchecked Sendable {
             }
             await recordCrumb("task.move", success: true)
         } catch {
+            await context.perform { [self] in context.rollback() }
             await recordCrumb("task.move", success: false)
             throw error
         }
@@ -390,6 +394,7 @@ public final class TaskStore: @unchecked Sendable {
             await recordCrumb("task.archive", success: true)
             return affected
         } catch {
+            await context.perform { [self] in context.rollback() }
             await recordCrumb("task.archive", success: false)
             throw error
         }
@@ -410,6 +415,7 @@ public final class TaskStore: @unchecked Sendable {
             }
             await recordCrumb("task.unarchive", success: true)
         } catch {
+            await context.perform { [self] in context.rollback() }
             await recordCrumb("task.unarchive", success: false)
             throw error
         }
@@ -430,6 +436,7 @@ public final class TaskStore: @unchecked Sendable {
             }
             await recordCrumb("task.delete", success: true)
         } catch {
+            await context.perform { [self] in context.rollback() }
             await recordCrumb("task.delete", success: false)
             throw error
         }
@@ -448,6 +455,7 @@ public final class TaskStore: @unchecked Sendable {
             }
             await recordCrumb("task.restore", success: true)
         } catch {
+            await context.perform { [self] in context.rollback() }
             await recordCrumb("task.restore", success: false)
             throw error
         }
