@@ -22,6 +22,12 @@ public actor CrashReporter {
     private let transport: CrashReportTransport
     private let now: @Sendable () -> Date
 
+    /// How recent a same-PID canary's `startedAt` must be to count as a
+    /// pre-arm from *this* launch rather than a recycled-PID prior crash.
+    /// 30 s comfortably covers app bootstrap + the first foreground
+    /// transition while staying far below any realistic inter-launch gap.
+    private static let selfWriteWindow: TimeInterval = 30
+
     public init(
         canaryFile: CanaryFile,
         buildVersion: String,
@@ -65,17 +71,25 @@ public actor CrashReporter {
     /// not exit cleanly. Replaces the canary with a fresh one for
     /// the current run.
     ///
-    /// A canary whose `pid` matches the current process is a
+    /// A canary whose `pid` matches the current process *and* whose
+    /// `startedAt` is within `selfWriteWindow` of `now()` is a
     /// self-write from earlier in this same launch — possible if a
     /// lifecycle observer (iOS foreground transition) armed the
     /// canary before `detectAndPrepare` ran, or if a caller pre-armed
-    /// via `start()`. Cross-process canaries (real prior crashes)
-    /// have a different `pid`, so the filter is safe.
+    /// via `start()`. PID alone is *not* sufficient: the OS recycles
+    /// PIDs, so a genuine prior crash can carry the same PID. The
+    /// `startedAt` recency check distinguishes a same-launch pre-arm
+    /// (recent) from a recycled-PID prior crash (an earlier launch),
+    /// so a real crash is never silently swallowed.
     public func detectAndPrepare() throws -> CrashCanary? {
         let prior = try canaryFile.readIfPresent()
         try start()
         let currentPID = ProcessInfo.processInfo.processIdentifier
-        if let prior, prior.pid == currentPID { return nil }
+        if let prior,
+           prior.pid == currentPID,
+           abs(prior.startedAt.timeIntervalSince(now())) < Self.selfWriteWindow {
+            return nil
+        }
         return prior
     }
 
