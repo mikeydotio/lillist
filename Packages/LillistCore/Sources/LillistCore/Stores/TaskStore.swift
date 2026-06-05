@@ -19,6 +19,13 @@ public final class TaskStore: @unchecked Sendable {
     /// See design Section 8 / Plan 9.
     public var breadcrumbs: BreadcrumbBuffer?
 
+    /// Page size for list fetches. Core Data returns rows as faults in
+    /// pages of this size and only realizes each page when touched, so a
+    /// reload over a large sibling set doesn't fault+project every row on
+    /// the main-queue `viewContext` at once. See the foundation review's
+    /// "unbounded TaskStore fetch" finding and `docs/engineering-notes.md`.
+    static let listFetchBatchSize = 100
+
     /// Fire-and-forget breadcrumb recorder. Drops silently if the
     /// buffer rejects the verb (e.g. would-be PII in `action`).
     fileprivate func recordCrumb(_ action: String, success: Bool) async {
@@ -210,19 +217,47 @@ public final class TaskStore: @unchecked Sendable {
 
     public func children(of parentID: UUID?) async throws -> [TaskRecord] {
         try await context.perform { [self] in
-            let req = NSFetchRequest<LillistTask>(entityName: "LillistTask")
-            if let parentID {
-                let parent = try fetchManagedObject(id: parentID, in: context)
-                req.predicate = NSPredicate(format: "parent == %@ AND deletedAt == nil", parent)
-            } else {
-                req.predicate = NSPredicate(format: "parent == nil AND deletedAt == nil")
-            }
-            req.sortDescriptors = [
-                NSSortDescriptor(key: "position", ascending: true),
-                NSSortDescriptor(key: "createdAt", ascending: true)
-            ]
+            let req = try childrenFetchRequest(parentID: parentID, in: context)
             return try context.fetch(req).map(record(from:))
         }
+    }
+
+    /// Paged variant of `children(of:)`. Returns at most `limit` rows
+    /// starting at `offset`, in the same `position`/`createdAt` order.
+    ///
+    /// The UI uses this so a reload faults and DTO-projects only the
+    /// visible window instead of the whole sibling set (see the
+    /// `fetchBatchSize` policy in `docs/engineering-notes.md`). `offset`
+    /// beyond the end yields an empty array; `limit <= 0` is treated as
+    /// "no limit" (parity with `NSFetchRequest.fetchLimit == 0`).
+    public func children(of parentID: UUID?, limit: Int, offset: Int) async throws -> [TaskRecord] {
+        try await context.perform { [self] in
+            let req = try childrenFetchRequest(parentID: parentID, in: context)
+            req.fetchLimit = max(0, limit)
+            req.fetchOffset = max(0, offset)
+            return try context.fetch(req).map(record(from:))
+        }
+    }
+
+    /// Shared builder for the `children` fetch. `fetchBatchSize` makes Core
+    /// Data return faults in pages of `Self.listFetchBatchSize` and only
+    /// realize each page as it's touched — so even the unbounded overload no
+    /// longer fully materializes a huge sibling set up front. Must be called
+    /// inside `context.perform`.
+    private func childrenFetchRequest(parentID: UUID?, in ctx: NSManagedObjectContext) throws -> NSFetchRequest<LillistTask> {
+        let req = NSFetchRequest<LillistTask>(entityName: "LillistTask")
+        if let parentID {
+            let parent = try fetchManagedObject(id: parentID, in: ctx)
+            req.predicate = NSPredicate(format: "parent == %@ AND deletedAt == nil", parent)
+        } else {
+            req.predicate = NSPredicate(format: "parent == nil AND deletedAt == nil")
+        }
+        req.sortDescriptors = [
+            NSSortDescriptor(key: "position", ascending: true),
+            NSSortDescriptor(key: "createdAt", ascending: true)
+        ]
+        req.fetchBatchSize = Self.listFetchBatchSize
+        return req
     }
 
     public func reparent(id: UUID, newParent newParentID: UUID?) async throws {
