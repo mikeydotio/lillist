@@ -2407,3 +2407,127 @@ contributor doesn't assume the copy already checkpoints.
 this plan). Its happy-path test keeps `previousMode == host.currentMode`
 so `reconfigure` is a no-op early-return and the test doesn't need a real
 bundle id (`liveSwapAllowed`).
+
+## 2026-06-05 — CI established + build-posture alignment (Plan: ci-and-build-posture, Wave 7)
+
+**Context.** Until now every quality gate (warnings-as-errors, the full
+test matrix, snapshots, the runtime-gated migration tests, pbxproj
+drift) was enforced only by what the dev remembered to run locally. The
+foundation review's completeness critic named "No CI/CD at all" as a
+blind spot. This entry records the CI design and three build-posture
+fixes that landed with it, plus the empirical limits that shaped what CI
+can and cannot run.
+
+**Rules.**
+
+- **CI runs post-push on `main`, not as a PR gate.** Solo project,
+  direct-to-`main`. `.github/workflows/ci.yml` is a *verifier*: a push
+  triggers it, a broken gate goes red + emails the actor, and
+  `workflow_dispatch` allows on-demand runs. Don't restructure it into a
+  required-status-check unless the project moves to a PR flow.
+- **deployit archives in Debug; CI is the only Release compile.** The
+  `Lillist-iOS` scheme's `archive.config` is `Debug` (fast OTA
+  round-trip), so Release-only behaviour (WMO, dead-code stripping, `-O`
+  codegen) is never exercised by a deploy. The `release-archive-smoke`
+  job is the only Release-config compile. It is a `build` (not
+  `archive`) to avoid the build-number bump pre-action and signing. NB:
+  `-target` cannot be combined with `-workspace`; a bare `build` action
+  on the scheme builds only the app + its two embedded extensions (the
+  three test targets are registered build-for-`[test]`-only, so `build`
+  skips them) — verified no app-hosted-test build, no signing error.
+- **The mtime-touch ritual for Core Data model edits is retired.** The
+  `CompileCoreDataModel` plugin now declares the inner
+  `*.xcdatamodel/contents` and `.xccurrentversion` files as `inputFiles`
+  (it `FileManager`-walks the `.xcdatamodeld` bundle), so llbuild
+  invalidates the `momc` command on a real model edit. momc still
+  receives the `.xcdatamodeld` directory as its argument — only the
+  *invalidation* keying changed. Proven: a `contents`-only mtime change
+  (dir untouched) re-runs `momc`.
+- **The pbxproj-drift gate depends on xcodegen idempotence.** CI
+  regenerates both projects and fails on `git diff --exit-code` of
+  `*.xcodeproj/project.pbxproj`. The `$(LOCAL_DEVELOPMENT_TEAM)` xcconfig
+  indirection keeps regen idempotent — never put `DEVELOPMENT_TEAM` into
+  `project.yml`'s `settings: base:` or the gate flaps on every team ID.
+- **Snapshot precision is relaxed only for the Form-bearing tour
+  snapshot.** `IOSScreenTourTests.assertScreen` defaults to exact-pixel
+  (1.0); only `test_08_settings_light` (SettingsScreen's
+  `NavigationStack + Form`) uses `precision: 0.99, perceptualPrecision:
+  0.98`, per the 2026-05-17 "Form views drift" entry. New non-Form
+  snapshots stay strict.
+- **`swift test` runs with bounded parallelism + a retry, by design.**
+  The `spm` job runs LillistCore with `--parallel --num-workers 2` and
+  retries once. **Toolchain quirk (Swift 6.2.4): `--num-workers N`
+  requires `--parallel` — the bare form errors `--num-workers must be
+  used with --parallel`** (the plan's printed `--num-workers 2` was
+  corrected accordingly). This is the runner-level mitigation for
+  residual #11's THREE manifestations: (1) the ParitySuiteTests-triggered
+  parallel-container SIGSEGV, (2) the `SyncQuiesceMonitorTests` quiet-
+  window timing flake, and (3) the Wave-4 `TaskStoreRecurrenceSpawnTests`
+  "After-completion series spawns at completedAt + interval" `< 2.0s`
+  wall-clock flake. None is a product bug — production never builds more
+  than one container — so the mitigation is in CI invocation, not source.
+  CLAUDE.md "Build & test" mirrors the bounded invocation. Note: even
+  `--no-parallel` does not fully eliminate the timing flakes (they trip
+  under external CPU load too), which is why the *retry* is the real net.
+
+- **Host-pinned snapshot tests are EXCLUDED from CI.** The LillistUI
+  `*SnapshotTests` / `*ScreenTourTests` PNG baselines are pinned to the
+  recording host; they drift on any other machine (cross-host
+  font/anti-aliasing) and so cannot pass on a hosted runner. The `spm`
+  job runs LillistUI with `--skip Snapshot --skip Tour` (the logic
+  suites — 40 Swift-Testing + 60 non-snapshot XCTest — stay green), and
+  the `ios` job does NOT run the `LillistUITests` bundle. Snapshot
+  verification stays on the developer's pinned snapshot host (the
+  `xcodebuild test -scheme Lillist-iOS` recipe in CLAUDE.md). This was
+  verified empirically: on this Xcode 26.3 / iOS 26.2 machine the iOS
+  `iOSSnapshotTests` suite fails ~10 baselines in components untouched by
+  Wave 7 (e.g. `syncStatusBadge`, `quickCaptureDialog`), and the failing
+  set even varies run-to-run — pre-existing environment drift, not a
+  regression. (Re-recording the iOS baselines on the CI runner is an
+  unscoped follow-up if snapshot coverage in CI is ever wanted.)
+
+- **The app-hosted live-swap tests and the UI tests do NOT run in CI;
+  they run on a developer's signed Mac with an iCloud account.** The
+  `Lillist-iOSAppHostedTests` target hosts the `liveSwapAllowed`
+  migration/swap tests, which stand up a live
+  `NSPersistentCloudKitContainer`. On any host **without a signed-in
+  iCloud account** — including a GitHub hosted runner — CloudKit setup
+  fails with `CKAccountStatusNoAccount`, after which the test SQLite
+  stores corrupt ("database disk image is malformed") and the bundle
+  aborts. Verified locally: ad-hoc simulator signing
+  (`CODE_SIGNING_ALLOWED=YES CODE_SIGN_IDENTITY="-"`) DOES install +
+  launch the host app on the simulator, so signing is not the blocker —
+  the **missing iCloud account** is. `Lillist-iOSUITests` likewise needs
+  a launchable signed host. So the `ios` CI job runs ONLY the standalone
+  `Lillist-iOSTests` bundle (`TEST_HOST=""`, no container, no iCloud);
+  the app-hosted + UI tests are verified exactly as Wave 1/4 verified
+  them — on a developer's signed Mac with iCloud. This is the inverse of
+  the macOS lane's lesson: the macOS test target was made standalone
+  (`TEST_HOST=""`) so `CODE_SIGNING_ALLOWED=NO` works; the iOS app-hosted
+  target has no standalone fallback AND needs iCloud, so it stays out of
+  CI rather than being forced to sign.
+
+- **Warnings-as-error on the LillistUI *test* target surfaced iOS-only
+  deprecations.** Adding `.treatAllWarnings(as: .error)` to
+  `LillistUITests` turned a pre-existing `UITraitCollection(traitsFrom:)`
+  iOS-17 deprecation (in two snapshot helpers) into a build error — but
+  only under `xcodebuild` iOS, since the `#if os(iOS)` snapshot code never
+  compiles under host `swift test` (where the plan's Task 1 was verified).
+  Migrated both sites to the `UITraitCollection(mutations:)` closure API
+  (style+scale-equivalent; both snapshot suites stay green). Lesson: a
+  warnings-as-error change to a cross-platform test target must be
+  verified under `xcodebuild` for the iOS-only code, not just host
+  `swift test`.
+
+**Cross-plan dependency.** `store-swap-safety` (Wave 1) created the
+`Lillist-iOSAppHostedTests` target and Wave 4 grew its source list; this
+plan does not create it, and — per the iCloud limit above — CI does not
+run it. If a future plan adds a *new scheme*, add a matching CI job.
+
+**Evidence.** `.github/workflows/ci.yml` (seven jobs: spm, project-drift,
+ios, macos, release-archive-smoke, localization-lint, notify); the folded-in
+`localization-lint` (standalone `lillistui-localization.yml` deleted);
+`Packages/LillistUI/Package.swift` at swift-tools 6.2 with warnings-as-error
++ excluded snapshot dirs; `CompileCoreDataModel.swift` declaring inner-model
+`inputFiles`; `IOSScreenTourTests.assertScreen` precision params. One commit
+per task on `main`.
