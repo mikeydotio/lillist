@@ -54,7 +54,9 @@ final class LillistServicesProvider: NSObject {
                 // The Services API has no inline UI to report failure;
                 // log and move on. The user can confirm by opening
                 // Lillist's main window.
-                NSLog("LillistServicesProvider failed: \(error)")
+                LillistLog.app.error(
+                    "Services create failed: \(error.localizedDescription, privacy: .public)"
+                )
             }
         }
     }
