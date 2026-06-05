@@ -29,7 +29,7 @@ struct CascadeReaperTests {
         // parent + child + grandchild (3 tasks) + 2 journal entries
         // (the appended note + the auto attachment-kind journal entry created by
         // AttachmentStore.addFile) + 1 attachment = 6 reachable objectIDs.
-        #expect(reapedCount >= 6)
+        #expect(reapedCount == 6)
         _ = entryID
     }
 
