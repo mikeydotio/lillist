@@ -23,6 +23,7 @@ public enum LillistError: Error, Sendable, Equatable {
     case migrationRequired
     case migrationFailed(underlying: String)
     case modelUnavailable(searchedFilenames: [String])
+    case unsupportedExportVersion(found: Int, supported: Int)
 }
 
 extension LillistError: LocalizedError {
@@ -53,6 +54,8 @@ extension LillistError: LocalizedError {
             return "Data migration failed: \(underlying)"
         case .modelUnavailable(let names):
             return "Lillist data model not found in app bundle (searched: \(names.joined(separator: ", ")))"
+        case .unsupportedExportVersion(let found, let supported):
+            return "This export was written by a newer version of Lillist (schema \(found); this app supports up to \(supported)). Update Lillist and try again."
         }
     }
 }

@@ -48,10 +48,24 @@ struct LillistErrorTests {
             .attachmentTooLarge(byteSize: 0),
             .attachmentFetchFailed(url: URL(string: "https://example.com")!),
             .migrationRequired,
-            .migrationFailed(underlying: "test")
+            .migrationFailed(underlying: "test"),
+            .modelUnavailable(searchedFilenames: ["LillistModel.momd"]),
+            .unsupportedExportVersion(found: 2, supported: 1)
         ]
         for err in cases {
             #expect(err.localizedDescription.isEmpty == false)
         }
+    }
+
+    @Test("unsupportedExportVersion carries found and supported versions")
+    func unsupportedExportVersion() {
+        let err = LillistError.unsupportedExportVersion(found: 7, supported: 1)
+        if case .unsupportedExportVersion(let found, let supported) = err {
+            #expect(found == 7)
+            #expect(supported == 1)
+        } else {
+            Issue.record("expected .unsupportedExportVersion")
+        }
+        #expect(err != LillistError.unsupportedExportVersion(found: 8, supported: 1))
     }
 }
