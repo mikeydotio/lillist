@@ -123,6 +123,36 @@ After moving/deleting source files, regenerate the matching pbxproj:
 (cd Apps            && xcodegen generate --spec project.yml --project .)
 ```
 
+**CI.** `.github/workflows/ci.yml` runs the matrix post-push on `main`
+(and via `workflow_dispatch`): `swift test` for both packages, a
+pbxproj-drift gate (`xcodegen generate` + `git diff --exit-code`), the
+`Lillist-iOS` standalone bundle + the `Lillist-macOS` scheme, a
+Release-configuration smoke build, and the LillistUI localization lint
+(`Tools/CI/check-lillistui-localization.sh`). It's a post-push verifier,
+not a merge gate (solo project, direct-to-`main`). deployit still
+archives Debug — CI is the only Release-config compile. Two things CI
+deliberately does **not** run, both verified only on a developer's signed
+Mac with an iCloud account: the **host-pinned snapshot tests** (LillistUI
+`*SnapshotTests`/`*ScreenTourTests` — baselines drift on any other host;
+CI runs LillistUI with `--skip Snapshot --skip Tour` and skips the
+`LillistUITests` iOS bundle) and the **`Lillist-iOSAppHostedTests`
+live-swap tests + `Lillist-iOSUITests`** (the live `NSPersistentCloudKitContainer`
+fails `CKAccountStatusNoAccount` without iCloud). See the
+"CI established + build-posture alignment" entry in
+`docs/engineering-notes.md`.
+
+**Parallel-test flakes (`LillistCore`).** Heavy concurrent in-memory
+store creation intermittently SIGSEGVs inside Core Data, and the same CPU
+contention starves wall-clock-sensitive tests (`SyncQuiesceMonitorTests`
+and `TaskStoreRecurrenceSpawnTests`'s `< 2.0s` tolerance) — see
+`docs/engineering-notes.md` 2026-06-04. None is a product bug. Run the
+suite with bounded parallelism + a one-shot retry to match CI:
+`swift test --package-path Packages/LillistCore --parallel --num-workers 2`
+(re-run once on a one-off SIGSEGV / timing flake before treating it as a
+real failure). NB: `--num-workers N` **requires** `--parallel` on this
+toolchain (Swift 6.2.4); the bare form errors. `--no-parallel` is the
+serial fallback but does not by itself eliminate the timing flakes.
+
 ## House rules
 
 - **Treat build warnings as errors** across SPM and Xcode. Fix at the
@@ -193,6 +223,14 @@ After moving/deleting source files, regenerate the matching pbxproj:
   `[\(addr)](mailto:\(addr))` — to survive interpolation.
 
 ## Build-plugin caching gotcha
+
+> **Retired by `ci-and-build-posture`.** The `CompileCoreDataModel`
+> plugin now declares the inner `*.xcdatamodel/contents` +
+> `.xccurrentversion` as `inputFiles`, so a model edit auto-invalidates
+> `momc`. The touch ritual below is no longer required for
+> `swift build`/`swift test`; it is kept here as historical context.
+> See the "CI established + build-posture alignment" entry in
+> `docs/engineering-notes.md`.
 
 SwiftPM's `CompileCoreDataModel` plugin keys on the `.xcdatamodeld`
 directory's mtime, not on the inner `LillistModel.xcdatamodel/contents`
