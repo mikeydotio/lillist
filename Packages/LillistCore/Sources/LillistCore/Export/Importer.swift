@@ -188,6 +188,16 @@ public actor Importer {
             }
 
             for dto in document.journalEntries {
+                // A journal entry must belong to a task. Entries with a
+                // nil or unresolved taskID are orphans (CloudKit can
+                // deliver dangling relationships, and older bundles may
+                // predate referential cleanup) — skip them rather than
+                // insert a task-less row.
+                guard let taskID = dto.taskID, let owner = taskByID[taskID] else {
+                    entriesSkipped += 1
+                    errors.append("journalEntry \(dto.id): skipped (no resolvable task)")
+                    continue
+                }
                 do {
                     if let existing = try self.fetchJournalEntry(id: dto.id, ctx: ctx) {
                         let action = self.decideAction(
@@ -201,13 +211,13 @@ public actor Importer {
                         case .skip:
                             entriesSkipped += 1
                         case .update:
-                            self.applyEntry(dto, into: existing, taskByID: taskByID)
+                            self.applyEntry(dto, into: existing, owner: owner)
                             entriesUpdated += 1
                         }
                     } else {
                         let row = JournalEntry(context: ctx)
                         row.id = dto.id
-                        self.applyEntry(dto, into: row, taskByID: taskByID)
+                        self.applyEntry(dto, into: row, owner: owner)
                         entriesInserted += 1
                     }
                 } catch {
@@ -282,8 +292,8 @@ public actor Importer {
         row.tags = NSSet(array: resolved)
     }
 
-    private nonisolated func applyEntry(_ dto: ExportSchema.JournalEntryDTO, into row: JournalEntry, taskByID: [UUID: LillistTask]) {
-        row.task = taskByID[dto.taskID]
+    private nonisolated func applyEntry(_ dto: ExportSchema.JournalEntryDTO, into row: JournalEntry, owner: LillistTask) {
+        row.task = owner
         row.kindRaw = Int16(dto.kind)
         row.body = dto.body
         row.payload = dto.payload
