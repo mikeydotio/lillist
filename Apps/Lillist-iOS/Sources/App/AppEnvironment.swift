@@ -311,6 +311,17 @@ final class AppEnvironment {
         // Persist-6: opportunistically clear expired trash at launch.
         // Errors are non-fatal — a failed purge must never block launch.
         _ = try? await autoPurgeJob.run()
+        // persist-1 / notif-7: sweep localOnly persistent history at launch so
+        // it never grows unbounded. Internally gated to syncMode == .localOnly
+        // (iCloudSync is a no-op); fire-and-forget — a failed prune never
+        // blocks launch.
+        if let historyPruner = HistoryPruner(
+            persistence: persistence,
+            syncMode: await syncModeStore.currentMode(),
+            appGroupID: Self.appGroupID
+        ) {
+            _ = try? await historyPruner.sweep()
+        }
         // Bootstrap does *not* arm the canary anymore — that races
         // `CrashReporterHost.detectAndPrepare()`, which would then read
         // the just-written canary as if it were a prior crash and pop
