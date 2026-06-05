@@ -163,6 +163,17 @@ CloudKit, XCTest + Swift Testing, xcodegen, GitHub Actions (new).
   groups per-entity leaf-first because `NSBatchDeleteRequest(objectIDs:)` is
   single-entity (the plan's mixed-entity batch crashed at runtime). Residual #3
   (un-cancelled OS pending notifications on purge) documented as acknowledged.
+- ✅ **Wave 4 post-merge review + hardening** (commits `18c00ed`..`479d47a`; final
+  state 808 tests green, both apps build). A 4-dimension adversarial review found no
+  prior-wave regression and clean cross-plan composition, plus **4 important findings
+  that were fixed and re-verified closed**: (1) the conc-5 rollback fix had missed
+  `transition`/`reorder`/`assignTag`/`unassignTag` (now roll back; "every mutating
+  method" claim now true — purgeAll is the sole exclusion); (2) the `runMigration`
+  reentrancy guard had a TOCTOU window (now a synchronous `@MainActor isMigrating` flag
+  set before the first await); (3) the HistoryPruner tests were near-tautological (now
+  `fetchHistory`-based, proving real pruning); (4) background contexts now stamp
+  `transactionAuthor` (author-attribution hardening). CascadeReaper test tightened
+  `>=6`→`==6`. Full analysis: `docs/superpowers/handoffs/wave-4.md`.
 - ✅ **Wave 4 COMPLETE. Next: Wave 5** — `crash-reporter-privacy` (fully isolated),
   `app-layer-test-rehab` (introduces `GatedPersistenceResolver`; **must precede**
   `extension-persistence-unification`; starts the iOS `project.yml` chain). See
