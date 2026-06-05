@@ -73,6 +73,15 @@ public enum LogRedactor {
             // shared store and canary live) are covered.
             make(#"/var/mobile/Containers/(?:Data/Application|Shared/AppGroup)/[0-9A-Fa-f-]+(?:/(?:[^\s]|\s(?=[A-Z][a-z]))*)?"#, "<path>"),
             make(#"~/(?:[^\s]|\s(?=[A-Z][a-z]))*"#, "<path>"),
+            // Temp-directory paths. NSTemporaryDirectory resolves to
+            // `/private/var/folders/<hash>/<hash>/T/...` (the `/private`
+            // prefix is optional in symlink-resolved forms), and scratch
+            // files land under `/tmp`. These carry a user-scoped
+            // DARWIN_USER_TEMP_DIR token; redact the whole path. Same
+            // capitalized-space lookahead as the other path passes so a
+            // `.../Application Support`-style component is consumed too.
+            make(#"(?:/private)?/var/folders/(?:[^\s]|\s(?=[A-Z][a-z]))*"#, "<path>"),
+            make(#"/tmp/(?:[^\s]|\s(?=[A-Z][a-z]))*"#, "<path>"),
             // Emails.
             make(#"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}"#, "<email>"),
             // UUIDs last — by this point paths and emails are gone.
