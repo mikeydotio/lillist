@@ -31,7 +31,7 @@ CloudKit, XCTest + Swift Testing, xcodegen, GitHub Actions (new).
 > file is the **living progress tracker** for the program — keep it current as
 > plans merge.
 
-**As of 2026-06-04 (Wave 4 complete):**
+**As of 2026-06-05 (Wave 5 complete):**
 
 - ✅ **Wave 1 · `store-swap-safety`** — **merged to `main`** (commits
   `bfd8635`..`6f008f7`; 663 LillistCore tests green). Closed persist-3,
@@ -174,11 +174,35 @@ CloudKit, XCTest + Swift Testing, xcodegen, GitHub Actions (new).
   `fetchHistory`-based, proving real pruning); (4) background contexts now stamp
   `transactionAuthor` (author-attribution hardening). CascadeReaper test tightened
   `>=6`→`==6`. Full analysis: `docs/superpowers/handoffs/wave-4.md`.
-- ✅ **Wave 4 COMPLETE. Next: Wave 5** — `crash-reporter-privacy` (fully isolated),
-  `app-layer-test-rehab` (introduces `GatedPersistenceResolver`; **must precede**
-  `extension-persistence-unification`; starts the iOS `project.yml` chain). See
-  `docs/superpowers/handoffs/wave-4.md`.
-- ⬜ **Waves 5–7** — pending. Follow the wave order + serial chains below.
+- ✅ **Wave 4 COMPLETE.** See `docs/superpowers/handoffs/wave-4.md`.
+- ✅ **Wave 5 · `crash-reporter-privacy`** — **merged to `main`** (commits
+  `4dc1f96`..`5df296c`; LillistCore 808 → 819 Swift-Testing tests, warning-free, verified
+  green `--no-parallel`). Closed redact-1, redact-5, canary-4, test-6. `LogRedactor`
+  key=value passes are now case-insensitive on the key (via a **capture-group**
+  `(title=)…` → `$1<redacted>` form that preserves the key's original casing — the plan's
+  printed bare-literal template would have lowercased it and failed the plan's own Task-1
+  test + Task-5 golden; verified empirically and by two independent reviewers); container
+  pass covers lowercase hex + the `Shared/AppGroup` subtree; temp-path passes added;
+  `detectAndPrepare` now disambiguates a recycled-PID prior crash from a same-launch
+  pre-arm via a 30 s `startedAt` recency window; BreadcrumbBuffer TaskGroup stress +
+  throwing transport/fetcher error-path tests added. A 3-dimension adversarial review
+  **approved** (spec + regression clean; 3 INFO redactor observations carried as residuals).
+- ✅ **Wave 5 · `app-layer-test-rehab`** — **merged to `main`** (commits
+  `bcc1e57`..`656e353`; iOS + macOS apps build, iOS standalone bundle 29 tests + macOS
+  scheme 40 tests green, +5 `DragDropResolverTests`). Closed ios-2, ios-3, macos-4, ext-6.
+  Introduced the three Wave-6 seams: **`GatedPersistenceResolver`** (LillistCore — the
+  canonical out-of-process gate-resolution seam; `IntentSupport` + `ShareRootView` now
+  delegate to it), **`DragDropResolver`/`DragMutation`** (LillistUI — both apps' `applyDrop`
+  dispatch through it), and **`TaskListShortcutGate`** (macOS — the shipping focus-gate
+  predicate). Deleted 2 substitution + 3 tautological tests and renamed 2 misleadingly-named
+  composition tests. The iOS `Lillist-iOSTests` bundle now co-compiles `IntentSupport.swift`;
+  the 3 Wave-4 `Lillist-iOSAppHostedTests` entries survived regeneration. `ShareRootView`'s
+  `try?`-on-`addLinkPreview` and `TaskEntityQuery` routing were left for Wave 6 (residual #10).
+- ✅ **Wave 5 COMPLETE. Next: Wave 6** — `extension-persistence-unification` (FIRST; depends
+  on this wave's `GatedPersistenceResolver`; absorbs link-preview Task 6 / residual #10),
+  then `export-import-robustness`, `cli-robustness`, `performance-budgets-and-paging`,
+  `observability-logging`. See `docs/superpowers/handoffs/wave-5.md`.
+- ⬜ **Waves 6–7** — pending. Follow the wave order + serial chains below.
 
 ### Progress checklist
 
@@ -186,8 +210,8 @@ CloudKit, XCTest + Swift Testing, xcodegen, GitHub Actions (new).
 - **Wave 2 (P1):** ✅ breadcrumb-truthfulness · ✅ fractional-ordering-compaction · ✅ predicate-parity · ◧ link-preview-ssrf-guards (Tasks 1–5 done; **Task 6 Share-Extension gate → Wave 6**)
 - **Wave 3 (P1):** ✅ cloudkit-convergence · ✅ resolve-inert-features
 - **Wave 4:** ✅ concurrency-stress-tests · ✅ migration-adjacent-correctness · ✅ background-context-seam
-- **Wave 5 (P2):** ⬜ **crash-reporter-privacy ← NEXT** · ⬜ app-layer-test-rehab
-- **Wave 6:** ⬜ extension-persistence-unification · ⬜ export-import-robustness · ⬜ cli-robustness · ⬜ performance-budgets-and-paging · ⬜ observability-logging
+- **Wave 5 (P2):** ✅ crash-reporter-privacy · ✅ app-layer-test-rehab
+- **Wave 6:** ⬜ **extension-persistence-unification ← NEXT** · ⬜ export-import-robustness · ⬜ cli-robustness · ⬜ performance-budgets-and-paging · ⬜ observability-logging
 - **Wave 7 (closing):** ⬜ privacy-manifest-export-compliance · ⬜ recovery-hardening · ⬜ lillistui-localization-a11y · ⬜ ci-and-build-posture (LAST)
 
 _When a plan merges, flip its box here and update its in-plan status banner._
@@ -459,10 +483,11 @@ rewrite invalidates line anchors).
    ⬜ `observability-logging` (`children` signpost). **`performance-budgets-and-paging`
    + `observability-logging` co-land (both edit `children(of:)`) — re-Read first.**
 3. **`Extensions/ShortcutsActions/IntentSupport.swift` + `ShareRootView.swift`**
-   — `app-layer-test-rehab` (extracts `GatedPersistenceResolver`, routes
-   `makePersistence()` + `save()` through it) → `extension-persistence-unification`
+   — ✅ `app-layer-test-rehab` (**landed Wave 5** — created `GatedPersistenceResolver`;
+   `IntentSupport.makePersistence()` + `ShareRootView.save()` now DELEGATE to it; the
+   `try?` on `addLinkPreview` was left UNCHANGED) → ⬜ `extension-persistence-unification`
    (per-process cache + `ShareSaveFlow` **on top of** the resolver; `try?`→`try`
-   on attachment) → `link-preview-ssrf-guards` **Task 6** (wrap
+   on attachment) → ⬜ `link-preview-ssrf-guards` **Task 6** (wrap
    `URLPreviewPolicy.isAllowed` around whichever `addLinkPreview` survives — its
    policy/fetcher/CLI Tasks 1–5 already merged in Wave 2; **only this
    Share-Extension gate remains, deferred here to Wave 6** — see residual #10).
@@ -470,9 +495,11 @@ rewrite invalidates line anchors).
    (created the `Lillist-iOSAppHostedTests` target) → ✅ **Wave 4 added 3 sources to
    that target** (`concurrency-stress-tests`' `StoreReconfigureConcurrencyTests.swift`;
    `migration-adjacent-correctness`' `MigrationCoordinatorRestoreTests.swift` +
-   `Helpers/FakeUserNotificationCenter.swift`; pbxproj regenerated to match) → ⬜
-   `app-layer-test-rehab` (Wave 5 — edits the *separate* `Lillist-iOSTests` target) →
-   ⬜ `extension-persistence-unification` (test sources) → ⬜
+   `Helpers/FakeUserNotificationCenter.swift`; pbxproj regenerated to match) → ✅
+   `app-layer-test-rehab` (**landed Wave 5** — co-compiled `IntentSupport.swift` into the
+   *separate* `Lillist-iOSTests` target; deleted 3 tautologies + renamed 2 composition
+   tests; the 3 Wave-4 app-hosted entries verified intact post-regenerate) → ⬜
+   `extension-persistence-unification` (test sources) → ⬜
    `privacy-manifest-export-compliance` (resources; **last editor — owns the final
    authoritative `xcodegen generate`**) → ⬜ `ci-and-build-posture`'s drift gate
    validates the result. **Every Wave-5+ editor must re-Read `project.yml` and NOT
@@ -655,6 +682,19 @@ so coverage isn't overstated:
     return value** (`_ = try? await autoPurgeJob.run()`). `purgeAll`'s count is
     exactly preserved. Documented in `docs/engineering-notes.md`; not a bug, no fix
     owed — captured so the count semantics aren't silently overstated.
+13. **`LogRedactor` residual under-coverage** (Wave 5 `crash-reporter-privacy`
+    adversarial-security review, all INFO — none are PII leaks on realistic iOS-emitted
+    text). **(a)** The container path pass is case-insensitive on the hex UUID segment but
+    case-**sensitive** on the literal `Data/Application`/`Shared/AppGroup` segments — a
+    lowercased-segment variant in synthetic/third-party log text would leak the path prefix.
+    Not fixed: iOS emits canonical casing, and making the whole pattern `.caseInsensitive`
+    would widen the `\s(?=[A-Z][a-z])` capitalized-space lookahead (over-consume trailing
+    components); the correct fix is a surgical inline `(?i:…)` flag on just the literal
+    segments, deferred as low-value hardening. **(b)** iCloud `…/Mobile Documents/iCloud~…/`
+    ubiquity-container paths match no path pass — a future "Mobile Documents" redaction pass
+    is a candidate. **(c)** `subtitle=`/`mytag=` also redact (no key word-boundary) —
+    intentional over-redaction per the crash-reporter philosophy; no action. Full analysis
+    in `docs/superpowers/handoffs/wave-5.md`.
 
 ## Suggested commit/PR cadence
 
