@@ -69,8 +69,12 @@ final class IndexingService {
                     .deleteSearchableItems(withIdentifiers: trashedIDs)
             }
         } catch {
+            // Log the error TYPE only as .public (per the LillistLog privacy
+            // contract): a full localizedDescription can carry Core Data
+            // attribute values / the store path into the crash-collected
+            // subsystem, and the redactor only partially covers those.
             LillistLog.indexing.error(
-                "reindexAll failed: \(error.localizedDescription, privacy: .public)"
+                "reindexAll failed: \(String(describing: type(of: error)), privacy: .public)"
             )
         }
     }
