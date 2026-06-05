@@ -71,6 +71,7 @@
 		CA4034D690255FE0554C7DE2 /* RootShell.swift in Sources */ = {isa = PBXBuildFile; fileRef = 03C3319AED08244B047F88E4 /* RootShell.swift */; };
 		CB8301504557324D1B671609 /* NotificationsSection.swift in Sources */ = {isa = PBXBuildFile; fileRef = E4D39B252544E335C0CC4FB5 /* NotificationsSection.swift */; };
 		CD5567FD3A2CAA3CE90A24C3 /* MigrationCoordinatorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F4DAA00317CF7DF00F86ED30 /* MigrationCoordinatorTests.swift */; };
+		D1EBDE189E3770C0613443D9 /* SuggestedEntitiesLimitTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B4021C550A6EE82CD2799A29 /* SuggestedEntitiesLimitTests.swift */; };
 		D68B04863DB035FBB4CC7D19 /* CompleteTaskIntent.swift in Sources */ = {isa = PBXBuildFile; fileRef = B85AEF08DCB6A6F29677F2F8 /* CompleteTaskIntent.swift */; };
 		DEC33DF9FB210ECBF51CB363 /* ToggleStatusIntent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4167EC3BD9F49B2C79556A19 /* ToggleStatusIntent.swift */; };
 		E01B4AB3BC5C4E7EE9093B74 /* LillistApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1CF1EBE004127B957F4AB99 /* LillistApp.swift */; };
@@ -184,6 +185,7 @@
 		AB27849294EB47AAC45BE9E6 /* FakePersistenceReconfigurer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FakePersistenceReconfigurer.swift; sourceTree = "<group>"; };
 		B1CF1EBE004127B957F4AB99 /* LillistApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LillistApp.swift; sourceTree = "<group>"; };
 		B3C5475FEB9C980491DF8B93 /* LillistUI */ = {isa = PBXFileReference; lastKnownFileType = folder; name = LillistUI; path = ../../Packages/LillistUI; sourceTree = SOURCE_ROOT; };
+		B4021C550A6EE82CD2799A29 /* SuggestedEntitiesLimitTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SuggestedEntitiesLimitTests.swift; sourceTree = "<group>"; };
 		B82728947B00E5DCC963F9A5 /* AddNudgeIntent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddNudgeIntent.swift; sourceTree = "<group>"; };
 		B85AEF08DCB6A6F29677F2F8 /* CompleteTaskIntent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CompleteTaskIntent.swift; sourceTree = "<group>"; };
 		B9166711CEB13F01C3DB136A /* TrashSection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrashSection.swift; sourceTree = "<group>"; };
@@ -455,6 +457,7 @@
 				4E15BAD0E599EA928403C4A8 /* AppIntentHandlerTests.swift */,
 				FA132EECCE2B23DFDE5E4DB6 /* LillistCoreQuickCaptureCompositionTests.swift */,
 				7A09EF99D4B51FFC48E961F2 /* LillistCoreSharePayloadCompositionTests.swift */,
+				B4021C550A6EE82CD2799A29 /* SuggestedEntitiesLimitTests.swift */,
 			);
 			path = IntegrationTests;
 			sourceTree = "<group>";
@@ -823,6 +826,7 @@
 				A6EE4318B3317216DF56160D /* SharePayloadTests.swift in Sources */,
 				86BE2E5DFE2B9C3C1A67F30F /* ShareSaveFlow.swift in Sources */,
 				E78433A4AF7AB6C260056C6F /* ShareSaveFlowTests.swift in Sources */,
+				D1EBDE189E3770C0613443D9 /* SuggestedEntitiesLimitTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
