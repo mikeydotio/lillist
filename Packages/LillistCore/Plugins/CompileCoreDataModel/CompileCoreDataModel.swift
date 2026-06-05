@@ -30,13 +30,58 @@ struct CompileCoreDataModel: BuildToolPlugin {
             // first, then `<name>.spm.momd` as a fallback for builds where
             // only this plugin runs (`swift test` / `swift build`).
             let outputURL = context.pluginWorkDirectoryURL.appendingPathComponent("\(name).spm.momd")
+
+            // llbuild keys a build command on the mtime of its declared
+            // `inputFiles`. The `.xcdatamodeld` is a *directory*, and its
+            // mtime does NOT change when the inner `*.xcdatamodel/contents`
+            // file is edited — so declaring only the directory caused a
+            // stale `.momd` to be reused after a model edit (runtime
+            // `NSInvalidArgumentException: must have a valid
+            // NSEntityDescription`). Declare the inner version files
+            // (`*.xcdatamodel/contents`) and the `.xccurrentversion`
+            // pointer as inputs so a real model edit invalidates `momc`.
+            // momc itself still takes the `.xcdatamodeld` directory as its
+            // argument — it needs the whole versioned bundle, not one file.
+            let modelInputs = Self.modelInputFiles(in: inputURL)
+
             return .buildCommand(
                 displayName: "Compiling Core Data model \(name)",
                 executable: URL(fileURLWithPath: "/usr/bin/xcrun"),
                 arguments: ["momc", inputURL.path, outputURL.path],
-                inputFiles: [inputURL],
+                inputFiles: [inputURL] + modelInputs,
                 outputFiles: [outputURL]
             )
         }
+    }
+
+    /// Enumerates the build-relevant files *inside* an `.xcdatamodeld`
+    /// bundle that should invalidate the `momc` command when edited:
+    /// every `*.xcdatamodel/contents` (one per model version) and the
+    /// top-level `.xccurrentversion` pointer (present in versioned models).
+    /// Returns an empty array on any enumeration failure so the build
+    /// degrades to the previous directory-only behaviour rather than
+    /// crashing the plugin.
+    private static func modelInputFiles(in modelBundle: URL) -> [URL] {
+        let fileManager = FileManager.default
+        guard let enumerator = fileManager.enumerator(
+            at: modelBundle,
+            includingPropertiesForKeys: nil,
+            options: [.skipsHiddenFiles]
+        ) else {
+            return []
+        }
+
+        var inputs: [URL] = []
+        for case let url as URL in enumerator {
+            let lastComponent = url.lastPathComponent
+            let isModelContents =
+                lastComponent == "contents"
+                && url.deletingLastPathComponent().pathExtension == "xcdatamodel"
+            let isCurrentVersionPointer = lastComponent == ".xccurrentversion"
+            if isModelContents || isCurrentVersionPointer {
+                inputs.append(url)
+            }
+        }
+        return inputs
     }
 }
