@@ -93,10 +93,10 @@ final class DragReorderSnapshotTests: XCTestCase {
         host.overrideUserInterfaceStyle = .light
         host.view.frame = CGRect(origin: .zero, size: phoneSize)
         host.view.layoutIfNeeded()
-        let traits = UITraitCollection(traitsFrom: [
-            UITraitCollection(userInterfaceStyle: .light),
-            UITraitCollection(displayScale: 2),
-        ])
+        let traits = UITraitCollection { mutableTraits in
+            mutableTraits.userInterfaceStyle = .light
+            mutableTraits.displayScale = 2
+        }
         assertSnapshot(
             of: host,
             as: .image(size: phoneSize, traits: traits),
