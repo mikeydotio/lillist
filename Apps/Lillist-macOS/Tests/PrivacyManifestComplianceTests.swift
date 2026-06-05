@@ -73,7 +73,7 @@ final class PrivacyManifestComplianceTests: XCTestCase {
         }
     }
 
-    func test_manifests_declare_userDefaults_CA92_1_and_fileTimestamp_C617_1() throws {
+    func test_manifests_declare_userDefaults_fileTimestamp_and_diskSpace_reasons() throws {
         for path in manifestPaths {
             let dict = try plist(at: path)
             let apiTypes = try XCTUnwrap(
@@ -94,6 +94,14 @@ final class PrivacyManifestComplianceTests: XCTestCase {
             XCTAssertEqual(
                 reasonsByCategory["NSPrivacyAccessedAPICategoryFileTimestamp"], ["C617.1"],
                 "FileTimestamp reason must be exactly [C617.1] in \(path)"
+            )
+            // DiskSpace: QuarantineManager.copyStore's pre-flight reads
+            // volumeAvailableCapacityForImportantUsageKey (a DiskSpace
+            // required-reason API). 85F4.1 = "check whether sufficient disk
+            // space is available before writing files."
+            XCTAssertEqual(
+                reasonsByCategory["NSPrivacyAccessedAPICategoryDiskSpace"], ["85F4.1"],
+                "DiskSpace reason must be exactly [85F4.1] in \(path)"
             )
         }
     }
