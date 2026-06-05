@@ -56,12 +56,13 @@ in-house crash reporter.
   (`docs/reviews/2026-05-28-foundation-review.md`) and its 22 follow-up
   plans are tracked **live** in
   `docs/superpowers/plans/2026-05-29-foundation-hardening-index.md` — the
-  current source of truth for what's done and what's next (Wave 1 is
-  complete — `store-swap-safety` + `recurrence-input-hardening` merged;
-  Wave 2 `breadcrumb-truthfulness` is next). **New contributors picking
-  this up: start at that index.** Each
-  plan file opens with a status banner; several carry a Wave-1
-  reconciliation note.
+  current source of truth for what's done and what's next (**Waves 1–6 are
+  complete and merged to `main`; Wave 7 is next** — `privacy-manifest-export-compliance`
+  FIRST, then `recovery-hardening`, `lillistui-localization-a11y`, and
+  `ci-and-build-posture` dead last). **New contributors picking this up:
+  start at that index**, then read the latest `docs/superpowers/handoffs/wave-N.md`.
+  Each plan file opens with a status banner; several carry per-wave
+  reconciliation notes.
 
 ## Build & test
 
