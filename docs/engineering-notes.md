@@ -2531,3 +2531,32 @@ ios, macos, release-archive-smoke, localization-lint, notify); the folded-in
 + excluded snapshot dirs; `CompileCoreDataModel.swift` declaring inner-model
 `inputFiles`; `IOSScreenTourTests.assertScreen` precision params. One commit
 per task on `main`.
+
+## 2026-06-05 — LillistUI localization extraction has two blind spots (Plan: lillistui-localization-a11y, Wave 7)
+
+The `-emit-localized-strings` extraction (and the
+`Tools/CI/check-lillistui-localization.sh` drift lint built on it) only
+sees a string when (a) its key is a **compile-time literal** in a
+`String(localized:)` / `Text(...)` / `LocalizedStringResource(...)` call,
+and (b) the call site **actually compiles in the build the extractor
+runs**. Two consequences a future contributor must keep in mind:
+
+- **Runtime-keyed strings are invisible.**
+  `String(localized: .init(someRuntimeString))` extracts nothing (no
+  data-flow analysis). The four `TaskRowView` reorder VoiceOver actions
+  originally did exactly this (`.init(action.accessibilityKey)`) and were
+  therefore English-only AND undetectable by the lint. Fixed by rendering
+  them through a compile-time literal switch (`ReorderActionsModifier.label(for:)`
+  — `String(localized: "Move up", bundle: .module)` etc.); they now extract
+  and are in the catalog. **Always use literal keys for `.module` strings.**
+
+- **The lint runs the macOS HOST build, so `#if os(iOS)` strings are never
+  extracted.** `FloatingAddButton` is iOS-only, so its `.module` strings
+  ("New task", "Opens quick capture", "Capture from clipboard") compile out
+  on the host and the lint cannot see them. They are correct (`.module`-pinned)
+  and were **added to `Localizable.xcstrings` by hand** so they are
+  translatable, but the lint does **not** guard them — a future edit to an
+  iOS-gated `.module` string won't be caught. Closing this fully would need
+  an iOS-target extraction pass (xcodebuild-based) wired into the lint; that
+  is an unscoped follow-up. Until then: when you add/rename a `.module`
+  string inside `#if os(iOS)`, update the catalog by hand.

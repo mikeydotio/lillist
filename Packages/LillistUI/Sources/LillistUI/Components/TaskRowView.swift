@@ -112,12 +112,25 @@ private struct ReorderActionsModifier: ViewModifier {
         )
         return dispatch.availableActions.reduce(AnyView(content)) { view, action in
             AnyView(
-                view.accessibilityAction(
-                    named: Text(String(localized: .init(action.accessibilityKey), bundle: .module))
-                ) {
+                view.accessibilityAction(named: Self.label(for: action)) {
                     dispatch.invoke(action)
                 }
             )
+        }
+    }
+
+    /// `.module`-localized VoiceOver name for each reorder action, built from
+    /// a compile-time literal so the strings are extractable into the catalog
+    /// (a runtime `String(localized: .init(action.accessibilityKey))` is NOT
+    /// extractable, which previously left these four English-only and
+    /// invisible to the localization-drift lint). The literals must match
+    /// `ReorderAction.accessibilityKey` — pinned by `ReorderActionDispatchTests`.
+    private static func label(for action: ReorderAction) -> Text {
+        switch action {
+        case .moveUp:   return Text(String(localized: "Move up", bundle: .module))
+        case .moveDown: return Text(String(localized: "Move down", bundle: .module))
+        case .indent:   return Text(String(localized: "Indent", bundle: .module))
+        case .outdent:  return Text(String(localized: "Outdent", bundle: .module))
         }
     }
 }
