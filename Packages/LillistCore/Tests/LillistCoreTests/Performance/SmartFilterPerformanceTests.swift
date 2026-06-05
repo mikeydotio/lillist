@@ -82,3 +82,33 @@ final class SmartFilterPerformanceTests: XCTestCase {
         }
     }
 }
+
+/// Paging contract for the ad-hoc evaluate (iOS Search uses this path).
+final class SmartFilterPagingTests: XCTestCase {
+    func testEvaluateGroupReturnsRequestedWindow() async throws {
+        let seeded = try await PerfFixture.seed(count: 1_000)
+        let store = seeded.smartFilterStore
+        let group = PredicateGroup(combinator: .all, predicates: [
+            .leaf(.init(field: .status, op: .is, value: .statusSet([.todo])))
+        ])
+
+        let page = try await store.evaluate(group: group, limit: 50, offset: 0)
+        XCTAssertEqual(page.count, 50)
+
+        let next = try await store.evaluate(group: group, limit: 50, offset: 50)
+        XCTAssertEqual(next.count, 50)
+
+        XCTAssertTrue(Set(page.map(\.id)).isDisjoint(with: Set(next.map(\.id))))
+    }
+
+    func testEvaluateGroupUnpagedReturnsAll() async throws {
+        let seeded = try await PerfFixture.seed(count: 100)
+        let store = seeded.smartFilterStore
+        let group = PredicateGroup(combinator: .all, predicates: [
+            .leaf(.init(field: .status, op: .is, value: .statusSet([.todo])))
+        ])
+        // 100 flat roots + 1 parent + 5 children = 106 todo tasks.
+        let all = try await store.evaluate(group: group)
+        XCTAssertEqual(all.count, 106)
+    }
+}
