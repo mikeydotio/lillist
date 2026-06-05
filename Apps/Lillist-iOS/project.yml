@@ -137,6 +137,12 @@ targets:
       # can be exercised from the standalone iOS test bundle without
       # needing a ShortcutsActions extension test host.
       - path: ../../Extensions/ShortcutsActions/ReportCrashIntent.swift
+      # Co-compile IntentSupport so the gate-aware persistence resolution
+      # wrapper can be exercised from the standalone iOS test bundle without
+      # a ShortcutsActions extension test host. The deep gate-branch coverage
+      # lives in LillistCore's GatedPersistenceResolverTests; this pins the
+      # iOS-side wrapper delegation.
+      - path: ../../Extensions/ShortcutsActions/IntentSupport.swift
     dependencies:
       - package: LillistCore
         product: LillistCore
