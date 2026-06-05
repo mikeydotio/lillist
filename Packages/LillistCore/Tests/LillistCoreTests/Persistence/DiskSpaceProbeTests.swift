@@ -46,11 +46,3 @@ struct DiskSpaceProbeTests {
         #expect(try fake.footprint(of: URL(fileURLWithPath: "/anything")) == 7)
     }
 }
-
-/// Test double living in the test target so production stays lean.
-struct FakeDiskSpaceProbe: DiskSpaceProbing {
-    var availableBytes: Int64
-    var footprintBytes: Int64
-    func availableCapacity(forVolumeContaining url: URL) throws -> Int64 { availableBytes }
-    func footprint(of storeURL: URL) throws -> Int64 { footprintBytes }
-}

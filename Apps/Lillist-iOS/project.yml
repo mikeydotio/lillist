@@ -204,6 +204,10 @@ targets:
       - path: ../../Packages/LillistCore/Tests/LillistCoreTests/Sync/MigrationCoordinatorTests.swift
       - path: ../../Packages/LillistCore/Tests/LillistCoreTests/Sync/CloudKitZoneEraserTests.swift
       - path: ../../Packages/LillistCore/Tests/LillistCoreTests/Sync/FakePersistenceReconfigurer.swift
+      # FakeDiskSpaceProbe is referenced by MigrationCoordinatorTests'
+      # disk-full pre-flight test (recovery-hardening); co-compile the
+      # shared double so the app-hosted target builds.
+      - path: ../../Packages/LillistCore/Tests/LillistCoreTests/Persistence/FakeDiskSpaceProbe.swift
       - path: ../../Packages/LillistCore/Tests/LillistCoreTests/Persistence/PersistenceHostTests.swift
       - path: ../../Packages/LillistCore/Tests/LillistCoreTests/Persistence/StoreLevelModeSwapSpike.swift
       - path: ../../Packages/LillistCore/Tests/LillistCoreTests/Persistence/StoreReconfigureConcurrencyTests.swift
