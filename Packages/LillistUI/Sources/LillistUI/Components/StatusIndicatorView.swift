@@ -63,7 +63,7 @@ public struct StatusIndicatorView: View {
         .contentShape(Rectangle())
         .accessibilityLabel(StatusGlyph.accessibilityLabel(for: status))
         .accessibilityAddTraits(.isButton)
-        .accessibilityAction(named: Text("Cycle status")) {
+        .accessibilityAction(named: Text(String(localized: "Cycle status", bundle: .module))) {
             onClick()
         }
     }

@@ -29,7 +29,7 @@ public struct FloatingAddButton: View {
         }
         .accessibilityLabel(String(localized: "New task", bundle: .module))
         .accessibilityHint(String(localized: "Opens quick capture", bundle: .module))
-        .accessibilityAction(named: Text("Capture from clipboard")) {
+        .accessibilityAction(named: Text(String(localized: "Capture from clipboard", bundle: .module))) {
             onLongPress?()
         }
         .simultaneousGesture(
