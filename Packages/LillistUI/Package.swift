@@ -1,4 +1,4 @@
-// swift-tools-version: 6.0
+// swift-tools-version: 6.2
 import PackageDescription
 
 let package = Package(
@@ -25,7 +25,8 @@ let package = Package(
                 .process("Resources")
             ],
             swiftSettings: [
-                .enableExperimentalFeature("StrictConcurrency")
+                .enableExperimentalFeature("StrictConcurrency"),
+                .treatAllWarnings(as: .error)
             ]
         ),
         .testTarget(
@@ -33,6 +34,17 @@ let package = Package(
             dependencies: [
                 "LillistUI",
                 .product(name: "SnapshotTesting", package: "swift-snapshot-testing")
+            ],
+            exclude: [
+                "Recurrence/__Snapshots__",
+                "DragReorder/__Snapshots__",
+                "Tour/__Snapshots__",
+                "Snapshots/__Snapshots__",
+                "CrashReporting/__Snapshots__",
+                "iOS/__Snapshots__"
+            ],
+            swiftSettings: [
+                .treatAllWarnings(as: .error)
             ]
         )
     ]
