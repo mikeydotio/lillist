@@ -93,10 +93,10 @@ public struct TaskRowView: View {
     }
 }
 
-/// Conditionally adds reorder accessibility actions. Each action is
-/// only attached when its closure is non-nil, so callers that don't
-/// want a particular action (e.g. iOS surfaces that lack the
-/// notification plumbing) get no extraneous announcements.
+/// Adds a VoiceOver reorder action for each *wired* closure. An action is
+/// attached only when its closure is non-nil, so surfaces that don't
+/// support a given operation (e.g. iOS lists without indent/outdent
+/// plumbing) advertise no phantom no-op action.
 private struct ReorderActionsModifier: ViewModifier {
     var onMoveUp: (() -> Void)?
     var onMoveDown: (() -> Void)?
@@ -104,10 +104,20 @@ private struct ReorderActionsModifier: ViewModifier {
     var onOutdent: (() -> Void)?
 
     func body(content: Content) -> some View {
-        content
-            .accessibilityAction(named: Text("Move up")) { onMoveUp?() }
-            .accessibilityAction(named: Text("Move down")) { onMoveDown?() }
-            .accessibilityAction(named: Text("Indent")) { onIndent?() }
-            .accessibilityAction(named: Text("Outdent")) { onOutdent?() }
+        let dispatch = ReorderActionDispatch(
+            onMoveUp: onMoveUp,
+            onMoveDown: onMoveDown,
+            onIndent: onIndent,
+            onOutdent: onOutdent
+        )
+        return dispatch.availableActions.reduce(AnyView(content)) { view, action in
+            AnyView(
+                view.accessibilityAction(
+                    named: Text(String(localized: .init(action.accessibilityKey), bundle: .module))
+                ) {
+                    dispatch.invoke(action)
+                }
+            )
+        }
     }
 }
