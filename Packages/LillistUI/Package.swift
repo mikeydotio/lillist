@@ -3,6 +3,7 @@ import PackageDescription
 
 let package = Package(
     name: "LillistUI",
+    defaultLocalization: "en",
     platforms: [
         .macOS(.v15),
         .iOS(.v18)
