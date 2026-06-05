@@ -2213,3 +2213,48 @@ into both apps' `bootstrap()` after the launch purge.
 fire-date is still future will fire its banner until the OS drops it.
 Cancelling the OS-level requests is a named follow-up, out of this plan's
 threading/cascade scope.
+
+## 2026-05-28 — Crash-reporter redaction is layered, and the canary can't trust PID alone
+
+**Redaction: wrapped markers are authoritative; key=value is single-token
+defense-in-depth.** `LogRedactor` runs an ordered list of regex passes.
+The wrapped-marker passes (`<title>…</title>`, `<notes>`, `<journal>`,
+`<tag>`) redact arbitrary content *including spaces* via a non-greedy
+`[\s\S]*?`. The `key=value` passes (`title=…`, `notes=…`, `tag=…`) stop at
+the first whitespace, so a bare multi-word value (`title=Buy milk`) is
+**not** fully redacted — only the first token is. This is intentional: the
+key=value passes exist purely as a backstop for accidental single-token
+leaks; any code logging user content must wrap it in a marker. The
+adversarial golden fixture
+(`Tests/.../CrashReporting/Fixtures/raw-logs-adversarial.{txt,expected.txt}`)
+pins this contract, including the deliberately-only-partially-redacted
+multi-word line. Don't "fix" that fixture line by greedily extending the
+key=value passes to end-of-line — that would over-redact legitimate
+trailing log structure (` to closed`, ` to task`) and break the
+human-readability the crash reports depend on. The key=value passes
+capture the key (`$1`) and re-emit it verbatim so a mixed-case key
+(`Title=`, `NOTES=`) keeps its original casing while only the value is
+redacted — a bare literal replacement template would rewrite the whole
+match and silently lowercase the key, which the Task-1 unit test and the
+golden fixture both catch.
+
+The path/container passes use a capitalized-space lookahead
+(`\s(?=[A-Z][a-z])`) so a path can swallow a literal-space component like
+`Application Support`. The container/temp passes use a case-insensitive
+hex class (`[0-9A-Fa-f-]`) and cover both the per-app `Data/Application`
+subtree and the shared `Shared/AppGroup` subtree, plus
+`/private/var/folders`, `/var/folders`, and `/tmp`. UUIDs are redacted
+last so paths/emails are gone before the bare-UUID fallback runs.
+
+**The canary cannot suppress a prior crash on PID equality alone.**
+`CrashReporter.detectAndPrepare()` must ignore a canary it wrote *earlier
+in this same launch* (a lifecycle pre-arm) without ignoring a *real* prior
+crash. The original filter compared `pid` only, on the assumption that a
+cross-process crash always has a different PID. That assumption is false:
+the OS recycles PIDs, so a genuine prior crash can carry this process's
+PID and would be silently swallowed. The fix adds a `startedAt` recency
+check (same-PID **and** `startedAt` within a 30 s window of `now()` ⇒
+treat as a same-launch pre-arm; otherwise surface it). The reporter's
+injectable `now` clock makes this deterministic in tests. If you ever see
+a real crash go unreported with a matching PID, this window is the first
+place to look.
