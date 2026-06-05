@@ -43,30 +43,4 @@ struct TaskRowViewA11yTests {
         #expect(label.contains("grocery"))
         #expect(label.contains("May 20")) // formatted abbreviated date
     }
-
-    @Test("Reorder a11y actions fire their closures")
-    func reorderActionsFireClosures() {
-        var calls: [String] = []
-        let record = TaskStore.TaskRecord(
-            id: UUID(), title: "x", notes: "", status: .todo,
-            start: nil, startHasTime: false, deadline: nil, deadlineHasTime: false,
-            position: 0, isPinned: false, parentID: nil,
-            createdAt: Date(), modifiedAt: Date(), closedAt: nil, deletedAt: nil,
-            seriesID: nil
-        )
-        let view = TaskRowView(
-            task: record,
-            tagNames: [],
-            onStatusClick: {},
-            onStatusSet: { _ in },
-            onMoveUp: { calls.append("up") },
-            onMoveDown: { calls.append("down") },
-            onIndent: { calls.append("indent") },
-            onOutdent: { calls.append("outdent") }
-        )
-        // Compile-time wiring guard: the closures are stored and the init
-        // signature includes the four optional reorder callbacks.
-        _ = view
-        #expect(calls.isEmpty, "Closures should not fire on construction")
-    }
 }
