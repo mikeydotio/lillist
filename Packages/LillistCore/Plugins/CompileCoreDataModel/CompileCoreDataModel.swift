@@ -37,11 +37,10 @@ struct CompileCoreDataModel: BuildToolPlugin {
             // file is edited — so declaring only the directory caused a
             // stale `.momd` to be reused after a model edit (runtime
             // `NSInvalidArgumentException: must have a valid
-            // NSEntityDescription`). Declare the inner version files
-            // (`*.xcdatamodel/contents`) and the `.xccurrentversion`
-            // pointer as inputs so a real model edit invalidates `momc`.
-            // momc itself still takes the `.xcdatamodeld` directory as its
-            // argument — it needs the whole versioned bundle, not one file.
+            // NSEntityDescription`). Declare each inner `*.xcdatamodel/contents`
+            // as an input so a real model edit invalidates `momc`. momc itself
+            // still takes the `.xcdatamodeld` directory as its argument — it
+            // needs the whole versioned bundle, not one file.
             let modelInputs = Self.modelInputFiles(in: inputURL)
 
             return .buildCommand(
@@ -54,13 +53,20 @@ struct CompileCoreDataModel: BuildToolPlugin {
         }
     }
 
-    /// Enumerates the build-relevant files *inside* an `.xcdatamodeld`
-    /// bundle that should invalidate the `momc` command when edited:
-    /// every `*.xcdatamodel/contents` (one per model version) and the
-    /// top-level `.xccurrentversion` pointer (present in versioned models).
-    /// Returns an empty array on any enumeration failure so the build
-    /// degrades to the previous directory-only behaviour rather than
-    /// crashing the plugin.
+    /// The build-relevant files *inside* an `.xcdatamodeld` bundle that must
+    /// invalidate the `momc` command when edited: every
+    /// `*.xcdatamodel/contents` (one per model version) — the file actually
+    /// changed when you edit the model. Returns an empty array on enumeration
+    /// failure so the build degrades to the previous directory-only
+    /// behaviour rather than crashing the plugin.
+    ///
+    /// The top-level `.xccurrentversion` pointer is deliberately NOT declared.
+    /// Verified empirically: neither enumerating it (a dotfile) nor declaring
+    /// it by explicit path makes llbuild re-run `momc` on its mtime change
+    /// from a SwiftPM build-tool plugin — so claiming to track it would be
+    /// false. Harmless in practice: adding or switching a model version always
+    /// edits a new `*.xcdatamodel/contents`, which IS tracked, so the version
+    /// change still invalidates `momc`.
     private static func modelInputFiles(in modelBundle: URL) -> [URL] {
         let fileManager = FileManager.default
         guard let enumerator = fileManager.enumerator(
@@ -73,12 +79,8 @@ struct CompileCoreDataModel: BuildToolPlugin {
 
         var inputs: [URL] = []
         for case let url as URL in enumerator {
-            let lastComponent = url.lastPathComponent
-            let isModelContents =
-                lastComponent == "contents"
-                && url.deletingLastPathComponent().pathExtension == "xcdatamodel"
-            let isCurrentVersionPointer = lastComponent == ".xccurrentversion"
-            if isModelContents || isCurrentVersionPointer {
+            if url.lastPathComponent == "contents"
+                && url.deletingLastPathComponent().pathExtension == "xcdatamodel" {
                 inputs.append(url)
             }
         }
