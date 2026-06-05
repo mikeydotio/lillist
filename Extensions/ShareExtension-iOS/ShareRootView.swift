@@ -64,18 +64,17 @@ struct ShareRootView: View {
         saving = true
         defer { saving = false }
         do {
-            // Plan 21: consult MigrationGate so the extension doesn't
-            // race a foreground sync-mode migration. If a migration is
-            // in flight, surface the message and let the user retry.
+            // Plan 21: resolve the store configuration through the
+            // MigrationGate (via GatedPersistenceResolver) so the
+            // extension doesn't race a foreground sync-mode migration.
+            // If a migration is in flight the resolver throws
+            // storeUnavailable, caught below to surface the retry message.
             let appGroupID = "group.io.mikeydotio.Lillist"
-            let modeStore = SyncModeStore(appGroupID: appGroupID)
-            guard let journal = FileMigrationJournalStore(appGroupID: appGroupID) else {
+            guard let resolver = GatedPersistenceResolver(appGroupID: appGroupID) else {
                 saveError = "App Group container is not available."
                 return
             }
-            let gate = MigrationGate(journal: journal, modeStore: modeStore)
-            let config = try await gate.resolveStoreConfiguration(appGroupID: appGroupID)
-            let persistence = try await PersistenceController(configuration: config)
+            let persistence = try await resolver.makePersistence()
             let taskStore = TaskStore(persistence: persistence)
             let attachmentStore = AttachmentStore(persistence: persistence)
             let taskID = try await taskStore.create(title: title, notes: notes)
