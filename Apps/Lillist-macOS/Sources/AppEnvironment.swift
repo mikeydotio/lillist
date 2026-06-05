@@ -251,6 +251,17 @@ final class AppEnvironment {
         await notificationScheduler.bootstrap()
         // Persist-6: opportunistically clear expired trash at launch.
         _ = try? await autoPurgeJob.run()
+        // persist-1 / notif-7: sweep localOnly persistent history at launch so
+        // it never grows unbounded. Internally gated to syncMode == .localOnly
+        // (iCloudSync is a no-op); fire-and-forget — a failed prune never
+        // blocks launch.
+        if let historyPruner = HistoryPruner(
+            persistence: persistence,
+            syncMode: await syncModeStore.currentMode(),
+            appGroupID: Self.appGroupID
+        ) {
+            _ = try? await historyPruner.sweep()
+        }
         // The canary is armed lazily by `CrashReporterHost.task` calling
         // `detectAndPrepare()`. Bootstrap *used* to call `start()` here
         // "defensively in case the host never gets a chance to render,"
