@@ -64,7 +64,14 @@ public enum LogRedactor {
             // eating a capitalized word that follows a real path; the
             // crash-reporter philosophy explicitly favors this trade.
             make(#"/Users/[^/\s]+(?:/(?:[^\s]|\s(?=[A-Z][a-z]))*)?"#, "<path>"),
-            make(#"/var/mobile/Containers/Data/Application/[A-Z0-9-]+(?:/(?:[^\s]|\s(?=[A-Z][a-z]))*)?"#, "<path>"),
+            // iOS sandbox + App-Group containers. The UUID segment is
+            // hex-with-dashes in *either* case (real container names are
+            // uppercase, but synced/imported/third-party log text is not
+            // guaranteed to be), so the class is [0-9A-Fa-f-], not the
+            // uppercase-only form. Both the per-app `Data/Application`
+            // subtree and the shared `Shared/AppGroup` subtree (where the
+            // shared store and canary live) are covered.
+            make(#"/var/mobile/Containers/(?:Data/Application|Shared/AppGroup)/[0-9A-Fa-f-]+(?:/(?:[^\s]|\s(?=[A-Z][a-z]))*)?"#, "<path>"),
             make(#"~/(?:[^\s]|\s(?=[A-Z][a-z]))*"#, "<path>"),
             // Emails.
             make(#"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}"#, "<email>"),
