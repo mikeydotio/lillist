@@ -71,6 +71,21 @@ struct LogRedactorTests {
         #expect(LogRedactor.redact(appGroup) == "<path>")
     }
 
+    @Test("Temp-directory paths are redacted")
+    func tempPaths_redacted() {
+        // redact-5: NSTemporaryDirectory / FileManager temp URLs surface
+        // in log text (attachment staging, export scratch files) and
+        // contain a user-scoped DARWIN_USER_TEMP_DIR token. None of the
+        // existing /Users, /var/mobile, or ~ passes match them.
+        #expect(
+            LogRedactor.redact("saved to /private/var/folders/ab/cd12/T/temp.png") == "saved to <path>"
+        )
+        #expect(
+            LogRedactor.redact("saved to /var/folders/ab/cd12/T/temp.png") == "saved to <path>"
+        )
+        #expect(LogRedactor.redact("scratch /tmp/scratch.dat") == "scratch <path>")
+    }
+
     @Test("Empty input → empty output")
     func empty() {
         #expect(LogRedactor.redact("") == "")
