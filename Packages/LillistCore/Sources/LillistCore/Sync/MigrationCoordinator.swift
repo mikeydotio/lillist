@@ -273,6 +273,13 @@ public final class MigrationCoordinator {
             // 5. quarantine the now-closed old store as a recovery
             //    anchor — COPY, not move, and only if the file is still
             //    present. Record the exact folder name in the journal.
+            //
+            //    `copyStore(at:)` runs a pre-flight disk-space check and
+            //    throws `LillistError.insufficientDiskSpace` *before*
+            //    touching any file. That keeps the shortfall ahead of
+            //    the irreversible CloudKit erase in step 6 (blind-spot
+            //    #5 recovery runbook). Do NOT reorder the erase ahead of
+            //    this block.
             emit(.backingUp)
             entry.state = .quarantining
             entry.lastHeartbeatAt = Date()
