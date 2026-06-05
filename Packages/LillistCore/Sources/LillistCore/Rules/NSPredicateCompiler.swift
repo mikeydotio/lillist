@@ -3,7 +3,9 @@ import CoreData
 
 /// Translates a `PredicateGroup` into an `NSPredicate` over the `LillistTask`
 /// entity. The compiled predicate is suitable for `NSFetchRequest.predicate`
-/// and `NSFetchedResultsController`.
+/// and `NSFetchedResultsController`. Callers running it for a list set
+/// `fetchBatchSize`/`fetchLimit` per the paging policy in
+/// `docs/engineering-notes.md` so large result sets fault in pages.
 ///
 /// The implicit-trash rule (design Section 5): unless the group contains a
 /// leaf with `field == .inTrash`, the compiled top-level predicate
