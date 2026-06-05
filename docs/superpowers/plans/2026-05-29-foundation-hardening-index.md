@@ -31,6 +31,15 @@ CloudKit, XCTest + Swift Testing, xcodegen, GitHub Actions (new).
 > file is the **living progress tracker** for the program — keep it current as
 > plans merge.
 
+**As of 2026-06-05 — ✅ ALL 7 WAVES COMPLETE. The Foundation Hardening program is
+done: all 22 plans merged to `main`.** Wave 7 (the closing wave) landed 31 commits
+(28 plan + 3 post-review fixes); a 4-dimension adversarial review (`wf_9134372e-371`)
+found 9 confirmed issues across 4 roots — 3 fixed in code (a HIGH cross-plan
+privacy-manifest `DiskSpace` gap, the reorder-a11y-string extractability gap, the
+`CompileCoreDataModel` `.xccurrentversion` dead branch) + 1 already-documented
+tradeoff. See `docs/superpowers/handoffs/wave-7.md`. Historical wave-by-wave status
+below:**
+
 **As of 2026-06-05 (Wave 5 complete):**
 
 - ✅ **Wave 1 · `store-swap-safety`** — **merged to `main`** (commits
@@ -214,10 +223,20 @@ CloudKit, XCTest + Swift Testing, xcodegen, GitHub Actions (new).
   builds a live `NSPersistentCloudKitContainer` (whose async CloudKit setup traps in the headless
   bundle); the per-process cache had made that latent ~25% flake 100% deterministic. See
   `docs/superpowers/handoffs/wave-6.md`.
-- ✅ **Wave 6 COMPLETE. Next: Wave 7** — `privacy-manifest-export-compliance` (FIRST; last
-  `project.yml` editor — owns the final coordinated `xcodegen generate`), then
-  `recovery-hardening`, `lillistui-localization-a11y`, then `ci-and-build-posture` **dead last**.
-- ⬜ **Wave 7** — pending. Follow the wave order + serial chains below.
+- ✅ **Wave 6 COMPLETE.** See `docs/superpowers/handoffs/wave-6.md`.
+- ✅ **Wave 7 COMPLETE — and with it the whole 22-plan program** (commits
+  `6fdb728`..HEAD on `main`; 31 commits). `privacy-manifest-export-compliance`
+  (4 `PrivacyInfo.xcprivacy` + `ITSAppUsesNonExemptEncryption` ×4 + compliance tests),
+  `recovery-hardening` (`DiskSpaceProbe` + `copyStore` 2× pre-flight ahead of the
+  CloudKit erase), `lillistui-localization-a11y` (a11y gating, structured
+  `RecurrenceSummary` + formatter, `defaultLocalization` + 169-key catalog, drift
+  lint), `ci-and-build-posture` (swift-tools 6.2 + warnings-as-error, plugin
+  `inputFiles`, scoped tour precision, `.github/workflows/ci.yml`). Five
+  empirically-forced plan deviations + 3 post-review fixes are documented in the
+  three 2026-06-05 `engineering-notes.md` entries and `docs/superpowers/handoffs/wave-7.md`.
+  **CI scope note:** the host-pinned snapshot tests and the iCloud-dependent
+  `Lillist-iOSAppHostedTests`/`Lillist-iOSUITests` deliberately do NOT run in CI —
+  they're verified on a developer's signed Mac with iCloud (see the handoff).
 
 ### Progress checklist
 
@@ -227,7 +246,9 @@ CloudKit, XCTest + Swift Testing, xcodegen, GitHub Actions (new).
 - **Wave 4:** ✅ concurrency-stress-tests · ✅ migration-adjacent-correctness · ✅ background-context-seam
 - **Wave 5 (P2):** ✅ crash-reporter-privacy · ✅ app-layer-test-rehab
 - **Wave 6:** ✅ extension-persistence-unification · ✅ export-import-robustness · ✅ cli-robustness · ✅ performance-budgets-and-paging · ✅ observability-logging
-- **Wave 7 (closing):** ⬜ **privacy-manifest-export-compliance ← NEXT** · ⬜ recovery-hardening · ⬜ lillistui-localization-a11y · ⬜ ci-and-build-posture (LAST)
+- **Wave 7 (closing):** ✅ privacy-manifest-export-compliance · ✅ recovery-hardening · ✅ lillistui-localization-a11y · ✅ ci-and-build-posture
+
+**🎉 ALL 22 PLANS COMPLETE — Foundation Hardening is done.**
 
 _When a plan merges, flip its box here and update its in-plan status banner._
 
