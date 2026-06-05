@@ -146,6 +146,54 @@ struct MigrationCoordinatorRestoreTests {
         #expect(try journal.read() == .idle)
     }
 
+    @Test("Two concurrent begin* calls: exactly one runs, the other is rejected", .enabled(if: liveSwapAllowed))
+    @MainActor
+    func rejectsConcurrentReentrantMigration() async throws {
+        let dir = Self.tempDir()
+        let storeURL = dir.appendingPathComponent("Lillist.sqlite")
+        let host = try await PersistenceHost.make(initialMode: .iCloudSync, storeURL: storeURL)
+        let journal = InMemoryMigrationJournalStore()
+        let quarantine = QuarantineManager(rootDirectory: dir)
+        let fakeEraser = FakeCloudKitZoneEraser()
+        let bridge = CloudKitEventBridge()
+        let quiesce = SyncQuiesceMonitor(bridge: bridge)
+        let suite = "MigrationCoordinatorRestoreTests-\(UUID().uuidString)"
+        UserDefaults(suiteName: suite)?.removePersistentDomain(forName: suite)
+        let modeStore = SyncModeStore(suiteName: suite)
+        await modeStore.setMode(.iCloudSync)
+
+        let coordinator = MigrationCoordinator(
+            host: host,
+            journal: journal,
+            quarantine: quarantine,
+            zoneEraser: fakeEraser,
+            quiesceMonitor: quiesce,
+            notificationScheduler: nil,
+            syncModeStore: modeStore
+        )
+
+        // Fire two begin* calls without a pre-existing journal. The synchronous
+        // isMigrating flag must let exactly one proceed and reject the other.
+        // Two unstructured Tasks are submitted back-to-back so both are
+        // enqueued on the MainActor before either starts executing; the
+        // @MainActor coordinator then runs them serially, but the *second*
+        // task sees isMigrating == true at its first synchronous check and
+        // must throw immediately. Using Task<Void, Error> and collecting via
+        // `await task.value` avoids the Swift-6 region-checker limitation
+        // that fires when @MainActor closures appear inside withTaskGroup.
+        let taskA = Task<Void, Error> { @MainActor in
+            try await coordinator.beginDisable(strategy: .now, storeURL: storeURL)
+        }
+        let taskB = Task<Void, Error> { @MainActor in
+            try await coordinator.beginDisable(strategy: .now, storeURL: storeURL)
+        }
+        var errors: [Error] = []
+        if case .failure(let e) = await taskA.result { errors.append(e) }
+        if case .failure(let e) = await taskB.result { errors.append(e) }
+        // At most one succeeds; at least one is rejected by the reentrancy guard.
+        #expect(errors.count >= 1, "a concurrent second begin* must be rejected")
+    }
+
     @Test("runMigration refuses to start when the journal is already in flight", .enabled(if: liveSwapAllowed))
     @MainActor
     func rejectsReentrantMigration() async throws {
