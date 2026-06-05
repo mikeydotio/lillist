@@ -1,7 +1,9 @@
 import AppIntents
 
-/// Discoverable entry point used by the Lock Screen widget. Opens the app
-/// (which surfaces the Quick Capture sheet via `OpenAtQuickCaptureIntent`).
+/// Discoverable entry point used by the Lock Screen widget and Shortcuts.
+/// Brings Lillist to the foreground (`openAppWhenRun`); the app has no
+/// AppIntents surface to auto-present the Quick Capture sheet, so this
+/// intent's effect today is simply to open the app.
 struct QuickCaptureLockScreenIntent: AppIntent {
     static let title: LocalizedStringResource = "Quick Capture"
     static let description = IntentDescription("Capture a task into Lillist.")
@@ -10,18 +12,7 @@ struct QuickCaptureLockScreenIntent: AppIntent {
     init() {}
 
     @MainActor
-    func perform() async throws -> some IntentResult & OpensIntent {
-        .result(opensIntent: OpenAtQuickCaptureIntent())
+    func perform() async throws -> some IntentResult {
+        .result()
     }
-}
-
-/// Hidden helper intent the main app handles on launch to present the
-/// Quick Capture sheet immediately.
-struct OpenAtQuickCaptureIntent: AppIntent {
-    static let title: LocalizedStringResource = "Open Quick Capture"
-    static let isDiscoverable = false
-
-    init() {}
-
-    func perform() async throws -> some IntentResult { .result() }
 }
