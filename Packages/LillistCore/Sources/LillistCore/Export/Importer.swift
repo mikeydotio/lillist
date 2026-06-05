@@ -78,8 +78,33 @@ public actor Importer {
         return try await apply(document: document, policy: conflictPolicy)
     }
 
+    /// Apply a decoded export `document` to the store.
+    ///
+    /// ## Transaction contract (import-3)
+    ///
+    /// This is **all-or-nothing**: every row is staged in a single
+    /// background-context `perform` block and committed by one
+    /// `ctx.save()` at the end. If that save throws, the context is
+    /// rolled back, the error propagates, and *nothing* is persisted
+    /// — the returned `ImportSummary` (including its
+    /// per-row `errors` array and the `*Skipped` counts) is **discarded
+    /// along with the staged objects.** Callers must treat a thrown
+    /// error as "the store is unchanged"; the `errors`/`*Skipped` detail
+    /// is only meaningful on a successful return. Per-row recovery would
+    /// require a per-row save/rollback model, which this manual-merge
+    /// escape hatch deliberately does not adopt.
     public func apply(document: ExportSchema.Document, policy: ConflictPolicy) async throws -> ImportSummary {
-        let ctx = persistence.makeBackgroundContext()
+        // Forward-incompatible bundles (written by a newer Lillist) are
+        // rejected up front. Equal and older versions apply; older
+        // bundles are read as-is since every field added since has a
+        // safe default at the DTO boundary.
+        guard document.version <= ExportSchema.version else {
+            throw LillistError.unsupportedExportVersion(
+                found: document.version,
+                supported: ExportSchema.version
+            )
+        }
+        let ctx = persistence.makeBackgroundContext()  // unchanged Wave-4 seam — do not revert to viewContext
         return try await ctx.perform { [policy, self] in
             var tagsInserted = 0
             var tagsUpdated = 0
