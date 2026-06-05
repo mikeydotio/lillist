@@ -334,6 +334,45 @@ fixes (commit on `main`). **9 affected, 2 verified unaffected** (`crash-reporter
   `PurgeCommand` to the new batch `purgeAll` (per-resolution `hardDelete` is the correct
   all-or-nothing CLI path).
 
+### Wave 5 reconciliation pass (2026-06-05)
+
+After Wave 5 merged (commits `4dc1f96`..`0bd7796` — `crash-reporter-privacy` +
+`app-layer-test-rehab`, plus the `656e353`/`20b6dab` doc fixes), a **9-agent
+read-only audit** (workflow `wf_de00bed6-9aa`) re-checked all remaining Wave-6/7
+plans against current `main`. Each got a `Wave-5 reconciliation (2026-06-05)`
+banner: **5 affected** (anchor/note fixes) + **4 verified clean** (a `✅`
+stamp). Load-bearing reconciliations:
+
+- **`extension-persistence-unification`** (FIRST Wave-6 plan): its hard dependency
+  `GatedPersistenceResolver` landed with the **exact** API Tasks 2/5 assume
+  (`init?(appGroupID:)`, `makePersistence(build:)`, `makePersistence()`) — verified,
+  no API-drift. Three anchor fixes: (a) Wave 5 **renamed** `ShareExtensionPayloadTests`
+  → **`LillistCoreSharePayloadCompositionTests`**, fixed in every `-only-testing:` +
+  prose reference; (b) Task 4's `Lillist-iOSTests` co-compile block now carries a third
+  entry — `IntentSupport.swift` (Wave 5) — and the printed YAML + verification note were
+  updated so it isn't dropped on a block-replace; (c) **`StoreLocator` ownership** (below).
+- **`StoreLocator` ownership resolved**: commit `656e353` over-claimed that
+  `extension-persistence-unification` routes BOTH `TaskEntityQuery` AND the CLI's
+  `StoreLocator` through the resolver. It routes only `TaskEntityQuery`. The resolver
+  header was re-corrected (`20b6dab`): `TaskEntityQuery` is routed in Wave 6
+  (`extension-persistence-unification`); **`StoreLocator` stays inline and is an unscoped
+  optional follow-up owned by no plan**. `cli-robustness` carries an explicit "do NOT route
+  `StoreLocator` here" note (it only *calls* the unchanged `StoreLocator.openAppGroup()`).
+- **`performance-budgets-and-paging`**: code anchors all intact, but Wave 5 appended a new
+  `engineering-notes.md` last entry (`## 2026-05-28 — Crash-reporter redaction is layered…`,
+  ~L2217), so Task 6's append-point is now that crash-redaction entry (34 → 35 headings);
+  Task 7's "649 Swift Testing tests" baseline is stale — assert the suite passes, don't pin a count.
+- **`privacy-manifest-export-compliance` + `ci-and-build-posture`** (chain #4): Wave 5 added
+  `IntentSupport.swift` to the **`Lillist-iOSTests`** bundle (NOT the AppHostedTests target),
+  shifting the 3 Wave-4 AppHostedTests entries +6 to ~L205–207 (intact). Both plans' "do NOT
+  clobber" warnings now also name the `IntentSupport.swift` co-compile; both committed pbxprojs
+  are already Wave-5-current, so the drift gate / privacy regenerate comes up clean.
+- **Verified clean (`✅` stamp, no edits):** `export-import-robustness` (Export/Validation lane —
+  untouched), `observability-logging` (instrument targets untouched; EOF note only),
+  `recovery-hardening` (its targets untouched), and **`lillistui-localization-a11y`** —
+  the +5 `DragDropResolverTests` are **XCTest** (separate `Executed N` line), so they do NOT
+  change the Swift-Testing `Test run with N` summary the plan's count tracks.
+
 ---
 
 ## Wave Handoff Protocol
