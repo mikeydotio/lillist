@@ -10,12 +10,18 @@ public struct RestoreCommand: AsyncParsableCommand {
     public init() {}
     public func run() async throws {
         let p = try await CLIBridge.StoreLocator.openAppGroup()
-        let tokens: [String]
-        if StdinReader.isStdinSentinel(token) {
-            let raw = StdinReader.readAllLines()
-            tokens = allowFuzzy ? raw : (try StdinReader.validateAllUUIDs(raw))
-        } else {
-            tokens = [token]
+        let tokens = try BatchTokens.resolveInput(
+            token: token,
+            destructiveGate: .requireUUIDs,
+            allowFuzzy: allowFuzzy
+        )
+        // Pre-flight: confirm every token resolves to a trashed task before
+        // restoring any (all-or-nothing). RestoreHandler.run repeats the
+        // resolution against the trash list; the pre-flight throws first on a
+        // bad token so partial restores can't happen.
+        let trashed = try await TaskStore(persistence: p).trashed()
+        for t in tokens {
+            try CLIBridge.RestoreHandler.preflight(token: t, trashed: trashed)
         }
         for t in tokens {
             try await CLIBridge.RestoreHandler.run(token: t, persistence: p)
