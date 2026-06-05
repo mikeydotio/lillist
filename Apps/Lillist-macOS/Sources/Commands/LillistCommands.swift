@@ -35,17 +35,17 @@ struct LillistCommands: Commands {
             Button("Toggle Started") {
                 NotificationCenter.default.post(name: .lillistToggleStarted, object: nil)
             }.keyboardShortcut(.space, modifiers: [])
-              .disabled(listColumn == nil)
+              .disabled(TaskListShortcutGate.isDisabled(listColumn: listColumn))
 
             Button("Mark Closed") {
                 NotificationCenter.default.post(name: .lillistMarkClosed, object: nil)
             }.keyboardShortcut(.return, modifiers: [.command])
-              .disabled(listColumn == nil)
+              .disabled(TaskListShortcutGate.isDisabled(listColumn: listColumn))
 
             Button("Mark Blocked & Schedule Follow-up") {
                 NotificationCenter.default.post(name: .lillistMarkBlocked, object: nil)
             }.keyboardShortcut(".", modifiers: [.command])
-              .disabled(listColumn == nil)
+              .disabled(TaskListShortcutGate.isDisabled(listColumn: listColumn))
         }
 
         CommandMenu("View") {

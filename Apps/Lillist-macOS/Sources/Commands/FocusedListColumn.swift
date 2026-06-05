@@ -11,6 +11,17 @@ public enum ListColumn: Hashable, Sendable {
     case detail
 }
 
+/// Single source of truth for whether the list-action keyboard
+/// shortcuts (Space, Cmd-Return, Cmd-.) should be disabled. They fire
+/// only when a list column holds focus; when no column is focused
+/// (e.g. a TextField is first responder) they must be inert so typing
+/// doesn't trigger them.
+enum TaskListShortcutGate {
+    static func isDisabled(listColumn: ListColumn?) -> Bool {
+        listColumn == nil
+    }
+}
+
 /// Published from `RootSplitView` so command-menu shortcuts can disable
 /// themselves when no list column is focused (i.e. a TextField or other
 /// first-responder is editing). Without this, raw shortcuts like Space,

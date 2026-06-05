@@ -215,23 +215,12 @@ struct TaskListView: View {
     @MainActor
     private func applyDrop(dragged: UUID, target: DragTarget) async {
         do {
-            switch target {
-            case .between(let beforeID, let afterID, _):
-                try await env.taskStore.reorder(id: dragged, after: afterID, before: beforeID)
-            case .onto(let parentID):
-                if let firstChild = dragController.flatRows.first(where: { $0.parentID == parentID }) {
-                    // Target is expanded with visible children — drop as first child
-                    // (per "Smart: where the cursor was" semantic).
-                    try await env.taskStore.reorder(
-                        id: dragged,
-                        after: nil,
-                        before: firstChild.id
-                    )
-                } else {
-                    // Target is collapsed or has no children — append.
-                    try await env.taskStore.reparent(id: dragged, newParent: parentID)
-                }
-            case .rejected, .none:
+            switch DragDropResolver.resolve(target: target, flatRows: dragController.flatRows) {
+            case .reorder(let after, let before):
+                try await env.taskStore.reorder(id: dragged, after: after, before: before)
+            case .reparent(let newParent):
+                try await env.taskStore.reparent(id: dragged, newParent: newParent)
+            case .noop:
                 break
             }
             await refresh()
