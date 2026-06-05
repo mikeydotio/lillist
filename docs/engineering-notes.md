@@ -2300,3 +2300,40 @@ paged overloads — `TaskStore.children(of:limit:offset:)` and
 compiled predicate is also `NSFetchedResultsController`-ready; an FRC-backed
 list is the natural next step if a single window proves insufficient, but
 YAGNI until a real screen needs it.
+
+## 2026-05-28 — Observability: the logging subsystem is load-bearing for the crash reporter
+
+`LillistLog` (`Support/LillistLog.swift`) deliberately pins its
+`subsystem` to `CrashReporting.subsystemIdentifier`
+(`io.mikeydotio.lillist.crash`). This is not cosmetic. The crash
+report's "Recent app logs" section is assembled by
+`CrashReporter.submit(includeLogs:)`, which calls
+`OSLogFetcher.fetchRecentLines(since:subsystem:)` with that exact
+subsystem and **discards every unified-log entry whose `subsystem`
+differs** (`OSLogFetcher.swift`). Before Plan "observability-logging"
+nothing in production wrote on that subsystem, so the toggle was inert
+(`logs-2`): the section was always empty.
+
+Consequences for future work:
+
+- **Never give `LillistLog` its own vanity subsystem.** Categories
+  (`sync`, `store`, `indexing`, `app`, `metrics`, `signpost`) are the
+  Console.app filtering axis; the subsystem stays pinned. Split the
+  subsystem and the crash report goes silent again with no compile
+  error and no test failure unless you run the OSLogFetcher round-trip
+  on a host with log access.
+- **`OSLogFetcherRoundTripTests` only enforces the contract when the
+  runner has unified-log access.** Sandboxed `swift test` runners often
+  deny it, so the strict branch is skipped and the test still passes.
+  `LillistLogTests.subsystemMatchesCrashReporter` is the always-on
+  guard — keep it.
+- **Privacy:** every collected line passes through `LogRedactor.redact`
+  before leaving the device, but that is a backstop. Log verbs, counts,
+  durations, mode raw values, and error *type* names with
+  `privacy: .public`; never titles, notes, journal bodies, paths, or
+  raw `error` descriptions (which interpolate user content). MetricKit
+  call-stack JSON is intentionally not emitted.
+- **CLI `print()` is not a logging gap.** Those are stdout *output*
+  (design §454: "stdout for data; stderr for diagnostics") and must
+  stay `print`. The 43-`print()` figure in the foundation review counts
+  these; do not "fix" them into loggers.
