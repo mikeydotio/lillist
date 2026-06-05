@@ -20,6 +20,10 @@ public enum LillistError: Error, Sendable, Equatable {
     case quotaExceeded(resource: String)
     case attachmentTooLarge(byteSize: Int64)
     case attachmentFetchFailed(url: URL)
+    /// Plan 21 recovery: a destructive store operation needs more free
+    /// disk space than the volume can provide. Carries both figures so
+    /// the recovery UI can tell the user exactly how short they are.
+    case insufficientDiskSpace(neededBytes: Int64, availableBytes: Int64)
     case migrationRequired
     case migrationFailed(underlying: String)
     case modelUnavailable(searchedFilenames: [String])
@@ -48,6 +52,8 @@ extension LillistError: LocalizedError {
             return "Attachment is too large (\(byteSize) bytes)."
         case .attachmentFetchFailed(let url):
             return "Could not fetch attachment from \(url.absoluteString)."
+        case .insufficientDiskSpace(let neededBytes, let availableBytes):
+            return "Not enough free disk space to safely back up the data store: \(neededBytes) bytes needed, \(availableBytes) bytes available."
         case .migrationRequired:
             return "A data migration is required to open this store."
         case .migrationFailed(let underlying):
