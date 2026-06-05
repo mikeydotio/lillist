@@ -113,7 +113,7 @@ struct TaskDetailView: View {
     }
 
     private var currentRecurrenceSummary: String {
-        recurrenceViewModel.humanSummary
+        RecurrenceSummaryFormatter.string(for: recurrenceViewModel.summary)
     }
 
     private func load() async {

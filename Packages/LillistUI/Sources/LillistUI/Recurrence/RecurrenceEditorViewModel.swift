@@ -96,27 +96,18 @@ public struct RecurrenceEditorViewModel: Equatable {
         }
     }
 
-    /// Human-readable summary of the current recurrence configuration.
-    /// Mirrors the inline `currentRecurrenceSummary` previously built in
-    /// the macOS `TaskDetailView` (Plan 11). Lifted to the view model
-    /// so iOS can show the same string next to its toolbar icon.
-    public var humanSummary: String {
-        guard repeats else { return "Doesn't repeat" }
+    /// Structured summary of the current recurrence configuration.
+    /// Returns non-localized data; render it with
+    /// `RecurrenceSummaryFormatter.string(for:)` at the View layer so the
+    /// value type stays free of wording and pluralization rules.
+    public var summary: RecurrenceSummary {
+        guard repeats else { return .never }
         switch mode {
         case .calendar:
-            let unit: String
-            switch freq {
-            case .daily: unit = "day"
-            case .weekly: unit = "week"
-            case .monthly: unit = "month"
-            case .yearly: unit = "year"
-            }
-            return interval == 1
-                ? "Every \(unit)"
-                : "Every \(interval) \(unit)s"
+            return .calendar(freq, interval: max(1, interval))
         case .afterCompletion:
             let days = Int(afterCompletionSeconds / 86_400)
-            return "Repeats \(days) day\(days == 1 ? "" : "s") after completion"
+            return .afterCompletion(days: days)
         }
     }
 }
