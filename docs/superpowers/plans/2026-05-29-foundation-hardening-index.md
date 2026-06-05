@@ -278,6 +278,38 @@ Two audit findings were **verified false and rejected** (do not reintroduce):
 deleted) and "iOS 26.2 doesn't exist, use 19.2" (`iPhone 17 / iOS 26.2` is the
 canonical destination per `CLAUDE.md`).
 
+### Wave 4 reconciliation pass (2026-06-04)
+
+After Wave 4 merged (commits `f093884`..`479d47a` incl. the post-merge hardening),
+an 11-agent read-only audit (workflow `wf_ddd80970-326`) re-checked all remaining
+Wave-5/6/7 plans against current `main`. Each affected plan got a concise
+`⚠️ Wave-4 reconciliation (2026-06-04)` banner note + targeted structural anchor
+fixes (commit on `main`). **9 affected, 2 verified unaffected** (`crash-reporter-privacy`,
+`lillistui-localization-a11y`). Load-bearing reconciliations:
+
+- **`recovery-hardening` + `observability-logging`** (chain #1): `runMigration` now
+  opens with TWO reentrancy guards + an `isMigrating` `defer`, a phase-6
+  `accountStateProvider` guard, and a phase-8 `restoreSteadyState(...)` block; the init
+  grew two nil-defaulted optional params. Both plans re-anchor by step comment and **do
+  NOT add a third guard**; `recovery-hardening`'s Task-4 copy block stays a comment-only
+  edit, and `MigrationJournal.isStale` is consumed (not re-added — it landed Wave 4).
+- **`export-import-robustness`** (chain — bg-seam): `Importer.apply` / `Exporter.buildDocument`
+  now run on `makeBackgroundContext()` (Importer's rollback-on-save already present;
+  Exporter's attachment map split into TWO `taskID:` sites); the save-failure analysis now
+  references the background context; reuse `CascadeReaper`.
+- **`performance-budgets-and-paging`** (chain #2): `children(of:)` is structurally
+  unchanged but `purgeAll` is batch-based and `countDescendants` is gone; **do NOT reroute
+  list fetches through `makeBackgroundContext`** (they're the budgeted viewContext UI path).
+- **`app-layer-test-rehab` / `extension-persistence-unification` / `privacy-manifest` /
+  `ci-and-build-posture`** (chain #4): the iOS `Lillist-iOSAppHostedTests` target gained 3
+  Wave-4 sources — re-Read `project.yml`, preserve them, grep the pbxproj after regenerating.
+  `ci-and-build-posture` also: its pbxproj-drift gate validates the post-Wave-4 tree; it is
+  the first place the two Wave-4 live-swap tests actually execute; **residual #11 now has
+  THREE manifestations** (its bounded-parallelism + retry must name all three).
+- **`cli-robustness`**: essentially unaffected, but a note now warns NOT to "modernize"
+  `PurgeCommand` to the new batch `purgeAll` (per-resolution `hardDelete` is the correct
+  all-or-nothing CLI path).
+
 ---
 
 ## Wave Handoff Protocol
@@ -395,26 +427,37 @@ For each hotspot, land in the listed order; every non-owner **re-Reads the file
 and re-anchors by code structure, not the review's line numbers** (wave-1's
 rewrite invalidates line anchors).
 
-1. **`Sync/MigrationCoordinator.swift`** (6 plans) —
-   `store-swap-safety` (owns the `runMigration` rewrite: reconfigure-before-copy,
-   `copyStore` not move, `quarantineFolderName` rename, `localStoreRowCount`
-   precondition, `host: any PersistenceReconfiguring`) → `breadcrumb-truthfulness`
-   (re-locate the 3 `breadcrumb(...)` calls by name, prepend `await`) →
-   `migration-adjacent-correctness` (anchor reentrancy guard on `runMigration`'s
-   first statement, restore call on `.finalizing`, account guard in the
-   `replaceICloudWithLocal` block; **reconcile to ONE entry guard** if
-   store-swap-safety added one) → `cloudkit-convergence` (additive) →
-   `recovery-hardening` (hook disk-check into store-swap-safety's precondition,
-   don't re-introduce a parallel pre-flight) → `observability-logging`
-   (signpost/log brackets).
-2. **`Stores/TaskStore.swift`** (6 plans) — `breadcrumb-truthfulness` (owns the
-   canonical `do/catch` shape on the 4 defer mutators) → `background-context-seam`
-   (**add only `context.rollback()` into the existing catch blocks — do NOT
-   rewrite the bodies**; the plan was revised to do exactly this). Disjoint
-   methods, any order, each re-Reading first: `fractional-ordering-compaction`
-   (`reorder`), `performance-budgets-and-paging` (`children` overload),
-   `recurrence-input-hardening` (test-only), `observability-logging` (`children`
-   signpost).
+1. **`Sync/MigrationCoordinator.swift`** (6 plans) — ✅ `store-swap-safety`
+   (owns the `runMigration` rewrite: reconfigure-before-copy, `copyStore` not move,
+   `quarantineFolderName` rename, `localStoreRowCount` precondition,
+   `host: any PersistenceReconfiguring`) → ✅ `breadcrumb-truthfulness`
+   (3 `breadcrumb(...)` calls now `await`) → ✅ `migration-adjacent-correctness`
+   (**landed Wave 4** — `runMigration` now opens with TWO reentrancy guards: a
+   synchronous `journal.read().isInFlight` throw THEN a `@MainActor isMigrating`
+   flag + `defer`, both before the first `await`; a `restoreSteadyState(...)` call
+   in `.finalizing`; a pre-erase `accountStateProvider` guard in the
+   `replaceICloudWithLocal` block; init grew `preferencesStore` + `accountStateProvider`
+   optional params) → ✅ `cloudkit-convergence` (additive) → ⬜ `recovery-hardening`
+   (**Wave 7** — hook disk-check into store-swap-safety's precondition; **do NOT add
+   a THIRD entry guard** — reconcile onto the two Wave-4 guards; Task 4's step-5 copy
+   block is byte-identical and stays a comment-only edit; init's 2 new optional params
+   are nil-defaulted, so the test construction is unchanged) → ⬜ `observability-logging`
+   (**Wave 6** — signpost/log brackets woven AFTER the reentrancy guards, around the
+   phase-6 account guard and the phase-8 `restoreSteadyState` block; re-anchor by step
+   comment, not line number).
+2. **`Stores/TaskStore.swift`** (6 plans) — ✅ `breadcrumb-truthfulness` (owns the
+   canonical `do/catch` shape on the 4 defer mutators) → ✅ `background-context-seam`
+   (**landed Wave 4** — `context.rollback()` added to ALL 12 shared-context mutators
+   (the original 8 + `transition`/`reorder`/`assignTag`/`unassignTag`, the last three
+   newly wrapped in `do/catch`); `purgeAll` rewritten to a background-context batch
+   delete via `batchPurge` + `CascadeReaper`; the private `countDescendants` helper
+   **deleted**; bodies otherwise untouched). Disjoint methods, any order, each
+   re-Reading first: ✅ `fractional-ordering-compaction` (`reorder`), ⬜
+   `performance-budgets-and-paging` (`children` overload — `children(of:)` itself is
+   structurally UNCHANGED by Wave 4; do NOT reroute list fetches through
+   `makeBackgroundContext`), `recurrence-input-hardening` (test-only, ✅),
+   ⬜ `observability-logging` (`children` signpost). **`performance-budgets-and-paging`
+   + `observability-logging` co-land (both edit `children(of:)`) — re-Read first.**
 3. **`Extensions/ShortcutsActions/IntentSupport.swift` + `ShareRootView.swift`**
    — `app-layer-test-rehab` (extracts `GatedPersistenceResolver`, routes
    `makePersistence()` + `save()` through it) → `extension-persistence-unification`
@@ -423,11 +466,18 @@ rewrite invalidates line anchors).
    `URLPreviewPolicy.isAllowed` around whichever `addLinkPreview` survives — its
    policy/fetcher/CLI Tasks 1–5 already merged in Wave 2; **only this
    Share-Extension gate remains, deferred here to Wave 6** — see residual #10).
-4. **iOS `project.yml` + `pbxproj`** (5 plans) — serialize all, run **one
-   authoritative `xcodegen generate`** at the end: `store-swap-safety`
-   (app-hosted target) → `app-layer-test-rehab` → `extension-persistence-unification`
-   (test sources) → `privacy-manifest-export-compliance` (resources) → regenerate
-   once → `ci-and-build-posture`'s drift gate validates the result.
+4. **iOS `project.yml` + `pbxproj`** (5 plans) — serialize all: ✅ `store-swap-safety`
+   (created the `Lillist-iOSAppHostedTests` target) → ✅ **Wave 4 added 3 sources to
+   that target** (`concurrency-stress-tests`' `StoreReconfigureConcurrencyTests.swift`;
+   `migration-adjacent-correctness`' `MigrationCoordinatorRestoreTests.swift` +
+   `Helpers/FakeUserNotificationCenter.swift`; pbxproj regenerated to match) → ⬜
+   `app-layer-test-rehab` (Wave 5 — edits the *separate* `Lillist-iOSTests` target) →
+   ⬜ `extension-persistence-unification` (test sources) → ⬜
+   `privacy-manifest-export-compliance` (resources; **last editor — owns the final
+   authoritative `xcodegen generate`**) → ⬜ `ci-and-build-posture`'s drift gate
+   validates the result. **Every Wave-5+ editor must re-Read `project.yml` and NOT
+   clobber the 3 Wave-4 app-hosted entries; grep the pbxproj after each regenerate to
+   confirm they survive.**
 5. **macOS `Apps/project.yml` + `pbxproj`** — `resolve-inert-features`
    (`CommandNotifications.swift`) then `privacy-manifest-export-compliance`
    (resources); one coordinated regenerate.
@@ -441,27 +491,38 @@ rewrite invalidates line anchors).
 7. **`Persistence/QuarantineManager.swift`** — `store-swap-safety` (`copyStore`,
    `QuarantinedBackup`, `quarantinedStore(folderName:)`) → `recovery-hardening`
    (`diskSpaceProbe` param + pre-flight guard at the top of `copyStore`).
-8. **`Persistence/PersistenceController.swift`** — `cloudkit-convergence`
-   (`transactionAuthor`/`localTransactionAuthor` + merge-policy rationale) →
-   `background-context-seam` (`makeBackgroundContext()`; keep
-   `automaticallyMergesChangesFromParent` — it's the active CloudKit channel).
-9. **iOS `AppEnvironment.swift`** (4 plans, distinct regions, serialize) —
-   `migration-adjacent-correctness` (MigrationCoordinator init arg) →
-   `resolve-inert-features` ✅ (wired AutoPurgeJob into `bootstrap()`;
-   **`HistoryPruner.sweep` is NOT here — it's `background-context-seam`'s, Wave
-   4**; `localStoreRowCount` already wired by wave 1 — don't re-add; **keeps the
-   `includeLogs` toggle** that `observability-logging` makes honest) →
-   `cloudkit-convergence` ✅ (reconciler + `normalizeSingletons`) →
-   `observability-logging` (`metricKitObserver`). *(resolve-inert-features +
-   cloudkit-convergence landed their regions in Wave 3; the remaining editors
-   are `migration-adjacent-correctness` and `observability-logging` — each
-   re-Reads and adds only its own region.)*
+8. **`Persistence/PersistenceController.swift`** — ✅ `cloudkit-convergence`
+   (`transactionAuthor`/`localTransactionAuthor` + merge-policy rationale) → ✅
+   `background-context-seam` (**landed Wave 4** — `makeBackgroundContext()` added after
+   `localTaskRowCount()`: auto-merge ON, trump policy, and it now also stamps
+   `transactionAuthor = localTransactionAuthor`; `viewContext`'s
+   `automaticallyMergesChangesFromParent` kept — it's the active CloudKit channel). **No
+   Wave-5+ plan edits this file; later plans only USE `makeBackgroundContext()` / the
+   `init(configuration:)` they reference is unchanged.**
+9. **iOS `AppEnvironment.swift`** (4 plans, distinct regions, serialize) — ✅
+   `migration-adjacent-correctness` (**landed Wave 4** — added `preferencesStore:`
+   to the `MigrationCoordinator(...)` call) → ✅ `resolve-inert-features` (wired
+   AutoPurgeJob into `bootstrap()`) → ✅ `cloudkit-convergence` (reconciler +
+   `normalizeSingletons`) → ✅ `background-context-seam` (**landed Wave 4** — wired
+   `HistoryPruner(...).sweep()` fire-and-forget into `bootstrap()` right after
+   `autoPurgeJob.run()`) → ⬜ `observability-logging` (**Wave 6** — adds
+   `metricKitObserver`; the `bootstrap()` tail — `startObservingPauseReason()` last —
+   is UNCHANGED by Wave 4; append after it; do NOT disturb the new HistoryPruner /
+   preferencesStore wiring). `localStoreRowCount` already wired by wave 1 — don't
+   re-add. **Only `observability-logging` remains.**
 10. **`Sync/MigrationJournal.swift` + `NotificationSpecStore.swift` +
     `PersistenceHost.swift` + `docs/engineering-notes.md`** — append-only /
     distinct-member edits; sequence by wave, re-Read before each append. The
     `NotificationSpecStore.add` at-most-one-default fix is owned by
     `cloudkit-convergence`; `concurrency-stress-tests` only adds the stress test
-    that proves it (committed RED until wave 3 lands).
+    that proves it (✅ Wave 4, green by design). **Wave 4 also: `MigrationJournal`
+    gained `isStale(now:threshold:)` + `staleThreshold = 600` (migration-adjacent —
+    recovery-hardening consumes it, does not re-add); `NotificationScheduler` gained
+    `restoreSteadyState` + morning-summary-preserving `cancelAllPending`; and
+    `engineering-notes.md` got TWO new sections (concurrency invariants; single-context
+    + background seam) — later append-only editors (`observability-logging`,
+    `performance-budgets-and-paging`, `recovery-hardening`) must Read the true EOF, NOT
+    assume the SIGSEGV entry is last.**
 
 ---
 
@@ -510,10 +571,11 @@ so coverage isn't overstated:
    conflict semantic.
 3. **Orphaned pending `UNNotificationRequest`s on hard-delete/purge** (notif-7
    residual) — `background-context-seam` reaps `NotificationSpec` rows but no plan
-   cancels the OS-level pending requests for purged tasks. **Owner:
-   `background-context-seam` documents it as an acknowledged limitation** (Task 5);
-   cancelling the OS-level requests is out of the 22-plan scope and stays a named
-   follow-up for a future notif-focused micro-fix.
+   cancels the OS-level pending requests for purged tasks. ✅ **DOCUMENTED in Wave 4**
+   — `background-context-seam` recorded it as an acknowledged limitation in
+   `docs/engineering-notes.md` (the 2026-06-04 single-context entry); cancelling the
+   OS-level requests is out of the 22-plan scope and stays a named follow-up for a
+   future notif-focused micro-fix.
 4. **`pause-reason` `.noNetwork` / `.iCloudDriveDisabled`** remain unreachable —
    `resolve-inert-features` drives the classifier but doesn't add an
    `NWPathMonitor`-backed reachability provider. Follow-up.
@@ -584,6 +646,15 @@ so coverage isn't overstated:
     load — the gap between capturing `beforeClose` and the internal `completedAt`
     stamp exceeded the 2s tolerance. Passes in isolation and on re-run; same
     root cause (CPU contention), same Wave-7 remedy. Not a Wave-4 regression.
+12. **`AutoPurgeJob.run` return count is now matched+cascade** (Wave 4
+    `background-context-seam`) — the batch-delete rewrite changed `run()`'s return
+    from "matched victim rows" to "matched victims + every cascade-reachable
+    descendant task." These diverge only when a soft-deleted parent and child have
+    `deletedAt` straddling the retention cutoff; the **data outcome is identical**
+    (the cascade deleted the child either way) and **both app callers discard the
+    return value** (`_ = try? await autoPurgeJob.run()`). `purgeAll`'s count is
+    exactly preserved. Documented in `docs/engineering-notes.md`; not a bug, no fix
+    owed — captured so the count semantics aren't silently overstated.
 
 ## Suggested commit/PR cadence
 
