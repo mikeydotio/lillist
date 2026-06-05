@@ -114,6 +114,11 @@ public final class PersistenceController: @unchecked Sendable {
         let context = container.newBackgroundContext()
         context.automaticallyMergesChangesFromParent = true
         context.mergePolicy = NSMergePolicy(merge: .mergeByPropertyObjectTrumpMergePolicyType)
+        // Attribute background writes with the same author as the viewContext
+        // so `RemoteChangeReconciler`'s local-vs-foreign history filter
+        // (change.author != localAuthor) correctly classifies bulk-import /
+        // purge writes as local, not as foreign CloudKit changes.
+        context.transactionAuthor = Self.localTransactionAuthor
         return context
     }
 
