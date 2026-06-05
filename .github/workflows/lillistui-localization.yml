@@ -1,0 +1,24 @@
+name: LillistUI Localization Lint
+
+on:
+  push:
+    paths:
+      - "Packages/LillistUI/**"
+      - "Tools/CI/check-lillistui-localization.sh"
+      - ".github/workflows/lillistui-localization.yml"
+  pull_request:
+    paths:
+      - "Packages/LillistUI/**"
+      - "Tools/CI/check-lillistui-localization.sh"
+
+jobs:
+  localization-lint:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Select Xcode
+        run: sudo xcode-select -switch /Applications/Xcode_26.3.app
+      - name: Verify jq is available
+        run: jq --version
+      - name: Run LillistUI localization extraction-drift lint
+        run: ./Tools/CI/check-lillistui-localization.sh
