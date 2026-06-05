@@ -90,6 +90,31 @@ extension CLIBridge {
             throw LillistError.ambiguous(candidates.map(\.id))
         }
 
+        /// Resolves every token to a concrete `Resolution` *before* any caller
+        /// mutates. This is the all-or-nothing primitive for destructive stdin
+        /// batches: if any token is unresolvable (`.notFound`/`.ambiguous`) or
+        /// refused (destructive partial match), this throws and the caller has
+        /// performed zero mutations. Resolutions are returned in token order.
+        public static func resolveAll(
+            tokens: [String],
+            scope: Scope,
+            destructiveness: Destructiveness,
+            persistence: PersistenceController
+        ) async throws -> [Resolution] {
+            var resolutions: [Resolution] = []
+            resolutions.reserveCapacity(tokens.count)
+            for token in tokens {
+                let resolution = try await resolve(
+                    token: token,
+                    scope: scope,
+                    destructiveness: destructiveness,
+                    persistence: persistence
+                )
+                resolutions.append(resolution)
+            }
+            return resolutions
+        }
+
         /// Resolves an exact-title bypass token (from `--exact`).
         public static func resolveExactTitle(
             _ title: String,
