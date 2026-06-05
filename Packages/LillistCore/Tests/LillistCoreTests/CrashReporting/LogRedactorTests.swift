@@ -46,6 +46,16 @@ struct LogRedactorTests {
     @Test("Strips wrapped tag names and tag= forms")
     func tagNames() throws { try goldenTest("raw-logs-with-tag-names") }
 
+    @Test("key=value redaction is case-insensitive on the key")
+    func keyValue_caseInsensitive() {
+        // redact-1: framework/third-party log lines capitalize keys
+        // inconsistently. A `Title=` / `NOTES=` / `Tag=` key must redact
+        // the same as the lowercase form, or PII leaks on mixed-case input.
+        #expect(LogRedactor.redact("Title=Secret") == "Title=<redacted>")
+        #expect(LogRedactor.redact("NOTES=Private") == "NOTES=<redacted>")
+        #expect(LogRedactor.redact("Tag=Work") == "Tag=<redacted>")
+    }
+
     @Test("Empty input → empty output")
     func empty() {
         #expect(LogRedactor.redact("") == "")

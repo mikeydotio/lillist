@@ -44,9 +44,18 @@ public enum LogRedactor {
             make(#"<journal>[\s\S]*?</journal>"#, "<journal><redacted></journal>"),
             make(#"<tag>[\s\S]*?</tag>"#, "<tag><redacted></tag>"),
             // Defense-in-depth key=value forms (whitespace-delimited).
-            make(#"title=[^\s\n]*"#, "title=<redacted>"),
-            make(#"notes=[^\s\n]*"#, "notes=<redacted>"),
-            make(#"tag=[^\s\n]*"#, "tag=<redacted>"),
+            // Case-insensitive on the key: framework/third-party log lines
+            // capitalize keys inconsistently (`Title=`, `NOTES=`). The key
+            // is captured ($1) and re-emitted verbatim so the *original*
+            // casing is preserved while only the value is replaced — a
+            // bare literal template would rewrite the whole match and
+            // lowercase the key. Single-token only by design: the value
+            // class stops at the first whitespace, so multi-word/unwrapped
+            // PII is the job of the wrapped-marker passes above; see the
+            // type comment.
+            make(#"(title=)[^\s\n]*"#, "$1<redacted>", options: .caseInsensitive),
+            make(#"(notes=)[^\s\n]*"#, "$1<redacted>", options: .caseInsensitive),
+            make(#"(tag=)[^\s\n]*"#, "$1<redacted>", options: .caseInsensitive),
             // Paths. The `\s(?=[A-Z][a-z])` lookahead lets a path
             // greedily consume a literal-space-separated component when
             // the next component begins with a capitalized word — the
