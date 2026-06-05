@@ -257,53 +257,58 @@ public final class TaskStore: @unchecked Sendable {
     // MARK: - Reorder
 
     public func reorder(id: UUID, after afterID: UUID?, before beforeID: UUID?) async throws {
-        try await context.perform { [self] in
-            let m = try fetchManagedObject(id: id, in: context)
-            let afterTask = try afterID.map { try fetchManagedObject(id: $0, in: context) }
-            let beforeTask = try beforeID.map { try fetchManagedObject(id: $0, in: context) }
+        do {
+            try await context.perform { [self] in
+                let m = try fetchManagedObject(id: id, in: context)
+                let afterTask = try afterID.map { try fetchManagedObject(id: $0, in: context) }
+                let beforeTask = try beforeID.map { try fetchManagedObject(id: $0, in: context) }
 
-            let afterParent = afterTask?.parent
-            let beforeParent = beforeTask?.parent
-            if let a = afterTask, let b = beforeTask, a.parent?.objectID != b.parent?.objectID {
-                throw LillistError.validationFailed([
-                    .init(field: "neighbors", message: "must share the same parent")
-                ])
-            }
-            if FractionalPosition.anchorsAreOutOfOrder(
-                after: afterTask?.position,
-                before: beforeTask?.position
-            ) {
-                throw LillistError.validationFailed([
-                    .init(field: "neighbors", message: "anchors out of order")
-                ])
-            }
-            let newParent = afterParent ?? beforeParent ?? m.parent
-
-            if m.parent?.objectID != newParent?.objectID {
-                if Validators.wouldCreateCycle(candidate: m, newParent: newParent) {
+                let afterParent = afterTask?.parent
+                let beforeParent = beforeTask?.parent
+                if let a = afterTask, let b = beforeTask, a.parent?.objectID != b.parent?.objectID {
                     throw LillistError.validationFailed([
-                        .init(field: "parent", message: "would create a cycle")
+                        .init(field: "neighbors", message: "must share the same parent")
                     ])
                 }
-                m.parent = newParent
-            }
+                if FractionalPosition.anchorsAreOutOfOrder(
+                    after: afterTask?.position,
+                    before: beforeTask?.position
+                ) {
+                    throw LillistError.validationFailed([
+                        .init(field: "neighbors", message: "anchors out of order")
+                    ])
+                }
+                let newParent = afterParent ?? beforeParent ?? m.parent
 
-            // If the target gap underflows, re-space all siblings evenly,
-            // then recompute against the freshly-spaced neighbors. Recompaction
-            // and the target update persist together in this one perform block.
-            if FractionalPosition.needsCompaction(
-                after: afterTask?.position,
-                before: beforeTask?.position
-            ) {
-                recompactSiblings(ofParent: newParent)
-            }
+                if m.parent?.objectID != newParent?.objectID {
+                    if Validators.wouldCreateCycle(candidate: m, newParent: newParent) {
+                        throw LillistError.validationFailed([
+                            .init(field: "parent", message: "would create a cycle")
+                        ])
+                    }
+                    m.parent = newParent
+                }
 
-            m.position = FractionalPosition.position(
-                after: afterTask?.position,
-                before: beforeTask?.position
-            )
-            m.modifiedAt = Date()
-            try context.save()
+                // If the target gap underflows, re-space all siblings evenly,
+                // then recompute against the freshly-spaced neighbors. Recompaction
+                // and the target update persist together in this one perform block.
+                if FractionalPosition.needsCompaction(
+                    after: afterTask?.position,
+                    before: beforeTask?.position
+                ) {
+                    recompactSiblings(ofParent: newParent)
+                }
+
+                m.position = FractionalPosition.position(
+                    after: afterTask?.position,
+                    before: beforeTask?.position
+                )
+                m.modifiedAt = Date()
+                try context.save()
+            }
+        } catch {
+            await context.perform { [self] in context.rollback() }
+            throw error
         }
     }
 
@@ -359,6 +364,7 @@ public final class TaskStore: @unchecked Sendable {
             }
             await recordCrumb("task.status.change", success: true)
         } catch {
+            await context.perform { [self] in context.rollback() }
             await recordCrumb("task.status.change", success: false)
             throw error
         }
@@ -574,24 +580,34 @@ public final class TaskStore: @unchecked Sendable {
     // MARK: - Tags
 
     public func assignTag(taskID: UUID, tagID: UUID) async throws {
-        try await context.perform { [self] in
-            let task = try fetchManagedObject(id: taskID, in: context)
-            let tag = try fetchTag(id: tagID, in: context)
-            let existing = task.tags as? Set<Tag> ?? []
-            if existing.contains(tag) { return }
-            task.addToTags(tag)
-            task.modifiedAt = Date()
-            try context.save()
+        do {
+            try await context.perform { [self] in
+                let task = try fetchManagedObject(id: taskID, in: context)
+                let tag = try fetchTag(id: tagID, in: context)
+                let existing = task.tags as? Set<Tag> ?? []
+                if existing.contains(tag) { return }
+                task.addToTags(tag)
+                task.modifiedAt = Date()
+                try context.save()
+            }
+        } catch {
+            await context.perform { [self] in context.rollback() }
+            throw error
         }
     }
 
     public func unassignTag(taskID: UUID, tagID: UUID) async throws {
-        try await context.perform { [self] in
-            let task = try fetchManagedObject(id: taskID, in: context)
-            let tag = try fetchTag(id: tagID, in: context)
-            task.removeFromTags(tag)
-            task.modifiedAt = Date()
-            try context.save()
+        do {
+            try await context.perform { [self] in
+                let task = try fetchManagedObject(id: taskID, in: context)
+                let tag = try fetchTag(id: tagID, in: context)
+                task.removeFromTags(tag)
+                task.modifiedAt = Date()
+                try context.save()
+            }
+        } catch {
+            await context.perform { [self] in context.rollback() }
+            throw error
         }
     }
 
