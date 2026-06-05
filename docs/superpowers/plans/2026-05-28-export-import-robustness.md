@@ -2,6 +2,8 @@
 
 > **📍 STATUS — ⬜ PENDING — Wave 6.**
 >
+> **⚠️ Wave-4 reconciliation (2026-06-04):** the HARD DEPENDENCY this plan names (`background-context-seam`) **has landed** — `Importer.apply` and `Exporter.buildDocument` now run on `persistence.makeBackgroundContext()` (NOT `persistence.container.viewContext`), and `apply`'s `ctx.save()` already sits in a `do { try ctx.save() } catch { ctx.rollback(); throw }` block. **Re-Read `Importer.swift` and `Exporter.swift` before editing — anchor by structure.** Concrete deltas this plan must account for: (1) **Task 2 Step 3's "before" snippet is stale** — the opening line is now `let ctx = persistence.makeBackgroundContext()`, not `viewContext`; insert the version guard *above* that line and keep the existing rollback-on-save block intact (do NOT add a second rollback). (2) **Task 4's `applyEntry` rewrite still holds** — current main signature is `applyEntry(_ dto:, into row:, taskByID:)` with `row.task = taskByID[dto.taskID]`; the `owner: LillistTask` rewrite + orphan-skip loop are still needed. (3) **Test-file line anchors drifted:** Wave 4 appended `importDoesNotStrandViewContext` to `ImporterTests.swift` (closing `}` now ~179; `fetchTitle` helper now ~187–194) and `usesBackgroundContext` + a `decodeDocument` helper to `ExporterTests.swift` (closing `}` now ~128) — append new tests/helpers by structure (inside the struct / next to `fetchTitle`), ignore the absolute line numbers. **`ImporterTests.swift` already imports `CoreData`** (Task 3's CoreData-import edit applies only to `ExporterTests.swift`, which still lacks it). (4) **Reuse `Persistence/CascadeReaper.swift`** (`objectIDs(forDeleting:)` + per-entity `batchDelete(objectIDs:in:)`) for any batch-delete need rather than re-deriving a cascade walk. Tasks 1 and 3's `ExportSchema`/`LillistError` edits are untouched by Wave 4.
+>
 > Part of the **Foundation Hardening** program. **Single source of truth for progress, wave order, and cross-plan coordination:** [`2026-05-29-foundation-hardening-index.md`](2026-05-29-foundation-hardening-index.md). New to this project? Read the index first, then the review ([`docs/reviews/2026-05-28-foundation-review.md`](../../reviews/2026-05-28-foundation-review.md)) for *why* this work exists, then `CLAUDE.md` for conventions + build/test commands. Execute task-by-task with `superpowers:subagent-driven-development`.
 >
 > **Pre-flight (run before any edit):** Confirm Waves 1–5 are on `main` (`git log --oneline main | head -20`). Read `docs/superpowers/handoffs/wave-5.md`. Re-Read every file you touch and anchor by code **structure**, not line number — each wave shifts the shared hotspot files. On completion, write `docs/superpowers/handoffs/wave-6.md`.
@@ -120,10 +122,10 @@ Typed error for forward-incompatible export bundles. Closes part of import-1."
 > **`ExportSchema.version` baseline:** the version tests below are written relative to the current `ExportSchema.version` (today `1`, declared in `ExportSchema.swift`). They use `ExportSchema.version`, `… - 1`, and `… + 1` rather than literals so they stay correct as the schema climbs. If `version` is ever bumped, **no test logic changes** — only adjust the bare fixture integers (e.g. `versionOlderApplies`'s comment, or any hand-written literal) to track the new baseline. The down-level case (`version - 1`) assumes every field added since the prior version has a safe default at the DTO boundary, which is the contract the guard's doc comment states.
 
 **Files:**
-- Modify `Packages/LillistCore/Sources/LillistCore/Export/Importer.swift` — the `apply(document:policy:)` signature + its first two lines (~81-83): insert the guard at the very top, before reading `viewContext`)
+- Modify `Packages/LillistCore/Sources/LillistCore/Export/Importer.swift` — the `apply(document:policy:)` declaration + its first statement (now `let ctx = persistence.makeBackgroundContext()` after Wave 4): insert the guard at the very top, *above* the `makeBackgroundContext()` line.
 - Test `Packages/LillistCore/Tests/LillistCoreTests/Export/ImporterTests.swift` (add three `@Test` methods)
 
-- [ ] **Step 1: Write the failing test** — Append these three tests to `ImporterTests.swift` inside the `ImporterTests` struct (after `invalidBundle()`, before the closing `}` on line 154). They construct an `ExportSchema.Document` directly (the synthesized memberwise init is reachable via `@testable import LillistCore`):
+- [ ] **Step 1: Write the failing test** — Append these three tests to `ImporterTests.swift` inside the `ImporterTests` struct, after the last `@Test` method (Wave 4 added `importDoesNotStrandViewContext` as the last test — append after it, before the struct's closing `}`, which is now ~line 179). They construct an `ExportSchema.Document` directly (the synthesized memberwise init is reachable via `@testable import LillistCore`):
 
 ```swift
     /// Build a minimal, valid-shaped Document at an arbitrary schema
@@ -198,15 +200,15 @@ Typed error for forward-incompatible export bundles. Closes part of import-1."
   ```
   Expected: `versionNewerThrows` fails with `Issue.record("expected unsupportedExportVersion to be thrown")` (today `apply` never inspects `version`, so the newer document is happily applied). `versionEqualApplies`/`versionOlderApplies` pass.
 
-- [ ] **Step 3: Implement the minimal change** — In `Importer.swift`, insert the guard as the first statements of `apply(document:policy:)`. Replace the signature + its opening `let ctx`/`perform` lines (~81-83):
+- [ ] **Step 3: Implement the minimal change** — In `Importer.swift`, insert the guard as the first statements of `apply(document:policy:)`. **Re-Read first — Wave 4 (`background-context-seam`) moved this onto a background context.** The current opening of `apply` is:
 
 ```swift
     public func apply(document: ExportSchema.Document, policy: ConflictPolicy) async throws -> ImportSummary {
-        let ctx = persistence.container.viewContext
+        let ctx = persistence.makeBackgroundContext()
         return try await ctx.perform { [policy, self] in
 ```
 
-  with:
+  Replace the bare `public func apply(...) ... {` declaration line with the doc-commented declaration below, inserting the version guard *above* the existing `let ctx = persistence.makeBackgroundContext()` line (leave that line and the trailing `do { try ctx.save() } catch { ctx.rollback(); throw error }` block exactly as Wave 4 left them — do NOT revert to `viewContext`, do NOT add a second rollback):
 
 ```swift
     /// Apply a decoded export `document` to the store.
@@ -214,9 +216,10 @@ Typed error for forward-incompatible export bundles. Closes part of import-1."
     /// ## Transaction contract (import-3)
     ///
     /// This is **all-or-nothing**: every row is staged in a single
-    /// `viewContext.perform` block and committed by one `ctx.save()` at
-    /// the end. If that save throws, the error propagates and *nothing*
-    /// is persisted — the returned `ImportSummary` (including its
+    /// background-context `perform` block and committed by one
+    /// `ctx.save()` at the end. If that save throws, the context is
+    /// rolled back, the error propagates, and *nothing* is persisted
+    /// — the returned `ImportSummary` (including its
     /// per-row `errors` array and the `*Skipped` counts) is **discarded
     /// along with the staged objects.** Callers must treat a thrown
     /// error as "the store is unchanged"; the `errors`/`*Skipped` detail
@@ -234,7 +237,7 @@ Typed error for forward-incompatible export bundles. Closes part of import-1."
                 supported: ExportSchema.version
             )
         }
-        let ctx = persistence.container.viewContext
+        let ctx = persistence.makeBackgroundContext()  // unchanged Wave-4 seam — do not revert to viewContext
         return try await ctx.perform { [policy, self] in
 ```
 
@@ -261,10 +264,10 @@ import transaction contract. Closes import-1; documents import-3."
 
 **Files:**
 - Modify `Packages/LillistCore/Sources/LillistCore/Export/ExportSchema.swift` (`JournalEntryDTO.taskID` ~46; `AttachmentDTO.taskID` ~56)
-- Modify `Packages/LillistCore/Sources/LillistCore/Export/Exporter.swift` (the `journalDTOs` map's `taskID:` line ~86; the `attDTOs` map's `taskID:` line ~106)
+- Modify `Packages/LillistCore/Sources/LillistCore/Export/Exporter.swift` (the `journalDTOs` map's `taskID:` line; the `attDTOs` map's `taskID:` line — **note: the attachment map now has TWO `taskID: m.task?.id ?? UUID()` sites**, one in the `if let data` branch and one in the fallback `return`; fix both. All these maps moved inside `buildDocument`'s background-context `perform` block in Wave 4 — re-anchor by the `?? UUID()` substring, not line number.)
 - Test `Packages/LillistCore/Tests/LillistCoreTests/Export/ExporterTests.swift` (add one `@Test`)
 
-- [ ] **Step 1: Write the failing test** — Append this test to `ExporterTests.swift` inside the `ExporterTests` struct (after `refusesNonEmptyDir()`, before the closing `}` on line 89). It creates a journal entry, then nulls its `task` relationship directly (simulating an orphan that synced/corruption can produce) and asserts the export carries `taskID == nil` rather than a fabricated UUID:
+- [ ] **Step 1: Write the failing test** — Append this test to `ExporterTests.swift` inside the `ExporterTests` struct, after the last `@Test` method (Wave 4 added `usesBackgroundContext` as the last test, followed by a private `decodeDocument` helper — append the new `@Test` after `usesBackgroundContext` and before the `decodeDocument` helper / struct close, now ~line 128). It creates a journal entry, then nulls its `task` relationship directly (simulating an orphan that synced/corruption can produce) and asserts the export carries `taskID == nil` rather than a fabricated UUID:
 
 ```swift
     @Test("A journal entry whose task is nil exports as taskID == nil, not a fabricated UUID")
@@ -361,7 +364,7 @@ import CoreData
     }
 ```
 
-  (b) In `Exporter.swift`, stop fabricating. Change the journal map (the `journalDTOs` map, ~86) from `taskID: m.task?.id ?? UUID(),` to `taskID: m.task?.id,`:
+  (b) In `Exporter.swift`, stop fabricating. Change the journal map (the `journalDTOs` map) from `taskID: m.task?.id ?? UUID(),` to `taskID: m.task?.id,`:
 
 ```swift
             let journalDTOs = try ctx.fetch(journalReq).map { m in
@@ -377,7 +380,7 @@ import CoreData
             }
 ```
 
-  And the attachment map (the `attDTOs` map, ~106) from `taskID: m.task?.id ?? UUID(),` to `taskID: m.task?.id,`:
+  And the attachment map (the `attDTOs` map) from `taskID: m.task?.id ?? UUID(),` to `taskID: m.task?.id,` — **both occurrences**. Wave 4 split this map into two `AttachmentDTO` constructions: one in the `if let data = m.data { … }` branch (the `dto` appended to `pending`) and one in the fallback `return` for attachments with no bytes. Each has its own `taskID:` line; fix both. The fallback `return` looks like:
 
 ```swift
                 return ExportSchema.AttachmentDTO(
@@ -393,6 +396,8 @@ import CoreData
                     createdAt: m.createdAt
                 )
 ```
+
+  and the in-branch `dto` (appended to `pending`) carries the same `taskID:` line — apply the identical edit there.
 
 - [ ] **Step 4: Run the test, expect pass** — Command:
   ```bash
@@ -420,7 +425,7 @@ applyEntry temporarily non-compiling; Task 4 rewrites it."
 > **Transition from Task 3:** Task 3 widened `JournalEntryDTO.taskID` to `UUID?`, which left `Importer.applyEntry` non-compiling (it subscripts `taskByID[dto.taskID]` with an optional key). This task rewrites the journal-entry handling end to end — the orphan-skip loop resolves the owning task up front, and `applyEntry` becomes a pure setter taking an already-resolved `owner: LillistTask` — which both adds the import-2 behavior and restores a clean build. Start the tree in Task 3's transient broken state; finish this task green.
 
 **Files:**
-- Modify `Packages/LillistCore/Sources/LillistCore/Export/Importer.swift` (journal-entry loop, ~165-191, and the `applyEntry` helper, ~255-262)
+- Modify `Packages/LillistCore/Sources/LillistCore/Export/Importer.swift` (the `for dto in document.journalEntries` loop inside `apply`'s `perform` block, and the `private nonisolated func applyEntry(_:into:taskByID:)` helper near the file's end — re-anchor by name; Wave 4 left both intact, so the current `applyEntry` body still reads `row.task = taskByID[dto.taskID]`)
 - Test `Packages/LillistCore/Tests/LillistCoreTests/Export/ImporterTests.swift` (add two `@Test` methods)
 
 - [ ] **Step 1: Write the failing test** — Append these two tests to `ImporterTests.swift` inside the struct (after the version tests added in Task 2). They reuse the `emptyDocument(version:)` helper added in Task 2 by building documents directly with an orphan journal entry:
@@ -482,7 +487,7 @@ applyEntry temporarily non-compiling; Task 4 rewrites it."
   ```
   Expected: both new tests fail. Today `applyEntry` resolves a missing/nil task to `row.task = nil` and the row is still *inserted* — so `journalEntriesInserted == 1` and `journalEntriesSkipped == 0`. Failure: `Expectation failed: summary.journalEntriesSkipped == 1` (actual 0).
 
-- [ ] **Step 3: Implement the minimal change** — In `Importer.swift`, replace the journal-entry loop (lines 165-191) with a version that resolves the task up front and skips orphans:
+- [ ] **Step 3: Implement the minimal change** — In `Importer.swift`, replace the `for dto in document.journalEntries` loop (inside `apply`'s `perform` block — re-anchor by the loop header, not a line number) with a version that resolves the task up front and skips orphans:
 
 ```swift
             for dto in document.journalEntries {
@@ -524,7 +529,7 @@ applyEntry temporarily non-compiling; Task 4 rewrites it."
             }
 ```
 
-  And rewrite the `applyEntry` helper (currently non-compiling after Task 3 widened `taskID` — ~255-262) so the owner is passed in already-resolved (the entry loop now owns resolution, keeping `applyEntry` a pure setter):
+  And rewrite the `applyEntry` helper (the `private nonisolated func applyEntry(...)` near the file's end — currently non-compiling after Task 3 widened `taskID`) so the owner is passed in already-resolved (the entry loop now owns resolution, keeping `applyEntry` a pure setter):
 
 ```swift
     private nonisolated func applyEntry(_ dto: ExportSchema.JournalEntryDTO, into row: JournalEntry, owner: LillistTask) {
@@ -537,7 +542,7 @@ applyEntry temporarily non-compiling; Task 4 rewrites it."
     }
 ```
 
-  > Note: the `taskByID` dictionary is built from `document.tasks` during the task loop (~130-159) and also captures pre-existing rows found via `fetchTask`. An entry whose `taskID` matches a task already in the store *but absent from the bundle* will still be treated as unresolved, because `taskByID` only holds rows touched by this import. That is the correct conservative behavior for a manual-merge bundle: the bundle is the unit of truth for relationships it declares.
+  > Note: the `taskByID` dictionary is built from `document.tasks` during the `for dto in document.tasks` loop and also captures pre-existing rows found via `fetchTask`. An entry whose `taskID` matches a task already in the store *but absent from the bundle* will still be treated as unresolved, because `taskByID` only holds rows touched by this import. That is the correct conservative behavior for a manual-merge bundle: the bundle is the unit of truth for relationships it declares.
 
 - [ ] **Step 4: Run the test, expect pass** — Command:
   ```bash
@@ -565,7 +570,7 @@ journalEntriesSkipped and appended to errors. Closes import-2."
 These are pure tests — they verify behavior already guaranteed by the code (`importBundle` decodes, which throws on truncated input; `apply` is all-or-nothing) and lock the documented transaction contract from Task 2 against regression. No production code changes.
 
 > **⚠️ Execution gotcha — why the save-failure test does NOT poison a nil-`id` object.**
-> The model (`LillistModel.xcdatamodel/contents`) is a CloudKit model: **every** attribute is `optional="YES"`, there are **no** uniqueness constraints, and **no** `ManagedObjects/*+CoreData.swift` subclass overrides `validateForInsert`/`validateValue`/`willSave`. A `LillistTask` with `id == nil` therefore **saves successfully** — there is no save-time invariant on this model that a nil `id` (or any other missing attribute) violates. Mechanisms that *do* fault the model at save time on this schema — assigning a collection to a to-one relationship via KVC, or removing the persistent store out from under the context — surface as **Objective-C `NSException`s that terminate the test process**, not as catchable Swift `Error`s, so they can't be `catch`-asserted. The **one** mechanism that yields a catchable Swift error from `save()` is an **optimistic-locking merge conflict** under `NSMergePolicy.error`. But the Importer commits on `persistence.container.viewContext`, which `PersistenceController` configures with `mergeByPropertyObjectTrumpMergePolicyType` **and** `automaticallyMergesChangesFromParent = true` — so a conflict staged from a background context is auto-merged away before the view-context save and never throws. Net: there is **no sound way to make the real `Importer.apply` view-context `save()` throw through the public API**. Task 5 Step 2 below therefore proves the transaction contract two honest ways instead — (a) by exercising the catchable merge-conflict rollback mechanism directly on a controllable pair of background contexts, and (b) by asserting structurally that `apply` stages every row into a single `perform`/`save` (so the commit is atomic by Core Data's own single-transaction guarantee). Do **not** reintroduce a nil-`id` poison object — it will save, the assertion will not fire, and you will be chasing a non-bug.
+> The model (`LillistModel.xcdatamodel/contents`) is a CloudKit model: **every** attribute is `optional="YES"`, there are **no** uniqueness constraints, and **no** `ManagedObjects/*+CoreData.swift` subclass overrides `validateForInsert`/`validateValue`/`willSave`. A `LillistTask` with `id == nil` therefore **saves successfully** — there is no save-time invariant on this model that a nil `id` (or any other missing attribute) violates. Mechanisms that *do* fault the model at save time on this schema — assigning a collection to a to-one relationship via KVC, or removing the persistent store out from under the context — surface as **Objective-C `NSException`s that terminate the test process**, not as catchable Swift `Error`s, so they can't be `catch`-asserted. The **one** mechanism that yields a catchable Swift error from `save()` is an **optimistic-locking merge conflict** under `NSMergePolicy.error`. But **after Wave 4 the Importer commits on `persistence.makeBackgroundContext()`** (no longer `viewContext`), and `makeBackgroundContext()` stamps the same trump merge policy (`mergeByPropertyObjectTrumpMergePolicyType`) with auto-merge ON — so a concurrent edit is trumped/auto-merged rather than raised as a conflict, and the `apply` `save()` still never throws on this model. (The conclusion is unchanged from the pre-Wave-4 `viewContext` analysis; only the context the save runs on changed.) Net: there is **no sound way to make the real `Importer.apply` background-context `save()` throw through the public API**. Task 5 Step 2 below therefore proves the transaction contract two honest ways instead — (a) by exercising the catchable merge-conflict rollback mechanism directly on a controllable pair of background contexts, and (b) by asserting structurally that `apply` stages every row into a single `perform`/`save` (so the commit is atomic by Core Data's own single-transaction guarantee). Do **not** reintroduce a nil-`id` poison object — it will save, the assertion will not fire, and you will be chasing a non-bug.
 
 - [ ] **Step 1: Write the truncated-JSON test** — Append to `ImporterTests.swift` inside the struct:
 
@@ -602,7 +607,7 @@ These are pure tests — they verify behavior already guaranteed by the code (`i
     }
 ```
 
-- [ ] **Step 2: Write the transaction-contract tests** — The import's atomicity rests on two facts, and we assert each directly. **Chosen mechanism:** the all-or-nothing guarantee is Core Data's own single-`save()` transaction semantics — `apply` stages every row inside one `viewContext.perform { … try ctx.save() }`, so the commit is atomic by construction. Because this permissive CloudKit model has no save-time invariant that throws *catchably* (see the gotcha above), we prove the contract two complementary, model-honest ways rather than poisoning a row:
+- [ ] **Step 2: Write the transaction-contract tests** — The import's atomicity rests on two facts, and we assert each directly. **Chosen mechanism:** the all-or-nothing guarantee is Core Data's own single-`save()` transaction semantics — `apply` stages every row inside one background-context `perform { … try ctx.save() }` block (Wave 4 moved it off `viewContext` onto `makeBackgroundContext()`, but it is still a single `perform`/`save`), so the commit is atomic by construction. Because this permissive CloudKit model has no save-time invariant that throws *catchably* (see the gotcha above), we prove the contract two complementary, model-honest ways rather than poisoning a row:
 >
 > 1. **`saveFailureRollbackIsCatchable`** — exercises the *one* mechanism that produces a catchable Swift error from `save()` on this model (an optimistic-lock merge conflict under `NSMergePolicy.error`) on a controllable background-context pair, and confirms that after the failed save a `rollback()` leaves the store at its pre-edit baseline. This locks in the catchable-error → rollback behavior the documented contract (and the `background-context-seam` plan) depends on, without pretending the view-context path can be made to throw.
 > 2. **`importIsSingleAtomicSave`** — proves structurally that a *successful* multi-row `apply` commits everything together: a valid bundle of several tasks + tags + journal entries imports, and the destination row counts match the bundle exactly (no partial subset). Combined with the single-`save()` block in `apply`, this is the positive half of "all or nothing": Core Data cannot persist a strict subset of one `save()`.
@@ -719,7 +724,7 @@ These are pure tests — they verify behavior already guaranteed by the code (`i
     }
 ```
 
-  Add the `taskCount(in:)` free helper next to `fetchTitle` at the bottom of the file (after line 169):
+  Add the `taskCount(in:)` free helper next to the existing `fetchTitle` free function at the bottom of the file (the `private func fetchTitle(in:id:)` helper, now ~lines 187–194 after Wave 4 appended a test — anchor by the `fetchTitle` declaration, not a line number):
 
 ```swift
 /// Count LillistTask rows in a store — used to prove all-or-nothing

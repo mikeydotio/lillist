@@ -2,6 +2,12 @@
 
 > **📍 STATUS — ⬜ PENDING — Wave 6.**
 >
+> **⚠️ Wave-4 reconciliation (2026-06-04):** Wave 4 shifted the two hotspot files this plan instruments — **re-Read and re-anchor before editing both**.
+> - **Task 4 (`MigrationCoordinator.swift`)**: `runMigration` is now ~L189 (not ~L164) and **opens with TWO reentrancy guards** — a synchronous `if let current = try? journal.read(), current.isInFlight { throw }`, then a `guard !isMigrating else { throw }; isMigrating = true; defer { isMigrating = false }` — *before* the first `await breadcrumb(...)`. Put the signpost `beginInterval` / `defer endInterval` / start-notice **after** those guards-and-`defer` and **before** `await breadcrumb("sync mode change start …")`; do **not** add a third guard or move the existing ones. Phase 6 (`// 6. cloudkit-side mutation`) now has a **NEW pre-erase `accountStateProvider` guard** that throws *before* `emit(.erasingICloud(progress: 0))` — keep the "erasing iCloud zones" notice right after `emit(.erasingICloud(progress: 0))` (it stays inside the block, after the new guard). Phase 8 (`// 8. finalize.`) now `emit(.finalizing)` then calls `scheduler.restoreSteadyState(...)` *before* `journal.clear()` / `emit(.completed)`; the "migration completed" notice still goes after `emit(.completed)` (now ~L327) and before `await breadcrumb(...)` — unchanged anchor, just don't disturb the new `restoreSteadyState` block. The init grew two optional params (`preferencesStore:`, `accountStateProvider:`, both default `nil`) — irrelevant to this additive log work. `restoreFromBackup` is now ~L169. **All `breadcrumb(...)` calls are now `await breadcrumb(...)`** (already awaited inline) — add no `await`.
+> - **Task 6 (iOS `AppEnvironment.swift`)**: `bootstrap()` is now ~L298 and gained a `HistoryPruner(...).sweep()` block right after `autoPurgeJob.run()`, and the `MigrationCoordinator(...)` call gained `preferencesStore: preferencesStore`. **The tail you append to is UNCHANGED** — `startObservingPauseReason()` is still the last statement (~L343); append `metricKitObserver.startReceiving()` after it. Re-Read the property block and the tail; do not touch the new pruner/coordinator wiring.
+> - **Task 5 (`TaskStore.children(of:)`)**: structurally **unaffected** — still a single `try await context.perform { … return try context.fetch(req).map(record(from:)) }` (now ~L211, not ~L208). Wave 4 rewrote `purgeAll` (batch delete) and **deleted `countDescendants`**, but this plan touches neither — instrument `children(of:)` exactly as written.
+> - Residual **#3** (purge reaps `NotificationSpec` rows but does NOT cancel the OS-level pending `UNNotificationRequest`s) is now a **documented** acknowledged limitation in engineering-notes — still a named follow-up, unrelated to this plan's emitters.
+>
 > Part of the **Foundation Hardening** program. **Single source of truth for progress, wave order, and cross-plan coordination:** [`2026-05-29-foundation-hardening-index.md`](2026-05-29-foundation-hardening-index.md). New to this project? Read the index first, then the review ([`docs/reviews/2026-05-28-foundation-review.md`](../../reviews/2026-05-28-foundation-review.md)) for *why* this work exists, then `CLAUDE.md` for conventions + build/test commands. Execute task-by-task with `superpowers:subagent-driven-development`.
 >
 > **Pre-flight (run before any edit):** Confirm Waves 1–5 are on `main` (`git log --oneline main | head -20`). Read `docs/superpowers/handoffs/wave-5.md`. Re-Read every file you touch and anchor by code **structure**, not line number — each wave shifts the shared hotspot files (`MigrationCoordinator`, `TaskStore`, `PersistenceController`, both `AppEnvironment`s). On completion, write `docs/superpowers/handoffs/wave-6.md`.
@@ -27,11 +33,11 @@
 - `Apps/Lillist-iOS/Sources/App/MetricKitObserver.swift` — `MXMetricManagerSubscriber` that logs crash/hang/launch diagnostics through `LillistLog` so MetricKit payloads land in the same unified-log stream the crash reporter reads.
 
 ### Modify
-- `Packages/LillistCore/Sources/LillistCore/Sync/MigrationCoordinator.swift` (`runMigration` runner — anchor by the `private func runMigration(` signature, ~L164; `restoreFromBackup` — anchor by `public func restoreFromBackup(`, ~L144) — add structured `LillistLog.sync` log lines + an `OSSignposter` interval spanning the whole migration.
-- `Packages/LillistCore/Sources/LillistCore/Stores/TaskStore.swift` (anchor by the `public func children(of parentID:)` signature, ~L208 — the heavy-fetch path) — wrap the fetch in an `OSSignposter` interval and emit a `LillistLog.store` line with the row count.
+- `Packages/LillistCore/Sources/LillistCore/Sync/MigrationCoordinator.swift` (`runMigration` runner — anchor by the `private func runMigration(` signature, ~L189 post-Wave-4; `restoreFromBackup` — anchor by `public func restoreFromBackup(`, ~L169) — add structured `LillistLog.sync` log lines + an `OSSignposter` interval spanning the whole migration. **Wave 4 added two reentrancy guards + a `defer` at the very top of `runMigration`, a pre-erase account guard in phase 6, and a `restoreSteadyState` call in phase 8 — re-Read and re-anchor; weave around them.**
+- `Packages/LillistCore/Sources/LillistCore/Stores/TaskStore.swift` (anchor by the `public func children(of parentID:)` signature, ~L211 post-Wave-4 — the heavy-fetch path; structurally unchanged) — wrap the fetch in an `OSSignposter` interval and emit a `LillistLog.store` line with the row count.
 - `Apps/Lillist-macOS/Sources/Indexing/IndexingService.swift` (the `reindexAll` catch body, ~L72) — replace `NSLog(...)` with `LillistLog.indexing.error(...)`.
 - `Apps/Lillist-macOS/Sources/Services/LillistServicesProvider.swift` (the Services-create catch body, ~L57) — replace `NSLog(...)` with `LillistLog.app.error(...)`.
-- `Apps/Lillist-iOS/Sources/App/AppEnvironment.swift` (property block — anchor by `let crashReporter` / `let mailTransport`, ~L69-70; `bootstrap()` — anchor by `func bootstrap()`, ~L297, and its tail of `startObserving…` / `installCanaryLifecycleObservers()` calls, ~L328-331) — retain a `MetricKitObserver` and register it in `bootstrap()`.
+- `Apps/Lillist-iOS/Sources/App/AppEnvironment.swift` (property block — anchor by `let crashReporter` / `let mailTransport`, ~L69-70; `bootstrap()` — anchor by `func bootstrap()`, ~L298 post-Wave-4, and its tail of `startObserving…` / `installCanaryLifecycleObservers()` / `startObservingPauseReason()` calls, ~L340-343) — retain a `MetricKitObserver` and register it in `bootstrap()`. **Wave 4 added a `HistoryPruner(...).sweep()` block mid-`bootstrap()` and `preferencesStore:` to the `MigrationCoordinator(...)` call — re-Read; do not disturb them. The append tail (`startObservingPauseReason()` last) is unchanged.**
 - `docs/engineering-notes.md` — append one entry documenting the subsystem-pinning contract (logs feed the crash reporter only because `LillistLog`'s subsystem == `CrashReporting.subsystemIdentifier`).
 
 ---
@@ -305,7 +311,7 @@ land on the collected subsystem and reach the crash reporter."
 ## Task 4: Instrument the migration runner with structured logs + an OSSignposter interval
 
 **Files:**
-- Modify `Packages/LillistCore/Sources/LillistCore/Sync/MigrationCoordinator.swift` — `runMigration` (anchor by the `private func runMigration(` signature, ~L164) and `restoreFromBackup` (anchor by `public func restoreFromBackup(`, ~L144). **Anchor by structure, not line number** — each wave shifts these.
+- Modify `Packages/LillistCore/Sources/LillistCore/Sync/MigrationCoordinator.swift` — `runMigration` (anchor by the `private func runMigration(` signature, ~L189 post-Wave-4) and `restoreFromBackup` (anchor by `public func restoreFromBackup(`, ~L169). **Anchor by structure, not line number** — each wave shifts these. **Wave-4 note:** `runMigration` now opens with two reentrancy guards + `isMigrating = true; defer { isMigrating = false }` before the first `await breadcrumb(...)`; phase 6 has a new pre-erase `accountStateProvider` guard; phase 8 calls `restoreSteadyState(...)`. See Step 2a/2b for exactly where the log lines land relative to these.
 - Test `Packages/LillistCore/Tests/LillistCoreTests/Sync/MigrationCoordinatorTests.swift` is the neighbor (Swift Testing, `.serialized`, `liveSwapAllowed` gate) — but migration logging is verified by the OSLogFetcher round-trip net (Task 2) plus an unsigned build, since the runner's destructive paths are host-gated. We add **no new assertion** that depends on the gated runner; instead we verify the instrumentation compiles and is non-destructive.
 
 The migration runner is the single most important thing to be able to debug after an OTA crash (it swaps a live SQLite file). The live phase order is **reconfigure → copy-quarantine → erase**: the runner closes the SQLite connection via `host.reconfigure(to:)` first, then `quarantine.copyStore(at:)` (COPY-not-move, recording `entry.quarantineFolderName`), then the optional zone erase. Emit a `LillistLog.sync` line at each phase and wrap the whole `runMigration` body in an `OSSignposter` interval so Instruments shows migration duration. This is additive — it must not change control flow, the journal sequence, the `copyStore`/`quarantineFolderName` calls, the phase ordering, or the emitted `MigrationPhase` events. **Weave the lines into the live method (Steps 2a/2b); never paste a whole method body. The `breadcrumb(_:success:)` calls are already `async` and awaited inline in the live method — add the `LillistLog` lines around them; do not add or move any `await`.**
@@ -325,20 +331,21 @@ import os
 cd /Volumes/Code/mikeyward/Lillist && grep -n "private func runMigration(" Packages/LillistCore/Sources/LillistCore/Sync/MigrationCoordinator.swift
 ```
 Then Read the full method body. Confirm the **current** phase order, which is the order you must weave logs onto:
-1. **preparing** — `emit(.preparing)` + `scheduler.cancelAllPending()`
+0. **reentrancy guards (Wave-4)** — FIRST statements, before any `await`: `if let current = try? journal.read(), current.isInFlight { throw }`, then `guard !isMigrating else { throw }; isMigrating = true; defer { isMigrating = false }`. The signpost/start-notice (Step 2b's first bullet) goes AFTER these, before `await breadcrumb(...)`.
+1. **preparing** — `await breadcrumb("sync mode change start …")`, then `emit(.preparing)` + `scheduler.cancelAllPending()`
 2. **journal start** — build `MigrationJournal(state: .preparing, …)` and `journal.write(entry)`
 3. **precondition** — for `replaceICloudWithLocal`, the `localStoreRowCount()` guard (throws on an empty local store — sync-7)
 4. **structural swap FIRST** — `emit(.reconfiguringStore)` → `host.reconfigure(to: targetMode)` → `syncModeStore.setMode(targetMode)` (closes the SQLite connection *before* touching the file — persist-3)
 5. **copy-quarantine** — `emit(.backingUp)`, state `.quarantining`, then `quarantine.copyStore(at: storeURL)` (COPY-not-move) and record `entry.quarantineFolderName = backup.folderName`
-6. **cloudkit zone erase** — only `replaceICloudWithLocal`: `emit(.erasingICloud…)` + `zoneEraser.eraseManagedZones(…)`
+6. **cloudkit zone erase** — only `replaceICloudWithLocal`: a Wave-4 **pre-erase `accountStateProvider` guard** (`if let provider = accountStateProvider, await provider() == .accountChanged { throw }`) FIRST, then `emit(.erasingICloud…)` + `zoneEraser.eraseManagedZones(…)`
 7. **await settle** — only `iCloudSync`: `quiesceMonitor.waitForQuiesce(…)`
-8. **finalize** — state `.finalizing`, `journal.clear()`, `emit(.completed)`
-9. **catch** — state `.failed`, `emit(.failed…)`, rethrow
+8. **finalize** — state `.finalizing`, `emit(.finalizing)`, then a Wave-4 `scheduler.restoreSteadyState(...)` block (reads `preferencesStore`), then `journal.clear()`, `emit(.completed)`
+9. **catch** — state `.failed`, `emit(.failed…)`, `await breadcrumb(… success: false)`, rethrow
 
-If what you Read does not match this order (e.g. you see `quarantineStore(at:)`/`quarantineBackupID`, or `reconfigure` *after* the quarantine), STOP — you are looking at a stale checkout; `git pull` and re-Read before continuing.
+**Wave-4 expects the two reentrancy guards (phase 0), the phase-6 account guard, and the phase-8 `restoreSteadyState` block to be PRESENT on current `main` — they are correct, do NOT treat them as a stale checkout.** If, conversely, what you Read does NOT match this order (e.g. you see `quarantineStore(at:)`/`quarantineBackupID`, `reconfigure` *after* the quarantine, or NO `isMigrating` guard at the top), STOP — that is a *pre-Wave-4* checkout; `git pull` and re-Read before continuing.
 
 - [ ] **Step 2b: Weave the signpost + `LillistLog.sync` lines into the CURRENT body** — do **NOT** paste a whole method. Make these surgical additions to the live method, leaving every existing line, the journal sequence, the `copyStore`/`quarantineFolderName` calls, and the phase ordering untouched (additions are already-non-identifying: op raw value, mode, error type):
-  - **Top of method, before `breadcrumb("sync mode change start …")`:** open the signpost interval spanning the whole runner, and emit the start notice:
+  - **After the Wave-4 reentrancy guards + `isMigrating = true; defer { isMigrating = false }`, and before `await breadcrumb("sync mode change start …")`:** open the signpost interval spanning the whole runner, and emit the start notice. (Do NOT insert ahead of the guards — they must run synchronously before any suspension. Placing the signpost/notice between the `defer { isMigrating = false }` line and `await breadcrumb(...)` keeps the whole timed body inside the interval.)
     ```swift
         let signpostID = LillistLog.signposter.makeSignpostID()
         let interval = LillistLog.signposter.beginInterval(
@@ -354,11 +361,11 @@ If what you Read does not match this order (e.g. you see `quarantineStore(at:)`/
     ```swift
             LillistLog.sync.notice("migration reconfiguring store")
     ```
-  - **Phase 6 (cloudkit zone erase), inside the `if op == .replaceICloudWithLocal` block, after `emit(.erasingICloud(progress: 0))` and before `zoneEraser.eraseManagedZones(…)`:**
+  - **Phase 6 (cloudkit zone erase), inside the `if op == .replaceICloudWithLocal` block, after `emit(.erasingICloud(progress: 0))` and before `zoneEraser.eraseManagedZones(…)`:** (Wave 4 added a pre-erase `accountStateProvider` guard *earlier* in this block — your notice still goes after `emit(.erasingICloud(progress: 0))`, i.e. *past* that guard, so it logs only when the erase actually proceeds. Do not touch the guard.)
     ```swift
                 LillistLog.sync.notice("migration erasing iCloud zones")
     ```
-  - **Phase 8 (finalize), in the success path after `emit(.completed)` and before `breadcrumb("sync mode change completed …")`:**
+  - **Phase 8 (finalize), in the success path after `emit(.completed)` and before `await breadcrumb("sync mode change completed …")`:** (Wave 4 inserted an `emit(.finalizing)` + `scheduler.restoreSteadyState(...)` block *before* `journal.clear()`/`emit(.completed)` in this phase — leave it untouched; the completed-notice anchor on `emit(.completed)` is unchanged.)
     ```swift
             LillistLog.sync.notice("migration completed op=\(op.rawValue, privacy: .public)")
     ```
@@ -451,7 +458,7 @@ debug after an OTA crash."
 - Modify `Packages/LillistCore/Sources/LillistCore/Stores/TaskStore.swift` (the `children(of:)` fetch)
 - Test: verified by an existing TaskStore suite compile + run; the instrumentation is additive (no behavior change), so no new assertion is added against the fetch result. The signpost/log capability is already proven collectable by Task 2.
 
-The main task-list reload funnels through `TaskStore.children(of:)` on the main-queue `viewContext` (the unbounded fetch the critic flagged; ~L208 on current `main`). Paging is out of scope here (owned by `performance-budgets-and-paging`). What this plan adds is *visibility*: an `OSSignposter` interval and a `LillistLog.store.debug` line carrying the row count, so a slow reload shows up in Instruments and the log stream. Read the file first to find the exact current method.
+The main task-list reload funnels through `TaskStore.children(of:)` on the main-queue `viewContext` (the unbounded fetch the critic flagged; ~L211 on current `main` post-Wave-4 — structurally unchanged by Wave 4, which only rewrote the unrelated `purgeAll` and removed `countDescendants`). Paging is out of scope here (owned by `performance-budgets-and-paging`). What this plan adds is *visibility*: an `OSSignposter` interval and a `LillistLog.store.debug` line carrying the row count, so a slow reload shows up in Instruments and the log stream. Read the file first to find the exact current method.
 
 > **Chain #2 — coordinate with `performance-budgets-and-paging`.** Both plans edit `TaskStore.children(of:)`. Land them together and re-Read the method immediately before editing: the signpost bracket must wrap whatever final fetch body the paging plan lands, and the row-count log must reflect the returned page. If paging has not yet landed, instrument the current unbounded body; if it has, instrument the paged body — do not re-introduce the unbounded fetch.
 
@@ -514,7 +521,7 @@ the performance-budgets plan."
 
 **Files:**
 - Create `Apps/Lillist-iOS/Sources/App/MetricKitObserver.swift`
-- Modify `Apps/Lillist-iOS/Sources/App/AppEnvironment.swift` (property block — anchor by `let crashReporter` / `let mailTransport`, ~L69-70; `bootstrap()` — anchor by `func bootstrap()` and its tail of `startObserving…` / `installCanaryLifecycleObservers()` calls, ~L328-331)
+- Modify `Apps/Lillist-iOS/Sources/App/AppEnvironment.swift` (property block — anchor by `let crashReporter` / `let mailTransport`, ~L69-70; `bootstrap()` — anchor by `func bootstrap()` (~L298 post-Wave-4) and its tail of `startObserving…` / `installCanaryLifecycleObservers()` / `startObservingPauseReason()` calls, ~L340-343 post-Wave-4)
 
 MetricKit (`MXMetricManager`) delivers crash, hang (`MXHangDiagnostic`), and launch (`MXAppLaunchDiagnostic`) reports the day after they occur. We subscribe a retained observer that logs each diagnostic's summary through `LillistLog.metrics`, so they land in the same unified-log stream the crash reporter reads — turning the day-after MetricKit payloads into searchable field diagnostics. MetricKit needs no entitlement; it just needs a retained `MXMetricManagerSubscriber`. App-target changes are verified by an unsigned `xcodebuild build`.
 
@@ -585,7 +592,7 @@ to:
     let metricKitObserver = MetricKitObserver()
 ```
 
-- [ ] **Step 3: Register the observer in `bootstrap()`** — `bootstrap()` ends (~L328-331) with the `startObserving…` / `installCanaryLifecycleObservers()` / `startObservingPauseReason()` calls. Re-Read the live tail first (it has shifted across waves — `startObservingPauseReason()` is the current last call) and append the MetricKit registration as the final statement. Change:
+- [ ] **Step 3: Register the observer in `bootstrap()`** — `bootstrap()` ends (~L340-343 post-Wave-4) with the `startObserving…` / `installCanaryLifecycleObservers()` / `startObservingPauseReason()` calls. Re-Read the live tail first (it has shifted across waves — `startObservingPauseReason()` is still the current last call; Wave 4 added a mid-method `HistoryPruner(...).sweep()` block but did NOT change this tail) and append the MetricKit registration as the final statement. Change:
 ```swift
         startObservingAccountState()
         startObservingSyncMode()

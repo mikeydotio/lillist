@@ -2,6 +2,12 @@
 
 > **📍 STATUS — ⬜ PENDING — Wave 7 (lands LAST).**
 >
+> **⚠️ Wave-4 reconciliation (2026-06-04):** Wave 4 already landed three of the very things this plan's CI gates police, so re-verify against current `main` (not just Waves 1–6) before each task:
+> - **The pbxproj-drift gate now validates a POST-Wave-4 pbxproj.** `Apps/Lillist-iOS/project.yml`'s `Lillist-iOSAppHostedTests` target gained three sources — `StoreReconfigureConcurrencyTests.swift`, `MigrationCoordinatorRestoreTests.swift`, and `Helpers/FakeUserNotificationCenter.swift` — and the pbxproj was regenerated to match (confirmed live). Task 4's `project-drift` job + Step 4's `xcodegen generate` + `git diff --exit-code` must come up **clean** on the current committed tree; if it diffs, that drift is *pre-existing* (commit the regen first, as the plan already says) — do not blame this plan. **Re-Read `Apps/Lillist-iOS/project.yml` before touching it; do NOT clobber those three app-hosted entries.**
+> - **The `ios` job will be the FIRST place the two Wave-4 live-swap tests actually execute.** `StoreReconfigureConcurrencyTests` + `MigrationCoordinatorRestoreTests` are now wired into `Lillist-iOSAppHostedTests` but their *executing* proof was deferred to CI / a dev Mac (Wave-4 handoff). They are `liveSwapAllowed`-gated and need a signed simulator host — Option (a) (ad-hoc simulator signing) in Task 4 is what makes them run. This sharpens, not changes, the existing Task 4 signing gotcha: the host-gated set CI must actually run now includes these two by name, in addition to `MigrationCoordinatorTests` / `PersistenceHostTests` / `StoreLevelModeSwapSpike`.
+> - **Residual #11 now has THREE manifestations, not two.** Wave 4 observed a third: `TaskStoreRecurrenceSpawnTests."After-completion series spawns at completedAt + interval"` rarely trips a `< 2.0s` wall-clock tolerance under load (same root cause: cross-suite peak parallel-container contention starving a wall-clock Task). The current `docs/engineering-notes.md` 2026-06-04 SIGSEGV entry still names only the first two (ParitySuite SIGSEGV, `SyncQuiesceMonitorTests` timing) — the third lives in the index residual #11 entry. **Task 4's `spm`-job comment, Task 5's new engineering-notes entry, and Task 6 CLAUDE.md note must name all THREE** so the bounded-parallelism `--num-workers 2` + one-shot retry is justified as covering the recurrence-spawn flake too. Also: Wave 4 changed `AutoPurgeJob.run`'s return to matched+cascade (callers discard it) — a NEW residual, but build-posture-irrelevant; no CI action.
+> - No other Wave-4 hotspot (MigrationCoordinator, TaskStore, both AppEnvironments, Exporter/Importer, NotificationScheduler, MigrationJournal, PauseReason, PersistenceController) is touched by this doc-and-CI plan — it does not edit source — so their structural drift doesn't affect any task here beyond the residual-#11 narrative above.
+>
 > Part of the **Foundation Hardening** program. **Single source of truth for progress, wave order, and cross-plan coordination:** [`2026-05-29-foundation-hardening-index.md`](2026-05-29-foundation-hardening-index.md). New to this project? Read the index first, then the review ([`docs/reviews/2026-05-28-foundation-review.md`](../../reviews/2026-05-28-foundation-review.md)) for *why* this work exists, then `CLAUDE.md` for conventions + build/test commands. Execute task-by-task with `superpowers:subagent-driven-development`.
 >
 > **Pre-flight (run before any edit):** Confirm Waves 1–6 are on `main` (`git log --oneline main | head -20`). Read `docs/superpowers/handoffs/wave-6.md`. Re-Read every file you touch and anchor by code **structure**, not line number — each wave shifts the shared hotspot files. On completion, write `docs/superpowers/handoffs/wave-7.md`.
@@ -409,14 +415,21 @@ This closes `build-1` (no CI), `build-2` (no pbxproj-drift gate), the CI half of
         # LillistCore is container-heavy: dozens of suites build in-memory
         # NSPersistentContainers in parallel, which intermittently SIGSEGVs
         # inside Core Data's framework-internal per-entity state, and the
-        # same CPU contention starves SyncQuiesceMonitorTests' timing window
+        # same CPU contention starves wall-clock-sensitive tests' timing
+        # windows. Three observed manifestations (index residual #11):
+        #   (1) ParitySuiteTests-triggered SIGSEGV,
+        #   (2) SyncQuiesceMonitorTests "Times out..." timing flake, and
+        #   (3) TaskStoreRecurrenceSpawnTests "After-completion series spawns
+        #       at completedAt + interval" tripping its < 2.0s wall-clock
+        #       tolerance under load (added in Wave 4).
         # (docs/engineering-notes.md 2026-06-04 "Intermittent SIGSEGV under
-        # heavy parallel in-memory store creation"; index residual #11).
-        # Neither is a product bug — production never creates more than one
-        # container — so the deterministic, verifiable mitigation is at the
-        # runner: bound parallelism (--num-workers) and retry once so a
-        # one-off SIGSEGV / timing flake re-runs instead of failing CI.
-        # See Task 6 for the matching CLAUDE.md note.
+        # heavy parallel in-memory store creation" documents (1)+(2); (3) is
+        # in the index residual #11 entry.) None is a product bug — production
+        # never creates more than one container — so the deterministic,
+        # verifiable mitigation is at the runner: bound parallelism
+        # (--num-workers) and retry once so a one-off SIGSEGV / timing flake
+        # re-runs instead of failing CI. See Task 5/6 for the matching
+        # engineering-notes + CLAUDE.md notes.
         - name: Test LillistCore (bounded parallelism, retry on flake)
           run: |
             swift test --package-path Packages/LillistCore --num-workers 2 \
@@ -668,7 +681,7 @@ This closes `build-1` (no CI), `build-2` (no pbxproj-drift gate), the CI half of
   - The `ios` job **runs the existing** `Lillist-iOSAppHostedTests` target (created and wired onto the `Lillist-iOS` scheme by the merged `store-swap-safety` plan — this plan does not create it). Likewise it does not create `Lillist-iOSUITests` or the scheme; it only executes them.
   - The Release smoke uses `xcodebuild build -configuration Release -destination 'generic/platform=iOS'` (a device-generic compile) rather than `archive`, because `archive` would trip the build-number bump pre-action and require signing; the goal is to exercise the Release compile path, which deployit's Debug archives never do. It builds the app target explicitly (`-target Lillist-iOS`) so the no-signing build never pulls in the app-hosted test target (see the Release-smoke execution gotcha above).
   - The placeholder team is copied from the committed `Apps/Config/Signing.local.xcconfig.example` (confirmed present per CLAUDE.md "Code signing"). For the `build`-action jobs (drift, macOS test, Release smoke) every build sets `CODE_SIGNING_ALLOWED=NO`, so the actual team value is irrelevant — the file just has to exist so the `#include?` indirection resolves `$(LOCAL_DEVELOPMENT_TEAM)`. **Exception:** if the `ios` job adopts Option (a) (ad-hoc simulator signing so the host-gated tests run), that job builds *with* signing allowed; the placeholder is still fine for ad-hoc `-` signing, but if a `DEVELOPMENT_TEAM` proves necessary, inject it from a CI secret in the "Provide a placeholder signing team" step (see the `ios` job execution gotcha).
-  - **Bounded `swift test` parallelism + flake retry (residual #11).** The `spm` job runs both `swift test`s with `--num-workers 2` and retries the LillistCore run once on non-zero exit. This is the runner-level mitigation for the intermittent parallel-test SIGSEGV and the `SyncQuiesceMonitorTests` timing flake documented in `docs/engineering-notes.md` (2026-06-04). Neither is a product bug — production never builds more than one `NSPersistentContainer` — so the fix lives in CI invocation, not source. Task 6 mirrors the same bounded invocation into CLAUDE.md's "Build & test" so local runs match. (If `--num-workers` is unavailable on the pinned toolchain, fall back to `--no-parallel` for LillistCore; confirm with `swift test --help` on the runner.)
+  - **Bounded `swift test` parallelism + flake retry (residual #11).** The `spm` job runs both `swift test`s with `--num-workers 2` and retries the LillistCore run once on non-zero exit. This is the runner-level mitigation for residual #11's **three** manifestations: the intermittent parallel-test SIGSEGV (ParitySuite-triggered) and the `SyncQuiesceMonitorTests` timing flake — both documented in `docs/engineering-notes.md` (2026-06-04) — **plus the Wave-4-added third** `TaskStoreRecurrenceSpawnTests."After-completion series spawns at completedAt + interval"` `< 2.0s` wall-clock flake (in the index residual #11 entry; not yet in the 2026-06-04 engineering-notes block — Task 5's new entry adds it). None is a product bug — production never builds more than one `NSPersistentContainer` — so the fix lives in CI invocation, not source. Task 6 mirrors the same bounded invocation into CLAUDE.md's "Build & test" so local runs match. (If `--num-workers` is unavailable on the pinned toolchain, fall back to `--no-parallel` for LillistCore; confirm with `swift test --help` on the runner.)
   - **The `localization-lint` job is the merged chain #6 artifact.** `lillistui-localization-a11y` (also Wave 7) produces the durable `Tools/CI/check-lillistui-localization.sh` lint and *would* have shipped a standalone `.github/workflows/lillistui-localization.yml`. Because `.github/workflows/` is owned by this plan, the lint runs as the `localization-lint` job here instead, and Task 6 deletes the standalone file so the repo holds exactly one workflow. The `notify` job's `needs:` includes `localization-lint` so a lint failure also reads as a red run.
   - **Simulator runtime availability.** The destination pins `iPhone 17 / iOS 26.2`. The GitHub `macos-15` image with Xcode 26.3 should ship that runtime, but hosted-image contents drift and the exact iOS 26.2 runtime is not guaranteed present. If `xcodebuild test` fails with "Unable to find a destination matching the provided destination specifier" or "iOS 26.2 is not installed", the runtime must be provisioned before the test step. Remedy — add a step before the test that downloads/installs and verifies the runtime:
     ```yaml
@@ -817,21 +830,33 @@ This is the append-only engineering record (CLAUDE.md mandate) for the cross-cut
     cold-cache runs" entry. Keep new non-Form snapshots strict.
   - **`swift test` runs with bounded parallelism + a retry, by design.**
     The `spm` job passes `--num-workers 2` and retries the LillistCore
-    run once. This is the deterministic runner-level mitigation for the
-    intermittent parallel-test SIGSEGV (dozens of concurrent in-memory
+    run once. This is the deterministic runner-level mitigation for
+    residual #11's **three** manifestations: (1) the intermittent
+    parallel-test SIGSEGV (dozens of concurrent in-memory
     `NSPersistentContainer` loads racing Core Data's framework-internal
-    per-entity state) and the `SyncQuiesceMonitorTests` timing flake,
-    both documented in the 2026-06-04 entry (index residual #11). Neither
-    is a product bug — production never builds more than one container —
-    so the mitigation is in CI invocation, never in shipping code. The
-    CLAUDE.md "Build & test" section mirrors the bounded invocation so
-    local runs match. Do not "fix" this by serializing the parity suite:
-    parity-alone is clean; the trigger is cross-suite peak concurrency.
+    per-entity state, surfacing via the `ParitySuiteTests` matrix), (2)
+    the `SyncQuiesceMonitorTests` timing flake (a starved churner `Task`
+    overshoots the 300ms quiet window) — both in the 2026-06-04 SIGSEGV
+    entry — and (3) the Wave-4-observed
+    `TaskStoreRecurrenceSpawnTests."After-completion series spawns at
+    completedAt + interval"` flake, which under heavy load trips its
+    `< 2.0s` wall-clock tolerance (passes in isolation / on re-run).
+    None is a product bug — production never builds more than one
+    container — so the mitigation is in CI invocation, never in shipping
+    code. The CLAUDE.md "Build & test" section mirrors the bounded
+    invocation so local runs match. Do not "fix" this by serializing the
+    parity suite: parity-alone is clean; the trigger is cross-suite peak
+    concurrency.
 
   - **Host-gated migration/swap tests need a signed simulator host —
     `CODE_SIGNING_ALLOWED=NO` is NOT enough for the iOS test job.** The
     now-merged `store-swap-safety` plan added the
-    `Lillist-iOSAppHostedTests` target to the `Lillist-iOS` scheme. It
+    `Lillist-iOSAppHostedTests` target to the `Lillist-iOS` scheme, and
+    Wave 4 grew its source list (it now also hosts
+    `StoreReconfigureConcurrencyTests` and `MigrationCoordinatorRestoreTests`
+    alongside `MigrationCoordinatorTests` / `PersistenceHostTests` /
+    `StoreLevelModeSwapSpike`). CI is the **first place those two Wave-4
+    tests actually execute** — their proof was deferred here. The target
     is `TEST_HOST=$(BUILT_PRODUCTS_DIR)/Lillist.app/Lillist` +
     `CODE_SIGN_STYLE: Automatic`, so it must install + launch the host
     `Lillist.app` on the simulator; the `liveSwapAllowed` gate
@@ -905,8 +930,11 @@ This is the append-only engineering record (CLAUDE.md mandate) for the cross-cut
 
   **Parallel-test flakes (`LillistCore`).** Heavy concurrent in-memory
   store creation intermittently SIGSEGVs inside Core Data, and the same
-  CPU contention starves `SyncQuiesceMonitorTests`' timing window (see
-  `docs/engineering-notes.md` 2026-06-04). Neither is a product bug.
+  CPU contention starves wall-clock-sensitive tests'
+  timing windows — `SyncQuiesceMonitorTests` and
+  `TaskStoreRecurrenceSpawnTests` ("After-completion series spawns at
+  completedAt + interval", a `< 2.0s` tolerance) (see
+  `docs/engineering-notes.md` 2026-06-04). None is a product bug.
   Run the suite with bounded parallelism + a one-shot retry to match CI:
   `swift test --package-path Packages/LillistCore --num-workers 2`
   (re-run once on a one-off SIGSEGV / timing flake before treating it as
@@ -997,7 +1025,7 @@ removed — one workflow in the repo. Closes chain #6."
 - [ ] **ui-warn-1** (standing "found 83 file(s) unhandled" LillistUI manifest warning) — closed by **Task 1** (excludes the six test `__Snapshots__` dirs; Step 3 asserts the unhandled-file count drops to 0).
 - [ ] **ui-snap-1** (brittle exact-pixel LillistUI snapshots) — closed by **Task 3** (scopes the `precision: 0.99, perceptualPrecision: 0.98` relaxation to the single Form-bearing tour snapshot `test_08_settings_light`; all other tour snapshots stay exact-pixel).
 - [ ] **test-5** (the test/build matrix is run only from memory, never automatically) — closed by **Task 4** (CI executes `swift test` ×2, both xcodebuild schemes, the drift gate, and the Release smoke on every push to `main`; the `ios` job transitively runs the iOS snapshot/tour bundle). The app-hosted host-gated `Lillist-iOSAppHostedTests` and the `Lillist-iOSUITests` run in CI **only if** the `ios` job signs for the simulator (Option (a)); if CI cannot sign (Option (b)), those two run on a developer's signed Mac, which Task 5 must state as an explicit limitation — they are not silently dropped, they are scoped out and documented.
-- [ ] **residual #11** (intermittent parallel-test SIGSEGV + `SyncQuiesceMonitorTests` timing flake — see `docs/engineering-notes.md` 2026-06-04) — closed by **Task 4** (`spm` job runs `swift test --num-workers 2` + a one-shot retry) and **Task 5** (records the rationale in engineering-notes and mirrors the bounded invocation into CLAUDE.md "Build & test"). Runner-level mitigation only — no source change, because production never builds more than one container.
+- [ ] **residual #11** (intermittent parallel-test SIGSEGV + `SyncQuiesceMonitorTests` timing flake + the Wave-4-added `TaskStoreRecurrenceSpawnTests` `< 2.0s` wall-clock flake — see `docs/engineering-notes.md` 2026-06-04 for the first two and the index residual #11 entry for the third) — closed by **Task 4** (`spm` job runs `swift test --num-workers 2` + a one-shot retry) and **Task 5** (records the rationale — naming all THREE manifestations — in engineering-notes and mirrors the bounded invocation into CLAUDE.md "Build & test"). Runner-level mitigation only — no source change, because production never builds more than one container.
 - [ ] **chain #6** (one workflow in `.github/workflows/`) — closed by **Task 4** (folds the `localization-lint` job into `ci.yml`, invoking `lillistui-localization-a11y`'s `Tools/CI/check-lillistui-localization.sh`) and **Task 6** (deletes the standalone `lillistui-localization.yml`). The lint runs in `ci.yml` before the standalone file is removed, so the gate never lapses.
 
 **Strengths preserved (not refactored away):** the idempotent signing xcconfig indirection (Task 4 only *reads* the `.example` placeholder; the `build`-action jobs use `CODE_SIGNING_ALLOWED=NO`, while the `ios` test job uses ad-hoc simulator signing under Option (a) so the host-gated tests can run); the canonical iPhone 17 / iOS 26.2 simulator pin and the iPhone 16 Pro logical render size (Task 4 uses the documented destination verbatim); the monotonic tracked build-number counter (Task 4's Release smoke is a `build`, not an `archive`, so it never triggers the bump pre-action); LillistCore's existing strict-concurrency + warnings-as-error posture (Task 1 mirrors it onto LillistUI rather than altering LillistCore); the snapshot suite's overall strictness (Task 3 widens tolerance for exactly one Form-bearing snapshot, leaving every other baseline strict).
