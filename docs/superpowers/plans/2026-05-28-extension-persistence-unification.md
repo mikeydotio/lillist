@@ -2,6 +2,8 @@
 
 > **📍 STATUS — ⬜ PENDING — Wave 6.**
 >
+> **⚠️ Wave-4 reconciliation (2026-06-04):** Wave 4 is on `main` and touched three files this plan reads, but verification confirms **no anchor or before-snippet here drifted** — the changes are non-overlapping. Specifics so the executor doesn't blind-apply: **(1) iOS `project.yml` is a shared hotspot.** Wave 4 added three sources to the **`Lillist-iOSAppHostedTests`** target (`StoreReconfigureConcurrencyTests.swift`, `MigrationCoordinatorRestoreTests.swift`, `Helpers/FakeUserNotificationCenter.swift`). Task 4 edits a *different* target — `Lillist-iOSTests` — and its anchor block (`SharePayload.swift` + `ReportCrashIntent.swift`) is intact and unchanged. **Re-Read `project.yml` before editing and do NOT drop the three `Lillist-iOSAppHostedTests` entries; after any `xcodegen generate` (Tasks 4 & 6) diff the pbxproj to confirm those three test sources are still enumerated.** **(2) `TaskStore.swift`** was churned by Wave 4 (rollback in 12 mutators, `purgeAll` rewritten to a batch delete, `countDescendants` deleted) — but this plan only uses the read/create paths (`TaskStore(persistence:)`, `create(title:notes:)`, `fetch(id:)`, all confirmed stable), so it is unaffected. **(3) `PersistenceController.swift`** gained `makeBackgroundContext()` (after `localTaskRowCount()`); this plan only uses `init(configuration:)` (unchanged), so no adaptation is needed. **`SmartFilterStore.swift` (Task 1) was not touched by Wave 4** — the `evaluate(group:…)` overload and its `~323` anchor are byte-accurate. The Wave-5 `GatedPersistenceResolver` hard dependency below is unchanged by Wave 4.
+>
 > Part of the **Foundation Hardening** program. **Single source of truth for progress, wave order, and cross-plan coordination:** [`2026-05-29-foundation-hardening-index.md`](2026-05-29-foundation-hardening-index.md). New to this project? Read the index first, then the review ([`docs/reviews/2026-05-28-foundation-review.md`](../../reviews/2026-05-28-foundation-review.md)) for *why* this work exists, then `CLAUDE.md` for conventions + build/test commands. Execute task-by-task with `superpowers:subagent-driven-development`.
 >
 > **Pre-flight (run before any edit):** Confirm Waves 1–5 are on `main` (`git log --oneline main | head -20`). Read `docs/superpowers/handoffs/wave-5.md`. Re-Read every file you touch and anchor by code **structure**, not line number — each wave shifts the shared hotspot files. On completion, write `docs/superpowers/handoffs/wave-6.md`.
@@ -432,7 +434,7 @@ enum ShareSaveFlow {
 }
 ```
 
-  Then add the helper to the `Lillist-iOSTests` target's `sources` in `Apps/Lillist-iOS/project.yml`. Replace the existing co-compile block (the `SharePayload.swift` + `ReportCrashIntent.swift` entries, `~131–139`) with this version that inserts the `ShareSaveFlow.swift` entry between them:
+  Then add the helper to the `Lillist-iOSTests` target's `sources` in `Apps/Lillist-iOS/project.yml`. **Re-Read `project.yml` first (Wave 4 added three sources to the *separate* `Lillist-iOSAppHostedTests` target — do NOT touch or drop them).** Edit only the `Lillist-iOSTests` co-compile block (the `SharePayload.swift` + `ReportCrashIntent.swift` entries — anchor by those filenames, the line range shifts wave-to-wave) — replace it with this version that inserts the `ShareSaveFlow.swift` entry between them:
 
 ```yaml
       # Co-compile the SharePayload source so the tests can exercise its
@@ -450,10 +452,12 @@ enum ShareSaveFlow {
       - path: ../../Extensions/ShortcutsActions/ReportCrashIntent.swift
 ```
 
-  Regenerate the iOS pbxproj so the new test source is picked up:
+  Regenerate the iOS pbxproj so the new test source is picked up, then confirm the Wave-4 `Lillist-iOSAppHostedTests` sources survived the regeneration:
   ```bash
   cd /Volumes/Code/mikeyward/Lillist/Apps/Lillist-iOS && xcodegen generate --spec project.yml --project .
+  cd /Volumes/Code/mikeyward/Lillist && grep -c "StoreReconfigureConcurrencyTests\|MigrationCoordinatorRestoreTests\|FakeUserNotificationCenter" Apps/Lillist-iOS/Lillist-iOS.xcodeproj/project.pbxproj
   ```
+  Expected: the `grep -c` count is non-zero (the three Wave-4 app-hosted test sources are still enumerated — `xcodegen` regenerated from the unchanged `project.yml`, which retains them).
 
 - [ ] **Step 4: Run the test, expect pass.**
   ```bash
