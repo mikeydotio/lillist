@@ -1,0 +1,253 @@
+name: CI
+
+# Solo project: commits land directly on main (no PR review). CI runs
+# post-push as a verifier — it does not gate a merge, it surfaces a
+# red run + failure email if a pushed commit broke a quality gate.
+# Also runnable on demand via the Actions tab.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  # Newer pushes to main supersede in-flight runs for the same ref.
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  spm:
+    name: SPM packages (swift test)
+    runs-on: macos-15
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Select Xcode 26.3
+        run: sudo xcode-select -switch /Applications/Xcode_26.3.app
+
+      - name: Print toolchain
+        run: |
+          swift --version
+          xcodebuild -version
+
+      # LillistCore is container-heavy: dozens of suites build in-memory
+      # NSPersistentContainers, which intermittently SIGSEGVs inside Core
+      # Data's framework-internal per-entity state, and the same CPU
+      # contention starves wall-clock-sensitive tests' timing windows.
+      # Three observed manifestations (index residual #11):
+      #   (1) ParitySuiteTests-triggered SIGSEGV,
+      #   (2) SyncQuiesceMonitorTests "Times out..." timing flake, and
+      #   (3) TaskStoreRecurrenceSpawnTests "After-completion series spawns
+      #       at completedAt + interval" tripping its < 2.0s wall-clock
+      #       tolerance under load (added in Wave 4).
+      # None is a product bug — production never creates more than one
+      # container — so the deterministic mitigation is at the runner:
+      # bound parallelism and retry once so a one-off SIGSEGV / timing
+      # flake re-runs instead of failing CI. NB: `--num-workers` requires
+      # `--parallel` on this toolchain (Swift 6.2.4) — the bare
+      # `--num-workers N` form errors out. See Task 5 / CLAUDE.md.
+      - name: Test LillistCore (bounded parallelism, retry on flake)
+        run: |
+          swift test --package-path Packages/LillistCore --parallel --num-workers 2 \
+            || swift test --package-path Packages/LillistCore --parallel --num-workers 2
+
+      # LillistUI: run the logic suites (Swift Testing + non-snapshot
+      # XCTest). The snapshot / screen-tour suites are EXCLUDED here: their
+      # PNG baselines are pinned to the recording host and drift on any
+      # other machine (cross-host font/anti-aliasing — documented in
+      # CLAUDE.md and docs/engineering-notes.md), so they cannot pass on a
+      # hosted runner. They are verified on the developer's pinned snapshot
+      # host. `--skip` matches the suite name; every snapshot suite is named
+      # *SnapshotTests or *ScreenTourTests.
+      - name: Test LillistUI (logic only — snapshots are host-pinned)
+        run: swift test --package-path Packages/LillistUI --skip Snapshot --skip Tour
+
+  project-drift:
+    name: pbxproj drift (xcodegen)
+    runs-on: macos-15
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Select Xcode 26.3
+        run: sudo xcode-select -switch /Applications/Xcode_26.3.app
+
+      - name: Install xcodegen
+        run: brew install xcodegen
+
+      - name: Regenerate iOS project
+        working-directory: Apps/Lillist-iOS
+        run: xcodegen generate --spec project.yml --project .
+
+      - name: Regenerate macOS project
+        working-directory: Apps
+        run: xcodegen generate --spec project.yml --project .
+
+      - name: Fail on uncommitted project drift
+        run: |
+          if ! git diff --exit-code -- '*.xcodeproj/project.pbxproj'; then
+            echo "::error::Generated pbxproj differs from the committed one."
+            echo "::error::Run xcodegen locally and commit the result."
+            exit 1
+          fi
+
+  ios:
+    name: iOS scheme (standalone unit tests)
+    runs-on: macos-15
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Select Xcode 26.3
+        run: sudo xcode-select -switch /Applications/Xcode_26.3.app
+
+      - name: Install xcodegen
+        run: brew install xcodegen
+
+      - name: Generate projects
+        run: |
+          (cd Apps/Lillist-iOS && xcodegen generate --spec project.yml --project .)
+          (cd Apps && xcodegen generate --spec project.yml --project .)
+
+      - name: Provide a placeholder signing team
+        # Signing.local.xcconfig is gitignored; CI builds without signing,
+        # so seed the placeholder the xcconfig indirection expects.
+        run: cp Apps/Config/Signing.local.xcconfig.example Apps/Config/Signing.local.xcconfig
+
+      # Runs ONLY the standalone Lillist-iOSTests bundle (TEST_HOST="" — the
+      # privacy/share/intent/crash unit tests). The other scheme test
+      # targets are deliberately NOT run here:
+      #   • Lillist-iOSAppHostedTests — the liveSwapAllowed migration/swap
+      #     tests stand up a live NSPersistentCloudKitContainer, which fails
+      #     with CKAccountStatusNoAccount (then SQLite "image is malformed")
+      #     on any host without a signed-in iCloud account — including a
+      #     hosted runner. They run on a developer's signed Mac w/ iCloud.
+      #   • Lillist-iOSUITests — needs a launchable signed host app.
+      #   • LillistUITests snapshots — host-pinned (see spm job).
+      # CODE_SIGNING_ALLOWED=NO compiles every scheme target but the
+      # simulator runs only the standalone bundle. (See Task 5 / handoff.)
+      - name: Test Lillist-iOS (standalone bundle only — no signing)
+        run: |
+          set -o pipefail
+          which xcbeautify || brew install xcbeautify
+          xcodebuild test \
+            -workspace Lillist.xcworkspace \
+            -scheme Lillist-iOS \
+            -destination 'platform=iOS Simulator,name=iPhone 17,OS=26.2' \
+            -only-testing:Lillist-iOSTests \
+            CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO \
+            | xcbeautify
+
+  macos:
+    name: macOS scheme (xcodebuild test)
+    runs-on: macos-15
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Select Xcode 26.3
+        run: sudo xcode-select -switch /Applications/Xcode_26.3.app
+
+      - name: Install xcodegen
+        run: brew install xcodegen
+
+      - name: Generate projects
+        run: |
+          (cd Apps/Lillist-iOS && xcodegen generate --spec project.yml --project .)
+          (cd Apps && xcodegen generate --spec project.yml --project .)
+
+      - name: Provide a placeholder signing team
+        run: cp Apps/Config/Signing.local.xcconfig.example Apps/Config/Signing.local.xcconfig
+
+      - name: Test Lillist-macOS scheme
+        # macOS test target is standalone (TEST_HOST="" in Apps/project.yml)
+        # and snapshot-free, so the no-signing recipe is correct here — there
+        # is no host .app to install/launch (see engineering-notes: the macOS
+        # test bundle was made standalone precisely so CODE_SIGNING_ALLOWED=NO
+        # works).
+        run: |
+          set -o pipefail
+          which xcbeautify || brew install xcbeautify
+          xcodebuild test \
+            -workspace Lillist.xcworkspace \
+            -scheme Lillist-macOS \
+            -destination 'platform=macOS' \
+            CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO \
+            | xcbeautify
+
+  release-archive-smoke:
+    name: Release archive smoke build
+    runs-on: macos-15
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Select Xcode 26.3
+        run: sudo xcode-select -switch /Applications/Xcode_26.3.app
+
+      - name: Install xcodegen
+        run: brew install xcodegen
+
+      - name: Generate projects
+        run: |
+          (cd Apps/Lillist-iOS && xcodegen generate --spec project.yml --project .)
+          (cd Apps && xcodegen generate --spec project.yml --project .)
+
+      - name: Provide a placeholder signing team
+        run: cp Apps/Config/Signing.local.xcconfig.example Apps/Config/Signing.local.xcconfig
+
+      - name: Release-configuration build (smoke)
+        # deployit archives with -configuration Debug for fast iteration
+        # (Apps/Lillist-iOS/project.yml scheme archive.config: Debug). CI is
+        # the *only* place a Release-configuration compile is exercised,
+        # catching Release-only optimizer / dead-code / whole-module issues
+        # that Debug never sees. Smoke = compile under Release without
+        # signing; not a shippable archive. A `build` action on the scheme
+        # builds only the app + its two embedded extensions (the three test
+        # targets are registered build-for-`[test]`-only, so `build` skips
+        # them) — verified: no Lillist-iOSAppHostedTests build, no signing
+        # error. (`-target` can't be combined with `-workspace`.)
+        run: |
+          set -o pipefail
+          which xcbeautify || brew install xcbeautify
+          xcodebuild build \
+            -workspace Lillist.xcworkspace \
+            -scheme Lillist-iOS \
+            -configuration Release \
+            -destination 'generic/platform=iOS' \
+            CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO \
+            | xcbeautify
+
+  localization-lint:
+    # Folded in from lillistui-localization-a11y (also Wave 7): instead of a
+    # standalone .github/workflows/lillistui-localization.yml, its lint runs
+    # as a job here so .github/workflows/ holds exactly one workflow. The
+    # durable artifact is the plan-owned Tools/CI/check-lillistui-localization.sh.
+    name: LillistUI localization extraction-drift lint
+    runs-on: macos-15
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Select Xcode 26.3
+        run: sudo xcode-select -switch /Applications/Xcode_26.3.app
+
+      - name: Verify jq is available
+        run: jq --version
+
+      - name: Run LillistUI localization extraction-drift lint
+        run: ./Tools/CI/check-lillistui-localization.sh
+
+  notify:
+    name: Notify on failure
+    runs-on: macos-15
+    needs: [spm, project-drift, ios, macos, release-archive-smoke, localization-lint]
+    if: failure()
+    steps:
+      - name: Mark the run failed
+        # GitHub already emails the actor on a failed run on a branch they
+        # pushed; this job makes the failure a single explicit signal at the
+        # bottom of the matrix so a partial-green run reads as red at a glance.
+        run: |
+          echo "::error::A CI gate failed on $GITHUB_REF — see the failed job above."
+          exit 1
