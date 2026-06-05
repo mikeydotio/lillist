@@ -43,7 +43,7 @@ public enum ExportSchema {
 
     public struct JournalEntryDTO: Codable, Sendable {
         public var id: UUID
-        public var taskID: UUID
+        public var taskID: UUID?
         public var kind: Int
         public var body: String
         public var payload: Data?
@@ -53,7 +53,7 @@ public enum ExportSchema {
 
     public struct AttachmentDTO: Codable, Sendable {
         public var id: UUID
-        public var taskID: UUID
+        public var taskID: UUID?
         public var journalEntryID: UUID?
         public var kind: Int
         public var filename: String
