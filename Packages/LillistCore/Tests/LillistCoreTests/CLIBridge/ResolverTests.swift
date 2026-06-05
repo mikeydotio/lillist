@@ -234,4 +234,25 @@ struct ResolverTests {
         #expect(shorts[id2] != nil)
         #expect(shorts[id1]! != shorts[id2]!)
     }
+
+    @Test("Destructive partial-match error points at the real working path, not the dead --exact flag")
+    func destructivePartialErrorMessage() async throws {
+        let (p, store) = try await makeStore()
+        _ = try await store.create(title: "Buy groceries weekly")
+        do {
+            _ = try await CLIBridge.Resolver.resolve(
+                token: "groc",
+                scope: .anywhere,
+                destructiveness: .destructive,
+                persistence: p
+            )
+            Issue.record("expected validationFailed")
+        } catch let LillistError.validationFailed(issues) {
+            let combined = issues.map(\.message).joined(separator: " ")
+            #expect(combined.contains("--exact") == false)
+            #expect(combined.contains("full title") || combined.contains("UUID"))
+        } catch {
+            Issue.record("unexpected: \(error)")
+        }
+    }
 }
