@@ -241,6 +241,55 @@ struct ImporterTests {
             ))
         }
     }
+
+    @Test("Journal entry with nil taskID is skipped and recorded")
+    func nilTaskIDJournalEntrySkipped() async throws {
+        let dst = try await TestStore.make()
+        let importer = Importer(persistence: dst)
+        var doc = emptyDocument(version: ExportSchema.version)
+        let orphanID = UUID()
+        doc.journalEntries = [
+            ExportSchema.JournalEntryDTO(
+                id: orphanID,
+                taskID: nil,
+                kind: JournalEntryKind.note.rawValue,
+                body: "no owner",
+                payload: nil,
+                createdAt: Date(timeIntervalSince1970: 1),
+                editedAt: nil
+            )
+        ]
+        let summary = try await importer.apply(document: doc, policy: .skipExisting)
+        #expect(summary.journalEntriesInserted == 0)
+        #expect(summary.journalEntriesSkipped == 1)
+        #expect(summary.errors.count == 1)
+        #expect(summary.errors[0].contains(orphanID.uuidString))
+    }
+
+    @Test("Journal entry referencing an absent task is skipped and recorded")
+    func unresolvedTaskIDJournalEntrySkipped() async throws {
+        let dst = try await TestStore.make()
+        let importer = Importer(persistence: dst)
+        var doc = emptyDocument(version: ExportSchema.version)
+        let entryID = UUID()
+        let danglingTaskID = UUID() // never appears in doc.tasks or the store
+        doc.journalEntries = [
+            ExportSchema.JournalEntryDTO(
+                id: entryID,
+                taskID: danglingTaskID,
+                kind: JournalEntryKind.note.rawValue,
+                body: "owner missing",
+                payload: nil,
+                createdAt: Date(timeIntervalSince1970: 2),
+                editedAt: nil
+            )
+        ]
+        let summary = try await importer.apply(document: doc, policy: .skipExisting)
+        #expect(summary.journalEntriesInserted == 0)
+        #expect(summary.journalEntriesSkipped == 1)
+        #expect(summary.errors.count == 1)
+        #expect(summary.errors[0].contains(entryID.uuidString))
+    }
 }
 
 private extension LillistTask {
