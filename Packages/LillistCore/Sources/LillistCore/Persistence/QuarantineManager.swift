@@ -27,11 +27,30 @@ public struct QuarantineManager: Sendable {
 
     public let rootDirectory: URL
     private let clock: @Sendable () -> Date
+    private let diskSpaceProbe: any DiskSpaceProbing
     private var fm: FileManager { FileManager.default }
 
-    public init(rootDirectory: URL, clock: @escaping @Sendable () -> Date = Date.init) {
+    /// Headroom multiplier applied to the live store's footprint when
+    /// deciding whether a quarantine copy can proceed. 2× covers the
+    /// momentary coexistence of source + copy plus WAL-checkpoint
+    /// inflation during the swap.
+    public static let quarantineHeadroomFactor: Int64 = 2
+
+    public init(
+        rootDirectory: URL,
+        diskSpaceProbe: any DiskSpaceProbing = FileManagerDiskSpaceProbe(),
+        clock: @escaping @Sendable () -> Date = Date.init
+    ) {
         self.rootDirectory = rootDirectory
+        self.diskSpaceProbe = diskSpaceProbe
         self.clock = clock
+    }
+
+    /// Bytes that must be free before `copyStore(at:)` will proceed:
+    /// `quarantineHeadroomFactor ×` the live store footprint.
+    public func requiredBytesForQuarantine(of storeURL: URL) throws -> Int64 {
+        let footprint = try diskSpaceProbe.footprint(of: storeURL)
+        return footprint * Self.quarantineHeadroomFactor
     }
 
     /// Move the SQLite store (and its `-wal` / `-shm` sidecars, if present)
@@ -70,6 +89,16 @@ public struct QuarantineManager: Sendable {
     public func copyStore(at storeURL: URL) throws -> QuarantinedBackup {
         guard fm.fileExists(atPath: storeURL.path) else {
             throw LillistError.storeUnavailable(reason: "Cannot quarantine: store missing at \(storeURL.path)")
+        }
+        // Pre-flight: refuse to take the recovery copy when the volume
+        // can't hold source + copy at once. Throwing here leaves the
+        // live store untouched (blind-spot #5: pre-destructive disk
+        // check). This is the copy `runMigration` relies on, so the
+        // check fires on the real migration path.
+        let needed = try requiredBytesForQuarantine(of: storeURL)
+        let available = try diskSpaceProbe.availableCapacity(forVolumeContaining: storeURL)
+        guard available >= needed else {
+            throw LillistError.insufficientDiskSpace(neededBytes: needed, availableBytes: available)
         }
         let folderName = String(Int(clock().timeIntervalSince1970))
         let quarantineDir = rootDirectory.appendingPathComponent("Quarantine/\(folderName)", isDirectory: true)

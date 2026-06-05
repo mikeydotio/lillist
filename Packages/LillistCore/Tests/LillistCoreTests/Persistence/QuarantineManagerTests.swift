@@ -76,4 +76,44 @@ struct QuarantineManagerTests {
             _ = try mgr.quarantineStore(at: bogus)
         }
     }
+
+    @Test("copyStore throws insufficientDiskSpace when the probe reports too little headroom")
+    func copyStoreRejectsLowDiskSpace() throws {
+        let root = try makeTempRoot()
+        let storeURL = root.appendingPathComponent("Lillist.sqlite")
+        try Data(repeating: 0x01, count: 4096).write(to: storeURL)
+        // Footprint stubbed at 4096; require 2x headroom = 8192; only
+        // 8191 available -> short by one byte.
+        let probe = FakeDiskSpaceProbe(availableBytes: 8191, footprintBytes: 4096)
+        let mgr = QuarantineManager(rootDirectory: root, diskSpaceProbe: probe, clock: { Date(timeIntervalSince1970: 1_700_000_000) })
+        #expect(throws: LillistError.insufficientDiskSpace(neededBytes: 8192, availableBytes: 8191)) {
+            _ = try mgr.copyStore(at: storeURL)
+        }
+        // The live store must remain in place — the check is pre-flight
+        // and copyStore never moves the original.
+        #expect(FileManager.default.fileExists(atPath: storeURL.path) == true)
+    }
+
+    @Test("copyStore proceeds when the probe reports ample headroom")
+    func copyStoreAcceptsAmpleDiskSpace() throws {
+        let root = try makeTempRoot()
+        let storeURL = root.appendingPathComponent("Lillist.sqlite")
+        try Data(repeating: 0x01, count: 4096).write(to: storeURL)
+        let probe = FakeDiskSpaceProbe(availableBytes: 1_000_000, footprintBytes: 4096)
+        let mgr = QuarantineManager(rootDirectory: root, diskSpaceProbe: probe, clock: { Date(timeIntervalSince1970: 1_700_000_000) })
+        let backup = try mgr.copyStore(at: storeURL)
+        // Copy, not move: the original stays put and the backup exists.
+        #expect(FileManager.default.fileExists(atPath: storeURL.path) == true)
+        #expect(FileManager.default.fileExists(atPath: backup.storeURL.path) == true)
+    }
+
+    @Test("requiredBytesForQuarantine is twice the live footprint")
+    func requiredBytesIsDoubleFootprint() throws {
+        let root = try makeTempRoot()
+        let storeURL = root.appendingPathComponent("Lillist.sqlite")
+        try Data(repeating: 0x01, count: 4096).write(to: storeURL)
+        let probe = FakeDiskSpaceProbe(availableBytes: 0, footprintBytes: 4096)
+        let mgr = QuarantineManager(rootDirectory: root, diskSpaceProbe: probe, clock: { Date() })
+        #expect(try mgr.requiredBytesForQuarantine(of: storeURL) == 8192)
+    }
 }
