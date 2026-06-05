@@ -2183,9 +2183,11 @@ shape. To test deterministically: pin `viewContext` at a stale row version
 (auto-merge OFF + a pending change + `NSMergePolicy.error`), bump the row
 from a second context, then call the mutator — the save throws
 `NSCocoaErrorDomain` 133020 and the catch's rollback leaves the context
-clean. (`transition` and `purgeAll` are intentionally out of scope: the
-former isn't covered by this plan; the latter runs the batch on a discarded
-background context, so there's nothing in the shared context to roll back.)
+clean. (`purgeAll` is the only exclusion: it runs the batch on a discarded
+background context, so there is nothing in the shared context to roll back.
+`transition`, `reorder`, `assignTag`, and `unassignTag` were subsequently
+fixed to roll back as well — a Wave-4 cross-cutting review found they had
+been missed.)
 
 **localOnly history grows unbounded.** `.localOnly` stores keep
 `NSPersistentHistoryTrackingKey` ON (so the sync-mode swap is a pure
