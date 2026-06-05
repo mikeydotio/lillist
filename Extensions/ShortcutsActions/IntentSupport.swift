@@ -20,17 +20,41 @@ enum IntentSupport {
         static let shared = Cache()
         private var mode: SyncMode?
         private var controller: PersistenceController?
+        /// A build already running for `mode`. Concurrent cold callers join
+        /// it instead of standing up a second container.
+        private var inFlight: (mode: SyncMode, task: Task<PersistenceController, Error>)?
 
         func controller(
             for configuration: StoreConfiguration
         ) async throws -> PersistenceController {
-            if let controller, self.mode == configuration.syncMode {
+            let wanted = configuration.syncMode
+            if let controller, self.mode == wanted {
                 return controller
             }
-            let fresh = try await PersistenceController(configuration: configuration)
-            self.mode = configuration.syncMode
-            self.controller = fresh
-            return fresh
+            // Coalesce concurrent cold builds. Building a PersistenceController
+            // suspends (loadPersistentStores + CloudKit bridge attach), and the
+            // actor releases isolation across that await — so without this two
+            // cold callers would both pass the cache check and both stand up a
+            // container (and a CloudKit mirroring subscription), orphaning one.
+            // The Task is registered synchronously *before* the first await, so
+            // a caller that enters while a build is suspended joins the same Task.
+            if let inFlight, inFlight.mode == wanted {
+                return try await inFlight.task.value
+            }
+            let build = Task { try await PersistenceController(configuration: configuration) }
+            self.inFlight = (wanted, build)
+            do {
+                let fresh = try await build.value
+                self.mode = wanted
+                self.controller = fresh
+                // Only clear if it's still our build — a concurrent caller may
+                // have replaced it with a different-mode build to join.
+                if self.inFlight?.mode == wanted { self.inFlight = nil }
+                return fresh
+            } catch {
+                if self.inFlight?.mode == wanted { self.inFlight = nil }
+                throw error
+            }
         }
     }
 
