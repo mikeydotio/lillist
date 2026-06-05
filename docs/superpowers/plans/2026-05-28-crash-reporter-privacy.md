@@ -1,6 +1,6 @@
 # Crash-Reporter Privacy Hardening Implementation Plan
 
-> **📍 STATUS — ⬜ PENDING — Wave 5.**
+> **📍 STATUS — ✅ MERGED — Wave 5 (commits `4dc1f96`..`5df296c`, 2026-06-05).** Closed redact-1, redact-5, canary-4, test-6. LillistCore 808 → 819 Swift-Testing tests, warning-free (verified green `--no-parallel`). Adversarially reviewed (spec + regression no findings; 3 INFO security observations recorded in the Wave-5 handoff). **One deviation from the printed plan**: Task 1 uses a capture-group regex `(title=)…` → `$1<redacted>` (not the bare lowercase literal template, which would lowercase the key and fail the plan's own Task-1 test + Task-5 golden); Task 7's stress test needs `try await withThrowingTaskGroup`. See `docs/superpowers/handoffs/wave-5.md`.
 >
 > Part of the **Foundation Hardening** program. **Single source of truth for progress, wave order, and cross-plan coordination:** [`2026-05-29-foundation-hardening-index.md`](2026-05-29-foundation-hardening-index.md). New to this project? Read the index first, then the review ([`docs/reviews/2026-05-28-foundation-review.md`](../../reviews/2026-05-28-foundation-review.md)) for *why* this work exists, then `CLAUDE.md` for conventions + build/test commands. Execute task-by-task with `superpowers:subagent-driven-development`.
 >
