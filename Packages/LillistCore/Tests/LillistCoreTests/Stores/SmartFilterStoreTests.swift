@@ -219,6 +219,23 @@ struct SmartFilterStoreEvaluateTests {
         #expect(results.map(\.id) == [t1, t2])
     }
 
+    @Test("evaluate(group:limit:) caps the number of returned rows")
+    func evaluateRespectsLimit() async throws {
+        let controller = try await TestStore.make()
+        let smartStore = SmartFilterStore(persistence: controller)
+        let taskStore = TaskStore(persistence: controller)
+        for i in 0..<25 {
+            _ = try await taskStore.create(title: "Open task \(i)")
+        }
+        let group = PredicateGroup(combinator: .all, predicates: [
+            .leaf(.init(field: .inTrash, op: .is, value: .bool(false)))
+        ])
+        let capped = try await smartStore.evaluate(group: group, limit: 20)
+        #expect(capped.count == 20)
+        let uncapped = try await smartStore.evaluate(group: group)
+        #expect(uncapped.count == 25)
+    }
+
     @Test("evaluate(group:) excludes archived rows by default")
     func evaluateExcludesArchivedByDefault() async throws {
         let controller = try await TestStore.make()
