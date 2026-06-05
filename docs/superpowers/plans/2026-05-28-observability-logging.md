@@ -1,6 +1,6 @@
 # Observability & Structured Logging Implementation Plan
 
-> **📍 STATUS — ⬜ PENDING — Wave 6.**
+> **📍 STATUS — ✅ COMPLETE — merged to `main` (Wave 6; commits `eef2944`..`32373e4`).** Closed logs-2 + the observability blind-spot. `LillistLog` pinned to `CrashReporting.subsystemIdentifier`; signpost+log weave into `MigrationCoordinator`/`TaskStore.children`; iOS MetricKit. A post-wave adversarial review fixed the two macOS log sites to log the error *type* (not `localizedDescription`) per the privacy contract (`2050142`). See `docs/superpowers/handoffs/wave-6.md`.
 >
 > **✅ Wave-5 reconciliation (2026-06-05):** Verified clean — Wave 5 (`4dc1f96..0bd7796`) touched none of this plan's instrument targets (`MigrationCoordinator.swift`, `TaskStore.swift`, both `AppEnvironment.swift`, the new MetricKit observer); every task anchor still resolves and the Wave-4 note below remains the operative anchor guidance. **One EOF note:** Wave 5 appended a new last entry to `engineering-notes.md` (`## 2026-05-28 — Crash-reporter redaction is layered…`, ~L2217), so if this plan appends a notes section, re-Read the tail and append after that real EOF.
 >
