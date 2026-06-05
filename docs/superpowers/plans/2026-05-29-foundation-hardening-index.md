@@ -31,7 +31,7 @@ CloudKit, XCTest + Swift Testing, xcodegen, GitHub Actions (new).
 > file is the **living progress tracker** for the program — keep it current as
 > plans merge.
 
-**As of 2026-05-29:**
+**As of 2026-06-04 (Wave 4 complete):**
 
 - ✅ **Wave 1 · `store-swap-safety`** — **merged to `main`** (commits
   `bfd8635`..`6f008f7`; 663 LillistCore tests green). Closed persist-3,
@@ -127,20 +127,55 @@ CloudKit, XCTest + Swift Testing, xcodegen, GitHub Actions (new).
   handler (redundant `try?` on a non-throwing `Task.value`, same pattern as
   cloudkit-convergence); the plan's stale pbxproj path was corrected to
   `Apps/Lillist-macOS.xcodeproj`.
-- ✅ **Wave 3 COMPLETE. Next: Wave 4** — `concurrency-stress-tests` (dependsOn
-  `cloudkit-convergence` ✅; reuses Wave-1's `FakePersistenceReconfigurer`),
-  `migration-adjacent-correctness` (dependsOn `store-swap-safety` ✅),
-  `background-context-seam` (after `breadcrumb-truthfulness` ✅ and
-  `cloudkit-convergence` ✅; **owns the `HistoryPruner` work**).
-- ⬜ **Waves 4–7** — pending. Follow the wave order + serial chains below.
+- ✅ **Wave 3 COMPLETE.**
+- ✅ **Wave 4 · `concurrency-stress-tests`** — **merged to `main`** (commits
+  `f093884`..`805291f`; 777→ tests green, warning-free). Closed conc-2, conc-3,
+  stores-4, notif-3, notif-9, test-3. Test-only plan; two beyond-plan findings
+  handled honestly: (a) `FakeUserNotificationCenter.add` was not upsert-faithful
+  to `UNUserNotificationCenter` (concurrent reconciles would trap the scheduler's
+  `Dictionary(uniqueKeysWithValues:)`) — fixed; (b) the plan's "revert-check bites"
+  premise for the AsyncStream suite is **false** (verified empirically; actor
+  scheduling masks Race A in the `recordEvent` seam — the existing
+  `preSubscriptionEventBuffering` has the same limitation). The N-subscriber suite
+  was kept (guards fan-out/no-starvation/churn-liveness) with honest docs;
+  `StoreReconfigureConcurrencyTests` wired into `Lillist-iOSAppHostedTests` so its
+  gated cases execute on a signed host. See `docs/engineering-notes.md`.
+- ✅ **Wave 4 · `migration-adjacent-correctness`** — **merged to `main`** (commits
+  `af7c29f`..`3a676d8`; 791 tests green; iOS + macOS apps build clean). Closed
+  notif-1, sync-2, sync-5, sync-6, sync-8. `NotificationScheduler.restoreSteadyState`
+  + morning-summary-preserving `cancelAllPending`; coordinator reads
+  `PreferencesStore` and restores in `.finalizing`; `MigrationJournal.isStale`
+  (600s threshold, recovery-sheet-only — `MigrationGate` untouched); truthful
+  `PauseReason.accountChanged` docstring + optional pre-erase `accountStateProvider`
+  guard; `runMigration` reentrancy guard. The new live-swap-gated
+  `MigrationCoordinatorRestoreTests` (+ `FakeUserNotificationCenter.swift`) are
+  wired into `Lillist-iOSAppHostedTests`; their executing proof is on a signed host.
+- ✅ **Wave 4 · `background-context-seam`** — **merged to `main`** (commits
+  `5caef1e`..`45b7d7d`; 805 tests green; iOS + macOS apps build clean). Closed
+  threading-1, persist-4, conc-5, notif-7, persist-1. `makeBackgroundContext`
+  helper; Exporter reads + Importer writes + `purgeAll`/`AutoPurgeJob` moved off
+  the main `viewContext`; `CascadeReaper` reproduces the Cascade rules
+  `NSBatchDeleteRequest` skips; `context.rollback()` added to all 8 mutating
+  catch paths (one line each, breadcrumb-truthfulness shape untouched);
+  `HistoryPruner.sweep` (localOnly-gated, idempotent) created **and wired into
+  both `bootstrap()`s**. Two required deviations (both correct): `batchPurge` takes
+  a predicate format+args (NSPredicate non-Sendable), and `CascadeReaper.batchDelete`
+  groups per-entity leaf-first because `NSBatchDeleteRequest(objectIDs:)` is
+  single-entity (the plan's mixed-entity batch crashed at runtime). Residual #3
+  (un-cancelled OS pending notifications on purge) documented as acknowledged.
+- ✅ **Wave 4 COMPLETE. Next: Wave 5** — `crash-reporter-privacy` (fully isolated),
+  `app-layer-test-rehab` (introduces `GatedPersistenceResolver`; **must precede**
+  `extension-persistence-unification`; starts the iOS `project.yml` chain). See
+  `docs/superpowers/handoffs/wave-4.md`.
+- ⬜ **Waves 5–7** — pending. Follow the wave order + serial chains below.
 
 ### Progress checklist
 
 - **Wave 1 (P0):** ✅ store-swap-safety · ✅ recurrence-input-hardening
 - **Wave 2 (P1):** ✅ breadcrumb-truthfulness · ✅ fractional-ordering-compaction · ✅ predicate-parity · ◧ link-preview-ssrf-guards (Tasks 1–5 done; **Task 6 Share-Extension gate → Wave 6**)
 - **Wave 3 (P1):** ✅ cloudkit-convergence · ✅ resolve-inert-features
-- **Wave 4:** ✅ concurrency-stress-tests · ✅ migration-adjacent-correctness · ⬜ **background-context-seam ← NEXT**
-- **Wave 5 (P2):** ⬜ crash-reporter-privacy · ⬜ app-layer-test-rehab
+- **Wave 4:** ✅ concurrency-stress-tests · ✅ migration-adjacent-correctness · ✅ background-context-seam
+- **Wave 5 (P2):** ⬜ **crash-reporter-privacy ← NEXT** · ⬜ app-layer-test-rehab
 - **Wave 6:** ⬜ extension-persistence-unification · ⬜ export-import-robustness · ⬜ cli-robustness · ⬜ performance-budgets-and-paging · ⬜ observability-logging
 - **Wave 7 (closing):** ⬜ privacy-manifest-export-compliance · ⬜ recovery-hardening · ⬜ lillistui-localization-a11y · ⬜ ci-and-build-posture (LAST)
 
@@ -531,7 +566,13 @@ so coverage isn't overstated:
     timing-sensitive suites) and/or add a retry for one-off SIGSEGV/timing flakes.
     Full analysis in `docs/engineering-notes.md` (2026-06-04 entry). **Re-run a
     full `swift test` before treating a single SIGSEGV/timing flake as a real
-    failure.**
+    failure.** **(c) Third manifestation observed during Wave 4:**
+    `TaskStoreRecurrenceSpawnTests."After-completion series spawns at completedAt +
+    interval"` rarely fails its `abs(spawn.start − (beforeClose + interval)) < 2.0`
+    wall-clock assertion (~2.03s) when the full suite runs under heavy parallel
+    load — the gap between capturing `beforeClose` and the internal `completedAt`
+    stamp exceeded the 2s tolerance. Passes in isolation and on re-run; same
+    root cause (CPU contention), same Wave-7 remedy. Not a Wave-4 regression.
 
 ## Suggested commit/PR cadence
 
