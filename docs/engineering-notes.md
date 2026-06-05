@@ -2258,3 +2258,45 @@ treat as a same-launch pre-arm; otherwise surface it). The reporter's
 injectable `now` clock makes this deterministic in tests. If you ever see
 a real crash go unreported with a matching PID, this window is the first
 place to look.
+
+## 2026-06-04 — Performance budgets are gated by explicit timed assertions, not `measure()` baselines
+
+**Context.** Design §761 promises an assertion-tested smart-filter budget
+("< 100ms against 10,000 tasks"). The perf suite lives at
+`Packages/LillistCore/Tests/LillistCoreTests/Performance/` — the *only*
+`XCTestCase`-based files in LillistCore (every other suite is Swift
+Testing). They are deliberately segregated there.
+
+**Gotcha 1 — `measure()` does not fail under `swift test`.** XCTest's
+`measure(metrics:)` records performance numbers and, *in Xcode*, diffs them
+against a stored baseline to fail on regression. Under `swift test` (SwiftPM)
+there is **no baseline store**, so `measure()` runs the block and reports a
+number but **never fails the build**, no matter how slow. Therefore the real
+budget gate is `XCTAssertWithinBudget` in `PerfBudget.swift`: it times a
+synchronous block `PerfBudget.assertionReps` times (after a warm-up), takes
+the **median** (so one scheduling spike can't flake CI), and hard-asserts it
+against a constant. The `measure()` blocks are kept only for human-visible
+trend data in Xcode. **Do not delete the explicit `XCTAssertWithinBudget`
+gates in favour of `measure()` — that silently removes the regression
+tripwire.**
+
+**Gotcha 2 — async stores, synchronous timing.** The stores are `async`;
+the budget helper times a *synchronous* closure. Each timed block bridges
+the actor boundary with a `DispatchSemaphore` (`Task { await … }; sem.wait()`)
+so the evaluation still runs on the `viewContext` queue exactly as in
+production, but the wall-clock measurement stays synchronous and
+deterministic. Seeding (10k `create` calls) happens *outside* the timed
+block — only the fetch/evaluate is measured.
+
+**Policy — list fetches are batched; the UI pages.** Every list fetch in
+`TaskStore`/`TaskStore+Queries`/`SmartFilterStore` sets
+`fetchBatchSize = TaskStore.listFetchBatchSize` (100) so Core Data returns
+rows as faults in pages and only realizes each page when touched, instead of
+faulting and DTO-projecting an entire sibling/result set on the main-queue
+`viewContext` per reload. For windows the UI doesn't fully scroll, prefer the
+paged overloads — `TaskStore.children(of:limit:offset:)` and
+`SmartFilterStore.evaluate(group:limit:offset:)` — which map to
+`fetchLimit`/`fetchOffset`. The `NSPredicateCompiler` doc comment notes the
+compiled predicate is also `NSFetchedResultsController`-ready; an FRC-backed
+list is the natural next step if a single window proves insufficient, but
+YAGNI until a real screen needs it.
