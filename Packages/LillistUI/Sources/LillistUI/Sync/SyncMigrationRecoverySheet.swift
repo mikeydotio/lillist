@@ -57,12 +57,21 @@ public struct SyncMigrationRecoverySheet: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
-    private var detail: String {
+    private var detail: String { Self.detailText(for: journal) }
+
+    /// Pure, testable narrative for the recovery sheet body. Adds a
+    /// disk-space-specific hint when the journal's failure reason names
+    /// an `insufficientDiskSpace` shortfall, so the user knows freeing
+    /// space — not retrying — is the fix.
+    public nonisolated static func detailText(for journal: MigrationJournal) -> String {
         let operation = journal.operation.map(operationDescription) ?? "the previous sync change"
+        if journal.failureReason?.contains("insufficientDiskSpace") == true {
+            return String(localized: "Lillist couldn't finish \(operation) because the device is low on storage. Free up some space, then try again — your data is safe in the backup we made before the change.", bundle: .module)
+        }
         return String(localized: "Lillist couldn't finish \(operation). Restore from the backup we made before the change, or try again.", bundle: .module)
     }
 
-    private func operationDescription(_ op: ModeTransitionOp) -> String {
+    private nonisolated static func operationDescription(_ op: ModeTransitionOp) -> String {
         switch op {
         case .replaceICloudWithLocal: return "replacing iCloud with this device's data"
         case .replaceLocalWithICloud: return "replacing this device's data with iCloud"
