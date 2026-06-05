@@ -1,0 +1,10 @@
+2026-05-12 10:00:01 [TaskStore] updated Title=<redacted> to closed
+2026-05-12 10:00:02 [TaskStore] updated NOTES=<redacted> to open
+2026-05-12 10:00:03 [TagStore] linked Tag=<redacted> to task
+2026-05-12 10:00:04 [TaskStore] created <title><redacted></title>
+2026-05-12 10:00:05 [TaskStore] updated title=<redacted> milk and bread to closed
+2026-05-12 10:00:06 [Attach] saved to <path>
+2026-05-12 10:00:07 [Sync] opened <path>
+2026-05-12 10:00:08 [Attach] staged <path>
+2026-05-12 10:00:09 [Export] scratch <path>
+2026-05-12 10:00:10 [Account] iCloud account <email> active

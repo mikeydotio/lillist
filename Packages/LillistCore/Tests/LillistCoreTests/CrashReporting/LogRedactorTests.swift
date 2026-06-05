@@ -86,6 +86,9 @@ struct LogRedactorTests {
         #expect(LogRedactor.redact("scratch /tmp/scratch.dat") == "scratch <path>")
     }
 
+    @Test("Adversarial input: mixed-case keys, quoted/multi-word values, lowercase containers, temp paths")
+    func adversarial() throws { try goldenTest("raw-logs-adversarial") }
+
     @Test("Empty input → empty output")
     func empty() {
         #expect(LogRedactor.redact("") == "")
