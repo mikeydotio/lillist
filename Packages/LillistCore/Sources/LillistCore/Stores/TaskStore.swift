@@ -1,5 +1,6 @@
 import Foundation
 import CoreData
+import os
 
 public final class TaskStore: @unchecked Sendable {
     let persistence: PersistenceController
@@ -216,10 +217,17 @@ public final class TaskStore: @unchecked Sendable {
     // MARK: - Hierarchy
 
     public func children(of parentID: UUID?) async throws -> [TaskRecord] {
-        try await context.perform { [self] in
+        let signpostID = LillistLog.signposter.makeSignpostID()
+        let interval = LillistLog.signposter.beginInterval("taskFetch", id: signpostID)
+        defer { LillistLog.signposter.endInterval("taskFetch", interval) }
+
+        let records = try await context.perform { [self] in
             let req = try childrenFetchRequest(parentID: parentID, in: context)
             return try context.fetch(req).map(record(from:))
         }
+
+        LillistLog.store.debug("children fetch rows=\(records.count, privacy: .public)")
+        return records
     }
 
     /// Paged variant of `children(of:)`. Returns at most `limit` rows
