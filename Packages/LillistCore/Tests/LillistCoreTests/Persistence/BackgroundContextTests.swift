@@ -13,6 +13,13 @@ struct BackgroundContextTests {
         #expect(bg.concurrencyType == .privateQueueConcurrencyType)
     }
 
+    @Test("makeBackgroundContext stamps the local transaction author")
+    func stampsLocalAuthor() async throws {
+        let p = try await TestStore.make()
+        let bg = p.makeBackgroundContext()
+        #expect(bg.transactionAuthor == PersistenceController.localTransactionAuthor)
+    }
+
     @Test("background-context saves merge into the viewContext automatically")
     func bgSavesReachViewContext() async throws {
         let p = try await TestStore.make()

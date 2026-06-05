@@ -2161,6 +2161,14 @@ cascade-reachable objectID (`children` recursively → `journalEntries` →
 `attachments` / `notificationSpecs`; `JournalEntry.attachments`) and the
 full set is both deleted and merged. `purgeAll` and `AutoPurgeJob` use it.
 Nullify relationships (`tags`, `series`, `parent`) are not reaped.
+`purgeAll`'s returned count is exactly the reaped set (matched victims +
+their full cascade). `AutoPurgeJob`'s returned count carries the same
+meaning: matched victims plus every cascade-reachable descendant — it
+diverges from a "matched rows only" tally only when a soft-deleted parent
+and child have `deletedAt` values that straddle the retention cutoff (child
+pruned separately from parent). The DATA outcome is identical either way
+(the cascade deleted the child regardless), and both app callers discard the
+return value, so the discrepancy is informational only.
 
 **`NSBatchDeleteRequest(objectIDs:)` is single-entity.** A non-obvious
 trap the plan's first draft hit: that initializer requires *all* IDs to
