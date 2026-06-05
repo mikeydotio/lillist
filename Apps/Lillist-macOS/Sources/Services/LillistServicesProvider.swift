@@ -53,9 +53,12 @@ final class LillistServicesProvider: NSObject {
             } catch {
                 // The Services API has no inline UI to report failure;
                 // log and move on. The user can confirm by opening
-                // Lillist's main window.
+                // Lillist's main window. Log the error TYPE only as .public
+                // (per the LillistLog privacy contract) — a full
+                // localizedDescription can carry Core Data attribute values
+                // or the store path, which the redactor only partly covers.
                 LillistLog.app.error(
-                    "Services create failed: \(error.localizedDescription, privacy: .public)"
+                    "Services create failed: \(String(describing: type(of: error)), privacy: .public)"
                 )
             }
         }
