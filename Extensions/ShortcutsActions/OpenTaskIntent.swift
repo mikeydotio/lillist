@@ -1,5 +1,10 @@
 import AppIntents
 
+/// Opens Lillist with a chosen task. The app currently has no AppIntents
+/// deep-link surface to scroll to a specific task, so this intent's only
+/// effect is to bring the app to the foreground (`openAppWhenRun`). The
+/// task parameter is retained so the Shortcuts UI still lets the user pick
+/// a task and so the surface is ready when in-app navigation lands.
 struct OpenTaskIntent: AppIntent {
     static let title: LocalizedStringResource = "Open Task"
     static let description = IntentDescription("Open a task in Lillist.")
@@ -12,23 +17,6 @@ struct OpenTaskIntent: AppIntent {
     }
 
     @MainActor
-    func perform() async throws -> some IntentResult & OpensIntent {
-        let inner = OpenTaskInAppIntent()
-        inner.taskID = task.id.uuidString
-        return .result(opensIntent: inner)
-    }
-}
-
-/// Hidden helper intent that the main app handles to scroll to the right
-/// task. Marked `isDiscoverable = false` so it doesn't surface in Shortcuts.
-struct OpenTaskInAppIntent: AppIntent {
-    static let title: LocalizedStringResource = "Open Task In App"
-    static let isDiscoverable = false
-
-    @Parameter(title: "Task ID") var taskID: String
-
-    init() {}
-
     func perform() async throws -> some IntentResult {
         .result()
     }
