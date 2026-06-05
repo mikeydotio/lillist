@@ -18,7 +18,7 @@ struct RecurrenceEditorViewModelTests {
         vm.repeats = true
         vm.freq = .daily
         vm.interval = 2
-        let rule = try? #require(vm.build())
+        let rule = vm.build()
         if case .calendar(let calRule) = rule {
             #expect(calRule.freq == .daily)
             #expect(calRule.interval == 2)
@@ -33,7 +33,7 @@ struct RecurrenceEditorViewModelTests {
         vm.repeats = true
         vm.freq = .weekly
         vm.byDay = [.monday, .wednesday, .friday]
-        let rule = try? #require(vm.build())
+        let rule = vm.build()
         if case .calendar(let calRule) = rule {
             #expect(calRule.byDay == [.monday, .wednesday, .friday])
         } else {
@@ -47,7 +47,7 @@ struct RecurrenceEditorViewModelTests {
         vm.repeats = true
         vm.mode = .afterCompletion
         vm.afterCompletionSeconds = 86_400 // 1 day
-        let rule = try? #require(vm.build())
+        let rule = vm.build()
         if case .afterCompletion(let after) = rule {
             #expect(after.interval == 86_400)
         } else {
