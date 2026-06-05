@@ -306,6 +306,7 @@ extension SmartFilterStore {
             let req = NSFetchRequest<LillistTask>(entityName: "LillistTask")
             req.predicate = NSPredicateCompiler.compile(rec.group, now: now, calendar: calendar)
             req.sortDescriptors = Self.sortDescriptors(field: rec.sortField, ascending: rec.sortAscending)
+            req.fetchBatchSize = TaskStore.listFetchBatchSize
             let tasks = try context.fetch(req)
             return tasks.map { Self.record(from: $0) }
         }
@@ -321,10 +322,12 @@ extension SmartFilterStore {
     /// this when the `.done` quick filter is selected so the "history"
     /// view shows everything completed.
     ///
-    /// Pass `limit` to bound the fetch at the SQLite level (`fetchLimit`)
-    /// rather than materializing every match and slicing afterwards — the
+    /// Pass `limit`/`offset` to bound the fetch at the SQLite level
+    /// (`fetchLimit`/`fetchOffset`) rather than materializing every match
+    /// and slicing afterwards. `limit <= 0` is ignored (unbounded), which
+    /// preserves the prior behaviour of callers that pass no limit. The
     /// Shortcuts `suggestedEntities` path uses this to fetch only the most
-    /// recent ~20 tasks. A non-positive `limit` is ignored (unbounded).
+    /// recent ~20 tasks; iOS Search uses it to page results.
     public func evaluate(
         group: PredicateGroup,
         sort: SortField = .modifiedAt,
@@ -332,7 +335,8 @@ extension SmartFilterStore {
         now: Date = Date(),
         calendar: Calendar = .current,
         includeArchived: Bool = false,
-        limit: Int? = nil
+        limit: Int = 0,
+        offset: Int = 0
     ) async throws -> [TaskStore.TaskRecord] {
         try await context.perform { [self] in
             let req = NSFetchRequest<LillistTask>(entityName: "LillistTask")
@@ -343,9 +347,9 @@ extension SmartFilterStore {
                 includeArchived: includeArchived
             )
             req.sortDescriptors = Self.sortDescriptors(field: sort, ascending: ascending)
-            if let limit, limit > 0 {
-                req.fetchLimit = limit
-            }
+            req.fetchBatchSize = TaskStore.listFetchBatchSize
+            req.fetchLimit = max(0, limit)
+            req.fetchOffset = max(0, offset)
             let tasks = try context.fetch(req)
             return tasks.map { Self.record(from: $0) }
         }

@@ -16,6 +16,7 @@ extension TaskStore {
                 NSSortDescriptor(key: "position", ascending: true),
                 NSSortDescriptor(key: "createdAt", ascending: true)
             ]
+            req.fetchBatchSize = TaskStore.listFetchBatchSize
             return try ctx.fetch(req).map(record(from:))
         }
     }
@@ -49,6 +50,7 @@ extension TaskStore {
             let req = NSFetchRequest<LillistTask>(entityName: "LillistTask")
             req.predicate = NSPredicate(format: "deletedAt == nil AND ANY tags.id IN %@", Array(matchTagIDs))
             req.sortDescriptors = SmartFilterStore.sortDescriptors(field: sort, ascending: ascending)
+            req.fetchBatchSize = TaskStore.listFetchBatchSize
             // De-dup: a task tagged with both a parent and a child tag must
             // appear once, not once per matching tag.
             let raw = try ctx.fetch(req)
