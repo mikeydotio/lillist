@@ -320,13 +320,19 @@ extension SmartFilterStore {
     /// `includeArchived: true` to surface them — the iOS Tasks view does
     /// this when the `.done` quick filter is selected so the "history"
     /// view shows everything completed.
+    ///
+    /// Pass `limit` to bound the fetch at the SQLite level (`fetchLimit`)
+    /// rather than materializing every match and slicing afterwards — the
+    /// Shortcuts `suggestedEntities` path uses this to fetch only the most
+    /// recent ~20 tasks. A non-positive `limit` is ignored (unbounded).
     public func evaluate(
         group: PredicateGroup,
         sort: SortField = .modifiedAt,
         ascending: Bool = false,
         now: Date = Date(),
         calendar: Calendar = .current,
-        includeArchived: Bool = false
+        includeArchived: Bool = false,
+        limit: Int? = nil
     ) async throws -> [TaskStore.TaskRecord] {
         try await context.perform { [self] in
             let req = NSFetchRequest<LillistTask>(entityName: "LillistTask")
@@ -337,6 +343,9 @@ extension SmartFilterStore {
                 includeArchived: includeArchived
             )
             req.sortDescriptors = Self.sortDescriptors(field: sort, ascending: ascending)
+            if let limit, limit > 0 {
+                req.fetchLimit = limit
+            }
             let tasks = try context.fetch(req)
             return tasks.map { Self.record(from: $0) }
         }
