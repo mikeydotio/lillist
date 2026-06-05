@@ -133,6 +133,10 @@ targets:
       # bundle. SharePayload has no UIKit-only behavior when initialised
       # with the `items:` test seam.
       - path: ../../Extensions/ShareExtension-iOS/SharePayload.swift
+      # Co-compile the ShareSaveFlow pure helper so the create-then-attach
+      # retry semantics of ShareRootView.save() can be unit-tested without
+      # a signed ShareExtension test host.
+      - path: ../../Extensions/ShareExtension-iOS/ShareSaveFlow.swift
       # Co-compile the ReportCrashIntent source so its resolver helper
       # can be exercised from the standalone iOS test bundle without
       # needing a ShortcutsActions extension test host.

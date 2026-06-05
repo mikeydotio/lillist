@@ -20,6 +20,7 @@
 		1F01AB703411576F362D1A03 /* AddTaskIntent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 343B12E0AE009EE4CB0ECBE7 /* AddTaskIntent.swift */; };
 		1F88713EE31954520467B3CB /* LillistUI in Frameworks */ = {isa = PBXBuildFile; productRef = 632F42FE2460074A366178DF /* LillistUI */; };
 		206EB5B95925C98A34CA2639 /* AddNoteIntent.swift in Sources */ = {isa = PBXBuildFile; fileRef = CECC0E4966AEDB2B50C11DCA /* AddNoteIntent.swift */; };
+		21698E677DED5BC3C4EB8BE9 /* ShareSaveFlow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 804C86DA842B1D2132ED3C7D /* ShareSaveFlow.swift */; };
 		226717D0A1CC4CEB70046125 /* PersistenceHostTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A059895D7E8E7448C996665 /* PersistenceHostTests.swift */; };
 		226734C540B8AD197D36ECD6 /* IntentSupport.swift in Sources */ = {isa = PBXBuildFile; fileRef = E4C1FA7E921214B499AC7C78 /* IntentSupport.swift */; };
 		25497F6321D64FC43701606F /* SceneBindings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7682F5D6476B1BB703DB96DF /* SceneBindings.swift */; };
@@ -49,6 +50,7 @@
 		8189623B012D1E3D79C2EC4B /* LillistCore in Frameworks */ = {isa = PBXBuildFile; productRef = 8CDB023B81A1C3EA772D3534 /* LillistCore */; };
 		81C29E7AB4222FEBE0FE34DB /* AppIntents.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 4908E6E0B96502CEFCDF8DB5 /* AppIntents.framework */; };
 		84647F7F04E327EF48C1C09D /* FakePersistenceReconfigurer.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB27849294EB47AAC45BE9E6 /* FakePersistenceReconfigurer.swift */; };
+		86BE2E5DFE2B9C3C1A67F30F /* ShareSaveFlow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 804C86DA842B1D2132ED3C7D /* ShareSaveFlow.swift */; };
 		901C7E98FDF9DA6C070A641A /* TaskSubtasksTab.swift in Sources */ = {isa = PBXBuildFile; fileRef = 29C684CCD22ABED2078AE9FA /* TaskSubtasksTab.swift */; };
 		92FB9F599E4AE68D4C2E5151 /* ShareExtension-iOS.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 940380DB2F7305D2993DCD30 /* ShareExtension-iOS.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		9310376B7A62E47BE291FF8A /* QuickCaptureDialogGuardTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9301ADE1A1C8413F200F134F /* QuickCaptureDialogGuardTests.swift */; };
@@ -77,6 +79,7 @@
 		E44CD61B5AAEBED11075F642 /* ICloudSyncSection.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4C6E6FFD67726D09240CC361 /* ICloudSyncSection.swift */; };
 		E4C230FEC3056278B860651E /* ReportCrashIntent.swift in Sources */ = {isa = PBXBuildFile; fileRef = A319992C5C6111D1848B5549 /* ReportCrashIntent.swift */; };
 		E56611471CAD14B868BBAE0D /* SearchTasksIntent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 127316B4280751452F412407 /* SearchTasksIntent.swift */; };
+		E78433A4AF7AB6C260056C6F /* ShareSaveFlowTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1D847A7C6B4F8AA849C2008 /* ShareSaveFlowTests.swift */; };
 		E8F2F2AFAD19AAB4AE538B52 /* NotificationPermissionFlowTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2B005498284E28D02A97CF6 /* NotificationPermissionFlowTests.swift */; };
 		ED3F0012AFC75791B7432CB6 /* ShareViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3013CF9707368DFFA43E4C72 /* ShareViewController.swift */; };
 		F11F925F3DFE05C9595A1825 /* SettingsTab.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1B6EFD3373C205B1003A91A /* SettingsTab.swift */; };
@@ -164,12 +167,14 @@
 		752930BC024A56479687DFAA /* QuickCaptureLockScreenIntent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuickCaptureLockScreenIntent.swift; sourceTree = "<group>"; };
 		7682F5D6476B1BB703DB96DF /* SceneBindings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneBindings.swift; sourceTree = "<group>"; };
 		7A09EF99D4B51FFC48E961F2 /* LillistCoreSharePayloadCompositionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LillistCoreSharePayloadCompositionTests.swift; sourceTree = "<group>"; };
+		804C86DA842B1D2132ED3C7D /* ShareSaveFlow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShareSaveFlow.swift; sourceTree = "<group>"; };
 		824FA7B5DC23A67CD85D65A0 /* OnboardingScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingScreen.swift; sourceTree = "<group>"; };
 		8E53A86D921898A0FB836C9A /* TaskDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TaskDetailView.swift; sourceTree = "<group>"; };
 		9301ADE1A1C8413F200F134F /* QuickCaptureDialogGuardTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuickCaptureDialogGuardTests.swift; sourceTree = "<group>"; };
 		931889C74DDB05BC8E5BF9BA /* CloudKitZoneEraserTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CloudKitZoneEraserTests.swift; sourceTree = "<group>"; };
 		940380DB2F7305D2993DCD30 /* ShareExtension-iOS.appex */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = "wrapper.app-extension"; path = "ShareExtension-iOS.appex"; sourceTree = BUILT_PRODUCTS_DIR; };
 		97A39E4B87749E005F34B7FF /* ReportCrashIntentTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReportCrashIntentTests.swift; sourceTree = "<group>"; };
+		A1D847A7C6B4F8AA849C2008 /* ShareSaveFlowTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShareSaveFlowTests.swift; sourceTree = "<group>"; };
 		A2B005498284E28D02A97CF6 /* NotificationPermissionFlowTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationPermissionFlowTests.swift; sourceTree = "<group>"; };
 		A319992C5C6111D1848B5549 /* ReportCrashIntent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReportCrashIntent.swift; sourceTree = "<group>"; };
 		A60CEF999A5541D9221BEF8C /* OpenTaskIntent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OpenTaskIntent.swift; sourceTree = "<group>"; };
@@ -419,6 +424,7 @@
 				9301ADE1A1C8413F200F134F /* QuickCaptureDialogGuardTests.swift */,
 				97A39E4B87749E005F34B7FF /* ReportCrashIntentTests.swift */,
 				6816606162835A06ED8B8FEF /* SharePayloadTests.swift */,
+				A1D847A7C6B4F8AA849C2008 /* ShareSaveFlowTests.swift */,
 			);
 			path = UnitTests;
 			sourceTree = "<group>";
@@ -591,6 +597,7 @@
 			children = (
 				D2F899010F7F794421F9DB2A /* SharePayload.swift */,
 				BF7C0CBC7BB61226C9ABECE1 /* ShareRootView.swift */,
+				804C86DA842B1D2132ED3C7D /* ShareSaveFlow.swift */,
 				3013CF9707368DFFA43E4C72 /* ShareViewController.swift */,
 			);
 			path = "ShareExtension-iOS";
@@ -810,6 +817,8 @@
 				C37A5B3B5892E493D5874513 /* ReportCrashIntentTests.swift in Sources */,
 				E40226631EC34F5D4110B4D6 /* SharePayload.swift in Sources */,
 				A6EE4318B3317216DF56160D /* SharePayloadTests.swift in Sources */,
+				86BE2E5DFE2B9C3C1A67F30F /* ShareSaveFlow.swift in Sources */,
+				E78433A4AF7AB6C260056C6F /* ShareSaveFlowTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -896,6 +905,7 @@
 			files = (
 				9978784936A13783F1BF8E35 /* SharePayload.swift in Sources */,
 				34376E8334E842553856720B /* ShareRootView.swift in Sources */,
+				21698E677DED5BC3C4EB8BE9 /* ShareSaveFlow.swift in Sources */,
 				ED3F0012AFC75791B7432CB6 /* ShareViewController.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
