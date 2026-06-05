@@ -2337,3 +2337,35 @@ Consequences for future work:
   (design §454: "stdout for data; stderr for diagnostics") and must
   stay `print`. The 43-`print()` figure in the foundation review counts
   these; do not "fix" them into loggers.
+
+## 2026-06-05 — Privacy manifests are per-bundle, not per-project (Plan: privacy-manifest-export-compliance, Wave 7)
+
+`PrivacyInfo.xcprivacy` and `ITSAppUsesNonExemptEncryption` live in
+*each* shipping bundle, not once at the project level. Lillist ships
+four uploadable bundles — the iOS app, the macOS app, `ShareExtension-iOS`,
+and `ShortcutsActions` — so each carries its own manifest (apps in
+`Resources/`, extensions at their source-dir root) and its own
+`ITSAppUsesNonExemptEncryption=false` in `Info.plist`. The four manifests
+are intentionally byte-identical (same `UserDefaults` CA92.1 +
+file-timestamp C617.1 required-reason APIs via shared `LillistCore`, same
+private-CloudKit user-content collection model); keep them in sync — a
+guard test (`PrivacyManifestComplianceTests` in both app test bundles)
+parses all four and asserts the reasons match exactly. Those test bundles
+are host-less (`TEST_HOST=""`), so the test reads the manifests from the
+repo tree via `#filePath`, not from `Bundle.main`. If you add a new
+required-reason API (e.g. `systemBootTime`, `diskSpace`), update all four
+manifests and the test's expected-reason assertions together.
+
+xcodegen auto-routes a non-buildable `.xcprivacy` to the resources build
+phase: for the apps it lands in the already-declared `Resources/`
+(`buildPhase: resources`); for the two extensions xcodegen *creates* a
+fresh resources build phase to hold it (the source-dir `sources` path
+already covers the file). No explicit `buildPhase: resources` entry was
+needed in either `project.yml` — verified by `find … -name
+PrivacyInfo.xcprivacy` against an unsigned build (one copy per `.app` /
+`.appex`). The macOS standalone test bundle (`Lillist-macOSTests`,
+`TEST_HOST=""`) still requires the `CODE_SIGNING_ALLOWED=NO` recipe for
+headless `xcodebuild test` because the scheme also builds the macOS app
+target, which needs a Mac provisioning profile a headless runner cannot
+auto-generate; the iOS standalone bundle ad-hoc-signs on the simulator
+without it.
