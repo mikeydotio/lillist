@@ -1,4 +1,5 @@
 import Foundation
+import os
 
 /// High-level wrapper that selects which mode-change operation the
 /// user kicked off.
@@ -173,8 +174,10 @@ public final class MigrationCoordinator {
         }
         let backup = try recorded ?? quarantine.latestQuarantinedStore(filename: filename)
         guard let backup else {
+            LillistLog.sync.error("restoreFromBackup found no quarantine backup")
             throw LillistError.storeUnavailable(reason: "No quarantine backup available")
         }
+        LillistLog.sync.notice("restoreFromBackup restoring quarantined store")
         emit(.removingLocalStore)
         try quarantine.restore(quarantinedStore: backup, to: targetURL)
         let prev = entry.previousMode ?? .localOnly
@@ -182,6 +185,7 @@ public final class MigrationCoordinator {
         try await host.reconfigure(to: prev)
         try journal.clear()
         emit(.completed)
+        LillistLog.sync.notice("restoreFromBackup completed mode=\(prev.rawValue, privacy: .public)")
     }
 
     // MARK: - Core migration runner
@@ -209,6 +213,15 @@ public final class MigrationCoordinator {
         }
         isMigrating = true
         defer { isMigrating = false }
+        let signpostID = LillistLog.signposter.makeSignpostID()
+        let interval = LillistLog.signposter.beginInterval(
+            "migration", id: signpostID,
+            "op=\(op.rawValue, privacy: .public) target=\(targetMode.rawValue, privacy: .public)"
+        )
+        defer { LillistLog.signposter.endInterval("migration", interval) }
+        LillistLog.sync.notice(
+            "migration start op=\(op.rawValue, privacy: .public) target=\(targetMode.rawValue, privacy: .public)"
+        )
         await breadcrumb("sync mode change start \(op.rawValue)")
         // 1. preparing — cancel notifications first so a destructive
         //    op doesn't leave stale fires pointing at deleted rows
@@ -253,6 +266,7 @@ public final class MigrationCoordinator {
             entry.lastHeartbeatAt = Date()
             try journal.write(entry)
             emit(.reconfiguringStore)
+            LillistLog.sync.notice("migration reconfiguring store")
             try await host.reconfigure(to: targetMode)
             await syncModeStore.setMode(targetMode)
 
@@ -285,6 +299,7 @@ public final class MigrationCoordinator {
                 entry.lastHeartbeatAt = Date()
                 try journal.write(entry)
                 emit(.erasingICloud(progress: 0))
+                LillistLog.sync.notice("migration erasing iCloud zones")
                 _ = try await zoneEraser.eraseManagedZones(
                     in: cloudKitContainerIdentifier,
                     progress: { [weak self] fraction in
@@ -325,6 +340,7 @@ public final class MigrationCoordinator {
 
             try journal.clear()
             emit(.completed)
+            LillistLog.sync.notice("migration completed op=\(op.rawValue, privacy: .public)")
             await breadcrumb("sync mode change completed \(op.rawValue)")
         } catch {
             entry.state = .failed
@@ -332,6 +348,9 @@ public final class MigrationCoordinator {
             entry.lastHeartbeatAt = Date()
             try? journal.write(entry)
             emit(.failed(reason: "\(error)"))
+            LillistLog.sync.error(
+                "migration failed op=\(op.rawValue, privacy: .public) error=\(String(describing: type(of: error)), privacy: .public)"
+            )
             await breadcrumb("sync mode change failed \(op.rawValue)", success: false)
             throw error
         }
