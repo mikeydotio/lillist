@@ -52,17 +52,16 @@ in-house crash reporter.
   features landed (Plans 1–20 are checked in; Plan 20a is captured in
   engineering-notes; Plan 21 is in flight on branches/commits). Useful
   as archaeology, *not* the current source of truth.
-- **Active program — Foundation Hardening:** the 2026-05-28 code review
+- **Completed program — Foundation Hardening:** the 2026-05-28 code review
   (`docs/reviews/2026-05-28-foundation-review.md`) and its 22 follow-up
-  plans are tracked **live** in
-  `docs/superpowers/plans/2026-05-29-foundation-hardening-index.md` — the
-  current source of truth for what's done and what's next (**Waves 1–6 are
-  complete and merged to `main`; Wave 7 is next** — `privacy-manifest-export-compliance`
-  FIRST, then `recovery-hardening`, `lillistui-localization-a11y`, and
-  `ci-and-build-posture` dead last). **New contributors picking this up:
-  start at that index**, then read the latest `docs/superpowers/handoffs/wave-N.md`.
-  Each plan file opens with a status banner; several carry per-wave
-  reconciliation notes.
+  plans are **all complete and merged to `main`** (Waves 1–7). The index
+  `docs/superpowers/plans/2026-05-29-foundation-hardening-index.md` is the
+  historical record of how it landed; `docs/superpowers/handoffs/wave-7.md`
+  is the closing handoff (and notes the CI scope: host-pinned snapshot tests
+  and the iCloud-dependent app-hosted/UI tests are verified on a signed Mac,
+  not in CI). The plans under `docs/superpowers/plans/` are now **archaeology**,
+  not an active to-do list. CI (`.github/workflows/ci.yml`) now enforces the
+  test/build matrix post-push on `main` (see *Build & test*).
 
 ## Build & test
 
