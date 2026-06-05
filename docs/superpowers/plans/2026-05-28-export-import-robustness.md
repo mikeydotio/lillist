@@ -1,6 +1,6 @@
 # Export/Import Robustness Implementation Plan
 
-> **📍 STATUS — ⬜ PENDING — Wave 6 (SECOND Wave-6 plan; `extension-persistence-unification` is FIRST).**
+> **📍 STATUS — ✅ COMPLETE — merged to `main` (Wave 6; commits `dca50bc`..`e2cdd34`).** Closed import-1/2/3, export-1. Note: Task 3 (`3974267`) is intentionally a transient non-compiling Importer (the DTO widening + `applyEntry` rewrite are atomically coupled); Task 4 (`a3e4852`) restores the build in the next commit. See `docs/superpowers/handoffs/wave-6.md`.
 >
 > **✅ Wave-5 reconciliation (2026-06-05):** Verified clean — Wave 5 (`4dc1f96..0bd7796`) touched none of this plan's files (its lane is `LillistError.swift`, `ExportSchema.swift`, `Exporter.swift`, `Importer.swift` + their three test files; Wave 5 worked in the Sync/CrashReporting/DragReorder/extension/app-shell lanes). Code anchors re-confirmed on `main`: `Importer.apply` still opens `let ctx = persistence.makeBackgroundContext()`; `applyEntry(_:into:taskByID:)` still reads `row.task = taskByID[dto.taskID]`; the Exporter `taskID:` sites + non-optional `ExportSchema.taskID` fields are intact. The Wave-4 note below remains the operative dependency note — no further edits required.
 >

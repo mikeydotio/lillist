@@ -198,21 +198,36 @@ CloudKit, XCTest + Swift Testing, xcodegen, GitHub Actions (new).
   composition tests. The iOS `Lillist-iOSTests` bundle now co-compiles `IntentSupport.swift`;
   the 3 Wave-4 `Lillist-iOSAppHostedTests` entries survived regeneration. `ShareRootView`'s
   `try?`-on-`addLinkPreview` and `TaskEntityQuery` routing were left for Wave 6 (residual #10).
-- ✅ **Wave 5 COMPLETE. Next: Wave 6** — `extension-persistence-unification` (FIRST; depends
-  on this wave's `GatedPersistenceResolver`; absorbs link-preview Task 6 / residual #10),
-  then `export-import-robustness`, `cli-robustness`, `performance-budgets-and-paging`,
-  `observability-logging`. See `docs/superpowers/handoffs/wave-5.md`.
-- ⬜ **Waves 6–7** — pending. Follow the wave order + serial chains below.
+- ✅ **Wave 5 COMPLETE.** See `docs/superpowers/handoffs/wave-5.md`.
+- ✅ **Wave 6 COMPLETE** — all 5 plans merged to `main` (35 commits, `d38134d`..`2723769`;
+  LillistCore 858 tests green ×2 modulo the 2 known residual-#11 timing flakes; iOS
+  `Lillist-iOSTests` bundle TEST SUCCEEDED with no restart; macOS + iOS app builds clean;
+  LillistUI 28 green). Closed **ext-1…6 + residual #10** (`extension-persistence-unification`),
+  **import-1/2/3 + export-1** (`export-import-robustness`), **cli-2…6** (`cli-robustness`),
+  the **§761 perf budget + unbounded-fetch** finding (`performance-budgets-and-paging`), and
+  **logs-2 + the observability blind-spot** (`observability-logging`). A 5-agent **adversarial
+  review** (workflow `wf_3997eee4-669`) found no prior-wave regression and clean cross-plan
+  composition, plus **2 confirmed medium findings that were fixed and re-verified** (`2050142`
+  macOS log-privacy: log error *type* not `localizedDescription`; `2723769`
+  `IntentSupport.Cache` concurrent-cold-build coalescing). **A mid-wave fix (`5dcaab1`) also
+  eliminated the iOS-bundle manifestation of residual #11** — `IntentSupportGateTests` no longer
+  builds a live `NSPersistentCloudKitContainer` (whose async CloudKit setup traps in the headless
+  bundle); the per-process cache had made that latent ~25% flake 100% deterministic. See
+  `docs/superpowers/handoffs/wave-6.md`.
+- ✅ **Wave 6 COMPLETE. Next: Wave 7** — `privacy-manifest-export-compliance` (FIRST; last
+  `project.yml` editor — owns the final coordinated `xcodegen generate`), then
+  `recovery-hardening`, `lillistui-localization-a11y`, then `ci-and-build-posture` **dead last**.
+- ⬜ **Wave 7** — pending. Follow the wave order + serial chains below.
 
 ### Progress checklist
 
 - **Wave 1 (P0):** ✅ store-swap-safety · ✅ recurrence-input-hardening
-- **Wave 2 (P1):** ✅ breadcrumb-truthfulness · ✅ fractional-ordering-compaction · ✅ predicate-parity · ◧ link-preview-ssrf-guards (Tasks 1–5 done; **Task 6 Share-Extension gate → Wave 6**)
+- **Wave 2 (P1):** ✅ breadcrumb-truthfulness · ✅ fractional-ordering-compaction · ✅ predicate-parity · ✅ link-preview-ssrf-guards (Tasks 1–5 Wave 2; **Task 6 Share-Extension gate landed Wave 6** — residual #10 closed)
 - **Wave 3 (P1):** ✅ cloudkit-convergence · ✅ resolve-inert-features
 - **Wave 4:** ✅ concurrency-stress-tests · ✅ migration-adjacent-correctness · ✅ background-context-seam
 - **Wave 5 (P2):** ✅ crash-reporter-privacy · ✅ app-layer-test-rehab
-- **Wave 6:** ⬜ **extension-persistence-unification ← NEXT** · ⬜ export-import-robustness · ⬜ cli-robustness · ⬜ performance-budgets-and-paging · ⬜ observability-logging
-- **Wave 7 (closing):** ⬜ privacy-manifest-export-compliance · ⬜ recovery-hardening · ⬜ lillistui-localization-a11y · ⬜ ci-and-build-posture (LAST)
+- **Wave 6:** ✅ extension-persistence-unification · ✅ export-import-robustness · ✅ cli-robustness · ✅ performance-budgets-and-paging · ✅ observability-logging
+- **Wave 7 (closing):** ⬜ **privacy-manifest-export-compliance ← NEXT** · ⬜ recovery-hardening · ⬜ lillistui-localization-a11y · ⬜ ci-and-build-posture (LAST)
 
 _When a plan merges, flip its box here and update its in-plan status banner._
 
@@ -674,16 +689,13 @@ so coverage isn't overstated:
    `AfterCompletionRule.interval` (Double) decodes fine (JSONDecoder rejects
    `NaN`/`Inf`) and produces a far-future spawn. None crash; left as abuse-
    resistance hardening if ever prioritized.
-10. **`link-preview-ssrf-guards` Task 6 — iOS Share Extension ingest gate**
-    (DEFERRED, not dropped) — Tasks 1–5 (policy + fetcher + CLI ingest) merged in
-    Wave 2, but Task 6 (wrapping `URLPreviewPolicy.isAllowed` around
-    `ShareRootView`'s `addLinkPreview`) is intentionally carried to **Wave 6**: per
-    chain #3, `app-layer-test-rehab` (Wave 5) and `extension-persistence-unification`
-    (Wave 6) restructure `ShareRootView.swift` first, and Task 6 must wrap whichever
-    `addLinkPreview` survives. Until it lands, the iOS Share Extension can still
-    persist an SSRF-bait URL as a link attachment (the *fetch* is already blocked by
-    the merged fetcher guard, so no request is made — only the row persists). Owner:
-    Wave 6, alongside `extension-persistence-unification`.
+10. **`link-preview-ssrf-guards` Task 6 — iOS Share Extension ingest gate** — ✅
+    **RESOLVED (Wave 6, commit `7755397`).** `extension-persistence-unification` Task 5
+    wrapped `URLPreviewPolicy.isAllowed` around `ShareRootView.save()`'s `addLinkPreview`
+    (gating the URL *before* `ShareSaveFlow.next`, so a private/loopback/non-http(s) link
+    is rejected with a message and never persists, and a retry still creates the task).
+    Pinned by `ShareLinkPolicyTests` in the standalone iOS bundle. The Share Extension can
+    no longer persist an SSRF-bait link row. (DNS-rebinding remains residual #1.)
 11. **Intermittent parallel-test instability — rare SIGSEGV + rare timing flakes**
     (investigated 2026-06-04, `cloudkit-convergence` / `resolve-inert-features`
     verification). Two manifestations, one root cause (parallel-test CPU
@@ -712,6 +724,18 @@ so coverage isn't overstated:
     load — the gap between capturing `beforeClose` and the internal `completedAt`
     stamp exceeded the 2s tolerance. Passes in isolation and on re-run; same
     root cause (CPU contention), same Wave-7 remedy. Not a Wave-4 regression.
+    **(d) iOS-bundle manifestation — ✅ ELIMINATED in Wave 6 (commit `5dcaab1`):**
+    the same Core-Data-container-creation crash surfaced in the `Lillist-iOSTests`
+    XCTest bundle as a reproducible mid-run restart (TEST FAILED despite 0 assertion
+    failures). Root: `IntentSupportGateTests` called the real
+    `IntentSupport.makePersistence()`, standing up a live `NSPersistentCloudKitContainer`
+    whose **async CloudKit mirroring setup traps** (`EXC_BREAKPOINT` in
+    `-[PFCloudKitContainerProvider containerWithIdentifier:options:]`) in the headless,
+    un-entitled bundle. It was a latent ~25% flake at Wave 5; Wave 6's per-process
+    `IntentSupport.Cache` held the container alive across suites and made it 100%
+    deterministic. Fixed by having the test exercise the pure
+    `resolver.resolveStoreConfiguration()` seam (no container) — bundle now 5/5 clean.
+    **The `swift test` manifestations (a)/(b)/(c) remain Wave 7's to bound/retry.**
 12. **`AutoPurgeJob.run` return count is now matched+cascade** (Wave 4
     `background-context-seam`) — the batch-delete rewrite changed `run()`'s return
     from "matched victim rows" to "matched victims + every cascade-reachable
