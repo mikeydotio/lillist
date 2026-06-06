@@ -230,7 +230,11 @@ final class AppEnvironment {
         let syncModeStore = SyncModeStore(appGroupID: appGroupID)
         let initialMode = await syncModeStore.currentMode()
         let baseConfig = try StoreConfiguration.defaultOnDisk.withSyncMode(initialMode)
-        let persistence = try await PersistenceController(configuration: baseConfig)
+        // Stamp the Mac's distinct author so the diagnostics observer can tell
+        // Mac-authored writes apart from iOS on the same iCloud account. Safe:
+        // macOS has no RemoteChangeReconciler, so no local-vs-foreign filter
+        // depends on this matching localTransactionAuthor.
+        let persistence = try await PersistenceController(configuration: baseConfig, transactionAuthor: PersistenceController.macAppTransactionAuthor)
         let host = PersistenceHost(controller: persistence, initialMode: initialMode)
         // Plan 21: device-local preferences live in App Group
         // UserDefaults so they survive destructive sync-mode migrations

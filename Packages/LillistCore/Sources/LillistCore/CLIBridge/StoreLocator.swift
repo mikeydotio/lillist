@@ -18,7 +18,7 @@ extension CLIBridge {
         }
 
         public static func openOnDisk(at url: URL) async throws -> PersistenceController {
-            try await PersistenceController(configuration: .onDisk(url: url))
+            try await PersistenceController(configuration: .onDisk(url: url), transactionAuthor: PersistenceController.cliTransactionAuthor)
         }
 
         public static func openAppGroup(identifier: String = appGroupIdentifier) async throws -> PersistenceController {
@@ -43,7 +43,7 @@ extension CLIBridge {
                 // Falling back to the legacy default if we can't reach
                 // the journal directory — the CLI was working before
                 // the journal existed, no reason to break it now.
-                return try await PersistenceController(configuration: .onDisk(url: url))
+                return try await PersistenceController(configuration: .onDisk(url: url), transactionAuthor: PersistenceController.cliTransactionAuthor)
             }
             let gate = MigrationGate(journal: journal, modeStore: modeStore)
             switch await gate.evaluate() {
@@ -51,7 +51,7 @@ extension CLIBridge {
                 throw LillistError.storeUnavailable(reason: message)
             case .proceed(let mode):
                 let config = StoreConfiguration.onDisk(url: url, syncMode: mode)
-                return try await PersistenceController(configuration: config)
+                return try await PersistenceController(configuration: config, transactionAuthor: PersistenceController.cliTransactionAuthor)
             }
         }
     }

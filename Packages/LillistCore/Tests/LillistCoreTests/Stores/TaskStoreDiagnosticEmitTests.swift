@@ -71,6 +71,33 @@ final class TaskStoreDiagnosticEmitTests: XCTestCase {
         XCTAssertEqual(reorder.payload["beforePosition"], .double(5.0))
     }
 
+    func test_cycle_throwing_reorder_still_emits_threwError_true() async throws {
+        let (store, spy, _) = try await makeStore()
+        let parent = try await store.create(title: "parent")
+        let child = try await store.create(title: "child")
+        try await store.reparent(id: child, newParent: parent)
+        // Reorder the parent under its own child → cycle guard throws. The emit
+        // must still fire on this non-tie throwing path.
+        await XCTAssertThrowsErrorAsync(try await store.reorder(id: parent, after: child, before: nil))
+        let events = await spy.events
+        let reorder = try XCTUnwrap(events.last { $0.name == "task.reorder" && $0.payload["taskID"] == .string(parent.uuidString) })
+        XCTAssertEqual(reorder.payload["threwError"], .bool(true))
+    }
+
+    func test_cross_parent_throwing_reorder_still_emits_threwError_true() async throws {
+        let (store, spy, _) = try await makeStore()
+        let p1 = try await store.create(title: "p1")
+        let p2 = try await store.create(title: "p2")
+        let a = try await store.create(title: "a"); try await store.reparent(id: a, newParent: p1)
+        let b = try await store.create(title: "b"); try await store.reparent(id: b, newParent: p2)
+        let mover = try await store.create(title: "mover")
+        // Anchors with different parents → "must share the same parent" throws.
+        await XCTAssertThrowsErrorAsync(try await store.reorder(id: mover, after: a, before: b))
+        let events = await spy.events
+        let reorder = try XCTUnwrap(events.last { $0.name == "task.reorder" && $0.payload["taskID"] == .string(mover.uuidString) })
+        XCTAssertEqual(reorder.payload["threwError"], .bool(true))
+    }
+
     func test_reparent_emits_task_reparent_with_parents_and_position() async throws {
         let (store, spy, _) = try await makeStore()
         let parent = try await store.create(title: "parent")

@@ -40,6 +40,19 @@ final class DiagnosticLogTests: XCTestCase {
         XCTAssertTrue(FileManager.default.fileExists(atPath: file.path))
     }
 
+    func test_setEnabled_false_stops_writing_midstream() async throws {
+        let dir = tempDir()
+        let log = DiagnosticLog(directory: dir, process: .app, enabled: true, dayStamp: "2026-06-06")
+        await log.log(event("task.create", 1))
+        await log.setEnabled(false)
+        await log.log(event("task.delete", 2))   // must be a silent no-op
+        let file = dir.appendingPathComponent("diag-2026-06-06-app.jsonl")
+        let lines = try DiagnosticEvent.decodeJSONLines(String(contentsOf: file, encoding: .utf8))
+        XCTAssertEqual(lines.map(\.name), ["task.create"], "a disabled write must not append")
+        let dropped = await log.droppedCount()
+        XCTAssertEqual(dropped, 0, "a disabled write is a no-op, not a counted drop")
+    }
+
     func test_nil_directory_is_silent_noop_not_a_drop() async throws {
         let log = DiagnosticLog(directory: nil, process: .app, enabled: true, dayStamp: "2026-06-06")
         await log.log(event("task.create", 1))
