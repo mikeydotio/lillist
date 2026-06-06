@@ -32,6 +32,7 @@ struct AddTaskIntent: AppIntent {
             parentToken: nil,
             statusToken: nil,
             persistence: persistence,
+            diagnosticLog: await IntentSupport.diagnosticLog(),
             now: Date(),
             calendar: .current
         )
