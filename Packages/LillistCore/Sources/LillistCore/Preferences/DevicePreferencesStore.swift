@@ -112,6 +112,23 @@ public actor DevicePreferencesStore {
         defaults.set(value, forKey: Self.crashPromptsKey)
     }
 
+    // MARK: Diagnostic logging
+
+    private static let diagnosticLoggingKey = "lillist.devicePrefs.diagnosticLoggingEnabled"
+    /// Whether file-based diagnostic logging is active on this device.
+    /// Default sourced from `DiagnosticDefaults` (on in Debug, off in Release).
+    /// Device-local + App-Group-shared so every process (app, extensions, CLI)
+    /// reads the same value; an explicit user choice always wins over the default.
+    public func diagnosticLoggingEnabled() -> Bool {
+        if defaults.object(forKey: Self.diagnosticLoggingKey) == nil {
+            return DiagnosticDefaults.enabledByDefault
+        }
+        return defaults.bool(forKey: Self.diagnosticLoggingKey)
+    }
+    public func setDiagnosticLoggingEnabled(_ value: Bool) {
+        defaults.set(value, forKey: Self.diagnosticLoggingKey)
+    }
+
     // MARK: One-time migration marker
 
     private static let migrationFlagKey = "lillist.devicePrefs.cdPartitionMigrationCompleted"
