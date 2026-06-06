@@ -48,6 +48,7 @@
 		69F7F7EA521AA3ADC6C1C984 /* LillistCoreSharePayloadCompositionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A09EF99D4B51FFC48E961F2 /* LillistCoreSharePayloadCompositionTests.swift */; };
 		70EFAEC895F77C3746EC9826 /* ShortcutsActions.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 3662AC54EFB61DCAB491C63C /* ShortcutsActions.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		736D7D381C885A085BE6C3C6 /* LillistCore in Frameworks */ = {isa = PBXBuildFile; productRef = 8DB8540AD27AC6302E455EF9 /* LillistCore */; };
+		738C0D75BE5ADE864FFD6D99 /* DiagnosticsSection.swift in Sources */ = {isa = PBXBuildFile; fileRef = C81CC087D02C40A7E042F841 /* DiagnosticsSection.swift */; };
 		73BE8F1D6EF2D3BE9D67C497 /* StatusAppEnum.swift in Sources */ = {isa = PBXBuildFile; fileRef = F3FB7F9EA7F274415E924EA6 /* StatusAppEnum.swift */; };
 		7737C2756C91D21D583CEEA5 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 590AF55F6A2BA0028259F134 /* PrivacyInfo.xcprivacy */; };
 		7A6D0D29236C8CF6E2FD5EDE /* LillistCore in Frameworks */ = {isa = PBXBuildFile; productRef = 9ED0B06375B70267A31FB5CA /* LillistCore */; };
@@ -206,6 +207,7 @@
 		BF7C0CBC7BB61226C9ABECE1 /* ShareRootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShareRootView.swift; sourceTree = "<group>"; };
 		BFB4D61C57B9856EB75E365B /* TasksView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TasksView.swift; sourceTree = "<group>"; };
 		C01EA0AAA388BBCF9B11BDED /* Lillist-iOSTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = "Lillist-iOSTests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
+		C81CC087D02C40A7E042F841 /* DiagnosticsSection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiagnosticsSection.swift; sourceTree = "<group>"; };
 		C879F47AAC9011FEA0721657 /* LillistShortcuts.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LillistShortcuts.swift; sourceTree = "<group>"; };
 		CE3F53A3610ABD48E84AF9CC /* QuickCaptureDialogHost.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuickCaptureDialogHost.swift; sourceTree = "<group>"; };
 		CECC0E4966AEDB2B50C11DCA /* AddNoteIntent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddNoteIntent.swift; sourceTree = "<group>"; };
@@ -571,6 +573,7 @@
 			children = (
 				EAFB6125227B6A731DA61F20 /* AdvancedSection.swift */,
 				400AB5E7E52D7AC0BFF18DAE /* CrashReportingSection.swift */,
+				C81CC087D02C40A7E042F841 /* DiagnosticsSection.swift */,
 				013C20AC115F9A9F16F18BA2 /* GeneralSection.swift */,
 				4C6E6FFD67726D09240CC361 /* ICloudSyncSection.swift */,
 				E4D39B252544E335C0CC4FB5 /* NotificationsSection.swift */,
@@ -922,6 +925,7 @@
 				046D8F27FB3D4AD0970C455F /* AppEnvironment.swift in Sources */,
 				3440B5C7EBBC1DE929C708F1 /* CrashReporterHost.swift in Sources */,
 				A3140D5C493ECC74519DBB39 /* CrashReportingSection.swift in Sources */,
+				738C0D75BE5ADE864FFD6D99 /* DiagnosticsSection.swift in Sources */,
 				B28D66C3798D9DE9462CB3D0 /* GeneralSection.swift in Sources */,
 				E44CD61B5AAEBED11075F642 /* ICloudSyncSection.swift in Sources */,
 				E01B4AB3BC5C4E7EE9093B74 /* LillistApp.swift in Sources */,
