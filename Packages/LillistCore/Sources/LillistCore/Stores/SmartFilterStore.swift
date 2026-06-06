@@ -8,8 +8,19 @@ public final class SmartFilterStore: @unchecked Sendable {
     private let persistence: PersistenceController
     private var context: NSManagedObjectContext { persistence.container.viewContext }
 
+    /// Optional diagnostic sink. When non-nil, `reorder` emits a `filter.reorder`
+    /// event (the SmartFilter analogue of `task.reorder`) on both the success and
+    /// throwing paths. `process`/`seq` placeholders are stamped by `DiagnosticLog`.
+    public var diagnosticLog: DiagnosticSink?
+
     public init(persistence: PersistenceController) {
         self.persistence = persistence
+    }
+
+    /// Fire-and-forget diagnostic emit, awaited for ordering. No-op without a sink.
+    fileprivate func emitDiag(_ name: String, _ payload: [String: DiagValue]) async {
+        guard let log = diagnosticLog else { return }
+        await log.log(DiagnosticEvent(at: Date(), seq: 0, process: .app, category: .ui, name: name, payload: payload))
     }
 
     /// Value-type DTO surfaced to callers. Never an `NSManagedObject`.
@@ -260,34 +271,73 @@ extension SmartFilterStore {
     /// Place `id` immediately between `after` and `before` (either may be nil).
     /// Uses `FractionalPosition` for gap-based insertion.
     public func reorder(id: UUID, after: UUID?, before: UUID?) async throws {
-        try await context.perform { [self] in
-            let target = try fetchManagedObject(id: id, in: context)
-            let afterRow = try after.map { try fetchManagedObject(id: $0, in: context) }
-            let beforeRow = try before.map { try fetchManagedObject(id: $0, in: context) }
-            if FractionalPosition.anchorsAreOutOfOrder(
-                after: afterRow?.position,
-                before: beforeRow?.position
-            ) {
-                throw LillistError.validationFailed([
-                    .init(field: "reorder", message: "anchors out of order")
-                ])
+        // Capture anchors inside `perform` so both the success and throwing paths
+        // can emit them — the throwing "anchors out of order" path is the
+        // SmartFilter analogue of the reorder-tie RCA.
+        let cap = ReorderCapture()
+        do {
+            try await context.perform { [self] in
+                let target = try fetchManagedObject(id: id, in: context)
+                let afterRow = try after.map { try fetchManagedObject(id: $0, in: context) }
+                let beforeRow = try before.map { try fetchManagedObject(id: $0, in: context) }
+                cap.afterPosition = afterRow?.position
+                cap.beforePosition = beforeRow?.position
+                if FractionalPosition.anchorsAreOutOfOrder(
+                    after: afterRow?.position,
+                    before: beforeRow?.position
+                ) {
+                    throw LillistError.validationFailed([
+                        .init(field: "reorder", message: "anchors out of order")
+                    ])
+                }
+                // If the target gap underflows, re-space all rows evenly, then
+                // recompute against the freshly-spaced neighbors. Recompaction and
+                // the target update persist together in this one perform block.
+                let needsCompaction = FractionalPosition.needsCompaction(
+                    after: afterRow?.position,
+                    before: beforeRow?.position
+                )
+                cap.didRecompact = needsCompaction
+                if needsCompaction {
+                    recompactSiblings()
+                }
+                let computed = FractionalPosition.position(
+                    after: afterRow?.position,
+                    before: beforeRow?.position
+                )
+                cap.computedPosition = computed
+                target.position = computed
+                target.modifiedAt = Date()
+                try context.save()
             }
-            // If the target gap underflows, re-space all rows evenly, then
-            // recompute against the freshly-spaced neighbors. Recompaction and
-            // the target update persist together in this one perform block.
-            if FractionalPosition.needsCompaction(
-                after: afterRow?.position,
-                before: beforeRow?.position
-            ) {
-                recompactSiblings()
-            }
-            target.position = FractionalPosition.position(
-                after: afterRow?.position,
-                before: beforeRow?.position
-            )
-            target.modifiedAt = Date()
-            try context.save()
+            await emitReorderDiag(id: id, afterID: after, beforeID: before, capture: cap, threwError: false)
+        } catch {
+            await context.perform { [self] in context.rollback() }
+            await emitReorderDiag(id: id, afterID: after, beforeID: before, capture: cap, threwError: true)
+            throw error
         }
+    }
+
+    /// Mutable carrier for reorder values captured inside `perform`. See the
+    /// equivalent in `TaskStore` for the `@unchecked Sendable` rationale.
+    private final class ReorderCapture: @unchecked Sendable {
+        var afterPosition: Double?
+        var beforePosition: Double?
+        var computedPosition: Double?
+        var didRecompact = false
+    }
+
+    private func emitReorderDiag(id: UUID, afterID: UUID?, beforeID: UUID?, capture cap: ReorderCapture, threwError: Bool) async {
+        await emitDiag("filter.reorder", [
+            "filterID": .string(id.uuidString),
+            "afterID": afterID.map { .string($0.uuidString) } ?? .null,
+            "beforeID": beforeID.map { .string($0.uuidString) } ?? .null,
+            "afterPosition": cap.afterPosition.map(DiagValue.double) ?? .null,
+            "beforePosition": cap.beforePosition.map(DiagValue.double) ?? .null,
+            "computedPosition": cap.computedPosition.map(DiagValue.double) ?? .null,
+            "didRecompact": .bool(cap.didRecompact),
+            "threwError": .bool(threwError),
+        ])
     }
 }
 
