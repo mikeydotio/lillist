@@ -41,7 +41,9 @@ enum IntentSupport {
             if let inFlight, inFlight.mode == wanted {
                 return try await inFlight.task.value
             }
-            let build = Task { try await PersistenceController(configuration: configuration) }
+            // Stamp the App Intents process's distinct author so the diagnostics
+            // history observer (in the main app) attributes intent-authored writes.
+            let build = Task { try await PersistenceController(configuration: configuration, transactionAuthor: PersistenceController.appIntentsTransactionAuthor) }
             self.inFlight = (wanted, build)
             do {
                 let fresh = try await build.value
@@ -79,5 +81,16 @@ enum IntentSupport {
         return try await resolver.makePersistence { config in
             try await Cache.shared.controller(for: config)
         }
+    }
+
+    /// Process-scoped diagnostic log for the App Intents extension. Explicit
+    /// emits (e.g. `task.create`) land in this process's own JSONL file and
+    /// honor the shared device toggle.
+    static func diagnosticLog() async -> DiagnosticLog {
+        DiagnosticLog.shared(
+            process: .appIntents,
+            appGroupID: appGroupID,
+            enabled: await DevicePreferencesStore(appGroupID: appGroupID).diagnosticLoggingEnabled()
+        )
     }
 }

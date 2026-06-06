@@ -79,9 +79,23 @@ struct ShareRootView: View {
                 saveError = "App Group container is not available."
                 return
             }
-            let persistence = try await resolver.makePersistence()
+            // Stamp this process's distinct author so the diagnostics history
+            // observer (in the main app) attributes extension-authored writes —
+            // central to the reorder-tie RCA.
+            let persistence = try await resolver.makePersistence(
+                transactionAuthor: PersistenceController.shareExtensionTransactionAuthor
+            )
             let taskStore = TaskStore(persistence: persistence)
             let attachmentStore = AttachmentStore(persistence: persistence)
+
+            // Explicit diagnostic emits (e.g. task.create with observedMaxPosition)
+            // land in this process's own JSONL file, honoring the shared toggle.
+            let diagnosticLog = DiagnosticLog.shared(
+                process: .shareExtension,
+                appGroupID: appGroupID,
+                enabled: await DevicePreferencesStore(appGroupID: appGroupID).diagnosticLoggingEnabled()
+            )
+            taskStore.diagnosticLog = diagnosticLog
 
             // SSRF gate (link-preview-ssrf-guards Task 6 / residual #10):
             // reject a private/loopback/non-http(s) URL before it can be

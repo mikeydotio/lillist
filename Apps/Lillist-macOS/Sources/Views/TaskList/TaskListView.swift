@@ -125,6 +125,7 @@ struct TaskListView: View {
                         dragController.setOnDrop { dragged, target in
                             Task { await applyDrop(dragged: dragged, target: target) }
                         }
+                        dragController.diagnosticLog = env.diagnosticLog
                         syncDragControllerInputs(nodes: rootNodes)
                     }
                     .overlay {

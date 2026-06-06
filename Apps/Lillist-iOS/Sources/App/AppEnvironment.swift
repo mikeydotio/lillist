@@ -56,6 +56,12 @@ final class AppEnvironment {
     /// Drives notification reconciliation from CloudKit imports (review
     /// notif-2). Retained for the app's lifetime; deinit removes its observer.
     let remoteChangeReconciler: RemoteChangeReconciler
+    /// File-based diagnostic logging (design 2026-06-06). On-by-default in
+    /// Debug/TestFlight, off in Release. Injected into the stores + drag layer.
+    let diagnosticLog: DiagnosticLog
+    /// Derives data-layer events from persistent history (its own watermark key,
+    /// distinct from the reconciler's) and forwards them to `diagnosticLog`.
+    let diagnosticHistoryObserver: DiagnosticHistoryObserver
     let notificationPermissions: NotificationPermissions
     let accountStateMonitor: AccountStateMonitor
     let onboardingState: OnboardingState
@@ -164,6 +170,23 @@ final class AppEnvironment {
             }
         }
 
+        // Diagnostic logging. Constructed with the build-config default; the real
+        // toggle value is read from `DevicePreferencesStore` (an actor) in
+        // `bootstrap()`. The history observer uses its OWN watermark key so it
+        // never clobbers the reconciler's.
+        let diagnosticLog = DiagnosticLog.shared(
+            process: .app,
+            appGroupID: Self.appGroupID,
+            enabled: DiagnosticDefaults.enabledByDefault
+        )
+        self.diagnosticLog = diagnosticLog
+        self.diagnosticHistoryObserver = DiagnosticHistoryObserver(
+            persistence: persistence,
+            tokenStore: PersistentHistoryTokenStore(appGroupID: Self.appGroupID, key: PersistentHistoryTokenStore.diagnosticsKey),
+            sink: diagnosticLog,
+            process: .app
+        )
+
         // Plan 2 stub — once the CloudKit-backed monitor is bridged into
         // the UI's SyncIndicatorMonitor protocol, swap this for the live one.
         self.syncMonitor = IdleSyncIndicatorMonitor()
@@ -199,6 +222,10 @@ final class AppEnvironment {
         self.tagStore.breadcrumbs = breadcrumbs
         self.journalStore.breadcrumbs = breadcrumbs
         self.attachmentStore.breadcrumbs = breadcrumbs
+
+        // Diagnostics: hook the stores into the shared diagnostic log.
+        self.taskStore.diagnosticLog = diagnosticLog
+        self.smartFilterStore.diagnosticLog = diagnosticLog
 
         // Plan 21: assemble the migration machinery and pause reason
         // classifier. These dangle off the env so the settings
@@ -310,6 +337,13 @@ final class AppEnvironment {
         try? await preferencesStore.normalizeSingletons()
         await remoteChangeReconciler.processPendingHistory()
         remoteChangeReconciler.start()
+        // Diagnostics: sync the cached enabled flag from device prefs, then run a
+        // catch-up pass over any history that accrued while not running and begin
+        // observing live remote changes. Order matters — set the flag first so the
+        // catch-up emits honor the toggle.
+        await diagnosticLog.setEnabled(await devicePreferences.diagnosticLoggingEnabled())
+        await diagnosticHistoryObserver.processPendingHistory()
+        diagnosticHistoryObserver.start()
         await notificationScheduler.bootstrap()
         // Persist-6: opportunistically clear expired trash at launch.
         // Errors are non-fatal — a failed purge must never block launch.

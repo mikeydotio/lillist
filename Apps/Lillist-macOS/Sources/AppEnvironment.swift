@@ -50,6 +50,11 @@ final class AppEnvironment {
     let syncMonitor: any SyncIndicatorMonitor
     let breadcrumbs: BreadcrumbBuffer
     let crashReporter: CrashReporter
+    /// File-based diagnostic logging (design 2026-06-06). macOS is the FIRST
+    /// persistent-history consumer here (no `RemoteChangeReconciler` exists), so
+    /// the observer is net-new wiring with its own watermark key.
+    let diagnosticLog: DiagnosticLog
+    let diagnosticHistoryObserver: DiagnosticHistoryObserver
     var crashPromptsEnabled: Bool = PreferencesStore.Prefs.crashPromptsDefault
     /// Plan 10: latest known iCloud account state, mirrored off the
     /// `AccountStateMonitor` actor so SwiftUI views can react via
@@ -166,6 +171,22 @@ final class AppEnvironment {
         self.tagStore.breadcrumbs = breadcrumbs
         self.journalStore.breadcrumbs = breadcrumbs
 
+        // Diagnostics: shared log + net-new history observer (own watermark key).
+        let diagnosticLog = DiagnosticLog.shared(
+            process: .macApp,
+            appGroupID: Self.appGroupID,
+            enabled: DiagnosticDefaults.enabledByDefault
+        )
+        self.diagnosticLog = diagnosticLog
+        self.diagnosticHistoryObserver = DiagnosticHistoryObserver(
+            persistence: persistence,
+            tokenStore: PersistentHistoryTokenStore(appGroupID: Self.appGroupID, key: PersistentHistoryTokenStore.diagnosticsKey),
+            sink: diagnosticLog,
+            process: .macApp
+        )
+        self.taskStore.diagnosticLog = diagnosticLog
+        self.smartFilterStore.diagnosticLog = diagnosticLog
+
         // Plan 21: assemble the migration machinery + classifier.
         let quarantineRoot = storeURL.map { $0.deletingLastPathComponent() }
             ?? FileManager.default.temporaryDirectory
@@ -248,6 +269,11 @@ final class AppEnvironment {
         // forward into App Group UserDefaults if we haven't already.
         // Idempotent; subsequent launches no-op.
         _ = try? await preferencesPartitionMigrator.runIfNeeded()
+        // Diagnostics: sync the cached flag from device prefs, catch up on
+        // history accrued while not running, then observe live remote changes.
+        await diagnosticLog.setEnabled(await devicePreferences.diagnosticLoggingEnabled())
+        await diagnosticHistoryObserver.processPendingHistory()
+        diagnosticHistoryObserver.start()
         await notificationScheduler.bootstrap()
         // Persist-6: opportunistically clear expired trash at launch.
         _ = try? await autoPurgeJob.run()

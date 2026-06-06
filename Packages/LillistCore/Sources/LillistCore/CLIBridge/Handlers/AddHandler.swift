@@ -13,10 +13,15 @@ extension CLIBridge {
             parentToken: String?,
             statusToken: String?,
             persistence: PersistenceController,
+            diagnosticLog: DiagnosticSink? = nil,
             now: Date,
             calendar: Calendar
         ) async throws -> UUID {
             let tasks = TaskStore(persistence: persistence)
+            // Optional diagnostic sink so out-of-process creates (App Intents)
+            // emit task.create with observedMaxPosition. Default nil → CLI and
+            // existing callers are unchanged.
+            tasks.diagnosticLog = diagnosticLog
             let tags = TagStore(persistence: persistence)
 
             var parentID: UUID?

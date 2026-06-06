@@ -95,6 +95,7 @@ struct TasksView: View {
             dragController.setOnDrop { dragged, target in
                 Task { await applyDrop(dragged: dragged, target: target) }
             }
+            dragController.diagnosticLog = env.diagnosticLog
         }
         .onChange(of: sortBinding.wrappedValue) { _, _ in Task { await reload() } }
         .onChange(of: selectedTokens) { _, _ in Task { await reload() } }
