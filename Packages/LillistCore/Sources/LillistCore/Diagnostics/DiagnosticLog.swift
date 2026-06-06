@@ -20,6 +20,7 @@ public actor DiagnosticLog {
     private var handle: FileHandle?
     private var openDayStamp: String?
     private var didPrune = false
+    private var nextSeq: UInt64 = 0
 
     /// Test/explicit initializer. `dayStamp` pins the file's day for deterministic
     /// tests; in production it is `nil` and each event's `at` drives the day.
@@ -65,10 +66,23 @@ public actor DiagnosticLog {
     public func log(_ event: DiagnosticEvent) {
         guard enabled, let directory else { return }
         pruneOnceIfNeeded(in: directory, now: event.at)
+        // The log owns the authoritative `process` (only it knows the true
+        // writing process) and the per-file monotonic `seq` (so events from all
+        // emitters — observer, stores, drag — share one ordering). Emitters pass
+        // placeholders for both; they are overwritten here.
+        let stamped = DiagnosticEvent(
+            at: event.at,
+            seq: nextSeq,
+            process: process,
+            category: event.category,
+            name: event.name,
+            payload: event.payload
+        )
+        nextSeq += 1
         do {
-            let stamp = fixedDayStamp ?? Self.utcDayStamp(event.at)
+            let stamp = fixedDayStamp ?? Self.utcDayStamp(stamped.at)
             let handle = try fileHandle(for: stamp, in: directory)
-            let line = try DiagnosticEvent.encodeJSONLine(event)
+            let line = try DiagnosticEvent.encodeJSONLine(stamped)
             try handle.write(contentsOf: Data(line.utf8))
         } catch {
             dropped += 1

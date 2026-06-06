@@ -20,6 +20,12 @@ public final class TaskStore: @unchecked Sendable {
     /// See design Section 8 / Plan 9.
     public var breadcrumbs: BreadcrumbBuffer?
 
+    /// Optional diagnostic sink. When non-nil, semantic row-manipulations emit
+    /// structured `DiagnosticEvent`s (full payloads, incl. the throwing reorder
+    /// path) to the per-process JSONL log. The concrete `DiagnosticLog` stamps
+    /// the authoritative process + seq, so emits here pass placeholders.
+    public var diagnosticLog: DiagnosticSink?
+
     /// Page size for list fetches. Core Data returns rows as faults in
     /// pages of this size and only realizes each page when touched, so a
     /// reload over a large sibling set doesn't fault+project every row on
@@ -33,6 +39,15 @@ public final class TaskStore: @unchecked Sendable {
         if let b = breadcrumbs {
             try? await b.record(action: action, success: success)
         }
+    }
+
+    /// Fire-and-forget diagnostic emit. Awaited (like `recordCrumb`) so it is
+    /// deterministic and ordered, but the underlying `DiagnosticLog` swallows all
+    /// I/O failures — it can never throw into or stall a mutation. No-op when no
+    /// sink is wired. `process`/`seq` are placeholders the log overwrites.
+    fileprivate func emitDiag(_ name: String, category: DiagCategory = .ui, _ payload: [String: DiagValue]) async {
+        guard let log = diagnosticLog else { return }
+        await log.log(DiagnosticEvent(at: Date(), seq: 0, process: .app, category: category, name: name, payload: payload))
     }
 
     public init(persistence: PersistenceController) {
@@ -119,7 +134,13 @@ public final class TaskStore: @unchecked Sendable {
     ) async throws -> UUID {
         do {
             try validateTitle(title)
-            let id: UUID = try await context.perform { [self] in
+            let result: (id: UUID, assigned: Double, observedMax: Double?) = try await context.perform { [self] in
+                let parentTask = try parent.map { try fetchManagedObject(id: $0, in: context) }
+                // Compute the position BEFORE inserting the new row, so the
+                // observed-max fetch reflects real siblings — not the new task's
+                // own default 0.0. Behavior-preserving for `assigned`:
+                // position(after: nil) == position(after: 0.0) == 1.0.
+                let detail = try nextPositionDetail(forParent: parentTask)
                 let task = LillistTask(context: context)
                 let id = UUID()
                 task.id = id
@@ -131,19 +152,27 @@ public final class TaskStore: @unchecked Sendable {
                 task.isPinned = false
                 task.createdAt = Date()
                 task.modifiedAt = task.createdAt
-                if let parent {
-                    let parentTask = try fetchManagedObject(id: parent, in: context)
-                    task.parent = parentTask
-                }
-                task.position = try nextPosition(forParent: task.parent)
+                task.parent = parentTask
+                task.position = detail.assigned
                 try context.save()
-                return id
+                return (id: id, assigned: detail.assigned, observedMax: detail.observedMax)
             }
             await recordCrumb("task.create", success: true)
-            return id
+            await emitDiag("task.create", [
+                "taskID": .string(result.id.uuidString),
+                "parentID": parent.map { .string($0.uuidString) } ?? .null,
+                "assignedPosition": .double(result.assigned),
+                "observedMaxPosition": result.observedMax.map(DiagValue.double) ?? .null,
+                "threwError": .bool(false),
+            ])
+            return result.id
         } catch {
             await context.perform { [self] in context.rollback() }
             await recordCrumb("task.create", success: false)
+            await emitDiag("task.create", [
+                "parentID": parent.map { .string($0.uuidString) } ?? .null,
+                "threwError": .bool(true),
+            ])
             throw error
         }
     }
@@ -270,8 +299,9 @@ public final class TaskStore: @unchecked Sendable {
 
     public func reparent(id: UUID, newParent newParentID: UUID?) async throws {
         do {
-            try await context.perform { [self] in
+            let outcome: (oldParentID: UUID?, assigned: Double) = try await context.perform { [self] in
                 let m = try fetchManagedObject(id: id, in: context)
+                let oldParentID = m.parent?.id
                 let newParent: LillistTask?
                 if let newParentID {
                     let candidate = try fetchManagedObject(id: newParentID, in: context)
@@ -285,14 +315,28 @@ public final class TaskStore: @unchecked Sendable {
                     newParent = nil
                 }
                 m.parent = newParent
-                m.position = try nextPosition(forParent: newParent)
+                let assigned = try nextPosition(forParent: newParent)
+                m.position = assigned
                 m.modifiedAt = Date()
                 try context.save()
+                return (oldParentID: oldParentID, assigned: assigned)
             }
             await recordCrumb("task.move", success: true)
+            await emitDiag("task.reparent", [
+                "taskID": .string(id.uuidString),
+                "oldParentID": outcome.oldParentID.map { .string($0.uuidString) } ?? .null,
+                "newParentID": newParentID.map { .string($0.uuidString) } ?? .null,
+                "assignedPosition": .double(outcome.assigned),
+                "threwError": .bool(false),
+            ])
         } catch {
             await context.perform { [self] in context.rollback() }
             await recordCrumb("task.move", success: false)
+            await emitDiag("task.reparent", [
+                "taskID": .string(id.uuidString),
+                "newParentID": newParentID.map { .string($0.uuidString) } ?? .null,
+                "threwError": .bool(true),
+            ])
             throw error
         }
     }
@@ -300,11 +344,21 @@ public final class TaskStore: @unchecked Sendable {
     // MARK: - Reorder
 
     public func reorder(id: UUID, after afterID: UUID?, before beforeID: UUID?) async throws {
+        // Surfaces values captured *inside* the perform block to the emit calls
+        // on both the success and throwing paths. The anchor positions are
+        // recorded before the out-of-order guard, so the RCA path (a degenerate
+        // tie that throws) still logs the equal anchors that caused it.
+        let cap = ReorderCapture()
         do {
             try await context.perform { [self] in
                 let m = try fetchManagedObject(id: id, in: context)
                 let afterTask = try afterID.map { try fetchManagedObject(id: $0, in: context) }
                 let beforeTask = try beforeID.map { try fetchManagedObject(id: $0, in: context) }
+
+                // Capture the observed anchor positions BEFORE any validation or
+                // recompaction mutates them — this is the diagnostic evidence.
+                cap.afterPosition = afterTask?.position
+                cap.beforePosition = beforeTask?.position
 
                 let afterParent = afterTask?.parent
                 let beforeParent = beforeTask?.parent
@@ -335,24 +389,54 @@ public final class TaskStore: @unchecked Sendable {
                 // If the target gap underflows, re-space all siblings evenly,
                 // then recompute against the freshly-spaced neighbors. Recompaction
                 // and the target update persist together in this one perform block.
-                if FractionalPosition.needsCompaction(
-                    after: afterTask?.position,
-                    before: beforeTask?.position
-                ) {
-                    recompactSiblings(ofParent: newParent)
-                }
-
-                m.position = FractionalPosition.position(
+                let needsCompaction = FractionalPosition.needsCompaction(
                     after: afterTask?.position,
                     before: beforeTask?.position
                 )
+                cap.didRecompact = needsCompaction
+                if needsCompaction {
+                    recompactSiblings(ofParent: newParent)
+                }
+
+                let computed = FractionalPosition.position(
+                    after: afterTask?.position,
+                    before: beforeTask?.position
+                )
+                cap.computedPosition = computed
+                m.position = computed
                 m.modifiedAt = Date()
                 try context.save()
             }
+            await emitReorderDiag(id: id, afterID: afterID, beforeID: beforeID, capture: cap, threwError: false)
         } catch {
             await context.perform { [self] in context.rollback() }
+            await emitReorderDiag(id: id, afterID: afterID, beforeID: beforeID, capture: cap, threwError: true)
             throw error
         }
+    }
+
+    /// Mutable carrier for reorder values captured inside `perform` so both the
+    /// success and catch paths can emit them. `@unchecked Sendable`: written on
+    /// the context queue and read only after the `await` completes (a
+    /// happens-after barrier), so there is never concurrent access.
+    private final class ReorderCapture: @unchecked Sendable {
+        var afterPosition: Double?
+        var beforePosition: Double?
+        var computedPosition: Double?
+        var didRecompact = false
+    }
+
+    private func emitReorderDiag(id: UUID, afterID: UUID?, beforeID: UUID?, capture cap: ReorderCapture, threwError: Bool) async {
+        await emitDiag("task.reorder", [
+            "taskID": .string(id.uuidString),
+            "afterID": afterID.map { .string($0.uuidString) } ?? .null,
+            "beforeID": beforeID.map { .string($0.uuidString) } ?? .null,
+            "afterPosition": cap.afterPosition.map(DiagValue.double) ?? .null,
+            "beforePosition": cap.beforePosition.map(DiagValue.double) ?? .null,
+            "computedPosition": cap.computedPosition.map(DiagValue.double) ?? .null,
+            "didRecompact": .bool(cap.didRecompact),
+            "threwError": .bool(threwError),
+        ])
     }
 
     // MARK: - Status transitions
@@ -683,6 +767,13 @@ public final class TaskStore: @unchecked Sendable {
     }
 
     func nextPosition(forParent parent: LillistTask?) throws -> Double {
+        try nextPositionDetail(forParent: parent).assigned
+    }
+
+    /// As `nextPosition`, but also surfaces the observed max sibling position so
+    /// `create` can record `observedMaxPosition` in its diagnostic — the value
+    /// the non-atomic `max + 1` allocation saw, central to the reorder-tie RCA.
+    func nextPositionDetail(forParent parent: LillistTask?) throws -> (assigned: Double, observedMax: Double?) {
         let req = NSFetchRequest<LillistTask>(entityName: "LillistTask")
         if let parent {
             req.predicate = NSPredicate(format: "parent == %@", parent)
@@ -692,7 +783,7 @@ public final class TaskStore: @unchecked Sendable {
         req.sortDescriptors = [NSSortDescriptor(key: "position", ascending: false)]
         req.fetchLimit = 1
         let lastPosition = try context.fetch(req).first?.position
-        return FractionalPosition.position(after: lastPosition, before: nil)
+        return (FractionalPosition.position(after: lastPosition, before: nil), lastPosition)
     }
 
     /// Re-space every non-trashed sibling under `parent` to even 1.0 gaps,

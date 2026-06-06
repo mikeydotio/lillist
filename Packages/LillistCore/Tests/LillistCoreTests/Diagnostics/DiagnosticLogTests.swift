@@ -109,6 +109,19 @@ final class DiagnosticLogTests: XCTestCase {
         XCTAssertEqual(dropped, 0)
     }
 
+    func test_log_stamps_authoritative_process_and_monotonic_seq() async throws {
+        let dir = tempDir()
+        let log = DiagnosticLog(directory: dir, process: .macApp, enabled: true, dayStamp: "2026-06-06")
+        // Emitter passes a placeholder process (.app) and seq (999); the log
+        // overwrites both with its own process and a per-file monotonic seq.
+        await log.log(DiagnosticEvent(at: Date(timeIntervalSince1970: 1_700_000_000), seq: 999, process: .app, category: .ui, name: "a", payload: [:]))
+        await log.log(DiagnosticEvent(at: Date(timeIntervalSince1970: 1_700_000_000), seq: 999, process: .app, category: .ui, name: "b", payload: [:]))
+        let file = dir.appendingPathComponent("diag-2026-06-06-macApp.jsonl")
+        let lines = try DiagnosticEvent.decodeJSONLines(String(contentsOf: file, encoding: .utf8))
+        XCTAssertEqual(lines.map(\.process), [.macApp, .macApp])
+        XCTAssertEqual(lines.map(\.seq), [0, 1])
+    }
+
     func test_shared_returns_same_instance_per_process_and_resolves_a_directory() {
         let a = DiagnosticLog.shared(process: .cli, appGroupID: "group.io.mikeydotio.Lillist", enabled: false)
         let b = DiagnosticLog.shared(process: .cli, appGroupID: "group.io.mikeydotio.Lillist", enabled: true)
