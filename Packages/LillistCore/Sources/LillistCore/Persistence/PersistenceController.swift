@@ -31,9 +31,23 @@ public final class PersistenceController: @unchecked Sendable {
     /// stable string, not the device fingerprint — per-device identity isn't
     /// needed here, only "this app vs. the CloudKit mirror".
     public static let localTransactionAuthor = "Lillist.app"
+    /// Per-process author stamps. The diagnostics history observer attributes
+    /// each mutation to its writing process via these. They are deliberately
+    /// distinct strings; the app keeps `localTransactionAuthor` so
+    /// `RemoteChangeReconciler`'s local-vs-foreign classification is unchanged.
+    public static let shareExtensionTransactionAuthor = "Lillist.shareExtension"
+    public static let appIntentsTransactionAuthor = "Lillist.appIntents"
+    public static let macAppTransactionAuthor = "Lillist.macApp"
+    public static let cliTransactionAuthor = "Lillist.cli"
 
-    public init(configuration: StoreConfiguration) async throws {
+    /// The author actually stamped on this controller's contexts. Defaults to
+    /// `localTransactionAuthor`; extensions/CLI pass their own so persistent
+    /// history records *which process* authored each change.
+    public let transactionAuthor: String
+
+    public init(configuration: StoreConfiguration, transactionAuthor: String = PersistenceController.localTransactionAuthor) async throws {
         self.configuration = configuration
+        self.transactionAuthor = transactionAuthor
         let container = try Self.makeContainer(for: configuration)
         let description = Self.makeStoreDescription(for: configuration)
         container.persistentStoreDescriptions = [description]
@@ -64,8 +78,8 @@ public final class PersistenceController: @unchecked Sendable {
         // (whose author is the reserved `NSCloudKitMirroringDelegate.import`).
         // `RemoteChangeReconciler` keys off this author to skip self-originated
         // history when deciding which tasks to reconcile after a remote pull.
-        container.viewContext.transactionAuthor = Self.localTransactionAuthor
-        container.viewContext.name = Self.localTransactionAuthor
+        container.viewContext.transactionAuthor = transactionAuthor
+        container.viewContext.name = transactionAuthor
 
         self.container = container
 
@@ -118,7 +132,7 @@ public final class PersistenceController: @unchecked Sendable {
         // so `RemoteChangeReconciler`'s local-vs-foreign history filter
         // (change.author != localAuthor) correctly classifies bulk-import /
         // purge writes as local, not as foreign CloudKit changes.
-        context.transactionAuthor = Self.localTransactionAuthor
+        context.transactionAuthor = transactionAuthor
         return context
     }
 
