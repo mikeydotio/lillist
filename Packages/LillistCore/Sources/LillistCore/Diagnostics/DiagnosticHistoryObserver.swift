@@ -49,6 +49,36 @@ public final class DiagnosticHistoryObserver: @unchecked Sendable {
     private let seqLock = NSLock()
     private var nextSeq: UInt64 = 0
 
+    /// Serializes drains. A burst of `NSPersistentStoreRemoteChange`
+    /// notifications spawns several `Task { await processPendingHistory() }`
+    /// calls on arbitrary threads; without this they would race the split token
+    /// read-modify-write (read inside `perform`, advance after the emit loop —
+    /// two suspension points apart) and double-emit the same history into the
+    /// append-only log. The gate lets exactly one drain run at a time and
+    /// coalesces overlapping requests into a single follow-up pass, so no change
+    /// is ever emitted twice or missed.
+    private let drainGate = DrainGate()
+
+    /// Actor gate guarding the single-drain invariant. An actor (not a lock)
+    /// because the call sites are `async`, where `NSLock.lock()` is unavailable.
+    private actor DrainGate {
+        private var isDraining = false
+        private var rerunRequested = false
+        /// `true` if the caller becomes the owning drainer; `false` if a drain is
+        /// already in flight (a coalesced rerun is requested instead).
+        func tryAcquire() -> Bool {
+            if isDraining { rerunRequested = true; return false }
+            isDraining = true
+            return true
+        }
+        /// `true` if the owner should sweep again (a request arrived mid-drain).
+        func finishOrRerun() -> Bool {
+            if rerunRequested { rerunRequested = false; return true }
+            isDraining = false
+            return false
+        }
+    }
+
     /// - Parameters:
     ///   - persistence: the live controller; its `viewContext` fetches history.
     ///   - tokenStore: watermark persistence — pass one keyed with
@@ -92,7 +122,26 @@ public final class DiagnosticHistoryObserver: @unchecked Sendable {
 
     /// Walk history since the last watermark, emit one event per change, advance
     /// the watermark. Public so the host can run a catch-up pass at launch.
+    ///
+    /// Reentrancy-safe: only one drain runs at a time. If a call arrives while a
+    /// drain is in flight it requests a single coalesced follow-up pass and
+    /// returns, so overlapping notifications never double-emit and a change that
+    /// lands mid-drain is still picked up. The lock is only ever held across
+    /// synchronous flag checks — never across an `await`.
     public func processPendingHistory() async {
+        guard await drainGate.tryAcquire() else { return }
+        while true {
+            await drainOnce()
+            if await drainGate.finishOrRerun() { continue }   // change landed mid-drain; sweep again
+            return
+        }
+    }
+
+    /// One serialized read-fetch-emit-advance pass. Only ever called by the
+    /// single owning `processPendingHistory` loop, so the token read (inside
+    /// `perform`) and advance (after the emit loop) are atomic w.r.t. other
+    /// drains despite the intervening suspension points.
+    private func drainOnce() async {
         let ctx = persistence.container.viewContext
         let (changes, newToken): ([HistoryChange], NSPersistentHistoryToken?)
         do {
