@@ -1,4 +1,5 @@
 import Foundation
+import SQLite3
 
 /// Assembles the diagnostic export `.zip`: merged + raw JSONL logs, a manifest,
 /// and (Task 14) a consistent SQLite store snapshot. Mirrors `Exporter`'s
@@ -24,19 +25,22 @@ public struct DiagnosticPackageBuilder: Sendable {
         public let exportedAt: Date
         public let diagnosticLoggingEnabled: Bool
         public var files: [String]
+        public var notes: [String]
 
-        public init(buildVersion: String, osVersion: String, deviceModel: String, exportedAt: Date, diagnosticLoggingEnabled: Bool, files: [String] = []) {
+        public init(buildVersion: String, osVersion: String, deviceModel: String, exportedAt: Date, diagnosticLoggingEnabled: Bool, files: [String] = [], notes: [String] = []) {
             self.buildVersion = buildVersion
             self.osVersion = osVersion
             self.deviceModel = deviceModel
             self.exportedAt = exportedAt
             self.diagnosticLoggingEnabled = diagnosticLoggingEnabled
             self.files = files
+            self.notes = notes
         }
     }
 
     public enum BuildError: Error, Equatable {
         case zipProducedNothing
+        case snapshotFailed(message: String)
     }
 
     let diagnosticsDir: URL?
@@ -85,13 +89,47 @@ public struct DiagnosticPackageBuilder: Sendable {
             inventory.append("events.jsonl")
         }
 
-        // Task 14 inserts the consistent VACUUM INTO store snapshot here.
+        var notes: [String] = []
+        if options.includeStore {
+            if let storeURL {
+                let storeDir = stageDir.appendingPathComponent("store", isDirectory: true)
+                try fm.createDirectory(at: storeDir, withIntermediateDirectories: true)
+                let dest = storeDir.appendingPathComponent("Lillist.sqlite")
+                try Self.snapshotStore(at: storeURL, into: dest)
+                inventory.append("store/Lillist.sqlite")
+            } else {
+                // In-memory (/dev/null) stores have no URL to snapshot.
+                notes.append("store snapshot skipped: no on-disk store URL")
+            }
+        }
 
         var meta = metadata
         meta.files = inventory.sorted()
+        meta.notes = notes
         try Self.manifestEncoder().encode(meta).write(to: stageDir.appendingPathComponent("manifest.json"))
 
         return stageDir
+    }
+
+    /// Produce one consistent SQLite file from the live store using
+    /// `VACUUM INTO`. Opens the source **read-only** (the live store can't be
+    /// closed) and writes a fresh, fully-checkpointed copy — no need to copy the
+    /// `-wal`/`-shm` sidecars, and no torn read. `dest` must not already exist.
+    static func snapshotStore(at storeURL: URL, into dest: URL) throws {
+        var db: OpaquePointer?
+        let openResult = sqlite3_open_v2(storeURL.path, &db, SQLITE_OPEN_READONLY, nil)
+        defer { sqlite3_close(db) }
+        guard openResult == SQLITE_OK else {
+            throw BuildError.snapshotFailed(message: "open: \(String(cString: sqlite3_errmsg(db)))")
+        }
+        let escaped = dest.path.replacingOccurrences(of: "'", with: "''")
+        var errmsg: UnsafeMutablePointer<CChar>?
+        let rc = sqlite3_exec(db, "VACUUM INTO '\(escaped)'", nil, nil, &errmsg)
+        guard rc == SQLITE_OK else {
+            let message = errmsg.map { String(cString: $0) } ?? "rc=\(rc)"
+            sqlite3_free(errmsg)
+            throw BuildError.snapshotFailed(message: "vacuum: \(message)")
+        }
     }
 
     /// Stage, zip, and return a temp `.zip` URL. Cleans up the staging directory.

@@ -1,4 +1,5 @@
 import XCTest
+import CoreData
 @testable import LillistCore
 
 final class DiagnosticPackageBuilderTests: XCTestCase {
@@ -66,6 +67,43 @@ final class DiagnosticPackageBuilderTests: XCTestCase {
         let files = try FileManager.default.contentsOfDirectory(at: dir, includingPropertiesForKeys: nil)
         let merged = DiagnosticPackageBuilder.mergeEvents(from: files)
         XCTAssertEqual(merged.map(\.at.timeIntervalSince1970), [10, 15, 20])
+    }
+
+    func test_snapshot_store_is_a_complete_openable_db_with_expected_rows() async throws {
+        // On-disk localOnly store with 3 tasks (kept open so the read-only
+        // snapshot connection can read the live WAL — matching production, where
+        // the app holds the store open).
+        let storeURL = tempDir().appendingPathComponent("Lillist.sqlite")
+        let persistence = try await PersistenceController(configuration: .onDisk(url: storeURL, syncMode: .localOnly))
+        let store = TaskStore(persistence: persistence)
+        for title in ["a", "b", "c"] { _ = try await store.create(title: title) }
+
+        let dest = tempDir().appendingPathComponent("snapshot.sqlite")
+        try DiagnosticPackageBuilder.snapshotStore(at: storeURL, into: dest)
+        XCTAssertTrue(FileManager.default.fileExists(atPath: dest.path))
+
+        // Reopen the snapshot with a fresh, read-only coordinator using the same
+        // model and assert the row count survived intact.
+        let model = persistence.container.managedObjectModel
+        let coordinator = NSPersistentStoreCoordinator(managedObjectModel: model)
+        try coordinator.addPersistentStore(ofType: NSSQLiteStoreType, configurationName: nil, at: dest, options: [NSReadOnlyPersistentStoreOption: true])
+        let ctx = NSManagedObjectContext(concurrencyType: .privateQueueConcurrencyType)
+        ctx.persistentStoreCoordinator = coordinator
+        let count = try await ctx.perform {
+            try ctx.count(for: NSFetchRequest<NSManagedObject>(entityName: "LillistTask"))
+        }
+        XCTAssertEqual(count, 3)
+    }
+
+    func test_includeStore_with_nil_url_notes_skip_in_manifest() throws {
+        let dir = try seedDiagnosticsDir()
+        let builder = DiagnosticPackageBuilder(diagnosticsDir: dir, storeURL: nil, metadata: sampleMetadata())
+        let stage = try builder.stage(options: .init(includeLogs: false, includeStore: true))
+        defer { try? FileManager.default.removeItem(at: stage.deletingLastPathComponent()) }
+        let decoder = JSONDecoder(); decoder.dateDecodingStrategy = .iso8601
+        let meta = try decoder.decode(DiagnosticPackageBuilder.Metadata.self, from: Data(contentsOf: stage.appendingPathComponent("manifest.json")))
+        XCTAssertTrue(meta.notes.contains { $0.contains("no on-disk store URL") })
+        XCTAssertFalse(meta.files.contains { $0.hasPrefix("store/") })
     }
 
     func test_logs_excluded_when_includeLogs_false() throws {
