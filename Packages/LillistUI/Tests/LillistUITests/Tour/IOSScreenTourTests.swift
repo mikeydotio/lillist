@@ -469,6 +469,17 @@ final class IOSScreenTourTests: XCTestCase {
         assertScreen(view, name: "10-icloud-required-light", colorScheme: .light, size: phoneSize)
     }
 
+    func test_11_diagnosticsIncludeSheet_light() {
+        let view = DiagnosticsIncludeSheet(
+            includeLogs: .constant(true),
+            includeStore: .constant(false),
+            onCreate: {},
+            onCancel: {}
+        )
+        .frame(width: phoneSize.width, height: phoneSize.height)
+        assertScreen(view, name: "11-diagnostics-include-sheet-light", colorScheme: .light, size: phoneSize)
+    }
+
     // MARK: - Shell helper
 
     /// Wraps a migrated screen in a NavigationStack, sized to the
