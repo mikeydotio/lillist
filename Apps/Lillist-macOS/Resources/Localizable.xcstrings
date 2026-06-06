@@ -1,5 +1,10 @@
 {
-  "sourceLanguage" : "en",
-  "strings" : {},
-  "version" : "1.0"
+  "sourceLanguage": "en",
+  "strings": {
+    "Diagnostic logging": {},
+    "Diagnostics": {},
+    "Prepare diagnostic package…": {},
+    "Records task changes to on-device log files for troubleshooting. Logs stay on this Mac and are shared only when you create and save a package.": {}
+  },
+  "version": "1.0"
 }

@@ -11,7 +11,9 @@ import LillistUI
 struct DiagnosticsPane: View {
     @Environment(AppEnvironment.self) private var environment
     @State private var enabled = false
+    @State private var didHydrate = false
     @State private var showInclude = false
+    @State private var wantsExport = false
     @State private var includeLogs = true
     @State private var includeStore = true
     @State private var isPreparing = false
@@ -47,15 +49,17 @@ struct DiagnosticsPane: View {
         }
         .formStyle(.grouped)
         .fixedSize()
-        .task { enabled = await environment.devicePreferences.diagnosticLoggingEnabled() }
-        .sheet(isPresented: $showInclude) {
+        .task {
+            let initial = await environment.devicePreferences.diagnosticLoggingEnabled()
+            if !didHydrate { enabled = initial; didHydrate = true }
+        }
+        .sheet(isPresented: $showInclude, onDismiss: {
+            if wantsExport { wantsExport = false; Task { await prepare() } }
+        }) {
             DiagnosticsIncludeSheet(
                 includeLogs: $includeLogs,
                 includeStore: $includeStore,
-                onCreate: {
-                    showInclude = false
-                    Task { await prepare() }
-                },
+                onCreate: { wantsExport = true; showInclude = false },
                 onCancel: { showInclude = false }
             )
         }
@@ -76,6 +80,7 @@ struct DiagnosticsPane: View {
         Binding(
             get: { enabled },
             set: { newValue in
+                didHydrate = true   // user is authoritative now — .task must not overwrite
                 enabled = newValue
                 Task {
                     await environment.devicePreferences.setDiagnosticLoggingEnabled(newValue)
