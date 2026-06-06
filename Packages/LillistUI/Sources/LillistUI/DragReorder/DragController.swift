@@ -1,6 +1,7 @@
 import Combine
 import CoreGraphics
 import Foundation
+import LillistCore
 import SwiftUI
 
 /// Published state of the drag system, consumed by screen overlays
@@ -47,6 +48,12 @@ public final class DragController: ObservableObject {
     /// Whether a smart filter is active (affects reorder legality).
     public var isFilterActive: Bool = false
 
+    /// Optional diagnostic sink. When non-nil, the drag lifecycle emits
+    /// `drag.start` / `drag.over` / `drag.drop` events. Emission is non-blocking
+    /// (`Task { await … }`) so it never stalls a gesture; `DiagnosticLog` stamps
+    /// the authoritative process + seq. Wired by the screen in `.onAppear`.
+    public var diagnosticLog: DiagnosticSink?
+
     // MARK: - Callback
 
     /// Internal drop handler. Called exactly once per successful drop
@@ -90,6 +97,11 @@ public final class DragController: ObservableObject {
             cursorY: cursorY,
             target: .none
         ))
+        let sourceIndex = flatRows.firstIndex(where: { $0.id == rowID })
+        emit("drag.start", [
+            "draggedID": .string(rowID.uuidString),
+            "sourceIndex": sourceIndex.map { .int($0) } ?? .null,
+        ])
     }
 
     /// Update the cursor Y absolutely within the current `dragging`
@@ -119,6 +131,10 @@ public final class DragController: ObservableObject {
         guard case .dragging(var session) = state else { return }
         session.target = target
         state = .dragging(session)
+        // Emitted 1:1 with each call. The modifier coalesces unchanged targets
+        // (`DragReorderable`'s `if resolved != previous` guard), so in practice
+        // this only fires when the highlighted target actually changes.
+        emit("drag.over", Self.targetPayload(target))
     }
 
     /// Complete the drag.
@@ -137,6 +153,12 @@ public final class DragController: ObservableObject {
     public func endDrag(settleDuration: TimeInterval = 0) {
         guard case .dragging(let session) = state else { return }
         let target = session.target
+
+        // Emit BEFORE dispatch so rejected/none releases (which never call the
+        // handler) are still recorded — a cancelled drop is diagnostically useful.
+        var dropPayload = Self.targetPayload(target)
+        dropPayload["draggedID"] = .string(session.draggedID.uuidString)
+        emit("drag.drop", dropPayload)
 
         switch target {
         case .between, .onto:
@@ -314,5 +336,35 @@ public final class DragController: ObservableObject {
             safety += 1
         }
         return false
+    }
+
+    // MARK: - Diagnostics
+
+    /// Non-blocking emit. No-op without a sink. `process`/`seq` are placeholders
+    /// the `DiagnosticLog` overwrites; `Task` keeps the gesture handler unblocked.
+    private func emit(_ name: String, _ payload: [String: DiagValue]) {
+        guard let log = diagnosticLog else { return }
+        let event = DiagnosticEvent(at: Date(), seq: 0, process: .app, category: .ui, name: name, payload: payload)
+        Task { await log.log(event) }
+    }
+
+    /// Flatten a `DragTarget` to a diagnostic payload, including `.rejected`/
+    /// `.none` so cancelled drags are fully visible in the log.
+    static func targetPayload(_ target: DragTarget) -> [String: DiagValue] {
+        switch target {
+        case .between(let beforeID, let afterID, let parentID):
+            return [
+                "kind": .string("between"),
+                "beforeID": beforeID.map { .string($0.uuidString) } ?? .null,
+                "afterID": afterID.map { .string($0.uuidString) } ?? .null,
+                "parentID": parentID.map { .string($0.uuidString) } ?? .null,
+            ]
+        case .onto(let targetID):
+            return ["kind": .string("onto"), "targetID": .string(targetID.uuidString)]
+        case .rejected:
+            return ["kind": .string("rejected")]
+        case .none:
+            return ["kind": .string("none")]
+        }
     }
 }
