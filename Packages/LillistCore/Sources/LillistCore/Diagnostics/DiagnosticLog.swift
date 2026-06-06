@@ -60,6 +60,10 @@ public actor DiagnosticLog {
 
     public func setEnabled(_ value: Bool) { enabled = value }
     public func droppedCount() -> Int { dropped }
+    /// The resolved on-disk directory this log writes to (nil if unresolved).
+    /// The package builder reads from here so the export and the writer always
+    /// agree on a single location.
+    public func diagnosticsDirectory() -> URL? { directory }
 
     /// Append one event as a JSONL line. Fire-and-forget: returns immediately on
     /// any failure after incrementing `dropped`.

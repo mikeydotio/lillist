@@ -21,6 +21,7 @@ struct SettingsTab: View {
                 TrashSection(prefs: b)
                 QuickCaptureSection(prefs: b)
                 CrashReportingSection(prefs: b)
+                DiagnosticsSection()
                 AdvancedSection()
             } else {
                 ProgressView()

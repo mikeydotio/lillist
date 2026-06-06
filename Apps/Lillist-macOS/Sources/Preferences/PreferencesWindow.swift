@@ -20,6 +20,8 @@ struct PreferencesWindow: View {
                 .tabItem { Label("Quick Capture", systemImage: "keyboard") }
             CrashReportingPane()
                 .tabItem { Label("Crash Reporting", systemImage: "ant") }
+            DiagnosticsPane()
+                .tabItem { Label("Diagnostics", systemImage: "stethoscope") }
             AdvancedPane()
                 .tabItem { Label("Advanced", systemImage: "wrench.and.screwdriver") }
         }

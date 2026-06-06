@@ -36,6 +36,7 @@
 		52B6567908A60B67FDA9CBAC /* NotificationPermissionFlowTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 953BE94B80FD2AFB27B77F89 /* NotificationPermissionFlowTests.swift */; };
 		5368030379D37BFAD59E2576 /* LillistUI in Frameworks */ = {isa = PBXBuildFile; productRef = 1ED4C893535B6A6E62346628 /* LillistUI */; };
 		5680498D8BF4DFA917500D55 /* CrashReportingPane.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA80085EB3BB242379E92790 /* CrashReportingPane.swift */; };
+		56FA4292E60A2886599BACFE /* DiagnosticsPane.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3739BDDF75D38CE2B4F5D27B /* DiagnosticsPane.swift */; };
 		57C8322E802DF6435DEF0934 /* ToolbarPersistenceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A4DD99AC3C19CA70493DAA1 /* ToolbarPersistenceTests.swift */; };
 		5A0CBDF7D9B0E218F4B30247 /* LillistServicesProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = E1401C2C25052CC9906188BF /* LillistServicesProvider.swift */; };
 		5D718D6A47C34D934FA0267C /* SidebarSelection.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8908D968CD95B46BAA9848BB /* SidebarSelection.swift */; };
@@ -104,6 +105,7 @@
 		288A06800EA1CB39081E0910 /* QuickCapturePanelController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuickCapturePanelController.swift; sourceTree = "<group>"; };
 		2BC54A777EAD574C648DD1F9 /* HotkeyRecorderTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HotkeyRecorderTests.swift; sourceTree = "<group>"; };
 		365F9079CBE5A1C7C1D0158F /* SidebarContextMenuTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SidebarContextMenuTests.swift; sourceTree = "<group>"; };
+		3739BDDF75D38CE2B4F5D27B /* DiagnosticsPane.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiagnosticsPane.swift; sourceTree = "<group>"; };
 		38BC4169CE094018D5BEA0BD /* TaskListSortControl.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TaskListSortControl.swift; sourceTree = "<group>"; };
 		3F0D9EC0691515027BF44021 /* BlockedFollowUpTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BlockedFollowUpTests.swift; sourceTree = "<group>"; };
 		3F20871648F1DA1E64D8E59D /* UIStatePersistencePruneTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UIStatePersistencePruneTests.swift; sourceTree = "<group>"; };
@@ -267,6 +269,7 @@
 			children = (
 				4785BD3BA4D67F4C69F79D09 /* AdvancedPane.swift */,
 				FA80085EB3BB242379E92790 /* CrashReportingPane.swift */,
+				3739BDDF75D38CE2B4F5D27B /* DiagnosticsPane.swift */,
 				40F8F1B3826FD9A436D73201 /* GeneralPane.swift */,
 				9C2910A714C814F69236C7B4 /* ICloudSyncPane.swift */,
 				F9E0C4B2D659722AE215A0B8 /* NotificationsPane.swift */,
@@ -557,6 +560,7 @@
 				513F80DB225B3198A6B428C6 /* CrashReporterHost.swift in Sources */,
 				5680498D8BF4DFA917500D55 /* CrashReportingPane.swift in Sources */,
 				1A2D780A16C371DC7ED92F77 /* DetailHeaderView.swift in Sources */,
+				56FA4292E60A2886599BACFE /* DiagnosticsPane.swift in Sources */,
 				4EA67DECB7AC159A867B2EE4 /* FocusedListColumn.swift in Sources */,
 				3B20971664653ADF6B7B8A39 /* FollowUpFormView.swift in Sources */,
 				018B5E501EEC7DD0110B515A /* GeneralPane.swift in Sources */,
