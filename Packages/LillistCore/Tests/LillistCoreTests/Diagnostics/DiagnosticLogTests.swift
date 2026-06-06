@@ -87,6 +87,37 @@ final class DiagnosticLogTests: XCTestCase {
         XCTAssertEqual(survivors, ["diag-2026-06-06-app.jsonl", "diag-2026-05-07-app.jsonl", "notes.txt"])
     }
 
+    func test_concurrent_logging_writes_every_line_intact() async throws {
+        let dir = tempDir()
+        let log = DiagnosticLog(directory: dir, process: .app, enabled: true, dayStamp: "2026-06-06")
+        let writers = 20, perWriter = 50
+        await withTaskGroup(of: Void.self) { group in
+            for w in 0..<writers {
+                group.addTask {
+                    for i in 0..<perWriter {
+                        let seq = UInt64(w * perWriter + i)
+                        await log.log(DiagnosticEvent(at: Date(timeIntervalSince1970: 1_700_000_000), seq: seq, process: .app, category: .data, name: "task.create", payload: ["w": .int(w), "i": .int(i)]))
+                    }
+                }
+            }
+        }
+        let file = dir.appendingPathComponent("diag-2026-06-06-app.jsonl")
+        let lines = try DiagnosticEvent.decodeJSONLines(String(contentsOf: file, encoding: .utf8))
+        XCTAssertEqual(lines.count, writers * perWriter, "actor serialization must lose no appends")
+        XCTAssertEqual(Set(lines.map(\.seq)).count, writers * perWriter, "every event present, no torn/duplicated lines")
+        let dropped = await log.droppedCount()
+        XCTAssertEqual(dropped, 0)
+    }
+
+    func test_shared_returns_same_instance_per_process_and_resolves_a_directory() {
+        let a = DiagnosticLog.shared(process: .cli, appGroupID: "group.io.mikeydotio.Lillist", enabled: false)
+        let b = DiagnosticLog.shared(process: .cli, appGroupID: "group.io.mikeydotio.Lillist", enabled: true)
+        XCTAssertTrue(a === b, "same process must yield the cached instance")
+        // Resolution falls back to Application Support when the App Group is
+        // unavailable in the test bundle — must still produce a directory URL.
+        XCTAssertNotNil(DiagnosticLog.resolveDirectory(appGroupID: "group.io.mikeydotio.Lillist"))
+    }
+
     private func isoDay(_ stamp: String) -> Date {
         let f = DateFormatter()
         f.calendar = Calendar(identifier: .gregorian)

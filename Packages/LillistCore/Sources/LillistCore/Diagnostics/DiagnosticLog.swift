@@ -31,6 +31,32 @@ public actor DiagnosticLog {
         self.retentionDays = retentionDays
     }
 
+    // MARK: App-Group factory
+
+    /// Per-process singleton resolving the on-disk diagnostics directory:
+    /// App-Group `…/Lillist/Diagnostics`, falling back to Application Support
+    /// `…/Lillist/Diagnostics`, else `nil` (logging becomes a silent no-op).
+    /// The first caller's `enabled` seeds the instance; later callers update it
+    /// via `setEnabled` once they've read `DevicePreferencesStore`. App Intents
+    /// caches its controller per process, so the same process can request twice —
+    /// the registry returns the same actor each time.
+    public static func shared(process: DiagProcess, appGroupID: String, enabled: Bool) -> DiagnosticLog {
+        SharedRegistry.shared.log(for: process) {
+            DiagnosticLog(directory: resolveDirectory(appGroupID: appGroupID), process: process, enabled: enabled)
+        }
+    }
+
+    static func resolveDirectory(appGroupID: String) -> URL? {
+        let fm = FileManager.default
+        if let group = fm.containerURL(forSecurityApplicationGroupIdentifier: appGroupID) {
+            return group.appendingPathComponent("Lillist/Diagnostics", isDirectory: true)
+        }
+        if let appSupport = try? fm.url(for: .applicationSupportDirectory, in: .userDomainMask, appropriateFor: nil, create: false) {
+            return appSupport.appendingPathComponent("Lillist/Diagnostics", isDirectory: true)
+        }
+        return nil
+    }
+
     public func setEnabled(_ value: Bool) { enabled = value }
     public func droppedCount() -> Int { dropped }
 
@@ -86,6 +112,22 @@ public actor DiagnosticLog {
             let stamp = "\(parts[1])-\(parts[2])-\(parts[3])"
             // Lexical comparison is valid for zero-padded yyyy-MM-dd stamps.
             if stamp < cutoffStamp { try? FileManager.default.removeItem(at: f) }
+        }
+    }
+
+    /// Lock-guarded per-process cache backing `shared`. `shared` is synchronous
+    /// (callers want a non-`await` handle), so the cache can't be an actor; a
+    /// lock-protected dictionary keeps it Sendable-safe under strict concurrency.
+    private final class SharedRegistry: @unchecked Sendable {
+        static let shared = SharedRegistry()
+        private let lock = NSLock()
+        private var logs: [DiagProcess: DiagnosticLog] = [:]
+        func log(for process: DiagProcess, make: () -> DiagnosticLog) -> DiagnosticLog {
+            lock.lock(); defer { lock.unlock() }
+            if let existing = logs[process] { return existing }
+            let created = make()
+            logs[process] = created
+            return created
         }
     }
 
