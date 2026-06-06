@@ -146,7 +146,11 @@ public final class DiagnosticHistoryObserver: @unchecked Sendable {
                     uuid = change.tombstone?["id"] as? UUID
                 } else if let obj = try? ctx.existingObject(with: change.changedObjectID) {
                     if entity.attributesByName["id"] != nil { uuid = obj.value(forKey: "id") as? UUID }
-                    if entityName == "LillistTask", entity.attributesByName["position"] != nil, props.contains("position") {
+                    // Capture position for every LillistTask insert/update, not just
+                    // when "position" is in changedProps: the RCA tie is a *create-time*
+                    // position, so insert events (whose updatedProperties are nil) must
+                    // still record where the row landed.
+                    if entityName == "LillistTask", entity.attributesByName["position"] != nil {
                         position = obj.value(forKey: "position") as? Double
                     }
                 }
