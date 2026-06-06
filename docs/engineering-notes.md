@@ -2560,3 +2560,53 @@ runs**. Two consequences a future contributor must keep in mind:
   an iOS-target extraction pass (xcodebuild-based) wired into the lint; that
   is an unscoped follow-up. Until then: when you add/rename a `.module`
   string inside `#if os(iOS)`, update the catalog by hand.
+
+## 2026-06-06 — Diagnostic logging: attribution, watermarks, and the read-only WAL snapshot (Plan: diagnostic-logging)
+
+File-based diagnostic logging (`Packages/LillistCore/Sources/LillistCore/Diagnostics/`)
+landed a few traps a future contributor would otherwise rediscover the hard way:
+
+- **`DiagnosticLog` stamps the authoritative `process` + per-file monotonic
+  `seq` at write time; emitters pass placeholders.** Only the per-process log
+  instance knows its true process, and centralizing `seq` gives one ordering
+  across every emitter sharing a file (observer + stores + drag). So a
+  `DiagnosticEvent` constructed by an emitter has `process: .app, seq: 0` until
+  it passes through `DiagnosticLog.log` — never trust those fields off an
+  emitter-built event (e.g. a test spy captures the placeholder, not the final
+  value).
+
+- **The history observer MUST use its own watermark key.**
+  `DiagnosticHistoryObserver` consumes the same persistent-history stream as
+  `RemoteChangeReconciler`. Two consumers sharing one
+  `PersistentHistoryTokenStore` key clobber each other's progress, so the token
+  store now takes a `key:` param and the observer uses
+  `PersistentHistoryTokenStore.diagnosticsKey`. NB: **macOS had no history
+  consumer at all** before this — the observer is the *first* one there, wired
+  net-new in `AppEnvironment.bootstrap()`.
+
+- **Per-process `transactionAuthor` keeps the app's default as `"Lillist.app"`
+  on purpose.** `RemoteChangeReconciler.affectedTaskIDs` classifies local vs
+  foreign (CloudKit import) history by `change.author != localAuthor`. The
+  extensions/CLI stamp *distinct* authors (so the observer can attribute their
+  writes), but if you change the **app's** default author the reconciler will
+  misclassify the app's own writes as foreign imports and reconcile in a loop.
+
+- **`VACUUM INTO` opened `SQLITE_OPEN_READONLY` works against the *live* WAL
+  store precisely because the app holds it open.** The read-only connection can
+  read committed WAL frames only while the live writer's `-shm` exists — which
+  is why we never close the store for the snapshot, and why the snapshot is one
+  consistent file (no `-wal`/`-shm` to copy). The dest path is interpolated into
+  a SQL string literal, so it is single-quote-escaped (`'' `); keep that if the
+  path ever becomes user-influenced.
+
+- **`value(forKey:)` on an undeclared Core Data attribute raises an *uncatchable*
+  Obj-C exception.** `DiagnosticHistoryObserver.flatten` reads `id`/`position`
+  off arbitrary history-change objects, so every dynamic read is guarded by
+  `entity.attributesByName[key] != nil`. Do not read an attribute off a
+  history-resolved object without that guard — a Swift `do/catch` will not save
+  you.
+
+- **`TaskStore.create` computes `nextPositionDetail` *before* inserting the new
+  row** so `observedMaxPosition` reflects real siblings, not the new task's
+  default `position == 0.0`. This is behavior-preserving for the assigned value
+  because `FractionalPosition.position(after: nil) == position(after: 0.0) == 1.0`.
