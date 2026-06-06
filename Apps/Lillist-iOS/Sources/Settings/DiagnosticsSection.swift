@@ -11,7 +11,9 @@ import LillistUI
 struct DiagnosticsSection: View {
     @Environment(AppEnvironment.self) private var environment
     @State private var enabled = false
+    @State private var didHydrate = false
     @State private var showInclude = false
+    @State private var wantsExport = false
     @State private var includeLogs = true
     @State private var includeStore = true
     @State private var isPreparing = false
@@ -42,16 +44,20 @@ struct DiagnosticsSection: View {
             }
         }
         .task {
-            enabled = await environment.devicePreferences.diagnosticLoggingEnabled()
+            // One-shot hydration: if the user already toggled while this read was
+            // in flight, `didHydrate` is already true and the stale read is dropped.
+            let initial = await environment.devicePreferences.diagnosticLoggingEnabled()
+            if !didHydrate { enabled = initial; didHydrate = true }
         }
-        .sheet(isPresented: $showInclude) {
+        .sheet(isPresented: $showInclude, onDismiss: {
+            // Build + present the exporter only AFTER the include sheet has fully
+            // dismissed, so the two presentations never conflict.
+            if wantsExport { wantsExport = false; Task { await prepare() } }
+        }) {
             DiagnosticsIncludeSheet(
                 includeLogs: $includeLogs,
                 includeStore: $includeStore,
-                onCreate: {
-                    showInclude = false
-                    Task { await prepare() }
-                },
+                onCreate: { wantsExport = true; showInclude = false },
                 onCancel: { showInclude = false }
             )
         }
@@ -72,6 +78,7 @@ struct DiagnosticsSection: View {
         Binding(
             get: { enabled },
             set: { newValue in
+                didHydrate = true   // user is authoritative now — .task must not overwrite
                 enabled = newValue
                 Task {
                     await environment.devicePreferences.setDiagnosticLoggingEnabled(newValue)

@@ -192,6 +192,13 @@ public final class DiagnosticHistoryObserver: @unchecked Sendable {
                 var uuid: UUID?
                 var position: Double?
                 if change.changeType == .delete {
+                    // Tombstones only carry attributes flagged
+                    // `preserveValueInHistoryOnDeletion` in the model; `id` is not
+                    // (yet) flagged, so delete events currently resolve a nil
+                    // objectUUID and are attributed by entity + author only.
+                    // Enabling preservation is a model change (+ CloudKit-store
+                    // migration risk) deferred as a follow-up; not RCA-critical,
+                    // since the reorder tie is a *create*-time signal.
                     uuid = change.tombstone?["id"] as? UUID
                 } else if let obj = try? ctx.existingObject(with: change.changedObjectID) {
                     if entity.attributesByName["id"] != nil { uuid = obj.value(forKey: "id") as? UUID }
