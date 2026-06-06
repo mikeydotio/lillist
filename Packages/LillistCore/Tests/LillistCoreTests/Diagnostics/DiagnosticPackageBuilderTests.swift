@@ -62,6 +62,45 @@ final class DiagnosticPackageBuilderTests: XCTestCase {
         XCTAssertTrue(FileManager.default.fileExists(atPath: stage.appendingPathComponent("raw/diag-2026-06-06-app.jsonl").path))
     }
 
+    func test_mergeEvents_skips_only_the_corrupt_line_not_the_whole_file() throws {
+        let dir = tempDir()
+        let good1 = DiagnosticEvent(at: Date(timeIntervalSince1970: 10), seq: 0, process: .app, category: .data, name: "a", payload: [:])
+        let good2 = DiagnosticEvent(at: Date(timeIntervalSince1970: 30), seq: 1, process: .app, category: .data, name: "b", payload: [:])
+        // A torn middle line (process killed mid-write) must not drop a/b.
+        let blob = try DiagnosticEvent.encodeJSONLine(good1) + "{ this is not valid json\n" + DiagnosticEvent.encodeJSONLine(good2)
+        let file = dir.appendingPathComponent("diag-2026-06-06-app.jsonl")
+        try Data(blob.utf8).write(to: file)
+        let merged = DiagnosticPackageBuilder.mergeEvents(from: [file])
+        XCTAssertEqual(merged.map(\.name), ["a", "b"], "corrupt line skipped; surrounding events survive")
+    }
+
+    func test_includeStore_with_missing_store_file_degrades_to_logs_with_a_note() throws {
+        let dir = try seedDiagnosticsDir()
+        let missing = tempDir().appendingPathComponent("does-not-exist.sqlite")
+        let builder = DiagnosticPackageBuilder(diagnosticsDir: dir, storeURL: missing, metadata: sampleMetadata())
+        // Must NOT throw — the package degrades to logs-only.
+        let stage = try builder.stage(options: .init(includeLogs: true, includeStore: true))
+        defer { try? FileManager.default.removeItem(at: stage.deletingLastPathComponent()) }
+        XCTAssertTrue(FileManager.default.fileExists(atPath: stage.appendingPathComponent("events.jsonl").path))
+        XCTAssertFalse(FileManager.default.fileExists(atPath: stage.appendingPathComponent("store/Lillist.sqlite").path))
+        let decoder = JSONDecoder(); decoder.dateDecodingStrategy = .iso8601
+        let meta = try decoder.decode(DiagnosticPackageBuilder.Metadata.self, from: Data(contentsOf: stage.appendingPathComponent("manifest.json")))
+        XCTAssertTrue(meta.notes.contains { $0.contains("store snapshot failed") })
+    }
+
+    func test_build_with_zero_log_files_still_produces_a_valid_package() async throws {
+        let emptyDir = tempDir()   // no diag files
+        let builder = DiagnosticPackageBuilder(diagnosticsDir: emptyDir, storeURL: nil, metadata: sampleMetadata())
+        let stage = try builder.stage(options: .init(includeLogs: true, includeStore: false))
+        defer { try? FileManager.default.removeItem(at: stage.deletingLastPathComponent()) }
+        // events.jsonl exists but is empty; manifest still lists it.
+        let merged = try String(contentsOf: stage.appendingPathComponent("events.jsonl"), encoding: .utf8)
+        XCTAssertTrue(merged.isEmpty)
+        let zip = try await builder.build(options: .init(includeLogs: true, includeStore: false))
+        defer { try? FileManager.default.removeItem(at: zip) }
+        XCTAssertGreaterThan((try FileManager.default.attributesOfItem(atPath: zip.path)[.size] as? Int) ?? 0, 0)
+    }
+
     func test_mergeEvents_sorts_by_at_then_seq() throws {
         let dir = try seedDiagnosticsDir()
         let files = try FileManager.default.contentsOfDirectory(at: dir, includingPropertiesForKeys: nil)

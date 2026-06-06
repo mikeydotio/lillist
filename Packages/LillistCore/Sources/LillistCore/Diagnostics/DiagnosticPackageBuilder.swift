@@ -65,6 +65,10 @@ public struct DiagnosticPackageBuilder: Sendable {
         let fm = FileManager.default
         let work = fm.temporaryDirectory.appendingPathComponent("DiagPackage-\(UUID().uuidString)", isDirectory: true)
         let stageDir = work.appendingPathComponent("Lillist-Diagnostics", isDirectory: true)
+        // Clean up the work dir if staging throws (e.g. the store snapshot fails);
+        // on success the caller (build, or a test) owns the returned dir's parent.
+        var succeeded = false
+        defer { if !succeeded { try? fm.removeItem(at: work) } }
         try fm.createDirectory(at: stageDir, withIntermediateDirectories: true)
 
         var inventory: [String] = []
@@ -92,11 +96,19 @@ public struct DiagnosticPackageBuilder: Sendable {
         var notes: [String] = []
         if options.includeStore {
             if let storeURL {
-                let storeDir = stageDir.appendingPathComponent("store", isDirectory: true)
-                try fm.createDirectory(at: storeDir, withIntermediateDirectories: true)
-                let dest = storeDir.appendingPathComponent("Lillist.sqlite")
-                try Self.snapshotStore(at: storeURL, into: dest)
-                inventory.append("store/Lillist.sqlite")
+                // A snapshot failure must NOT abort the whole package — degrade to
+                // logs-only with a manifest note (design §8). The user still gets
+                // the logs, which are usually the more useful half.
+                do {
+                    let storeDir = stageDir.appendingPathComponent("store", isDirectory: true)
+                    try fm.createDirectory(at: storeDir, withIntermediateDirectories: true)
+                    let dest = storeDir.appendingPathComponent("Lillist.sqlite")
+                    try Self.snapshotStore(at: storeURL, into: dest)
+                    inventory.append("store/Lillist.sqlite")
+                } catch {
+                    try? fm.removeItem(at: stageDir.appendingPathComponent("store", isDirectory: true))
+                    notes.append("store snapshot failed (\(error.localizedDescription)); package contains logs only")
+                }
             } else {
                 // In-memory (/dev/null) stores have no URL to snapshot.
                 notes.append("store snapshot skipped: no on-disk store URL")
@@ -108,6 +120,7 @@ public struct DiagnosticPackageBuilder: Sendable {
         meta.notes = notes
         try Self.manifestEncoder().encode(meta).write(to: stageDir.appendingPathComponent("manifest.json"))
 
+        succeeded = true
         return stageDir
     }
 
@@ -142,13 +155,20 @@ public struct DiagnosticPackageBuilder: Sendable {
 
     /// Decode every `diag-*.jsonl` file and return all events sorted by `at`
     /// then `seq` — the canonical merged timeline.
+    ///
+    /// Decoding is **per line**: a single torn/corrupt line (e.g. a process
+    /// killed mid-write) skips only that line, never the whole file's day — the
+    /// merged timeline must stay resilient. The raw files travel in the package
+    /// too, so a skipped line is still recoverable.
     public static func mergeEvents(from files: [URL]) -> [DiagnosticEvent] {
         var all: [DiagnosticEvent] = []
         for file in files {
-            guard let text = try? String(contentsOf: file, encoding: .utf8),
-                  let events = try? DiagnosticEvent.decodeJSONLines(text)
-            else { continue }
-            all.append(contentsOf: events)
+            guard let text = try? String(contentsOf: file, encoding: .utf8) else { continue }
+            for line in text.split(separator: "\n", omittingEmptySubsequences: true) {
+                if let event = try? DiagnosticEvent.decodeJSONLine(String(line)) {
+                    all.append(event)
+                }
+            }
         }
         return all.sorted { ($0.at, $0.seq) < ($1.at, $1.seq) }
     }
