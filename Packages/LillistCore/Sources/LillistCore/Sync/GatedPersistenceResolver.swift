@@ -64,9 +64,16 @@ public struct GatedPersistenceResolver: Sendable {
     }
 
     /// Production convenience: resolve + build the on-disk controller.
-    public func makePersistence() async throws -> PersistenceController {
+    ///
+    /// `transactionAuthor` lets the Share/App-Intents extensions and CLI stamp a
+    /// distinct per-process author so the diagnostics history observer can
+    /// attribute each mutation to its writer. Defaults to the app's author so
+    /// the main app and all existing callers are unchanged.
+    public func makePersistence(
+        transactionAuthor: String = PersistenceController.localTransactionAuthor
+    ) async throws -> PersistenceController {
         try await makePersistence { config in
-            try await PersistenceController(configuration: config)
+            try await PersistenceController(configuration: config, transactionAuthor: transactionAuthor)
         }
     }
 }
