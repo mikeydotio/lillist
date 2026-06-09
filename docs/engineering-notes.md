@@ -2610,3 +2610,13 @@ landed a few traps a future contributor would otherwise rediscover the hard way:
   row** so `observedMaxPosition` reflects real siblings, not the new task's
   default `position == 0.0`. This is behavior-preserving for the assigned value
   because `FractionalPosition.position(after: nil) == position(after: 0.0) == 1.0`.
+
+## 2026-06-08 — SiblingOrder: one canonical sibling comparator for all presenters and recompaction
+
+**Context.** The reorder-tie RCA (`.rca/reorder-anchors-out-of-order/`) found that `TaskStore.recompactSiblings` and the iOS `TaskTree.applySort(.personalized)` each had their own sort closure, and the macOS `TaskListView.buildTree` relied on Core Data fetch order as a secondary tiebreak. Because `NSManagedObject.id` is a UUID and Core Data orders UUID attributes as raw bytes, not as Swift's `uuidString` lexicographic order, the three orderings were not guaranteed to agree on ties.
+
+**The invariant.** Every place that orders siblings — recompaction, iOS tree presentation, macOS tree presentation, and the `SmartFilterStore.list()` fetch — must use exactly one comparator: `SiblingOrder.precedes(positionA:idA:positionB:idB:)` (position ascending, `id.uuidString` ascending on ties). This is the only order that is device-independent (no `createdAt`, no locale, no raw byte UUID), so when two devices recompact the same tied pair they arrive at the same `1..n` positions and CloudKit does not ping-pong.
+
+**The gotcha: never sort by UUID via NSSortDescriptor.** An `NSSortDescriptor(key: "id", ascending: true)` sorts UUIDs by their raw `NSData` byte representation. Swift's `UUID.uuidString` is a hexadecimal text representation with hyphens; byte order and string order disagree for many UUID values. Code that appears to work under a single context (all UUIDs are distinct and the sort is "some order") can silently produce a different order than `uuidString`, making recompaction non-idempotent across contexts. Always sort UUIDs in Swift in-memory via `uuidString` comparison.
+
+**The heal path.** `TaskStore.reorder` and `SmartFilterStore.reorder` now heal a tied anchor pair before re-checking the out-of-order guard: `recompactSiblings` (via `SiblingOrder`) → positions updated in-memory → re-check. A tie heals; a genuine inversion (after.position > before.position) still throws. The throw is surfaced as a transient toast, not as `loadError`, so users see a recoverable "Couldn't move that item" message rather than a full-screen brick. Load-time `normalizeSiblingsIfDegenerate` additionally pre-cleans degenerate data before the first reorder attempt.
