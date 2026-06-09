@@ -422,7 +422,8 @@ extension SmartFilterStore {
     static func sortDescriptors(field: SortField, ascending: Bool) -> [NSSortDescriptor] {
         let primaryKey: String
         switch field {
-        case .manualPosition, .deadline: primaryKey = "deadline"
+        case .manualPosition: primaryKey = "position"
+        case .deadline: primaryKey = "deadline"
         case .start: primaryKey = "start"
         case .title: primaryKey = "title"
         case .createdAt: primaryKey = "createdAt"
