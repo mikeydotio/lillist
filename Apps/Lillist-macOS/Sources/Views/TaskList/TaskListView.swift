@@ -282,10 +282,17 @@ struct TaskListView: View {
         var nodes: [TaskOutlineNode] = []
         for r in recs {
             let kids = try await env.taskStore.children(of: r.id)
-            let kidNodes = kids.map { TaskOutlineNode(id: $0.id, record: $0, children: nil) }
+            let sortedKids = kids.sorted {
+                SiblingOrder.precedes(positionA: $0.position, idA: $0.id,
+                                      positionB: $1.position, idB: $1.id)
+            }
+            let kidNodes = sortedKids.map { TaskOutlineNode(id: $0.id, record: $0, children: nil) }
             nodes.append(TaskOutlineNode(id: r.id, record: r, children: kidNodes.isEmpty ? nil : kidNodes))
         }
-        return nodes
+        return nodes.sorted {
+            SiblingOrder.precedes(positionA: $0.record.position, idA: $0.record.id,
+                                  positionB: $1.record.position, idB: $1.record.id)
+        }
     }
 
     private func cycle(_ id: UUID, _ current: Status, click: Bool) {
