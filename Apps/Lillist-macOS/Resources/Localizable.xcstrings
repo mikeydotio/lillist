@@ -1,6 +1,7 @@
 {
   "sourceLanguage": "en",
   "strings": {
+    "Couldn't move that item. Please try again.": {},
     "Diagnostic logging": {},
     "Diagnostics": {},
     "Prepare diagnostic package…": {},
