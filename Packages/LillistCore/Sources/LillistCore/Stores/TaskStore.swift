@@ -360,6 +360,12 @@ public final class TaskStore: @unchecked Sendable {
                 cap.afterPosition = afterTask?.position
                 cap.beforePosition = beforeTask?.position
 
+                // Soft-deleted-anchor guard: an anchor that has been trashed is
+                // logically absent — treat it as notFound rather than attempting
+                // to reorder relative to a deleted row.
+                if let a = afterTask, a.deletedAt != nil { throw LillistError.notFound }
+                if let b = beforeTask, b.deletedAt != nil { throw LillistError.notFound }
+
                 let afterParent = afterTask?.parent
                 let beforeParent = beforeTask?.parent
                 if let a = afterTask, let b = beforeTask, a.parent?.objectID != b.parent?.objectID {
@@ -367,14 +373,83 @@ public final class TaskStore: @unchecked Sendable {
                         .init(field: "neighbors", message: "must share the same parent")
                     ])
                 }
+
+                // Heal-then-recheck: if anchors are tied or inverted, attempt to
+                // heal by recompacting siblings in canonical SiblingOrder.
+                // `recompactSiblings` mutates the managed objects in-memory within
+                // this same context, so `afterTask` and `beforeTask` (which ARE the
+                // same objects in the siblings array) already reflect their new
+                // `.position` values immediately after the call — no `context.refresh`
+                // needed (and wrong: refresh would overwrite the unsaved in-memory
+                // changes with stale store values).
+                //
+                // After recompaction we re-check. Two cases:
+                //
+                // • Genuine inversion (after.position > before.position before heal):
+                //   Recompaction cannot fix a true ordering disagreement — throw.
+                //
+                // • Tie (after.position == before.position before heal):
+                //   Recompaction assigns distinct positions via `SiblingOrder` (position
+                //   asc, then id.uuidString asc on ties). The canonical winner is whichever
+                //   has the lower uuidString — but the drag intent specifies which task is
+                //   "after" and which is "before", and that intent must be preserved.
+                //   If recompaction gave `afterTask` a higher position than `beforeTask`
+                //   (because afterTask.uuid > beforeTask.uuid), we swap their positions so
+                //   the drag-requested order is maintained. The swap is safe: both tasks were
+                //   tied before and their relative order was unspecified; either assignment
+                //   is correct, but we must pick the one that honours the caller's intent.
+                //
+                // Position computation after a heal:
+                //   After recompaction all sibling positions are clean integers. Computing
+                //   the midpoint `(B + C) / 2` can collide with an existing sibling when
+                //   C - B is even (e.g. B=2, C=4 → midpoint=3, colliding with D=3). To
+                //   avoid this we use `afterTask.position + 0.5`, which is guaranteed to
+                //   not match any integer sibling position. This half-step still satisfies
+                //   all test invariants (A lands after B in index order, positions are
+                //   strictly increasing), and the normal `needsCompaction` underflow path
+                //   is still checked below.
+                var healedPositionOverride: Double? = nil
                 if FractionalPosition.anchorsAreOutOfOrder(
                     after: afterTask?.position,
                     before: beforeTask?.position
                 ) {
-                    throw LillistError.validationFailed([
-                        .init(field: "neighbors", message: "anchors out of order")
-                    ])
+                    // Snapshot pre-heal positions to distinguish tie vs. genuine inversion.
+                    let preHealAfter = afterTask?.position
+                    let preHealBefore = beforeTask?.position
+                    let wasATie = preHealAfter == preHealBefore
+
+                    let healParent = afterTask?.parent ?? beforeTask?.parent ?? m.parent
+                    recompactSiblings(ofParent: healParent)
+
+                    if FractionalPosition.anchorsAreOutOfOrder(
+                        after: afterTask?.position,
+                        before: beforeTask?.position
+                    ) {
+                        if !wasATie {
+                            // Genuine inversion that survived recompaction — throw.
+                            throw LillistError.validationFailed([
+                                .init(field: "neighbors", message: "anchors out of order")
+                            ])
+                        }
+                        // Tie case: recompaction assigned positions in canonical uuid order,
+                        // but that order conflicts with the drag intent (afterTask ended up
+                        // with a higher position than beforeTask). Swap the two anchor
+                        // positions so the drag intent is honoured.
+                        if let a = afterTask, let b = beforeTask {
+                            let tmp = a.position
+                            a.position = b.position
+                            b.position = tmp
+                        }
+                    }
+
+                    // After recompaction, all positions are integers. Use a half-step above
+                    // the after-anchor rather than the midpoint to guarantee no collision
+                    // with any sibling that might sit at an integer midpoint.
+                    if let a = afterTask {
+                        healedPositionOverride = a.position + 0.5
+                    }
                 }
+
                 let newParent = afterParent ?? beforeParent ?? m.parent
 
                 if m.parent?.objectID != newParent?.objectID {
@@ -398,7 +473,7 @@ public final class TaskStore: @unchecked Sendable {
                     recompactSiblings(ofParent: newParent)
                 }
 
-                let computed = FractionalPosition.position(
+                let computed = healedPositionOverride ?? FractionalPosition.position(
                     after: afterTask?.position,
                     before: beforeTask?.position
                 )
@@ -787,12 +862,18 @@ public final class TaskStore: @unchecked Sendable {
     }
 
     /// Re-space every non-trashed sibling under `parent` to even 1.0 gaps,
-    /// preserving their current order. Mutates the managed objects in place;
+    /// preserving their canonical `SiblingOrder` (position asc, then
+    /// `id.uuidString` asc on ties). Mutates the managed objects in place;
     /// the caller's `context.save()` persists them. Must run inside the
     /// reorder `perform` block so recompaction and the target update commit
     /// atomically. The anchor managed objects the caller is holding pick up
     /// their new `position` values, so a post-recompaction
     /// `FractionalPosition.position` call sees the widened gaps.
+    ///
+    /// Sorting is done in Swift via `SiblingOrder.precedes` rather than via
+    /// a secondary `NSSortDescriptor` on `createdAt` — Core Data orders UUID
+    /// attributes as raw bytes, which does not match Swift's `uuidString`
+    /// lexical order (see `SiblingOrder` doc-comment).
     private func recompactSiblings(ofParent parent: LillistTask?) {
         let req = NSFetchRequest<LillistTask>(entityName: "LillistTask")
         if let parent {
@@ -800,13 +881,17 @@ public final class TaskStore: @unchecked Sendable {
         } else {
             req.predicate = NSPredicate(format: "parent == nil AND deletedAt == nil")
         }
-        req.sortDescriptors = [
-            NSSortDescriptor(key: "position", ascending: true),
-            NSSortDescriptor(key: "createdAt", ascending: true)
-        ]
+        req.sortDescriptors = [NSSortDescriptor(key: "position", ascending: true)]
         guard let siblings = try? context.fetch(req) else { return }
-        let respaced = PositionCompactor.recompact(positions: siblings.map(\.position))
-        for (sibling, newPosition) in zip(siblings, respaced) {
+        let sorted = siblings.sorted {
+            guard let idA = $0.id, let idB = $1.id else { return false }
+            return SiblingOrder.precedes(
+                positionA: $0.position, idA: idA,
+                positionB: $1.position, idB: idB
+            )
+        }
+        let respaced = PositionCompactor.recompact(positions: sorted.map(\.position))
+        for (sibling, newPosition) in zip(sorted, respaced) {
             sibling.position = newPosition
         }
     }
