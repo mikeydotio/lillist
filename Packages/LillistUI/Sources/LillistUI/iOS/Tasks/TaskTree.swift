@@ -83,9 +83,11 @@ public enum TaskTree {
     ) -> [TaskStore.TaskRecord] {
         switch sort {
         case .personalized:
-            return records.sorted { lhs, rhs in
-                if lhs.position != rhs.position { return lhs.position < rhs.position }
-                return lhs.id.uuidString < rhs.id.uuidString
+            return records.sorted {
+                SiblingOrder.precedes(
+                    positionA: $0.position, idA: $0.id,
+                    positionB: $1.position, idB: $1.id
+                )
             }
         case .due:
             return records.sorted { lhs, rhs in
