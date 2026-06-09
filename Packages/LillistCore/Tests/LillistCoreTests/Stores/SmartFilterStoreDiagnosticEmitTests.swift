@@ -28,12 +28,15 @@ final class SmartFilterStoreDiagnosticEmitTests: XCTestCase {
         XCTAssertNotNil(reorder.payload["computedPosition"])
     }
 
-    func test_throwing_reorder_emits_filter_reorder_with_threwError_true() async throws {
+    func test_healing_reorder_emits_filter_reorder_with_threwError_false() async throws {
         let (store, spy, p) = try await makeStore()
         let a = try await makeFilter(store, "a")
         let b = try await makeFilter(store, "b")
         let c = try await makeFilter(store, "c")
-        // Force a degenerate tie between a and b, then reorder c between them.
+        // Equal-anchor pairs now HEAL (recompact → re-check passes). The emit
+        // fires on the success path with threwError:false, but the pre-heal
+        // anchor positions (5.0 / 5.0) are still recorded — they were captured
+        // before recompaction mutated them.
         let ctx = p.container.viewContext
         try await ctx.perform {
             for id in [a, b] {
@@ -43,10 +46,10 @@ final class SmartFilterStoreDiagnosticEmitTests: XCTestCase {
             }
             try ctx.save()
         }
-        await XCTAssertThrowsErrorAsync(try await store.reorder(id: c, after: a, before: b))
+        try await store.reorder(id: c, after: a, before: b)
         let events = await spy.events
         let reorder = try XCTUnwrap(events.last { $0.name == "filter.reorder" })
-        XCTAssertEqual(reorder.payload["threwError"], .bool(true))
+        XCTAssertEqual(reorder.payload["threwError"], .bool(false))
         XCTAssertEqual(reorder.payload["afterPosition"], .double(5.0))
         XCTAssertEqual(reorder.payload["beforePosition"], .double(5.0))
     }

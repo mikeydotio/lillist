@@ -46,14 +46,15 @@ final class TaskStoreDiagnosticEmitTests: XCTestCase {
         XCTAssertNotNil(reorder.payload["computedPosition"])
     }
 
-    func test_throwing_reorder_emits_threwError_true_with_equal_anchor_pair() async throws {
+    func test_healing_reorder_emits_threwError_false_with_equal_anchor_pair() async throws {
         let (store, spy, p) = try await makeStore()
         let a = try await store.create(title: "a")
         let b = try await store.create(title: "b")
         let c = try await store.create(title: "c")
-        // Force a degenerate tie: a and b at the same position. A reorder of c
-        // between them must throw "anchors out of order" — the RCA path — and
-        // STILL emit a task.reorder with threwError:true and the equal anchors.
+        // Equal-anchor pairs now HEAL (recompact → re-check passes). The emit
+        // fires on the success path with threwError:false, but the pre-heal
+        // anchor positions (5.0 / 5.0) are still recorded — they were captured
+        // before recompaction mutated them.
         let ctx = p.container.viewContext
         try await ctx.perform {
             for id in [a, b] {
@@ -63,10 +64,10 @@ final class TaskStoreDiagnosticEmitTests: XCTestCase {
             }
             try ctx.save()
         }
-        await XCTAssertThrowsErrorAsync(try await store.reorder(id: c, after: a, before: b))
+        try await store.reorder(id: c, after: a, before: b)
         let events = await spy.events
         let reorder = try XCTUnwrap(events.last { $0.name == "task.reorder" })
-        XCTAssertEqual(reorder.payload["threwError"], .bool(true))
+        XCTAssertEqual(reorder.payload["threwError"], .bool(false))
         XCTAssertEqual(reorder.payload["afterPosition"], .double(5.0))
         XCTAssertEqual(reorder.payload["beforePosition"], .double(5.0))
     }
