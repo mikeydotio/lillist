@@ -133,11 +133,13 @@ struct TasksView: View {
 
     private func initialLoad() async {
         await loadSavedFilters()
+        try? await env.taskStore.normalizeSiblingsIfDegenerate(ofParent: nil)
         await reload()
     }
 
     private func loadSavedFilters() async {
         do {
+            try? await env.smartFilterStore.normalizeIfDegenerate()
             savedFilters = try await env.smartFilterStore.list()
         } catch {
             // Saved filters are an additive convenience; silently

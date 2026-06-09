@@ -109,6 +109,38 @@ public final class SmartFilterStore: @unchecked Sendable {
         }
     }
 
+    // MARK: - Load-time normalization
+
+    /// Compacts all SmartFilter rows if any adjacent pair (in SiblingOrder) has a
+    /// non-strictly-increasing position. Idempotent. Called at the filters-list
+    /// load seam.
+    public func normalizeIfDegenerate() async throws {
+        try await context.perform { [self] in
+            let req = NSFetchRequest<SmartFilter>(entityName: "SmartFilter")
+            req.sortDescriptors = [NSSortDescriptor(key: "position", ascending: true)]
+            let rows = try context.fetch(req)
+            let sorted = rows.sorted {
+                guard let idA = $0.id, let idB = $1.id else { return false }
+                return SiblingOrder.precedes(
+                    positionA: $0.position, idA: idA,
+                    positionB: $1.position, idB: idB
+                )
+            }
+            // Detect-before-write: only compact if degenerate.
+            var isDegenerate = false
+            for i in 1..<sorted.count where sorted[i-1].position >= sorted[i].position {
+                isDegenerate = true
+                break
+            }
+            guard isDegenerate else { return }
+            let respaced = PositionCompactor.recompact(positions: sorted.map(\.position))
+            for (row, newPosition) in zip(sorted, respaced) {
+                row.position = newPosition
+            }
+            try context.save()
+        }
+    }
+
     public func list() async throws -> [SmartFilterRecord] {
         try await context.perform { [self] in
             let req = NSFetchRequest<SmartFilter>(entityName: "SmartFilter")
