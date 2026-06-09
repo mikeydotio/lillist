@@ -26,6 +26,7 @@ public struct TasksScreen: View {
     @Binding public var selectedTokens: Set<QuickFilterToken>
     @Binding public var selectedSavedFilters: Set<UUID>
     @Binding public var isArchiveToastPresented: Bool
+    @Binding public var isReorderToastPresented: Bool
     public var savedFilters: [SavedFilterChipSpec]
     public var collapsedNodeIDs: Set<UUID>
     public var archivedCount: Int
@@ -54,6 +55,7 @@ public struct TasksScreen: View {
         selectedTokens: Binding<Set<QuickFilterToken>>,
         selectedSavedFilters: Binding<Set<UUID>>,
         isArchiveToastPresented: Binding<Bool> = .constant(false),
+        isReorderToastPresented: Binding<Bool> = .constant(false),
         savedFilters: [SavedFilterChipSpec] = [],
         collapsedNodeIDs: Set<UUID> = [],
         archivedCount: Int = 0,
@@ -77,6 +79,7 @@ public struct TasksScreen: View {
         self._selectedTokens = selectedTokens
         self._selectedSavedFilters = selectedSavedFilters
         self._isArchiveToastPresented = isArchiveToastPresented
+        self._isReorderToastPresented = isReorderToastPresented
         self.savedFilters = savedFilters
         self.collapsedNodeIDs = collapsedNodeIDs
         self.archivedCount = archivedCount
@@ -144,6 +147,9 @@ public struct TasksScreen: View {
                 isPresented: $isArchiveToastPresented,
                 onUndo: onUndoArchive
             )
+        }
+        .overlay(alignment: .bottom) {
+            ReorderFailureToast(isPresented: $isReorderToastPresented)
         }
         .animation(.easeInOut(duration: 0.2), value: isFilterHeaderExpanded)
     }

@@ -35,6 +35,8 @@ struct TasksView: View {
     @State private var lastArchivedCount: Int = 0
     @State private var lastArchivedBatch: [UUID] = []
 
+    @State private var isReorderToastPresented = false
+
     var body: some View {
         TasksScreen(
             roots: tree,
@@ -47,6 +49,7 @@ struct TasksView: View {
             selectedTokens: $selectedTokens,
             selectedSavedFilters: $selectedSavedFilters,
             isArchiveToastPresented: $isArchiveToastPresented,
+            isReorderToastPresented: $isReorderToastPresented,
             savedFilters: savedFilterSpecs,
             collapsedNodeIDs: collapsedNodeIDs,
             archivedCount: lastArchivedCount,
@@ -285,7 +288,8 @@ struct TasksView: View {
             }
             await reload()
         } catch {
-            loadError = "\(error)"
+            isReorderToastPresented = true
+            await reload()
         }
     }
 

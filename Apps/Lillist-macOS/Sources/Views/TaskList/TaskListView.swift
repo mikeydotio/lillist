@@ -20,6 +20,8 @@ struct TaskListView: View {
 
     @StateObject private var dragController = DragController()
 
+    @State private var reorderFailed = false
+
     private var sourceKey: String {
         switch selection {
         case .pinnedTask(let id):   return "pinnedTask.\(id)"
@@ -146,6 +148,29 @@ struct TaskListView: View {
             }
             BuildVersionLabel(version: env.buildVersion)
         }
+        .overlay(alignment: .bottom) {
+            if reorderFailed {
+                Text(String(
+                    localized: "Couldn't move that item. Please try again.",
+                    bundle: Bundle.main
+                ))
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 6)
+                .background(.regularMaterial, in: Capsule())
+                .padding(.bottom, 8)
+                .transition(.move(edge: .bottom).combined(with: .opacity))
+                .task(id: reorderFailed) {
+                    guard reorderFailed else { return }
+                    try? await Task.sleep(for: .seconds(4))
+                    if !Task.isCancelled, reorderFailed {
+                        reorderFailed = false
+                    }
+                }
+            }
+        }
+        .animation(.easeInOut(duration: 0.2), value: reorderFailed)
         .task(id: anchorIdentity) {
             if let saved = uiState.sort(for: sourceKey) {
                 sortField = saved.0; sortAscending = saved.1
@@ -226,7 +251,8 @@ struct TaskListView: View {
             }
             await refresh()
         } catch {
-            // Matches the existing error-swallowing convention in this file.
+            reorderFailed = true
+            await refresh()
         }
     }
 
