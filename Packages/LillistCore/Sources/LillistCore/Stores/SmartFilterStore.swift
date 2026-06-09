@@ -112,11 +112,16 @@ public final class SmartFilterStore: @unchecked Sendable {
     public func list() async throws -> [SmartFilterRecord] {
         try await context.perform { [self] in
             let req = NSFetchRequest<SmartFilter>(entityName: "SmartFilter")
-            req.sortDescriptors = [
-                NSSortDescriptor(key: "position", ascending: true),
-                NSSortDescriptor(key: "createdAt", ascending: true)
-            ]
-            return try context.fetch(req).map { try record(from: $0) }
+            req.sortDescriptors = [NSSortDescriptor(key: "position", ascending: true)]
+            let rows = try context.fetch(req)
+            let sorted = rows.sorted {
+                guard let idA = $0.id, let idB = $1.id else { return false }
+                return SiblingOrder.precedes(
+                    positionA: $0.position, idA: idA,
+                    positionB: $1.position, idB: idB
+                )
+            }
+            return try sorted.map { try record(from: $0) }
         }
     }
 
@@ -175,19 +180,32 @@ public final class SmartFilterStore: @unchecked Sendable {
         return FractionalPosition.position(after: last, before: nil)
     }
 
-    /// Re-space every smart-filter row to even 1.0 gaps, preserving current
-    /// order. Mutates the managed objects in place; the caller's
+    /// Re-space every smart-filter row to even 1.0 gaps, preserving their
+    /// canonical `SiblingOrder` (position asc, then `id.uuidString` asc on
+    /// ties). Mutates the managed objects in place; the caller's
     /// `context.save()` persists them. Must run inside the reorder `perform`
     /// block so recompaction and the target update commit atomically. The
     /// anchor managed objects the caller holds pick up their new `position`
     /// values, so a post-recompaction `FractionalPosition.position` call sees
     /// the widened gaps.
+    ///
+    /// Sorting is done in Swift via `SiblingOrder.precedes` rather than via a
+    /// secondary `NSSortDescriptor` on `createdAt` — Core Data orders UUID
+    /// attributes as raw bytes, which does not match Swift's `uuidString`
+    /// lexical order (see `SiblingOrder` doc-comment).
     private func recompactSiblings() {
         let req = NSFetchRequest<SmartFilter>(entityName: "SmartFilter")
         req.sortDescriptors = [NSSortDescriptor(key: "position", ascending: true)]
         guard let rows = try? context.fetch(req) else { return }
-        let respaced = PositionCompactor.recompact(positions: rows.map(\.position))
-        for (row, newPosition) in zip(rows, respaced) {
+        let sorted = rows.sorted {
+            guard let idA = $0.id, let idB = $1.id else { return false }
+            return SiblingOrder.precedes(
+                positionA: $0.position, idA: idA,
+                positionB: $1.position, idB: idB
+            )
+        }
+        let respaced = PositionCompactor.recompact(positions: sorted.map(\.position))
+        for (row, newPosition) in zip(sorted, respaced) {
             row.position = newPosition
         }
     }
@@ -270,6 +288,19 @@ extension SmartFilterStore {
 
     /// Place `id` immediately between `after` and `before` (either may be nil).
     /// Uses `FractionalPosition` for gap-based insertion.
+    ///
+    /// Heal-then-recheck: if the anchors are tied or inverted, the method first
+    /// attempts to heal by recompacting all filters in canonical `SiblingOrder`.
+    /// After recompaction, the anchors are re-checked:
+    /// - If the anchors are now ordered, normal position computation proceeds.
+    /// - If still inverted (genuine data disagreement, not a tie), throws.
+    /// - If a tie survived recompaction (because canonical uuid order put `after`
+    ///   after `before`), the two anchor positions are swapped to honour the
+    ///   drag intent, then `after.position + 0.5` is used to guarantee no
+    ///   collision with an integer sibling position.
+    ///
+    /// SmartFilter has no `deletedAt`; filters are hard-deleted, so the
+    /// soft-deleted-anchor guard present in `TaskStore.reorder` is omitted here.
     public func reorder(id: UUID, after: UUID?, before: UUID?) async throws {
         // Capture anchors inside `perform` so both the success and throwing paths
         // can emit them — the throwing "anchors out of order" path is the
@@ -282,14 +313,40 @@ extension SmartFilterStore {
                 let beforeRow = try before.map { try fetchManagedObject(id: $0, in: context) }
                 cap.afterPosition = afterRow?.position
                 cap.beforePosition = beforeRow?.position
+
+                // Heal-then-recheck (mirrors TaskStore.reorder — see that file for the
+                // full rationale). SmartFilter has no deletedAt, so no soft-delete guard.
+                var healedPositionOverride: Double? = nil
                 if FractionalPosition.anchorsAreOutOfOrder(
                     after: afterRow?.position,
                     before: beforeRow?.position
                 ) {
-                    throw LillistError.validationFailed([
-                        .init(field: "reorder", message: "anchors out of order")
-                    ])
+                    let preHealAfter = afterRow?.position
+                    let preHealBefore = beforeRow?.position
+                    let wasATie = preHealAfter == preHealBefore
+
+                    recompactSiblings()
+
+                    if FractionalPosition.anchorsAreOutOfOrder(
+                        after: afterRow?.position,
+                        before: beforeRow?.position
+                    ) {
+                        if !wasATie {
+                            throw LillistError.validationFailed([
+                                .init(field: "reorder", message: "anchors out of order")
+                            ])
+                        }
+                        if let a = afterRow, let b = beforeRow {
+                            let tmp = a.position
+                            a.position = b.position
+                            b.position = tmp
+                        }
+                    }
+                    if let a = afterRow {
+                        healedPositionOverride = a.position + 0.5
+                    }
                 }
+
                 // If the target gap underflows, re-space all rows evenly, then
                 // recompute against the freshly-spaced neighbors. Recompaction and
                 // the target update persist together in this one perform block.
@@ -301,7 +358,8 @@ extension SmartFilterStore {
                 if needsCompaction {
                     recompactSiblings()
                 }
-                let computed = FractionalPosition.position(
+
+                let computed = healedPositionOverride ?? FractionalPosition.position(
                     after: afterRow?.position,
                     before: beforeRow?.position
                 )
