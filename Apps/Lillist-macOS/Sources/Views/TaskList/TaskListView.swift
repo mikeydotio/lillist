@@ -257,6 +257,7 @@ struct TaskListView: View {
                 breadcrumbsByID = [:]
                 rootNodes = []
             case .tag(let id):
+                try? await env.taskStore.normalizeSiblingsIfDegenerate(ofParent: nil)
                 let recs = try await env.taskStore.tasks(
                     forTag: id,
                     includeDescendants: true,
@@ -266,6 +267,7 @@ struct TaskListView: View {
                 rootNodes = try await buildTree(from: recs)
                 flatResults = []
             case .pinnedTask(let id):
+                try? await env.taskStore.normalizeSiblingsIfDegenerate(ofParent: id)
                 let root = try await env.taskStore.fetch(id: id)
                 let children = try await env.taskStore.children(of: id)
                 rootNodes = [TaskOutlineNode(

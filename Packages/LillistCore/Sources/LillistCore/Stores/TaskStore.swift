@@ -896,6 +896,45 @@ public final class TaskStore: @unchecked Sendable {
         }
     }
 
+    // MARK: - Load-time normalization
+
+    /// Compacts siblings under `parentID` if and only if any adjacent pair has a
+    /// non-strictly-increasing position (i.e. a tie or inversion). Idempotent:
+    /// healthy sibling sets produce zero writes. Called at load-seams so data
+    /// is clean before the first reorder attempt.
+    public func normalizeSiblingsIfDegenerate(ofParent parentID: UUID?) async throws {
+        try await context.perform { [self] in
+            let req = NSFetchRequest<LillistTask>(entityName: "LillistTask")
+            if let parentID {
+                let parent = try fetchManagedObject(id: parentID, in: context)
+                req.predicate = NSPredicate(format: "parent == %@ AND deletedAt == nil", parent)
+            } else {
+                req.predicate = NSPredicate(format: "parent == nil AND deletedAt == nil")
+            }
+            req.sortDescriptors = [NSSortDescriptor(key: "position", ascending: true)]
+            let siblings = try context.fetch(req)
+            let sorted = siblings.sorted {
+                guard let idA = $0.id, let idB = $1.id else { return false }
+                return SiblingOrder.precedes(
+                    positionA: $0.position, idA: idA,
+                    positionB: $1.position, idB: idB
+                )
+            }
+            // Detect-before-write: only compact if degenerate.
+            var isDegenerate = false
+            for i in 1..<sorted.count where sorted[i-1].position >= sorted[i].position {
+                isDegenerate = true
+                break
+            }
+            guard isDegenerate else { return }
+            let respaced = PositionCompactor.recompact(positions: sorted.map(\.position))
+            for (sibling, newPosition) in zip(sorted, respaced) {
+                sibling.position = newPosition
+            }
+            try context.save()
+        }
+    }
+
     func validateTitle(_ title: String) throws {
         if title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
             throw LillistError.validationFailed([
