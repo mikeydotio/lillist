@@ -71,20 +71,30 @@ swift test --package-path Packages/LillistCore
 swift test --package-path Packages/LillistUI   # iOS-only #if blocks compile out
 
 # ⚠️ LillistUI snapshot tests FAIL under host `swift test`: ~10 deterministic
-# mismatches (plus a few transient cold-cache RecurrenceEditor Form failures
-# that clear on a second run) from cross-host font/anti-aliasing baseline
-# drift — NOT a regression. Baselines are pinned to the snapshot host; the
-# trustworthy run is the `xcodebuild test -scheme Lillist-iOS` recipe below.
+# mismatches from cross-host font/anti-aliasing baseline drift — NOT a regression.
+# Baselines are pinned to this Mac; the trustworthy run is the signed
+# `xcodebuild test -scheme Lillist-iOS` recipe below (Claude Code can run this).
 # Use host `swift test --package-path Packages/LillistUI` only to confirm the
 # package compiles + its non-snapshot tests pass. (See engineering-notes.md
 # baseline-drift entries.)
+#
+# To regenerate baselines after a visual change: run `xcodebuild test -scheme
+# Lillist-iOS` on this Mac, set RECORD_SNAPSHOTS=YES via the scheme's env vars
+# or pass `-testArguments RECORD_SNAPSHOTS=YES`, then commit the updated
+# ReferenceImages in Packages/LillistUI/Tests/LillistUITests/ReferenceImages/.
 
 # iOS-only tests (iOSSnapshotTests, IOSScreenTourTests):
 xcodebuild test -workspace Lillist.xcworkspace \
   -scheme Lillist-iOS \
   -destination 'platform=iOS Simulator,name=iPhone 17,OS=26.2'
 
-# App-target builds without code signing (Claude Code can't sign):
+# App-target builds (signed — Keychain must be unlocked, Signing.local.xcconfig present):
+xcodebuild -workspace Lillist.xcworkspace -scheme Lillist-iOS \
+  -destination 'platform=iOS Simulator,name=iPhone 17,OS=26.2' build
+xcodebuild -workspace Lillist.xcworkspace -scheme Lillist-macOS \
+  -destination 'platform=macOS' build
+
+# Unsigned fallback (CI, fresh machine without certs):
 xcodebuild -workspace Lillist.xcworkspace -scheme Lillist-{iOS,macOS} \
   -destination '<see above>' \
   CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO build
@@ -130,13 +140,15 @@ Release-configuration smoke build, and the LillistUI localization lint
 (`Tools/CI/check-lillistui-localization.sh`). It's a post-push verifier,
 not a merge gate (solo project, direct-to-`main`). deployit still
 archives Debug — CI is the only Release-config compile. Two things CI
-deliberately does **not** run, both verified only on a developer's signed
-Mac with an iCloud account: the **host-pinned snapshot tests** (LillistUI
+deliberately does **not** run: the **host-pinned snapshot tests** (LillistUI
 `*SnapshotTests`/`*ScreenTourTests` — baselines drift on any other host;
 CI runs LillistUI with `--skip Snapshot --skip Tour` and skips the
-`LillistUITests` iOS bundle) and the **`Lillist-iOSAppHostedTests`
-live-swap tests + `Lillist-iOSUITests`** (the live `NSPersistentCloudKitContainer`
-fails `CKAccountStatusNoAccount` without iCloud). See the
+`LillistUITests` iOS bundle — Claude Code *can* run these via the signed
+`xcodebuild test -scheme Lillist-iOS` recipe and regenerate baselines when
+needed) and the **`Lillist-iOSAppHostedTests` live-swap tests +
+`Lillist-iOSUITests`** (the live `NSPersistentCloudKitContainer` fails
+`CKAccountStatusNoAccount` without iCloud — these require a Mac with an
+active iCloud account and must be verified by Mikey). See the
 "CI established + build-posture alignment" entry in
 `docs/engineering-notes.md`.
 
