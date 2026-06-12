@@ -99,6 +99,40 @@ final class TaskStoreDiagnosticEmitTests: XCTestCase {
         XCTAssertEqual(reorder.payload["threwError"], .bool(true))
     }
 
+    func test_transition_emits_task_transition_with_from_to() async throws {
+        let (store, spy, _) = try await makeStore()
+        let id = try await store.create(title: "t")
+        try await store.transition(id: id, to: .started)
+        let events = await spy.events
+        let transition = try XCTUnwrap(events.last { $0.name == "task.transition" })
+        XCTAssertEqual(transition.payload["taskID"], .string(id.uuidString))
+        XCTAssertEqual(transition.payload["from"], .string("todo"))
+        XCTAssertEqual(transition.payload["to"], .string("started"))
+        XCTAssertEqual(transition.payload["noop"], .bool(false))
+        XCTAssertEqual(transition.payload["threwError"], .bool(false))
+    }
+
+    func test_sameStatus_transition_emits_noop_true() async throws {
+        // The UI's cycle path never sends same-status, so noop:true in the
+        // field flags a stale-record anomaly (UI showing a status the store
+        // doesn't have) — the silent shape of the dead-tap bug class.
+        let (store, spy, _) = try await makeStore()
+        let id = try await store.create(title: "t")
+        try await store.transition(id: id, to: .todo)
+        let events = await spy.events
+        let transition = try XCTUnwrap(events.last { $0.name == "task.transition" })
+        XCTAssertEqual(transition.payload["noop"], .bool(true))
+        XCTAssertEqual(transition.payload["threwError"], .bool(false))
+    }
+
+    func test_throwing_transition_still_emits_threwError_true() async throws {
+        let (store, spy, _) = try await makeStore()
+        await XCTAssertThrowsErrorAsync(try await store.transition(id: UUID(), to: .closed))
+        let events = await spy.events
+        let transition = try XCTUnwrap(events.last { $0.name == "task.transition" })
+        XCTAssertEqual(transition.payload["threwError"], .bool(true))
+    }
+
     func test_reparent_emits_task_reparent_with_parents_and_position() async throws {
         let (store, spy, _) = try await makeStore()
         let parent = try await store.create(title: "parent")

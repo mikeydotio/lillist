@@ -517,11 +517,16 @@ public final class TaskStore: @unchecked Sendable {
     // MARK: - Status transitions
 
     public func transition(id: UUID, to newStatus: Status) async throws {
+        let cap = TransitionCapture()
         do {
             let spawnedID: UUID? = try await context.perform { [self] in
                 let m = try fetchManagedObject(id: id, in: context)
                 let oldStatus = m.status
-                guard oldStatus != newStatus else { return nil }
+                cap.from = oldStatus
+                guard oldStatus != newStatus else {
+                    cap.noop = true
+                    return nil
+                }
                 m.status = newStatus
                 m.modifiedAt = Date()
                 if newStatus == .closed {
@@ -564,12 +569,38 @@ public final class TaskStore: @unchecked Sendable {
                     await scheduler.reconcile(taskID: spawnedID)
                 }
             }
+            cap.spawned = spawnedID != nil
+            await emitTransitionDiag(id: id, to: newStatus, capture: cap, threwError: false)
             await recordCrumb("task.status.change", success: true)
         } catch {
             await context.perform { [self] in context.rollback() }
+            await emitTransitionDiag(id: id, to: newStatus, capture: cap, threwError: true)
             await recordCrumb("task.status.change", success: false)
             throw error
         }
+    }
+
+    /// Mutable carrier for transition values captured inside `perform`,
+    /// same happens-after contract as `ReorderCapture`.
+    private final class TransitionCapture: @unchecked Sendable {
+        var from: Status?
+        var noop = false
+        var spawned = false
+    }
+
+    private func emitTransitionDiag(id: UUID, to newStatus: Status, capture cap: TransitionCapture, threwError: Bool) async {
+        // `noop: true` means the store already had the target status. The
+        // UI cycle path computes the target FROM the displayed status, so a
+        // field log full of noops flags stale UI records — the silent shape
+        // of the dead-completion-control bug class.
+        await emitDiag("task.transition", [
+            "taskID": .string(id.uuidString),
+            "from": cap.from.map { .string("\($0)") } ?? .null,
+            "to": .string("\(newStatus)"),
+            "noop": .bool(cap.noop),
+            "spawned": .bool(cap.spawned),
+            "threwError": .bool(threwError),
+        ])
     }
 
     // MARK: - Archive
