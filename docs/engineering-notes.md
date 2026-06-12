@@ -2620,3 +2620,57 @@ landed a few traps a future contributor would otherwise rediscover the hard way:
 **The gotcha: never sort by UUID via NSSortDescriptor.** An `NSSortDescriptor(key: "id", ascending: true)` sorts UUIDs by their raw `NSData` byte representation. Swift's `UUID.uuidString` is a hexadecimal text representation with hyphens; byte order and string order disagree for many UUID values. Code that appears to work under a single context (all UUIDs are distinct and the sort is "some order") can silently produce a different order than `uuidString`, making recompaction non-idempotent across contexts. Always sort UUIDs in Swift in-memory via `uuidString` comparison.
 
 **The heal path.** `TaskStore.reorder` and `SmartFilterStore.reorder` now heal a tied anchor pair before re-checking the out-of-order guard: `recompactSiblings` (via `SiblingOrder`) → positions updated in-memory → re-check. A tie heals; a genuine inversion (after.position > before.position) still throws. The throw is surfaced as a transient toast, not as `loadError`, so users see a recoverable "Couldn't move that item" message rather than a full-screen brick. Load-time `normalizeSiblingsIfDegenerate` additionally pre-cleans degenerate data before the first reorder attempt.
+
+## 2026-06-12 — Row-level drag gestures eat embedded-control taps (RCA: status-tap-primaryaction-dead)
+
+**Context.** From build 26 (2026-05-26) to build 40, tapping the status
+circle on an iOS task row did nothing — no cycle, no error, no navigation —
+while long-press (the explicit status menu) worked. Full investigation in
+`.rca/status-tap-primaryaction-dead/`; fixed across 1d1f285 / 2ee2a6d /
+a8ac881 / ac7ad90.
+
+**The rule: a `.gesture(LongPressGesture.sequenced(before: DragGesture))`
+attached to a row must never cover interactive controls.** Even plain
+`.gesture` (lowest priority, which "should" yield to child controls)
+consumes quick taps on an embedded `Menu(primaryAction:)` — the
+primaryAction simply never fires, while the long-press context-menu
+interaction (an independent UIKit recognizer) keeps working, and UIKit
+cell-selection taps (row navigation) keep working on device. The three tap
+mechanisms arbitrate independently; testing one tells you nothing about the
+others. Falsified single-variable on the simulator: removing the
+NavigationLink wrapper alone left the tap dead; removing the row gesture
+alone revived it.
+
+**The shape of the fix.** Scope the gesture, don't tune arbitration:
+`TaskOutlineRowView` hands callers ONLY the inert text label
+(`TaskOutlineRowLabel`) for wrapping in `NavigationLink` +
+`.dragReorderGesture` (gesture-only sibling of `.dragReorderable`);
+chevron and status control are composed outside the closure, so the type
+system prevents re-introducing the overlap. `.reportRowGeometry` stays on
+the full row — drag-overlay geometry is unaffected by where the gesture
+lives. Consequence: drags start from the text region, not the status
+circle (whose long-press belongs to the menu anyway).
+
+**Why five deploys shipped it.** (1) No test at any layer exercised a real
+tap — closure-unit tests, static snapshots, and store-API tests all pass
+with a dead control; `StatusCycleUITests` now drives the real
+tap→closure→store→relaunch chain on the localOnly `--ui-test-*` seams.
+(2) The pipeline was silent by design: `try?` around `transition`, silent
+no-op on equal status, no `task.transition` diagnostic (now emitted, with
+`noop:` flagging stale-UI anomalies), no failure surface (now a transient
+toast).
+
+**Bonus gotchas from the same investigation.**
+- `for i in 1..<collection.count` traps on empty collections
+  (`Range requires lowerBound <= upperBound`); both load-seam normalizers
+  shipped it, so every FRESH install of build 41 would have crashed at
+  launch — dev devices never hit it because their stores are non-empty.
+  Pairwise `zip(xs, xs.dropFirst())` is total. A fresh-install launch is
+  worth one smoke check per deploy.
+- XCUITest on the iOS 26.2 simulator does not push `NavigationLink(value:)`
+  detail views from List rows (selection highlights, no push) even with all
+  custom gestures removed; on-device navigation is fine. Positive
+  navigation assertions stay device-only.
+- Nested types of a generic SwiftUI view can't be ViewBuilder closure
+  parameters (`TaskOutlineRowView<LinkContent>.Label` makes inference
+  circular) — hoist them to file scope (`TaskOutlineRowLabel`).
