@@ -51,6 +51,33 @@ struct TaskStoreNormalizeTests {
         #expect(positions[0] < positions[1], "Positions must be strictly increasing after normalize")
     }
 
+    // MARK: - T17d: Empty sibling set — the load-seam call on a fresh store
+
+    @Test("Empty store: root-level normalize is a no-op, not a crash")
+    func emptyStoreNoCrash() async throws {
+        let p = try await TestStore.make()
+        let store = TaskStore(persistence: p)
+        // This is the exact call the iOS/macOS load seams make on a fresh
+        // install: zero root tasks. Must be a silent no-op.
+        try await store.normalizeSiblingsIfDegenerate(ofParent: nil)
+        let roots = try await store.children(of: nil)
+        #expect(roots.isEmpty)
+    }
+
+    // MARK: - T17e: Single sibling — boundary above empty
+
+    @Test("Single root task: normalize is a no-op")
+    func singleSiblingNoOp() async throws {
+        let p = try await TestStore.make()
+        let store = TaskStore(persistence: p)
+        let id = try await store.create(title: "Only")
+        let before = try await store.children(of: nil).map(\.position)
+        try await store.normalizeSiblingsIfDegenerate(ofParent: nil)
+        let after = try await store.children(of: nil).map(\.position)
+        #expect(before == after)
+        _ = id
+    }
+
     // MARK: - T17c: Second call on already-normalized data — zero writes (idempotent)
 
     @Test("Second call on already-normalized data: zero writes (idempotent)")

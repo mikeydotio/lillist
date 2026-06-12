@@ -920,12 +920,10 @@ public final class TaskStore: @unchecked Sendable {
                     positionB: $1.position, idB: idB
                 )
             }
-            // Detect-before-write: only compact if degenerate.
-            var isDegenerate = false
-            for i in 1..<sorted.count where sorted[i-1].position >= sorted[i].position {
-                isDegenerate = true
-                break
-            }
+            // Detect-before-write: only compact if degenerate. Pairwise
+            // zip is total for 0- and 1-element sets (`1..<count` is not).
+            let isDegenerate = zip(sorted, sorted.dropFirst())
+                .contains { $0.position >= $1.position }
             guard isDegenerate else { return }
             let respaced = PositionCompactor.recompact(positions: sorted.map(\.position))
             for (sibling, newPosition) in zip(sorted, respaced) {
