@@ -7,15 +7,34 @@ extension View {
     /// Attaches the drag-reorder gesture and geometry reporter to a
     /// row. iOS requires a long-press first to disambiguate from
     /// scroll; macOS uses a plain `DragGesture` (mouse-down + slop).
+    ///
+    /// ⚠️ Never lay this over interactive controls (buttons, menus):
+    /// the long-press sequence eats their quick taps — that shipped as
+    /// the dead status-circle regression (engineering-notes
+    /// 2026-06-12). For rows with embedded controls, keep
+    /// `.reportRowGeometry(id:)` on the full row and attach
+    /// `.dragReorderGesture(id:controller:)` to the inert region only.
     public func dragReorderable(
         id: UUID,
         controller: DragController
     ) -> some View {
-        modifier(DragReorderableModifier(id: id, controller: controller))
+        reportRowGeometry(id: id)
+            .modifier(DragReorderGestureModifier(id: id, controller: controller))
+    }
+
+    /// Gesture-only variant of `dragReorderable(id:controller:)`: no
+    /// geometry reporting. Attach to the non-interactive region of a
+    /// row whose full frame is reported separately via
+    /// `.reportRowGeometry(id:)`.
+    public func dragReorderGesture(
+        id: UUID,
+        controller: DragController
+    ) -> some View {
+        modifier(DragReorderGestureModifier(id: id, controller: controller))
     }
 }
 
-struct DragReorderableModifier: ViewModifier {
+struct DragReorderGestureModifier: ViewModifier {
     let id: UUID
     @ObservedObject var controller: DragController
     @Environment(\.accessibilityReduceMotion) private var systemReduceMotion
@@ -23,7 +42,6 @@ struct DragReorderableModifier: ViewModifier {
 
     func body(content: Content) -> some View {
         content
-            .reportRowGeometry(id: id)
             .gesture(platformGesture)
     }
 

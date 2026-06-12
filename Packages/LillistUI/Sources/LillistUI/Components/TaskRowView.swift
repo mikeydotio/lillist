@@ -39,23 +39,7 @@ public struct TaskRowView: View {
                 onSetStatus: onStatusSet
             )
 
-            VStack(alignment: .leading, spacing: 1) {
-                Text(task.title)
-                    .strikethrough(task.status == .closed)
-                    .foregroundStyle(task.status == .closed ? .secondary : .primary)
-
-                if !tagNames.isEmpty || task.deadline != nil {
-                    HStack(spacing: LillistSpacing.xs) {
-                        ForEach(tagNames, id: \.self) { TagChipView(name: $0) }
-                        if let deadline = task.deadline {
-                            Label(deadline.formatted(date: .abbreviated, time: task.deadlineHasTime ? .shortened : .omitted),
-                                  systemImage: "calendar")
-                                .font(LillistTypography.caption2)
-                                .foregroundStyle(.secondary)
-                        }
-                    }
-                }
-            }
+            TaskRowLabel(task: task, tagNames: tagNames)
             Spacer(minLength: 0)
         }
         .padding(.vertical, 2)
@@ -90,6 +74,43 @@ public struct TaskRowView: View {
             parts.append(String(localized: "due \(formatted)", bundle: .module))
         }
         return parts.joined(separator: ", ")
+    }
+}
+
+/// The textual portion of a task row: title plus the tag/deadline
+/// caption line. Extracted from `TaskRowView` so the iOS outline row
+/// can wrap *only this region* in its `NavigationLink` + drag-reorder
+/// gesture while the status control stays outside both — a row-level
+/// long-press drag gesture laid over the status control eats its tap
+/// (see engineering-notes 2026-06-12). `TaskRowView` (macOS, detail
+/// surfaces) composes it back inline, unchanged visually.
+public struct TaskRowLabel: View {
+    public var task: TaskStore.TaskRecord
+    public var tagNames: [String]
+
+    public init(task: TaskStore.TaskRecord, tagNames: [String]) {
+        self.task = task
+        self.tagNames = tagNames
+    }
+
+    public var body: some View {
+        VStack(alignment: .leading, spacing: 1) {
+            Text(task.title)
+                .strikethrough(task.status == .closed)
+                .foregroundStyle(task.status == .closed ? .secondary : .primary)
+
+            if !tagNames.isEmpty || task.deadline != nil {
+                HStack(spacing: LillistSpacing.xs) {
+                    ForEach(tagNames, id: \.self) { TagChipView(name: $0) }
+                    if let deadline = task.deadline {
+                        Label(deadline.formatted(date: .abbreviated, time: task.deadlineHasTime ? .shortened : .omitted),
+                              systemImage: "calendar")
+                            .font(LillistTypography.caption2)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+            }
+        }
     }
 }
 

@@ -61,6 +61,7 @@ public struct StatusIndicatorView: View {
         .menuIndicator(.hidden)  // hide the macOS disclosure chevron — the glyph is the affordance
         .frame(width: 48, height: 48)
         .contentShape(Rectangle())
+        .accessibilityIdentifier("StatusIndicator")
         .accessibilityLabel(StatusGlyph.accessibilityLabel(for: status))
         .accessibilityAddTraits(.isButton)
         .accessibilityAction(named: Text(String(localized: "Cycle status", bundle: .module))) {

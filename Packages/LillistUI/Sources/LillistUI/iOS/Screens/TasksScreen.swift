@@ -218,7 +218,12 @@ public struct TasksScreen: View {
                             )
                         }
                     }
-                    .dragReorderable(id: row.node.record.id, controller: dragController)
+                    // Geometry only — the drag gesture lives inside
+                    // `outlineRow` on the NavigationLink so it never
+                    // covers the chevron or status controls (their taps
+                    // die under a row-wide long-press gesture; see
+                    // engineering-notes 2026-06-12).
+                    .reportRowGeometry(id: row.node.record.id)
             }
         }
         .listStyle(.plain)
@@ -272,16 +277,22 @@ public struct TasksScreen: View {
 
     @ViewBuilder
     private func outlineRow(_ row: FlatTaskRow) -> some View {
-        HStack(spacing: 0) {
+        // The NavigationLink and drag gesture wrap ONLY the text label
+        // (the closure's parameter); the chevron and status indicator
+        // are composed outside them by `TaskOutlineRowView` so their
+        // taps are never consumed by the link or the long-press drag
+        // sequence.
+        TaskOutlineRowView(
+            row: row,
+            isCollapsed: collapsedNodeIDs.contains(row.node.id),
+            onToggleDisclosure: { onToggleCollapsed(row.node.id) },
+            onStatusClick: { onStatusClick(row.node.record) },
+            onStatusSet: { newStatus in onStatusSet(row.node.record, newStatus) }
+        ) { label in
             NavigationLink(value: row.node.record.id) {
-                TaskOutlineRowView(
-                    row: row,
-                    isCollapsed: collapsedNodeIDs.contains(row.node.id),
-                    onToggleDisclosure: { onToggleCollapsed(row.node.id) },
-                    onStatusClick: { onStatusClick(row.node.record) },
-                    onStatusSet: { newStatus in onStatusSet(row.node.record, newStatus) }
-                )
+                label
             }
+            .dragReorderGesture(id: row.node.record.id, controller: dragController)
         }
         .tag(row.node.record.id)
     }
