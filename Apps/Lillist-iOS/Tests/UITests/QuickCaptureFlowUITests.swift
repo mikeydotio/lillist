@@ -51,48 +51,13 @@ final class QuickCaptureFlowUITests: XCTestCase {
 
     // MARK: - Helpers
 
-    /// Launch with the reset-state seam so the test sees a known-clean
-    /// store + onboarding/crash gates bypassed.
+    /// Shared launch/onboarding plumbing lives in `UITestHelpers`.
     private func launchFresh() -> XCUIApplication {
-        let app = XCUIApplication()
-        app.launchArguments += ["--ui-test-reset-store", "--ui-test-bypass-gates"]
-        app.launch()
-        dismissOnboardingIfPresent(in: app)
-        return app
+        UITestHelpers.launchFresh()
     }
 
-    /// Launch the existing install — no reset, so a previously created
-    /// task should still be on disk. Onboarding/crash gates still
-    /// bypassed (the persistent-store contents are independent of the
-    /// onboarding-completion flag's persistence).
     private func launchExisting() -> XCUIApplication {
-        let app = XCUIApplication()
-        app.launchArguments += ["--ui-test-bypass-gates"]
-        app.launch()
-        dismissOnboardingIfPresent(in: app)
-        return app
-    }
-
-    /// Defense-in-depth: the `--ui-test-reset-store` seam *should* bypass
-    /// onboarding via `setHasCompletedOnboarding(true)`, but the
-    /// onboarding fullScreenCover can present asynchronously up to a few
-    /// seconds after launch (env init → modifier .task → evaluate →
-    /// showOnboarding = true). Race-proof by polling for either the
-    /// settings button (post-onboarding) or the Skip button (onboarding
-    /// active) up to a generous deadline before proceeding.
-    private func dismissOnboardingIfPresent(in app: XCUIApplication) {
-        let deadline = Date().addingTimeInterval(8)
-        while Date() < deadline {
-            if app.buttons["TasksSettingsButton"].exists {
-                return
-            }
-            let skip = app.buttons["Skip for now"]
-            if skip.exists {
-                skip.tap()
-                return
-            }
-            Thread.sleep(forTimeInterval: 0.25)
-        }
+        UITestHelpers.launchExisting()
     }
 
     private enum CaptureEntryPoint {
@@ -163,9 +128,7 @@ final class QuickCaptureFlowUITests: XCTestCase {
     }
 
     private func waitForDisappearance(of element: XCUIElement, timeout: TimeInterval) -> Bool {
-        let predicate = NSPredicate(format: "exists == false")
-        let exp = expectation(for: predicate, evaluatedWith: element, handler: nil)
-        return XCTWaiter().wait(for: [exp], timeout: timeout) == .completed
+        UITestHelpers.waitForDisappearance(of: element, timeout: timeout)
     }
 }
 
