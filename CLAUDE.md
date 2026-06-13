@@ -356,6 +356,30 @@ script-purple. Verified: LillistUI 147/147, LillistCore 895/895, both
 app builds, iOS scheme green (bar the 2 known iCloud live-swap cases).
 Gotchas captured in `docs/engineering-notes.md` (2026-06-12 entry).
 
+## Rainbow Glass redesign — IN PROGRESS (2026-06-13)
+
+Evolving Rainbow Logic onto Apple's iOS 26 Liquid Glass: the whimsical
+palette becomes functional *glass tints*, and faux-depth (drop shadows,
+top highlights, inset wells, the 3D cube) is retired for native glass.
+Plan: `~/.claude/plans/let-s-perform-an-app-wide-magical-forest.md`;
+handoff: `HANDOFF.md`.
+
+- **Seam:** `Theme/GlassSurface.swift` — `glassSurface(_:in:)`,
+  `glassGroup()`, `glassElevation()`. Centralizes the OS-26 `#available`
+  gate + degradation (glass → solid fill for tints / `.regularMaterial`
+  for chrome → opaque under Reduce Transparency).
+- **Done (Waves 0–2):** control layer (toasts, filter header, quick
+  capture); FAB (prominent tinted glass); `StatusCubeView` (circular
+  glass **chip**); button + toggle styles.
+- **Remaining:** Wave 3 content rows (**gated** on an on-device per-row-
+  glass perf test — `StatusCubeView` is already glass-per-row), Wave 4
+  retire unused `LillistElevation` paths + empty states, Wave 5 delight
+  (FAB↔quick-capture morph, scroll-edge, ToolbarSpacer, macOS NSPanel,
+  Share Extension), Wave 6 contrast hardening + full rebaseline + docs.
+- **Glass can't be snapshotted offscreen** (blanks the image). Glass
+  regression lives in `Lillist-iOSAppHostedTests/GlassSnapshotTests`
+  (app-hosted → live key window). See engineering-notes 2026-06-12.
+
 ## When in doubt
 
 1. Check `docs/engineering-notes.md` for a known gotcha.
