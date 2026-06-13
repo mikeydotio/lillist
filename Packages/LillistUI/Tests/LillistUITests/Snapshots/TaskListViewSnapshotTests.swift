@@ -6,7 +6,7 @@ import LillistCore
 @testable import LillistUI
 
 @MainActor
-final class TaskListViewSnapshotTests: XCTestCase {
+final class TaskListViewSnapshotTests: RecordableSnapshotTestCase {
     private func record(title: String, status: Status, deadline: Date? = nil) -> TaskStore.TaskRecord {
         TaskStore.TaskRecord(
             id: UUID(), title: title, notes: "", status: status,

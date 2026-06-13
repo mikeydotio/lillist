@@ -6,7 +6,7 @@ import LillistCore
 @testable import LillistUI
 
 @MainActor
-final class CrashReportSheetSnapshotTests: XCTestCase {
+final class CrashReportSheetSnapshotTests: RecordableSnapshotTestCase {
 
     private func makeModel(description: String = "") -> CrashReportViewModel {
         let canary = CrashCanary(pid: 1, startedAt: Date(timeIntervalSince1970: 0), buildVersion: "1.0", hostname: "h")

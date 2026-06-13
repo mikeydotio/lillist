@@ -11,7 +11,7 @@ import SnapshotTesting
 /// snapshot tests a deterministic way to drive the increase-contrast
 /// code path; production code consults the system value as usual.
 @MainActor
-final class ContrastSnapshotTests: XCTestCase {
+final class ContrastSnapshotTests: RecordableSnapshotTestCase {
     func test_tagChip_normal() {
         let view = HStack {
             TagChipView(name: "work", tint: TagTint(hex: "#3478F6"))

@@ -16,7 +16,7 @@ import LillistCore
 /// is the swift-snapshot-testing-recommended setting for AppKit Form views;
 /// see engineering-notes.md for the incident that introduced it.
 @MainActor
-final class RecurrenceEditorSnapshotTests: XCTestCase {
+final class RecurrenceEditorSnapshotTests: RecordableSnapshotTestCase {
     func testEmptyState_light() {
         let vm = RecurrenceEditorViewModel(rule: nil)
         let view = RecurrenceEditorView(viewModel: .constant(vm))

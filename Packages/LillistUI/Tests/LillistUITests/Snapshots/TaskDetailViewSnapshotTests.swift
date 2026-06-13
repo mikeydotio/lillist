@@ -6,7 +6,7 @@ import LillistCore
 @testable import LillistUI
 
 @MainActor
-final class TaskDetailComponentsSnapshotTests: XCTestCase {
+final class TaskDetailComponentsSnapshotTests: RecordableSnapshotTestCase {
     func test_tagChip_with_tint_light() {
         let host = makeHostingView(
             SnapshotHost(colorScheme: .light) {

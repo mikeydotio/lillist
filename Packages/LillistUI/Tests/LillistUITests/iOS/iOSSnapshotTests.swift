@@ -15,7 +15,7 @@ import SnapshotTesting
 /// (FloatingAddButton, SyncStatusBadge, QuickCaptureDialog) which the
 /// per-view shells compose. Stable visual regressions on these atoms catch
 /// the same drift the per-view snapshots would.
-final class iOSSnapshotTests: XCTestCase {
+final class iOSSnapshotTests: RecordableSnapshotTestCase {
     @MainActor
     func test_floatingAddButton_light() {
         let view = FloatingAddButton(onTap: {})

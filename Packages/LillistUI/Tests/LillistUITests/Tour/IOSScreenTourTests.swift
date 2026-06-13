@@ -13,7 +13,7 @@ import LillistCore
 // iCloud-required screens remain as parallel surfaces and keep their
 // inline-composed snapshots from the previous suite.
 @MainActor
-final class IOSScreenTourTests: XCTestCase {
+final class IOSScreenTourTests: RecordableSnapshotTestCase {
 
     private let phoneSize = CGSize(width: 393, height: 852)   // iPhone 16 Pro logical size
 

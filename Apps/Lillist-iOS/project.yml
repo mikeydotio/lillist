@@ -260,3 +260,11 @@ schemes:
         # they actually run. See docs/engineering-notes.md (the
         # "scheme gap" entry) for the history.
         - package: LillistUI/LillistUITests
+      environmentVariables:
+        # Snapshot re-record switch. `$(RECORD_SNAPSHOTS)` expands from
+        # xcodebuild's build settings, so
+        #   xcodebuild test … RECORD_SNAPSHOTS=YES
+        # reaches the test processes (plain env vars do NOT survive
+        # xcodebuild — see engineering-notes). Read by
+        # RecordableSnapshotTestCase; empty in normal runs.
+        RECORD_SNAPSHOTS: $(RECORD_SNAPSHOTS)

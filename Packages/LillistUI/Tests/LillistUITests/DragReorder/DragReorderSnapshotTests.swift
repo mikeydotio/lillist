@@ -14,7 +14,7 @@ import LillistCore
 /// the overlay renders without live layout — this is the accepted baseline
 /// approach documented in the Task 14 plan.
 @MainActor
-final class DragReorderSnapshotTests: XCTestCase {
+final class DragReorderSnapshotTests: RecordableSnapshotTestCase {
 
     private let phoneSize = CGSize(width: 393, height: 852)
 

@@ -15,7 +15,7 @@ import LillistCore
 /// files (TaskListView, SidebarView, QuickCaptureView snapshot suites).
 /// This file adds the RTL + Arabic variants only.
 @MainActor
-final class LocalizationSnapshotTests: XCTestCase {
+final class LocalizationSnapshotTests: RecordableSnapshotTestCase {
     func test_breadcrumbView_rtl() {
         let view = BreadcrumbView(path: ["Work", "Lillist", "Plan 17"])
             .environment(\.layoutDirection, .rightToLeft)

@@ -12,7 +12,7 @@ import SnapshotTesting
 /// system `accessibilityReduceTransparency` value as read-only, so
 /// the override is the only way to drive the code path under test).
 @MainActor
-final class ReduceTransparencySnapshotTests: XCTestCase {
+final class ReduceTransparencySnapshotTests: RecordableSnapshotTestCase {
     func test_quickCapture_reduceTransparency_on() {
         let view = StatefulQuickCapture(text: "Buy milk")
             .environment(\.reduceTransparencyOverride, true)

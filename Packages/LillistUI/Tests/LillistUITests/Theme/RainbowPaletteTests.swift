@@ -122,7 +122,7 @@ final class RainbowPaletteTests: XCTestCase {
         let traits = UITraitCollection(userInterfaceStyle: dark ? .dark : .light)
         let resolved = UIColor(color).resolvedColor(with: traits)
         var r: CGFloat = 0, g: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
-        resolved.getRed(&r, &g, &b, &a)
+        resolved.getRed(&r, green: &g, blue: &b, alpha: &a)
         return (r, g, b)
         #elseif canImport(AppKit)
         let appearance = NSAppearance(named: dark ? .darkAqua : .aqua)!

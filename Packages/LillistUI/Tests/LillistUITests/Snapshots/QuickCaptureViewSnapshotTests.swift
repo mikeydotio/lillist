@@ -5,7 +5,7 @@ import SnapshotTesting
 @testable import LillistUI
 
 @MainActor
-final class QuickCaptureViewSnapshotTests: XCTestCase {
+final class QuickCaptureViewSnapshotTests: RecordableSnapshotTestCase {
     func test_empty_light() {
         let host = makeHostingView(
             SnapshotHost(colorScheme: .light) {

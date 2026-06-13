@@ -10,7 +10,7 @@ import LillistCore
 // inline mock chrome — the real RootSplitView/SidebarView/TaskListView
 // live in the app target and aren't reachable from this test bundle.
 @MainActor
-final class MacOSScreenTourTests: XCTestCase {
+final class MacOSScreenTourTests: RecordableSnapshotTestCase {
 
     // MARK: - Sample data
 

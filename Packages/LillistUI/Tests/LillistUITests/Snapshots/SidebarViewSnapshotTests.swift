@@ -5,7 +5,7 @@ import SnapshotTesting
 @testable import LillistUI
 
 @MainActor
-final class SidebarComponentsSnapshotTests: XCTestCase {
+final class SidebarComponentsSnapshotTests: RecordableSnapshotTestCase {
     func test_sidebarRow_task_light() {
         let host = makeHostingView(
             SnapshotHost(colorScheme: .light) {
