@@ -42,6 +42,12 @@ in-house crash reporter.
 
 - **Design doc:** `docs/plans/2026-05-12-lillist-design.md`. Section
   numbers are the canonical reference for product behavior.
+- **Visual design system:** `docs/plans/2026-06-12-rainbow-logic-design-system.md`
+  ("Rainbow Logic" / Structured Whimsy). Canonical for tokens, color
+  semantics, elevation, typography, density, and component treatments.
+  House rules from it: color is functional, never decorative; text
+  never uses functional `base` hues (use `ink`); list rows cap at `xs`
+  elevation; full rainbow gradient only on heroes/success moments.
 - **Engineering notes:** `docs/engineering-notes.md`. Append-only log
   of non-obvious gotchas — concurrency surprises, framework-shape
   issues, cross-cutting patterns. Add an entry only when a future
@@ -335,10 +341,32 @@ conventional-commit prefixes (`feat:`, `fix:`, `refactor:`, `test:`,
 `docs:`, `chore:`) and land small, focused commits. HTTPS push and
 never-force-push rules are in `~/.claude/CLAUDE.md`.
 
+## Mini-roadmap — Rainbow Logic redesign (in flight)
+
+Applying the Rainbow Logic design system across both apps. Spec:
+`docs/plans/2026-06-12-rainbow-logic-design-system.md`; execution plan
+in Mikey's plan file (waves recapped here).
+
+- [x] Wave 0 — design-system doc + cross-refs
+- [ ] Wave 1 — foundation: Jakarta fonts + registrar, RainbowPalette/
+      LillistColor/Elevation/Motion/Gradients, Status+Sync remaps,
+      AccentColor, typography; theme unit tests; re-record baselines
+- [ ] Wave 2 — task surfaces: StatusCube + confetti, RainbowCard rows,
+      compact density, tag meta chips, drag tokens; StatusCycleUITests
+- [ ] Wave 3 — iOS chrome: buttons/FAB, search well, filter chips,
+      toasts, empty states/onboarding, Settings + RainbowToggle
+- [ ] Wave 4 — macOS: task-list cards, sidebar chips, popover,
+      detail header, full-whimsy Preferences
+- [ ] Wave 5 — secondary: recurrence, journal, breadcrumbs, crash/
+      migration sheets, rainbow progress, ShareExtension adoption
+- [ ] Wave 6 — closeout: snapshot sweep, engineering notes, deployit
+
 ## When in doubt
 
 1. Check `docs/engineering-notes.md` for a known gotcha.
-2. Check the design doc (`docs/plans/2026-05-12-lillist-design.md`).
+2. Check the design doc (`docs/plans/2026-05-12-lillist-design.md`)
+   and, for anything visual, the Rainbow Logic design system
+   (`docs/plans/2026-06-12-rainbow-logic-design-system.md`).
 3. `docs/superpowers/plans/` is archaeology — useful for *how* a
    feature landed, never as the current spec.
 4. Ask.

@@ -486,6 +486,11 @@ Shortcuts mirrors the CLI verb set. Same `LillistCore.CLIBridge` underneath.
 
 Three columns on macOS/iPadOS, two-tier on iOS. SwiftUI throughout, `NavigationSplitView` as backbone.
 
+> **Visual design:** structure and behavior are specced here; the look
+> (tokens, color semantics, elevation, typography, density, component
+> treatments) is owned by the Rainbow Logic design system —
+> `2026-06-12-rainbow-logic-design-system.md`.
+
 ### macOS / iPadOS
 
 **Sidebar (left):**
