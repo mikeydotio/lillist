@@ -41,7 +41,7 @@ struct OnboardingScreen: View {
                     if let errorMessage {
                         Label(errorMessage, systemImage: "exclamationmark.triangle.fill")
                             .font(.callout)
-                            .foregroundStyle(.red)
+                            .foregroundStyle(RainbowPalette.actionOrange.ink)
                             .accessibilityAddTraits(.updatesFrequently)
                     }
                 }

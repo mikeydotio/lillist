@@ -81,10 +81,10 @@ struct NotificationsPane: View {
         switch permStatus {
         case .authorized:
             Label("Granted", systemImage: "checkmark.circle.fill")
-                .foregroundStyle(.green)
+                .foregroundStyle(RainbowPalette.growthGreen.ink)
         case .denied:
             Label("Denied", systemImage: "exclamationmark.triangle.fill")
-                .foregroundStyle(.orange)
+                .foregroundStyle(RainbowPalette.cautionAmber.ink)
         case .notDetermined:
             Label("Not yet requested", systemImage: "questionmark.circle")
         }

@@ -74,7 +74,7 @@ public struct QuickCaptureDialog: View {
             if let errorMessage {
                 Label(errorMessage, systemImage: "exclamationmark.triangle")
                     .font(LillistTypography.caption)
-                    .foregroundStyle(.red)
+                    .foregroundStyle(RainbowPalette.actionOrange.ink)
                     .accessibilityAddTraits(.updatesFrequently)
             }
         }

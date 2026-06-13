@@ -40,7 +40,7 @@ struct DiagnosticsSection: View {
             if let lastError {
                 Text(lastError)
                     .font(.footnote)
-                    .foregroundStyle(.orange)
+                    .foregroundStyle(RainbowPalette.cautionAmber.ink)
             }
         }
         .task {

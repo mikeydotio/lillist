@@ -64,9 +64,9 @@ struct NotificationsSection: View {
     @ViewBuilder private var statusLabel: some View {
         switch permStatus {
         case .authorized:
-            Label("Granted", systemImage: "checkmark.circle.fill").foregroundStyle(.green)
+            Label("Granted", systemImage: "checkmark.circle.fill").foregroundStyle(RainbowPalette.growthGreen.ink)
         case .denied:
-            Label("Denied", systemImage: "exclamationmark.triangle.fill").foregroundStyle(.orange)
+            Label("Denied", systemImage: "exclamationmark.triangle.fill").foregroundStyle(RainbowPalette.cautionAmber.ink)
         case .notDetermined:
             Label("Not yet requested", systemImage: "questionmark.circle")
         }

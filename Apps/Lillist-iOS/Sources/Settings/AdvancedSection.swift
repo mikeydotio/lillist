@@ -1,4 +1,5 @@
 import SwiftUI
+import LillistUI
 import UniformTypeIdentifiers
 import LillistCore
 
@@ -46,7 +47,7 @@ struct AdvancedSection: View {
             if let lastError {
                 Text(lastError)
                     .font(.footnote)
-                    .foregroundStyle(.orange)
+                    .foregroundStyle(RainbowPalette.cautionAmber.ink)
             }
         }
         .fileImporter(

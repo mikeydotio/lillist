@@ -19,8 +19,8 @@ public struct ICloudRequiredContent: View {
     public var body: some View {
         VStack(spacing: LillistSpacing.l) {
             Image(systemName: "icloud.slash")
-                .font(LillistTypography.largeTitle.weight(.light))
-                .foregroundStyle(.red)
+                .font(LillistTypography.largeTitle.weight(.medium))
+                .foregroundStyle(RainbowPalette.actionOrange.deep)
             Text("iCloud is required")
                 .font(LillistTypography.title.weight(.bold))
             Text("Lillist syncs your tasks via your private iCloud database. Sign into iCloud in Settings, then return here.")
@@ -30,7 +30,7 @@ public struct ICloudRequiredContent: View {
             if let lastError {
                 Text(lastError)
                     .font(LillistTypography.body)
-                    .foregroundStyle(.orange)
+                    .foregroundStyle(RainbowPalette.cautionAmber.ink)
                     .frame(maxWidth: 420)
             }
         }

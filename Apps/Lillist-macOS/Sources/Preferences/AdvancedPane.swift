@@ -1,4 +1,5 @@
 import SwiftUI
+import LillistUI
 import AppKit
 import LillistCore
 
@@ -56,7 +57,7 @@ struct AdvancedPane: View {
                 Section {
                     Text(lastExportError)
                         .font(.callout)
-                        .foregroundStyle(.orange)
+                        .foregroundStyle(RainbowPalette.cautionAmber.ink)
                 }
             }
         }

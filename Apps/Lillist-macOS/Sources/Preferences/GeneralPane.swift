@@ -26,7 +26,7 @@ struct GeneralPane: View {
                 }
             } else if let loadError {
                 Text("Couldn't load preferences: \(loadError.localizedDescription)")
-                    .foregroundStyle(.red)
+                    .foregroundStyle(RainbowPalette.actionOrange.ink)
             } else {
                 ProgressView()
             }

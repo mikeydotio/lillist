@@ -35,8 +35,8 @@ public struct PauseExplainerDialog: View {
     public var body: some View {
         VStack(spacing: 20) {
             Image(systemName: "icloud.slash")
-                .font(.system(size: 40, weight: .light))
-                .foregroundStyle(.yellow)
+                .font(.system(size: 40, weight: .medium))
+                .foregroundStyle(RainbowPalette.cautionAmber.ink)
                 .accessibilityHidden(true)
 
             Text(title)

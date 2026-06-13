@@ -21,8 +21,8 @@ public struct SyncDisableConfirmationSheet: View {
     public var body: some View {
         VStack(spacing: LillistSpacing.l) {
             Image(systemName: "icloud.slash")
-                .font(.system(size: 40, weight: .light))
-                .foregroundStyle(.yellow)
+                .font(.system(size: 40, weight: .medium))
+                .foregroundStyle(RainbowPalette.cautionAmber.ink)
                 .accessibilityHidden(true)
 
             Text("Disable iCloud Sync?")

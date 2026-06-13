@@ -2674,3 +2674,76 @@ toast).
 - Nested types of a generic SwiftUI view can't be ViewBuilder closure
   parameters (`TaskOutlineRowView<LinkContent>.Label` makes inference
   circular) — hoist them to file scope (`TaskOutlineRowLabel`).
+
+## 2026-06-12 — Rainbow Logic design system: cross-cutting SwiftUI lessons
+
+**Context.** Applied the Rainbow Logic ("Structured Whimsy") design
+system across both apps in seven waves (spec:
+`docs/plans/2026-06-12-rainbow-logic-design-system.md`). A handful of
+framework-shape surprises are worth recording so the next visual change
+doesn't re-hit them.
+
+**Rules.**
+
+- **macOS `Menu` labels drop `Shape` fills in hosted/headless render
+  contexts.** The `StatusCubeView` (a `RoundedRectangle().fill(...)`
+  composition) rendered as a bare SF checkmark when used directly as a
+  `Menu`'s `label:`, both in `NSHostingView` snapshots and the menu-bar
+  popover — `Image`s survive that path, arbitrary `Shape` fills do not.
+  Fix: render the cube as a *plain* view and overlay a `Menu` whose
+  `label:` is `Color.clear` as a transparent hit layer
+  (`StatusIndicatorView`). Identical tap/long-press semantics, and the
+  cube draws everywhere. This is why the status control is a
+  view-with-overlaid-Menu, not a Menu-with-cube-label.
+
+- **Custom fonts need a one-time text-system warm-up before
+  deterministic snapshots.** The first hosted render in a fresh process
+  after `CTFontManagerRegisterFontURLs` lays text out with unsettled
+  metrics (seen as a vertically-clipped `QuickCaptureView` placeholder
+  that differed between the record pass and the verify pass). Rendering
+  a throwaway line per typography token once per process
+  (`RecordableSnapshotTestCase.textSystemWarmedUp`) makes the first
+  *real* snapshot match the settled layout. Without it, record/verify
+  disagree by one render.
+
+- **`RECORD_SNAPSHOTS=YES` must travel two different roads.** Plain env
+  vars reach the `swift test` host but NOT the `xcodebuild test` test
+  host. The single switch (`RecordableSnapshotTestCase`, gating
+  `withSnapshotTesting(record: .all)`) works for both because the
+  `Lillist-iOS` scheme maps the env var to the `$(RECORD_SNAPSHOTS)`
+  build setting, set on the CLI as `xcodebuild test … RECORD_SNAPSHOTS=YES`.
+  This retired the old "temporarily thread `record: .all` and revert"
+  ritual.
+
+- **Dark snapshot fixtures need an opaque themed background or they
+  verify nothing.** Pre-redesign dark baselines rendered near-white
+  text onto the bitmap's default white canvas — visually broken and
+  catching no regressions. `SnapshotHost` now backs every fixture with
+  `LillistColor.workspace`, so dark baselines exercise real contrast.
+
+- **Code-defined dynamic colors over asset catalogs for a testable
+  palette.** `RainbowPalette.dynamic(light:dark:)` builds a
+  trait-resolving `Color` from raw hex via `UIColor {trait}` /
+  `NSColor(name:dynamicProvider:)`. This let `RainbowPaletteTests` pin
+  every value per scheme (resolve under a forced
+  `UITraitCollection`/`NSAppearance`) and `RainbowContrastTests` gate
+  WCAG ratios — both impossible against opaque catalog entries. It also
+  means one Swift source serves both apps + both extensions with no
+  per-target duplication. NB: the iOS `UIColor.getRed(_:green:blue:alpha:)`
+  branch only compiles under `xcodebuild` (it is `#if canImport(UIKit)`),
+  so argument-label slips there pass host `swift build` but fail the
+  iOS scheme — build the iOS scheme before trusting cross-platform
+  color test code.
+
+- **Functional `base` hues are never text; `ink` is.** The exported
+  light `ink` values for orange/green/blue did not clear 4.5:1 on their
+  own `soft` surfaces; `RainbowContrastTests` is the authority that
+  darkened them (e.g. `#C2530A` → `#B34C09`). When adding a hue, add the
+  contrast case first and let it dictate the ink.
+
+- **The share extension is its own process — register fonts there too.**
+  `LillistFonts.registerIfNeeded()` is `.process`-scoped, so the share
+  sheet needs its own call in `ShareViewController.viewDidLoad()`, and
+  the target needs the `LillistUI` product dependency in `project.yml`
+  (then `xcodegen generate`). Symbols-not-found at link time for
+  `LillistUI.*` from the extension means the dependency edge is missing.

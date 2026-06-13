@@ -43,7 +43,7 @@ struct DiagnosticsPane: View {
                 if let lastError {
                     Text(lastError)
                         .font(.callout)
-                        .foregroundStyle(.orange)
+                        .foregroundStyle(RainbowPalette.cautionAmber.ink)
                 }
             }
         }
