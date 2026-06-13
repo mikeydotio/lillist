@@ -94,23 +94,49 @@ public struct TaskRowLabel: View {
     }
 
     public var body: some View {
-        VStack(alignment: .leading, spacing: 1) {
+        VStack(alignment: .leading, spacing: 2) {
             Text(task.title)
+                .font(LillistTypography.headline)
                 .strikethrough(task.status == .closed)
-                .foregroundStyle(task.status == .closed ? .secondary : .primary)
+                .foregroundStyle(task.status == .closed ? LillistColor.textFaint : LillistColor.textStrong)
 
             if !tagNames.isEmpty || task.deadline != nil {
-                HStack(spacing: LillistSpacing.xs) {
-                    ForEach(tagNames, id: \.self) { TagChipView(name: $0) }
+                HStack(spacing: LillistSpacing.s) {
                     if let deadline = task.deadline {
-                        Label(deadline.formatted(date: .abbreviated, time: task.deadlineHasTime ? .shortened : .omitted),
-                              systemImage: "calendar")
-                            .font(LillistTypography.caption2)
-                            .foregroundStyle(.secondary)
+                        let overdue = Self.isOverdue(
+                            deadline: deadline,
+                            hasTime: task.deadlineHasTime,
+                            status: task.status
+                        )
+                        HStack(spacing: 4) {
+                            Image(systemName: "clock")
+                                .font(.system(size: 11, weight: .semibold))
+                            Text(deadline.formatted(date: .abbreviated, time: task.deadlineHasTime ? .shortened : .omitted))
+                                .font(LillistTypography.caption)
+                        }
+                        .foregroundStyle(overdue ? RainbowPalette.actionOrange.ink : LillistColor.textMuted)
                     }
+                    ForEach(tagNames, id: \.self) { TagChipView(name: $0, style: .meta) }
                 }
             }
         }
+    }
+
+    /// Whether a deadline reads as overdue: past `now` for timed
+    /// deadlines, before today for date-only ones. Closed tasks are
+    /// never overdue — done is done. `nonisolated` static value math
+    /// so tests and background callers don't cross the View's
+    /// MainActor boundary.
+    public nonisolated static func isOverdue(
+        deadline: Date?,
+        hasTime: Bool,
+        status: Status,
+        now: Date = Date(),
+        calendar: Calendar = .current
+    ) -> Bool {
+        guard let deadline, status != .closed else { return false }
+        if hasTime { return deadline < now }
+        return calendar.startOfDay(for: deadline) < calendar.startOfDay(for: now)
     }
 }
 

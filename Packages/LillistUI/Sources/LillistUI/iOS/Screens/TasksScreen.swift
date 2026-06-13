@@ -211,7 +211,9 @@ public struct TasksScreen: View {
         List {
             ForEach(flat) { row in
                 outlineRow(row)
-                    .listRowInsets(EdgeInsets(top: 2, leading: 12, bottom: 2, trailing: 12))
+                    .listRowInsets(EdgeInsets(top: 3, leading: 12, bottom: 3, trailing: 12))
+                    .listRowSeparator(.hidden)
+                    .listRowBackground(Color.clear)
                     .opacity(row.node.record.id == draggedID ? 0 : 1)
                     .allowsHitTesting(row.node.record.id != draggedID)
                     .swipeActions(edge: .trailing, allowsFullSwipe: true) {
@@ -233,6 +235,8 @@ public struct TasksScreen: View {
             }
         }
         .listStyle(.plain)
+        .scrollContentBackground(.hidden)
+        .background(LillistColor.workspace)
         .coordinateSpace(name: DragCoordinateSpace.name)
         .onPreferenceChange(RowFramePreferenceKey.self) { frames in
             dragController.geometry = frames
@@ -260,10 +264,12 @@ public struct TasksScreen: View {
     @ViewBuilder
     private func phantomRow(forID id: UUID) -> some View {
         if let row = flat.first(where: { $0.node.record.id == id }) {
+            // The row's own Rainbow card supplies the opaque surface;
+            // no extra background — the lifted card floats over the
+            // workspace with DragOverlay's pop shadow.
             outlineRow(row)
-                .listRowInsets(EdgeInsets(top: 2, leading: 12, bottom: 2, trailing: 12))
+                .listRowInsets(EdgeInsets(top: 3, leading: 12, bottom: 3, trailing: 12))
                 .padding(.horizontal, 12)
-                .background(Color(.systemBackground))
         }
     }
 

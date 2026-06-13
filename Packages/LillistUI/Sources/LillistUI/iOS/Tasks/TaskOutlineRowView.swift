@@ -69,7 +69,9 @@ public struct TaskOutlineRowView<LinkContent: View>: View {
             chevron
             // Mirrors the layout `TaskRowView` produces (it is no longer
             // used here so the status control can sit outside the link):
-            // leading/trailing padding around [status — s — label].
+            // the Rainbow card wraps [status — s — label]; the depth
+            // indent and chevron stay outside it so the outline shape
+            // reads against the workspace.
             HStack(spacing: LillistSpacing.s) {
                 StatusIndicatorView(
                     status: row.node.record.status,
@@ -81,8 +83,13 @@ public struct TaskOutlineRowView<LinkContent: View>: View {
                     tagNames: row.node.tagNames
                 ))
             }
-            .padding(.vertical, 2)
-            .padding(.horizontal, LillistSpacing.xs + 2)
+            .padding(.vertical, 1)
+            .padding(.leading, LillistSpacing.xs)
+            .padding(.trailing, LillistSpacing.m)
+            .rainbowCard(
+                accent: StatusPalette.color(for: row.node.record.status),
+                isDone: row.node.record.status == .closed
+            )
         }
     }
 
