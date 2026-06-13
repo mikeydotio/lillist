@@ -1,8 +1,8 @@
 import SwiftUI
 
-/// The volumetric Rainbow Logic pill button: capsule, inset top
-/// highlight, hue glow, lift-on-nothing/squish-on-press. Pick the
-/// variant by *function*, never by what looks nice:
+/// The Rainbow Glass pill button: a capsule of tinted Liquid Glass
+/// (degrading to a solid color below OS 26) with squish-on-press. Pick
+/// the variant by *function*, never by what looks nice:
 ///
 /// - `.lavender` — the signature add/capture action
 /// - `.orange` — urgent/destructive confirms
@@ -46,14 +46,8 @@ public struct RainbowButtonStyle: ButtonStyle {
             .foregroundStyle(textColor)
             .padding(.horizontal, size.hPadding)
             .frame(minHeight: size.height)
-            .background(fill(pressed: pressed))
-            .overlay {
-                if variant != .ghost {
-                    RainbowTopHighlight(shape: Capsule(), strength: pressed ? 0.3 : 0.55)
-                }
-            }
-            .modifier(GlowModifier(variant: variant, pressed: pressed))
-            .opacity(configuration.isPressed && variant == .ghost ? 0.7 : 1)
+            .modifier(ButtonSurface(variant: variant, pressed: pressed))
+            .opacity(pressed && variant == .ghost ? 0.7 : 1)
             .scaleEffect(pressed && !reduce ? 0.985 : 1)
             .offset(y: pressed && !reduce ? 1 : 0)
             .animation(reduce ? nil : LillistMotion.squish(LillistMotion.fast), value: pressed)
@@ -69,44 +63,38 @@ public struct RainbowButtonStyle: ButtonStyle {
         }
     }
 
-    @ViewBuilder
-    private func fill(pressed: Bool) -> some View {
-        let shape = Capsule()
-        switch variant {
-        case .lavender:  shape.fill(pressedAware(LillistColor.lavender, pressed))
-        case .orange:    shape.fill(pressedAware(RainbowPalette.actionOrange.base, pressed))
-        case .green:     shape.fill(pressedAware(RainbowPalette.growthGreen.base, pressed))
-        case .blue:      shape.fill(pressedAware(RainbowPalette.focusBlue.base, pressed))
-        case .purple:    shape.fill(pressedAware(RainbowPalette.scriptPurple.base, pressed))
-        case .rainbow:   shape.fill(RainbowGradient.horizontal).overlay(shape.fill(.black.opacity(pressed ? 0.08 : 0)))
-        case .secondary: shape.fill(pressedAware(LillistColor.card, pressed))
-        case .ghost:     shape.fill(pressed ? AnyShapeStyle(LillistColor.sunken) : AnyShapeStyle(.clear))
-        }
-    }
-
-    /// Pressed fills darken via the inner-shadow well treatment.
-    private func pressedAware(_ color: Color, _ pressed: Bool) -> AnyShapeStyle {
-        pressed
-            ? AnyShapeStyle(color.shadow(.inner(color: .black.opacity(0.18), radius: 2.5, y: 1)))
-            : AnyShapeStyle(color)
-    }
-
-    /// Glow belongs to the lit object: suppressed while pressed (the
-    /// object is "down") and absent on flat variants.
-    private struct GlowModifier: ViewModifier {
+    /// The capsule surface per variant. Functional hues and the
+    /// signature lavender become tinted Liquid Glass via `GlassSurface`
+    /// (glass on OS 26, solid color below — never frosted, since these
+    /// are fills, not chrome). `secondary` is neutral glass; `rainbow`
+    /// keeps the sanctioned hero gradient; `ghost` stays flat. Glass
+    /// supplies the highlight/contact-shadow the old `RainbowTopHighlight`
+    /// + per-hue glow used to fake; press feedback is the squish.
+    private struct ButtonSurface: ViewModifier {
         let variant: Variant
         let pressed: Bool
 
         func body(content: Content) -> some View {
             switch variant {
-            case .lavender: content.shadow(color: RainbowPalette.scriptPurple.base.opacity(pressed ? 0.08 : 0.20), radius: 8, y: 6)
-            case .orange:   content.rainbowGlow(RainbowPalette.actionOrange, radius: pressed ? 3 : 6)
-            case .green:    content.rainbowGlow(RainbowPalette.growthGreen, radius: pressed ? 3 : 6)
-            case .blue:     content.rainbowGlow(RainbowPalette.focusBlue, radius: pressed ? 3 : 6)
-            case .purple:   content.rainbowGlow(RainbowPalette.scriptPurple, radius: pressed ? 3 : 6)
-            case .rainbow:  content.shadow(color: RainbowPalette.scriptPurple.base.opacity(pressed ? 0.10 : 0.22), radius: 10, y: 8)
-            case .secondary: content.rainbowShadow(.sm)
-            case .ghost:    content
+            case .lavender:
+                content.glassSurface(.statusTinted(LillistColor.lavender), in: Capsule())
+            case .orange:
+                content.glassSurface(.statusTinted(RainbowPalette.actionOrange.base), in: Capsule())
+            case .green:
+                content.glassSurface(.statusTinted(RainbowPalette.growthGreen.base), in: Capsule())
+            case .blue:
+                content.glassSurface(.statusTinted(RainbowPalette.focusBlue.base), in: Capsule())
+            case .purple:
+                content.glassSurface(.statusTinted(RainbowPalette.scriptPurple.base), in: Capsule())
+            case .rainbow:
+                content.background(RainbowGradient.horizontal, in: Capsule())
+            case .secondary:
+                content.glassSurface(.control, in: Capsule())
+            case .ghost:
+                content.background(
+                    pressed ? AnyShapeStyle(LillistColor.sunken) : AnyShapeStyle(.clear),
+                    in: Capsule()
+                )
             }
         }
     }

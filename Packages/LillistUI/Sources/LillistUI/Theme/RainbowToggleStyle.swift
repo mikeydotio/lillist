@@ -1,9 +1,13 @@
 import SwiftUI
 
-/// The tactile Rainbow Logic switch: an inset sunken track with a
-/// raised, top-lit thumb that squishes across. On-state fills with a
-/// functional hue (`focusBlue` by default — settings are "work
-/// configuration" in the functional-color language).
+/// The Rainbow Glass switch: a clean flat track with a solid white
+/// thumb that squishes across — the iOS-26-native shape (a 20pt thumb is
+/// too small for literal glass to read, and the system toggle keeps a
+/// solid knob). On-state fills with a functional hue (`focusBlue` by
+/// default — settings are "work configuration" in the functional-color
+/// language). The faux-depth of the old design (inset-well track,
+/// top-lit thumb) is retired; the thumb keeps only a light contact
+/// shadow for separation.
 ///
 /// Used on settings surfaces of *both* platforms (the full-whimsy
 /// decision); honors Reduce Motion and Increase Contrast.
@@ -46,7 +50,6 @@ public struct RainbowToggleStyle: ToggleStyle {
                     .overlay(alignment: configuration.isOn ? .trailing : .leading) {
                         Circle()
                             .fill(.white)
-                            .overlay(RainbowTopHighlight(shape: Circle()))
                             .frame(width: Self.thumbSize, height: Self.thumbSize)
                             .rainbowShadow(.xs)
                             .padding(.horizontal, 3)
@@ -62,14 +65,10 @@ public struct RainbowToggleStyle: ToggleStyle {
         }
     }
 
+    /// Flat track: the functional hue when on, the neutral sunken color
+    /// when off. The old inset-well inner shadows are retired.
     private func trackFill(isOn: Bool) -> AnyShapeStyle {
-        isOn
-            ? AnyShapeStyle(onColor.shadow(.inner(color: .black.opacity(0.12), radius: 1.5, y: 1)))
-            : AnyShapeStyle(
-                LillistColor.sunken
-                    .shadow(.inner(color: .black.opacity(0.09), radius: 2, y: 1))
-                    .shadow(.inner(color: .black.opacity(0.05), radius: 0.5, y: 0.5))
-            )
+        isOn ? AnyShapeStyle(onColor) : AnyShapeStyle(LillistColor.sunken)
     }
 }
 
