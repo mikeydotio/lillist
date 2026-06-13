@@ -39,6 +39,7 @@
 		4273FBF86C985FEBF012FCB9 /* AppIntents.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 4908E6E0B96502CEFCDF8DB5 /* AppIntents.framework */; };
 		432F79273ED76FD339328EA7 /* MigrationCoordinatorRestoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0E6803C8E6C29F719459C21E /* MigrationCoordinatorRestoreTests.swift */; };
 		46A4E35DADD70E23B574466B /* StatusCycleUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9B242F1EB6EBE8CC9C995946 /* StatusCycleUITests.swift */; };
+		497AB12D01096CF64355E9B7 /* SnapshotTesting in Frameworks */ = {isa = PBXBuildFile; productRef = 88DD94D3E9C1AA210C81E49A /* SnapshotTesting */; };
 		4CD99B3E30EDDCB6A7DAFEA1 /* IntentSupport.swift in Sources */ = {isa = PBXBuildFile; fileRef = E4C1FA7E921214B499AC7C78 /* IntentSupport.swift */; };
 		4D857D96D11DC576BB8DC7C9 /* FakeUserNotificationCenter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 041D28DF056EB1470CE165E2 /* FakeUserNotificationCenter.swift */; };
 		58E910FC4630D8C34D79AAC0 /* TrashSection.swift in Sources */ = {isa = PBXBuildFile; fileRef = B9166711CEB13F01C3DB136A /* TrashSection.swift */; };
@@ -53,6 +54,7 @@
 		73BE8F1D6EF2D3BE9D67C497 /* StatusAppEnum.swift in Sources */ = {isa = PBXBuildFile; fileRef = F3FB7F9EA7F274415E924EA6 /* StatusAppEnum.swift */; };
 		7737C2756C91D21D583CEEA5 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 590AF55F6A2BA0028259F134 /* PrivacyInfo.xcprivacy */; };
 		7A6D0D29236C8CF6E2FD5EDE /* LillistCore in Frameworks */ = {isa = PBXBuildFile; productRef = 9ED0B06375B70267A31FB5CA /* LillistCore */; };
+		7D3DF193A3E709F82AD534DF /* LillistUI in Frameworks */ = {isa = PBXBuildFile; productRef = 2726FC2898C2B809263681B1 /* LillistUI */; };
 		7E59E0E64FD82FF4A28B73BB /* LillistUI in Frameworks */ = {isa = PBXBuildFile; productRef = C4AE2480B8D10E2EA867F187 /* LillistUI */; };
 		8189623B012D1E3D79C2EC4B /* LillistCore in Frameworks */ = {isa = PBXBuildFile; productRef = 8CDB023B81A1C3EA772D3534 /* LillistCore */; };
 		81C29E7AB4222FEBE0FE34DB /* AppIntents.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 4908E6E0B96502CEFCDF8DB5 /* AppIntents.framework */; };
@@ -68,6 +70,7 @@
 		A82205462289E0B47874AF4D /* AppIntents.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 4908E6E0B96502CEFCDF8DB5 /* AppIntents.framework */; };
 		AB0DAB0FFB124C1178A0FAB6 /* OnboardingScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 824FA7B5DC23A67CD85D65A0 /* OnboardingScreen.swift */; };
 		B28D66C3798D9DE9462CB3D0 /* GeneralSection.swift in Sources */ = {isa = PBXBuildFile; fileRef = 013C20AC115F9A9F16F18BA2 /* GeneralSection.swift */; };
+		B5FEC345CE12FD2F7338692B /* GlassSnapshotTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 262879B5609DF4130184E6B4 /* GlassSnapshotTests.swift */; };
 		C1FEEAB56AFC2EFD9C108C47 /* TaskJournalTab.swift in Sources */ = {isa = PBXBuildFile; fileRef = F6C4BEE444B84DDF5F88ABF3 /* TaskJournalTab.swift */; };
 		C37A5B3B5892E493D5874513 /* ReportCrashIntentTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 97A39E4B87749E005F34B7FF /* ReportCrashIntentTests.swift */; };
 		C4286EAF37A8DBFC4CD4C0C8 /* LiveSwapHostMetaTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5F5EAD1E444A07943C9C4297 /* LiveSwapHostMetaTests.swift */; };
@@ -152,6 +155,7 @@
 		1A059895D7E8E7448C996665 /* PersistenceHostTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PersistenceHostTests.swift; sourceTree = "<group>"; };
 		1FA8B1E4F9AD3E1DB89DB666 /* FakeDiskSpaceProbe.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FakeDiskSpaceProbe.swift; sourceTree = "<group>"; };
 		21542BC245EEBE9709AB17DD /* RecurrenceSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecurrenceSheet.swift; sourceTree = "<group>"; };
+		262879B5609DF4130184E6B4 /* GlassSnapshotTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GlassSnapshotTests.swift; sourceTree = "<group>"; };
 		297211E1BF6A9D0C7890E078 /* AppEnvironment.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppEnvironment.swift; sourceTree = "<group>"; };
 		29C684CCD22ABED2078AE9FA /* TaskSubtasksTab.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TaskSubtasksTab.swift; sourceTree = "<group>"; };
 		2E1188762FC48A17266DC333 /* Lillist-iOSAppHostedTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = "Lillist-iOSAppHostedTests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -246,6 +250,8 @@
 			buildActionMask = 2147483647;
 			files = (
 				1AA07AE8A116E72F3E34E746 /* LillistCore in Frameworks */,
+				7D3DF193A3E709F82AD534DF /* LillistUI in Frameworks */,
+				497AB12D01096CF64355E9B7 /* SnapshotTesting in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -369,6 +375,8 @@
 		2C76F2D6950FE9CF54E9011D /* AppHostedTests */ = {
 			isa = PBXGroup;
 			children = (
+				5D3EAB451196D65F9D52C14B /* __Snapshots__ */,
+				262879B5609DF4130184E6B4 /* GlassSnapshotTests.swift */,
 				5F5EAD1E444A07943C9C4297 /* LiveSwapHostMetaTests.swift */,
 			);
 			path = AppHostedTests;
@@ -465,6 +473,13 @@
 			);
 			name = Apps;
 			path = ..;
+			sourceTree = "<group>";
+		};
+		5D3EAB451196D65F9D52C14B /* __Snapshots__ */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			path = __Snapshots__;
 			sourceTree = "<group>";
 		};
 		6395D3DECDA1C49633B9D788 /* UITests */ = {
@@ -675,6 +690,8 @@
 			name = "Lillist-iOSAppHostedTests";
 			packageProductDependencies = (
 				E7E1D757887B9534E4A62704 /* LillistCore */,
+				2726FC2898C2B809263681B1 /* LillistUI */,
+				88DD94D3E9C1AA210C81E49A /* SnapshotTesting */,
 			);
 			productName = "Lillist-iOSAppHostedTests";
 			productReference = 2E1188762FC48A17266DC333 /* Lillist-iOSAppHostedTests.xctest */;
@@ -808,6 +825,7 @@
 			mainGroup = 243C6CAFA022E98171C194C3;
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
+				445B00187D3E9C87F84BED0B /* XCRemoteSwiftPackageReference "swift-snapshot-testing" */,
 				56905FD0896B9A22062E6ADC /* XCLocalSwiftPackageReference "../../Packages/LillistCore" */,
 				A130F67F9509F280F27EC689 /* XCLocalSwiftPackageReference "../../Packages/LillistUI" */,
 			);
@@ -888,6 +906,7 @@
 				D34304ED617192C67EF7F520 /* FakeDiskSpaceProbe.swift in Sources */,
 				84647F7F04E327EF48C1C09D /* FakePersistenceReconfigurer.swift in Sources */,
 				4D857D96D11DC576BB8DC7C9 /* FakeUserNotificationCenter.swift in Sources */,
+				B5FEC345CE12FD2F7338692B /* GlassSnapshotTests.swift in Sources */,
 				C4286EAF37A8DBFC4CD4C0C8 /* LiveSwapHostMetaTests.swift in Sources */,
 				432F79273ED76FD339328EA7 /* MigrationCoordinatorRestoreTests.swift in Sources */,
 				CD5567FD3A2CAA3CE90A24C3 /* MigrationCoordinatorTests.swift in Sources */,
@@ -1434,7 +1453,22 @@
 		};
 /* End XCLocalSwiftPackageReference section */
 
+/* Begin XCRemoteSwiftPackageReference section */
+		445B00187D3E9C87F84BED0B /* XCRemoteSwiftPackageReference "swift-snapshot-testing" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/pointfreeco/swift-snapshot-testing";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 1.17.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
 /* Begin XCSwiftPackageProductDependency section */
+		2726FC2898C2B809263681B1 /* LillistUI */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = LillistUI;
+		};
 		2ABD72EED49C2E40D19B1F5F /* LillistUI */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = LillistUI;
@@ -1442,6 +1476,11 @@
 		632F42FE2460074A366178DF /* LillistUI */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = LillistUI;
+		};
+		88DD94D3E9C1AA210C81E49A /* SnapshotTesting */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 445B00187D3E9C87F84BED0B /* XCRemoteSwiftPackageReference "swift-snapshot-testing" */;
+			productName = SnapshotTesting;
 		};
 		8CDB023B81A1C3EA772D3534 /* LillistCore */ = {
 			isa = XCSwiftPackageProductDependency;

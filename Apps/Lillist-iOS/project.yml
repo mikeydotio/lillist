@@ -34,6 +34,14 @@ packages:
     path: ../../Packages/LillistCore
   LillistUI:
     path: ../../Packages/LillistUI
+  # App-hosted glass snapshots: Liquid Glass only composites in a live
+  # key window, which needs an app-hosted test bundle (see
+  # docs/engineering-notes.md 2026-06-12). The standalone LillistUITests
+  # bundle can't capture glass, so glass regression lives in
+  # Lillist-iOSAppHostedTests, which pulls SnapshotTesting directly.
+  SnapshotTesting:
+    url: https://github.com/pointfreeco/swift-snapshot-testing
+    from: "1.17.0"
 
 targets:
   Lillist-iOS:
@@ -221,6 +229,14 @@ targets:
     dependencies:
       - package: LillistCore
         product: LillistCore
+      # LillistUI + SnapshotTesting power the app-hosted glass snapshot
+      # suite (Tests/AppHostedTests/Glass*). This is the only test target
+      # that can capture Liquid Glass (it has an app host → a live key
+      # window for `drawHierarchyInKeyWindow`).
+      - package: LillistUI
+        product: LillistUI
+      - package: SnapshotTesting
+        product: SnapshotTesting
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: io.mikeydotio.Lillist.appHostedTests
