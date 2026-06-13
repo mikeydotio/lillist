@@ -84,6 +84,11 @@ targets:
     dependencies:
       - package: LillistCore
         product: LillistCore
+      # The share sheet adopts LillistUI (Rainbow theme + bundled
+      # Plus Jakarta Sans registration). ~250KB of fonts + the static
+      # lib is negligible against the extension memory ceiling.
+      - package: LillistUI
+        product: LillistUI
       # See note on Lillist-iOS target re: appintentsmetadataprocessor.
       - sdk: AppIntents.framework
     settings:

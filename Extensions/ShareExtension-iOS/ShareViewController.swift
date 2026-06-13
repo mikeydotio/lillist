@@ -1,5 +1,6 @@
 import UIKit
 import SwiftUI
+import LillistUI
 
 /// UIKit entry point for the Share Extension. Hosts `ShareRootView` (SwiftUI)
 /// via `UIHostingController` and routes cancel/save back through the
@@ -7,6 +8,10 @@ import SwiftUI
 final class ShareViewController: UIViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
+        // Register the bundled Plus Jakarta Sans faces so the share
+        // sheet's LillistTypography matches the host app (process-scoped
+        // — the extension is its own process).
+        LillistFonts.registerIfNeeded()
         let payload = SharePayload(extensionContext: extensionContext)
         let root = ShareRootView(
             payload: payload,

@@ -53,6 +53,7 @@
 		73BE8F1D6EF2D3BE9D67C497 /* StatusAppEnum.swift in Sources */ = {isa = PBXBuildFile; fileRef = F3FB7F9EA7F274415E924EA6 /* StatusAppEnum.swift */; };
 		7737C2756C91D21D583CEEA5 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 590AF55F6A2BA0028259F134 /* PrivacyInfo.xcprivacy */; };
 		7A6D0D29236C8CF6E2FD5EDE /* LillistCore in Frameworks */ = {isa = PBXBuildFile; productRef = 9ED0B06375B70267A31FB5CA /* LillistCore */; };
+		7E59E0E64FD82FF4A28B73BB /* LillistUI in Frameworks */ = {isa = PBXBuildFile; productRef = C4AE2480B8D10E2EA867F187 /* LillistUI */; };
 		8189623B012D1E3D79C2EC4B /* LillistCore in Frameworks */ = {isa = PBXBuildFile; productRef = 8CDB023B81A1C3EA772D3534 /* LillistCore */; };
 		81C29E7AB4222FEBE0FE34DB /* AppIntents.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 4908E6E0B96502CEFCDF8DB5 /* AppIntents.framework */; };
 		84647F7F04E327EF48C1C09D /* FakePersistenceReconfigurer.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB27849294EB47AAC45BE9E6 /* FakePersistenceReconfigurer.swift */; };
@@ -271,6 +272,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				69BECB4741B1463737509C95 /* LillistCore in Frameworks */,
+				7E59E0E64FD82FF4A28B73BB /* LillistUI in Frameworks */,
 				81C29E7AB4222FEBE0FE34DB /* AppIntents.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -755,6 +757,7 @@
 			name = "ShareExtension-iOS";
 			packageProductDependencies = (
 				A9A442D94E3178E3C8BAB2CE /* LillistCore */,
+				C4AE2480B8D10E2EA867F187 /* LillistUI */,
 			);
 			productName = "ShareExtension-iOS";
 			productReference = 940380DB2F7305D2993DCD30 /* ShareExtension-iOS.appex */;
@@ -1455,6 +1458,10 @@
 		A9A442D94E3178E3C8BAB2CE /* LillistCore */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = LillistCore;
+		};
+		C4AE2480B8D10E2EA867F187 /* LillistUI */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = LillistUI;
 		};
 		E7E1D757887B9534E4A62704 /* LillistCore */ = {
 			isa = XCSwiftPackageProductDependency;

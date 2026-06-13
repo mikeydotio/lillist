@@ -1,5 +1,6 @@
 import SwiftUI
 import LillistCore
+import LillistUI
 
 /// SwiftUI sheet shown when the user taps "Lillist" in another app's Share
 /// menu. Pre-fills title/notes/url from the inbound payload, persists via
@@ -38,7 +39,7 @@ struct ShareRootView: View {
                 if let saveError {
                     Section {
                         Label(saveError, systemImage: "exclamationmark.triangle")
-                            .foregroundStyle(.red)
+                            .foregroundStyle(RainbowPalette.actionOrange.ink)
                     }
                 }
             }
