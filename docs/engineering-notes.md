@@ -2747,3 +2747,48 @@ doesn't re-hit them.
   the target needs the `LillistUI` product dependency in `project.yml`
   (then `xcodegen generate`). Symbols-not-found at link time for
   `LillistUI.*` from the extension means the dependency edge is missing.
+
+## 2026-06-12 — Liquid Glass does not render in offscreen snapshots (Rainbow Glass)
+
+**Context.** The Rainbow Glass adoption (`Theme/GlassSurface.swift`)
+moves the app's floating control layer and signature components onto
+Apple's iOS 26 `glassEffect`. The first attempt to capture a glass view
+through the existing snapshot harness produced a **completely white
+image** — not just the glass region, the *entire* capture, including
+non-glass siblings (text labels, the rainbow background, the legacy
+non-glass `StatusCubeView` rendered in the same tree). A committed
+non-glass baseline (`StatusCubeSnapshotTests`) rendered fine on the same
+host, so offscreen snapshotting itself works — it is glass specifically
+that voids the image.
+
+**Cause.** `swift-snapshot-testing`'s default `.image` strategy
+rasterizes via `CALayer.render(in:)` (an offscreen context). Liquid
+Glass is composited by a live display/Metal pass that does not
+participate in `render(in:)`; its presence blanks the surrounding layer
+capture. The library's `drawHierarchyInKeyWindow: true` option *does*
+render through the simulator's live window (where glass composites) —
+but it **fatal-errors with "requires tests to be run in a host
+application,"** and the `LillistUITests` SPM bundle is hosted standalone
+(`TEST_HOST=""`, by deliberate design — see the *Build & test* notes on
+the standalone bundle). So glass cannot be captured from the standard
+LillistUI snapshot suite at all.
+
+**Rules.**
+
+- **Do not snapshot glass through `LillistUITests`.** Re-recording a
+  glassified view's baseline yields a blank PNG, which is worse than no
+  test: a blank "passes" against any other blank glass render and masks
+  real regressions. The plan's "re-record baselines per wave" only
+  applies to the *non-glass* portions of the UI.
+- **Faithful glass renders come from a live window:** the Xcode canvas
+  (`#Preview` on an iOS/macOS 26 device — see `StatusCubeGlassPrototype`,
+  `GlassRowSpike`), the running app + `xcrun simctl io booted
+  screenshot`, or a snapshot suite hosted in an **app target** (e.g.
+  `Lillist-iOSAppHostedTests`, which has a host app, so
+  `drawHierarchyInKeyWindow: true` works there). Verifying glass dark
+  mode still requires real hardware (the device-only dark-glass
+  rendering issue).
+- **Snapshot regression for glass surfaces is an open decision** — keep
+  it out of `LillistUITests` until an app-hosted glass-snapshot suite is
+  in place, or accept manual visual verification (consistent with CI
+  already carving out the host-pinned snapshots).
