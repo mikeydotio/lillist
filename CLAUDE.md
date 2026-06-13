@@ -353,8 +353,10 @@ in Mikey's plan file (waves recapped here).
       AccentColor, typography; theme unit tests; re-record baselines
       (+ permanent RECORD_SNAPSHOTS=YES switch in
       RecordableSnapshotTestCase)
-- [ ] Wave 2 — task surfaces: StatusCube + confetti, RainbowCard rows,
+- [x] Wave 2 — task surfaces: StatusCube + confetti, RainbowCard rows,
       compact density, tag meta chips, drag tokens; StatusCycleUITests
+      green (cube = plain view under a transparent-label Menu — macOS
+      drops Shape fills in Menu labels)
 - [ ] Wave 3 — iOS chrome: buttons/FAB, search well, filter chips,
       toasts, empty states/onboarding, Settings + RainbowToggle
 - [ ] Wave 4 — macOS: task-list cards, sidebar chips, popover,
