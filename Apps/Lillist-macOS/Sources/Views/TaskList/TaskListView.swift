@@ -177,9 +177,9 @@ struct TaskListView: View {
                 .foregroundStyle(.secondary)
                 .padding(.horizontal, 12)
                 .padding(.vertical, 6)
-                .accessibleMaterial(.regularMaterial, fallback: LillistColor.card, in: Capsule())
+                .glassSurface(.toast, in: Capsule())
                 .overlay(Capsule().strokeBorder(LillistColor.borderHair, lineWidth: 1))
-                .rainbowShadow(.lift)
+                .glassElevation(.lift)
                 .padding(.bottom, 8)
                 .transition(.move(edge: .bottom).combined(with: .opacity))
                 .task(id: reorderFailed) {

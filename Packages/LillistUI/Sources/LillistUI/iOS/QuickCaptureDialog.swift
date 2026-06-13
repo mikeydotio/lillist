@@ -80,11 +80,7 @@ public struct QuickCaptureDialog: View {
         }
         .padding(LillistSpacing.l)
         .frame(maxWidth: 360)
-        .accessibleMaterial(
-            .regularMaterial,
-            fallback: Color(uiColor: .systemBackground),
-            in: RoundedRectangle(cornerRadius: LillistRadius.m)
-        )
+        .glassSurface(.panel, in: RoundedRectangle(cornerRadius: LillistRadius.m))
     }
 }
 #endif

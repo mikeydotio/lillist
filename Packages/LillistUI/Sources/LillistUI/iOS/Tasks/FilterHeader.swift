@@ -67,7 +67,10 @@ public struct FilterHeader: View {
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 10)
-        .accessibleMaterial(.regularMaterial, fallback: LillistColor.workspace)
+        // The header background floats above the scrolling list — a
+        // control-layer panel. The inner search well stays a *sunken*
+        // input (see `searchField`); glass is for raised surfaces only.
+        .glassSurface(.panel, in: Rectangle())
         .overlay(alignment: .bottom) {
             LillistColor.borderHair.frame(height: 1)
         }

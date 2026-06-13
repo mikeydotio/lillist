@@ -145,17 +145,22 @@ public struct TasksScreen: View {
             }
         }
         .overlay(alignment: .bottom) {
-            ArchiveToast(
-                count: archivedCount,
-                isPresented: $isArchiveToastPresented,
-                onUndo: onUndoArchive
-            )
-        }
-        .overlay(alignment: .bottom) {
-            ReorderFailureToast(isPresented: $isReorderToastPresented)
-        }
-        .overlay(alignment: .bottom) {
-            StatusChangeFailureToast(isPresented: $isStatusToastPresented)
+            // All three toasts share one GlassEffectContainer so that,
+            // when more than one is on-screen, their Liquid Glass
+            // capsules merge instead of sampling each other (glass can't
+            // sample glass). The ZStack(.bottom) reproduces the prior
+            // three-overlay z-stack layout exactly. `glassGroup()` is a
+            // no-op below OS 26.
+            ZStack(alignment: .bottom) {
+                ArchiveToast(
+                    count: archivedCount,
+                    isPresented: $isArchiveToastPresented,
+                    onUndo: onUndoArchive
+                )
+                ReorderFailureToast(isPresented: $isReorderToastPresented)
+                StatusChangeFailureToast(isPresented: $isStatusToastPresented)
+            }
+            .glassGroup()
         }
         .animation(.easeInOut(duration: 0.2), value: isFilterHeaderExpanded)
     }

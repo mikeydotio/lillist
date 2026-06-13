@@ -61,26 +61,17 @@ public struct QuickCaptureView: View {
         }
         .padding(LillistSpacing.m + 2)
         .frame(width: 520)
-        // Plan 15 Task 17: switched from `.thickMaterial` to
-        // `.regularMaterial` for a lighter Tahoe-native look.
-        // `.glassBackgroundEffect()` is visionOS-only as of SDK 26.2;
-        // when an analogous macOS modifier ships, wrap it in a
-        // `#available`-guarded ViewModifier here.
-        // Plan 17 Task 12: substitute an opaque fallback when the user
-        // has enabled Reduce Transparency.
+        // Rainbow Glass: the quick-capture panel is a floating
+        // control-layer surface, so it gets Liquid Glass on OS 26 and
+        // degrades to `.regularMaterial` → opaque fallback below it (the
+        // `#available` + Reduce-Transparency ladder lives in
+        // `GlassSurface`). Supersedes the earlier `.regularMaterial`
+        // treatment that was waiting for a macOS glass modifier to ship.
+        // NB: the macOS NSPanel host must stay non-opaque for glass to
+        // show through (handled by `QuickCapturePanelController`).
+        .glassSurface(.panel, in: RoundedRectangle(cornerRadius: LillistRadius.m))
         #if os(macOS)
-        .accessibleMaterial(
-            .regularMaterial,
-            fallback: Color(nsColor: .windowBackgroundColor),
-            in: RoundedRectangle(cornerRadius: LillistRadius.m)
-        )
         .onExitCommand(perform: onCancel)
-        #else
-        .accessibleMaterial(
-            .regularMaterial,
-            fallback: Color(uiColor: .systemBackground),
-            in: RoundedRectangle(cornerRadius: LillistRadius.m)
-        )
         #endif
     }
 }
