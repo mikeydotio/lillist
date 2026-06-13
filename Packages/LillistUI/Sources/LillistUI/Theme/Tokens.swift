@@ -69,9 +69,6 @@ public enum LillistTypography {
     public static let caption: Font = jakarta("SemiBold", 11.5, relativeTo: .caption, fallback: .caption)
     /// Date/time stamps in journal rows.
     public static let caption2: Font = jakarta("Medium", 11, relativeTo: .caption2, fallback: .caption2)
-    /// Status-indicator glyph. Semantic equivalent of a 16pt SF Symbol
-    /// rendered at body weight. Used by `StatusIndicatorView`.
-    public static let statusGlyph: Font = .body
     /// Quick-capture field text.
     public static let quickCaptureField: Font = jakarta("SemiBold", 17, relativeTo: .title3, fallback: .title3)
     /// Floating add button "+" glyph (SF Symbol, stays system).
@@ -102,16 +99,21 @@ public enum LillistTokens {
 /// `LillistUI/DragReorder/`. Adjust here, not at callsites.
 public enum LillistDragTokens {
     /// Color of the active drop indicator (divider or row border).
-    public static let indicatorColor: Color = .accentColor
+    /// Focus-blue: drag targeting is "work in flight" in the Rainbow
+    /// Logic functional-color language.
+    public static let indicatorColor: Color = RainbowPalette.focusBlue.base
     /// Border color drawn on the phantom row when the resolved target
-    /// is `.rejected` (cycle).
-    public static let rejectionColor: Color = Color.red.opacity(0.8)
+    /// is `.rejected` (cycle). Deep action-orange — the urgent hue —
+    /// replaces the old red (Rainbow Logic has no red).
+    public static let rejectionColor: Color = RainbowPalette.actionOrange.deep.opacity(0.85)
     /// Thickness of the between-row divider when active.
     public static let dividerThickness: CGFloat = 2.5
     /// Stroke thickness of the onto-row border when active.
     public static let rowBorderThickness: CGFloat = 2.0
-    /// Corner radius of the onto-row border highlight.
-    public static let rowBorderCornerRadius: CGFloat = 8
+    /// Corner radius of the onto-row border highlight. Matches the
+    /// Rainbow card radius (`LillistRadius.m`) so the highlight hugs
+    /// the card.
+    public static let rowBorderCornerRadius: CGFloat = 12
     /// Outset of the onto-row border from the row's bounds, so the
     /// stroke does not visually overlap row content.
     public static let rowBorderOutset: CGFloat = 2
@@ -122,8 +124,13 @@ public enum LillistDragTokens {
     public static let phantomLiftedScale: CGFloat = 0.85
     /// Opacity applied to the dragged-row phantom while lifted.
     public static let phantomLiftedOpacity: Double = 0.70
-    /// Shadow radius of the dragged-row phantom while lifted.
-    public static let phantomShadowRadius: CGFloat = 12
+    /// Shadow radius of the dragged-row phantom while lifted —
+    /// `LillistElevation.pop`'s key layer, kept as a single animatable
+    /// shadow so the settle interpolation stays smooth.
+    public static let phantomShadowRadius: CGFloat = 18
+    /// Opacity of the rainbow halo stroked around the lifted phantom
+    /// (the one place the halo appears on iPhone).
+    public static let phantomHaloOpacity: Double = 0.5
     /// Vertical shadow offset of the dragged-row phantom while lifted.
     public static let phantomShadowYOffset: CGFloat = 8
     /// Duration of the lift animation on drag pickup (idle → dragging).

@@ -29,43 +29,53 @@ public struct StatusIndicatorView: View {
     }
 
     public var body: some View {
-        Menu {
-            Button {
-                onSetStatus(.started)
-            } label: {
-                Label(StatusGlyph.accessibilityLabel(for: .started),
-                      systemImage: StatusGlyph.symbol(for: .started))
+        // Rainbow Logic: the 3D status cube is the visual; the Menu sits
+        // above it as a transparent hit layer. The cube must NOT be the
+        // Menu's label — macOS renders Menu labels through machinery
+        // that drops Shape fills in hosted/headless contexts (Images
+        // survive, fills vanish), so a cube-as-label draws as a bare
+        // checkmark. A plain view + clear-label Menu renders identically
+        // everywhere. The Menu structure, identifier, traits, and 44pt
+        // hit target are the StatusCycleUITests-pinned contract.
+        StatusCubeView(status: status)
+            .frame(width: 44, height: 44)
+            .overlay {
+                Menu {
+                    Button {
+                        onSetStatus(.started)
+                    } label: {
+                        Label(StatusGlyph.accessibilityLabel(for: .started),
+                              systemImage: StatusGlyph.symbol(for: .started))
+                    }
+                    Button {
+                        onSetStatus(.blocked)
+                    } label: {
+                        Label(StatusGlyph.accessibilityLabel(for: .blocked),
+                              systemImage: StatusGlyph.symbol(for: .blocked))
+                    }
+                    Button {
+                        onSetStatus(.closed)
+                    } label: {
+                        Label(StatusGlyph.accessibilityLabel(for: .closed),
+                              systemImage: StatusGlyph.symbol(for: .closed))
+                    }
+                } label: {
+                    Color.clear
+                        .frame(width: 44, height: 44)
+                        .contentShape(Rectangle())
+                } primaryAction: {
+                    onClick()
+                }
+                .menuStyle(.borderlessButton)
+                .menuIndicator(.hidden)  // hide the macOS disclosure chevron — the cube is the affordance
             }
-            Button {
-                onSetStatus(.blocked)
-            } label: {
-                Label(StatusGlyph.accessibilityLabel(for: .blocked),
-                      systemImage: StatusGlyph.symbol(for: .blocked))
+            .frame(width: 44, height: 44)
+            .contentShape(Rectangle())
+            .accessibilityIdentifier("StatusIndicator")
+            .accessibilityLabel(StatusGlyph.accessibilityLabel(for: status))
+            .accessibilityAddTraits(.isButton)
+            .accessibilityAction(named: Text(String(localized: "Cycle status", bundle: .module))) {
+                onClick()
             }
-            Button {
-                onSetStatus(.closed)
-            } label: {
-                Label(StatusGlyph.accessibilityLabel(for: .closed),
-                      systemImage: StatusGlyph.symbol(for: .closed))
-            }
-        } label: {
-            Image(systemName: StatusGlyph.symbol(for: status))
-                .font(.system(size: 32, weight: .regular))
-                .foregroundStyle(StatusPalette.color(for: status))
-                .frame(width: 44, height: 44)
-                .contentShape(Rectangle())
-        } primaryAction: {
-            onClick()
-        }
-        .menuStyle(.borderlessButton)
-        .menuIndicator(.hidden)  // hide the macOS disclosure chevron — the glyph is the affordance
-        .frame(width: 48, height: 48)
-        .contentShape(Rectangle())
-        .accessibilityIdentifier("StatusIndicator")
-        .accessibilityLabel(StatusGlyph.accessibilityLabel(for: status))
-        .accessibilityAddTraits(.isButton)
-        .accessibilityAction(named: Text(String(localized: "Cycle status", bundle: .module))) {
-            onClick()
-        }
     }
 }

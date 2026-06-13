@@ -123,7 +123,15 @@ public struct DragOverlay<PhantomContent: View>: View {
             .frame(height: session.originalHeight)
             .scaleEffect(scale)
             .opacity(opacity)
-            .shadow(radius: shadow, y: yOffset)
+            .shadow(color: .black.opacity(0.22), radius: shadow, y: yOffset)
+            .overlay(
+                // Rainbow halo on the lifted card — the drag is the one
+                // surface where the halo shows on iPhone. Fades out as
+                // the phantom settles.
+                RoundedRectangle(cornerRadius: LillistDragTokens.rowBorderCornerRadius, style: .continuous)
+                    .strokeBorder(RainbowGradient.halo, lineWidth: 1.5)
+                    .opacity(isSettling ? 0 : LillistDragTokens.phantomHaloOpacity)
+            )
             .overlay(
                 RoundedRectangle(cornerRadius: LillistDragTokens.rowBorderCornerRadius)
                     .stroke(
