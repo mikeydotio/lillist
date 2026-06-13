@@ -14,19 +14,25 @@ public struct FloatingAddButton: View {
         self.onLongPress = onLongPress
     }
 
+    /// Compact Rainbow size — 52pt circle (still comfortably above the
+    /// 44pt accessibility floor).
+    private static let diameter: CGFloat = 52
+
     public var body: some View {
         Button(action: onTap) {
             Image(systemName: "plus")
                 .font(LillistTypography.floatingAddGlyph)
-                .frame(width: LillistSpacing.xxl + LillistSpacing.l, height: LillistSpacing.xxl + LillistSpacing.l)  // 56pt
+                .frame(width: Self.diameter, height: Self.diameter)
                 .background {
-                    Circle().fill(.tint)
+                    Circle().fill(LillistColor.lavender)
                 }
                 .overlay {
-                    Circle().strokeBorder(.white, lineWidth: 2)
+                    RainbowTopHighlight(shape: Circle())
                 }
-                .foregroundStyle(.white)
+                .foregroundStyle(RainbowPalette.scriptPurple.ink)
+                .shadow(color: RainbowPalette.scriptPurple.base.opacity(0.28), radius: 9, y: 7)
         }
+        .buttonStyle(SquishPressStyle())
         .accessibilityLabel(String(localized: "New task", bundle: .module))
         .accessibilityHint(String(localized: "Opens quick capture", bundle: .module))
         .accessibilityAction(named: Text(String(localized: "Capture from clipboard", bundle: .module))) {
@@ -37,6 +43,21 @@ public struct FloatingAddButton: View {
                 onLongPress?()
             }
         )
+    }
+}
+
+/// Press feedback for the FAB: the Rainbow squish, gated on Reduce
+/// Motion. Local to this file — buttons elsewhere use
+/// `RainbowButtonStyle`, which has its own press treatment.
+private struct SquishPressStyle: ButtonStyle {
+    @Environment(\.accessibilityReduceMotion) private var systemReduceMotion
+    @Environment(\.reduceMotionOverride) private var overrideReduceMotion
+
+    func makeBody(configuration: Configuration) -> some View {
+        let reduce = overrideReduceMotion ?? systemReduceMotion
+        return configuration.label
+            .scaleEffect(configuration.isPressed && !reduce ? 0.94 : 1)
+            .animation(reduce ? nil : LillistMotion.squish(LillistMotion.fast), value: configuration.isPressed)
     }
 }
 #endif

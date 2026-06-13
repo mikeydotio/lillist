@@ -58,6 +58,8 @@ public struct FilterHeader: View {
         self.onClear = onClear
     }
 
+    @FocusState private var searchFocused: Bool
+
     public var body: some View {
         VStack(spacing: 10) {
             searchField
@@ -65,21 +67,23 @@ public struct FilterHeader: View {
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 10)
-        .background(.regularMaterial)
+        .accessibleMaterial(.regularMaterial, fallback: LillistColor.workspace)
         .overlay(alignment: .bottom) {
-            Divider()
+            LillistColor.borderHair.frame(height: 1)
         }
     }
 
     private var searchField: some View {
         HStack(spacing: 8) {
             Image(systemName: "magnifyingglass")
-                .foregroundStyle(.secondary)
+                .foregroundStyle(LillistColor.textFaint)
             TextField(
                 String(localized: "Search", bundle: .module),
                 text: $searchText
             )
             .textFieldStyle(.plain)
+            .font(LillistTypography.body)
+            .focused($searchFocused)
             .autocorrectionDisabled()
             .textInputAutocapitalization(.never)
             .accessibilityIdentifier("FilterSearchField")
@@ -89,17 +93,28 @@ public struct FilterHeader: View {
                     onClear()
                 } label: {
                     Image(systemName: "xmark.circle.fill")
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(LillistColor.textFaint)
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel(String(localized: "Clear filter", bundle: .module))
             }
         }
-        .padding(.horizontal, 10)
-        .padding(.vertical, 8)
+        .padding(.horizontal, 12)
+        .frame(minHeight: 36)
         .background {
-            RoundedRectangle(cornerRadius: 10, style: .continuous)
-                .fill(Color(.tertiarySystemFill))
+            // The Rainbow inset search well: sunken surface when at
+            // rest; lifts to card with a focus-blue ring while typing.
+            Capsule(style: .continuous)
+                .fill(searchFocused ? AnyShapeStyle(LillistColor.card) : .rainbowWell)
+        }
+        .overlay {
+            Capsule(style: .continuous)
+                .strokeBorder(
+                    searchFocused
+                        ? RainbowPalette.focusBlue.base.opacity(0.35)
+                        : LillistColor.borderHair,
+                    lineWidth: searchFocused ? 2 : 1
+                )
         }
     }
 

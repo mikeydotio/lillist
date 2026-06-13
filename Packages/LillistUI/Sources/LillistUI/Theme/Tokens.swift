@@ -71,6 +71,10 @@ public enum LillistTypography {
     public static let caption2: Font = jakarta("Medium", 11, relativeTo: .caption2, fallback: .caption2)
     /// Quick-capture field text.
     public static let quickCaptureField: Font = jakarta("SemiBold", 17, relativeTo: .title3, fallback: .title3)
+    /// `RainbowButtonStyle` label, small size.
+    public static let buttonSm: Font = jakarta("Bold", 13, relativeTo: .subheadline, fallback: .subheadline.bold())
+    /// `RainbowButtonStyle` label, medium size.
+    public static let buttonMd: Font = jakarta("Bold", 15, relativeTo: .body, fallback: .body.bold())
     /// Floating add button "+" glyph (SF Symbol, stays system).
     public static let floatingAddGlyph: Font = .title.weight(.semibold)
 

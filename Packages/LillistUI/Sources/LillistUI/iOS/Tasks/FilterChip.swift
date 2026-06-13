@@ -2,12 +2,16 @@
 import SwiftUI
 
 /// Pill-shaped toggle button used in the Tasks screen's expanding filter
-/// header. Selected state is filled with the accent tint; unselected is
-/// outlined.
+/// header. Unselected is a raised white card chip; selected fills with
+/// the signature lavender + purple ink (mirrors the lavender hero
+/// button — selection is a "kept" state, not an alert).
 public struct FilterChip: View {
     public let title: String
     public let isSelected: Bool
     public let action: () -> Void
+
+    @Environment(\.accessibilityShouldIncreaseContrast) private var systemIncreaseContrast
+    @Environment(\.increaseContrastOverride) private var overrideIncreaseContrast
 
     public init(title: String, isSelected: Bool, action: @escaping () -> Void) {
         self.title = title
@@ -16,24 +20,33 @@ public struct FilterChip: View {
     }
 
     public var body: some View {
+        let increaseContrast = overrideIncreaseContrast ?? systemIncreaseContrast
         Button(action: action) {
             Text(title)
                 .font(LillistTypography.subheadline)
                 .lineLimit(1)
                 .padding(.horizontal, 12)
-                .padding(.vertical, 6)
+                .padding(.vertical, 5)
                 .background {
                     Capsule(style: .continuous)
-                        .fill(isSelected ? Color.accentColor : Color(.tertiarySystemFill))
+                        .fill(isSelected ? LillistColor.lavender : LillistColor.card)
                 }
-                .foregroundStyle(isSelected ? Color.white : Color.primary)
+                .foregroundStyle(isSelected ? RainbowPalette.scriptPurple.ink : LillistColor.textBody)
                 .overlay {
                     Capsule(style: .continuous)
                         .strokeBorder(
-                            isSelected ? Color.clear : Color(.separator),
+                            isSelected
+                                ? RainbowPalette.scriptPurple.base.opacity(increaseContrast ? 0.9 : 0.35)
+                                : (increaseContrast ? LillistColor.borderStrong : LillistColor.borderHair),
                             lineWidth: 1
                         )
                 }
+                .overlay {
+                    if isSelected {
+                        RainbowTopHighlight(shape: Capsule(style: .continuous), strength: 0.5)
+                    }
+                }
+                .rainbowShadow(.xs)
         }
         .buttonStyle(.plain)
         .accessibilityAddTraits(isSelected ? [.isButton, .isSelected] : .isButton)
