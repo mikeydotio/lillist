@@ -22,15 +22,15 @@ public struct FloatingAddButton: View {
         Button(action: onTap) {
             Image(systemName: "plus")
                 .font(LillistTypography.floatingAddGlyph)
-                .frame(width: Self.diameter, height: Self.diameter)
-                .background {
-                    Circle().fill(LillistColor.lavender)
-                }
-                .overlay {
-                    RainbowTopHighlight(shape: Circle())
-                }
                 .foregroundStyle(RainbowPalette.scriptPurple.ink)
-                .shadow(color: RainbowPalette.scriptPurple.base.opacity(0.28), radius: 9, y: 7)
+                .frame(width: Self.diameter, height: Self.diameter)
+                // Rainbow Glass: prominent tinted glass. The brand purple
+                // *is* the primary-create signal (functional color), and
+                // the interactive glass supplies the fill, specular
+                // highlight, and contact shadow the hand-rolled
+                // `RainbowTopHighlight` + drop shadow used to fake. The
+                // iOS app floors at 26, so this always renders as glass.
+                .glassSurface(.primaryAction, in: Circle())
         }
         .buttonStyle(SquishPressStyle())
         .accessibilityLabel(String(localized: "New task", bundle: .module))

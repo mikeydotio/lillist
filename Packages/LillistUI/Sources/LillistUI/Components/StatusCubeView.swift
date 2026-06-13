@@ -1,24 +1,34 @@
 import SwiftUI
 import LillistCore
 
-/// The Rainbow Logic 3D status cube — the visual heart of a task row.
+/// The Rainbow Glass status chip — the visual heart of a task row.
 ///
-/// Four states, each with a **shape axis** independent of hue so
-/// status stays legible for colorblind users and under
-/// differentiate-without-color:
+/// A circular Liquid Glass chip, tinted by the functional status hue,
+/// with a **shape axis** independent of hue so status stays legible for
+/// colorblind users and under differentiate-without-color:
 ///
-/// | status  | fill                       | shape                     |
-/// |---------|----------------------------|---------------------------|
-/// | todo    | raised empty (top-lit)     | empty cube                |
-/// | started | focus-blue                 | white left-half fill      |
-/// | blocked | action-orange soft         | dashed ink border + bars  |
-/// | closed  | growth-green               | white check (squish snap) |
+/// | status  | glass tint        | shape                          |
+/// |---------|-------------------|--------------------------------|
+/// | todo    | neutral + stroke  | empty chip                     |
+/// | started | focus-blue        | white leading half             |
+/// | blocked | action-orange     | dashed ink border + pause bars |
+/// | closed  | growth-green      | white check (squish snap)      |
+///
+/// Depth comes from the real glass material (refraction, specular
+/// highlight, contact shadow) — the previous hand-rolled faux-volume
+/// (`emptyGradient`, `litFromAbove`, `RainbowTopHighlight`,
+/// `rainbowGlow`) is retired. The neutral to-do state keeps a hairline
+/// stroke so the empty/tappable chip stays visible over light content.
 ///
 /// Purely visual: tap-to-cycle, the explicit-setter menu, hit targets,
 /// and every accessibility attribute live in `StatusIndicatorView`,
-/// which renders this view as its `Menu` label. The cube also hosts
-/// the one-shot confetti burst on a transition into `.closed`
+/// which renders this view as its `Menu` label. The chip also hosts the
+/// one-shot confetti burst on a transition into `.closed`
 /// (`ConfettiPolicy` decides; Reduce Motion suppresses it).
+///
+/// > Note: this is one glass element per task row. On long lists that is
+/// > the per-row-glass cost the Rainbow Glass plan's Wave 0 spike exists
+/// > to validate — confirm scroll performance on device.
 public struct StatusCubeView: View {
     public var status: Status
 
@@ -37,10 +47,6 @@ public struct StatusCubeView: View {
         self.status = status
     }
 
-    private var cubeShape: RoundedRectangle {
-        RoundedRectangle(cornerRadius: LillistRadius.cube, style: .continuous)
-    }
-
     private var increaseContrast: Bool {
         overrideIncreaseContrast ?? systemIncreaseContrast
     }
@@ -50,12 +56,12 @@ public struct StatusCubeView: View {
     }
 
     public var body: some View {
-        cube
+        chip
             .frame(width: size, height: size)
             .overlay {
                 if burstID != nil {
                     ConfettiBurstView()
-                        // Particles fly past the cube's bounds.
+                        // Particles fly past the chip's bounds.
                         .frame(width: size * 3, height: size * 3)
                 }
             }
@@ -71,35 +77,29 @@ public struct StatusCubeView: View {
     }
 
     @ViewBuilder
-    private var cube: some View {
+    private var chip: some View {
         switch status {
         case .todo:
-            cubeShape
-                .fill(emptyGradient)
-                .overlay(cubeShape.strokeBorder(
+            glassChip(.control)
+                .overlay(Circle().strokeBorder(
                     increaseContrast ? LillistColor.borderStrong : LillistColor.borderSoft,
                     lineWidth: 1
                 ))
-                .overlay(RainbowTopHighlight(shape: cubeShape))
 
         case .started:
-            cubeShape
-                .fill(RainbowPalette.focusBlue.base)
-                .overlay(litFromAbove)
-                .overlay(alignment: .leading) {
-                    // Shape axis: leading half filled white.
-                    Rectangle()
-                        .fill(.white)
-                        .frame(width: size / 2)
-                        .clipShape(cubeShape)
-                        .opacity(0.9)
+            glassChip(.statusTinted(RainbowPalette.focusBlue.base))
+                .overlay {
+                    // Shape axis: leading half filled white, clipped to
+                    // the chip circle.
+                    HStack(spacing: 0) {
+                        Rectangle().fill(.white).opacity(0.9)
+                        Color.clear
+                    }
+                    .clipShape(Circle())
                 }
-                .overlay(RainbowTopHighlight(shape: cubeShape, strength: 0.55))
-                .rainbowGlow(RainbowPalette.focusBlue, radius: 4)
 
         case .blocked:
-            cubeShape
-                .fill(RainbowPalette.actionOrange.soft)
+            glassChip(.statusTinted(RainbowPalette.actionOrange.base))
                 .overlay {
                     // Shape axis: pause bars in ink.
                     HStack(spacing: size * 0.14) {
@@ -107,15 +107,13 @@ public struct StatusCubeView: View {
                         barShape.frame(width: size * 0.14, height: size * 0.46)
                     }
                 }
-                .overlay(cubeShape.strokeBorder(
+                .overlay(Circle().strokeBorder(
                     RainbowPalette.actionOrange.ink.opacity(increaseContrast ? 1 : 0.9),
                     style: StrokeStyle(lineWidth: 1.5, dash: [3, 3])
                 ))
 
         case .closed:
-            cubeShape
-                .fill(RainbowPalette.growthGreen.base)
-                .overlay(litFromAbove)
+            glassChip(.statusTinted(RainbowPalette.growthGreen.base))
                 .overlay {
                     // Shape axis: the white check, snapping in with a
                     // squish on live transitions (static when the view
@@ -126,33 +124,13 @@ public struct StatusCubeView: View {
                         .foregroundStyle(.white)
                         .transition(reduceMotion ? .identity : .scale(scale: 0.4).combined(with: .opacity))
                 }
-                .overlay(RainbowTopHighlight(shape: cubeShape, strength: 0.55))
-                .rainbowGlow(RainbowPalette.growthGreen, radius: 4)
         }
     }
 
-    /// Raised-empty fill for the todo cube: white→mist top-lit gradient
-    /// (charcoal equivalents in dark mode).
-    private var emptyGradient: LinearGradient {
-        LinearGradient(
-            colors: [
-                RainbowPalette.dynamic(light: 0xFFFFFF, dark: 0x262833),
-                RainbowPalette.dynamic(light: 0xEEF0F5, dark: 0x1F2128),
-            ],
-            startPoint: .top, endPoint: .bottom
-        )
-    }
-
-    /// Subtle white wash from the top edge that makes a filled cube
-    /// read as a lit, volumetric object instead of a flat swatch.
-    private var litFromAbove: some View {
-        cubeShape.fill(
-            LinearGradient(
-                colors: [.white.opacity(0.28), .white.opacity(0)],
-                startPoint: .top, endPoint: .center
-            )
-        )
-        .allowsHitTesting(false)
+    /// A status chip as a circular Liquid Glass surface (degrading to
+    /// material → opaque below OS 26, via `GlassSurface`).
+    private func glassChip(_ surface: GlassSurface) -> some View {
+        Color.clear.glassSurface(surface, in: Circle())
     }
 
     private var barShape: some View {
