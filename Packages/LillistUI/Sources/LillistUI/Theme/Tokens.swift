@@ -23,10 +23,18 @@ public enum LillistSpacing {
 }
 
 /// Corner-radius scale for cards, popovers, and floating surfaces.
+/// Rainbow Logic values: soft, pill-friendly, tactile. Use the
+/// `.continuous` corner style with these. Capsule shapes use
+/// `Capsule`, not a radius token.
 public enum LillistRadius {
-    public static let s: CGFloat = 6
+    public static let s: CGFloat = 8
+    /// Default card/field radius.
     public static let m: CGFloat = 12
-    public static let l: CGFloat = 18
+    public static let l: CGFloat = 16
+    /// Large floating surfaces.
+    public static let xl: CGFloat = 22
+    /// The 3D status cube (`StatusCubeView`).
+    public static let cube: CGFloat = 8
 }
 
 /// Gesture-timing constants. `longPress` is the duration we expect a
@@ -36,37 +44,49 @@ public enum LillistTiming {
     public static let longPress: TimeInterval = 0.4
 }
 
-/// Semantic typography. Each case maps to a SwiftUI `Font` that
-/// participates in Dynamic Type. Use `LillistTypography.title` not
-/// `.font(.system(size: 28, weight: .semibold))` so user accessibility
-/// settings actually affect chrome text size.
+/// Semantic typography: Plus Jakarta Sans at the Rainbow Logic scale.
+/// Every token is `relativeTo:` a Dynamic Type text style, so user
+/// accessibility text-size settings keep scaling chrome text — never
+/// reintroduce a frozen `.font(.system(size: N))`. If font
+/// registration fails (`LillistFonts`), tokens fall back to the
+/// system style they are relative to.
 public enum LillistTypography {
-    /// `.largeTitle` — onboarding heroes, splash screens.
-    public static let largeTitle: Font = .largeTitle
-    /// `.title` — major headings.
-    public static let title: Font = .title
-    /// `.title2` — sheet headers like the onboarding "Welcome to Lillist".
-    public static let title2: Font = .title2
-    /// `.title3` — secondary headings, sub-section titles.
-    public static let title3: Font = .title3
-    /// `.headline` — emphasized body, sidebar group labels.
-    public static let headline: Font = .headline
-    /// `.body` — default text in most form rows.
-    public static let body: Font = .body
-    /// `.subheadline` — captions under titles, supporting text.
-    public static let subheadline: Font = .subheadline
-    /// `.caption` — small descriptive labels (tag chips, badges).
-    public static let caption: Font = .caption
-    /// `.caption2` — date/time stamps in journal rows.
-    public static let caption2: Font = .caption2
+    /// Onboarding heroes, splash screens.
+    public static let largeTitle: Font = jakarta("ExtraBold", 30, relativeTo: .largeTitle, fallback: .largeTitle)
+    /// Major headings.
+    public static let title: Font = jakarta("Bold", 24, relativeTo: .title, fallback: .title)
+    /// Sheet headers like the onboarding "Welcome to Lillist".
+    public static let title2: Font = jakarta("Bold", 20, relativeTo: .title2, fallback: .title2)
+    /// Secondary headings, sub-section titles.
+    public static let title3: Font = jakarta("SemiBold", 17, relativeTo: .title3, fallback: .title3)
+    /// Emphasized body: task-row titles, sidebar group labels.
+    public static let headline: Font = jakarta("SemiBold", 15, relativeTo: .headline, fallback: .headline)
+    /// Default text in most form rows.
+    public static let body: Font = jakarta("Regular", 15, relativeTo: .body, fallback: .body)
+    /// Captions under titles, supporting text.
+    public static let subheadline: Font = jakarta("Medium", 13, relativeTo: .subheadline, fallback: .subheadline)
+    /// Small descriptive labels (tag chips, badges, due dates).
+    public static let caption: Font = jakarta("SemiBold", 11.5, relativeTo: .caption, fallback: .caption)
+    /// Date/time stamps in journal rows.
+    public static let caption2: Font = jakarta("Medium", 11, relativeTo: .caption2, fallback: .caption2)
     /// Status-indicator glyph. Semantic equivalent of a 16pt SF Symbol
     /// rendered at body weight. Used by `StatusIndicatorView`.
     public static let statusGlyph: Font = .body
-    /// Quick-capture field text. Semantic equivalent of a slightly-
-    /// larger body weight.
-    public static let quickCaptureField: Font = .title3
-    /// Floating add button "+" glyph.
+    /// Quick-capture field text.
+    public static let quickCaptureField: Font = jakarta("SemiBold", 17, relativeTo: .title3, fallback: .title3)
+    /// Floating add button "+" glyph (SF Symbol, stays system).
     public static let floatingAddGlyph: Font = .title.weight(.semibold)
+
+    /// Plus Jakarta Sans face scaled relative to a Dynamic Type style,
+    /// falling back to the plain text style when registration fails.
+    private static func jakarta(
+        _ weight: String, _ size: CGFloat,
+        relativeTo style: Font.TextStyle, fallback: Font
+    ) -> Font {
+        LillistFonts.registerIfNeeded()
+            ? .custom("\(LillistFonts.familyStem)-\(weight)", size: size, relativeTo: style)
+            : fallback
+    }
 }
 
 /// Reusable string constants used by app-target preferences UI.
