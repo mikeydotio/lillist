@@ -341,29 +341,20 @@ conventional-commit prefixes (`feat:`, `fix:`, `refactor:`, `test:`,
 `docs:`, `chore:`) and land small, focused commits. HTTPS push and
 never-force-push rules are in `~/.claude/CLAUDE.md`.
 
-## Mini-roadmap — Rainbow Logic redesign (in flight)
+## Rainbow Logic redesign — COMPLETE (2026-06-12)
 
-Applying the Rainbow Logic design system across both apps. Spec:
-`docs/plans/2026-06-12-rainbow-logic-design-system.md`; execution plan
-in Mikey's plan file (waves recapped here).
-
-- [x] Wave 0 — design-system doc + cross-refs
-- [x] Wave 1 — foundation: Jakarta fonts + registrar, RainbowPalette/
-      LillistColor/Elevation/Motion/Gradients, Status+Sync remaps,
-      AccentColor, typography; theme unit tests; re-record baselines
-      (+ permanent RECORD_SNAPSHOTS=YES switch in
-      RecordableSnapshotTestCase)
-- [x] Wave 2 — task surfaces: StatusCube + confetti, RainbowCard rows,
-      compact density, tag meta chips, drag tokens; StatusCycleUITests
-      green (cube = plain view under a transparent-label Menu — macOS
-      drops Shape fills in Menu labels)
-- [x] Wave 3 — iOS chrome: buttons/FAB, search well, filter chips,
-      toasts, empty states/onboarding, Settings + RainbowToggle
-- [x] Wave 4 — macOS: task-list cards, sidebar chips, popover,
-      detail header, full-whimsy Preferences
-- [x] Wave 5 — secondary: recurrence, journal, breadcrumbs, crash/
-      migration sheets, rainbow progress, ShareExtension adoption
-- [ ] Wave 6 — closeout: snapshot sweep, engineering notes, deployit
+The Rainbow Logic design system ("Structured Whimsy") is applied across
+both apps and the share extension. Spec:
+`docs/plans/2026-06-12-rainbow-logic-design-system.md`. Theme layer in
+`Packages/LillistUI/Sources/LillistUI/Theme/` (RainbowPalette,
+LillistColor, LillistElevation, LillistMotion, RainbowGradient,
+RainbowButtonStyle, RainbowToggleStyle, Fonts/LillistFonts +
+LillistColor/typography tokens in Tokens.swift). Signature components:
+StatusCubeView, ConfettiBurstView, RainbowCard, RainbowEmptyStateView.
+Plus Jakarta Sans is bundled + process-registered; AccentColor is
+script-purple. Verified: LillistUI 147/147, LillistCore 895/895, both
+app builds, iOS scheme green (bar the 2 known iCloud live-swap cases).
+Gotchas captured in `docs/engineering-notes.md` (2026-06-12 entry).
 
 ## When in doubt
 
