@@ -359,7 +359,7 @@ in Mikey's plan file (waves recapped here).
       drops Shape fills in Menu labels)
 - [x] Wave 3 — iOS chrome: buttons/FAB, search well, filter chips,
       toasts, empty states/onboarding, Settings + RainbowToggle
-- [ ] Wave 4 — macOS: task-list cards, sidebar chips, popover,
+- [x] Wave 4 — macOS: task-list cards, sidebar chips, popover,
       detail header, full-whimsy Preferences
 - [ ] Wave 5 — secondary: recurrence, journal, breadcrumbs, crash/
       migration sheets, rainbow progress, ShareExtension adoption
