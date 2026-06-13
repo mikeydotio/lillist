@@ -118,6 +118,7 @@ public struct CrashReportSheet: View {
                         .foregroundStyle(.secondary)
                 }
             }
+            .toggleStyle(.rainbow)
             .navigationTitle("Crash report")
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {

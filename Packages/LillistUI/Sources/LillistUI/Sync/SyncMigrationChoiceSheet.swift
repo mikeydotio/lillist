@@ -25,53 +25,64 @@ public struct SyncMigrationChoiceSheet: View {
         VStack(alignment: .leading, spacing: LillistSpacing.l) {
             VStack(alignment: .leading, spacing: 8) {
                 Text("Turn on iCloud Sync")
-                    .font(.largeTitle.bold())
+                    .font(LillistTypography.largeTitle)
+                    .foregroundStyle(LillistColor.textStrong)
                     .accessibilityAddTraits(.isHeader)
                 Text("Lillist can't merge automatically. Choose which copy to keep.")
-                    .foregroundStyle(.secondary)
+                    .font(LillistTypography.body)
+                    .foregroundStyle(LillistColor.textMuted)
             }
 
             VStack(spacing: 12) {
-                Button(role: .destructive, action: onReplaceICloud) {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("Replace iCloud with This Device")
-                            .font(.headline)
-                        Text("Erase everything in iCloud and upload what's on this device. Other devices syncing this iCloud account will see this change.")
-                            .font(.callout)
-                            .foregroundStyle(.secondary)
-                    }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding()
-                }
-                .buttonStyle(.borderedProminent)
-                .tint(.red)
-
-                Button(role: .destructive, action: onReplaceLocal) {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("Replace This Device with iCloud")
-                            .font(.headline)
-                        Text("Erase the data on this device and download what's in iCloud. Other devices stay in sync.")
-                            .font(.callout)
-                            .foregroundStyle(.secondary)
-                    }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding()
-                }
-                .buttonStyle(.borderedProminent)
-                .tint(.red)
+                destructiveOption(
+                    action: onReplaceICloud,
+                    title: "Replace iCloud with This Device",
+                    detail: "Erase everything in iCloud and upload what's on this device. Other devices syncing this iCloud account will see this change."
+                )
+                destructiveOption(
+                    action: onReplaceLocal,
+                    title: "Replace This Device with iCloud",
+                    detail: "Erase the data on this device and download what's in iCloud. Other devices stay in sync."
+                )
             }
 
             Text("Need both? Export your data first, then import after switching.")
-                .font(.footnote)
-                .foregroundStyle(.secondary)
+                .font(LillistTypography.caption)
+                .foregroundStyle(LillistColor.textFaint)
                 .frame(maxWidth: .infinity, alignment: .leading)
 
             Spacer()
 
             Button("Cancel", action: onCancel)
                 .frame(maxWidth: .infinity)
-                .padding(.vertical, 6)
+                .buttonStyle(.rainbow(.secondary))
         }
         .padding(LillistSpacing.l)
+        .background(LillistColor.workspace)
+    }
+
+    /// A destructive choice rendered as a Rainbow card with the urgent
+    /// (action-orange) accent stripe and ink heading — the option's
+    /// gravity reads from color, not a red wash.
+    @ViewBuilder
+    private func destructiveOption(
+        action: @escaping () -> Void,
+        title: LocalizedStringKey,
+        detail: LocalizedStringKey
+    ) -> some View {
+        Button(role: .destructive, action: action) {
+            VStack(alignment: .leading, spacing: 4) {
+                Text(title)
+                    .font(LillistTypography.headline)
+                    .foregroundStyle(RainbowPalette.actionOrange.ink)
+                Text(detail)
+                    .font(LillistTypography.subheadline)
+                    .foregroundStyle(LillistColor.textMuted)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding()
+            .rainbowCard(accent: RainbowPalette.actionOrange.base, elevation: .sm)
+        }
+        .buttonStyle(.plain)
     }
 }

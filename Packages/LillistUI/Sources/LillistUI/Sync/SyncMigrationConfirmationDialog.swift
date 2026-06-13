@@ -40,28 +40,29 @@ public struct SyncMigrationConfirmationDialog: View {
         VStack(spacing: LillistSpacing.l) {
             Image(systemName: "exclamationmark.triangle.fill")
                 .font(.system(size: 36, weight: .bold))
-                .foregroundStyle(.red)
+                .foregroundStyle(RainbowPalette.actionOrange.deep)
                 .accessibilityHidden(true)
             Text(title)
-                .font(.title3.bold())
+                .font(LillistTypography.title3)
+                .foregroundStyle(LillistColor.textStrong)
                 .multilineTextAlignment(.center)
             Text(message)
-                .font(.callout)
-                .foregroundStyle(.secondary)
+                .font(LillistTypography.subheadline)
+                .foregroundStyle(LillistColor.textMuted)
                 .multilineTextAlignment(.center)
             VStack(spacing: 8) {
                 Button(role: .destructive, action: onConfirm) {
                     Text("Replace")
                         .frame(maxWidth: .infinity)
-                        .padding(.vertical, 4)
                 }
-                .buttonStyle(.borderedProminent)
-                .tint(.red)
+                .buttonStyle(.rainbow(.orange))
                 Button("Cancel", action: onCancel)
-                    .buttonStyle(.bordered)
+                    .frame(maxWidth: .infinity)
+                    .buttonStyle(.rainbow(.secondary))
             }
         }
         .padding(LillistSpacing.l)
         .frame(maxWidth: 420)
+        .background(LillistColor.workspace)
     }
 }

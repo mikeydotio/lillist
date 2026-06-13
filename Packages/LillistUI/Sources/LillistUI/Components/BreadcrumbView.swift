@@ -26,8 +26,10 @@ public struct BreadcrumbView: View {
     public var body: some View {
         HStack(spacing: 2) {
             ForEach(Array(path.enumerated()), id: \.offset) { i, name in
-                if i > 0 { Image(systemName: "chevron.forward").font(.caption2).foregroundStyle(.tertiary) }
-                Text(name).font(.caption).foregroundStyle(.secondary)
+                if i > 0 { Image(systemName: "chevron.forward").font(.caption2).foregroundStyle(LillistColor.textFaint) }
+                Text(name)
+                    .font(i == path.count - 1 ? LillistTypography.caption : LillistTypography.caption2)
+                    .foregroundStyle(i == path.count - 1 ? LillistColor.textStrong : LillistColor.textMuted)
             }
         }
         .accessibilityElement(children: .combine)

@@ -19,13 +19,16 @@ public struct JournalEntryRow: View {
         VStack(alignment: .leading, spacing: LillistSpacing.xs / 2) {
             HStack(spacing: LillistSpacing.xs) {
                 Image(systemName: JournalGlyph.symbol(for: entry.kind))
-                    .foregroundStyle(.secondary)
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(LillistColor.textFaint)
                 Text(entry.createdAt?.formatted(date: .abbreviated, time: .shortened) ?? "—")
-                    .font(LillistTypography.caption)
-                    .foregroundStyle(.secondary)
+                    .font(LillistTypography.caption2)
+                    .foregroundStyle(LillistColor.textFaint)
             }
             // i18n-exempt: user-authored journal entry body, not chrome.
             Text(LocalizedStringKey(entry.body))
+                .font(LillistTypography.body)
+                .foregroundStyle(LillistColor.textBody)
                 .textSelection(.enabled)
         }
         .padding(.vertical, LillistSpacing.xs)

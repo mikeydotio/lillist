@@ -23,14 +23,15 @@ public struct SyncMigrationProgressSheet: View {
 
             switch phase {
             case .completed:
+                // Completion is a sanctioned rainbow moment.
                 Image(systemName: "checkmark.circle.fill")
-                    .font(.system(size: 56, weight: .light))
-                    .foregroundStyle(.green)
+                    .font(.system(size: 56, weight: .medium))
+                    .foregroundStyle(RainbowGradient.vertical)
                     .accessibilityHidden(true)
             case .failed:
                 Image(systemName: "xmark.octagon.fill")
-                    .font(.system(size: 56, weight: .light))
-                    .foregroundStyle(.red)
+                    .font(.system(size: 56, weight: .medium))
+                    .foregroundStyle(RainbowPalette.actionOrange.deep)
                     .accessibilityHidden(true)
             default:
                 ProgressView()
@@ -38,18 +39,19 @@ public struct SyncMigrationProgressSheet: View {
             }
 
             Text(title)
-                .font(.title2.bold())
+                .font(LillistTypography.title2)
+                .foregroundStyle(LillistColor.textStrong)
                 .multilineTextAlignment(.center)
                 .accessibilityAddTraits(.isHeader)
 
             Text(detail)
+                .font(LillistTypography.body)
                 .multilineTextAlignment(.center)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(LillistColor.textMuted)
                 .frame(maxWidth: 420)
 
             if let progress = visibleProgress {
-                ProgressView(value: progress)
-                    .progressViewStyle(.linear)
+                RainbowProgressBar(value: progress)
                     .frame(maxWidth: 320)
             }
 
@@ -57,12 +59,13 @@ public struct SyncMigrationProgressSheet: View {
 
             if case .completed = phase, let dismiss = onDismissAfterCompletion {
                 Button("Done", action: dismiss)
-                    .buttonStyle(.borderedProminent)
+                    .buttonStyle(.rainbow(.green))
                     .padding(.bottom, LillistSpacing.l)
             }
         }
         .padding(LillistSpacing.l)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(LillistColor.workspace)
     }
 
     private var title: String {
@@ -95,6 +98,33 @@ public struct SyncMigrationProgressSheet: View {
         case .uploading(let progress): return progress
         case .downloading(let progress): return progress
         default: return nil
+        }
+    }
+}
+
+/// Inset Rainbow progress meter: sunken track, glossy spectrum fill
+/// that reaches the orange end as work completes. Mirrors the
+/// system's accessibility behavior by wrapping a hidden ProgressView
+/// representation.
+struct RainbowProgressBar: View {
+    let value: Double
+
+    var body: some View {
+        GeometryReader { proxy in
+            ZStack(alignment: .leading) {
+                Capsule()
+                    .fill(.rainbowWell)
+                Capsule()
+                    .fill(RainbowGradient.horizontal)
+                    .overlay(
+                        RainbowTopHighlight(shape: Capsule(), strength: 0.45)
+                    )
+                    .frame(width: max(8, proxy.size.width * min(max(value, 0), 1)))
+            }
+        }
+        .frame(height: 8)
+        .accessibilityRepresentation {
+            ProgressView(value: min(max(value, 0), 1))
         }
     }
 }

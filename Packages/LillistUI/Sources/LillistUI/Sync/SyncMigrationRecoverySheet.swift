@@ -23,38 +23,39 @@ public struct SyncMigrationRecoverySheet: View {
     public var body: some View {
         VStack(spacing: LillistSpacing.l) {
             Image(systemName: "exclamationmark.triangle.fill")
-                .font(.system(size: 52, weight: .light))
-                .foregroundStyle(.yellow)
+                .font(.system(size: 52, weight: .medium))
+                .foregroundStyle(RainbowPalette.cautionAmber.ink)
                 .accessibilityHidden(true)
 
             Text("Sync change interrupted")
-                .font(.title2.bold())
+                .font(LillistTypography.title2)
+                .foregroundStyle(LillistColor.textStrong)
                 .accessibilityAddTraits(.isHeader)
 
             Text(detail)
+                .font(LillistTypography.body)
                 .multilineTextAlignment(.center)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(LillistColor.textMuted)
                 .frame(maxWidth: 420)
 
             VStack(spacing: 12) {
                 Button(action: onRestoreFromBackup) {
                     Text("Restore from Backup")
                         .frame(maxWidth: .infinity)
-                        .padding(.vertical, 4)
                 }
-                .buttonStyle(.borderedProminent)
+                .buttonStyle(.rainbow(.lavender))
 
                 Button(action: onTryAgain) {
                     Text("Try Again")
                         .frame(maxWidth: .infinity)
-                        .padding(.vertical, 4)
                 }
-                .buttonStyle(.bordered)
+                .buttonStyle(.rainbow(.secondary))
             }
             .frame(maxWidth: 280)
         }
         .padding(LillistSpacing.l)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(LillistColor.workspace)
     }
 
     private var detail: String { Self.detailText(for: journal) }
