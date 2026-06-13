@@ -32,11 +32,7 @@ public struct ArchiveToast: View {
                         .foregroundStyle(.primary)
                         .padding(.horizontal, LillistSpacing.l)
                         .padding(.vertical, LillistSpacing.m)
-                        .accessibleMaterial(
-                            .regularMaterial,
-                            fallback: Color(uiColor: .secondarySystemBackground),
-                            in: Capsule()
-                        )
+                        .rainbowToastChrome()
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel(labelText)

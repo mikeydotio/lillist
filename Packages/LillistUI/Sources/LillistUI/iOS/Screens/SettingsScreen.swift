@@ -30,7 +30,16 @@ public struct SettingsScreen<SectionsContent: View>: View {
         NavigationStack {
             Form {
                 sections
+                    // Rainbow Logic settings chrome, applied to the
+                    // builder content so every app-target section
+                    // inherits without knowing about the theme:
+                    // card-surface rows on the cool-gray workspace and
+                    // the tactile switch (the full-whimsy decision).
+                    .listRowBackground(LillistColor.card)
             }
+            .toggleStyle(.rainbow)
+            .scrollContentBackground(.hidden)
+            .background(LillistColor.workspace)
             .navigationTitle(Text(String(localized: "Settings", bundle: .module)))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

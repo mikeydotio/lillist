@@ -53,17 +53,24 @@ struct OnboardingScreen: View {
     }
 
     private var header: some View {
+        // The onboarding hero is a sanctioned full-rainbow moment:
+        // spectrum-masked icon + gradient headline on the icon's
+        // dot-grid texture. Strings stay verbatim-aligned with macOS.
         VStack(spacing: 8) {
             Image(systemName: "checklist")
-                .font(LillistTypography.largeTitle.weight(.light))
-                .foregroundStyle(.tint)
+                .font(LillistTypography.largeTitle.weight(.medium))
+                .foregroundStyle(RainbowGradient.vertical)
             Text("Welcome to Lillist")
-                .font(.largeTitle.bold())
+                .font(LillistTypography.largeTitle)
+                .foregroundStyle(RainbowGradient.horizontal)
             Text("Lists, tags, and reminders — synced to your iCloud.")
-                .font(.title3)
-                .foregroundStyle(.secondary)
+                .font(LillistTypography.title3)
+                .foregroundStyle(LillistColor.textMuted)
                 .multilineTextAlignment(.center)
         }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 12)
+        .background(DotGridBackdrop())
     }
 
     private static let iOSBullets: [OnboardingContent.Bullet] = [
@@ -79,9 +86,8 @@ struct OnboardingScreen: View {
             } label: {
                 Text(isRequesting ? "Requesting…" : "Set up notifications")
                     .frame(maxWidth: .infinity)
-                    .padding(.vertical, 6)
             }
-            .buttonStyle(.bordered)
+            .buttonStyle(.rainbow(.secondary))
             .disabled(isRequesting || permissionStatus != .notDetermined)
 
             Button {
@@ -89,9 +95,9 @@ struct OnboardingScreen: View {
             } label: {
                 Text(isCompleting ? "Finishing…" : "Get started")
                     .frame(maxWidth: .infinity)
-                    .padding(.vertical, 6)
             }
-            .buttonStyle(.borderedProminent)
+            // Hero CTA — the sanctioned full-gradient success moment.
+            .buttonStyle(.rainbow(.rainbow))
             .disabled(isCompleting)
 
             Button("Skip for now") {

@@ -20,17 +20,19 @@ public struct ICloudUnavailableScreen: View {
             Spacer()
 
             Image(systemName: "icloud.slash")
-                .font(LillistTypography.largeTitle.weight(.light))
-                .foregroundStyle(.yellow)
+                .font(LillistTypography.largeTitle.weight(.medium))
+                .foregroundStyle(RainbowPalette.cautionAmber.ink)
                 .accessibilityHidden(true)
 
             Text("iCloud Unavailable")
-                .font(LillistTypography.title.weight(.bold))
+                .font(LillistTypography.title)
+                .foregroundStyle(LillistColor.textStrong)
                 .accessibilityAddTraits(.isHeader)
 
             Text("Lillist works locally on this device without iCloud. Your tasks, tags, and reminders stay here unless you turn on iCloud Sync later in Settings.")
+                .font(LillistTypography.body)
                 .multilineTextAlignment(.center)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(LillistColor.textMuted)
                 .frame(maxWidth: 420)
 
             Spacer()
@@ -38,12 +40,13 @@ public struct ICloudUnavailableScreen: View {
             Button(action: onContinue) {
                 Text("Continue")
                     .frame(maxWidth: 280)
-                    .padding(.vertical, 6)
             }
-            .buttonStyle(.borderedProminent)
+            .buttonStyle(.rainbow(.lavender))
             .padding(.bottom, LillistSpacing.l)
         }
         .padding(LillistSpacing.l)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(DotGridBackdrop())
+        .background(LillistColor.workspace)
     }
 }

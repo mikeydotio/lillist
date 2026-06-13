@@ -28,17 +28,17 @@ public struct QuickCaptureView: View {
 
             HStack(spacing: 6) {
                 ForEach(parsed.tags, id: \.self) { name in
-                    TagChipView(name: name)
+                    TagChipView(name: name, style: .meta)
                 }
                 if let token = parsed.dateToken {
-                    Label(token, systemImage: "calendar")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                    Label(token, systemImage: "clock")
+                        .font(LillistTypography.caption)
+                        .foregroundStyle(LillistColor.textMuted)
                 }
                 Spacer()
                 Text("↩ save · esc cancel")
-                    .font(.caption2)
-                    .foregroundStyle(.tertiary)
+                    .font(LillistTypography.caption2)
+                    .foregroundStyle(LillistColor.textFaint)
             }
 
             // Date-token chips. Sourced from QuickCaptureDateSuggestions
@@ -51,10 +51,9 @@ public struct QuickCaptureView: View {
                     Button {
                         text += text.isEmpty ? "^\(token)" : " ^\(token)"
                     } label: {
-                        Text("^\(token)").font(.caption)
+                        Text("^\(token)")
                     }
-                    .buttonStyle(.bordered)
-                    .controlSize(.small)
+                    .buttonStyle(.rainbow(.secondary, size: .sm))
                     .accessibilityLabel(String(localized: "Insert deadline \(token)", bundle: .module))
                 }
                 Spacer()

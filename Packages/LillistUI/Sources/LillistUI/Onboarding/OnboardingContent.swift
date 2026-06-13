@@ -61,11 +61,11 @@ public struct OnboardingContent: View {
         switch permissionStatus {
         case .authorized:
             Label("Notifications enabled.", systemImage: "checkmark.circle.fill")
-                .foregroundStyle(.green)
+                .foregroundStyle(RainbowPalette.growthGreen.ink)
         case .denied:
             VStack(alignment: .leading, spacing: LillistSpacing.s) {
                 Label("Notifications denied.", systemImage: "exclamationmark.triangle.fill")
-                    .foregroundStyle(.orange)
+                    .foregroundStyle(RainbowPalette.cautionAmber.ink)
                 Button("Open Settings", action: onOpenSettings)
             }
         case .notDetermined:

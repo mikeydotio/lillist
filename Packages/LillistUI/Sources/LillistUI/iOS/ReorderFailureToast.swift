@@ -22,11 +22,7 @@ public struct TransientFailureToast: View {
                 .foregroundStyle(.primary)
                 .padding(.horizontal, LillistSpacing.l)
                 .padding(.vertical, LillistSpacing.m)
-                .accessibleMaterial(
-                    .regularMaterial,
-                    fallback: Color(uiColor: .secondarySystemBackground),
-                    in: Capsule()
-                )
+                .rainbowToastChrome()
                 .padding(.bottom, LillistSpacing.xl)
                 .transition(.move(edge: .bottom).combined(with: .opacity))
                 .task(id: isPresented) {

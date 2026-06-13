@@ -163,31 +163,29 @@ public struct TasksScreen: View {
     @ViewBuilder
     private var emptyState: some View {
         if hasActiveFilter {
-            ContentUnavailableView {
-                Label(String(localized: "No matching tasks", bundle: .module),
-                      systemImage: "line.3.horizontal.decrease.circle")
-            } description: {
-                Text(String(localized: "Try clearing the filter to see all your tasks.", bundle: .module))
-            } actions: {
+            RainbowEmptyStateView(
+                title: String(localized: "No matching tasks", bundle: .module),
+                message: String(localized: "Try clearing the filter to see all your tasks.", bundle: .module),
+                systemImage: "line.3.horizontal.decrease.circle"
+            ) {
                 Button(String(localized: "Clear filter", bundle: .module)) {
                     onClearFilter()
                 }
-                .buttonStyle(.borderedProminent)
+                .buttonStyle(.rainbow(.secondary))
             }
         } else {
-            ContentUnavailableView {
-                Label(String(localized: "No tasks yet", bundle: .module),
-                      systemImage: "checklist")
-            } description: {
-                Text(String(localized: "Every open task shows up here. Capture one to get started.", bundle: .module))
-            } actions: {
+            RainbowEmptyStateView(
+                title: String(localized: "No tasks yet", bundle: .module),
+                message: String(localized: "Every open task shows up here. Capture one to get started.", bundle: .module),
+                systemImage: "checklist"
+            ) {
                 Button {
                     quickCaptureAction()
                 } label: {
                     Label(String(localized: "Capture a task", bundle: .module),
                           systemImage: "plus.circle.fill")
                 }
-                .buttonStyle(.borderedProminent)
+                .buttonStyle(.rainbow(.lavender))
                 .accessibilityIdentifier("TasksEmptyStateCaptureButton")
             }
         }
