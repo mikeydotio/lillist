@@ -361,7 +361,7 @@ in Mikey's plan file (waves recapped here).
       toasts, empty states/onboarding, Settings + RainbowToggle
 - [x] Wave 4 — macOS: task-list cards, sidebar chips, popover,
       detail header, full-whimsy Preferences
-- [ ] Wave 5 — secondary: recurrence, journal, breadcrumbs, crash/
+- [x] Wave 5 — secondary: recurrence, journal, breadcrumbs, crash/
       migration sheets, rainbow progress, ShareExtension adoption
 - [ ] Wave 6 — closeout: snapshot sweep, engineering notes, deployit
 
