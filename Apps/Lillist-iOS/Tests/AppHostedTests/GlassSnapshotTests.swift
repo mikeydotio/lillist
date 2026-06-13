@@ -41,10 +41,60 @@ final class GlassSnapshotTests: XCTestCase {
     @MainActor func test_statusChips_light() { snapshot(statusChips, size: chipsSize, dark: false) }
     @MainActor func test_statusChips_dark()  { snapshot(statusChips, size: chipsSize, dark: true) }
 
+    @MainActor func test_buttons_light() { snapshot(buttonGallery, size: buttonsSize, dark: false) }
+    @MainActor func test_buttons_dark()  { snapshot(buttonGallery, size: buttonsSize, dark: true) }
+
+    @MainActor func test_toggles_light() { snapshot(toggleGallery, size: togglesSize, dark: false) }
+    @MainActor func test_toggles_dark()  { snapshot(toggleGallery, size: togglesSize, dark: true) }
+
     // MARK: - fixtures
 
     private let fabSize = CGSize(width: 220, height: 180)
     private let chipsSize = CGSize(width: 280, height: 96)
+    private let buttonsSize = CGSize(width: 240, height: 470)
+    private let togglesSize = CGSize(width: 280, height: 130)
+
+    /// Every RainbowButtonStyle variant, glass over a rainbow wash.
+    @MainActor
+    private var buttonGallery: some View {
+        let variants: [(String, RainbowButtonStyle.Variant)] = [
+            ("Add task", .lavender), ("Delete", .orange), ("Mark done", .green),
+            ("Focus", .blue), ("Run intent", .purple), ("Celebrate", .rainbow),
+            ("Secondary", .secondary), ("Ghost", .ghost),
+        ]
+        return ZStack {
+            wash
+            VStack(spacing: LillistSpacing.m) {
+                ForEach(variants, id: \.0) { title, variant in
+                    Button(title) {}.buttonStyle(.rainbow(variant))
+                }
+            }
+        }
+    }
+
+    /// The Rainbow Glass toggle in both states.
+    @MainActor
+    private var toggleGallery: some View {
+        ZStack {
+            wash
+            VStack(spacing: LillistSpacing.l) {
+                Toggle("Notifications", isOn: .constant(true)).toggleStyle(.rainbow)
+                Toggle("Quiet hours", isOn: .constant(false)).toggleStyle(.rainbow)
+            }
+            .font(LillistTypography.body)
+            .foregroundStyle(LillistColor.textBody)
+            .padding(.horizontal, LillistSpacing.xl)
+        }
+    }
+
+    /// A clean rainbow wash (no overlapping text) for the galleries.
+    private var wash: some View {
+        ZStack {
+            LillistColor.workspace
+            RainbowGradient.vertical.opacity(0.16)
+        }
+        .ignoresSafeArea()
+    }
 
     @MainActor
     private var fab: some View { ZStack { backdrop; FloatingAddButton(onTap: {}) } }
