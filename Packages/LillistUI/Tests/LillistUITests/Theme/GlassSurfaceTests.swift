@@ -61,6 +61,24 @@ final class GlassSurfaceTests: XCTestCase {
         )
     }
 
+    // MARK: Pre-26 fallback (chrome stays material; fills stay solid)
+
+    func testTintedFillsPreferSolidFallback() {
+        // Tinted fills were never frosted chrome — on pre-26 (e.g. macOS
+        // Sequoia) they must stay solid, not turn translucent.
+        XCTAssertTrue(GlassSurface.primaryAction.prefersSolidFallback)
+        XCTAssertTrue(GlassSurface.statusTinted(RainbowPalette.focusBlue.base).prefersSolidFallback)
+        XCTAssertTrue(GlassSurface.card.prefersSolidFallback)
+        XCTAssertTrue(GlassSurface.control.prefersSolidFallback)
+    }
+
+    func testChromeUsesMaterialFallback() {
+        // Panels and toasts were `.regularMaterial` — they keep that
+        // frosted fallback below OS 26.
+        XCTAssertFalse(GlassSurface.panel.prefersSolidFallback)
+        XCTAssertFalse(GlassSurface.toast.prefersSolidFallback)
+    }
+
     // MARK: Equatable (so co-visible grouping / diffing is reliable)
 
     func testEquatableDistinguishesRoles() {

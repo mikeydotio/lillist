@@ -50,12 +50,22 @@ public enum GlassSurface: Sendable, Equatable {
     /// element). Pass the hue's `base` fill color.
     case statusTinted(Color)
 
-    /// Material used on pre-26 OS, where real Liquid Glass is unavailable.
-    var material: Material {
+    /// Whether the pre-26 fallback is a solid color rather than
+    /// `.regularMaterial`. True for tinted *fills* (the FAB, status
+    /// chips, cards) that were never frosted chrome — on a pre-26 OS
+    /// like macOS Sequoia they must stay solid, not turn translucent.
+    /// False for genuine chrome (panels, toasts) that *was* material.
+    var prefersSolidFallback: Bool {
         switch self {
-        case .panel, .toast, .control, .card, .primaryAction, .statusTinted:
-            .regularMaterial
+        case .primaryAction, .statusTinted, .card, .control: true
+        case .panel, .toast: false
         }
+    }
+
+    /// Material used on pre-26 OS for the chrome roles
+    /// (`prefersSolidFallback == false`).
+    var material: Material {
+        .regularMaterial
     }
 
     /// Opaque surface used under Reduce Transparency on pre-26 OS. (On
@@ -146,9 +156,10 @@ private struct GlassSurfaceModifier: ViewModifier {
         if #available(iOS 26, macOS 26, *) {
             content.glassEffect(glass, in: shape)
         } else {
-            // Pre-26: our existing two-way Material/opaque contract.
+            // Pre-26: solid color for tinted fills (and under Reduce
+            // Transparency); `.regularMaterial` for genuine chrome.
             let reduce = overrideReduceTransparency ?? systemReduceTransparency
-            if reduce {
+            if surface.prefersSolidFallback || reduce {
                 content.background(surface.opaqueFallback, in: shape)
             } else {
                 content.background(surface.material, in: shape)
