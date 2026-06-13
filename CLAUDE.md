@@ -348,9 +348,11 @@ Applying the Rainbow Logic design system across both apps. Spec:
 in Mikey's plan file (waves recapped here).
 
 - [x] Wave 0 — design-system doc + cross-refs
-- [ ] Wave 1 — foundation: Jakarta fonts + registrar, RainbowPalette/
+- [x] Wave 1 — foundation: Jakarta fonts + registrar, RainbowPalette/
       LillistColor/Elevation/Motion/Gradients, Status+Sync remaps,
       AccentColor, typography; theme unit tests; re-record baselines
+      (+ permanent RECORD_SNAPSHOTS=YES switch in
+      RecordableSnapshotTestCase)
 - [ ] Wave 2 — task surfaces: StatusCube + confetti, RainbowCard rows,
       compact density, tag meta chips, drag tokens; StatusCycleUITests
 - [ ] Wave 3 — iOS chrome: buttons/FAB, search well, filter chips,
