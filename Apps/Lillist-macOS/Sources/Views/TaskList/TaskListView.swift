@@ -82,10 +82,18 @@ struct TaskListView: View {
                                     onStatusClick: { cycle(rec.id, rec.status, click: true) },
                                     onStatusSet: { newStatus in setStatus(rec.id, to: newStatus) }
                                 )
+                                .rainbowCard(
+                                    accent: StatusPalette.color(for: rec.status),
+                                    isDone: rec.status == .closed
+                                )
                             }
+                            .listRowInsets(EdgeInsets(top: 3, leading: 10, bottom: 3, trailing: 10))
+                            .listRowSeparator(.hidden)
                             .tag(rec.id)
                         }
                     }
+                    .scrollContentBackground(.hidden)
+                    .background(LillistColor.workspace)
                 }
             } else {
                 if rootNodes.isEmpty && !showInlineCreate {
@@ -101,6 +109,12 @@ struct TaskListView: View {
                                 onStatusClick: { cycle(node.id, node.record.status, click: true) },
                                 onStatusSet: { newStatus in setStatus(node.id, to: newStatus) }
                             )
+                            .rainbowCard(
+                                accent: StatusPalette.color(for: node.record.status),
+                                isDone: node.record.status == .closed
+                            )
+                            .listRowInsets(EdgeInsets(top: 3, leading: 10, bottom: 3, trailing: 10))
+                            .listRowSeparator(.hidden)
                             .tag(node.id)
                             .opacity(node.id == draggedID ? 0 : 1)
                             .allowsHitTesting(node.id != draggedID)
@@ -116,6 +130,8 @@ struct TaskListView: View {
                             )
                         }
                     }
+                    .scrollContentBackground(.hidden)
+                    .background(LillistColor.workspace)
                     .coordinateSpace(name: DragCoordinateSpace.name)
                     .onPreferenceChange(RowFramePreferenceKey.self) { frames in
                         dragController.geometry = frames
@@ -139,8 +155,11 @@ struct TaskListView: View {
                                     onStatusClick: {},
                                     onStatusSet: { _ in }
                                 )
+                                .rainbowCard(
+                                    accent: StatusPalette.color(for: rec.status),
+                                    isDone: rec.status == .closed
+                                )
                                 .padding(.horizontal, 8)
-                                .background(Color(nsColor: .windowBackgroundColor))
                             }
                         }
                     }
@@ -158,7 +177,9 @@ struct TaskListView: View {
                 .foregroundStyle(.secondary)
                 .padding(.horizontal, 12)
                 .padding(.vertical, 6)
-                .background(.regularMaterial, in: Capsule())
+                .accessibleMaterial(.regularMaterial, fallback: LillistColor.card, in: Capsule())
+                .overlay(Capsule().strokeBorder(LillistColor.borderHair, lineWidth: 1))
+                .rainbowShadow(.lift)
                 .padding(.bottom, 8)
                 .transition(.move(edge: .bottom).combined(with: .opacity))
                 .task(id: reorderFailed) {

@@ -1,5 +1,6 @@
 import SwiftUI
 import LillistCore
+import LillistUI
 
 /// Root of the macOS `Settings { … }` scene. Six tabs match design
 /// Section 7. The actual pane implementations land in Task 8 (General)
@@ -25,6 +26,9 @@ struct PreferencesWindow: View {
             AdvancedPane()
                 .tabItem { Label("Advanced", systemImage: "wrench.and.screwdriver") }
         }
+        // Rainbow Logic full-whimsy: every pane toggle uses the tactile
+        // switch. Window chrome, tab bar, and Form layout stay native.
+        .toggleStyle(.rainbow)
         // Plan 15 Task 26: pane content drives the window's size
         // (each pane's outer container ends with `.fixedSize()`); the
         // TabView animates between tabs the way System Settings does.

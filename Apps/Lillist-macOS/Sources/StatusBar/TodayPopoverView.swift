@@ -8,22 +8,32 @@ struct TodayPopoverView: View {
     @State private var tasks: [TaskStore.TaskRecord] = []
 
     var body: some View {
-        VStack(alignment: .leading) {
-            Text("Today").font(.headline).padding(.bottom, 4)
+        VStack(alignment: .leading, spacing: 6) {
+            Text("Today")
+                .font(LillistTypography.title3)
+                .foregroundStyle(LillistColor.textStrong)
+                .padding(.bottom, 2)
             if tasks.isEmpty {
                 Text("Nothing scheduled for today.")
-                    .foregroundStyle(.secondary)
+                    .font(LillistTypography.subheadline)
+                    .foregroundStyle(LillistColor.textMuted)
                     .padding(.vertical, 8)
             } else {
                 ForEach(tasks, id: \.id) { t in
                     TaskRowView(task: t, tagNames: [],
                                 onStatusClick: { Task { await setStatus(t, to: StatusCycler.nextOnClick(from: t.status)) } },
                                 onStatusSet: { newStatus in Task { await setStatus(t, to: newStatus) } })
+                        .rainbowCard(
+                            accent: StatusPalette.color(for: t.status),
+                            isDone: t.status == .closed
+                        )
                 }
             }
+            Spacer(minLength: 0)
         }
-        .padding()
+        .padding(12)
         .frame(width: 320, height: 360)
+        .background(LillistColor.workspace)
         .onAppear { Task { await load() } }
         .onReceive(NotificationCenter.default.publisher(for: .NSManagedObjectContextDidSave)) { _ in
             Task { await load() }

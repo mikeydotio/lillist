@@ -32,19 +32,22 @@ public struct EmptyStateView: View {
     }
 
     public var body: some View {
-        VStack(spacing: LillistSpacing.s + 2) {
+        VStack(spacing: LillistSpacing.m) {
             Image(systemName: systemImage)
-                .font(.system(size: iconSize, weight: .light))
-                .foregroundStyle(.tertiary)
-            Text(title).font(LillistTypography.headline)
+                .font(.system(size: iconSize, weight: .medium))
+                .foregroundStyle(RainbowGradient.vertical)
+            Text(title)
+                .font(LillistTypography.title3)
+                .foregroundStyle(LillistColor.textStrong)
             Text(message)
                 .font(LillistTypography.subheadline)
                 .multilineTextAlignment(.center)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(LillistColor.textMuted)
                 .frame(maxWidth: 320)
         }
         .padding()
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(DotGridBackdrop())
         .contentShape(Rectangle())
         .focusable()
         .focused($focused)

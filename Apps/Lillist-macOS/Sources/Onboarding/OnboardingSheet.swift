@@ -57,17 +57,23 @@ struct OnboardingSheet: View {
     }
 
     private var header: some View {
+        // The onboarding hero is a sanctioned full-rainbow moment —
+        // mirrors the iOS wrapper; strings stay verbatim-aligned.
         VStack(spacing: 8) {
             Image(systemName: "checklist")
-                .font(LillistTypography.largeTitle.weight(.light))
-                .foregroundStyle(.tint)
+                .font(LillistTypography.largeTitle.weight(.medium))
+                .foregroundStyle(RainbowGradient.vertical)
             Text("Welcome to Lillist")
-                .font(LillistTypography.title2.weight(.semibold))
+                .font(LillistTypography.title2)
+                .foregroundStyle(RainbowGradient.horizontal)
             Text("Lists, tags, and reminders — synced to your iCloud.")
-                .font(.title3)
-                .foregroundStyle(.secondary)
+                .font(LillistTypography.title3)
+                .foregroundStyle(LillistColor.textMuted)
                 .multilineTextAlignment(.center)
         }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 10)
+        .background(DotGridBackdrop())
     }
 
     private static let macOSBullets: [OnboardingContent.Bullet] = [
@@ -87,6 +93,7 @@ struct OnboardingSheet: View {
                     Text("Set up notifications")
                 }
             }
+            .buttonStyle(.rainbow(.secondary, size: .sm))
             .disabled(isRequesting || permissionStatus != .notDetermined)
 
             Button {
@@ -99,7 +106,8 @@ struct OnboardingSheet: View {
                 }
             }
             .keyboardShortcut(.defaultAction)
-            .buttonStyle(.borderedProminent)
+            // Hero CTA — the sanctioned full-gradient success moment.
+            .buttonStyle(.rainbow(.rainbow, size: .sm))
             .disabled(isCompleting)
         }
     }

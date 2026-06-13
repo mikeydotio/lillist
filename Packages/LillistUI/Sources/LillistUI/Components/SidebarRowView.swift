@@ -7,24 +7,50 @@ public struct SidebarRowView: View {
     public var badge: Int?
     public var tint: TagTint?
     public var kind: Kind
+    /// Drives the Rainbow icon-chip fill. The *row* selection pill
+    /// stays the system's (NavigationSplitView sidebar); this only
+    /// paints the chip. Default false so existing callers compile.
+    public var isSelected: Bool
 
     @Environment(\.colorScheme) private var scheme
     @Environment(\.accessibilityShouldIncreaseContrast) private var systemIncreaseContrast
     @Environment(\.increaseContrastOverride) private var overrideIncreaseContrast
 
-    public init(icon: String, label: String, badge: Int? = nil, tint: TagTint? = nil, kind: Kind) {
+    public init(
+        icon: String, label: String, badge: Int? = nil,
+        tint: TagTint? = nil, kind: Kind, isSelected: Bool = false
+    ) {
         self.icon = icon
         self.label = label
         self.badge = badge
         self.tint = tint
         self.kind = kind
+        self.isSelected = isSelected
+    }
+
+    private var chipColor: Color {
+        tint?.resolved(in: scheme).color ?? .accentColor
     }
 
     public var body: some View {
         HStack(spacing: LillistSpacing.s) {
-            Image(systemName: icon)
-                .foregroundStyle(tint?.resolved(in: scheme).color ?? .accentColor)
-                .frame(width: 18)
+            // Rainbow Logic icon chip: tinted glyph at rest; the chip
+            // fills with the functional/tag color (white glyph + top
+            // highlight) when the row is selected.
+            ZStack {
+                if isSelected {
+                    RoundedRectangle(cornerRadius: LillistRadius.s, style: .continuous)
+                        .fill(chipColor)
+                        .overlay(RainbowTopHighlight(
+                            shape: RoundedRectangle(cornerRadius: LillistRadius.s, style: .continuous),
+                            strength: 0.4
+                        ))
+                }
+                Image(systemName: icon)
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(isSelected ? .white : chipColor)
+            }
+            .frame(width: 22, height: 22)
             Text(label).lineLimit(1)
             Spacer()
             if let badge, badge > 0 {
@@ -60,7 +86,8 @@ public struct SidebarRowView: View {
                 .accessibilityLabel(String(localized: "\(count) items", bundle: .module))
         } else {
             label
-                .background(Capsule().fill(.quaternary))
+                .monospacedDigit()
+                .foregroundStyle(LillistColor.textFaint)
                 .accessibilityLabel(String(localized: "\(count) items", bundle: .module))
         }
     }

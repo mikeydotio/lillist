@@ -1,4 +1,5 @@
 import SwiftUI
+import LillistUI
 
 /// A text field whose Return creates a sibling, Tab indents, Shift-Tab outdents.
 /// The owning view supplies the three callbacks; this view stays presentation-only.
@@ -14,9 +15,23 @@ struct InlineCreateField: View {
     var body: some View {
         TextField("New task", text: $text)
             .textFieldStyle(.plain)
+            .font(LillistTypography.body)
             .focused($focused)
-            .padding(.vertical, 4)
-            .padding(.horizontal, 8)
+            .padding(.vertical, 5)
+            .padding(.horizontal, 10)
+            .background {
+                // Rainbow inset well — the create field reads as a
+                // sunken slot between the task cards.
+                RoundedRectangle(cornerRadius: LillistRadius.m, style: .continuous)
+                    .fill(.rainbowWell)
+            }
+            .overlay {
+                RoundedRectangle(cornerRadius: LillistRadius.m, style: .continuous)
+                    .strokeBorder(
+                        focused ? RainbowPalette.focusBlue.base.opacity(0.35) : LillistColor.borderHair,
+                        lineWidth: focused ? 2 : 1
+                    )
+            }
             .onSubmit { onReturn() }
             .onAppear { focused = true }
             #if os(macOS)

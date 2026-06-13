@@ -23,7 +23,8 @@ struct SidebarView: View {
         List(selection: $selection) {
             Section("Pinned") {
                 ForEach(pinnedTasks, id: \.id) { task in
-                    SidebarRowView(icon: "pin.fill", label: task.title, kind: .task)
+                    SidebarRowView(icon: "pin.fill", label: task.title, kind: .task,
+                                   isSelected: selection == .pinnedTask(task.id))
                         .tag(SidebarSelection.pinnedTask(task.id))
                         .contextMenu {
                             Button("Rename…") { renamingPinnedTask = task }
@@ -36,7 +37,8 @@ struct SidebarView: View {
                         }
                 }
                 ForEach(pinnedFilters, id: \.id) { f in
-                    SidebarRowView(icon: "line.3.horizontal.decrease.circle", label: f.name, kind: .smartFilter)
+                    SidebarRowView(icon: "line.3.horizontal.decrease.circle", label: f.name, kind: .smartFilter,
+                                   isSelected: selection == .pinnedFilter(f.id))
                         .tag(SidebarSelection.pinnedFilter(f.id))
                         .contextMenu {
                             Button("Rename…") { renamingFilter = f }
@@ -66,7 +68,8 @@ struct SidebarView: View {
 
             Section("Filters") {
                 ForEach(nonPinnedFilters, id: \.id) { f in
-                    SidebarRowView(icon: "line.3.horizontal.decrease.circle", label: f.name, kind: .smartFilter)
+                    SidebarRowView(icon: "line.3.horizontal.decrease.circle", label: f.name, kind: .smartFilter,
+                                   isSelected: selection == .filter(f.id))
                         .tag(SidebarSelection.filter(f.id))
                         .contextMenu {
                             Button("Rename…") { renamingFilter = f }
@@ -82,7 +85,8 @@ struct SidebarView: View {
             }
 
             Section {
-                SidebarRowView(icon: "trash", label: "Trash", badge: trashCount > 0 ? trashCount : nil, kind: .trash)
+                SidebarRowView(icon: "trash", label: "Trash", badge: trashCount > 0 ? trashCount : nil, kind: .trash,
+                               isSelected: selection == .trash)
                     .tag(SidebarSelection.trash)
             }
         }
@@ -162,7 +166,8 @@ private struct TagDisclosureView: View {
                 icon: "tag.fill",
                 label: tag.name,
                 tint: TagTint(hex: tag.tintColor),
-                kind: .tag
+                kind: .tag,
+                isSelected: selection == .tag(tag.id)
             )
             .tag(SidebarSelection.tag(tag.id))
             .contextMenu {
