@@ -17,22 +17,26 @@ public extension SyncIndicator {
     static let recencyWindow: TimeInterval = 60
 
     /// The tint color for this indicator's dot/badge.
-    /// - `.idle(nil)` → `.secondary` (never synced)
-    /// - `.idle(within recencyWindow)` → `.green`
-    /// - `.idle(older)` → `.yellow`
-    /// - `.inProgress` → `.blue`
-    /// - `.error` → `.red`
+    /// - `.idle(nil)` → `LillistColor.borderStrong` (never synced)
+    /// - `.idle(within recencyWindow)` → `growthGreen.base`
+    /// - `.idle(older)` → `cautionAmber.base` (stale)
+    /// - `.inProgress` → `focusBlue.base`
+    /// - `.error` → `actionOrange.deep` (orange is reserved for
+    ///   urgent/error; amber is the caution hue)
+    /// - `.paused` → `cautionAmber.ink` (deeper amber than stale)
     var color: Color {
         switch self {
         case .idle(let last):
-            guard let last else { return .secondary }
-            return Date().timeIntervalSince(last) < Self.recencyWindow ? .green : .yellow
+            guard let last else { return LillistColor.borderStrong }
+            return Date().timeIntervalSince(last) < Self.recencyWindow
+                ? RainbowPalette.growthGreen.base
+                : RainbowPalette.cautionAmber.base
         case .inProgress:
-            return .blue
+            return RainbowPalette.focusBlue.base
         case .error:
-            return .red
+            return RainbowPalette.actionOrange.deep
         case .paused:
-            return .yellow
+            return RainbowPalette.cautionAmber.ink
         }
     }
 
