@@ -9,6 +9,14 @@ struct LillistApp: App {
     @State private var loadError: String?
     @State private var statusBarItemVisible = true
 
+    init() {
+        // Register the bundled Plus Jakarta Sans faces before the first
+        // frame renders, so LillistTypography never falls back to system
+        // fonts for a flash. (Registration is also lazy via the
+        // typography factory; this call just front-loads it.)
+        LillistFonts.registerIfNeeded()
+    }
+
     var body: some Scene {
         WindowGroup("Lillist", id: "main") {
             content

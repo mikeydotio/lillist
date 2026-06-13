@@ -24,6 +24,12 @@ struct LillistApp: App {
     }
 
     init() {
+        // Register the bundled Plus Jakarta Sans faces before the first
+        // frame renders, so LillistTypography never falls back to system
+        // fonts for a flash. (Registration is also lazy via the
+        // typography factory; this call just front-loads it.)
+        LillistFonts.registerIfNeeded()
+
         // Persist-6: register the background trash-purge handler before
         // launch completes (BGTaskScheduler requires registration during
         // app init). The handler builds a short-lived AppEnvironment so it
