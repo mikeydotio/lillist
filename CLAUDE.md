@@ -357,7 +357,7 @@ in Mikey's plan file (waves recapped here).
       compact density, tag meta chips, drag tokens; StatusCycleUITests
       green (cube = plain view under a transparent-label Menu — macOS
       drops Shape fills in Menu labels)
-- [ ] Wave 3 — iOS chrome: buttons/FAB, search well, filter chips,
+- [x] Wave 3 — iOS chrome: buttons/FAB, search well, filter chips,
       toasts, empty states/onboarding, Settings + RainbowToggle
 - [ ] Wave 4 — macOS: task-list cards, sidebar chips, popover,
       detail header, full-whimsy Preferences
