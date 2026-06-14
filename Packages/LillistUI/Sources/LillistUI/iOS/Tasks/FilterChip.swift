@@ -41,11 +41,6 @@ public struct FilterChip: View {
                             lineWidth: 1
                         )
                 }
-                .overlay {
-                    if isSelected {
-                        RainbowTopHighlight(shape: Capsule(style: .continuous), strength: 0.5)
-                    }
-                }
                 .rainbowShadow(.xs)
         }
         .buttonStyle(.plain)

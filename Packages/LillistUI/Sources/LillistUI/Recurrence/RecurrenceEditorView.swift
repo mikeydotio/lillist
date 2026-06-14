@@ -237,11 +237,6 @@ public struct RecurrenceEditorView: View {
                     Circle()
                         .fill(isSelected ? RainbowPalette.focusBlue.base : Color.clear)
                 }
-                .overlay {
-                    if isSelected {
-                        RainbowTopHighlight(shape: Circle(), strength: 0.4)
-                    }
-                }
                 .foregroundStyle(isSelected ? Color.white : LillistColor.textBody)
         }
         .buttonStyle(.plain)

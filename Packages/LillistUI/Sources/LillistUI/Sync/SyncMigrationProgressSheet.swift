@@ -116,9 +116,6 @@ struct RainbowProgressBar: View {
                     .fill(.rainbowWell)
                 Capsule()
                     .fill(RainbowGradient.horizontal)
-                    .overlay(
-                        RainbowTopHighlight(shape: Capsule(), strength: 0.45)
-                    )
                     .frame(width: max(8, proxy.size.width * min(max(value, 0), 1)))
             }
         }

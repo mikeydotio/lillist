@@ -49,12 +49,6 @@ extension View {
             .shadow(color: shadowInk(b.2), radius: b.0, y: b.1)
     }
 
-    /// Colored glow for controls filled with a functional hue. Use
-    /// only with the matching fill — a glow is a property of the lit
-    /// object, not decoration.
-    public func rainbowGlow(_ hue: RainbowPalette.Functional, radius: CGFloat = 6) -> some View {
-        shadow(color: hue.base.opacity(0.32), radius: radius, y: radius)
-    }
 }
 
 /// Shadow ink at the given light-scheme opacity; dark scheme renders
@@ -79,27 +73,3 @@ extension ShapeStyle where Self == AnyShapeStyle {
     }
 }
 
-/// Inset top highlight for raised controls — the "lit from above"
-/// edge. Overlay on capsules/cubes paired with a drop shadow; pass the
-/// control's shape.
-public struct RainbowTopHighlight<S: InsettableShape>: View {
-    let shape: S
-    let strength: Double
-
-    public init(shape: S, strength: Double = 0.7) {
-        self.shape = shape
-        self.strength = strength
-    }
-
-    public var body: some View {
-        shape
-            .strokeBorder(
-                LinearGradient(
-                    colors: [.white.opacity(strength), .white.opacity(0)],
-                    startPoint: .top, endPoint: .center
-                ),
-                lineWidth: 1
-            )
-            .allowsHitTesting(false)
-    }
-}

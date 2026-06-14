@@ -41,10 +41,6 @@ public struct SidebarRowView: View {
                 if isSelected {
                     RoundedRectangle(cornerRadius: LillistRadius.s, style: .continuous)
                         .fill(chipColor)
-                        .overlay(RainbowTopHighlight(
-                            shape: RoundedRectangle(cornerRadius: LillistRadius.s, style: .continuous),
-                            strength: 0.4
-                        ))
                 }
                 Image(systemName: icon)
                     .font(.system(size: 12, weight: .semibold))
