@@ -4,6 +4,26 @@
 flat/system-color aesthetic. Product behavior remains specced by
 `2026-05-12-lillist-design.md`; this document owns *how it looks*.
 
+> **Evolving to Rainbow Glass (2026-06-14, in progress).** On iOS 26 /
+> macOS Tahoe the system adopts Apple's **Liquid Glass**. Rainbow Logic
+> is migrating onto it: the *hand-rolled* tactile depth this doc
+> describes (two-layer drop shadows, inset top highlights, sunken wells,
+> hue glows, the isometric status cube) is **retired** in favor of the
+> real material. The line:
+> - **Liquid Glass** — the floating control layer: FAB, toasts,
+>   filter-header / quick-capture panels, and buttons. Functional hues
+>   become glass *tints* (color stays functional, never decorative).
+> - **Solid tinted** — in-flow content: the status chip (now a flat
+>   tinted circle), task rows, toggles.
+>
+> Implementation: the `GlassSurface` seam
+> (`Packages/LillistUI/Sources/LillistUI/Theme/GlassSurface.swift`).
+> Liquid Glass cannot be captured in offscreen snapshots — see
+> `docs/engineering-notes.md` (2026-06-12) and `HANDOFF.md`. Sections
+> below describing shadow/highlight/well treatments are historical for
+> the glass surfaces; the token semantics (palette, functional hues,
+> typography, spacing, density) carry forward unchanged.
+
 Rainbow Logic ("Structured Whimsy") was authored in Claude Design by
 Mikey; the exported source of truth (CSS tokens + JSX component specs)
 is archived at the design project
