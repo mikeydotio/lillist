@@ -3,32 +3,30 @@ import LillistCore
 
 /// The Rainbow Glass status chip — the visual heart of a task row.
 ///
-/// A circular Liquid Glass chip, tinted by the functional status hue,
-/// with a **shape axis** independent of hue so status stays legible for
-/// colorblind users and under differentiate-without-color:
+/// A **solid tinted circular chip** with a **shape axis** independent of
+/// hue so status stays legible for colorblind users and under
+/// differentiate-without-color:
 ///
-/// | status  | glass tint        | shape                          |
+/// | status  | fill              | shape                          |
 /// |---------|-------------------|--------------------------------|
 /// | todo    | neutral + stroke  | empty chip                     |
 /// | started | focus-blue        | white leading half             |
-/// | blocked | action-orange     | dashed ink border + pause bars |
+/// | blocked | action-orange soft| dashed ink border + pause bars |
 /// | closed  | growth-green      | white check (squish snap)      |
 ///
-/// Depth comes from the real glass material (refraction, specular
-/// highlight, contact shadow) — the previous hand-rolled faux-volume
-/// (`emptyGradient`, `litFromAbove`, `RainbowTopHighlight`,
-/// `rainbowGlow`) is retired. The neutral to-do state keeps a hairline
-/// stroke so the empty/tappable chip stays visible over light content.
+/// Rainbow Glass reserves the real Liquid Glass material for the
+/// *floating control layer* (FAB, toasts, panels, the filter header);
+/// per-row content like this chip stays a flat tinted solid — that's
+/// Apple's guidance, and it keeps the chip cheap on long lists and
+/// snapshot-testable in the standard suite. The old faux-volume
+/// (emptyGradient, litFromAbove, top highlight, hue glow, isometric
+/// cube) is retired; this is a clean circular tint.
 ///
 /// Purely visual: tap-to-cycle, the explicit-setter menu, hit targets,
 /// and every accessibility attribute live in `StatusIndicatorView`,
 /// which renders this view as its `Menu` label. The chip also hosts the
 /// one-shot confetti burst on a transition into `.closed`
 /// (`ConfettiPolicy` decides; Reduce Motion suppresses it).
-///
-/// > Note: this is one glass element per task row. On long lists that is
-/// > the per-row-glass cost the Rainbow Glass plan's Wave 0 spike exists
-/// > to validate — confirm scroll performance on device.
 public struct StatusCubeView: View {
     public var status: Status
 
@@ -80,14 +78,16 @@ public struct StatusCubeView: View {
     private var chip: some View {
         switch status {
         case .todo:
-            glassChip(.control)
+            Circle()
+                .fill(LillistColor.card)
                 .overlay(Circle().strokeBorder(
                     increaseContrast ? LillistColor.borderStrong : LillistColor.borderSoft,
                     lineWidth: 1
                 ))
 
         case .started:
-            glassChip(.statusTinted(RainbowPalette.focusBlue.base))
+            Circle()
+                .fill(RainbowPalette.focusBlue.base)
                 .overlay {
                     // Shape axis: leading half filled white, clipped to
                     // the chip circle.
@@ -99,7 +99,8 @@ public struct StatusCubeView: View {
                 }
 
         case .blocked:
-            glassChip(.statusTinted(RainbowPalette.actionOrange.base))
+            Circle()
+                .fill(RainbowPalette.actionOrange.soft)
                 .overlay {
                     // Shape axis: pause bars in ink.
                     HStack(spacing: size * 0.14) {
@@ -113,7 +114,8 @@ public struct StatusCubeView: View {
                 ))
 
         case .closed:
-            glassChip(.statusTinted(RainbowPalette.growthGreen.base))
+            Circle()
+                .fill(RainbowPalette.growthGreen.base)
                 .overlay {
                     // Shape axis: the white check, snapping in with a
                     // squish on live transitions (static when the view
@@ -125,12 +127,6 @@ public struct StatusCubeView: View {
                         .transition(reduceMotion ? .identity : .scale(scale: 0.4).combined(with: .opacity))
                 }
         }
-    }
-
-    /// A status chip as a circular Liquid Glass surface (degrading to
-    /// material → opaque below OS 26, via `GlassSurface`).
-    private func glassChip(_ surface: GlassSurface) -> some View {
-        Color.clear.glassSurface(surface, in: Circle())
     }
 
     private var barShape: some View {

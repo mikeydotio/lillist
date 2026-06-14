@@ -1,7 +1,6 @@
 import XCTest
 import SwiftUI
 import SnapshotTesting
-import LillistCore
 import LillistUI
 
 /// App-hosted snapshot regression for the Rainbow Glass surfaces.
@@ -38,9 +37,6 @@ final class GlassSnapshotTests: XCTestCase {
     @MainActor func test_fab_light() { snapshot(fab, size: fabSize, dark: false) }
     @MainActor func test_fab_dark()  { snapshot(fab, size: fabSize, dark: true) }
 
-    @MainActor func test_statusChips_light() { snapshot(statusChips, size: chipsSize, dark: false) }
-    @MainActor func test_statusChips_dark()  { snapshot(statusChips, size: chipsSize, dark: true) }
-
     @MainActor func test_buttons_light() { snapshot(buttonGallery, size: buttonsSize, dark: false) }
     @MainActor func test_buttons_dark()  { snapshot(buttonGallery, size: buttonsSize, dark: true) }
 
@@ -50,7 +46,6 @@ final class GlassSnapshotTests: XCTestCase {
     // MARK: - fixtures
 
     private let fabSize = CGSize(width: 220, height: 180)
-    private let chipsSize = CGSize(width: 280, height: 96)
     private let buttonsSize = CGSize(width: 240, height: 470)
     private let togglesSize = CGSize(width: 280, height: 130)
 
@@ -98,23 +93,6 @@ final class GlassSnapshotTests: XCTestCase {
 
     @MainActor
     private var fab: some View { ZStack { backdrop; FloatingAddButton(onTap: {}) } }
-
-    /// All four status chips, spaced over a rainbow wash so each glass
-    /// tint refracts cleanly (no overlapping text).
-    @MainActor
-    private var statusChips: some View {
-        HStack(spacing: LillistSpacing.xl) {
-            ForEach(Status.allCases, id: \.self) { StatusCubeView(status: $0) }
-        }
-        .padding(LillistSpacing.xl)
-        .background {
-            ZStack {
-                LillistColor.workspace
-                RainbowGradient.vertical.opacity(0.18)
-            }
-            .ignoresSafeArea()
-        }
-    }
 
     private var backdrop: some View {
         ZStack {
