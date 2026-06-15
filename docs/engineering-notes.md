@@ -2792,3 +2792,26 @@ LillistUI snapshot suite at all.
   it out of `LillistUITests` until an app-hosted glass-snapshot suite is
   in place, or accept manual visual verification (consistent with CI
   already carving out the host-pinned snapshots).
+
+**2026-06-14 refinement (from the reconciliation pass).** The blanking is
+not uniform — the rules that actually matter for the standalone
+`LillistUITests` (offscreen `.image`) suite:
+
+- **Interactive glass (`.interactive()`) reliably blanks the *entire*
+  offscreen capture.** The add-task FAB (`GlassSurface.primaryAction`,
+  the only interactive glass) blanked every tour screen it was overlaid
+  on. Removing the FAB overlay from the tour's `phoneShell` un-blanked
+  the lot. The interactive status control (`StatusIndicatorView`'s Menu)
+  similarly blanks `test_06`.
+- **An always-present `GlassEffectContainer` blanks too — even with no
+  visible glass inside it.** The Wave-1 `glassGroup()` wrapping the
+  (usually-empty) toast overlay blanked *all* TasksScreen snapshots until
+  it was replaced with a plain `VStack` (non-overlapping toasts need no
+  container).
+- **Non-interactive glass mostly *does* render offscreen** with the
+  tour's strategy (`.image(precision:perceptualPrecision:size:traits:)`
+  + `displayScale` trait + `layoutIfNeeded()`): the archive toast and the
+  expanded filter-header panel both captured correctly. So the
+  reconciliation is: strip interactive glass (FAB, status Menu) from
+  offscreen tests and cover it app-hosted; non-interactive glass can stay
+  in `LillistUITests`. macOS still has no app-hosted glass target.

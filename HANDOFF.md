@@ -43,22 +43,36 @@ for chrome → opaque under Reduce Transparency), `glassGroup()`
 1. **Wave 3 — task rows.** Replace `rainbowShadow` card elevation with a
    solid tinted surface (NOT glass — content layer). `RainbowCard` /
    `TaskRowView`. No perf gate now (decision: solid).
-2. **Wave 6 — snapshot reconciliation (the big one).** Glass blanks in
-   the standalone `LillistUITests`, so:
-   - **Migrate to app-hosted:** the FAB + `QuickCaptureDialog` cases in
-     `iOSSnapshotTests`, and any `IOSScreenTourTests` variant showing
-     glass (expanded filter header, toasts, glass buttons in empty
-     states). Delete the blanking baselines from `LillistUITests`.
-   - **macOS gap:** there is **no macOS app-hosted glass target**. The
-     macOS glass surfaces (quick-capture panel, inline toast) can't be
-     snapshotted in `LillistUITests`. Either add a
+2. **Wave 6 — snapshot reconciliation (the big one, in progress).**
+   The blanking rule (proven; see engineering-notes 2026-06-14):
+   *interactive* glass and an always-present `GlassEffectContainer` blank
+   the whole offscreen capture; *non-interactive* glass mostly renders
+   offscreen with the tour strategy. Already landed: TasksScreen toast
+   `glassGroup`→`VStack`, and the FAB overlay removed from the tour's
+   `phoneShell` — these un-blank most iOS tours.
+   - **Strip remaining interactive glass from offscreen tests:** `test_06`
+     (taskDetail) still blanks via `StatusIndicatorView`'s Menu — render
+     the display-only `StatusCubeView` in that mock instead, or move
+     `test_06` to app-hosted. Same for any screen using the interactive
+     status control.
+   - **Migrate the lone-glass component tests to app-hosted** (they
+     render the glass element by itself, so they blank): the FAB +
+     `QuickCaptureDialog` cases in `iOSSnapshotTests`, the iOS
+     `QuickCaptureDialogTests`. Delete those blanking baselines from
+     `LillistUITests` (FAB already covered app-hosted; add QuickCapture).
+   - **macOS gap:** no macOS app-hosted glass target exists. macOS glass
+     (`QuickCaptureView` panel, inline toast, glass buttons in
+     `MacOSScreenTourTests`) can't be captured in `LillistUITests`. Add a
      `Lillist-macOSAppHostedTests` target (mirror the iOS one) or accept
      manual macOS glass verification.
-   - **Rebaseline the rest (solid, captures fine):**
-     `StatusCubeSnapshotTests` (now a solid circle), and the Wave-4
-     flattened surfaces (recurrence/sidebar/sync, filter chip),
-     `ContrastSnapshotTests`, `ReduceTransparencySnapshotTests`.
-     `RECORD_SNAPSHOTS=YES` on `xcodebuild test -scheme Lillist-iOS`.
+   - **Then RECORD-rebaseline everything else** (solid, captures fine —
+     `StatusCubeSnapshotTests` now a solid circle, the Wave-3 flat cards,
+     the Wave-4 flattened surfaces, contrast/reduce-transparency, the
+     un-blanked tours): `RECORD_SNAPSHOTS=YES` on
+     `xcodebuild test -scheme Lillist-iOS`, then assert green.
+   - **Detect stragglers** by size: blank PNGs compress tiny
+     (`for f in **/*.png; do echo "$(stat -f%z "$f") $f"; done | sort -n`
+     — anything unexpectedly small is still-blanking glass).
 3. **Docs:** fold the Rainbow Glass evolution into the design-system doc
    `docs/plans/2026-06-12-rainbow-logic-design-system.md`.
 
