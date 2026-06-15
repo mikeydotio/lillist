@@ -356,29 +356,34 @@ script-purple. Verified: LillistUI 147/147, LillistCore 895/895, both
 app builds, iOS scheme green (bar the 2 known iCloud live-swap cases).
 Gotchas captured in `docs/engineering-notes.md` (2026-06-12 entry).
 
-## Rainbow Glass redesign — IN PROGRESS (2026-06-13)
+## Rainbow Glass redesign — COMPLETE (2026-06-15)
 
-Evolving Rainbow Logic onto Apple's iOS 26 Liquid Glass: the whimsical
-palette becomes functional *glass tints*, and faux-depth (drop shadows,
-top highlights, inset wells, the 3D cube) is retired for native glass.
-Plan: `~/.claude/plans/let-s-perform-an-app-wide-magical-forest.md`;
-handoff: `HANDOFF.md`.
+Rainbow Logic evolved onto Apple's iOS 26 Liquid Glass: the whimsical
+palette became functional *glass tints*, and faux-depth (drop shadows,
+top highlights, inset wells, the 3D cube) was retired for native glass.
+All waves landed, including the Wave 6 snapshot reconciliation.
 
 - **Seam:** `Theme/GlassSurface.swift` — `glassSurface(_:in:)`,
   `glassGroup()`, `glassElevation()`. Centralizes the OS-26 `#available`
   gate + degradation (glass → solid fill for tints / `.regularMaterial`
-  for chrome → opaque under Reduce Transparency).
-- **Done (Waves 0–2):** control layer (toasts, filter header, quick
-  capture); FAB (prominent tinted glass); `StatusCubeView` (circular
-  glass **chip**); button + toggle styles.
-- **Remaining:** Wave 3 content rows (**gated** on an on-device per-row-
-  glass perf test — `StatusCubeView` is already glass-per-row), Wave 4
-  retire unused `LillistElevation` paths + empty states, Wave 5 delight
-  (FAB↔quick-capture morph, scroll-edge, ToolbarSpacer, macOS NSPanel,
-  Share Extension), Wave 6 contrast hardening + full rebaseline + docs.
-- **Glass can't be snapshotted offscreen** (blanks the image). Glass
-  regression lives in `Lillist-iOSAppHostedTests/GlassSnapshotTests`
-  (app-hosted → live key window). See engineering-notes 2026-06-12.
+  for chrome → opaque under Reduce Transparency). Only `.primaryAction`
+  (the FAB) is `.interactive()`.
+- **Snapshot rules (hard-won — see engineering-notes 2026-06-12/14/15):**
+  - *Interactive* glass (the FAB) and the `StatusIndicatorView` `Menu`
+    blank the **whole** offscreen capture; **`.drawingGroup()`/Metal**
+    (e.g. `RainbowEmptyStateView`'s `DotGridBackdrop`) blanks the same
+    way. *Non-interactive* glass (panels, toasts, `.rainbow`
+    buttons/toggles) renders offscreen fine with the tour strategy.
+  - These live-window-only surfaces are snapshotted **app-hosted** in
+    `Lillist-iOSAppHostedTests/GlassSnapshotTests` (FAB, buttons, toggles,
+    QuickCaptureDialog, status control, empty state). Everything else
+    stays in offscreen `LillistUITests`.
+  - **macOS glass is NOT offscreen-snapshottable and has no app-hosted
+    path** — AppKit has no `drawHierarchyInKeyWindow`, and window-server
+    capture needs `CGWindowListCreateImage` (obsoleted in macOS 15) or
+    ScreenCaptureKit (Screen Recording permission). The three `#if
+    os(macOS)` glass snapshot suites are **`XCTSkip`-quarantined**; macOS
+    glass is verified manually. Revisit if Apple ships a capture API.
 
 ## When in doubt
 

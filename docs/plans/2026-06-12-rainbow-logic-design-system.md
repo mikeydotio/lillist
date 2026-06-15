@@ -4,7 +4,7 @@
 flat/system-color aesthetic. Product behavior remains specced by
 `2026-05-12-lillist-design.md`; this document owns *how it looks*.
 
-> **Evolving to Rainbow Glass (2026-06-14, in progress).** On iOS 26 /
+> **Evolved to Rainbow Glass (2026-06-15, complete).** On iOS 26 /
 > macOS Tahoe the system adopts Apple's **Liquid Glass**. Rainbow Logic
 > is migrating onto it: the *hand-rolled* tactile depth this doc
 > describes (two-layer drop shadows, inset top highlights, sunken wells,
@@ -19,7 +19,9 @@ flat/system-color aesthetic. Product behavior remains specced by
 > Implementation: the `GlassSurface` seam
 > (`Packages/LillistUI/Sources/LillistUI/Theme/GlassSurface.swift`).
 > Liquid Glass cannot be captured in offscreen snapshots — see
-> `docs/engineering-notes.md` (2026-06-12) and `HANDOFF.md`. Sections
+> `docs/engineering-notes.md` (2026-06-12 / 2026-06-14 / 2026-06-15);
+> glass regression is snapshotted app-hosted, macOS glass manually.
+> Sections
 > below describing shadow/highlight/well treatments are historical for
 > the glass surfaces; the token semantics (palette, functional hues,
 > typography, spacing, density) carry forward unchanged.

@@ -2815,3 +2815,59 @@ not uniform — the rules that actually matter for the standalone
   reconciliation is: strip interactive glass (FAB, status Menu) from
   offscreen tests and cover it app-hosted; non-interactive glass can stay
   in `LillistUITests`. macOS still has no app-hosted glass target.
+
+## 2026-06-15 — Snapshot reconciliation close-out: `.drawingGroup()` blanks offscreen too, and macOS glass is not offscreen-snapshottable
+
+Two non-obvious findings from finishing the Rainbow Glass snapshot
+reconciliation (the Wave 6 close-out).
+
+**1. `.drawingGroup()` (Metal) blanks offscreen snapshots exactly like
+Liquid Glass does.** The iOS empty-state tour snapshot
+(`IOSScreenTourTests.test_05`, `TasksScreen` with `roots: []`) re-recorded
+as a near-empty capture: the toolbar + footer rendered, but the entire
+empty-state body was gone. The body is `RainbowEmptyStateView`, whose
+`DotGridBackdrop` rasterizes its `Canvas` through **`.drawingGroup()`** —
+which composites via Metal, and Metal does **not** participate in the
+offscreen `CALayer.render(in:)` path the default `.image` strategy uses.
+So `.drawingGroup()` voids the surrounding capture the same way glass
+does. It is *not* the `.rainbow` glass button that blanked here — that's
+non-interactive glass and renders offscreen fine (confirmed: every other
+`.rainbow`-button baseline records correctly). `drawingGroup` is the only
+such call in `LillistUI/Sources`, so the empty state is the lone victim;
+its coverage moved to `Lillist-iOSAppHostedTests/GlassSnapshotTests`
+(`test_emptyState_*`), where the live key window composites both Metal and
+glass. Rule: treat any `.drawingGroup()`/`Canvas`-rasterized surface like
+glass for snapshot purposes — capture it app-hosted, never offscreen.
+
+**2. macOS Liquid Glass cannot be captured in an automated snapshot — the
+AppKit capture path is gone.** The iOS app-hosted trick relies on
+`UIView.drawViewHierarchy(in:afterScreenUpdates:)` via SnapshotTesting's
+`.image(drawHierarchyInKeyWindow: true)`. **AppKit has no equivalent** —
+`NSView`'s strategy is offscreen-only (`bitmapImageRepForCachingDisplay` +
+`cacheDisplay`), which blanks glass. The only way to capture composited
+glass on macOS is a window-server screenshot of an on-screen `NSWindow` —
+but **`CGWindowListCreateImage` is obsoleted (unavailable, a hard compile
+error) as of macOS 15** ("Please use ScreenCaptureKit instead"), and
+ScreenCaptureKit requires **Screen Recording (TCC) permission**, which
+prompts interactively and fails unattended/CI. A standalone spike
+confirmed the obsoletion at compile time on the macOS 26.2 SDK.
+
+Decision (with Mikey): **defer + document.** No `Lillist-macOSAppHostedTests`
+target — the only macOS-*unique* glass is `QuickCaptureView`'s `.panel`;
+the `.rainbow` buttons/toggles and the `GlassSurface` seam itself are
+already covered by `Lillist-iOSAppHostedTests/GlassSnapshotTests`. The
+three `#if os(macOS)` snapshot suites that render glass on the 26 host are
+**quarantined** with `XCTSkip` (`QuickCaptureViewSnapshotTests`,
+`ReduceTransparencySnapshotTests`, `MacOSScreenTourTests`) so the host
+`swift test` signal stays honest; macOS glass is verified manually.
+Revisit if Apple ships an offscreen glass-capture API.
+
+**3. `ReduceTransparencySnapshotTests` is obsolete on OS 26, not just
+un-capturable.** On OS 26 the seam (`GlassSurfaceModifier`) deliberately
+does **not** branch on `reduceTransparencyOverride` for the glass path —
+the renderer self-handles Reduce Transparency. So the override no longer
+flips a glass surface to its opaque fallback; both on/off render identical
+glass. The opaque-fallback path is pre-26-only and therefore not
+exercisable from a 26 host at all. Its *logic* stays unit-covered in
+`GlassSurfaceTests` (`prefersSolidFallback`, chrome-vs-fill); the now-dead
+snapshot pair is quarantined alongside the other macOS glass suites.
