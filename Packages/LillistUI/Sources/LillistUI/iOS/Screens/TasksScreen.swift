@@ -145,13 +145,15 @@ public struct TasksScreen: View {
             }
         }
         .overlay(alignment: .bottom) {
-            // All three toasts share one GlassEffectContainer so that,
-            // when more than one is on-screen, their Liquid Glass
-            // capsules merge instead of sampling each other (glass can't
-            // sample glass). The ZStack(.bottom) reproduces the prior
-            // three-overlay z-stack layout exactly. `glassGroup()` is a
-            // no-op below OS 26.
-            ZStack(alignment: .bottom) {
+            // Toasts stack in a VStack so co-visible Liquid Glass
+            // capsules never overlap — that sidesteps glass-on-glass
+            // without a GlassEffectContainer. (An always-present
+            // container would blank every offscreen snapshot of this
+            // screen, not just the toast variants — see
+            // docs/engineering-notes.md 2026-06-12.) Each toast renders
+            // nothing until presented, so the common no-toast state has
+            // no glass at all.
+            VStack(spacing: LillistSpacing.s) {
                 ArchiveToast(
                     count: archivedCount,
                     isPresented: $isArchiveToastPresented,
@@ -160,7 +162,6 @@ public struct TasksScreen: View {
                 ReorderFailureToast(isPresented: $isReorderToastPresented)
                 StatusChangeFailureToast(isPresented: $isStatusToastPresented)
             }
-            .glassGroup()
         }
         .animation(.easeInOut(duration: 0.2), value: isFilterHeaderExpanded)
     }

@@ -482,25 +482,24 @@ final class IOSScreenTourTests: RecordableSnapshotTestCase {
 
     // MARK: - Shell helper
 
-    /// Wraps a migrated screen in a NavigationStack, sized to the
-    /// iPhone tour viewport, with the FloatingAddButton overlay the
-    /// real iOS shell paints.
+    /// Wraps a migrated screen in a NavigationStack, sized to the iPhone
+    /// tour viewport.
+    ///
+    /// The `FloatingAddButton` the real shell paints is intentionally
+    /// NOT overlaid here: it is Liquid Glass, which blanks the entire
+    /// offscreen snapshot (see docs/engineering-notes.md 2026-06-12), so
+    /// it is covered in `Lillist-iOSAppHostedTests/GlassSnapshotTests`
+    /// instead. This tour verifies screen *composition* (rows, chips,
+    /// layout). The `fab` flag is retained at call sites to document
+    /// which screens carry one in the real shell.
     @ViewBuilder
     private func phoneShell<C: View>(
         fab: Bool,
         @ViewBuilder content: () -> C
     ) -> some View {
-        ZStack(alignment: .bottomTrailing) {
-            NavigationStack { content() }
-                .frame(width: phoneSize.width, height: phoneSize.height)
-                .background(Color(.systemBackground))
-
-            if fab {
-                FloatingAddButton(onTap: {})
-                    .padding(.trailing, 18)
-                    .padding(.bottom, 88)
-            }
-        }
+        NavigationStack { content() }
+            .frame(width: phoneSize.width, height: phoneSize.height)
+            .background(Color(.systemBackground))
     }
 
     // MARK: - Mock chrome retained for test_06 / test_09 only
