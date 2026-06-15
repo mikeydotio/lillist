@@ -4,60 +4,24 @@ import SwiftUI
 import SnapshotTesting
 @testable import LillistUI
 
-/// Snapshot coverage for the iOS-only LillistUI components.
+/// Snapshot coverage for the iOS-only LillistUI atoms that render in the
+/// standalone (offscreen) test bundle: `SyncStatusBadge` and the
+/// `TaskNotesTab` visual contract.
 ///
-/// Deviation note (Plan 8 Tasks 24+25): The plan called for per-view
+/// Deviation note (Plan 8 Tasks 24+25): the plan called for per-view
 /// snapshots of `TodayView`, `AllTagsView`, etc. — but the iOS app's test
 /// bundle is standalone (no test host) and cannot `@testable import
-/// Lillist_iOS`. Per-view snapshots also require an `AppEnvironment` /
-/// in-memory `PersistenceController`, which is heavier than the snapshot
-/// flow needs. We instead snapshot the iOS-only LillistUI atoms
-/// (FloatingAddButton, SyncStatusBadge, QuickCaptureDialog) which the
-/// per-view shells compose. Stable visual regressions on these atoms catch
+/// Lillist_iOS`. We instead snapshot the iOS-only LillistUI atoms the
+/// per-view shells compose; stable visual regressions on these atoms catch
 /// the same drift the per-view snapshots would.
+///
+/// Glass-bearing atoms that blank the offscreen capture — the FAB
+/// (`.primaryAction` interactive glass), `QuickCaptureDialog` (`.panel`
+/// glass), and the interactive `StatusIndicatorView` (a `Menu` hit layer)
+/// — moved to `Lillist-iOSAppHostedTests/GlassSnapshotTests`, which renders
+/// through a live key window. See docs/engineering-notes.md 2026-06-12 and
+/// the 2026-06-14 refinement.
 final class iOSSnapshotTests: RecordableSnapshotTestCase {
-    @MainActor
-    func test_floatingAddButton_light() {
-        let view = FloatingAddButton(onTap: {})
-            .frame(width: 200, height: 100)
-            .background(Color(.systemBackground))
-        let host = UIHostingController(rootView: view)
-        host.view.frame = CGRect(x: 0, y: 0, width: 200, height: 100)
-        assertSnapshot(of: host, as: .image(size: CGSize(width: 200, height: 100)),
-                       named: "fab-light")
-    }
-
-    @MainActor
-    func test_floatingAddButton_dark() {
-        let view = FloatingAddButton(onTap: {})
-            .environment(\.colorScheme, .dark)
-            .frame(width: 200, height: 100)
-            .background(Color(.systemBackground))
-        let host = UIHostingController(rootView: view)
-        host.overrideUserInterfaceStyle = .dark
-        host.view.frame = CGRect(x: 0, y: 0, width: 200, height: 100)
-        assertSnapshot(of: host, as: .image(size: CGSize(width: 200, height: 100)),
-                       named: "fab-dark")
-    }
-
-    @MainActor
-    func test_floatingAddButton_accessibilityLabel_is_present() throws {
-        // SwiftUI's accessibility tree is *not* discoverable through UIKit
-        // view-hierarchy traversal — neither `subviews` nor
-        // `accessibilityElements` exposes the result of
-        // `.accessibilityLabel(_:)` on a hosted SwiftUI view. Even forcing
-        // a window + render pass + runloop spin keeps the hosting view's
-        // a11y tree empty; SwiftUI surfaces accessibility only to the
-        // actual AT runtime (VoiceOver / Voice Control), not via
-        // introspection. This test as written cannot pass; the FAB *does*
-        // have `.accessibilityLabel("New task")` in source. Skipping
-        // until we either (a) introduce an accessibility-snapshot
-        // strategy (e.g. an `as: .accessibilityTree` text snapshot), or
-        // (b) cover this in an XCUITest where `XCUIElement` queries hit
-        // the real AT layer.
-        throw XCTSkip("Requires accessibility-snapshot or XCUITest strategy — see comment.")
-    }
-
     @MainActor
     func test_syncStatusBadge_idle() {
         let view = SyncStatusBadge(indicator: .idle(lastSync: Date(timeIntervalSince1970: 0)))
@@ -128,79 +92,6 @@ final class iOSSnapshotTests: RecordableSnapshotTestCase {
         assertSnapshot(of: host, as: .image(size: CGSize(width: 60, height: 40)))
     }
 
-    @MainActor
-    func test_quickCaptureDialog_empty_light() {
-        let view = QuickCaptureDialog(
-            text: .constant(""),
-            onSubmit: {}
-        )
-        .padding()
-        .background(Color(.systemBackground))
-        let host = UIHostingController(rootView: view)
-        host.view.frame = CGRect(x: 0, y: 0, width: 360, height: 200)
-        assertSnapshot(of: host, as: .image(size: CGSize(width: 360, height: 200)),
-                       named: "quick-capture-dialog-empty-light")
-    }
-
-    @MainActor
-    func test_quickCaptureDialog_empty_dark() {
-        let view = QuickCaptureDialog(
-            text: .constant(""),
-            onSubmit: {}
-        )
-        .padding()
-        .background(Color(.systemBackground))
-        .environment(\.colorScheme, .dark)
-        let host = UIHostingController(rootView: view)
-        host.overrideUserInterfaceStyle = .dark
-        host.view.frame = CGRect(x: 0, y: 0, width: 360, height: 200)
-        assertSnapshot(of: host, as: .image(size: CGSize(width: 360, height: 200)),
-                       named: "quick-capture-dialog-empty-dark")
-    }
-
-    @MainActor
-    func test_quickCaptureDialog_with_parsed_tokens() {
-        let view = QuickCaptureDialog(
-            text: .constant("Buy milk #errands ^tomorrow"),
-            onSubmit: {}
-        )
-        .padding()
-        .background(Color(.systemBackground))
-        let host = UIHostingController(rootView: view)
-        host.view.frame = CGRect(x: 0, y: 0, width: 360, height: 220)
-        assertSnapshot(of: host, as: .image(size: CGSize(width: 360, height: 220)),
-                       named: "quick-capture-dialog-with-parsed-tokens")
-    }
-
-    @MainActor
-    func test_quickCaptureDialog_with_error() {
-        let view = QuickCaptureDialog(
-            text: .constant("Anything"),
-            errorMessage: "Couldn't create task",
-            onSubmit: {}
-        )
-        .padding()
-        .background(Color(.systemBackground))
-        let host = UIHostingController(rootView: view)
-        host.view.frame = CGRect(x: 0, y: 0, width: 360, height: 240)
-        assertSnapshot(of: host, as: .image(size: CGSize(width: 360, height: 240)),
-                       named: "quick-capture-dialog-with-error")
-    }
-
-    @MainActor
-    func test_statusIndicator_menu_button_renders_at_44pt() {
-        let view = StatusIndicatorView(
-            status: .todo,
-            onClick: {},
-            onSetStatus: { _ in }
-        )
-        .padding()
-        .background(Color(.systemBackground))
-        let host = UIHostingController(rootView: view)
-        host.view.frame = CGRect(x: 0, y: 0, width: 80, height: 80)
-        assertSnapshot(of: host, as: .image(size: CGSize(width: 80, height: 80)))
-    }
-
     // MARK: - TaskNotesTab visual fixtures (Plan 18 Task 4)
     //
     // The iOS test bundle can't @testable import Lillist_iOS, so each
@@ -239,32 +130,6 @@ final class iOSSnapshotTests: RecordableSnapshotTestCase {
         let host = UIHostingController(rootView: view)
         host.view.frame = CGRect(x: 0, y: 0, width: 360, height: 240)
         assertSnapshot(of: host, as: .image(size: CGSize(width: 360, height: 240)))
-    }
-
-    // MARK: - helpers
-
-    /// Recursively searches a UIKit view hierarchy for an accessibility
-    /// element whose label equals `target`. SwiftUI exposes accessibility
-    /// information through `accessibilityElements` rather than as a property
-    /// on each backing `UIView`, so probing `subviews` alone misses the
-    /// `.accessibilityLabel(_:)` modifier on hosted SwiftUI views. We check
-    /// both paths.
-    @MainActor
-    private func findAccessibilityLabel(in root: NSObject, equals target: String) -> Bool {
-        if (root.value(forKey: "accessibilityLabel") as? String) == target {
-            return true
-        }
-        if let elements = root.value(forKey: "accessibilityElements") as? [NSObject] {
-            for el in elements where findAccessibilityLabel(in: el, equals: target) {
-                return true
-            }
-        }
-        if let view = root as? UIView {
-            for sub in view.subviews where findAccessibilityLabel(in: sub, equals: target) {
-                return true
-            }
-        }
-        return false
     }
 }
 

@@ -260,23 +260,12 @@ final class IOSScreenTourTests: RecordableSnapshotTestCase {
         assertScreen(view, name: "13-tasks-mid-drag-light", colorScheme: .light, size: phoneSize)
     }
 
-    func test_05_tasks_empty_state_light() {
-        let view = phoneShell(fab: true) {
-            TasksScreen(
-                roots: [],
-                syncIndicator: .idle(lastSync: nil),
-                buildVersion: "0.1.0 (16)",
-                sort: .constant(.personalized),
-                isFilterHeaderExpanded: .constant(false),
-                searchText: .constant(""),
-                selectedTokens: .constant([]),
-                selectedSavedFilters: .constant([]),
-                savedFilters: savedFilterChips(),
-                dragController: DragController()
-            )
-        }
-        assertScreen(view, name: "05-tasks-empty-state-light", colorScheme: .light, size: phoneSize)
-    }
+    // NOTE: The empty-state snapshot (`TasksScreen` with `roots: []`) moved
+    // to `Lillist-iOSAppHostedTests/GlassSnapshotTests`. Its body is
+    // `RainbowEmptyStateView`, whose `DotGridBackdrop` composites through
+    // `.drawingGroup()` (Metal) — which, like Liquid Glass, does NOT render
+    // in the offscreen `CALayer.render(in:)` capture (it blanks the whole
+    // empty-state subtree). See docs/engineering-notes.md 2026-06-15.
 
     func test_08_settings_light() {
         let view = SettingsScreen(onDone: {}) {
@@ -316,66 +305,69 @@ final class IOSScreenTourTests: RecordableSnapshotTestCase {
 
     // MARK: - Non-Tasks screens (inline-composed)
 
+    /// The detail surface, sans floating chrome. The real screen overlays
+    /// a `FloatingAddButton` (interactive Liquid Glass) and uses
+    /// `StatusIndicatorView` (a `Menu` hit layer) — both of which blank the
+    /// *entire* offscreen capture (see docs/engineering-notes.md
+    /// 2026-06-12 + the 2026-06-14 refinement). So this composition swaps
+    /// in the display-only `StatusCubeView` chip and omits the FAB; the
+    /// glass FAB and the interactive status control are covered
+    /// app-hosted in `Lillist-iOSAppHostedTests/GlassSnapshotTests`.
     func test_06_taskDetail_light() {
-        let view = ZStack(alignment: .bottomTrailing) {
-            VStack(spacing: 0) {
-                detailNavBar(title: "Draft launch email", leading: "Today", trailing: "Edit")
-                ScrollView {
-                    VStack(alignment: .leading, spacing: 16) {
-                        HStack(spacing: 10) {
-                            StatusIndicatorView(status: .started, onClick: {}, onSetStatus: { _ in })
-                            Text("Draft launch email")
-                                .font(.system(size: 22, weight: .semibold))
-                            Spacer()
-                        }
-                        HStack(spacing: 6) {
-                            TagChipView(name: "work", tint: TagTint(hex: "#3366FF"))
-                            TagChipView(name: "urgent", tint: TagTint(hex: "#FF6644"))
-                            Label("May 22", systemImage: "calendar")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                        }
-                        Divider()
-                        labelledSection(title: "NOTES") {
-                            Text("Outline the customer announcement: highlight CloudKit sync, the new recurrence engine, and the iOS quick-capture share extension.")
-                                .font(.system(size: 14))
-                        }
-                        Divider()
-                        labelledSection(title: "SUBTASKS") {
-                            VStack(spacing: 4) {
-                                taskRow("Pull metrics from beta program", status: .closed)
-                                taskRow("Draft hero paragraph", status: .started)
-                                taskRow("Get screenshots from QA", status: .blocked,
-                                        tags: ["urgent"])
-                                taskRow("Schedule review with Alex")
-                            }
-                        }
-                        Divider()
-                        labelledSection(title: "JOURNAL") {
-                            HStack(alignment: .top, spacing: 8) {
-                                Image(systemName: "bubble.left")
-                                    .foregroundStyle(.tertiary)
-                                VStack(alignment: .leading, spacing: 2) {
-                                    Text("May 14, 9:14am")
-                                        .font(.caption2).foregroundStyle(.tertiary)
-                                    Text("Got first draft to Alex for review. Waiting on the screenshots from QA before sending out broadly.")
-                                        .font(.system(size: 13))
-                                }
-                            }
-                        }
-                        Spacer(minLength: 80)
+        let view = VStack(spacing: 0) {
+            detailNavBar(title: "Draft launch email", leading: "Today", trailing: "Edit")
+            ScrollView {
+                VStack(alignment: .leading, spacing: 16) {
+                    HStack(spacing: 10) {
+                        StatusCubeView(status: .started)
+                            .frame(width: 44, height: 44)
+                        Text("Draft launch email")
+                            .font(.system(size: 22, weight: .semibold))
+                        Spacer()
                     }
-                    .padding(.horizontal, 18)
-                    .padding(.top, 12)
+                    HStack(spacing: 6) {
+                        TagChipView(name: "work", tint: TagTint(hex: "#3366FF"))
+                        TagChipView(name: "urgent", tint: TagTint(hex: "#FF6644"))
+                        Label("May 22", systemImage: "calendar")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    Divider()
+                    labelledSection(title: "NOTES") {
+                        Text("Outline the customer announcement: highlight CloudKit sync, the new recurrence engine, and the iOS quick-capture share extension.")
+                            .font(.system(size: 14))
+                    }
+                    Divider()
+                    labelledSection(title: "SUBTASKS") {
+                        VStack(spacing: 4) {
+                            taskRow("Pull metrics from beta program", status: .closed)
+                            taskRow("Draft hero paragraph", status: .started)
+                            taskRow("Get screenshots from QA", status: .blocked,
+                                    tags: ["urgent"])
+                            taskRow("Schedule review with Alex")
+                        }
+                    }
+                    Divider()
+                    labelledSection(title: "JOURNAL") {
+                        HStack(alignment: .top, spacing: 8) {
+                            Image(systemName: "bubble.left")
+                                .foregroundStyle(.tertiary)
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("May 14, 9:14am")
+                                    .font(.caption2).foregroundStyle(.tertiary)
+                                Text("Got first draft to Alex for review. Waiting on the screenshots from QA before sending out broadly.")
+                                    .font(.system(size: 13))
+                            }
+                        }
+                    }
+                    Spacer(minLength: 80)
                 }
+                .padding(.horizontal, 18)
+                .padding(.top, 12)
             }
-            .frame(width: phoneSize.width, height: phoneSize.height)
-            .background(Color(.systemBackground))
-
-            FloatingAddButton(onTap: {})
-                .padding(.trailing, 18)
-                .padding(.bottom, 32)
         }
+        .frame(width: phoneSize.width, height: phoneSize.height)
+        .background(Color(.systemBackground))
         assertScreen(view, name: "06-task-detail-light", colorScheme: .light, size: phoneSize)
     }
 

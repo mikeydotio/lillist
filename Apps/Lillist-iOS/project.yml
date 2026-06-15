@@ -214,6 +214,12 @@ targets:
     deploymentTarget: "26.0"
     sources:
       - path: Tests/AppHostedTests
+        # Snapshot baselines are read from disk via #filePath, never from
+        # the test bundle — keep the __Snapshots__ fixtures out of the
+        # Resources build phase so the pbxproj carries no per-PNG churn
+        # (otherwise every recorded baseline drifts the project file).
+        excludes:
+          - "**/__Snapshots__/**"
       - path: ../../Packages/LillistCore/Tests/LillistCoreTests/Sync/MigrationCoordinatorTests.swift
       - path: ../../Packages/LillistCore/Tests/LillistCoreTests/Sync/CloudKitZoneEraserTests.swift
       - path: ../../Packages/LillistCore/Tests/LillistCoreTests/Sync/FakePersistenceReconfigurer.swift

@@ -375,7 +375,6 @@
 		2C76F2D6950FE9CF54E9011D /* AppHostedTests */ = {
 			isa = PBXGroup;
 			children = (
-				5D3EAB451196D65F9D52C14B /* __Snapshots__ */,
 				262879B5609DF4130184E6B4 /* GlassSnapshotTests.swift */,
 				5F5EAD1E444A07943C9C4297 /* LiveSwapHostMetaTests.swift */,
 			);
@@ -473,13 +472,6 @@
 			);
 			name = Apps;
 			path = ..;
-			sourceTree = "<group>";
-		};
-		5D3EAB451196D65F9D52C14B /* __Snapshots__ */ = {
-			isa = PBXGroup;
-			children = (
-			);
-			path = __Snapshots__;
 			sourceTree = "<group>";
 		};
 		6395D3DECDA1C49633B9D788 /* UITests */ = {
