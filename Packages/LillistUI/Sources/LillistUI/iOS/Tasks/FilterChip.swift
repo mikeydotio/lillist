@@ -41,7 +41,6 @@ public struct FilterChip: View {
                             lineWidth: 1
                         )
                 }
-                .rainbowShadow(.xs)
         }
         .buttonStyle(.plain)
         .accessibilityAddTraits(isSelected ? [.isButton, .isSelected] : .isButton)

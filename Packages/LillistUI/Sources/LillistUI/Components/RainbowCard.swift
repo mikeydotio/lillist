@@ -1,12 +1,19 @@
 import SwiftUI
 
-/// The shared tactile-card chrome for repeating content rows (task
-/// rows, journal rows, popover rows): `card` surface, continuous
-/// 12 pt corners, hairline border, soft shadow, and an optional
-/// status-colored accent stripe down the leading edge.
+/// The shared card chrome for repeating content rows (task rows,
+/// journal rows, popover rows): `card` surface, continuous 12 pt
+/// corners, hairline border, and an optional status-colored accent
+/// stripe down the leading edge.
 ///
-/// Done rows fade to 0.62 opacity and drop their shadow — completed
-/// work settles into the workspace instead of floating above it.
+/// Rainbow Glass treatment: content rows are **flat** (`.xs`), separated
+/// from the workspace by surface value + the hairline border, not a drop
+/// shadow — depth in the glass era comes from the floating control layer
+/// above, not per-row shadows. Higher elevations (`.sm`+) keep their
+/// shadow for genuinely-floating one-off surfaces (sheets, popovers,
+/// the drag phantom).
+///
+/// Done rows fade to 0.62 opacity — completed work settles into the
+/// workspace.
 ///
 /// Elevation defaults to `.xs` and should stay there for anything
 /// rendered inside a `List`/`ForEach` (the design system's hard perf
@@ -46,7 +53,15 @@ public struct RainbowCardModifier: ViewModifier {
         if isDone {
             chrome.opacity(0.62)
         } else {
-            chrome.rainbowShadow(elevation)
+            switch elevation {
+            case .xs:
+                // Flat content: surface value + hairline border separate
+                // the row from the workspace (Rainbow Glass content rule).
+                chrome
+            default:
+                // Genuinely-floating one-off surfaces keep their shadow.
+                chrome.rainbowShadow(elevation)
+            }
         }
     }
 }

@@ -80,7 +80,6 @@ public struct TagChipView: View {
                         lineWidth: 1
                     )
                 )
-                .rainbowShadow(.xs)
             }
         }
         .accessibilityLabel(String(localized: "Tag: \(name)", bundle: .module))
