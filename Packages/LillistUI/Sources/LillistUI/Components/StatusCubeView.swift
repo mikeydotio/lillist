@@ -3,14 +3,14 @@ import LillistCore
 
 /// The Rainbow Glass status chip — the visual heart of a task row.
 ///
-/// A **solid tinted circular chip** with a **shape axis** independent of
-/// hue so status stays legible for colorblind users and under
-/// differentiate-without-color:
+/// A **solid tinted squircle** (continuous-corner rounded rect) with a
+/// **shape axis** independent of hue so status stays legible for
+/// colorblind users and under differentiate-without-color:
 ///
 /// | status  | fill              | shape                          |
 /// |---------|-------------------|--------------------------------|
-/// | todo    | neutral + stroke  | empty chip                     |
-/// | started | focus-blue        | white leading half             |
+/// | todo    | neutral + stroke  | empty squircle                 |
+/// | started | focus-blue        | white center dot               |
 /// | blocked | action-orange soft| dashed ink border + pause bars |
 /// | closed  | growth-green      | white check (squish snap)      |
 ///
@@ -20,7 +20,7 @@ import LillistCore
 /// Apple's guidance, and it keeps the chip cheap on long lists and
 /// snapshot-testable in the standard suite. The old faux-volume
 /// (emptyGradient, litFromAbove, top highlight, hue glow, isometric
-/// cube) is retired; this is a clean circular tint.
+/// cube) is retired; this is a clean squircle tint.
 ///
 /// Purely visual: tap-to-cycle, the explicit-setter menu, hit targets,
 /// and every accessibility attribute live in `StatusIndicatorView`,
@@ -30,7 +30,7 @@ import LillistCore
 public struct StatusCubeView: View {
     public var status: Status
 
-    @ScaledMetric(relativeTo: .body) private var size: CGFloat = 24
+    @ScaledMetric(relativeTo: .body) private var size: CGFloat = 20
     @Environment(\.colorScheme) private var scheme
     @Environment(\.accessibilityShouldIncreaseContrast) private var systemIncreaseContrast
     @Environment(\.increaseContrastOverride) private var overrideIncreaseContrast
@@ -74,32 +74,40 @@ public struct StatusCubeView: View {
             }
     }
 
+    /// The squircle silhouette shared by every state. A continuous-corner
+    /// rounded rect at ~32% of the side reads as an iOS-26 squircle (not a
+    /// pill, not a hard square); keying the radius off `size` keeps the
+    /// curve correct as Dynamic Type scales the chip.
+    private var shape: RoundedRectangle {
+        RoundedRectangle(cornerRadius: size * 0.32, style: .continuous)
+    }
+
     @ViewBuilder
     private var chip: some View {
         switch status {
         case .todo:
-            Circle()
+            shape
                 .fill(LillistColor.card)
-                .overlay(Circle().strokeBorder(
+                .overlay(shape.strokeBorder(
                     increaseContrast ? LillistColor.borderStrong : LillistColor.borderSoft,
                     lineWidth: 1
                 ))
 
         case .started:
-            Circle()
+            shape
                 .fill(RainbowPalette.focusBlue.base)
                 .overlay {
-                    // Shape axis: leading half filled white, clipped to
-                    // the chip circle.
-                    HStack(spacing: 0) {
-                        Rectangle().fill(.white).opacity(0.9)
-                        Color.clear
-                    }
-                    .clipShape(Circle())
+                    // Shape axis: a centered white dot. A true circle on
+                    // the squircle keeps started visually distinct from
+                    // the empty todo chip and the closed check.
+                    Circle()
+                        .fill(.white)
+                        .opacity(0.95)
+                        .frame(width: size * 0.34, height: size * 0.34)
                 }
 
         case .blocked:
-            Circle()
+            shape
                 .fill(RainbowPalette.actionOrange.soft)
                 .overlay {
                     // Shape axis: pause bars in ink.
@@ -108,13 +116,13 @@ public struct StatusCubeView: View {
                         barShape.frame(width: size * 0.14, height: size * 0.46)
                     }
                 }
-                .overlay(Circle().strokeBorder(
+                .overlay(shape.strokeBorder(
                     RainbowPalette.actionOrange.ink.opacity(increaseContrast ? 1 : 0.9),
                     style: StrokeStyle(lineWidth: 1.5, dash: [3, 3])
                 ))
 
         case .closed:
-            Circle()
+            shape
                 .fill(RainbowPalette.growthGreen.base)
                 .overlay {
                     // Shape axis: the white check, snapping in with a
