@@ -1,0 +1,7 @@
+tracking: true
+auto_bump: true
+auto_bump_confirm: true
+version_prefix: "v"
+git_tagging: true
+changelog_format: "grouped"
+target_branch: "main"
