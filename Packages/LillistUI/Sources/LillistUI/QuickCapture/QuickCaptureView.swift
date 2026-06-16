@@ -20,11 +20,27 @@ public struct QuickCaptureView: View {
     public var body: some View {
         let parsed = QuickCaptureParser.parse(text)
         VStack(alignment: .leading, spacing: 8) {
-            TextField("New task… (#tag, ^date)", text: $text)
-                .textFieldStyle(.plain)
-                .font(LillistTypography.quickCaptureField)
-                .onSubmit { onSubmit(parsed) }
-                .accessibilityLabel(String(localized: "Quick capture", bundle: .module))
+            TextField(
+                text: $text,
+                prompt: Text("Capture a task…  #tag ^date", bundle: .module)
+            ) {
+                Text("New task", bundle: .module)
+            }
+            .textFieldStyle(.plain)
+            .font(LillistTypography.quickCaptureField)
+            .foregroundStyle(LillistColor.textStrong)
+            .onSubmit { onSubmit(parsed) }
+            .accessibilityLabel(String(localized: "Quick capture", bundle: .module))
+            .padding(.horizontal, LillistSpacing.s + 2)
+            .padding(.vertical, LillistSpacing.s)
+            .background {
+                RoundedRectangle(cornerRadius: LillistRadius.s, style: .continuous)
+                    .fill(.rainbowWell)
+            }
+            .overlay {
+                RoundedRectangle(cornerRadius: LillistRadius.s, style: .continuous)
+                    .strokeBorder(LillistColor.borderHair, lineWidth: 1)
+            }
 
             HStack(spacing: 6) {
                 ForEach(parsed.tags, id: \.self) { name in
