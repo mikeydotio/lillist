@@ -1,0 +1,2358 @@
+{
+  "baseline": "85a4dc8648a4280e30f533268d65bfac16701d21",
+  "docs": {
+    "modules/Apps-Config.md": {
+      "generator": "cartographer/1",
+      "module": "Apps/Config",
+      "references_modules": [
+        "Apps-misc",
+        "Apps-Lillist-iOS-misc",
+        "Tools"
+      ],
+      "sources": {
+        "Apps/Config/BuildNumber.xcconfig": "9de55af1f2dce8d8cfff66e1bb83858ab0486d3f",
+        "Apps/Config/Signing.local.xcconfig.example": "2c771256d16c8c8d3f09dcba171065b72979afe2",
+        "Apps/Config/Signing.xcconfig": "91c22af2ba9d10704a892e78b54461d6bc12d1cf"
+      },
+      "summary": "Shared xcconfig scaffold keeping the signing team ID out of git and tracking the iOS build counter",
+      "verified": true
+    },
+    "modules/Apps-Lillist-iOS-Sources-App.md": {
+      "generator": "cartographer/1",
+      "module": "Apps/Lillist-iOS/Sources/App",
+      "references_modules": [
+        "Apps-Lillist-iOS-Sources-misc",
+        "Packages-LillistCore-Sources-LillistCore-Persistence",
+        "Packages-LillistCore-Sources-LillistCore-Sync-chunk-1",
+        "Packages-LillistCore-Sources-LillistCore-Sync-chunk-2",
+        "Packages-LillistCore-Sources-LillistCore-CrashReporting",
+        "Packages-LillistUI-Sources-LillistUI-CrashReporting",
+        "Packages-LillistUI-Sources-LillistUI-Onboarding",
+        "Packages-LillistUI-Sources-LillistUI-Sync",
+        "Packages-LillistUI-Sources-LillistUI-Theme-chunk-1"
+      ],
+      "sources": {
+        "Apps/Lillist-iOS/Sources/App/AppEnvironment.swift": "02254d0d5ac21d7c890d7dc26d09dc8f8d882edd",
+        "Apps/Lillist-iOS/Sources/App/CrashReporterHost.swift": "10e38c4524e8eb68e95e9d0cfae0be658b1ee067",
+        "Apps/Lillist-iOS/Sources/App/LillistApp.swift": "d18ba5f75b127be1501a9780023a8856ddcf8013",
+        "Apps/Lillist-iOS/Sources/App/MailComposerTransport.swift": "af54dda7da2700518a16e86aebb5d4735e0bcc16",
+        "Apps/Lillist-iOS/Sources/App/MailComposerView.swift": "7888c20651cafd6509b97b2de2c4eabde8305685",
+        "Apps/Lillist-iOS/Sources/App/MetricKitObserver.swift": "198daf20635d64ed69d25a5b805147d26a4d653f"
+      },
+      "summary": "iOS app entry point \u2014 assembles AppEnvironment, hosts crash reporting, onboarding, and background purge",
+      "verified": true
+    },
+    "modules/Apps-Lillist-iOS-Sources-Detail.md": {
+      "generator": "cartographer/1",
+      "module": "Apps/Lillist-iOS/Sources/Detail",
+      "references_modules": [
+        "Apps-Lillist-iOS-Sources-App",
+        "Packages-LillistCore-Sources-LillistCore-Stores-chunk-1",
+        "Packages-LillistCore-Sources-LillistCore-Stores-chunk-2",
+        "Packages-LillistUI-Sources-LillistUI-Recurrence",
+        "Packages-LillistUI-Sources-LillistUI-Components",
+        "Packages-LillistUI-Sources-LillistUI-Accessibility",
+        "Packages-LillistUI-Sources-LillistUI-Theme-chunk-1",
+        "Packages-LillistUI-Sources-LillistUI-misc"
+      ],
+      "sources": {
+        "Apps/Lillist-iOS/Sources/Detail/RecurrenceSheet.swift": "40a4472a16ef4ecfbb2ea527940175da846e0bcf",
+        "Apps/Lillist-iOS/Sources/Detail/TaskAttachmentsTab.swift": "4d2ba1a4b7f93674337c7dfc1330a8f36da30ad8",
+        "Apps/Lillist-iOS/Sources/Detail/TaskDetailView.swift": "48e20263cf99acb259fb8c5e33812e1c2574fc78",
+        "Apps/Lillist-iOS/Sources/Detail/TaskJournalTab.swift": "6974aca358fa010a57dcd768d05afbd52593783b",
+        "Apps/Lillist-iOS/Sources/Detail/TaskNotesTab.swift": "88144eb0768e68e7a61217a7646d869b62207a5d",
+        "Apps/Lillist-iOS/Sources/Detail/TaskSubtasksTab.swift": "8dedc9faab747afc6b1723c10f48f2917d78b883"
+      },
+      "summary": "iOS task-detail surface \u2014 segmented Notes/Subtasks/Journal/Attachments tabs plus recurrence sheet",
+      "verified": true
+    },
+    "modules/Apps-Lillist-iOS-Sources-Settings.md": {
+      "generator": "cartographer/1",
+      "module": "Apps/Lillist-iOS/Sources/Settings",
+      "references_modules": [
+        "Apps-Lillist-iOS-Sources-App",
+        "Apps-Lillist-iOS-Sources-misc",
+        "Packages-LillistUI-Sources-LillistUI-Settings",
+        "Packages-LillistUI-Sources-LillistUI-Sync",
+        "Packages-LillistUI-Sources-LillistUI-iOS-misc",
+        "Packages-LillistCore-Sources-LillistCore-Persistence",
+        "Packages-LillistCore-Sources-LillistCore-Sync",
+        "Packages-LillistCore-Sources-LillistCore-Export",
+        "Packages-LillistCore-Sources-LillistCore-Diagnostics",
+        "Packages-LillistCore-Sources-LillistCore-misc"
+      ],
+      "sources": {
+        "Apps/Lillist-iOS/Sources/Settings/AdvancedSection.swift": "16cfb82d01a4ffc73a1cef2fd36960e58c4d2829",
+        "Apps/Lillist-iOS/Sources/Settings/CrashReportingSection.swift": "cff94248ca46cb78c31e1cb676f3a99756c7dcfe",
+        "Apps/Lillist-iOS/Sources/Settings/DiagnosticsSection.swift": "afeafdf9990d22c3fa4c758946a3ccd56529c834",
+        "Apps/Lillist-iOS/Sources/Settings/GeneralSection.swift": "7721b21e7727ca5f670c16d04fe0c82eca82e677",
+        "Apps/Lillist-iOS/Sources/Settings/ICloudSyncSection.swift": "323be3ad575e487b01656468b1d7b0c348725e60",
+        "Apps/Lillist-iOS/Sources/Settings/NotificationsSection.swift": "254a5ffeb365bd10ddca648b74241275df310079",
+        "Apps/Lillist-iOS/Sources/Settings/QuickCaptureSection.swift": "bf450601d8c0b95a98aee0f0ea499f2eeffeca61",
+        "Apps/Lillist-iOS/Sources/Settings/SettingsTab.swift": "ab94fc70cb6b095d01a17d991bf7824320909a59",
+        "Apps/Lillist-iOS/Sources/Settings/TrashSection.swift": "047a2d56222b6c4b659d138012e3afa69d484205"
+      },
+      "summary": "iOS Settings sections \u2014 env-coupled presenters wiring AppEnvironment into LillistUI chrome",
+      "verified": true
+    },
+    "modules/Apps-Lillist-iOS-Sources-misc.md": {
+      "generator": "cartographer/1",
+      "module": "Apps/Lillist-iOS/Sources (misc)",
+      "references_modules": [
+        "Apps-Lillist-iOS-Sources-App",
+        "Apps-Lillist-iOS-Sources-Detail",
+        "Apps-Lillist-iOS-Sources-Settings",
+        "Packages-LillistCore-Sources-LillistCore-Stores-chunk-1",
+        "Packages-LillistCore-Sources-LillistCore-Rules",
+        "Packages-LillistUI-Sources-LillistUI-iOS-misc",
+        "Packages-LillistUI-Sources-LillistUI-QuickCapture",
+        "Packages-LillistUI-Sources-LillistUI-DragReorder",
+        "Packages-LillistUI-Sources-LillistUI-Onboarding",
+        "Packages-LillistUI-Sources-LillistUI-misc"
+      ],
+      "sources": {
+        "Apps/Lillist-iOS/Sources/Commands/LillistCommands.swift": "166463128417565918949336bd955c5f5226882c",
+        "Apps/Lillist-iOS/Sources/Common/SceneBindings.swift": "4c5ed74be926c762f0403a874c3427d9b503d503",
+        "Apps/Lillist-iOS/Sources/Onboarding/OnboardingScreen.swift": "bd8a5898a5de3b3ec6ebf2feb8ce63b9659f4758",
+        "Apps/Lillist-iOS/Sources/QuickCapture/QuickCaptureDialogHost.swift": "f1fd69a974c93c1313e4907e811648ee2e08038f",
+        "Apps/Lillist-iOS/Sources/Root/RootShell.swift": "81fd318944a7aa6870c2de2944e184f110e85dd7",
+        "Apps/Lillist-iOS/Sources/Tasks/TasksView.swift": "b0f506a6514fcd5e46055989ca3695048ac1978f"
+      },
+      "summary": "iOS app shell, primary tasks container, onboarding, Quick Capture host, and scene command/binding plumbing",
+      "verified": true
+    },
+    "modules/Apps-Lillist-iOS-misc.md": {
+      "generator": "cartographer/1",
+      "module": "Apps/Lillist-iOS (misc)",
+      "references_modules": [
+        "Packages-LillistCore-misc",
+        "Packages-LillistUI-misc",
+        "Extensions-ShareExtension-iOS",
+        "Extensions-ShortcutsActions-misc",
+        "Apps-Config",
+        "Tools"
+      ],
+      "sources": {
+        "Apps/Lillist-iOS/Info.plist": "3fa4f9bb9a91d891e61b35325ec8f206701faf8f",
+        "Apps/Lillist-iOS/Lillist.entitlements": "45bd89c75fc209577a9f050691030a2000e74ca6",
+        "Apps/Lillist-iOS/Resources/Localizable.xcstrings": "0b929bb5c527e9ff19f4af825b212291536fd153",
+        "Apps/Lillist-iOS/Resources/PrivacyInfo.xcprivacy": "4e7e051bbe5e2753a0a80b85ae78289d250bdce7",
+        "Apps/Lillist-iOS/project.yml": "93659656ee8b438360ff4ea8b20aa801dfbc0b77"
+      },
+      "summary": "iOS app target manifest \u2014 xcodegen spec, bundle/entitlements/privacy plists, app-target localized strings",
+      "verified": true
+    },
+    "modules/Apps-Lillist-macOS-Sources-Commands.md": {
+      "generator": "cartographer/1",
+      "module": "Apps/Lillist-macOS/Sources/Commands",
+      "references_modules": [
+        "Apps-Lillist-macOS-Sources-misc",
+        "Apps-Lillist-macOS-Sources-Views-misc",
+        "Apps-Lillist-macOS-Sources-Views-TaskList"
+      ],
+      "sources": {
+        "Apps/Lillist-macOS/Sources/Commands/CommandNotifications.swift": "a4a22becc50b0609cc4a941cacf1c88596f7d137",
+        "Apps/Lillist-macOS/Sources/Commands/FocusedListColumn.swift": "12c29f7c53e5616d78e81607e76ad8fde76d8440",
+        "Apps/Lillist-macOS/Sources/Commands/LillistCommands.swift": "145b249573a6cc4ac62e26ec526d42d6c80927a1"
+      },
+      "summary": "macOS menu-bar commands and keyboard shortcuts that post notifications views observe",
+      "verified": true
+    },
+    "modules/Apps-Lillist-macOS-Sources-Hotkey.md": {
+      "generator": "cartographer/1",
+      "module": "Apps/Lillist-macOS/Sources/Hotkey",
+      "references_modules": [
+        "Apps-Lillist-macOS-Sources-misc",
+        "Apps-Lillist-macOS-Sources-Preferences",
+        "Packages-LillistUI-Sources-LillistUI-QuickCapture",
+        "Packages-LillistCore-Sources-LillistCore-Stores-chunk-1"
+      ],
+      "sources": {
+        "Apps/Lillist-macOS/Sources/Hotkey/GlobalHotkeyMonitor.swift": "aabfdf309ae61b86c6315570445b023b79f9dfca",
+        "Apps/Lillist-macOS/Sources/Hotkey/HotkeyKeyTable.swift": "3d177e8680a0aee5d6228b0b090193f1d50571d5",
+        "Apps/Lillist-macOS/Sources/Hotkey/HotkeyRecorder.swift": "f62390a36a429269bee13dc122ad58d397fe4b49",
+        "Apps/Lillist-macOS/Sources/Hotkey/QuickCapturePanelController.swift": "0f04e35542b6cdf014f7f540707be0d70c9fe31d",
+        "Apps/Lillist-macOS/Sources/Hotkey/QuickCapturePlacementMath.swift": "e38650e29d0abcec51fa15a17dc25951b981d8ae"
+      },
+      "summary": "System-wide Quick Capture hotkey monitor, key-combo codec, and the borderless floating capture panel",
+      "verified": true
+    },
+    "modules/Apps-Lillist-macOS-Sources-Preferences.md": {
+      "generator": "cartographer/1",
+      "module": "Apps/Lillist-macOS/Sources/Preferences",
+      "references_modules": [
+        "Apps-Lillist-macOS-Sources-misc",
+        "Apps-Lillist-macOS-Sources-Hotkey",
+        "Packages-LillistCore-Sources-LillistCore-Persistence",
+        "Packages-LillistCore-Sources-LillistCore-Sync-chunk-1",
+        "Packages-LillistUI-Sources-LillistUI-Settings",
+        "Packages-LillistUI-Sources-LillistUI-Sync",
+        "Packages-LillistUI-Sources-LillistUI-iOS-misc",
+        "Packages-LillistUI-Sources-LillistUI-Accessibility"
+      ],
+      "sources": {
+        "Apps/Lillist-macOS/Sources/Preferences/AdvancedPane.swift": "d89420303de7b130199435dc699956cff06ff2f0",
+        "Apps/Lillist-macOS/Sources/Preferences/CrashReportingPane.swift": "312ea7bc27fa054e887e39c71e5dd9cc4972a14c",
+        "Apps/Lillist-macOS/Sources/Preferences/DiagnosticsPane.swift": "86fc83af2047fc182ca7de9e1937aec14e208bde",
+        "Apps/Lillist-macOS/Sources/Preferences/GeneralPane.swift": "a602b3a6e933cb743488655d4afb9327b6bad435",
+        "Apps/Lillist-macOS/Sources/Preferences/ICloudSyncPane.swift": "525535d588bc6f86021c5d604e1221dcb6b0ef74",
+        "Apps/Lillist-macOS/Sources/Preferences/NotificationsPane.swift": "97b81ffa9738b1d17d8b99e163a8ca5645203f67",
+        "Apps/Lillist-macOS/Sources/Preferences/PreferencesWindow.swift": "28817f36b86d2de4a1505301f64534ae2e45981d",
+        "Apps/Lillist-macOS/Sources/Preferences/QuickCapturePane.swift": "b66909ec19bf98e3361b4d5dcdbec551b82adb1c",
+        "Apps/Lillist-macOS/Sources/Preferences/TrashPane.swift": "915336ea3a34d64d61da2fbd11f3d9f9c6fe239f"
+      },
+      "summary": "macOS Settings scene \u2014 eight env-coupled preference panes wrapping LillistCore stores and LillistUI sections",
+      "verified": true
+    },
+    "modules/Apps-Lillist-macOS-Sources-Views-Detail.md": {
+      "generator": "cartographer/1",
+      "module": "Apps/Lillist-macOS/Sources/Views/Detail",
+      "references_modules": [
+        "Apps-Lillist-macOS-Sources-misc",
+        "Packages-LillistCore-Sources-LillistCore-Stores-chunk-1",
+        "Packages-LillistUI-Sources-LillistUI-Components",
+        "Packages-LillistUI-Sources-LillistUI-Recurrence",
+        "Packages-LillistUI-Sources-LillistUI-Accessibility"
+      ],
+      "sources": {
+        "Apps/Lillist-macOS/Sources/Views/Detail/DetailHeaderView.swift": "5de5be34439b88cbb1ad0ba850e70199a0959ff6",
+        "Apps/Lillist-macOS/Sources/Views/Detail/FollowUpFormView.swift": "d648bfcd629adb838df1d78d0819d4ec47b4cfca",
+        "Apps/Lillist-macOS/Sources/Views/Detail/JournalComposerView.swift": "010d724129556fa2e8d1f5f449a291e11b7ab34a",
+        "Apps/Lillist-macOS/Sources/Views/Detail/JournalStreamView.swift": "8c64ba29db2604a294772244d0cc3c4e4cf1376d",
+        "Apps/Lillist-macOS/Sources/Views/Detail/NotesEditorView.swift": "a20d2375ac4dd7aec0ae590f89fa3ba2bffece17",
+        "Apps/Lillist-macOS/Sources/Views/Detail/SubtaskOutlineView.swift": "955653f882179b64cfe641ffe0a97f7a99b6be2c",
+        "Apps/Lillist-macOS/Sources/Views/Detail/TaskDetailView.swift": "516c5a0597af15b1e7491d4c41ee7fcf644a3f97"
+      },
+      "summary": "macOS task-detail Form pane and its inline editors (title, dates, recurrence, follow-up, notes, subtasks, journal)",
+      "verified": true
+    },
+    "modules/Apps-Lillist-macOS-Sources-Views-Sidebar.md": {
+      "generator": "cartographer/1",
+      "module": "Apps/Lillist-macOS/Sources/Views/Sidebar",
+      "references_modules": [
+        "Apps-Lillist-macOS-Sources-misc",
+        "Apps-Lillist-macOS-Sources-Views-misc",
+        "Apps-Lillist-macOS-Sources-Views-TaskList",
+        "Packages-LillistCore-Sources-LillistCore-Stores-chunk-1",
+        "Packages-LillistCore-Sources-LillistCore-Stores-chunk-2",
+        "Packages-LillistUI-Sources-LillistUI-Components",
+        "Packages-LillistUI-Sources-LillistUI-Theme-chunk-1"
+      ],
+      "sources": {
+        "Apps/Lillist-macOS/Sources/Views/Sidebar/SidebarSection.swift": "26e2fea7d1dd00c25de2b07150377bd17e4ff010",
+        "Apps/Lillist-macOS/Sources/Views/Sidebar/SidebarSelection.swift": "5db8773c57a6a070482eabffcf8c7e8a275432b0",
+        "Apps/Lillist-macOS/Sources/Views/Sidebar/SidebarView.swift": "0e7d65010a0bc5d8a55b0c447df628ab7867e4d9"
+      },
+      "summary": "macOS sidebar source list \u2014 pinned items, tag tree, filters, trash, with inline rename/recolor editors",
+      "verified": true
+    },
+    "modules/Apps-Lillist-macOS-Sources-Views-TaskList.md": {
+      "generator": "cartographer/1",
+      "module": "Apps/Lillist-macOS/Sources/Views/TaskList",
+      "references_modules": [
+        "Apps-Lillist-macOS-Sources-Views-Sidebar",
+        "Apps-Lillist-macOS-Sources-misc",
+        "Apps-Lillist-macOS-Sources-Commands",
+        "Packages-LillistCore-Sources-LillistCore-Stores-chunk-1",
+        "Packages-LillistCore-Sources-LillistCore-Model",
+        "Packages-LillistCore-Sources-LillistCore-Ordering",
+        "Packages-LillistUI-Sources-LillistUI-DragReorder",
+        "Packages-LillistUI-Sources-LillistUI-Components",
+        "Packages-LillistUI-Sources-LillistUI-Theme-chunk-1"
+      ],
+      "sources": {
+        "Apps/Lillist-macOS/Sources/Views/TaskList/InlineCreateField.swift": "d737387de165974c77a26ca89529a57b51cbed99",
+        "Apps/Lillist-macOS/Sources/Views/TaskList/SelectionAdvance.swift": "7c6f317dc02fa7336bcd3d01b0bcd21d5caa6f81",
+        "Apps/Lillist-macOS/Sources/Views/TaskList/SourceTitleResolver.swift": "5cbcc6b0c3e27b91cf341718ef0e77e271657590",
+        "Apps/Lillist-macOS/Sources/Views/TaskList/TaskListHeaderView.swift": "5a3ae2804869198bed5d951672e40a791fe53a48",
+        "Apps/Lillist-macOS/Sources/Views/TaskList/TaskListSortControl.swift": "ed61e10f26e474710792a98401490c63b52c5ca2",
+        "Apps/Lillist-macOS/Sources/Views/TaskList/TaskListView.swift": "75e4a8bba6d4c7b421672574112a384c19c30460",
+        "Apps/Lillist-macOS/Sources/Views/TaskList/TaskOutlineNode.swift": "e6b6844fe1d32663306460de539630d0252b07e4"
+      },
+      "summary": "macOS task-list pane \u2014 outline/flat rendering, drag-reorder, inline create, status cycling",
+      "verified": true
+    },
+    "modules/Apps-Lillist-macOS-Sources-Views-misc.md": {
+      "generator": "cartographer/1",
+      "module": "Apps/Lillist-macOS/Sources/Views (misc)",
+      "references_modules": [
+        "Apps-Lillist-macOS-Sources-misc",
+        "Apps-Lillist-macOS-Sources-Views-Sidebar",
+        "Apps-Lillist-macOS-Sources-Views-TaskList",
+        "Apps-Lillist-macOS-Sources-Views-Detail",
+        "Apps-Lillist-macOS-Sources-Commands",
+        "Packages-LillistUI-Sources-LillistUI-Components"
+      ],
+      "sources": {
+        "Apps/Lillist-macOS/Sources/Views/EmptyView/NoSelectionDetailView.swift": "7a17e59fd6aa447a08fc1b732b1d52154bb4b598",
+        "Apps/Lillist-macOS/Sources/Views/RootSplitView.swift": "127b3aa7429518c3a0e1f48c90ff38b29aade3bb"
+      },
+      "summary": "macOS three-column NavigationSplitView root that wires sidebar/list/detail and the window toolbar",
+      "verified": true
+    },
+    "modules/Apps-Lillist-macOS-Sources-misc.md": {
+      "generator": "cartographer/1",
+      "module": "Apps/Lillist-macOS/Sources (misc)",
+      "references_modules": [
+        "Packages-LillistCore-Sources-LillistCore-misc",
+        "Packages-LillistUI-Sources-LillistUI-misc",
+        "Apps-Lillist-macOS-Sources-Views-misc",
+        "Apps-Lillist-macOS-Sources-Commands",
+        "Apps-Lillist-macOS-Sources-Preferences",
+        "Apps-Lillist-macOS-Sources-Hotkey"
+      ],
+      "sources": {
+        "Apps/Lillist-macOS/Sources/AppDelegate.swift": "62ce4ca17340759272beab7879d10fce70f392bb",
+        "Apps/Lillist-macOS/Sources/AppEnvironment.swift": "22f0a3d452bda96525896b47d9c461ea385e73dd",
+        "Apps/Lillist-macOS/Sources/CrashReporterHost.swift": "b3a56574761886ab64c2efdb80bab618ec92c82e",
+        "Apps/Lillist-macOS/Sources/Indexing/IndexingMappers.swift": "8ec987eef9c37edd3c6abde3093dac44962e0044",
+        "Apps/Lillist-macOS/Sources/Indexing/IndexingService.swift": "add637f94bf65575631a2b81dc0f1cba26977bb0",
+        "Apps/Lillist-macOS/Sources/LillistApp.swift": "dc3f2c22592a35f5b813d658ad3346d6e45d9135",
+        "Apps/Lillist-macOS/Sources/MailtoTransport.swift": "62d6df19a2ee52c3dfa72c411577dd2e4dd94d22",
+        "Apps/Lillist-macOS/Sources/MenuBar/MenuBarExtraScene.swift": "02305835ca157cd328fca49ebd3ce7147f10c615",
+        "Apps/Lillist-macOS/Sources/Onboarding/OnboardingSheet.swift": "e252864f910909a073621b494fddf7d062eade3f",
+        "Apps/Lillist-macOS/Sources/Persistence/UIStatePersistence.swift": "324a7b17096296dc7dafb6eb869e19312bc3ead7",
+        "Apps/Lillist-macOS/Sources/Services/LillistServicesProvider.swift": "bc0fa7c4100a95e20333e55990bb8aa9262f532b",
+        "Apps/Lillist-macOS/Sources/StatusBar/TodayPopoverView.swift": "90274bef31060bca2bee37d3cd550a68dc1fca93"
+      },
+      "summary": "macOS app shell \u2014 @main scene graph, root @Observable environment, AppKit bridges, crash/Spotlight/Services hosts",
+      "verified": true
+    },
+    "modules/Apps-Lillist-macOS-misc.md": {
+      "generator": "cartographer/1",
+      "module": "Apps/Lillist-macOS (misc)",
+      "references_modules": [
+        "Apps-Lillist-macOS-Sources-misc",
+        "Apps-Lillist-macOS-Sources-Preferences"
+      ],
+      "sources": {
+        "Apps/Lillist-macOS/Info.plist": "77bee3c5e56ace15bb627ba59aa18edf5f4544b3",
+        "Apps/Lillist-macOS/Lillist.entitlements": "bbcb3bfbc5f58c2efb616805c4867d1b24a7d644",
+        "Apps/Lillist-macOS/Resources/Localizable.xcstrings": "7487e9c9eb037dcf3d359808de8a5b58e1b4c96d",
+        "Apps/Lillist-macOS/Resources/PrivacyInfo.xcprivacy": "4e7e051bbe5e2753a0a80b85ae78289d250bdce7"
+      },
+      "summary": "macOS app bundle config \u2014 Info.plist, sandbox/iCloud entitlements, privacy manifest, app-only strings",
+      "verified": true
+    },
+    "modules/Apps-misc.md": {
+      "generator": "cartographer/1",
+      "module": "Apps (misc)",
+      "references_modules": [
+        "Apps-Config",
+        "Apps-Lillist-macOS-Sources-Hotkey",
+        "Apps-Lillist-macOS-Sources-Commands",
+        "Apps-Lillist-macOS-Sources-Views-TaskList",
+        "Apps-Lillist-macOS-Sources-Views-Sidebar",
+        "Apps-Lillist-macOS-Sources-misc",
+        "Packages-LillistCore-misc",
+        "Packages-LillistUI-misc"
+      ],
+      "sources": {
+        "Apps/project.yml": "f237d599d624763bc3b7a244e3df60b9c06aaa85"
+      },
+      "summary": "XcodeGen spec for the Lillist-macOS app + standalone test bundle, packages, signing, and build settings",
+      "verified": true
+    },
+    "modules/Extensions-ShareExtension-iOS.md": {
+      "generator": "cartographer/1",
+      "module": "Extensions/ShareExtension-iOS",
+      "references_modules": [
+        "Packages-LillistCore-Sources-LillistCore-Sync-chunk-1",
+        "Packages-LillistCore-Sources-LillistCore-Persistence",
+        "Packages-LillistCore-Sources-LillistCore-Stores-chunk-1",
+        "Packages-LillistCore-Sources-LillistCore-Stores-chunk-2",
+        "Packages-LillistCore-Sources-LillistCore-Diagnostics",
+        "Packages-LillistCore-Sources-LillistCore-LinkPreview",
+        "Packages-LillistCore-Sources-LillistCore-misc",
+        "Packages-LillistUI-Sources-LillistUI-Theme-chunk-1"
+      ],
+      "sources": {
+        "Extensions/ShareExtension-iOS/Info.plist": "71d0dc72cdff29eb19d3eeb77caf214255b3b5c3",
+        "Extensions/ShareExtension-iOS/Lillist.entitlements": "dc82d6a78df2d35115ff154e8888e3d7e0ef3469",
+        "Extensions/ShareExtension-iOS/PrivacyInfo.xcprivacy": "4e7e051bbe5e2753a0a80b85ae78289d250bdce7",
+        "Extensions/ShareExtension-iOS/SharePayload.swift": "1cc6f7b55a70113401f7d165c563a00347e31c9d",
+        "Extensions/ShareExtension-iOS/ShareRootView.swift": "81f5afdb40d9a2b94bffd08b8422136237b9fd6d",
+        "Extensions/ShareExtension-iOS/ShareSaveFlow.swift": "e76d10124e5f2b6565471213778516cb7892e9cf",
+        "Extensions/ShareExtension-iOS/ShareViewController.swift": "824f5b49a323d6341a59dcd07922257f22a02a13"
+      },
+      "summary": "iOS share-sheet extension that captures shared text/URLs into a task via the App-Group store",
+      "verified": true
+    },
+    "modules/Extensions-ShortcutsActions-Entities.md": {
+      "generator": "cartographer/1",
+      "module": "Extensions/ShortcutsActions/Entities",
+      "references_modules": [
+        "Extensions-ShortcutsActions-misc",
+        "Packages-LillistCore-Sources-LillistCore-Stores-chunk-1",
+        "Packages-LillistCore-Sources-LillistCore-Stores-chunk-2",
+        "Packages-LillistCore-Sources-LillistCore-Model",
+        "Packages-LillistCore-Sources-LillistCore-Rules"
+      ],
+      "sources": {
+        "Extensions/ShortcutsActions/Entities/StatusAppEnum.swift": "9014b1f271976eceb9cca9e9307258a7d4dcac9d",
+        "Extensions/ShortcutsActions/Entities/TaskEntity.swift": "61233f71d3aa63d6858122a3e92651961a03c853",
+        "Extensions/ShortcutsActions/Entities/TaskEntityQuery.swift": "1187dea2d080b75705127c87e392ee2c50ad0503"
+      },
+      "summary": "AppEntity + EntityQuery surface exposing tasks to Shortcuts, Spotlight, and Lock Screen",
+      "verified": true
+    },
+    "modules/Extensions-ShortcutsActions-misc.md": {
+      "generator": "cartographer/1",
+      "module": "Extensions/ShortcutsActions (misc)",
+      "references_modules": [
+        "Extensions-ShortcutsActions-Entities",
+        "Packages-LillistCore-Sources-LillistCore-CLIBridge-Handlers-chunk-1",
+        "Packages-LillistCore-Sources-LillistCore-CLIBridge-Handlers-chunk-2",
+        "Packages-LillistCore-Sources-LillistCore-Stores-chunk-1",
+        "Packages-LillistCore-Sources-LillistCore-Notifications",
+        "Packages-LillistCore-Sources-LillistCore-Persistence",
+        "Packages-LillistCore-Sources-LillistCore-Sync-chunk-1",
+        "Packages-LillistCore-Sources-LillistCore-Diagnostics",
+        "Packages-LillistCore-Sources-LillistCore-CrashReporting",
+        "Packages-LillistCore-Sources-LillistCore-misc"
+      ],
+      "sources": {
+        "Extensions/ShortcutsActions/AddNoteIntent.swift": "5479c7b84089fb60435ccc3a69d7134c0a4003bb",
+        "Extensions/ShortcutsActions/AddNudgeIntent.swift": "9ef7abfdcea19ec80bead733408d60b241ae7661",
+        "Extensions/ShortcutsActions/AddTaskIntent.swift": "a282eecc4ca5781082558d429106ef4b965e4ec6",
+        "Extensions/ShortcutsActions/CompleteTaskIntent.swift": "ee52ad97a2814037665355e4d61f48fefb0aebc2",
+        "Extensions/ShortcutsActions/Info.plist": "bb54fe71bb383ecfa907d8e1e62c0b2bd15fe749",
+        "Extensions/ShortcutsActions/IntentSupport.swift": "0d89cca032cb960afe49d9e56244d5a1f43e7dca",
+        "Extensions/ShortcutsActions/Lillist.entitlements": "dc82d6a78df2d35115ff154e8888e3d7e0ef3469",
+        "Extensions/ShortcutsActions/LillistShortcuts.swift": "2b8bf798b2b60e4b69191a5eabd0283f4325a529",
+        "Extensions/ShortcutsActions/OpenTaskIntent.swift": "a5525ff6de1796d9f8185c10e60ad343507e4c2f",
+        "Extensions/ShortcutsActions/PrivacyInfo.xcprivacy": "4e7e051bbe5e2753a0a80b85ae78289d250bdce7",
+        "Extensions/ShortcutsActions/QuickCaptureLockScreenIntent.swift": "ff2cfee19b0ce40fd1261905003b826cff34f3b4",
+        "Extensions/ShortcutsActions/ReportCrashIntent.swift": "b5cadb7d4c02e2e41c94ab25e6bd9d8517e006a7",
+        "Extensions/ShortcutsActions/SearchTasksIntent.swift": "33326bf5c2bdcae30181985681d13a70a9a69999",
+        "Extensions/ShortcutsActions/ToggleStatusIntent.swift": "6087eb324c84eccdf453f561995740af6c718cc4"
+      },
+      "summary": "App Intents extension exposing Lillist actions to Shortcuts, Siri, and Lock Screen widgets",
+      "verified": true
+    },
+    "modules/Packages-LillistCore-Sources-LillistCore-CLIBridge-Handlers-chunk-1.md": {
+      "generator": "cartographer/1",
+      "module": "Packages/LillistCore/Sources/LillistCore/CLIBridge/Handlers (chunk 1)",
+      "references_modules": [
+        "Packages-LillistCore-Sources-LillistCore-CLIBridge-misc",
+        "Packages-LillistCore-Sources-LillistCore-Stores-chunk-1",
+        "Packages-LillistCore-Sources-LillistCore-Stores-chunk-2",
+        "Packages-LillistCore-Sources-LillistCore-Notifications",
+        "Packages-LillistCore-Sources-LillistCore-Rules",
+        "Packages-LillistCore-Sources-LillistCore-Model",
+        "Packages-LillistCore-Sources-LillistCore-ManagedObjects",
+        "Packages-LillistCore-Sources-LillistCore-LinkPreview",
+        "Packages-LillistCore-Sources-LillistCore-Export",
+        "Packages-LillistCore-Sources-LillistCore-Persistence",
+        "Packages-LillistCore-Sources-LillistCore-Diagnostics",
+        "Packages-LillistCore-Sources-LillistCore-misc"
+      ],
+      "sources": {
+        "Packages/LillistCore/Sources/LillistCore/CLIBridge/Handlers/AddHandler.swift": "ad229604e848b080167fb5143cbf2a2e69bb971b",
+        "Packages/LillistCore/Sources/LillistCore/CLIBridge/Handlers/AttachHandler.swift": "eded77747680c5577ccefbde43cac1851d253c42",
+        "Packages/LillistCore/Sources/LillistCore/CLIBridge/Handlers/CountHandler.swift": "3672518f651534a19075e57c04c701921e79aaf3",
+        "Packages/LillistCore/Sources/LillistCore/CLIBridge/Handlers/DeleteHandler.swift": "458b4876b22e1d6a5ad985d13b826542cc8f94af",
+        "Packages/LillistCore/Sources/LillistCore/CLIBridge/Handlers/EditHandler.swift": "9c4f282ee4b580b7823d6c9d55da9fedb330bc2a",
+        "Packages/LillistCore/Sources/LillistCore/CLIBridge/Handlers/EvalHandler.swift": "e6abcfafe279ea31ab920c4e231f72e8fd3a85ea",
+        "Packages/LillistCore/Sources/LillistCore/CLIBridge/Handlers/ExportHandler.swift": "73a3743f5f294b95a912be44ac2dbd7e653189ca",
+        "Packages/LillistCore/Sources/LillistCore/CLIBridge/Handlers/FiltersHandler.swift": "42221eb81deb1f2aee907240a0e6869fb8fdbc32",
+        "Packages/LillistCore/Sources/LillistCore/CLIBridge/Handlers/LinkHandler.swift": "7de8ab03712224c1854bef490a9ff9cfc00ef5a7",
+        "Packages/LillistCore/Sources/LillistCore/CLIBridge/Handlers/LsHandler.swift": "192754aeeda1b620b2bd60745e2b6dbe6876c9c3",
+        "Packages/LillistCore/Sources/LillistCore/CLIBridge/Handlers/MoveHandler.swift": "406f775d8b674f480531ea7ccfe3add93fd56302",
+        "Packages/LillistCore/Sources/LillistCore/CLIBridge/Handlers/NoteHandler.swift": "2636c60994789aae317319f897cd5d595b118332",
+        "Packages/LillistCore/Sources/LillistCore/CLIBridge/Handlers/NudgeHandler.swift": "c64410299f77fdbf3716634b151aeef057e2880b",
+        "Packages/LillistCore/Sources/LillistCore/CLIBridge/Handlers/PinHandler.swift": "845931cf4fbe1add526c17176e2825d59c79e774",
+        "Packages/LillistCore/Sources/LillistCore/CLIBridge/Handlers/PurgeHandler.swift": "946f138edf9a34b1ea75996454db62a4d885993c"
+      },
+      "summary": "Stateless CLIBridge command handlers translating tokenized intents into store mutations and DTO reads",
+      "verified": true
+    },
+    "modules/Packages-LillistCore-Sources-LillistCore-CLIBridge-Handlers-chunk-2.md": {
+      "generator": "cartographer/1",
+      "module": "Packages/LillistCore/Sources/LillistCore/CLIBridge/Handlers (chunk 2)",
+      "references_modules": [
+        "Packages-LillistCore-Sources-LillistCore-CLIBridge-misc",
+        "Packages-LillistCore-Sources-LillistCore-CLIBridge-Handlers-chunk-1",
+        "Packages-LillistCore-Sources-LillistCore-CLIBridge-Renderers",
+        "Packages-LillistCore-Sources-LillistCore-Stores-chunk-1",
+        "Packages-LillistCore-Sources-LillistCore-Stores-chunk-2",
+        "Packages-LillistCore-Sources-LillistCore-Model",
+        "Packages-LillistCore-Sources-LillistCore-Rules",
+        "Packages-LillistCore-Sources-LillistCore-ManagedObjects",
+        "Packages-LillistCore-Sources-LillistCore-misc"
+      ],
+      "sources": {
+        "Packages/LillistCore/Sources/LillistCore/CLIBridge/Handlers/RestoreHandler.swift": "5fb928949c1e57886767e94329b7720eb70b8fe0",
+        "Packages/LillistCore/Sources/LillistCore/CLIBridge/Handlers/SearchHandler.swift": "f88c2be42dca13fbdc685967a9ee4f8c242f9c0d",
+        "Packages/LillistCore/Sources/LillistCore/CLIBridge/Handlers/ShowHandler.swift": "6615a48fb355d8fd5307dc672ce8b5a5611a503f",
+        "Packages/LillistCore/Sources/LillistCore/CLIBridge/Handlers/StatusHandler.swift": "fccb6c4b458311f04ebd4cd9a7e0ba74739847d9",
+        "Packages/LillistCore/Sources/LillistCore/CLIBridge/Handlers/TagHandler.swift": "b4b1b66dc267a4988498e85d57b835d7ab4c2217",
+        "Packages/LillistCore/Sources/LillistCore/CLIBridge/Handlers/TagsHandler.swift": "ebee6ca1c1b39ed1d4db22dde1e7f532d05ea4f2",
+        "Packages/LillistCore/Sources/LillistCore/CLIBridge/Handlers/WatchHandler.swift": "4304202cc87835019cdbaef8e1db3ff84e1c88c0"
+      },
+      "summary": "CLIBridge command handlers for restore, search, show, status, tag, tags, and watch flows",
+      "verified": true
+    },
+    "modules/Packages-LillistCore-Sources-LillistCore-CLIBridge-Renderers.md": {
+      "generator": "cartographer/1",
+      "module": "Packages/LillistCore/Sources/LillistCore/CLIBridge/Renderers",
+      "references_modules": [
+        "Packages-LillistCore-Sources-LillistCore-Stores-chunk-1",
+        "Packages-LillistCore-Sources-LillistCore-Model",
+        "Packages-LillistCore-Sources-LillistCore-CLIBridge-Handlers-chunk-1"
+      ],
+      "sources": {
+        "Packages/LillistCore/Sources/LillistCore/CLIBridge/Renderers/FilterRenderer.swift": "751ad48396684b394771f92078d1e4ff8af3887f",
+        "Packages/LillistCore/Sources/LillistCore/CLIBridge/Renderers/JournalRenderer.swift": "facea689a166003da677132304e1eeb8f4b4433c",
+        "Packages/LillistCore/Sources/LillistCore/CLIBridge/Renderers/TagRenderer.swift": "95a9efc7b3fd0fa5dbbdcea0cfdb0663e35ca147",
+        "Packages/LillistCore/Sources/LillistCore/CLIBridge/Renderers/TaskRenderer.swift": "0ef33ce9e0dd81909afeb708247b92db04a54fb9"
+      },
+      "summary": "Serializes store DTOs into the CLI's json/ndjson/tsv/pretty output formats",
+      "verified": true
+    },
+    "modules/Packages-LillistCore-Sources-LillistCore-CLIBridge-misc.md": {
+      "generator": "cartographer/1",
+      "module": "Packages/LillistCore/Sources/LillistCore/CLIBridge (misc)",
+      "references_modules": [
+        "Packages-LillistCore-Sources-LillistCore-misc",
+        "Packages-LillistCore-Sources-LillistCore-Model",
+        "Packages-LillistCore-Sources-LillistCore-Rules",
+        "Packages-LillistCore-Sources-LillistCore-Persistence",
+        "Packages-LillistCore-Sources-LillistCore-Sync-chunk-1",
+        "Packages-LillistCore-Sources-LillistCore-ManagedObjects",
+        "Packages-LillistCore-Sources-LillistCore-CLIBridge-Handlers-chunk-1",
+        "Packages-LillistCore-Sources-lillist-cli-Commands-chunk-1"
+      ],
+      "sources": {
+        "Packages/LillistCore/Sources/LillistCore/CLIBridge/CLIBridge.swift": "c4bf1afbbb44a21b8a5162f4b1a1db2299deaf1f",
+        "Packages/LillistCore/Sources/LillistCore/CLIBridge/Config.swift": "30810b649af3df23a2b16e8904d91656bbc898c2",
+        "Packages/LillistCore/Sources/LillistCore/CLIBridge/DateParsing.swift": "832f427a2cca04791e3783ff2501735e0d2680aa",
+        "Packages/LillistCore/Sources/LillistCore/CLIBridge/FilterFlags.swift": "6beb4def986435c783f9301805fb0dba74a10c6d",
+        "Packages/LillistCore/Sources/LillistCore/CLIBridge/OutputFormat.swift": "95f838c57fcc1427c31d510dd578058ea1ecbdb1",
+        "Packages/LillistCore/Sources/LillistCore/CLIBridge/Resolver.swift": "96b084b79bf8710a31e90cc520bb38402daf19c8",
+        "Packages/LillistCore/Sources/LillistCore/CLIBridge/StoreLocator.swift": "face1e87c95329651709b822e18bef6c20a765f4"
+      },
+      "summary": "Shared load-bearing primitives for the CLI and Shortcuts \u2014 store location, task resolution, date/filter parsing",
+      "verified": true
+    },
+    "modules/Packages-LillistCore-Sources-LillistCore-CrashReporting.md": {
+      "generator": "cartographer/1",
+      "module": "Packages/LillistCore/Sources/LillistCore/CrashReporting",
+      "references_modules": [
+        "Apps-Lillist-iOS-Sources-App",
+        "Apps-Lillist-macOS-Sources-misc",
+        "Packages-LillistUI-Sources-LillistUI-CrashReporting",
+        "Packages-LillistCore-Sources-lillist-cli-Support",
+        "Packages-LillistCore-Sources-lillist-cli-Commands-chunk-2",
+        "Packages-LillistCore-Sources-LillistCore-Stores-chunk-1",
+        "Packages-LillistCore-Sources-LillistCore-Stores-chunk-2"
+      ],
+      "sources": {
+        "Packages/LillistCore/Sources/LillistCore/CrashReporting/AppPreferences+Crash.swift": "1903156bfc349c5fd5ab6ea58356e7f22cf20369",
+        "Packages/LillistCore/Sources/LillistCore/CrashReporting/Breadcrumb.swift": "74efe7dff31af290939d779fcf47d49c583a50a2",
+        "Packages/LillistCore/Sources/LillistCore/CrashReporting/BreadcrumbBuffer.swift": "81a5e9be1a41d4a0caaeec1c3f8ac171a0d2f82f",
+        "Packages/LillistCore/Sources/LillistCore/CrashReporting/CanaryFile.swift": "38d7987b5923484837d05e7945c357847968768b",
+        "Packages/LillistCore/Sources/LillistCore/CrashReporting/CrashCanary.swift": "ed24bc86615ecbc0ba4ab5b07a2830565cb72adb",
+        "Packages/LillistCore/Sources/LillistCore/CrashReporting/CrashReport.swift": "0f8bd614f6f1960e4a52edb574b8c65df9ca0747",
+        "Packages/LillistCore/Sources/LillistCore/CrashReporting/CrashReportTransport.swift": "adee929b22263f1fe25a2b36454e2103a21a17da",
+        "Packages/LillistCore/Sources/LillistCore/CrashReporting/CrashReporter.swift": "0aaab69bf29d3f1233860d00b0dc14b2a965ef7c",
+        "Packages/LillistCore/Sources/LillistCore/CrashReporting/CrashReporting.swift": "4c6d076cc721126adc479b806625d5a46ba8b5ce",
+        "Packages/LillistCore/Sources/LillistCore/CrashReporting/LogRedactor.swift": "cb4793e61bc5abc2a0fe8e401a72484c3bc312fd",
+        "Packages/LillistCore/Sources/LillistCore/CrashReporting/OSLogFetcher.swift": "fdb21347e99f1aba3d1718cbfcf699687413377c"
+      },
+      "summary": "Canary-based crash detection plus opt-in, redacted, user-mediated crash reports",
+      "verified": true
+    },
+    "modules/Packages-LillistCore-Sources-LillistCore-Diagnostics.md": {
+      "generator": "cartographer/1",
+      "module": "Packages/LillistCore/Sources/LillistCore/Diagnostics",
+      "references_modules": [
+        "Packages-LillistCore-Sources-LillistCore-Persistence",
+        "Packages-LillistCore-Sources-LillistCore-Stores-chunk-1",
+        "Packages-LillistUI-Sources-LillistUI-DragReorder",
+        "Apps-Lillist-iOS-Sources-App",
+        "Apps-Lillist-macOS-Sources-Preferences",
+        "Packages-LillistCore-Sources-LillistCore-CLIBridge-Handlers-chunk-1"
+      ],
+      "sources": {
+        "Packages/LillistCore/Sources/LillistCore/Diagnostics/DiagnosticDefaults.swift": "e3f22151361ded3a01d1bcc2601f0a62ed095d8f",
+        "Packages/LillistCore/Sources/LillistCore/Diagnostics/DiagnosticEvent.swift": "4b41a93037c2cd610c2b5be293eaaab663cdef1e",
+        "Packages/LillistCore/Sources/LillistCore/Diagnostics/DiagnosticHistoryObserver.swift": "b9e07971ffd2c766b0df00813d441ad9e83e56d8",
+        "Packages/LillistCore/Sources/LillistCore/Diagnostics/DiagnosticLog.swift": "0ac37c8392163db4b229f840218f263f1f5585bf",
+        "Packages/LillistCore/Sources/LillistCore/Diagnostics/DiagnosticPackageBuilder.swift": "898d056563376af5cf9bfc705a624d3dd859af5f",
+        "Packages/LillistCore/Sources/LillistCore/Diagnostics/DiagnosticSink.swift": "e2584a0372a51010539bd69615fad14ed4e1d39a"
+      },
+      "summary": "On-disk JSONL diagnostic event log, history-derived attribution, and export-package builder",
+      "verified": true
+    },
+    "modules/Packages-LillistCore-Sources-LillistCore-Export.md": {
+      "generator": "cartographer/1",
+      "module": "Packages/LillistCore/Sources/LillistCore/Export",
+      "references_modules": [
+        "Packages-LillistCore-Sources-LillistCore-Persistence",
+        "Packages-LillistCore-Sources-LillistCore-Stores-chunk-1",
+        "Packages-LillistCore-Sources-LillistCore-ManagedObjects",
+        "Packages-LillistCore-Sources-LillistCore-misc"
+      ],
+      "sources": {
+        "Packages/LillistCore/Sources/LillistCore/Export/ExportSchema.swift": "910872fc86a1d4636fd80e144664dbedcfbb3f2a",
+        "Packages/LillistCore/Sources/LillistCore/Export/Exporter.swift": "c79c28caee95ab53be9d287223098c4ebc11defb",
+        "Packages/LillistCore/Sources/LillistCore/Export/Importer.swift": "35b5ecabbe116205844cab3557936a43eaf469a7"
+      },
+      "summary": "Versioned JSON+assets backup bundle writer/reader for the full Core Data store",
+      "verified": true
+    },
+    "modules/Packages-LillistCore-Sources-LillistCore-LinkPreview.md": {
+      "generator": "cartographer/1",
+      "module": "Packages/LillistCore/Sources/LillistCore/LinkPreview",
+      "references_modules": [
+        "Packages-LillistCore-Sources-LillistCore-Stores-chunk-1",
+        "Packages-LillistCore-Sources-LillistCore-CLIBridge-Handlers-chunk-1",
+        "Extensions-ShareExtension-iOS"
+      ],
+      "sources": {
+        "Packages/LillistCore/Sources/LillistCore/LinkPreview/LinkPreviewFetching.swift": "f520a770d2d7e21d3450199c06dd1c912c9dbf25",
+        "Packages/LillistCore/Sources/LillistCore/LinkPreview/LinkPreviewMetadata.swift": "083976837615055d4a04b2123ab1b8e4a4007626",
+        "Packages/LillistCore/Sources/LillistCore/LinkPreview/LinkPreviewUnfurler.swift": "d292e0ea74212553d800ff98fc7ea5c4d4e24ad7",
+        "Packages/LillistCore/Sources/LillistCore/LinkPreview/OpenGraphParser.swift": "ad3ca6edceb8c1b9e40cecb09f1a52cd4beec693",
+        "Packages/LillistCore/Sources/LillistCore/LinkPreview/URLPreviewPolicy.swift": "6fdaac257e7c6e4a0fa0fc7bc010ec3326b09de7",
+        "Packages/LillistCore/Sources/LillistCore/LinkPreview/URLSessionLinkPreviewFetcher.swift": "a0806e059cf1ad66ed6e81ff912f662b77096e13"
+      },
+      "summary": "SSRF-guarded URL unfurl pipeline \u2014 fetch HTML, parse OpenGraph metadata, persist to attachment",
+      "verified": true
+    },
+    "modules/Packages-LillistCore-Sources-LillistCore-ManagedObjects.md": {
+      "generator": "cartographer/1",
+      "module": "Packages/LillistCore/Sources/LillistCore/ManagedObjects",
+      "references_modules": [
+        "Packages-LillistCore-Sources-LillistCore-Model",
+        "Packages-LillistCore-Sources-LillistCore-Recurrence",
+        "Packages-LillistCore-Sources-LillistCore-Stores-chunk-1",
+        "Packages-LillistCore-Sources-LillistCore-Stores-chunk-2"
+      ],
+      "sources": {
+        "Packages/LillistCore/Sources/LillistCore/ManagedObjects/AppPreferences+CoreData.swift": "45b2c0207922cc1482ecc9454154885f40d6b504",
+        "Packages/LillistCore/Sources/LillistCore/ManagedObjects/Attachment+CoreData.swift": "f9c9ef801251fb7cf32a3cf91c777614bb04ffe6",
+        "Packages/LillistCore/Sources/LillistCore/ManagedObjects/JournalEntry+CoreData.swift": "2f5063ad7f2bcad77405aeb1331a14e7715b07d7",
+        "Packages/LillistCore/Sources/LillistCore/ManagedObjects/LillistTask+CoreData.swift": "cefeac967fc046c6d5551fdb48501d970c2afb30",
+        "Packages/LillistCore/Sources/LillistCore/ManagedObjects/NotificationSpec+CoreData.swift": "0d3763da50f713f1f1928b03adec02d8d92b5eb5",
+        "Packages/LillistCore/Sources/LillistCore/ManagedObjects/Series+CoreData.swift": "5571ecb640c8eac0151caf139ba25ac8379f14e4",
+        "Packages/LillistCore/Sources/LillistCore/ManagedObjects/SmartFilter+CoreData.swift": "a742d4be2470d4706931d2cb182777f1b3f7bae2",
+        "Packages/LillistCore/Sources/LillistCore/ManagedObjects/Tag+CoreData.swift": "2bdf18d272d768aaeed043a1f3714df7d148a25b"
+      },
+      "summary": "Hand-written @NSManaged Core Data subclasses backing every Lillist entity",
+      "verified": true
+    },
+    "modules/Packages-LillistCore-Sources-LillistCore-Model.md": {
+      "generator": "cartographer/1",
+      "module": "Packages/LillistCore/Sources/LillistCore/Model",
+      "references_modules": [
+        "Packages-LillistCore-Sources-LillistCore-ManagedObjects",
+        "Packages-LillistCore-Sources-LillistCore-Stores-chunk-1",
+        "Packages-LillistCore-Sources-LillistCore-Notifications"
+      ],
+      "sources": {
+        "Packages/LillistCore/Sources/LillistCore/Model/AttachmentKind.swift": "71c49cd3ddb11ee8616dfe2f26f48750b7f72d57",
+        "Packages/LillistCore/Sources/LillistCore/Model/JournalEntryKind.swift": "93d02c6c8bf56046428b4deeebcd3991b2e03bb5",
+        "Packages/LillistCore/Sources/LillistCore/Model/LillistModel.xcdatamodeld/.xccurrentversion": "0b7ad51749d1fec30479832e5654dc4ab039a7bc",
+        "Packages/LillistCore/Sources/LillistCore/Model/LillistModel.xcdatamodeld/LillistModel.xcdatamodel/contents": "bf6557c0c1cfb21e7dc18cdad51d0fe20a7568ba",
+        "Packages/LillistCore/Sources/LillistCore/Model/NotificationKind.swift": "19eca0cca8609b9de59145cea207f200f95fbfad",
+        "Packages/LillistCore/Sources/LillistCore/Model/SortField.swift": "8813896cae4dfd955cc80e81553f4c68b1065893",
+        "Packages/LillistCore/Sources/LillistCore/Model/Status.swift": "2b474b3b3224e2f4963e5e230484a29ed438478e"
+      },
+      "summary": "Persisted enum vocabulary + the Core Data schema all LillistCore entities are built on",
+      "verified": true
+    },
+    "modules/Packages-LillistCore-Sources-LillistCore-Notifications.md": {
+      "generator": "cartographer/1",
+      "module": "Packages/LillistCore/Sources/LillistCore/Notifications",
+      "references_modules": [
+        "Packages-LillistCore-Sources-LillistCore-Stores-chunk-1",
+        "Packages-LillistCore-Sources-LillistCore-Sync-chunk-2",
+        "Packages-LillistCore-Sources-LillistCore-Model",
+        "Packages-LillistCore-Sources-LillistCore-ManagedObjects",
+        "Packages-LillistCore-Sources-LillistCore-Persistence",
+        "Apps-Lillist-iOS-Sources-App",
+        "Apps-Lillist-macOS-Sources-Preferences"
+      ],
+      "sources": {
+        "Packages/LillistCore/Sources/LillistCore/Notifications/DeviceFingerprint.swift": "017698e8236497dbf31c324921f892727511f7eb",
+        "Packages/LillistCore/Sources/LillistCore/Notifications/MorningSummaryRequestID.swift": "d6059297c0840d9e4cef84f6a431c21ba0e34264",
+        "Packages/LillistCore/Sources/LillistCore/Notifications/NotificationCategoryFactory.swift": "0ed484910145ec08b21f6f3efe00e8960d0f5163",
+        "Packages/LillistCore/Sources/LillistCore/Notifications/NotificationPermissions.swift": "3715fdd24935b9584645329f17c14ccce1462c18",
+        "Packages/LillistCore/Sources/LillistCore/Notifications/NotificationReconciling.swift": "8ea9d70de48667e45bb44efa7aa5b881509d3cdd",
+        "Packages/LillistCore/Sources/LillistCore/Notifications/NotificationScheduler.swift": "d85cade15d640aa96c0d298c63151ac4f4e7d312",
+        "Packages/LillistCore/Sources/LillistCore/Notifications/NotificationSpecStore.swift": "de96de04c2529c3fcb6b145b77f94ba4b72752ad",
+        "Packages/LillistCore/Sources/LillistCore/Notifications/SnoozeAction.swift": "8b12e554a99d47e88381ed4614718c2c9f8576db",
+        "Packages/LillistCore/Sources/LillistCore/Notifications/SnoozeRegistry.swift": "1449db3718e98237232b036e757b5ef2d9587144",
+        "Packages/LillistCore/Sources/LillistCore/Notifications/UNUserNotificationCenterProtocol.swift": "36c1281750042203b07725b7278ef6680ce99a1e"
+      },
+      "summary": "Reconciles NotificationSpec rows to the system notification center; permissions, snooze, morning summary",
+      "verified": true
+    },
+    "modules/Packages-LillistCore-Sources-LillistCore-Ordering.md": {
+      "generator": "cartographer/1",
+      "module": "Packages/LillistCore/Sources/LillistCore/Ordering",
+      "references_modules": [
+        "Packages-LillistCore-Sources-LillistCore-Stores-chunk-1",
+        "Packages-LillistCore-Sources-LillistCore-Stores-chunk-2",
+        "Packages-LillistUI-Sources-LillistUI-iOS-Tasks",
+        "Apps-Lillist-macOS-Sources-Views-TaskList"
+      ],
+      "sources": {
+        "Packages/LillistCore/Sources/LillistCore/Ordering/FractionalPosition.swift": "6fbaf3984109921be4e307d398ad898e7862c2fe",
+        "Packages/LillistCore/Sources/LillistCore/Ordering/PositionCompactor.swift": "3d0bf5e1c4d35ae2c6804e901366317858e98e04",
+        "Packages/LillistCore/Sources/LillistCore/Ordering/SiblingOrder.swift": "ad5e6ff0259801e3fe4c769c3e1122c0dcb7782d"
+      },
+      "summary": "Gap-based fractional ordering math and canonical sibling sort for reorderable rows",
+      "verified": true
+    },
+    "modules/Packages-LillistCore-Sources-LillistCore-Persistence.md": {
+      "generator": "cartographer/1",
+      "module": "Packages/LillistCore/Sources/LillistCore/Persistence",
+      "references_modules": [
+        "Apps-Lillist-iOS-Sources-App",
+        "Packages-LillistCore-Sources-LillistCore-Sync-chunk-1",
+        "Packages-LillistCore-Sources-LillistCore-Stores-chunk-1",
+        "Packages-LillistCore-Sources-LillistCore-ManagedObjects",
+        "Packages-LillistCore-Sources-LillistCore-Diagnostics",
+        "Packages-LillistCore-Sources-LillistCore-misc"
+      ],
+      "sources": {
+        "Packages/LillistCore/Sources/LillistCore/Persistence/AutoPurgeJob.swift": "98b3ec158aff941f4eca3fd7d7f8bfc994495fbc",
+        "Packages/LillistCore/Sources/LillistCore/Persistence/BackgroundPurgeSchedule.swift": "a59cb962bb9d7b5724a736a4d3ceea4df23a6ff7",
+        "Packages/LillistCore/Sources/LillistCore/Persistence/CascadeReaper.swift": "4ac9cbee9e72909b142862e76dd1ddce5afdb49a",
+        "Packages/LillistCore/Sources/LillistCore/Persistence/CloudKitSchemaInitializer.swift": "a1429f8ddbeb6b8be958d6ae09286788853c4ef2",
+        "Packages/LillistCore/Sources/LillistCore/Persistence/DiskSpaceProbe.swift": "f9c68ab9c461c0f98677f45285a79dcbd9254841",
+        "Packages/LillistCore/Sources/LillistCore/Persistence/HistoryPruner.swift": "c82fdfe5863409fcc05dd79e3fb6abc960ad116d",
+        "Packages/LillistCore/Sources/LillistCore/Persistence/PersistenceController.swift": "2d4b47fd93c289592437720aee3d03917f2c7a93",
+        "Packages/LillistCore/Sources/LillistCore/Persistence/PersistenceHost.swift": "a75cf68a9964a389a2609a7d4f1662d57b7008e2",
+        "Packages/LillistCore/Sources/LillistCore/Persistence/PersistenceReconfiguring.swift": "4250478520895ef87f47c2f434a18cad0ff9d2c9",
+        "Packages/LillistCore/Sources/LillistCore/Persistence/PersistentHistoryTokenStore.swift": "391db33b538a4a8039800a174114d541bd1ec73e",
+        "Packages/LillistCore/Sources/LillistCore/Persistence/QuarantineManager.swift": "ac21b6021fe13c001d2c704218672f4aea0d6477",
+        "Packages/LillistCore/Sources/LillistCore/Persistence/RemoteChangeReconciler.swift": "a22bbf2eb5f6ddcc8cb57ade1affb0cdbd7b6a8b",
+        "Packages/LillistCore/Sources/LillistCore/Persistence/StoreConfiguration.swift": "1a6cc56f1f145d58d4a48ea8649a82068a891807"
+      },
+      "summary": "Core Data container ownership, sync-mode store swaps, quarantine backups, and history reconciliation",
+      "verified": true
+    },
+    "modules/Packages-LillistCore-Sources-LillistCore-Recurrence.md": {
+      "generator": "cartographer/1",
+      "module": "Packages/LillistCore/Sources/LillistCore/Recurrence",
+      "references_modules": [
+        "Packages-LillistCore-Sources-LillistCore-ManagedObjects",
+        "Packages-LillistCore-Sources-LillistCore-Stores-chunk-1",
+        "Packages-LillistUI-Sources-LillistUI-Recurrence"
+      ],
+      "sources": {
+        "Packages/LillistCore/Sources/LillistCore/Recurrence/RecurrenceExpander.swift": "8295dbcad3f9a43df5e169e244d796d4d3d7b63a",
+        "Packages/LillistCore/Sources/LillistCore/Recurrence/RecurrenceLog.swift": "68f88ca6008fc34d527971db67145b4e59ef9f04",
+        "Packages/LillistCore/Sources/LillistCore/Recurrence/RecurrenceRule.swift": "2eccd5ea55c65114c042d959e25ff2de10d92981",
+        "Packages/LillistCore/Sources/LillistCore/Recurrence/RecurrenceSpawner.swift": "929d8f5ad9841970801b8eec49d47b6b7a8ddaf2",
+        "Packages/LillistCore/Sources/LillistCore/Recurrence/Weekday.swift": "721acfa8295d34af2f90c59b1561c5fb3c606493"
+      },
+      "summary": "Recurrence model, pure-Swift occurrence expansion, and next-instance spawning for Series",
+      "verified": true
+    },
+    "modules/Packages-LillistCore-Sources-LillistCore-Rules.md": {
+      "generator": "cartographer/1",
+      "module": "Packages/LillistCore/Sources/LillistCore/Rules",
+      "references_modules": [
+        "Packages-LillistCore-Sources-LillistCore-Model",
+        "Packages-LillistCore-Sources-LillistCore-ManagedObjects",
+        "Packages-LillistCore-Sources-LillistCore-misc",
+        "Packages-LillistCore-Sources-LillistCore-CLIBridge-Handlers-chunk-1",
+        "Packages-LillistCore-Sources-LillistCore-Stores-chunk-1"
+      ],
+      "sources": {
+        "Packages/LillistCore/Sources/LillistCore/Rules/AttachmentKindMatch.swift": "071e2efdc3c7c46c931283caa2463829e29128d5",
+        "Packages/LillistCore/Sources/LillistCore/Rules/Field.swift": "49d5f767e230d29c01450cd67027888abd48f3d7",
+        "Packages/LillistCore/Sources/LillistCore/Rules/Leaf.swift": "a40f275c65b2e79af210f0cb93e6db05620d3275",
+        "Packages/LillistCore/Sources/LillistCore/Rules/NSPredicateCompiler.swift": "78267b3f92158b51995acd741547a0c97b4c2319",
+        "Packages/LillistCore/Sources/LillistCore/Rules/Op.swift": "eb24e7cb50a1ccb191828c2a08e76a5df68516cc",
+        "Packages/LillistCore/Sources/LillistCore/Rules/Predicate.swift": "d3edfffb5ac1b7c574dce97f7de4e90ac41a5ce3",
+        "Packages/LillistCore/Sources/LillistCore/Rules/PredicateGroup.swift": "d4cf3e1c1bcb84742898f223a149256da197aa7e",
+        "Packages/LillistCore/Sources/LillistCore/Rules/PredicateLimits.swift": "3f8122a6a5f83afc8ff06406e0b99bfcda52e827",
+        "Packages/LillistCore/Sources/LillistCore/Rules/RelativeDate.swift": "1cbb98f43dd21fb84cc8da757427b96186248779",
+        "Packages/LillistCore/Sources/LillistCore/Rules/RelativeDateResolver.swift": "087cfd03ba37d608c7de44999e6d837fa0d98ff0",
+        "Packages/LillistCore/Sources/LillistCore/Rules/SwiftEvaluator.swift": "0736ee0213facdca48d5bdccb767249190d44b04",
+        "Packages/LillistCore/Sources/LillistCore/Rules/Value.swift": "ded7f8565dde48e25d60dd17266298baa5d173a7"
+      },
+      "summary": "Codable predicate DSL plus twin evaluators (NSPredicate + pure Swift) powering smart filters",
+      "verified": true
+    },
+    "modules/Packages-LillistCore-Sources-LillistCore-Stores-chunk-1.md": {
+      "generator": "cartographer/1",
+      "module": "Packages/LillistCore/Sources/LillistCore/Stores (chunk 1)",
+      "references_modules": [
+        "Packages-LillistCore-Sources-LillistCore-Persistence",
+        "Packages-LillistCore-Sources-LillistCore-ManagedObjects",
+        "Packages-LillistCore-Sources-LillistCore-Rules",
+        "Packages-LillistCore-Sources-LillistCore-Ordering",
+        "Packages-LillistCore-Sources-LillistCore-Recurrence",
+        "Packages-LillistCore-Sources-LillistCore-Stores-chunk-2",
+        "Packages-LillistCore-Sources-LillistCore-CrashReporting",
+        "Packages-LillistCore-Sources-LillistCore-Diagnostics",
+        "Packages-LillistCore-Sources-LillistCore-Notifications",
+        "Packages-LillistCore-Sources-LillistCore-misc"
+      ],
+      "sources": {
+        "Packages/LillistCore/Sources/LillistCore/Stores/AttachmentStore.swift": "af70d4e18ae0d9635865a60d0738a7fd7957293c",
+        "Packages/LillistCore/Sources/LillistCore/Stores/JournalStore.swift": "4deba503a11896230e9a21dc091cd75dd9b7726e",
+        "Packages/LillistCore/Sources/LillistCore/Stores/PreferencesStore.swift": "bd5a5268cb8cc339f73a5e85aa8d5ff8c366850f",
+        "Packages/LillistCore/Sources/LillistCore/Stores/SeriesStore.swift": "ee2963186428c389bb77f393cca23f1ebad56218",
+        "Packages/LillistCore/Sources/LillistCore/Stores/SmartFilterStore+Defaults.swift": "3710bb423e779c73223094f2df20aff7135cb8e1",
+        "Packages/LillistCore/Sources/LillistCore/Stores/SmartFilterStore.swift": "4bdfc4c6eab859c84adbecad3c19c15e8315fb22",
+        "Packages/LillistCore/Sources/LillistCore/Stores/TagStore+FindOrCreate.swift": "fbc084e94d18ae6747564cb8e4b0c32399efc2d0",
+        "Packages/LillistCore/Sources/LillistCore/Stores/TagStore.swift": "2fc1dc6f0c94a92e9db32d06599663b47d9a5ea6",
+        "Packages/LillistCore/Sources/LillistCore/Stores/TaskStore+FollowUp.swift": "e68ae07cbdcf46468b09f0c292aa4353209ae773",
+        "Packages/LillistCore/Sources/LillistCore/Stores/TaskStore+Queries.swift": "f86757470cea6dcb8c5994fb9bc741ebffd033f0"
+      },
+      "summary": "Core Data store facades for attachments, journal, preferences, series, smart filters, tags, plus TaskStore extensions",
+      "verified": true
+    },
+    "modules/Packages-LillistCore-Sources-LillistCore-Stores-chunk-2.md": {
+      "generator": "cartographer/1",
+      "module": "Packages/LillistCore/Sources/LillistCore/Stores (chunk 2)",
+      "references_modules": [
+        "Packages-LillistCore-Sources-LillistCore-Persistence",
+        "Packages-LillistCore-Sources-LillistCore-Ordering",
+        "Packages-LillistCore-Sources-LillistCore-Recurrence",
+        "Packages-LillistCore-Sources-LillistCore-Notifications",
+        "Packages-LillistCore-Sources-LillistCore-CrashReporting",
+        "Packages-LillistCore-Sources-LillistCore-Diagnostics",
+        "Packages-LillistCore-Sources-LillistCore-ManagedObjects",
+        "Packages-LillistCore-Sources-LillistCore-Model",
+        "Packages-LillistCore-Sources-LillistCore-misc"
+      ],
+      "sources": {
+        "Packages/LillistCore/Sources/LillistCore/Stores/TaskStore.swift": "31713a7791397c8cb2de171f3b097900da664826"
+      },
+      "summary": "TaskStore \u2014 the async CRUD/hierarchy/reorder/status gateway over the LillistTask Core Data graph",
+      "verified": true
+    },
+    "modules/Packages-LillistCore-Sources-LillistCore-Sync-chunk-1.md": {
+      "generator": "cartographer/1",
+      "module": "Packages/LillistCore/Sources/LillistCore/Sync (chunk 1)",
+      "references_modules": [
+        "Packages-LillistCore-Sources-LillistCore-Sync-chunk-2",
+        "Packages-LillistCore-Sources-LillistCore-Persistence",
+        "Packages-LillistCore-Sources-LillistCore-Notifications",
+        "Packages-LillistCore-Sources-LillistCore-Stores-chunk-1",
+        "Packages-LillistCore-Sources-LillistCore-CrashReporting",
+        "Packages-LillistCore-Sources-LillistCore-Validation",
+        "Extensions-ShareExtension-iOS",
+        "Extensions-ShortcutsActions-misc",
+        "Packages-LillistCore-Sources-LillistCore-CLIBridge-misc",
+        "Apps-Lillist-iOS-Sources-App"
+      ],
+      "sources": {
+        "Packages/LillistCore/Sources/LillistCore/Sync/AccountStateMonitor.swift": "43ede62cf0943fa3e0a4003c0743463c9a98d778",
+        "Packages/LillistCore/Sources/LillistCore/Sync/CloudKitErrorClassifier.swift": "d0c27352b128e8c7a0c0e3a340a0efe0d6eaa0a1",
+        "Packages/LillistCore/Sources/LillistCore/Sync/CloudKitEventBridge.swift": "51f39616ad7eb6960aaa54fc1ae71388b7b089ba",
+        "Packages/LillistCore/Sources/LillistCore/Sync/CloudKitZoneEraser.swift": "ad119cf1626b1790cfe98a52a42155c6fb08ef9d",
+        "Packages/LillistCore/Sources/LillistCore/Sync/CloudKitZoneEraserImpl.swift": "bbf1a0495a5e246ba2c26723d035b4647abe2fb6",
+        "Packages/LillistCore/Sources/LillistCore/Sync/GatedPersistenceResolver.swift": "dd439297585e852a76724ec77944b8b3c9467faa",
+        "Packages/LillistCore/Sources/LillistCore/Sync/MigrationCoordinator.swift": "8f41de1325769ca05f8f9eed3915f96399084c6d",
+        "Packages/LillistCore/Sources/LillistCore/Sync/MigrationGate.swift": "fd1c5076844276dea05bc94f398c46feb2366c81",
+        "Packages/LillistCore/Sources/LillistCore/Sync/MigrationJournal.swift": "33c6d7934e71807ed5cc9ae81d38e338c1171d82",
+        "Packages/LillistCore/Sources/LillistCore/Sync/MigrationJournalStore.swift": "7573e9327e0629237b53d89e1bb746965d2c2e37",
+        "Packages/LillistCore/Sources/LillistCore/Sync/PauseReason.swift": "5f5f1025b26851f66bcd2cc10181047dbf6eb2e6",
+        "Packages/LillistCore/Sources/LillistCore/Sync/PauseReasonClassifier.swift": "8b6d341bd0b2774e8d55e4f3056606a0cbf75f48",
+        "Packages/LillistCore/Sources/LillistCore/Sync/SyncMode.swift": "166a5b012d34db879015f01f7634e7c80c4d969f",
+        "Packages/LillistCore/Sources/LillistCore/Sync/SyncModeStore.swift": "e091111832b444bedd2bd2d0272c0bebbaca9a40",
+        "Packages/LillistCore/Sources/LillistCore/Sync/SyncQuiesceMonitor.swift": "ad9399267df89701c33893a29e31d3be9950bcce"
+      },
+      "summary": "Sync-mode model, in-flight-migration journal/gate, and the mode-change migration coordinator",
+      "verified": true
+    },
+    "modules/Packages-LillistCore-Sources-LillistCore-Sync-chunk-2.md": {
+      "generator": "cartographer/1",
+      "module": "Packages/LillistCore/Sources/LillistCore/Sync (chunk 2)",
+      "references_modules": [
+        "Packages-LillistCore-Sources-LillistCore-Sync-chunk-1",
+        "Packages-LillistCore-Sources-LillistCore-misc",
+        "Apps-Lillist-iOS-Sources-App",
+        "Apps-Lillist-iOS-Sources-Settings"
+      ],
+      "sources": {
+        "Packages/LillistCore/Sources/LillistCore/Sync/SyncStatus.swift": "223dfb9083d24d793ee63be7e908eb838f1951c2",
+        "Packages/LillistCore/Sources/LillistCore/Sync/SyncStatusMonitor.swift": "f9bcc5757ae01fcbe270c0fb554473dab5d63c75",
+        "Packages/LillistCore/Sources/LillistCore/Sync/iCloudAccountState.swift": "bb8cbfb1b0244af352900f7d1d3a575ae5b3f842"
+      },
+      "summary": "Observable CloudKit sync-state value types and the actor that aggregates events into them",
+      "verified": true
+    },
+    "modules/Packages-LillistCore-Sources-LillistCore-misc.md": {
+      "generator": "cartographer/1",
+      "module": "Packages/LillistCore/Sources/LillistCore (misc)",
+      "references_modules": [
+        "Packages-LillistCore-Sources-LillistCore-Diagnostics",
+        "Packages-LillistCore-Sources-LillistCore-CrashReporting",
+        "Packages-LillistCore-Sources-LillistCore-Stores-chunk-1",
+        "Packages-LillistCore-Sources-LillistCore-ManagedObjects"
+      ],
+      "sources": {
+        "Packages/LillistCore/Sources/LillistCore/LillistCore.swift": "f9753554726ec514cc2870e7c07ccbe049702c11",
+        "Packages/LillistCore/Sources/LillistCore/Onboarding/DefaultsInstaller.swift": "5436856277f98ec8e3b8a8d97f0ddd79e0d44e54",
+        "Packages/LillistCore/Sources/LillistCore/Onboarding/OnboardingState.swift": "a3b64fb0e7e2799357d2c23f3cad86d88192ad9a",
+        "Packages/LillistCore/Sources/LillistCore/Preferences/AppPreferencesPartitionMigrator.swift": "92ba824ecf4b96df715719c4ef2b489609411085",
+        "Packages/LillistCore/Sources/LillistCore/Preferences/DevicePreferencesStore.swift": "73264f7c8c2b318c25bedef9b45f310890d2dda0",
+        "Packages/LillistCore/Sources/LillistCore/Support/LillistCoreContact.swift": "2905c3b4bfe62690003b7e05f6e5167d856631f8",
+        "Packages/LillistCore/Sources/LillistCore/Support/LillistLog.swift": "636f02ff196262a60ea4580af417b32e00f4df5c",
+        "Packages/LillistCore/Sources/LillistCore/Validation/LillistError.swift": "01f4452ee53f6975ef9096550d91b70835a9c424",
+        "Packages/LillistCore/Sources/LillistCore/Validation/Validators.swift": "17b1c63f195499c870c6a5297d7a7cacabf759e4"
+      },
+      "summary": "Cross-cutting LillistCore primitives \u2014 error type, device prefs, onboarding, logging taxonomy, validators",
+      "verified": true
+    },
+    "modules/Packages-LillistCore-Sources-lillist-cli-Commands-chunk-1.md": {
+      "generator": "cartographer/1",
+      "module": "Packages/LillistCore/Sources/lillist-cli/Commands (chunk 1)",
+      "references_modules": [
+        "Packages-LillistCore-Sources-LillistCore-CLIBridge-Handlers-chunk-1",
+        "Packages-LillistCore-Sources-LillistCore-CLIBridge-Renderers",
+        "Packages-LillistCore-Sources-LillistCore-CLIBridge-misc",
+        "Packages-LillistCore-Sources-LillistCore-Stores-chunk-2",
+        "Packages-LillistCore-Sources-LillistCore-Model",
+        "Packages-LillistCore-Sources-LillistCore-misc",
+        "Packages-LillistCore-Sources-lillist-cli-Support"
+      ],
+      "sources": {
+        "Packages/LillistCore/Sources/lillist-cli/Commands/AddCommand.swift": "faa8bc85ffe6ba35ce713b96b59c3d3c9fb21d85",
+        "Packages/LillistCore/Sources/lillist-cli/Commands/AttachCommand.swift": "68063ea70be3192e7fca5f8c35a160c7e1e78864",
+        "Packages/LillistCore/Sources/lillist-cli/Commands/CompletionCommand.swift": "5ca5486e48b088901e39f1c30f3880b11e37e8c9",
+        "Packages/LillistCore/Sources/lillist-cli/Commands/CountCommand.swift": "07fcd37d3f1b9a8a6fd92752f3eb3b829eae1581",
+        "Packages/LillistCore/Sources/lillist-cli/Commands/DeleteCommand.swift": "092072d2868c153becf55eddfad26ce5fa757643",
+        "Packages/LillistCore/Sources/lillist-cli/Commands/EditCommand.swift": "390df740cd37e21edecd76c2eec228f9fc5e5639",
+        "Packages/LillistCore/Sources/lillist-cli/Commands/EvalCommand.swift": "84df2bd097cdfc178069b3790d4876674cd4d465",
+        "Packages/LillistCore/Sources/lillist-cli/Commands/ExportCommand.swift": "286cbb35bc00f0fb31c651a1eae31de2d1afc588",
+        "Packages/LillistCore/Sources/lillist-cli/Commands/FiltersCommand.swift": "8f878f52b352349cfadb4753df39e056f0bcdb97",
+        "Packages/LillistCore/Sources/lillist-cli/Commands/LinkCommand.swift": "28a0e4fe9d7d414dbecd96bcc26d3cde50bb620c",
+        "Packages/LillistCore/Sources/lillist-cli/Commands/LsCommand.swift": "4e3efcc491f99edd2c97eebc15536790f1aeaa10",
+        "Packages/LillistCore/Sources/lillist-cli/Commands/MoveCommand.swift": "d844f0d4bb2b6b80cce83776bb9cd7e79db249fc",
+        "Packages/LillistCore/Sources/lillist-cli/Commands/NoteCommand.swift": "f48e803aa718106b722892bea41aafb353c40cf3",
+        "Packages/LillistCore/Sources/lillist-cli/Commands/NudgeCommand.swift": "f1a0f0806294bf1de796ededb51a2c6d2d3e5e8d",
+        "Packages/LillistCore/Sources/lillist-cli/Commands/PinCommand.swift": "dca0ae768570cdd10e8c60719ed5f463a8537b4d"
+      },
+      "summary": "swift-argument-parser command structs for the lillist CLI; thin shells over CLIBridge handlers",
+      "verified": true
+    },
+    "modules/Packages-LillistCore-Sources-lillist-cli-Commands-chunk-2.md": {
+      "generator": "cartographer/1",
+      "module": "Packages/LillistCore/Sources/lillist-cli/Commands (chunk 2)",
+      "references_modules": [
+        "Packages-LillistCore-Sources-LillistCore-CLIBridge-Handlers-chunk-1",
+        "Packages-LillistCore-Sources-LillistCore-CLIBridge-Handlers-chunk-2",
+        "Packages-LillistCore-Sources-LillistCore-CLIBridge-Renderers",
+        "Packages-LillistCore-Sources-LillistCore-CLIBridge-misc",
+        "Packages-LillistCore-Sources-LillistCore-CrashReporting",
+        "Packages-LillistCore-Sources-LillistCore-Stores-chunk-1",
+        "Packages-LillistCore-Sources-LillistCore-Stores-chunk-2",
+        "Packages-LillistCore-Sources-LillistCore-misc",
+        "Packages-LillistCore-Sources-lillist-cli-Support"
+      ],
+      "sources": {
+        "Packages/LillistCore/Sources/lillist-cli/Commands/PurgeCommand.swift": "159cefdc40da3abbf80c9a4149c3ea8fc61eaff6",
+        "Packages/LillistCore/Sources/lillist-cli/Commands/ReportCrashCommand.swift": "fdeaeb26f6aa029d639546fed7d50ecec4b88d9a",
+        "Packages/LillistCore/Sources/lillist-cli/Commands/RestoreCommand.swift": "e5b33199c792c34fd1538baf016b12b7d295da8b",
+        "Packages/LillistCore/Sources/lillist-cli/Commands/SearchCommand.swift": "ac683f734781214fb0cfe5bf1b3f65cbde2e386f",
+        "Packages/LillistCore/Sources/lillist-cli/Commands/ShowCommand.swift": "0f84799cb374b93130fb2f28613b8f1136515418",
+        "Packages/LillistCore/Sources/lillist-cli/Commands/StatusCommand.swift": "cab9236d53fefbb14e6f657f59e7faf5d6757b07",
+        "Packages/LillistCore/Sources/lillist-cli/Commands/TagCommand.swift": "b664d7c9d82b8dcdc67f0ce37ea2118a3b7d51d5",
+        "Packages/LillistCore/Sources/lillist-cli/Commands/TagsCommand.swift": "805074eab490a961e307c1d6c6dd22cc5741d6ea",
+        "Packages/LillistCore/Sources/lillist-cli/Commands/UnpinCommand.swift": "e3cd905d77bf86c6e1588d2d2c932c6dc0554f40",
+        "Packages/LillistCore/Sources/lillist-cli/Commands/VersionCommand.swift": "44292568f9ab6968ef4f4c996972bef54956a8c5",
+        "Packages/LillistCore/Sources/lillist-cli/Commands/WatchCommand.swift": "e011e2d70efe07d24161dbd5a2f7c51c0a2f9be4"
+      },
+      "summary": "ArgumentParser command structs (search through watch) that thin-wrap CLIBridge handlers and stores",
+      "verified": true
+    },
+    "modules/Packages-LillistCore-Sources-lillist-cli-Support.md": {
+      "generator": "cartographer/1",
+      "module": "Packages/LillistCore/Sources/lillist-cli/Support",
+      "references_modules": [
+        "Packages-LillistCore-Sources-LillistCore-CrashReporting",
+        "Packages-LillistCore-Sources-LillistCore-CLIBridge-misc",
+        "Packages-LillistCore-Sources-LillistCore-misc"
+      ],
+      "sources": {
+        "Packages/LillistCore/Sources/lillist-cli/Support/BatchTokens.swift": "c84df24df145043a34c89c879bf446bbbfcbf80e",
+        "Packages/LillistCore/Sources/lillist-cli/Support/CLICanaryLifecycle.swift": "b492325d31ba448977841decc1891e5ff2a70d01",
+        "Packages/LillistCore/Sources/lillist-cli/Support/CLIMailtoTransport.swift": "4a30bb1119b0100198dfd21cd97c2df31051e2f3",
+        "Packages/LillistCore/Sources/lillist-cli/Support/ExitCode.swift": "f5f5ffb1a175f5414cbda868ff0fd3ffd6bc981b",
+        "Packages/LillistCore/Sources/lillist-cli/Support/GlobalOptions.swift": "4799e259a152e240436eeff1d8d2458037a9f8fd",
+        "Packages/LillistCore/Sources/lillist-cli/Support/StdinReader.swift": "7ddf37b8827ee3a40b6d2ba58e4b6f2d7c6036fd",
+        "Packages/LillistCore/Sources/lillist-cli/Support/TTY.swift": "57090a111e9ba0726fe08d55be48af9ef03d5915"
+      },
+      "summary": "Shared CLI plumbing \u2014 output/color flags, stdin batch tokens, exit codes, crash-canary lifecycle",
+      "verified": true
+    },
+    "modules/Packages-LillistCore-Sources-lillist-cli-misc.md": {
+      "generator": "cartographer/1",
+      "module": "Packages/LillistCore/Sources/lillist-cli (misc)",
+      "references_modules": [
+        "Packages-LillistCore-Sources-LillistCore-misc",
+        "Packages-LillistCore-Sources-LillistCore-CrashReporting",
+        "Packages-LillistCore-Sources-lillist-cli-Support",
+        "Packages-LillistCore-Sources-lillist-cli-Commands-chunk-1",
+        "Packages-LillistCore-Sources-lillist-cli-Commands-chunk-2"
+      ],
+      "sources": {
+        "Packages/LillistCore/Sources/lillist-cli/Lillist.swift": "79bcebeb5b2478ae49266dc79a55745b8eb79590",
+        "Packages/LillistCore/Sources/lillist-cli/README.md": "5c8c96a2b16dac9e4e1636307fe95ef1087268ab",
+        "Packages/LillistCore/Sources/lillist-cli/main.swift": "c367855ff18222c56fe80651b096c6baeb243fe9"
+      },
+      "summary": "lillist CLI entry point \u2014 root command, subcommand registry, and LillistError-to-exit-code dispatch",
+      "verified": true
+    },
+    "modules/Packages-LillistCore-misc.md": {
+      "generator": "cartographer/1",
+      "module": "Packages/LillistCore (misc)",
+      "references_modules": [
+        "Packages-LillistCore-Sources-LillistCore-Persistence",
+        "Packages-LillistCore-Sources-LillistCore-Model"
+      ],
+      "sources": {
+        "Packages/LillistCore/Package.swift": "2114f2075b73500bfe780910899b44aa96568927",
+        "Packages/LillistCore/Plugins/CompileCoreDataModel/CompileCoreDataModel.swift": "27b2698783db0258c1ee5297e7219c6b00dfe679",
+        "Packages/LillistCore/README.md": "3bc2ec5edf6b7b0d049d0dad1562702390d489a1"
+      },
+      "summary": "SwiftPM manifest, Core Data model-compile build plugin, and package README for LillistCore",
+      "verified": true
+    },
+    "modules/Packages-LillistUI-Sources-LillistUI-Accessibility.md": {
+      "generator": "cartographer/1",
+      "module": "Packages/LillistUI/Sources/LillistUI/Accessibility",
+      "references_modules": [
+        "Packages-LillistUI-Sources-LillistUI-Theme-chunk-1",
+        "Packages-LillistUI-Sources-LillistUI-Theme-chunk-2",
+        "Packages-LillistUI-Sources-LillistUI-Components",
+        "Packages-LillistUI-Sources-LillistUI-iOS-misc",
+        "Packages-LillistUI-Sources-LillistUI-iOS-Tasks",
+        "Packages-LillistUI-Sources-LillistUI-DragReorder",
+        "Apps-Lillist-iOS-Sources-Detail",
+        "Apps-Lillist-iOS-misc",
+        "Apps-Lillist-macOS-Sources-Views-Detail"
+      ],
+      "sources": {
+        "Packages/LillistUI/Sources/LillistUI/Accessibility/AccessibilityEnvironment.swift": "616dac83a2a74bce122b17f5902762e17e6c1aed",
+        "Packages/LillistUI/Sources/LillistUI/Accessibility/Announcements.swift": "6481f0dc2de465c4f63181e1e2e120456363e8b5",
+        "Packages/LillistUI/Sources/LillistUI/Accessibility/ContrastMath.swift": "01dd8f7355b5e7998307adc84d6c30f53ee618d8"
+      },
+      "summary": "Accessibility primitives \u2014 Reduce Motion/Transparency/Contrast view helpers, AX announcements, WCAG contrast math",
+      "verified": true
+    },
+    "modules/Packages-LillistUI-Sources-LillistUI-Components.md": {
+      "generator": "cartographer/1",
+      "module": "Packages/LillistUI/Sources/LillistUI/Components",
+      "references_modules": [
+        "Packages-LillistUI-Sources-LillistUI-Theme-chunk-1",
+        "Packages-LillistUI-Sources-LillistUI-misc",
+        "Packages-LillistUI-Sources-LillistUI-Accessibility",
+        "Packages-LillistCore-Sources-LillistCore-Model",
+        "Apps-Lillist-macOS-Sources-Views-TaskList",
+        "Apps-Lillist-macOS-Sources-Views-Sidebar",
+        "Apps-Lillist-iOS-Sources-Detail",
+        "Packages-LillistUI-Sources-LillistUI-iOS-Tasks"
+      ],
+      "sources": {
+        "Packages/LillistUI/Sources/LillistUI/Components/BreadcrumbView.swift": "c662c04cec8fb460c17ca9cfea3f78578e3d444a",
+        "Packages/LillistUI/Sources/LillistUI/Components/BuildVersionLabel.swift": "8623d335a16e13884f0d8985100db6a3e6f6b079",
+        "Packages/LillistUI/Sources/LillistUI/Components/ConfettiBurstView.swift": "9a7d9046cea6ecf02cba1784d60f393c8e812bb7",
+        "Packages/LillistUI/Sources/LillistUI/Components/EmptyStateView.swift": "fd41846d18ba5b3c9409c5d35a3d9114325b3d3d",
+        "Packages/LillistUI/Sources/LillistUI/Components/JournalEntryRow.swift": "d483247acd32c1841e88d0d2e472e904a083c170",
+        "Packages/LillistUI/Sources/LillistUI/Components/RainbowCard.swift": "2c4cc98753dfa85326b234c64740e392dde6af4c",
+        "Packages/LillistUI/Sources/LillistUI/Components/RainbowEmptyStateView.swift": "53610b2d3ffd8906b213cd9b9b652a78fefbf1ee",
+        "Packages/LillistUI/Sources/LillistUI/Components/ReorderActionDispatch.swift": "d003af836af61b395d86b30749b4ea9e26e3c7b3",
+        "Packages/LillistUI/Sources/LillistUI/Components/SidebarRowView.swift": "dbb33dba3b233d3b5da45981806e3463f57c424d",
+        "Packages/LillistUI/Sources/LillistUI/Components/StatusCubeView.swift": "3803a29e4efcfef948ff89b2d259ce78fe182f7b",
+        "Packages/LillistUI/Sources/LillistUI/Components/StatusIndicatorView.swift": "122166666a5b0b9cc725e703b24bf447078f192a",
+        "Packages/LillistUI/Sources/LillistUI/Components/SyncStatusDotView.swift": "dbc3a9bc1d13fef3c9ed1eefc6e7871c9291bf27",
+        "Packages/LillistUI/Sources/LillistUI/Components/TagChipView.swift": "fe7f32f66f4aff83ad028f9d2626f63ced2e4fe0",
+        "Packages/LillistUI/Sources/LillistUI/Components/TaskRowView.swift": "be869c93455b323a44844a3d0392ff2c63238193"
+      },
+      "summary": "Shared cross-platform SwiftUI row/chip/empty-state widgets both apps render",
+      "verified": true
+    },
+    "modules/Packages-LillistUI-Sources-LillistUI-CrashReporting.md": {
+      "generator": "cartographer/1",
+      "module": "Packages/LillistUI/Sources/LillistUI/CrashReporting",
+      "references_modules": [
+        "Packages-LillistCore-Sources-LillistCore-CrashReporting",
+        "Packages-LillistCore-Sources-LillistCore-misc"
+      ],
+      "sources": {
+        "Packages/LillistUI/Sources/LillistUI/CrashReporting/CrashReportPreviewSheet.swift": "4eebb55707cfa2ee7ad6b6d0657875f5b557db97",
+        "Packages/LillistUI/Sources/LillistUI/CrashReporting/CrashReportSheet.swift": "4fa4f36260b52e51d8ac15607cc35c2e727b31ca",
+        "Packages/LillistUI/Sources/LillistUI/CrashReporting/CrashReportViewModel.swift": "41a6b325226f75b650b581c4b7d4e843dd87e5a1"
+      },
+      "summary": "SwiftUI crash-report consent sheet and its view model over LillistCore's CrashReporter",
+      "verified": true
+    },
+    "modules/Packages-LillistUI-Sources-LillistUI-DragReorder.md": {
+      "generator": "cartographer/1",
+      "module": "Packages/LillistUI/Sources/LillistUI/DragReorder",
+      "references_modules": [
+        "Packages-LillistCore-Sources-LillistCore-Diagnostics",
+        "Packages-LillistUI-Sources-LillistUI-Theme-chunk-1",
+        "Packages-LillistUI-Sources-LillistUI-Theme-chunk-2",
+        "Packages-LillistUI-Sources-LillistUI-Accessibility",
+        "Packages-LillistUI-Sources-LillistUI-iOS-misc",
+        "Apps-Lillist-iOS-Sources-misc",
+        "Apps-Lillist-macOS-Sources-Views-TaskList"
+      ],
+      "sources": {
+        "Packages/LillistUI/Sources/LillistUI/DragReorder/DragController.swift": "aac3debd777545a224f31540a34abfbfbaabfa2f",
+        "Packages/LillistUI/Sources/LillistUI/DragReorder/DragDropResolver.swift": "8f836bc997a9af166b142f201da8f1d2ba0eb77f",
+        "Packages/LillistUI/Sources/LillistUI/DragReorder/DragOverlay.swift": "001bb91b34fec88226557689e8b1f32927959769",
+        "Packages/LillistUI/Sources/LillistUI/DragReorder/DragReorderRow.swift": "b598b1592af7855b780250afd2f084f35987c510",
+        "Packages/LillistUI/Sources/LillistUI/DragReorder/DragReorderable.swift": "b5c984f2aa0930702a1a3b8b4a780d94ea70dcf4",
+        "Packages/LillistUI/Sources/LillistUI/DragReorder/DragSession.swift": "baae4992c8080524d5bef21e45d37f7e442fcfbb",
+        "Packages/LillistUI/Sources/LillistUI/DragReorder/DragSortMode.swift": "5835f4e289cf93d3cbf3fc739e31006a8783a9cd",
+        "Packages/LillistUI/Sources/LillistUI/DragReorder/DragTarget.swift": "7d25e4ee30e826d15a158e6b92c26628c283df6b",
+        "Packages/LillistUI/Sources/LillistUI/DragReorder/RowGeometryReporter.swift": "039204fca9709263f21f1c51e39e17a59ee4f35e"
+      },
+      "summary": "Platform-agnostic custom drag-to-reorder engine \u2014 phantom, drop resolution, and store-mutation mapping",
+      "verified": true
+    },
+    "modules/Packages-LillistUI-Sources-LillistUI-Onboarding.md": {
+      "generator": "cartographer/1",
+      "module": "Packages/LillistUI/Sources/LillistUI/Onboarding",
+      "references_modules": [
+        "Packages-LillistCore-Sources-LillistCore-Notifications",
+        "Packages-LillistUI-Sources-LillistUI-Components",
+        "Packages-LillistUI-Sources-LillistUI-Theme-chunk-1",
+        "Apps-Lillist-iOS-Sources-App",
+        "Apps-Lillist-iOS-Sources-misc",
+        "Apps-Lillist-macOS-Sources-misc"
+      ],
+      "sources": {
+        "Packages/LillistUI/Sources/LillistUI/Onboarding/ICloudRequiredContent.swift": "3acdc95019c18123523312efbae30d9db650300b",
+        "Packages/LillistUI/Sources/LillistUI/Onboarding/ICloudUnavailableScreen.swift": "ecd20cfa8508fe993115a13f1a7a2b47ec101f9b",
+        "Packages/LillistUI/Sources/LillistUI/Onboarding/OnboardingContent.swift": "91b2fd39738ad697fbef83ee270080719b69e1ba"
+      },
+      "summary": "Cross-platform onboarding + iCloud-unavailable presentation views shared by iOS and macOS shells",
+      "verified": true
+    },
+    "modules/Packages-LillistUI-Sources-LillistUI-QuickCapture.md": {
+      "generator": "cartographer/1",
+      "module": "Packages/LillistUI/Sources/LillistUI/QuickCapture",
+      "references_modules": [
+        "Packages-LillistUI-Sources-LillistUI-Components",
+        "Packages-LillistUI-Sources-LillistUI-Theme-chunk-1",
+        "Packages-LillistUI-Sources-LillistUI-Theme-chunk-2",
+        "Packages-LillistUI-Sources-LillistUI-iOS-misc",
+        "Apps-Lillist-macOS-Sources-Hotkey",
+        "Apps-Lillist-iOS-Sources-misc"
+      ],
+      "sources": {
+        "Packages/LillistUI/Sources/LillistUI/QuickCapture/QuickCaptureDateSuggestions.swift": "7cf0c3990da9d39095ebc898d37ae926931afcfc",
+        "Packages/LillistUI/Sources/LillistUI/QuickCapture/QuickCaptureParser.swift": "68c8306a5b319e84ca27198e96b7078aa75fd5be",
+        "Packages/LillistUI/Sources/LillistUI/QuickCapture/QuickCaptureView.swift": "52746892ca8e7bf4b3184010c1a64b2d45c29f3a"
+      },
+      "summary": "Quick Capture text parsing, the macOS hotkey panel view, and the canonical date-token list",
+      "verified": true
+    },
+    "modules/Packages-LillistUI-Sources-LillistUI-Recurrence.md": {
+      "generator": "cartographer/1",
+      "module": "Packages/LillistUI/Sources/LillistUI/Recurrence",
+      "references_modules": [
+        "Packages-LillistCore-Sources-LillistCore-Recurrence",
+        "Packages-LillistUI-Sources-LillistUI-Theme-chunk-1",
+        "Apps-Lillist-macOS-Sources-Views-Detail",
+        "Apps-Lillist-iOS-Sources-Detail"
+      ],
+      "sources": {
+        "Packages/LillistUI/Sources/LillistUI/Recurrence/RecurrenceEditorView.swift": "0a45e3b6f13912b4cb5c8a1b942759a9af126108",
+        "Packages/LillistUI/Sources/LillistUI/Recurrence/RecurrenceEditorViewModel.swift": "222e0124667e98be7e37bdbbe336ae536573639c",
+        "Packages/LillistUI/Sources/LillistUI/Recurrence/RecurrenceSummary.swift": "4431a7f040ca523f4e1aad880d5ae5e465d8f2ab",
+        "Packages/LillistUI/Sources/LillistUI/Recurrence/RecurrenceSummaryFormatter.swift": "c6541163a9cf3720b3b08e4e1fd985c4506fc743"
+      },
+      "summary": "SwiftUI recurrence-rule editor plus a value-type summary it renders to localized text",
+      "verified": true
+    },
+    "modules/Packages-LillistUI-Sources-LillistUI-Settings.md": {
+      "generator": "cartographer/1",
+      "module": "Packages/LillistUI/Sources/LillistUI/Settings",
+      "references_modules": [
+        "Packages-LillistCore-Sources-LillistCore-Model",
+        "Packages-LillistCore-Sources-LillistCore-Sync-chunk-1",
+        "Packages-LillistUI-Sources-LillistUI-misc",
+        "Apps-Lillist-iOS-Sources-Settings",
+        "Apps-Lillist-macOS-Sources-Preferences"
+      ],
+      "sources": {
+        "Packages/LillistUI/Sources/LillistUI/Settings/CrashReportSample.swift": "0249e4862ab49f63844aea35f80adcec4dafe388",
+        "Packages/LillistUI/Sources/LillistUI/Settings/HourMinuteDate.swift": "c86f0a9040a23521ff241e157fd83b0e0fcc5e1e",
+        "Packages/LillistUI/Sources/LillistUI/Settings/ICloudSyncSettingsSection.swift": "42bb0aef222c2b60d6656a085b397148f85ebd71",
+        "Packages/LillistUI/Sources/LillistUI/Settings/SortField+DisplayName.swift": "1ebd38dd6f73717121b152688be85cd73fdbcf1d"
+      },
+      "summary": "Shared Settings/Preferences presentation helpers lifted out of the two app targets",
+      "verified": true
+    },
+    "modules/Packages-LillistUI-Sources-LillistUI-Sync.md": {
+      "generator": "cartographer/1",
+      "module": "Packages/LillistUI/Sources/LillistUI/Sync",
+      "references_modules": [
+        "Packages-LillistCore-Sources-LillistCore-Sync-chunk-1",
+        "Packages-LillistCore-Sources-LillistCore-Persistence",
+        "Packages-LillistUI-Sources-LillistUI-Theme-chunk-1",
+        "Packages-LillistUI-Sources-LillistUI-Theme-chunk-2",
+        "Apps-Lillist-iOS-Sources-Settings",
+        "Apps-Lillist-macOS-Sources-Preferences"
+      ],
+      "sources": {
+        "Packages/LillistUI/Sources/LillistUI/Sync/PauseExplainerDialog.swift": "dae02594c447a8a058e4dfecf8145a405554b0fa",
+        "Packages/LillistUI/Sources/LillistUI/Sync/SyncDisableConfirmationSheet.swift": "256921bb870b9d40bc20af70f93ea73be940e790",
+        "Packages/LillistUI/Sources/LillistUI/Sync/SyncMigrationChoiceSheet.swift": "3119ede020bb8360759bc671375e9c4c1a1c0b4c",
+        "Packages/LillistUI/Sources/LillistUI/Sync/SyncMigrationConfirmationDialog.swift": "cec35a30c637384550600a236608f9c5da0c3ae9",
+        "Packages/LillistUI/Sources/LillistUI/Sync/SyncMigrationProgressSheet.swift": "700e0f1f0739980cf8ee8c6c295b8f65f0f65539",
+        "Packages/LillistUI/Sources/LillistUI/Sync/SyncMigrationRecoverySheet.swift": "94595d3885ceeeba0cb2be0b21c30a828e862b8d"
+      },
+      "summary": "Pure-presentation SwiftUI sheets/dialogs for the iCloud sync-mode change and pause-explainer flows",
+      "verified": true
+    },
+    "modules/Packages-LillistUI-Sources-LillistUI-Theme-chunk-1.md": {
+      "generator": "cartographer/1",
+      "module": "Packages/LillistUI/Sources/LillistUI/Theme (chunk 1)",
+      "references_modules": [
+        "Packages-LillistUI-Sources-LillistUI-Accessibility",
+        "Packages-LillistUI-Sources-LillistUI-Theme-chunk-2",
+        "Packages-LillistUI-Sources-LillistUI-Components",
+        "Packages-LillistUI-Sources-LillistUI-iOS-misc",
+        "Packages-LillistUI-Sources-LillistUI-misc",
+        "Packages-LillistCore-Sources-LillistCore-Model",
+        "Apps-Lillist-macOS-Sources-Preferences"
+      ],
+      "sources": {
+        "Packages/LillistUI/Sources/LillistUI/Theme/Color+Hex.swift": "71bd769cdd3d9632ef4353f22cc0df0ebaa246cc",
+        "Packages/LillistUI/Sources/LillistUI/Theme/Fonts/LillistFonts.swift": "ec07c427560d4df7f0fd2eb1e8fdd17afd2482aa",
+        "Packages/LillistUI/Sources/LillistUI/Theme/GlassRowSpike.swift": "83db647bca06e91ed8d75a86aa52d6bacc7d3260",
+        "Packages/LillistUI/Sources/LillistUI/Theme/GlassSurface.swift": "83ae8d6ba69497251b8af6352fad82e12d14aa9f",
+        "Packages/LillistUI/Sources/LillistUI/Theme/LillistColor.swift": "3cd18bceeb600d9bd002b349487badcea99916d5",
+        "Packages/LillistUI/Sources/LillistUI/Theme/LillistElevation.swift": "0cd223bcb1c64678fe88d554fb2e80bc97b3b0bc",
+        "Packages/LillistUI/Sources/LillistUI/Theme/LillistMotion.swift": "ac5368821890aa6ebe93adfa19aaf8117f523f07",
+        "Packages/LillistUI/Sources/LillistUI/Theme/RainbowButtonStyle.swift": "a860c62c603894f4bfffd4e04eec801a32f684d5",
+        "Packages/LillistUI/Sources/LillistUI/Theme/RainbowGradient.swift": "1c4d99c9e29cf55bb45ae3a0b6b28debd79cc01c",
+        "Packages/LillistUI/Sources/LillistUI/Theme/RainbowPalette.swift": "392014d98fcc0542054d7d5101c3f228c3aadcae",
+        "Packages/LillistUI/Sources/LillistUI/Theme/RainbowToggleStyle.swift": "eeae0732604ccdc2cd2c867eea5124f531472196",
+        "Packages/LillistUI/Sources/LillistUI/Theme/StatusGlyph.swift": "0f338cb0549bf8f37f9a807b607e8ea280d4b594",
+        "Packages/LillistUI/Sources/LillistUI/Theme/StatusPalette.swift": "4f9ac797b8389bd64e0f31de8c8406c150b041d9",
+        "Packages/LillistUI/Sources/LillistUI/Theme/SyncPalette.swift": "ae2ada13fd769e9731c0efaabbf4ca9c3f750857",
+        "Packages/LillistUI/Sources/LillistUI/Theme/TagTint.swift": "ef5e3e2cdc62a9a405f12d0f0f5b70933ef34c89"
+      },
+      "summary": "Rainbow Glass design tokens \u2014 colors, hues, gradients, glass seam, button/toggle styles, status/sync/tag palettes",
+      "verified": true
+    },
+    "modules/Packages-LillistUI-Sources-LillistUI-Theme-chunk-2.md": {
+      "generator": "cartographer/1",
+      "module": "Packages/LillistUI/Sources/LillistUI/Theme (chunk 2)",
+      "references_modules": [
+        "Packages-LillistUI-Sources-LillistUI-Theme-chunk-1",
+        "Packages-LillistUI-Sources-LillistUI-DragReorder",
+        "Packages-LillistUI-Sources-LillistUI-iOS-misc",
+        "Apps-Lillist-iOS-Sources-Settings",
+        "Apps-Lillist-macOS-Sources-Preferences"
+      ],
+      "sources": {
+        "Packages/LillistUI/Sources/LillistUI/Theme/Tokens.swift": "4641bb3810568f46beec79e5477085395c202892"
+      },
+      "summary": "Shared design tokens \u2014 spacing, radius, timing, semantic typography, and drag-reorder constants",
+      "verified": true
+    },
+    "modules/Packages-LillistUI-Sources-LillistUI-iOS-Tasks.md": {
+      "generator": "cartographer/1",
+      "module": "Packages/LillistUI/Sources/LillistUI/iOS/Tasks",
+      "references_modules": [
+        "Packages-LillistCore-Sources-LillistCore-Stores-chunk-1",
+        "Packages-LillistCore-Sources-LillistCore-Model",
+        "Packages-LillistCore-Sources-LillistCore-Ordering",
+        "Packages-LillistUI-Sources-LillistUI-Components",
+        "Packages-LillistUI-Sources-LillistUI-Theme-chunk-1",
+        "Packages-LillistUI-Sources-LillistUI-iOS-misc",
+        "Apps-Lillist-iOS-Sources-misc"
+      ],
+      "sources": {
+        "Packages/LillistUI/Sources/LillistUI/iOS/Tasks/FilterChip.swift": "d9c391dbdee40c9de6196eae330ba7a2398be0c7",
+        "Packages/LillistUI/Sources/LillistUI/iOS/Tasks/FilterHeader.swift": "b3091afc0ea60c53aedb7d03df94d83469dea1cd",
+        "Packages/LillistUI/Sources/LillistUI/iOS/Tasks/FlatTaskRow.swift": "33960b025a31e092cf601d9a68fb22423cfc7933",
+        "Packages/LillistUI/Sources/LillistUI/iOS/Tasks/TaskOutlineRowView.swift": "8cb73c03a7c176c7544269aeee5c9847f4cedd6b",
+        "Packages/LillistUI/Sources/LillistUI/iOS/Tasks/TaskTree.swift": "a3e62822968acad7c6d73eccda8e7d4e8b0f70ca",
+        "Packages/LillistUI/Sources/LillistUI/iOS/Tasks/TasksSort.swift": "ec113d2e4e3de800b679902e317ff0b6b6bb8d20"
+      },
+      "summary": "Pure-presentation pieces of the iOS Tasks screen \u2014 outline tree, flat projection, filter header, sort",
+      "verified": true
+    },
+    "modules/Packages-LillistUI-Sources-LillistUI-iOS-misc.md": {
+      "generator": "cartographer/1",
+      "module": "Packages/LillistUI/Sources/LillistUI/iOS (misc)",
+      "references_modules": [
+        "Packages-LillistUI-Sources-LillistUI-iOS-Tasks",
+        "Packages-LillistUI-Sources-LillistUI-DragReorder",
+        "Packages-LillistUI-Sources-LillistUI-QuickCapture",
+        "Packages-LillistUI-Sources-LillistUI-Components",
+        "Packages-LillistUI-Sources-LillistUI-misc",
+        "Packages-LillistCore-Sources-LillistCore-Model"
+      ],
+      "sources": {
+        "Packages/LillistUI/Sources/LillistUI/iOS/ArchiveToast.swift": "29e16f29a8e2cef387387bcc878d5790d533c5a8",
+        "Packages/LillistUI/Sources/LillistUI/iOS/DiagnosticsIncludeSheet.swift": "d47c7f5d13cf599edef0f443c815a870abb68ca9",
+        "Packages/LillistUI/Sources/LillistUI/iOS/FloatingAddButton.swift": "1506081b02d63f3f398bc950fb1a6dc7027c9b0a",
+        "Packages/LillistUI/Sources/LillistUI/iOS/QuickCaptureActionEnvironment.swift": "4cd70e2ac439f86bdb12031e3784ddf7ebdea73b",
+        "Packages/LillistUI/Sources/LillistUI/iOS/QuickCaptureDialog.swift": "28f6efa09540598d7311a777da5d4be4f0a4452e",
+        "Packages/LillistUI/Sources/LillistUI/iOS/QuickCaptureDialogPresenter.swift": "5e69c48782936c4c950b83ceac7b9128b6fee63a",
+        "Packages/LillistUI/Sources/LillistUI/iOS/QuickCaptureDiscardToast.swift": "2ed1f32bbe49a090527a60702ca5327d5388df1a",
+        "Packages/LillistUI/Sources/LillistUI/iOS/ReorderFailureToast.swift": "0715994fd02c6510687e9d41a630777fac072dcb",
+        "Packages/LillistUI/Sources/LillistUI/iOS/Screens/SettingsScreen.swift": "35b24834fa6e44b5e3cf8a41693bdd914b0d678f",
+        "Packages/LillistUI/Sources/LillistUI/iOS/Screens/TasksScreen.swift": "ec7bb4b5af67a83610c42c39b93cdcb8732cca1d",
+        "Packages/LillistUI/Sources/LillistUI/iOS/SizeClassRouter.swift": "1bf4ae6409a26c607411ef5490b451172f3d99c4",
+        "Packages/LillistUI/Sources/LillistUI/iOS/SyncStatusBadge.swift": "deb46ec7b905384f236781bd3cb27ca4f5697666",
+        "Packages/LillistUI/Sources/LillistUI/iOS/ToastChrome.swift": "b70db2d1499bec0e34c308d83e8587d7f0062637"
+      },
+      "summary": "iOS-only LillistUI surfaces \u2014 FAB, Quick Capture dialog, toasts, sync badge, and the Tasks/Settings screen shells",
+      "verified": true
+    },
+    "modules/Packages-LillistUI-Sources-LillistUI-misc.md": {
+      "generator": "cartographer/1",
+      "module": "Packages/LillistUI/Sources/LillistUI (misc)",
+      "references_modules": [
+        "Packages-LillistCore-Sources-LillistCore-Model",
+        "Packages-LillistCore-Sources-LillistCore-Sync-chunk-1",
+        "Packages-LillistUI-Sources-LillistUI-Components",
+        "Apps-Lillist-iOS-Sources-App",
+        "Apps-Lillist-macOS-Sources-Views-TaskList"
+      ],
+      "sources": {
+        "Packages/LillistUI/Sources/LillistUI/LillistUI.swift": "6c093e3ce4c0bfbbd190533a80b07af79b36b648",
+        "Packages/LillistUI/Sources/LillistUI/Resources/Fonts/OFL.txt": "ea69b0ca12a02556c436680ea0a159efb7a748fa",
+        "Packages/LillistUI/Sources/LillistUI/Resources/Localizable.xcstrings": "04615e80f24643a3edf41bbb7ecf5e436e31611e",
+        "Packages/LillistUI/Sources/LillistUI/Status/StatusCycler.swift": "83cae2f8fa475b9e58f9b7cd0893ceea380ac5c9",
+        "Packages/LillistUI/Sources/LillistUI/Status/SyncStatusMonitor.swift": "86767bf3ab935f3c12fd21b488de7a4bccfb2377"
+      },
+      "summary": "LillistUI package root \u2014 landing namespace, status-cycle state machine, and UI-facing sync indicator protocol",
+      "verified": true
+    },
+    "modules/Packages-LillistUI-misc.md": {
+      "generator": "cartographer/1",
+      "module": "Packages/LillistUI (misc)",
+      "references_modules": [
+        "Packages-LillistCore-misc"
+      ],
+      "sources": {
+        "Packages/LillistUI/Package.swift": "dc98b12e06978bcdd28655daba94b87bb242f502"
+      },
+      "summary": "SwiftPM manifest for the LillistUI library \u2014 products, platforms, deps, and build flags",
+      "verified": true
+    },
+    "modules/Tools.md": {
+      "generator": "cartographer/1",
+      "module": "Tools",
+      "references_modules": [
+        "Apps-Config",
+        "Packages-LillistUI-misc"
+      ],
+      "sources": {
+        "Tools/CI/check-lillistui-localization.sh": "223c47dafe800fccb53e98157d3e88c6b8af73d7",
+        "Tools/Deploy/README.md": "1b962f2af9704077efb0d9f601076a02e4f67ee8",
+        "Tools/Deploy/bump-build-number.sh": "b79272bdb5bf85d95db4b2eea071562470995dd3"
+      },
+      "summary": "Repo-side build/CI shell hooks \u2014 iOS build-number bump and LillistUI localization-catalog check",
+      "verified": true
+    },
+    "modules/root-misc.md": {
+      "generator": "cartographer/1",
+      "module": "root (misc)",
+      "references_modules": [
+        "Apps-Config",
+        "Tools",
+        "Packages-LillistCore-misc",
+        "Packages-LillistUI-misc",
+        "Apps-Lillist-iOS-misc",
+        "Apps-Lillist-macOS-misc"
+      ],
+      "sources": {
+        ".claude/settings.local.json": "f4307bbdd98b10593980431477406613e049a2f2",
+        ".github/workflows/ci.yml": "07774b20f444741c99f3e94545ccebf4a3b5d4c5",
+        ".gitignore": "4584f1163ec50f6b64de5046a96275dbd331061f",
+        ".semver/config.yaml": "1a63526d97642edb6dea7e2e800b860b1919231e",
+        "CHANGELOG.md": "67eb1a50ee5232710adb83f5af64551a3d193a74",
+        "CLAUDE.md": "7aa68e6f42c33846ce7973bc819015fc30b8ac9f",
+        "Lillist.xcworkspace/contents.xcworkspacedata": "2e734ab16d5b95d519766950140eed52205e09c8",
+        "VERSION": "b043aa648f5977ee9476818a572001e989cf5348"
+      },
+      "summary": "Repo-root config \u2014 CI matrix, workspace wiring, gitignore, semver state, and the canonical CLAUDE.md conventions",
+      "verified": true
+    },
+    "overview/ARCHITECTURE.md": {
+      "generator": "cartographer/1",
+      "module": "overview/ARCHITECTURE",
+      "references_modules": [],
+      "sources": {
+        "docs/atlas/modules/Apps-Config.md": "a7f331a45a0c4669e1129d3330e7f2fbd87e33f2",
+        "docs/atlas/modules/Apps-Lillist-iOS-Sources-App.md": "7aabdb25873aeb1484ecee18813ab5161a5fdb3d",
+        "docs/atlas/modules/Apps-Lillist-iOS-Sources-Detail.md": "91101eaf371e182b58c77f841cb2f9ddbb09eb75",
+        "docs/atlas/modules/Apps-Lillist-iOS-Sources-Settings.md": "97764230a668cbaf80c59e37b2b91bedf20f0de0",
+        "docs/atlas/modules/Apps-Lillist-iOS-Sources-misc.md": "c280c42dfb1ce46f13628d5e6115c846c5b90095",
+        "docs/atlas/modules/Apps-Lillist-iOS-misc.md": "eb1540a63e11ef31664b0360b1e2ecb4837227ec",
+        "docs/atlas/modules/Apps-Lillist-macOS-Sources-Commands.md": "4d72bc161109aefb1a06a2f38ada4b8a4fd121b0",
+        "docs/atlas/modules/Apps-Lillist-macOS-Sources-Hotkey.md": "ba32dbb82c9e14612830ce8ca6ad126b623f0c48",
+        "docs/atlas/modules/Apps-Lillist-macOS-Sources-Preferences.md": "ad0dcdfeac1f380daa2a96bb52496e5c88d75d5c",
+        "docs/atlas/modules/Apps-Lillist-macOS-Sources-Views-Detail.md": "699f847811d1bca6324043768f97e1f0c65e30fa",
+        "docs/atlas/modules/Apps-Lillist-macOS-Sources-Views-Sidebar.md": "6049288571cf199b38806f87bf9e538318f8d119",
+        "docs/atlas/modules/Apps-Lillist-macOS-Sources-Views-TaskList.md": "af9529973d45d9a9b936094b933cb3fe19a111a1",
+        "docs/atlas/modules/Apps-Lillist-macOS-Sources-Views-misc.md": "0a5444a98428f0824474831c953d9e81219f9202",
+        "docs/atlas/modules/Apps-Lillist-macOS-Sources-misc.md": "a9072e7e34c3393fc24be9afbbd65660bf2e74f1",
+        "docs/atlas/modules/Apps-Lillist-macOS-misc.md": "96e2a7ac689f61fa791415b2ddfa5453fd3df441",
+        "docs/atlas/modules/Apps-misc.md": "56e2b103c244d178c09b5a55ece6ea62a48ae07b",
+        "docs/atlas/modules/Extensions-ShareExtension-iOS.md": "ef672c3982c2e5e671875670f3a9e37406db59c2",
+        "docs/atlas/modules/Extensions-ShortcutsActions-Entities.md": "bb8b40a344aa562bbd0aaf02310cd1843a5c3feb",
+        "docs/atlas/modules/Extensions-ShortcutsActions-misc.md": "6318c5e1cb3cf3c27268202ae8a954f8db2f57c8",
+        "docs/atlas/modules/Packages-LillistCore-Sources-LillistCore-CLIBridge-Handlers-chunk-1.md": "536b732522d08b59a08560a15a4d52256079e796",
+        "docs/atlas/modules/Packages-LillistCore-Sources-LillistCore-CLIBridge-Handlers-chunk-2.md": "0fe242234f3a42582d24f8214d8d0b383a57ee71",
+        "docs/atlas/modules/Packages-LillistCore-Sources-LillistCore-CLIBridge-Renderers.md": "8a8e25c669be12e7d92e1baf9b9b605dd72798c7",
+        "docs/atlas/modules/Packages-LillistCore-Sources-LillistCore-CLIBridge-misc.md": "b36fb05057c5d5702d9dfcf9602cf12681a5b0f9",
+        "docs/atlas/modules/Packages-LillistCore-Sources-LillistCore-CrashReporting.md": "4318abca8e480e01d209210399d5c1dbaa645de8",
+        "docs/atlas/modules/Packages-LillistCore-Sources-LillistCore-Diagnostics.md": "4a027a28ca1e21ba96664359d0f0d6840c1535ad",
+        "docs/atlas/modules/Packages-LillistCore-Sources-LillistCore-Export.md": "4652f15b11c551ae3bc64cfaec1fb0c89217ca50",
+        "docs/atlas/modules/Packages-LillistCore-Sources-LillistCore-LinkPreview.md": "dfe378d42138b04d9487b94c4497bda4273e4d70",
+        "docs/atlas/modules/Packages-LillistCore-Sources-LillistCore-ManagedObjects.md": "113d947c76cea39497208f875988c4ec6c687312",
+        "docs/atlas/modules/Packages-LillistCore-Sources-LillistCore-Model.md": "1aec90482eadb6e846fc464e1778ae7bf7f7f0cd",
+        "docs/atlas/modules/Packages-LillistCore-Sources-LillistCore-Notifications.md": "8870b40237d93e6be93889d56e8d8fdc4f69eebc",
+        "docs/atlas/modules/Packages-LillistCore-Sources-LillistCore-Ordering.md": "1c418ab28d028510c333e5875eeb87dd33c2270f",
+        "docs/atlas/modules/Packages-LillistCore-Sources-LillistCore-Persistence.md": "566dc54ddee5d4dd35ff5e4cec47c8e9150e1f61",
+        "docs/atlas/modules/Packages-LillistCore-Sources-LillistCore-Recurrence.md": "69b32b7fb1766587a0ce7d052cec024ad0d95c19",
+        "docs/atlas/modules/Packages-LillistCore-Sources-LillistCore-Rules.md": "881974b62cf9a931642ba4db49a3f75a2fd44076",
+        "docs/atlas/modules/Packages-LillistCore-Sources-LillistCore-Stores-chunk-1.md": "ef9f1f39669f7d2d288422f1d593268168d51d35",
+        "docs/atlas/modules/Packages-LillistCore-Sources-LillistCore-Stores-chunk-2.md": "39de04642b9585e93061c21453c32f2045ea5c1b",
+        "docs/atlas/modules/Packages-LillistCore-Sources-LillistCore-Sync-chunk-1.md": "c689025a02499aedb78771ac458db161ff994faa",
+        "docs/atlas/modules/Packages-LillistCore-Sources-LillistCore-Sync-chunk-2.md": "eb7741d05cb2f35660e67d559d9b3f5eefbba7ca",
+        "docs/atlas/modules/Packages-LillistCore-Sources-LillistCore-misc.md": "6f4977b03076f906606341b389640b882bad033e",
+        "docs/atlas/modules/Packages-LillistCore-Sources-lillist-cli-Commands-chunk-1.md": "398a5cefaf88310b05ef4aea948e1d5f8fbf9570",
+        "docs/atlas/modules/Packages-LillistCore-Sources-lillist-cli-Commands-chunk-2.md": "79a8d4396aacc07d4657bf5155491833d0b6df90",
+        "docs/atlas/modules/Packages-LillistCore-Sources-lillist-cli-Support.md": "5ac03316687520a424b2888b09d21c7ca6b32e48",
+        "docs/atlas/modules/Packages-LillistCore-Sources-lillist-cli-misc.md": "2c0fdb14cb21435ef7619b7f3ad358e6f30a9c33",
+        "docs/atlas/modules/Packages-LillistCore-misc.md": "e9c2f022fbcb46437d633715086fb922f6ff8a17",
+        "docs/atlas/modules/Packages-LillistUI-Sources-LillistUI-Accessibility.md": "b14fc445cd7862918bb3730b687f899b218981e1",
+        "docs/atlas/modules/Packages-LillistUI-Sources-LillistUI-Components.md": "e20a219a889dc596ab9d88bb965151e8caa693b6",
+        "docs/atlas/modules/Packages-LillistUI-Sources-LillistUI-CrashReporting.md": "69c5bb076d79a8674c42df89d2792f80d84ba0c8",
+        "docs/atlas/modules/Packages-LillistUI-Sources-LillistUI-DragReorder.md": "afbd997ae2aa5c4cf7853a6985cc6f5f08853d57",
+        "docs/atlas/modules/Packages-LillistUI-Sources-LillistUI-Onboarding.md": "b7fd222a1cf17b867f74d454dea476fd96fd3cd3",
+        "docs/atlas/modules/Packages-LillistUI-Sources-LillistUI-QuickCapture.md": "e7a9436e0f18a7aa108394c9208dae82534a11cc",
+        "docs/atlas/modules/Packages-LillistUI-Sources-LillistUI-Recurrence.md": "4f7265b2833e8834460d3d02039baeaa5944a6f5",
+        "docs/atlas/modules/Packages-LillistUI-Sources-LillistUI-Settings.md": "1ad69dbaf7214768333eb8a751a061a939b3767a",
+        "docs/atlas/modules/Packages-LillistUI-Sources-LillistUI-Sync.md": "7ce9e64d37635709eddd75de73b0c7e8a141b950",
+        "docs/atlas/modules/Packages-LillistUI-Sources-LillistUI-Theme-chunk-1.md": "fb6e6bea6ab8774b42c1aa2a505212913a1ac920",
+        "docs/atlas/modules/Packages-LillistUI-Sources-LillistUI-Theme-chunk-2.md": "8af86995350d6f54611dedd7e7705c41797c04f4",
+        "docs/atlas/modules/Packages-LillistUI-Sources-LillistUI-iOS-Tasks.md": "116c5278bb0ff3fb9088d97fa3128aeaf842c79e",
+        "docs/atlas/modules/Packages-LillistUI-Sources-LillistUI-iOS-misc.md": "95a04c9fc8f9d6fc3d307b6a24a75ea137d2ecd0",
+        "docs/atlas/modules/Packages-LillistUI-Sources-LillistUI-misc.md": "253de0b0f97e27066f5c9ee7e3ef229c35cf1528",
+        "docs/atlas/modules/Packages-LillistUI-misc.md": "6a564ce7efdcde47bbcc5bc0f40a22ec08f5fff5",
+        "docs/atlas/modules/Tools.md": "e1c3deeaae042df1e703fff9a3d54242e18304a5",
+        "docs/atlas/modules/root-misc.md": "a2e51894bcf57d113846b9e736824cc049c757df"
+      },
+      "summary": "System architecture and cross-module relationships",
+      "verified": null
+    }
+  },
+  "paths": {
+    ".claude/settings.local.json": "modules/root-misc.md",
+    ".github/workflows/ci.yml": "modules/root-misc.md",
+    ".gitignore": "modules/root-misc.md",
+    ".semver/config.yaml": "modules/root-misc.md",
+    "Apps/Config/BuildNumber.xcconfig": "modules/Apps-Config.md",
+    "Apps/Config/Signing.local.xcconfig.example": "modules/Apps-Config.md",
+    "Apps/Config/Signing.xcconfig": "modules/Apps-Config.md",
+    "Apps/Lillist-iOS/Info.plist": "modules/Apps-Lillist-iOS-misc.md",
+    "Apps/Lillist-iOS/Lillist.entitlements": "modules/Apps-Lillist-iOS-misc.md",
+    "Apps/Lillist-iOS/Resources/Localizable.xcstrings": "modules/Apps-Lillist-iOS-misc.md",
+    "Apps/Lillist-iOS/Resources/PrivacyInfo.xcprivacy": "modules/Apps-Lillist-iOS-misc.md",
+    "Apps/Lillist-iOS/Sources/App/AppEnvironment.swift": "modules/Apps-Lillist-iOS-Sources-App.md",
+    "Apps/Lillist-iOS/Sources/App/CrashReporterHost.swift": "modules/Apps-Lillist-iOS-Sources-App.md",
+    "Apps/Lillist-iOS/Sources/App/LillistApp.swift": "modules/Apps-Lillist-iOS-Sources-App.md",
+    "Apps/Lillist-iOS/Sources/App/MailComposerTransport.swift": "modules/Apps-Lillist-iOS-Sources-App.md",
+    "Apps/Lillist-iOS/Sources/App/MailComposerView.swift": "modules/Apps-Lillist-iOS-Sources-App.md",
+    "Apps/Lillist-iOS/Sources/App/MetricKitObserver.swift": "modules/Apps-Lillist-iOS-Sources-App.md",
+    "Apps/Lillist-iOS/Sources/Commands/LillistCommands.swift": "modules/Apps-Lillist-iOS-Sources-misc.md",
+    "Apps/Lillist-iOS/Sources/Common/SceneBindings.swift": "modules/Apps-Lillist-iOS-Sources-misc.md",
+    "Apps/Lillist-iOS/Sources/Detail/RecurrenceSheet.swift": "modules/Apps-Lillist-iOS-Sources-Detail.md",
+    "Apps/Lillist-iOS/Sources/Detail/TaskAttachmentsTab.swift": "modules/Apps-Lillist-iOS-Sources-Detail.md",
+    "Apps/Lillist-iOS/Sources/Detail/TaskDetailView.swift": "modules/Apps-Lillist-iOS-Sources-Detail.md",
+    "Apps/Lillist-iOS/Sources/Detail/TaskJournalTab.swift": "modules/Apps-Lillist-iOS-Sources-Detail.md",
+    "Apps/Lillist-iOS/Sources/Detail/TaskNotesTab.swift": "modules/Apps-Lillist-iOS-Sources-Detail.md",
+    "Apps/Lillist-iOS/Sources/Detail/TaskSubtasksTab.swift": "modules/Apps-Lillist-iOS-Sources-Detail.md",
+    "Apps/Lillist-iOS/Sources/Onboarding/OnboardingScreen.swift": "modules/Apps-Lillist-iOS-Sources-misc.md",
+    "Apps/Lillist-iOS/Sources/QuickCapture/QuickCaptureDialogHost.swift": "modules/Apps-Lillist-iOS-Sources-misc.md",
+    "Apps/Lillist-iOS/Sources/Root/RootShell.swift": "modules/Apps-Lillist-iOS-Sources-misc.md",
+    "Apps/Lillist-iOS/Sources/Settings/AdvancedSection.swift": "modules/Apps-Lillist-iOS-Sources-Settings.md",
+    "Apps/Lillist-iOS/Sources/Settings/CrashReportingSection.swift": "modules/Apps-Lillist-iOS-Sources-Settings.md",
+    "Apps/Lillist-iOS/Sources/Settings/DiagnosticsSection.swift": "modules/Apps-Lillist-iOS-Sources-Settings.md",
+    "Apps/Lillist-iOS/Sources/Settings/GeneralSection.swift": "modules/Apps-Lillist-iOS-Sources-Settings.md",
+    "Apps/Lillist-iOS/Sources/Settings/ICloudSyncSection.swift": "modules/Apps-Lillist-iOS-Sources-Settings.md",
+    "Apps/Lillist-iOS/Sources/Settings/NotificationsSection.swift": "modules/Apps-Lillist-iOS-Sources-Settings.md",
+    "Apps/Lillist-iOS/Sources/Settings/QuickCaptureSection.swift": "modules/Apps-Lillist-iOS-Sources-Settings.md",
+    "Apps/Lillist-iOS/Sources/Settings/SettingsTab.swift": "modules/Apps-Lillist-iOS-Sources-Settings.md",
+    "Apps/Lillist-iOS/Sources/Settings/TrashSection.swift": "modules/Apps-Lillist-iOS-Sources-Settings.md",
+    "Apps/Lillist-iOS/Sources/Tasks/TasksView.swift": "modules/Apps-Lillist-iOS-Sources-misc.md",
+    "Apps/Lillist-iOS/project.yml": "modules/Apps-Lillist-iOS-misc.md",
+    "Apps/Lillist-macOS/Info.plist": "modules/Apps-Lillist-macOS-misc.md",
+    "Apps/Lillist-macOS/Lillist.entitlements": "modules/Apps-Lillist-macOS-misc.md",
+    "Apps/Lillist-macOS/Resources/Localizable.xcstrings": "modules/Apps-Lillist-macOS-misc.md",
+    "Apps/Lillist-macOS/Resources/PrivacyInfo.xcprivacy": "modules/Apps-Lillist-macOS-misc.md",
+    "Apps/Lillist-macOS/Sources/AppDelegate.swift": "modules/Apps-Lillist-macOS-Sources-misc.md",
+    "Apps/Lillist-macOS/Sources/AppEnvironment.swift": "modules/Apps-Lillist-macOS-Sources-misc.md",
+    "Apps/Lillist-macOS/Sources/Commands/CommandNotifications.swift": "modules/Apps-Lillist-macOS-Sources-Commands.md",
+    "Apps/Lillist-macOS/Sources/Commands/FocusedListColumn.swift": "modules/Apps-Lillist-macOS-Sources-Commands.md",
+    "Apps/Lillist-macOS/Sources/Commands/LillistCommands.swift": "modules/Apps-Lillist-macOS-Sources-Commands.md",
+    "Apps/Lillist-macOS/Sources/CrashReporterHost.swift": "modules/Apps-Lillist-macOS-Sources-misc.md",
+    "Apps/Lillist-macOS/Sources/Hotkey/GlobalHotkeyMonitor.swift": "modules/Apps-Lillist-macOS-Sources-Hotkey.md",
+    "Apps/Lillist-macOS/Sources/Hotkey/HotkeyKeyTable.swift": "modules/Apps-Lillist-macOS-Sources-Hotkey.md",
+    "Apps/Lillist-macOS/Sources/Hotkey/HotkeyRecorder.swift": "modules/Apps-Lillist-macOS-Sources-Hotkey.md",
+    "Apps/Lillist-macOS/Sources/Hotkey/QuickCapturePanelController.swift": "modules/Apps-Lillist-macOS-Sources-Hotkey.md",
+    "Apps/Lillist-macOS/Sources/Hotkey/QuickCapturePlacementMath.swift": "modules/Apps-Lillist-macOS-Sources-Hotkey.md",
+    "Apps/Lillist-macOS/Sources/Indexing/IndexingMappers.swift": "modules/Apps-Lillist-macOS-Sources-misc.md",
+    "Apps/Lillist-macOS/Sources/Indexing/IndexingService.swift": "modules/Apps-Lillist-macOS-Sources-misc.md",
+    "Apps/Lillist-macOS/Sources/LillistApp.swift": "modules/Apps-Lillist-macOS-Sources-misc.md",
+    "Apps/Lillist-macOS/Sources/MailtoTransport.swift": "modules/Apps-Lillist-macOS-Sources-misc.md",
+    "Apps/Lillist-macOS/Sources/MenuBar/MenuBarExtraScene.swift": "modules/Apps-Lillist-macOS-Sources-misc.md",
+    "Apps/Lillist-macOS/Sources/Onboarding/OnboardingSheet.swift": "modules/Apps-Lillist-macOS-Sources-misc.md",
+    "Apps/Lillist-macOS/Sources/Persistence/UIStatePersistence.swift": "modules/Apps-Lillist-macOS-Sources-misc.md",
+    "Apps/Lillist-macOS/Sources/Preferences/AdvancedPane.swift": "modules/Apps-Lillist-macOS-Sources-Preferences.md",
+    "Apps/Lillist-macOS/Sources/Preferences/CrashReportingPane.swift": "modules/Apps-Lillist-macOS-Sources-Preferences.md",
+    "Apps/Lillist-macOS/Sources/Preferences/DiagnosticsPane.swift": "modules/Apps-Lillist-macOS-Sources-Preferences.md",
+    "Apps/Lillist-macOS/Sources/Preferences/GeneralPane.swift": "modules/Apps-Lillist-macOS-Sources-Preferences.md",
+    "Apps/Lillist-macOS/Sources/Preferences/ICloudSyncPane.swift": "modules/Apps-Lillist-macOS-Sources-Preferences.md",
+    "Apps/Lillist-macOS/Sources/Preferences/NotificationsPane.swift": "modules/Apps-Lillist-macOS-Sources-Preferences.md",
+    "Apps/Lillist-macOS/Sources/Preferences/PreferencesWindow.swift": "modules/Apps-Lillist-macOS-Sources-Preferences.md",
+    "Apps/Lillist-macOS/Sources/Preferences/QuickCapturePane.swift": "modules/Apps-Lillist-macOS-Sources-Preferences.md",
+    "Apps/Lillist-macOS/Sources/Preferences/TrashPane.swift": "modules/Apps-Lillist-macOS-Sources-Preferences.md",
+    "Apps/Lillist-macOS/Sources/Services/LillistServicesProvider.swift": "modules/Apps-Lillist-macOS-Sources-misc.md",
+    "Apps/Lillist-macOS/Sources/StatusBar/TodayPopoverView.swift": "modules/Apps-Lillist-macOS-Sources-misc.md",
+    "Apps/Lillist-macOS/Sources/Views/Detail/DetailHeaderView.swift": "modules/Apps-Lillist-macOS-Sources-Views-Detail.md",
+    "Apps/Lillist-macOS/Sources/Views/Detail/FollowUpFormView.swift": "modules/Apps-Lillist-macOS-Sources-Views-Detail.md",
+    "Apps/Lillist-macOS/Sources/Views/Detail/JournalComposerView.swift": "modules/Apps-Lillist-macOS-Sources-Views-Detail.md",
+    "Apps/Lillist-macOS/Sources/Views/Detail/JournalStreamView.swift": "modules/Apps-Lillist-macOS-Sources-Views-Detail.md",
+    "Apps/Lillist-macOS/Sources/Views/Detail/NotesEditorView.swift": "modules/Apps-Lillist-macOS-Sources-Views-Detail.md",
+    "Apps/Lillist-macOS/Sources/Views/Detail/SubtaskOutlineView.swift": "modules/Apps-Lillist-macOS-Sources-Views-Detail.md",
+    "Apps/Lillist-macOS/Sources/Views/Detail/TaskDetailView.swift": "modules/Apps-Lillist-macOS-Sources-Views-Detail.md",
+    "Apps/Lillist-macOS/Sources/Views/EmptyView/NoSelectionDetailView.swift": "modules/Apps-Lillist-macOS-Sources-Views-misc.md",
+    "Apps/Lillist-macOS/Sources/Views/RootSplitView.swift": "modules/Apps-Lillist-macOS-Sources-Views-misc.md",
+    "Apps/Lillist-macOS/Sources/Views/Sidebar/SidebarSection.swift": "modules/Apps-Lillist-macOS-Sources-Views-Sidebar.md",
+    "Apps/Lillist-macOS/Sources/Views/Sidebar/SidebarSelection.swift": "modules/Apps-Lillist-macOS-Sources-Views-Sidebar.md",
+    "Apps/Lillist-macOS/Sources/Views/Sidebar/SidebarView.swift": "modules/Apps-Lillist-macOS-Sources-Views-Sidebar.md",
+    "Apps/Lillist-macOS/Sources/Views/TaskList/InlineCreateField.swift": "modules/Apps-Lillist-macOS-Sources-Views-TaskList.md",
+    "Apps/Lillist-macOS/Sources/Views/TaskList/SelectionAdvance.swift": "modules/Apps-Lillist-macOS-Sources-Views-TaskList.md",
+    "Apps/Lillist-macOS/Sources/Views/TaskList/SourceTitleResolver.swift": "modules/Apps-Lillist-macOS-Sources-Views-TaskList.md",
+    "Apps/Lillist-macOS/Sources/Views/TaskList/TaskListHeaderView.swift": "modules/Apps-Lillist-macOS-Sources-Views-TaskList.md",
+    "Apps/Lillist-macOS/Sources/Views/TaskList/TaskListSortControl.swift": "modules/Apps-Lillist-macOS-Sources-Views-TaskList.md",
+    "Apps/Lillist-macOS/Sources/Views/TaskList/TaskListView.swift": "modules/Apps-Lillist-macOS-Sources-Views-TaskList.md",
+    "Apps/Lillist-macOS/Sources/Views/TaskList/TaskOutlineNode.swift": "modules/Apps-Lillist-macOS-Sources-Views-TaskList.md",
+    "Apps/project.yml": "modules/Apps-misc.md",
+    "CHANGELOG.md": "modules/root-misc.md",
+    "CLAUDE.md": "modules/root-misc.md",
+    "Extensions/ShareExtension-iOS/Info.plist": "modules/Extensions-ShareExtension-iOS.md",
+    "Extensions/ShareExtension-iOS/Lillist.entitlements": "modules/Extensions-ShareExtension-iOS.md",
+    "Extensions/ShareExtension-iOS/PrivacyInfo.xcprivacy": "modules/Extensions-ShareExtension-iOS.md",
+    "Extensions/ShareExtension-iOS/SharePayload.swift": "modules/Extensions-ShareExtension-iOS.md",
+    "Extensions/ShareExtension-iOS/ShareRootView.swift": "modules/Extensions-ShareExtension-iOS.md",
+    "Extensions/ShareExtension-iOS/ShareSaveFlow.swift": "modules/Extensions-ShareExtension-iOS.md",
+    "Extensions/ShareExtension-iOS/ShareViewController.swift": "modules/Extensions-ShareExtension-iOS.md",
+    "Extensions/ShortcutsActions/AddNoteIntent.swift": "modules/Extensions-ShortcutsActions-misc.md",
+    "Extensions/ShortcutsActions/AddNudgeIntent.swift": "modules/Extensions-ShortcutsActions-misc.md",
+    "Extensions/ShortcutsActions/AddTaskIntent.swift": "modules/Extensions-ShortcutsActions-misc.md",
+    "Extensions/ShortcutsActions/CompleteTaskIntent.swift": "modules/Extensions-ShortcutsActions-misc.md",
+    "Extensions/ShortcutsActions/Entities/StatusAppEnum.swift": "modules/Extensions-ShortcutsActions-Entities.md",
+    "Extensions/ShortcutsActions/Entities/TaskEntity.swift": "modules/Extensions-ShortcutsActions-Entities.md",
+    "Extensions/ShortcutsActions/Entities/TaskEntityQuery.swift": "modules/Extensions-ShortcutsActions-Entities.md",
+    "Extensions/ShortcutsActions/Info.plist": "modules/Extensions-ShortcutsActions-misc.md",
+    "Extensions/ShortcutsActions/IntentSupport.swift": "modules/Extensions-ShortcutsActions-misc.md",
+    "Extensions/ShortcutsActions/Lillist.entitlements": "modules/Extensions-ShortcutsActions-misc.md",
+    "Extensions/ShortcutsActions/LillistShortcuts.swift": "modules/Extensions-ShortcutsActions-misc.md",
+    "Extensions/ShortcutsActions/OpenTaskIntent.swift": "modules/Extensions-ShortcutsActions-misc.md",
+    "Extensions/ShortcutsActions/PrivacyInfo.xcprivacy": "modules/Extensions-ShortcutsActions-misc.md",
+    "Extensions/ShortcutsActions/QuickCaptureLockScreenIntent.swift": "modules/Extensions-ShortcutsActions-misc.md",
+    "Extensions/ShortcutsActions/ReportCrashIntent.swift": "modules/Extensions-ShortcutsActions-misc.md",
+    "Extensions/ShortcutsActions/SearchTasksIntent.swift": "modules/Extensions-ShortcutsActions-misc.md",
+    "Extensions/ShortcutsActions/ToggleStatusIntent.swift": "modules/Extensions-ShortcutsActions-misc.md",
+    "Lillist.xcworkspace/contents.xcworkspacedata": "modules/root-misc.md",
+    "Packages/LillistCore/Package.swift": "modules/Packages-LillistCore-misc.md",
+    "Packages/LillistCore/Plugins/CompileCoreDataModel/CompileCoreDataModel.swift": "modules/Packages-LillistCore-misc.md",
+    "Packages/LillistCore/README.md": "modules/Packages-LillistCore-misc.md",
+    "Packages/LillistCore/Sources/LillistCore/CLIBridge/CLIBridge.swift": "modules/Packages-LillistCore-Sources-LillistCore-CLIBridge-misc.md",
+    "Packages/LillistCore/Sources/LillistCore/CLIBridge/Config.swift": "modules/Packages-LillistCore-Sources-LillistCore-CLIBridge-misc.md",
+    "Packages/LillistCore/Sources/LillistCore/CLIBridge/DateParsing.swift": "modules/Packages-LillistCore-Sources-LillistCore-CLIBridge-misc.md",
+    "Packages/LillistCore/Sources/LillistCore/CLIBridge/FilterFlags.swift": "modules/Packages-LillistCore-Sources-LillistCore-CLIBridge-misc.md",
+    "Packages/LillistCore/Sources/LillistCore/CLIBridge/Handlers/AddHandler.swift": "modules/Packages-LillistCore-Sources-LillistCore-CLIBridge-Handlers-chunk-1.md",
+    "Packages/LillistCore/Sources/LillistCore/CLIBridge/Handlers/AttachHandler.swift": "modules/Packages-LillistCore-Sources-LillistCore-CLIBridge-Handlers-chunk-1.md",
+    "Packages/LillistCore/Sources/LillistCore/CLIBridge/Handlers/CountHandler.swift": "modules/Packages-LillistCore-Sources-LillistCore-CLIBridge-Handlers-chunk-1.md",
+    "Packages/LillistCore/Sources/LillistCore/CLIBridge/Handlers/DeleteHandler.swift": "modules/Packages-LillistCore-Sources-LillistCore-CLIBridge-Handlers-chunk-1.md",
+    "Packages/LillistCore/Sources/LillistCore/CLIBridge/Handlers/EditHandler.swift": "modules/Packages-LillistCore-Sources-LillistCore-CLIBridge-Handlers-chunk-1.md",
+    "Packages/LillistCore/Sources/LillistCore/CLIBridge/Handlers/EvalHandler.swift": "modules/Packages-LillistCore-Sources-LillistCore-CLIBridge-Handlers-chunk-1.md",
+    "Packages/LillistCore/Sources/LillistCore/CLIBridge/Handlers/ExportHandler.swift": "modules/Packages-LillistCore-Sources-LillistCore-CLIBridge-Handlers-chunk-1.md",
+    "Packages/LillistCore/Sources/LillistCore/CLIBridge/Handlers/FiltersHandler.swift": "modules/Packages-LillistCore-Sources-LillistCore-CLIBridge-Handlers-chunk-1.md",
+    "Packages/LillistCore/Sources/LillistCore/CLIBridge/Handlers/LinkHandler.swift": "modules/Packages-LillistCore-Sources-LillistCore-CLIBridge-Handlers-chunk-1.md",
+    "Packages/LillistCore/Sources/LillistCore/CLIBridge/Handlers/LsHandler.swift": "modules/Packages-LillistCore-Sources-LillistCore-CLIBridge-Handlers-chunk-1.md",
+    "Packages/LillistCore/Sources/LillistCore/CLIBridge/Handlers/MoveHandler.swift": "modules/Packages-LillistCore-Sources-LillistCore-CLIBridge-Handlers-chunk-1.md",
+    "Packages/LillistCore/Sources/LillistCore/CLIBridge/Handlers/NoteHandler.swift": "modules/Packages-LillistCore-Sources-LillistCore-CLIBridge-Handlers-chunk-1.md",
+    "Packages/LillistCore/Sources/LillistCore/CLIBridge/Handlers/NudgeHandler.swift": "modules/Packages-LillistCore-Sources-LillistCore-CLIBridge-Handlers-chunk-1.md",
+    "Packages/LillistCore/Sources/LillistCore/CLIBridge/Handlers/PinHandler.swift": "modules/Packages-LillistCore-Sources-LillistCore-CLIBridge-Handlers-chunk-1.md",
+    "Packages/LillistCore/Sources/LillistCore/CLIBridge/Handlers/PurgeHandler.swift": "modules/Packages-LillistCore-Sources-LillistCore-CLIBridge-Handlers-chunk-1.md",
+    "Packages/LillistCore/Sources/LillistCore/CLIBridge/Handlers/RestoreHandler.swift": "modules/Packages-LillistCore-Sources-LillistCore-CLIBridge-Handlers-chunk-2.md",
+    "Packages/LillistCore/Sources/LillistCore/CLIBridge/Handlers/SearchHandler.swift": "modules/Packages-LillistCore-Sources-LillistCore-CLIBridge-Handlers-chunk-2.md",
+    "Packages/LillistCore/Sources/LillistCore/CLIBridge/Handlers/ShowHandler.swift": "modules/Packages-LillistCore-Sources-LillistCore-CLIBridge-Handlers-chunk-2.md",
+    "Packages/LillistCore/Sources/LillistCore/CLIBridge/Handlers/StatusHandler.swift": "modules/Packages-LillistCore-Sources-LillistCore-CLIBridge-Handlers-chunk-2.md",
+    "Packages/LillistCore/Sources/LillistCore/CLIBridge/Handlers/TagHandler.swift": "modules/Packages-LillistCore-Sources-LillistCore-CLIBridge-Handlers-chunk-2.md",
+    "Packages/LillistCore/Sources/LillistCore/CLIBridge/Handlers/TagsHandler.swift": "modules/Packages-LillistCore-Sources-LillistCore-CLIBridge-Handlers-chunk-2.md",
+    "Packages/LillistCore/Sources/LillistCore/CLIBridge/Handlers/WatchHandler.swift": "modules/Packages-LillistCore-Sources-LillistCore-CLIBridge-Handlers-chunk-2.md",
+    "Packages/LillistCore/Sources/LillistCore/CLIBridge/OutputFormat.swift": "modules/Packages-LillistCore-Sources-LillistCore-CLIBridge-misc.md",
+    "Packages/LillistCore/Sources/LillistCore/CLIBridge/Renderers/FilterRenderer.swift": "modules/Packages-LillistCore-Sources-LillistCore-CLIBridge-Renderers.md",
+    "Packages/LillistCore/Sources/LillistCore/CLIBridge/Renderers/JournalRenderer.swift": "modules/Packages-LillistCore-Sources-LillistCore-CLIBridge-Renderers.md",
+    "Packages/LillistCore/Sources/LillistCore/CLIBridge/Renderers/TagRenderer.swift": "modules/Packages-LillistCore-Sources-LillistCore-CLIBridge-Renderers.md",
+    "Packages/LillistCore/Sources/LillistCore/CLIBridge/Renderers/TaskRenderer.swift": "modules/Packages-LillistCore-Sources-LillistCore-CLIBridge-Renderers.md",
+    "Packages/LillistCore/Sources/LillistCore/CLIBridge/Resolver.swift": "modules/Packages-LillistCore-Sources-LillistCore-CLIBridge-misc.md",
+    "Packages/LillistCore/Sources/LillistCore/CLIBridge/StoreLocator.swift": "modules/Packages-LillistCore-Sources-LillistCore-CLIBridge-misc.md",
+    "Packages/LillistCore/Sources/LillistCore/CrashReporting/AppPreferences+Crash.swift": "modules/Packages-LillistCore-Sources-LillistCore-CrashReporting.md",
+    "Packages/LillistCore/Sources/LillistCore/CrashReporting/Breadcrumb.swift": "modules/Packages-LillistCore-Sources-LillistCore-CrashReporting.md",
+    "Packages/LillistCore/Sources/LillistCore/CrashReporting/BreadcrumbBuffer.swift": "modules/Packages-LillistCore-Sources-LillistCore-CrashReporting.md",
+    "Packages/LillistCore/Sources/LillistCore/CrashReporting/CanaryFile.swift": "modules/Packages-LillistCore-Sources-LillistCore-CrashReporting.md",
+    "Packages/LillistCore/Sources/LillistCore/CrashReporting/CrashCanary.swift": "modules/Packages-LillistCore-Sources-LillistCore-CrashReporting.md",
+    "Packages/LillistCore/Sources/LillistCore/CrashReporting/CrashReport.swift": "modules/Packages-LillistCore-Sources-LillistCore-CrashReporting.md",
+    "Packages/LillistCore/Sources/LillistCore/CrashReporting/CrashReportTransport.swift": "modules/Packages-LillistCore-Sources-LillistCore-CrashReporting.md",
+    "Packages/LillistCore/Sources/LillistCore/CrashReporting/CrashReporter.swift": "modules/Packages-LillistCore-Sources-LillistCore-CrashReporting.md",
+    "Packages/LillistCore/Sources/LillistCore/CrashReporting/CrashReporting.swift": "modules/Packages-LillistCore-Sources-LillistCore-CrashReporting.md",
+    "Packages/LillistCore/Sources/LillistCore/CrashReporting/LogRedactor.swift": "modules/Packages-LillistCore-Sources-LillistCore-CrashReporting.md",
+    "Packages/LillistCore/Sources/LillistCore/CrashReporting/OSLogFetcher.swift": "modules/Packages-LillistCore-Sources-LillistCore-CrashReporting.md",
+    "Packages/LillistCore/Sources/LillistCore/Diagnostics/DiagnosticDefaults.swift": "modules/Packages-LillistCore-Sources-LillistCore-Diagnostics.md",
+    "Packages/LillistCore/Sources/LillistCore/Diagnostics/DiagnosticEvent.swift": "modules/Packages-LillistCore-Sources-LillistCore-Diagnostics.md",
+    "Packages/LillistCore/Sources/LillistCore/Diagnostics/DiagnosticHistoryObserver.swift": "modules/Packages-LillistCore-Sources-LillistCore-Diagnostics.md",
+    "Packages/LillistCore/Sources/LillistCore/Diagnostics/DiagnosticLog.swift": "modules/Packages-LillistCore-Sources-LillistCore-Diagnostics.md",
+    "Packages/LillistCore/Sources/LillistCore/Diagnostics/DiagnosticPackageBuilder.swift": "modules/Packages-LillistCore-Sources-LillistCore-Diagnostics.md",
+    "Packages/LillistCore/Sources/LillistCore/Diagnostics/DiagnosticSink.swift": "modules/Packages-LillistCore-Sources-LillistCore-Diagnostics.md",
+    "Packages/LillistCore/Sources/LillistCore/Export/ExportSchema.swift": "modules/Packages-LillistCore-Sources-LillistCore-Export.md",
+    "Packages/LillistCore/Sources/LillistCore/Export/Exporter.swift": "modules/Packages-LillistCore-Sources-LillistCore-Export.md",
+    "Packages/LillistCore/Sources/LillistCore/Export/Importer.swift": "modules/Packages-LillistCore-Sources-LillistCore-Export.md",
+    "Packages/LillistCore/Sources/LillistCore/LillistCore.swift": "modules/Packages-LillistCore-Sources-LillistCore-misc.md",
+    "Packages/LillistCore/Sources/LillistCore/LinkPreview/LinkPreviewFetching.swift": "modules/Packages-LillistCore-Sources-LillistCore-LinkPreview.md",
+    "Packages/LillistCore/Sources/LillistCore/LinkPreview/LinkPreviewMetadata.swift": "modules/Packages-LillistCore-Sources-LillistCore-LinkPreview.md",
+    "Packages/LillistCore/Sources/LillistCore/LinkPreview/LinkPreviewUnfurler.swift": "modules/Packages-LillistCore-Sources-LillistCore-LinkPreview.md",
+    "Packages/LillistCore/Sources/LillistCore/LinkPreview/OpenGraphParser.swift": "modules/Packages-LillistCore-Sources-LillistCore-LinkPreview.md",
+    "Packages/LillistCore/Sources/LillistCore/LinkPreview/URLPreviewPolicy.swift": "modules/Packages-LillistCore-Sources-LillistCore-LinkPreview.md",
+    "Packages/LillistCore/Sources/LillistCore/LinkPreview/URLSessionLinkPreviewFetcher.swift": "modules/Packages-LillistCore-Sources-LillistCore-LinkPreview.md",
+    "Packages/LillistCore/Sources/LillistCore/ManagedObjects/AppPreferences+CoreData.swift": "modules/Packages-LillistCore-Sources-LillistCore-ManagedObjects.md",
+    "Packages/LillistCore/Sources/LillistCore/ManagedObjects/Attachment+CoreData.swift": "modules/Packages-LillistCore-Sources-LillistCore-ManagedObjects.md",
+    "Packages/LillistCore/Sources/LillistCore/ManagedObjects/JournalEntry+CoreData.swift": "modules/Packages-LillistCore-Sources-LillistCore-ManagedObjects.md",
+    "Packages/LillistCore/Sources/LillistCore/ManagedObjects/LillistTask+CoreData.swift": "modules/Packages-LillistCore-Sources-LillistCore-ManagedObjects.md",
+    "Packages/LillistCore/Sources/LillistCore/ManagedObjects/NotificationSpec+CoreData.swift": "modules/Packages-LillistCore-Sources-LillistCore-ManagedObjects.md",
+    "Packages/LillistCore/Sources/LillistCore/ManagedObjects/Series+CoreData.swift": "modules/Packages-LillistCore-Sources-LillistCore-ManagedObjects.md",
+    "Packages/LillistCore/Sources/LillistCore/ManagedObjects/SmartFilter+CoreData.swift": "modules/Packages-LillistCore-Sources-LillistCore-ManagedObjects.md",
+    "Packages/LillistCore/Sources/LillistCore/ManagedObjects/Tag+CoreData.swift": "modules/Packages-LillistCore-Sources-LillistCore-ManagedObjects.md",
+    "Packages/LillistCore/Sources/LillistCore/Model/AttachmentKind.swift": "modules/Packages-LillistCore-Sources-LillistCore-Model.md",
+    "Packages/LillistCore/Sources/LillistCore/Model/JournalEntryKind.swift": "modules/Packages-LillistCore-Sources-LillistCore-Model.md",
+    "Packages/LillistCore/Sources/LillistCore/Model/LillistModel.xcdatamodeld/.xccurrentversion": "modules/Packages-LillistCore-Sources-LillistCore-Model.md",
+    "Packages/LillistCore/Sources/LillistCore/Model/LillistModel.xcdatamodeld/LillistModel.xcdatamodel/contents": "modules/Packages-LillistCore-Sources-LillistCore-Model.md",
+    "Packages/LillistCore/Sources/LillistCore/Model/NotificationKind.swift": "modules/Packages-LillistCore-Sources-LillistCore-Model.md",
+    "Packages/LillistCore/Sources/LillistCore/Model/SortField.swift": "modules/Packages-LillistCore-Sources-LillistCore-Model.md",
+    "Packages/LillistCore/Sources/LillistCore/Model/Status.swift": "modules/Packages-LillistCore-Sources-LillistCore-Model.md",
+    "Packages/LillistCore/Sources/LillistCore/Notifications/DeviceFingerprint.swift": "modules/Packages-LillistCore-Sources-LillistCore-Notifications.md",
+    "Packages/LillistCore/Sources/LillistCore/Notifications/MorningSummaryRequestID.swift": "modules/Packages-LillistCore-Sources-LillistCore-Notifications.md",
+    "Packages/LillistCore/Sources/LillistCore/Notifications/NotificationCategoryFactory.swift": "modules/Packages-LillistCore-Sources-LillistCore-Notifications.md",
+    "Packages/LillistCore/Sources/LillistCore/Notifications/NotificationPermissions.swift": "modules/Packages-LillistCore-Sources-LillistCore-Notifications.md",
+    "Packages/LillistCore/Sources/LillistCore/Notifications/NotificationReconciling.swift": "modules/Packages-LillistCore-Sources-LillistCore-Notifications.md",
+    "Packages/LillistCore/Sources/LillistCore/Notifications/NotificationScheduler.swift": "modules/Packages-LillistCore-Sources-LillistCore-Notifications.md",
+    "Packages/LillistCore/Sources/LillistCore/Notifications/NotificationSpecStore.swift": "modules/Packages-LillistCore-Sources-LillistCore-Notifications.md",
+    "Packages/LillistCore/Sources/LillistCore/Notifications/SnoozeAction.swift": "modules/Packages-LillistCore-Sources-LillistCore-Notifications.md",
+    "Packages/LillistCore/Sources/LillistCore/Notifications/SnoozeRegistry.swift": "modules/Packages-LillistCore-Sources-LillistCore-Notifications.md",
+    "Packages/LillistCore/Sources/LillistCore/Notifications/UNUserNotificationCenterProtocol.swift": "modules/Packages-LillistCore-Sources-LillistCore-Notifications.md",
+    "Packages/LillistCore/Sources/LillistCore/Onboarding/DefaultsInstaller.swift": "modules/Packages-LillistCore-Sources-LillistCore-misc.md",
+    "Packages/LillistCore/Sources/LillistCore/Onboarding/OnboardingState.swift": "modules/Packages-LillistCore-Sources-LillistCore-misc.md",
+    "Packages/LillistCore/Sources/LillistCore/Ordering/FractionalPosition.swift": "modules/Packages-LillistCore-Sources-LillistCore-Ordering.md",
+    "Packages/LillistCore/Sources/LillistCore/Ordering/PositionCompactor.swift": "modules/Packages-LillistCore-Sources-LillistCore-Ordering.md",
+    "Packages/LillistCore/Sources/LillistCore/Ordering/SiblingOrder.swift": "modules/Packages-LillistCore-Sources-LillistCore-Ordering.md",
+    "Packages/LillistCore/Sources/LillistCore/Persistence/AutoPurgeJob.swift": "modules/Packages-LillistCore-Sources-LillistCore-Persistence.md",
+    "Packages/LillistCore/Sources/LillistCore/Persistence/BackgroundPurgeSchedule.swift": "modules/Packages-LillistCore-Sources-LillistCore-Persistence.md",
+    "Packages/LillistCore/Sources/LillistCore/Persistence/CascadeReaper.swift": "modules/Packages-LillistCore-Sources-LillistCore-Persistence.md",
+    "Packages/LillistCore/Sources/LillistCore/Persistence/CloudKitSchemaInitializer.swift": "modules/Packages-LillistCore-Sources-LillistCore-Persistence.md",
+    "Packages/LillistCore/Sources/LillistCore/Persistence/DiskSpaceProbe.swift": "modules/Packages-LillistCore-Sources-LillistCore-Persistence.md",
+    "Packages/LillistCore/Sources/LillistCore/Persistence/HistoryPruner.swift": "modules/Packages-LillistCore-Sources-LillistCore-Persistence.md",
+    "Packages/LillistCore/Sources/LillistCore/Persistence/PersistenceController.swift": "modules/Packages-LillistCore-Sources-LillistCore-Persistence.md",
+    "Packages/LillistCore/Sources/LillistCore/Persistence/PersistenceHost.swift": "modules/Packages-LillistCore-Sources-LillistCore-Persistence.md",
+    "Packages/LillistCore/Sources/LillistCore/Persistence/PersistenceReconfiguring.swift": "modules/Packages-LillistCore-Sources-LillistCore-Persistence.md",
+    "Packages/LillistCore/Sources/LillistCore/Persistence/PersistentHistoryTokenStore.swift": "modules/Packages-LillistCore-Sources-LillistCore-Persistence.md",
+    "Packages/LillistCore/Sources/LillistCore/Persistence/QuarantineManager.swift": "modules/Packages-LillistCore-Sources-LillistCore-Persistence.md",
+    "Packages/LillistCore/Sources/LillistCore/Persistence/RemoteChangeReconciler.swift": "modules/Packages-LillistCore-Sources-LillistCore-Persistence.md",
+    "Packages/LillistCore/Sources/LillistCore/Persistence/StoreConfiguration.swift": "modules/Packages-LillistCore-Sources-LillistCore-Persistence.md",
+    "Packages/LillistCore/Sources/LillistCore/Preferences/AppPreferencesPartitionMigrator.swift": "modules/Packages-LillistCore-Sources-LillistCore-misc.md",
+    "Packages/LillistCore/Sources/LillistCore/Preferences/DevicePreferencesStore.swift": "modules/Packages-LillistCore-Sources-LillistCore-misc.md",
+    "Packages/LillistCore/Sources/LillistCore/Recurrence/RecurrenceExpander.swift": "modules/Packages-LillistCore-Sources-LillistCore-Recurrence.md",
+    "Packages/LillistCore/Sources/LillistCore/Recurrence/RecurrenceLog.swift": "modules/Packages-LillistCore-Sources-LillistCore-Recurrence.md",
+    "Packages/LillistCore/Sources/LillistCore/Recurrence/RecurrenceRule.swift": "modules/Packages-LillistCore-Sources-LillistCore-Recurrence.md",
+    "Packages/LillistCore/Sources/LillistCore/Recurrence/RecurrenceSpawner.swift": "modules/Packages-LillistCore-Sources-LillistCore-Recurrence.md",
+    "Packages/LillistCore/Sources/LillistCore/Recurrence/Weekday.swift": "modules/Packages-LillistCore-Sources-LillistCore-Recurrence.md",
+    "Packages/LillistCore/Sources/LillistCore/Rules/AttachmentKindMatch.swift": "modules/Packages-LillistCore-Sources-LillistCore-Rules.md",
+    "Packages/LillistCore/Sources/LillistCore/Rules/Field.swift": "modules/Packages-LillistCore-Sources-LillistCore-Rules.md",
+    "Packages/LillistCore/Sources/LillistCore/Rules/Leaf.swift": "modules/Packages-LillistCore-Sources-LillistCore-Rules.md",
+    "Packages/LillistCore/Sources/LillistCore/Rules/NSPredicateCompiler.swift": "modules/Packages-LillistCore-Sources-LillistCore-Rules.md",
+    "Packages/LillistCore/Sources/LillistCore/Rules/Op.swift": "modules/Packages-LillistCore-Sources-LillistCore-Rules.md",
+    "Packages/LillistCore/Sources/LillistCore/Rules/Predicate.swift": "modules/Packages-LillistCore-Sources-LillistCore-Rules.md",
+    "Packages/LillistCore/Sources/LillistCore/Rules/PredicateGroup.swift": "modules/Packages-LillistCore-Sources-LillistCore-Rules.md",
+    "Packages/LillistCore/Sources/LillistCore/Rules/PredicateLimits.swift": "modules/Packages-LillistCore-Sources-LillistCore-Rules.md",
+    "Packages/LillistCore/Sources/LillistCore/Rules/RelativeDate.swift": "modules/Packages-LillistCore-Sources-LillistCore-Rules.md",
+    "Packages/LillistCore/Sources/LillistCore/Rules/RelativeDateResolver.swift": "modules/Packages-LillistCore-Sources-LillistCore-Rules.md",
+    "Packages/LillistCore/Sources/LillistCore/Rules/SwiftEvaluator.swift": "modules/Packages-LillistCore-Sources-LillistCore-Rules.md",
+    "Packages/LillistCore/Sources/LillistCore/Rules/Value.swift": "modules/Packages-LillistCore-Sources-LillistCore-Rules.md",
+    "Packages/LillistCore/Sources/LillistCore/Stores/AttachmentStore.swift": "modules/Packages-LillistCore-Sources-LillistCore-Stores-chunk-1.md",
+    "Packages/LillistCore/Sources/LillistCore/Stores/JournalStore.swift": "modules/Packages-LillistCore-Sources-LillistCore-Stores-chunk-1.md",
+    "Packages/LillistCore/Sources/LillistCore/Stores/PreferencesStore.swift": "modules/Packages-LillistCore-Sources-LillistCore-Stores-chunk-1.md",
+    "Packages/LillistCore/Sources/LillistCore/Stores/SeriesStore.swift": "modules/Packages-LillistCore-Sources-LillistCore-Stores-chunk-1.md",
+    "Packages/LillistCore/Sources/LillistCore/Stores/SmartFilterStore+Defaults.swift": "modules/Packages-LillistCore-Sources-LillistCore-Stores-chunk-1.md",
+    "Packages/LillistCore/Sources/LillistCore/Stores/SmartFilterStore.swift": "modules/Packages-LillistCore-Sources-LillistCore-Stores-chunk-1.md",
+    "Packages/LillistCore/Sources/LillistCore/Stores/TagStore+FindOrCreate.swift": "modules/Packages-LillistCore-Sources-LillistCore-Stores-chunk-1.md",
+    "Packages/LillistCore/Sources/LillistCore/Stores/TagStore.swift": "modules/Packages-LillistCore-Sources-LillistCore-Stores-chunk-1.md",
+    "Packages/LillistCore/Sources/LillistCore/Stores/TaskStore+FollowUp.swift": "modules/Packages-LillistCore-Sources-LillistCore-Stores-chunk-1.md",
+    "Packages/LillistCore/Sources/LillistCore/Stores/TaskStore+Queries.swift": "modules/Packages-LillistCore-Sources-LillistCore-Stores-chunk-1.md",
+    "Packages/LillistCore/Sources/LillistCore/Stores/TaskStore.swift": "modules/Packages-LillistCore-Sources-LillistCore-Stores-chunk-2.md",
+    "Packages/LillistCore/Sources/LillistCore/Support/LillistCoreContact.swift": "modules/Packages-LillistCore-Sources-LillistCore-misc.md",
+    "Packages/LillistCore/Sources/LillistCore/Support/LillistLog.swift": "modules/Packages-LillistCore-Sources-LillistCore-misc.md",
+    "Packages/LillistCore/Sources/LillistCore/Sync/AccountStateMonitor.swift": "modules/Packages-LillistCore-Sources-LillistCore-Sync-chunk-1.md",
+    "Packages/LillistCore/Sources/LillistCore/Sync/CloudKitErrorClassifier.swift": "modules/Packages-LillistCore-Sources-LillistCore-Sync-chunk-1.md",
+    "Packages/LillistCore/Sources/LillistCore/Sync/CloudKitEventBridge.swift": "modules/Packages-LillistCore-Sources-LillistCore-Sync-chunk-1.md",
+    "Packages/LillistCore/Sources/LillistCore/Sync/CloudKitZoneEraser.swift": "modules/Packages-LillistCore-Sources-LillistCore-Sync-chunk-1.md",
+    "Packages/LillistCore/Sources/LillistCore/Sync/CloudKitZoneEraserImpl.swift": "modules/Packages-LillistCore-Sources-LillistCore-Sync-chunk-1.md",
+    "Packages/LillistCore/Sources/LillistCore/Sync/GatedPersistenceResolver.swift": "modules/Packages-LillistCore-Sources-LillistCore-Sync-chunk-1.md",
+    "Packages/LillistCore/Sources/LillistCore/Sync/MigrationCoordinator.swift": "modules/Packages-LillistCore-Sources-LillistCore-Sync-chunk-1.md",
+    "Packages/LillistCore/Sources/LillistCore/Sync/MigrationGate.swift": "modules/Packages-LillistCore-Sources-LillistCore-Sync-chunk-1.md",
+    "Packages/LillistCore/Sources/LillistCore/Sync/MigrationJournal.swift": "modules/Packages-LillistCore-Sources-LillistCore-Sync-chunk-1.md",
+    "Packages/LillistCore/Sources/LillistCore/Sync/MigrationJournalStore.swift": "modules/Packages-LillistCore-Sources-LillistCore-Sync-chunk-1.md",
+    "Packages/LillistCore/Sources/LillistCore/Sync/PauseReason.swift": "modules/Packages-LillistCore-Sources-LillistCore-Sync-chunk-1.md",
+    "Packages/LillistCore/Sources/LillistCore/Sync/PauseReasonClassifier.swift": "modules/Packages-LillistCore-Sources-LillistCore-Sync-chunk-1.md",
+    "Packages/LillistCore/Sources/LillistCore/Sync/SyncMode.swift": "modules/Packages-LillistCore-Sources-LillistCore-Sync-chunk-1.md",
+    "Packages/LillistCore/Sources/LillistCore/Sync/SyncModeStore.swift": "modules/Packages-LillistCore-Sources-LillistCore-Sync-chunk-1.md",
+    "Packages/LillistCore/Sources/LillistCore/Sync/SyncQuiesceMonitor.swift": "modules/Packages-LillistCore-Sources-LillistCore-Sync-chunk-1.md",
+    "Packages/LillistCore/Sources/LillistCore/Sync/SyncStatus.swift": "modules/Packages-LillistCore-Sources-LillistCore-Sync-chunk-2.md",
+    "Packages/LillistCore/Sources/LillistCore/Sync/SyncStatusMonitor.swift": "modules/Packages-LillistCore-Sources-LillistCore-Sync-chunk-2.md",
+    "Packages/LillistCore/Sources/LillistCore/Sync/iCloudAccountState.swift": "modules/Packages-LillistCore-Sources-LillistCore-Sync-chunk-2.md",
+    "Packages/LillistCore/Sources/LillistCore/Validation/LillistError.swift": "modules/Packages-LillistCore-Sources-LillistCore-misc.md",
+    "Packages/LillistCore/Sources/LillistCore/Validation/Validators.swift": "modules/Packages-LillistCore-Sources-LillistCore-misc.md",
+    "Packages/LillistCore/Sources/lillist-cli/Commands/AddCommand.swift": "modules/Packages-LillistCore-Sources-lillist-cli-Commands-chunk-1.md",
+    "Packages/LillistCore/Sources/lillist-cli/Commands/AttachCommand.swift": "modules/Packages-LillistCore-Sources-lillist-cli-Commands-chunk-1.md",
+    "Packages/LillistCore/Sources/lillist-cli/Commands/CompletionCommand.swift": "modules/Packages-LillistCore-Sources-lillist-cli-Commands-chunk-1.md",
+    "Packages/LillistCore/Sources/lillist-cli/Commands/CountCommand.swift": "modules/Packages-LillistCore-Sources-lillist-cli-Commands-chunk-1.md",
+    "Packages/LillistCore/Sources/lillist-cli/Commands/DeleteCommand.swift": "modules/Packages-LillistCore-Sources-lillist-cli-Commands-chunk-1.md",
+    "Packages/LillistCore/Sources/lillist-cli/Commands/EditCommand.swift": "modules/Packages-LillistCore-Sources-lillist-cli-Commands-chunk-1.md",
+    "Packages/LillistCore/Sources/lillist-cli/Commands/EvalCommand.swift": "modules/Packages-LillistCore-Sources-lillist-cli-Commands-chunk-1.md",
+    "Packages/LillistCore/Sources/lillist-cli/Commands/ExportCommand.swift": "modules/Packages-LillistCore-Sources-lillist-cli-Commands-chunk-1.md",
+    "Packages/LillistCore/Sources/lillist-cli/Commands/FiltersCommand.swift": "modules/Packages-LillistCore-Sources-lillist-cli-Commands-chunk-1.md",
+    "Packages/LillistCore/Sources/lillist-cli/Commands/LinkCommand.swift": "modules/Packages-LillistCore-Sources-lillist-cli-Commands-chunk-1.md",
+    "Packages/LillistCore/Sources/lillist-cli/Commands/LsCommand.swift": "modules/Packages-LillistCore-Sources-lillist-cli-Commands-chunk-1.md",
+    "Packages/LillistCore/Sources/lillist-cli/Commands/MoveCommand.swift": "modules/Packages-LillistCore-Sources-lillist-cli-Commands-chunk-1.md",
+    "Packages/LillistCore/Sources/lillist-cli/Commands/NoteCommand.swift": "modules/Packages-LillistCore-Sources-lillist-cli-Commands-chunk-1.md",
+    "Packages/LillistCore/Sources/lillist-cli/Commands/NudgeCommand.swift": "modules/Packages-LillistCore-Sources-lillist-cli-Commands-chunk-1.md",
+    "Packages/LillistCore/Sources/lillist-cli/Commands/PinCommand.swift": "modules/Packages-LillistCore-Sources-lillist-cli-Commands-chunk-1.md",
+    "Packages/LillistCore/Sources/lillist-cli/Commands/PurgeCommand.swift": "modules/Packages-LillistCore-Sources-lillist-cli-Commands-chunk-2.md",
+    "Packages/LillistCore/Sources/lillist-cli/Commands/ReportCrashCommand.swift": "modules/Packages-LillistCore-Sources-lillist-cli-Commands-chunk-2.md",
+    "Packages/LillistCore/Sources/lillist-cli/Commands/RestoreCommand.swift": "modules/Packages-LillistCore-Sources-lillist-cli-Commands-chunk-2.md",
+    "Packages/LillistCore/Sources/lillist-cli/Commands/SearchCommand.swift": "modules/Packages-LillistCore-Sources-lillist-cli-Commands-chunk-2.md",
+    "Packages/LillistCore/Sources/lillist-cli/Commands/ShowCommand.swift": "modules/Packages-LillistCore-Sources-lillist-cli-Commands-chunk-2.md",
+    "Packages/LillistCore/Sources/lillist-cli/Commands/StatusCommand.swift": "modules/Packages-LillistCore-Sources-lillist-cli-Commands-chunk-2.md",
+    "Packages/LillistCore/Sources/lillist-cli/Commands/TagCommand.swift": "modules/Packages-LillistCore-Sources-lillist-cli-Commands-chunk-2.md",
+    "Packages/LillistCore/Sources/lillist-cli/Commands/TagsCommand.swift": "modules/Packages-LillistCore-Sources-lillist-cli-Commands-chunk-2.md",
+    "Packages/LillistCore/Sources/lillist-cli/Commands/UnpinCommand.swift": "modules/Packages-LillistCore-Sources-lillist-cli-Commands-chunk-2.md",
+    "Packages/LillistCore/Sources/lillist-cli/Commands/VersionCommand.swift": "modules/Packages-LillistCore-Sources-lillist-cli-Commands-chunk-2.md",
+    "Packages/LillistCore/Sources/lillist-cli/Commands/WatchCommand.swift": "modules/Packages-LillistCore-Sources-lillist-cli-Commands-chunk-2.md",
+    "Packages/LillistCore/Sources/lillist-cli/Lillist.swift": "modules/Packages-LillistCore-Sources-lillist-cli-misc.md",
+    "Packages/LillistCore/Sources/lillist-cli/README.md": "modules/Packages-LillistCore-Sources-lillist-cli-misc.md",
+    "Packages/LillistCore/Sources/lillist-cli/Support/BatchTokens.swift": "modules/Packages-LillistCore-Sources-lillist-cli-Support.md",
+    "Packages/LillistCore/Sources/lillist-cli/Support/CLICanaryLifecycle.swift": "modules/Packages-LillistCore-Sources-lillist-cli-Support.md",
+    "Packages/LillistCore/Sources/lillist-cli/Support/CLIMailtoTransport.swift": "modules/Packages-LillistCore-Sources-lillist-cli-Support.md",
+    "Packages/LillistCore/Sources/lillist-cli/Support/ExitCode.swift": "modules/Packages-LillistCore-Sources-lillist-cli-Support.md",
+    "Packages/LillistCore/Sources/lillist-cli/Support/GlobalOptions.swift": "modules/Packages-LillistCore-Sources-lillist-cli-Support.md",
+    "Packages/LillistCore/Sources/lillist-cli/Support/StdinReader.swift": "modules/Packages-LillistCore-Sources-lillist-cli-Support.md",
+    "Packages/LillistCore/Sources/lillist-cli/Support/TTY.swift": "modules/Packages-LillistCore-Sources-lillist-cli-Support.md",
+    "Packages/LillistCore/Sources/lillist-cli/main.swift": "modules/Packages-LillistCore-Sources-lillist-cli-misc.md",
+    "Packages/LillistUI/Package.swift": "modules/Packages-LillistUI-misc.md",
+    "Packages/LillistUI/Sources/LillistUI/Accessibility/AccessibilityEnvironment.swift": "modules/Packages-LillistUI-Sources-LillistUI-Accessibility.md",
+    "Packages/LillistUI/Sources/LillistUI/Accessibility/Announcements.swift": "modules/Packages-LillistUI-Sources-LillistUI-Accessibility.md",
+    "Packages/LillistUI/Sources/LillistUI/Accessibility/ContrastMath.swift": "modules/Packages-LillistUI-Sources-LillistUI-Accessibility.md",
+    "Packages/LillistUI/Sources/LillistUI/Components/BreadcrumbView.swift": "modules/Packages-LillistUI-Sources-LillistUI-Components.md",
+    "Packages/LillistUI/Sources/LillistUI/Components/BuildVersionLabel.swift": "modules/Packages-LillistUI-Sources-LillistUI-Components.md",
+    "Packages/LillistUI/Sources/LillistUI/Components/ConfettiBurstView.swift": "modules/Packages-LillistUI-Sources-LillistUI-Components.md",
+    "Packages/LillistUI/Sources/LillistUI/Components/EmptyStateView.swift": "modules/Packages-LillistUI-Sources-LillistUI-Components.md",
+    "Packages/LillistUI/Sources/LillistUI/Components/JournalEntryRow.swift": "modules/Packages-LillistUI-Sources-LillistUI-Components.md",
+    "Packages/LillistUI/Sources/LillistUI/Components/RainbowCard.swift": "modules/Packages-LillistUI-Sources-LillistUI-Components.md",
+    "Packages/LillistUI/Sources/LillistUI/Components/RainbowEmptyStateView.swift": "modules/Packages-LillistUI-Sources-LillistUI-Components.md",
+    "Packages/LillistUI/Sources/LillistUI/Components/ReorderActionDispatch.swift": "modules/Packages-LillistUI-Sources-LillistUI-Components.md",
+    "Packages/LillistUI/Sources/LillistUI/Components/SidebarRowView.swift": "modules/Packages-LillistUI-Sources-LillistUI-Components.md",
+    "Packages/LillistUI/Sources/LillistUI/Components/StatusCubeView.swift": "modules/Packages-LillistUI-Sources-LillistUI-Components.md",
+    "Packages/LillistUI/Sources/LillistUI/Components/StatusIndicatorView.swift": "modules/Packages-LillistUI-Sources-LillistUI-Components.md",
+    "Packages/LillistUI/Sources/LillistUI/Components/SyncStatusDotView.swift": "modules/Packages-LillistUI-Sources-LillistUI-Components.md",
+    "Packages/LillistUI/Sources/LillistUI/Components/TagChipView.swift": "modules/Packages-LillistUI-Sources-LillistUI-Components.md",
+    "Packages/LillistUI/Sources/LillistUI/Components/TaskRowView.swift": "modules/Packages-LillistUI-Sources-LillistUI-Components.md",
+    "Packages/LillistUI/Sources/LillistUI/CrashReporting/CrashReportPreviewSheet.swift": "modules/Packages-LillistUI-Sources-LillistUI-CrashReporting.md",
+    "Packages/LillistUI/Sources/LillistUI/CrashReporting/CrashReportSheet.swift": "modules/Packages-LillistUI-Sources-LillistUI-CrashReporting.md",
+    "Packages/LillistUI/Sources/LillistUI/CrashReporting/CrashReportViewModel.swift": "modules/Packages-LillistUI-Sources-LillistUI-CrashReporting.md",
+    "Packages/LillistUI/Sources/LillistUI/DragReorder/DragController.swift": "modules/Packages-LillistUI-Sources-LillistUI-DragReorder.md",
+    "Packages/LillistUI/Sources/LillistUI/DragReorder/DragDropResolver.swift": "modules/Packages-LillistUI-Sources-LillistUI-DragReorder.md",
+    "Packages/LillistUI/Sources/LillistUI/DragReorder/DragOverlay.swift": "modules/Packages-LillistUI-Sources-LillistUI-DragReorder.md",
+    "Packages/LillistUI/Sources/LillistUI/DragReorder/DragReorderRow.swift": "modules/Packages-LillistUI-Sources-LillistUI-DragReorder.md",
+    "Packages/LillistUI/Sources/LillistUI/DragReorder/DragReorderable.swift": "modules/Packages-LillistUI-Sources-LillistUI-DragReorder.md",
+    "Packages/LillistUI/Sources/LillistUI/DragReorder/DragSession.swift": "modules/Packages-LillistUI-Sources-LillistUI-DragReorder.md",
+    "Packages/LillistUI/Sources/LillistUI/DragReorder/DragSortMode.swift": "modules/Packages-LillistUI-Sources-LillistUI-DragReorder.md",
+    "Packages/LillistUI/Sources/LillistUI/DragReorder/DragTarget.swift": "modules/Packages-LillistUI-Sources-LillistUI-DragReorder.md",
+    "Packages/LillistUI/Sources/LillistUI/DragReorder/RowGeometryReporter.swift": "modules/Packages-LillistUI-Sources-LillistUI-DragReorder.md",
+    "Packages/LillistUI/Sources/LillistUI/LillistUI.swift": "modules/Packages-LillistUI-Sources-LillistUI-misc.md",
+    "Packages/LillistUI/Sources/LillistUI/Onboarding/ICloudRequiredContent.swift": "modules/Packages-LillistUI-Sources-LillistUI-Onboarding.md",
+    "Packages/LillistUI/Sources/LillistUI/Onboarding/ICloudUnavailableScreen.swift": "modules/Packages-LillistUI-Sources-LillistUI-Onboarding.md",
+    "Packages/LillistUI/Sources/LillistUI/Onboarding/OnboardingContent.swift": "modules/Packages-LillistUI-Sources-LillistUI-Onboarding.md",
+    "Packages/LillistUI/Sources/LillistUI/QuickCapture/QuickCaptureDateSuggestions.swift": "modules/Packages-LillistUI-Sources-LillistUI-QuickCapture.md",
+    "Packages/LillistUI/Sources/LillistUI/QuickCapture/QuickCaptureParser.swift": "modules/Packages-LillistUI-Sources-LillistUI-QuickCapture.md",
+    "Packages/LillistUI/Sources/LillistUI/QuickCapture/QuickCaptureView.swift": "modules/Packages-LillistUI-Sources-LillistUI-QuickCapture.md",
+    "Packages/LillistUI/Sources/LillistUI/Recurrence/RecurrenceEditorView.swift": "modules/Packages-LillistUI-Sources-LillistUI-Recurrence.md",
+    "Packages/LillistUI/Sources/LillistUI/Recurrence/RecurrenceEditorViewModel.swift": "modules/Packages-LillistUI-Sources-LillistUI-Recurrence.md",
+    "Packages/LillistUI/Sources/LillistUI/Recurrence/RecurrenceSummary.swift": "modules/Packages-LillistUI-Sources-LillistUI-Recurrence.md",
+    "Packages/LillistUI/Sources/LillistUI/Recurrence/RecurrenceSummaryFormatter.swift": "modules/Packages-LillistUI-Sources-LillistUI-Recurrence.md",
+    "Packages/LillistUI/Sources/LillistUI/Resources/Fonts/OFL.txt": "modules/Packages-LillistUI-Sources-LillistUI-misc.md",
+    "Packages/LillistUI/Sources/LillistUI/Resources/Localizable.xcstrings": "modules/Packages-LillistUI-Sources-LillistUI-misc.md",
+    "Packages/LillistUI/Sources/LillistUI/Settings/CrashReportSample.swift": "modules/Packages-LillistUI-Sources-LillistUI-Settings.md",
+    "Packages/LillistUI/Sources/LillistUI/Settings/HourMinuteDate.swift": "modules/Packages-LillistUI-Sources-LillistUI-Settings.md",
+    "Packages/LillistUI/Sources/LillistUI/Settings/ICloudSyncSettingsSection.swift": "modules/Packages-LillistUI-Sources-LillistUI-Settings.md",
+    "Packages/LillistUI/Sources/LillistUI/Settings/SortField+DisplayName.swift": "modules/Packages-LillistUI-Sources-LillistUI-Settings.md",
+    "Packages/LillistUI/Sources/LillistUI/Status/StatusCycler.swift": "modules/Packages-LillistUI-Sources-LillistUI-misc.md",
+    "Packages/LillistUI/Sources/LillistUI/Status/SyncStatusMonitor.swift": "modules/Packages-LillistUI-Sources-LillistUI-misc.md",
+    "Packages/LillistUI/Sources/LillistUI/Sync/PauseExplainerDialog.swift": "modules/Packages-LillistUI-Sources-LillistUI-Sync.md",
+    "Packages/LillistUI/Sources/LillistUI/Sync/SyncDisableConfirmationSheet.swift": "modules/Packages-LillistUI-Sources-LillistUI-Sync.md",
+    "Packages/LillistUI/Sources/LillistUI/Sync/SyncMigrationChoiceSheet.swift": "modules/Packages-LillistUI-Sources-LillistUI-Sync.md",
+    "Packages/LillistUI/Sources/LillistUI/Sync/SyncMigrationConfirmationDialog.swift": "modules/Packages-LillistUI-Sources-LillistUI-Sync.md",
+    "Packages/LillistUI/Sources/LillistUI/Sync/SyncMigrationProgressSheet.swift": "modules/Packages-LillistUI-Sources-LillistUI-Sync.md",
+    "Packages/LillistUI/Sources/LillistUI/Sync/SyncMigrationRecoverySheet.swift": "modules/Packages-LillistUI-Sources-LillistUI-Sync.md",
+    "Packages/LillistUI/Sources/LillistUI/Theme/Color+Hex.swift": "modules/Packages-LillistUI-Sources-LillistUI-Theme-chunk-1.md",
+    "Packages/LillistUI/Sources/LillistUI/Theme/Fonts/LillistFonts.swift": "modules/Packages-LillistUI-Sources-LillistUI-Theme-chunk-1.md",
+    "Packages/LillistUI/Sources/LillistUI/Theme/GlassRowSpike.swift": "modules/Packages-LillistUI-Sources-LillistUI-Theme-chunk-1.md",
+    "Packages/LillistUI/Sources/LillistUI/Theme/GlassSurface.swift": "modules/Packages-LillistUI-Sources-LillistUI-Theme-chunk-1.md",
+    "Packages/LillistUI/Sources/LillistUI/Theme/LillistColor.swift": "modules/Packages-LillistUI-Sources-LillistUI-Theme-chunk-1.md",
+    "Packages/LillistUI/Sources/LillistUI/Theme/LillistElevation.swift": "modules/Packages-LillistUI-Sources-LillistUI-Theme-chunk-1.md",
+    "Packages/LillistUI/Sources/LillistUI/Theme/LillistMotion.swift": "modules/Packages-LillistUI-Sources-LillistUI-Theme-chunk-1.md",
+    "Packages/LillistUI/Sources/LillistUI/Theme/RainbowButtonStyle.swift": "modules/Packages-LillistUI-Sources-LillistUI-Theme-chunk-1.md",
+    "Packages/LillistUI/Sources/LillistUI/Theme/RainbowGradient.swift": "modules/Packages-LillistUI-Sources-LillistUI-Theme-chunk-1.md",
+    "Packages/LillistUI/Sources/LillistUI/Theme/RainbowPalette.swift": "modules/Packages-LillistUI-Sources-LillistUI-Theme-chunk-1.md",
+    "Packages/LillistUI/Sources/LillistUI/Theme/RainbowToggleStyle.swift": "modules/Packages-LillistUI-Sources-LillistUI-Theme-chunk-1.md",
+    "Packages/LillistUI/Sources/LillistUI/Theme/StatusGlyph.swift": "modules/Packages-LillistUI-Sources-LillistUI-Theme-chunk-1.md",
+    "Packages/LillistUI/Sources/LillistUI/Theme/StatusPalette.swift": "modules/Packages-LillistUI-Sources-LillistUI-Theme-chunk-1.md",
+    "Packages/LillistUI/Sources/LillistUI/Theme/SyncPalette.swift": "modules/Packages-LillistUI-Sources-LillistUI-Theme-chunk-1.md",
+    "Packages/LillistUI/Sources/LillistUI/Theme/TagTint.swift": "modules/Packages-LillistUI-Sources-LillistUI-Theme-chunk-1.md",
+    "Packages/LillistUI/Sources/LillistUI/Theme/Tokens.swift": "modules/Packages-LillistUI-Sources-LillistUI-Theme-chunk-2.md",
+    "Packages/LillistUI/Sources/LillistUI/iOS/ArchiveToast.swift": "modules/Packages-LillistUI-Sources-LillistUI-iOS-misc.md",
+    "Packages/LillistUI/Sources/LillistUI/iOS/DiagnosticsIncludeSheet.swift": "modules/Packages-LillistUI-Sources-LillistUI-iOS-misc.md",
+    "Packages/LillistUI/Sources/LillistUI/iOS/FloatingAddButton.swift": "modules/Packages-LillistUI-Sources-LillistUI-iOS-misc.md",
+    "Packages/LillistUI/Sources/LillistUI/iOS/QuickCaptureActionEnvironment.swift": "modules/Packages-LillistUI-Sources-LillistUI-iOS-misc.md",
+    "Packages/LillistUI/Sources/LillistUI/iOS/QuickCaptureDialog.swift": "modules/Packages-LillistUI-Sources-LillistUI-iOS-misc.md",
+    "Packages/LillistUI/Sources/LillistUI/iOS/QuickCaptureDialogPresenter.swift": "modules/Packages-LillistUI-Sources-LillistUI-iOS-misc.md",
+    "Packages/LillistUI/Sources/LillistUI/iOS/QuickCaptureDiscardToast.swift": "modules/Packages-LillistUI-Sources-LillistUI-iOS-misc.md",
+    "Packages/LillistUI/Sources/LillistUI/iOS/ReorderFailureToast.swift": "modules/Packages-LillistUI-Sources-LillistUI-iOS-misc.md",
+    "Packages/LillistUI/Sources/LillistUI/iOS/Screens/SettingsScreen.swift": "modules/Packages-LillistUI-Sources-LillistUI-iOS-misc.md",
+    "Packages/LillistUI/Sources/LillistUI/iOS/Screens/TasksScreen.swift": "modules/Packages-LillistUI-Sources-LillistUI-iOS-misc.md",
+    "Packages/LillistUI/Sources/LillistUI/iOS/SizeClassRouter.swift": "modules/Packages-LillistUI-Sources-LillistUI-iOS-misc.md",
+    "Packages/LillistUI/Sources/LillistUI/iOS/SyncStatusBadge.swift": "modules/Packages-LillistUI-Sources-LillistUI-iOS-misc.md",
+    "Packages/LillistUI/Sources/LillistUI/iOS/Tasks/FilterChip.swift": "modules/Packages-LillistUI-Sources-LillistUI-iOS-Tasks.md",
+    "Packages/LillistUI/Sources/LillistUI/iOS/Tasks/FilterHeader.swift": "modules/Packages-LillistUI-Sources-LillistUI-iOS-Tasks.md",
+    "Packages/LillistUI/Sources/LillistUI/iOS/Tasks/FlatTaskRow.swift": "modules/Packages-LillistUI-Sources-LillistUI-iOS-Tasks.md",
+    "Packages/LillistUI/Sources/LillistUI/iOS/Tasks/TaskOutlineRowView.swift": "modules/Packages-LillistUI-Sources-LillistUI-iOS-Tasks.md",
+    "Packages/LillistUI/Sources/LillistUI/iOS/Tasks/TaskTree.swift": "modules/Packages-LillistUI-Sources-LillistUI-iOS-Tasks.md",
+    "Packages/LillistUI/Sources/LillistUI/iOS/Tasks/TasksSort.swift": "modules/Packages-LillistUI-Sources-LillistUI-iOS-Tasks.md",
+    "Packages/LillistUI/Sources/LillistUI/iOS/ToastChrome.swift": "modules/Packages-LillistUI-Sources-LillistUI-iOS-misc.md",
+    "Tools/CI/check-lillistui-localization.sh": "modules/Tools.md",
+    "Tools/Deploy/README.md": "modules/Tools.md",
+    "Tools/Deploy/bump-build-number.sh": "modules/Tools.md",
+    "VERSION": "modules/root-misc.md"
+  },
+  "referenced_by": {
+    "Apps-Config": [
+      "modules/Apps-Lillist-iOS-misc.md",
+      "modules/Apps-misc.md",
+      "modules/Tools.md",
+      "modules/root-misc.md"
+    ],
+    "Apps-Lillist-iOS-Sources-App": [
+      "modules/Apps-Lillist-iOS-Sources-Detail.md",
+      "modules/Apps-Lillist-iOS-Sources-Settings.md",
+      "modules/Apps-Lillist-iOS-Sources-misc.md",
+      "modules/Packages-LillistCore-Sources-LillistCore-CrashReporting.md",
+      "modules/Packages-LillistCore-Sources-LillistCore-Diagnostics.md",
+      "modules/Packages-LillistCore-Sources-LillistCore-Notifications.md",
+      "modules/Packages-LillistCore-Sources-LillistCore-Persistence.md",
+      "modules/Packages-LillistCore-Sources-LillistCore-Sync-chunk-1.md",
+      "modules/Packages-LillistCore-Sources-LillistCore-Sync-chunk-2.md",
+      "modules/Packages-LillistUI-Sources-LillistUI-Onboarding.md",
+      "modules/Packages-LillistUI-Sources-LillistUI-misc.md"
+    ],
+    "Apps-Lillist-iOS-Sources-Detail": [
+      "modules/Apps-Lillist-iOS-Sources-misc.md",
+      "modules/Packages-LillistUI-Sources-LillistUI-Accessibility.md",
+      "modules/Packages-LillistUI-Sources-LillistUI-Components.md",
+      "modules/Packages-LillistUI-Sources-LillistUI-Recurrence.md"
+    ],
+    "Apps-Lillist-iOS-Sources-Settings": [
+      "modules/Apps-Lillist-iOS-Sources-misc.md",
+      "modules/Packages-LillistCore-Sources-LillistCore-Sync-chunk-2.md",
+      "modules/Packages-LillistUI-Sources-LillistUI-Settings.md",
+      "modules/Packages-LillistUI-Sources-LillistUI-Sync.md",
+      "modules/Packages-LillistUI-Sources-LillistUI-Theme-chunk-2.md"
+    ],
+    "Apps-Lillist-iOS-Sources-misc": [
+      "modules/Apps-Lillist-iOS-Sources-App.md",
+      "modules/Apps-Lillist-iOS-Sources-Settings.md",
+      "modules/Packages-LillistUI-Sources-LillistUI-DragReorder.md",
+      "modules/Packages-LillistUI-Sources-LillistUI-Onboarding.md",
+      "modules/Packages-LillistUI-Sources-LillistUI-QuickCapture.md",
+      "modules/Packages-LillistUI-Sources-LillistUI-iOS-Tasks.md"
+    ],
+    "Apps-Lillist-iOS-misc": [
+      "modules/Apps-Config.md",
+      "modules/Packages-LillistUI-Sources-LillistUI-Accessibility.md",
+      "modules/root-misc.md"
+    ],
+    "Apps-Lillist-macOS-Sources-Commands": [
+      "modules/Apps-Lillist-macOS-Sources-Views-TaskList.md",
+      "modules/Apps-Lillist-macOS-Sources-Views-misc.md",
+      "modules/Apps-Lillist-macOS-Sources-misc.md",
+      "modules/Apps-misc.md"
+    ],
+    "Apps-Lillist-macOS-Sources-Hotkey": [
+      "modules/Apps-Lillist-macOS-Sources-Preferences.md",
+      "modules/Apps-Lillist-macOS-Sources-misc.md",
+      "modules/Apps-misc.md",
+      "modules/Packages-LillistUI-Sources-LillistUI-QuickCapture.md"
+    ],
+    "Apps-Lillist-macOS-Sources-Preferences": [
+      "modules/Apps-Lillist-macOS-Sources-Hotkey.md",
+      "modules/Apps-Lillist-macOS-Sources-misc.md",
+      "modules/Apps-Lillist-macOS-misc.md",
+      "modules/Packages-LillistCore-Sources-LillistCore-Diagnostics.md",
+      "modules/Packages-LillistCore-Sources-LillistCore-Notifications.md",
+      "modules/Packages-LillistUI-Sources-LillistUI-Settings.md",
+      "modules/Packages-LillistUI-Sources-LillistUI-Sync.md",
+      "modules/Packages-LillistUI-Sources-LillistUI-Theme-chunk-1.md",
+      "modules/Packages-LillistUI-Sources-LillistUI-Theme-chunk-2.md"
+    ],
+    "Apps-Lillist-macOS-Sources-Views-Detail": [
+      "modules/Apps-Lillist-macOS-Sources-Views-misc.md",
+      "modules/Packages-LillistUI-Sources-LillistUI-Accessibility.md",
+      "modules/Packages-LillistUI-Sources-LillistUI-Recurrence.md"
+    ],
+    "Apps-Lillist-macOS-Sources-Views-Sidebar": [
+      "modules/Apps-Lillist-macOS-Sources-Views-TaskList.md",
+      "modules/Apps-Lillist-macOS-Sources-Views-misc.md",
+      "modules/Apps-misc.md",
+      "modules/Packages-LillistUI-Sources-LillistUI-Components.md"
+    ],
+    "Apps-Lillist-macOS-Sources-Views-TaskList": [
+      "modules/Apps-Lillist-macOS-Sources-Commands.md",
+      "modules/Apps-Lillist-macOS-Sources-Views-Sidebar.md",
+      "modules/Apps-Lillist-macOS-Sources-Views-misc.md",
+      "modules/Apps-misc.md",
+      "modules/Packages-LillistCore-Sources-LillistCore-Ordering.md",
+      "modules/Packages-LillistUI-Sources-LillistUI-Components.md",
+      "modules/Packages-LillistUI-Sources-LillistUI-DragReorder.md",
+      "modules/Packages-LillistUI-Sources-LillistUI-misc.md"
+    ],
+    "Apps-Lillist-macOS-Sources-Views-misc": [
+      "modules/Apps-Lillist-macOS-Sources-Commands.md",
+      "modules/Apps-Lillist-macOS-Sources-Views-Sidebar.md",
+      "modules/Apps-Lillist-macOS-Sources-misc.md"
+    ],
+    "Apps-Lillist-macOS-Sources-misc": [
+      "modules/Apps-Lillist-macOS-Sources-Commands.md",
+      "modules/Apps-Lillist-macOS-Sources-Hotkey.md",
+      "modules/Apps-Lillist-macOS-Sources-Preferences.md",
+      "modules/Apps-Lillist-macOS-Sources-Views-Detail.md",
+      "modules/Apps-Lillist-macOS-Sources-Views-Sidebar.md",
+      "modules/Apps-Lillist-macOS-Sources-Views-TaskList.md",
+      "modules/Apps-Lillist-macOS-Sources-Views-misc.md",
+      "modules/Apps-Lillist-macOS-misc.md",
+      "modules/Apps-misc.md",
+      "modules/Packages-LillistCore-Sources-LillistCore-CrashReporting.md",
+      "modules/Packages-LillistUI-Sources-LillistUI-Onboarding.md"
+    ],
+    "Apps-Lillist-macOS-misc": [
+      "modules/root-misc.md"
+    ],
+    "Apps-misc": [
+      "modules/Apps-Config.md"
+    ],
+    "Extensions-ShareExtension-iOS": [
+      "modules/Apps-Lillist-iOS-misc.md",
+      "modules/Packages-LillistCore-Sources-LillistCore-LinkPreview.md",
+      "modules/Packages-LillistCore-Sources-LillistCore-Sync-chunk-1.md"
+    ],
+    "Extensions-ShortcutsActions-Entities": [
+      "modules/Extensions-ShortcutsActions-misc.md"
+    ],
+    "Extensions-ShortcutsActions-misc": [
+      "modules/Apps-Lillist-iOS-misc.md",
+      "modules/Extensions-ShortcutsActions-Entities.md",
+      "modules/Packages-LillistCore-Sources-LillistCore-Sync-chunk-1.md"
+    ],
+    "Packages-LillistCore-Sources-LillistCore-CLIBridge-Handlers-chunk-1": [
+      "modules/Extensions-ShortcutsActions-misc.md",
+      "modules/Packages-LillistCore-Sources-LillistCore-CLIBridge-Handlers-chunk-2.md",
+      "modules/Packages-LillistCore-Sources-LillistCore-CLIBridge-Renderers.md",
+      "modules/Packages-LillistCore-Sources-LillistCore-CLIBridge-misc.md",
+      "modules/Packages-LillistCore-Sources-LillistCore-Diagnostics.md",
+      "modules/Packages-LillistCore-Sources-LillistCore-LinkPreview.md",
+      "modules/Packages-LillistCore-Sources-LillistCore-Rules.md",
+      "modules/Packages-LillistCore-Sources-lillist-cli-Commands-chunk-1.md",
+      "modules/Packages-LillistCore-Sources-lillist-cli-Commands-chunk-2.md"
+    ],
+    "Packages-LillistCore-Sources-LillistCore-CLIBridge-Handlers-chunk-2": [
+      "modules/Extensions-ShortcutsActions-misc.md",
+      "modules/Packages-LillistCore-Sources-lillist-cli-Commands-chunk-2.md"
+    ],
+    "Packages-LillistCore-Sources-LillistCore-CLIBridge-Renderers": [
+      "modules/Packages-LillistCore-Sources-LillistCore-CLIBridge-Handlers-chunk-2.md",
+      "modules/Packages-LillistCore-Sources-lillist-cli-Commands-chunk-1.md",
+      "modules/Packages-LillistCore-Sources-lillist-cli-Commands-chunk-2.md"
+    ],
+    "Packages-LillistCore-Sources-LillistCore-CLIBridge-misc": [
+      "modules/Packages-LillistCore-Sources-LillistCore-CLIBridge-Handlers-chunk-1.md",
+      "modules/Packages-LillistCore-Sources-LillistCore-CLIBridge-Handlers-chunk-2.md",
+      "modules/Packages-LillistCore-Sources-LillistCore-Sync-chunk-1.md",
+      "modules/Packages-LillistCore-Sources-lillist-cli-Commands-chunk-1.md",
+      "modules/Packages-LillistCore-Sources-lillist-cli-Commands-chunk-2.md",
+      "modules/Packages-LillistCore-Sources-lillist-cli-Support.md"
+    ],
+    "Packages-LillistCore-Sources-LillistCore-CrashReporting": [
+      "modules/Apps-Lillist-iOS-Sources-App.md",
+      "modules/Extensions-ShortcutsActions-misc.md",
+      "modules/Packages-LillistCore-Sources-LillistCore-Stores-chunk-1.md",
+      "modules/Packages-LillistCore-Sources-LillistCore-Stores-chunk-2.md",
+      "modules/Packages-LillistCore-Sources-LillistCore-Sync-chunk-1.md",
+      "modules/Packages-LillistCore-Sources-LillistCore-misc.md",
+      "modules/Packages-LillistCore-Sources-lillist-cli-Commands-chunk-2.md",
+      "modules/Packages-LillistCore-Sources-lillist-cli-Support.md",
+      "modules/Packages-LillistCore-Sources-lillist-cli-misc.md",
+      "modules/Packages-LillistUI-Sources-LillistUI-CrashReporting.md"
+    ],
+    "Packages-LillistCore-Sources-LillistCore-Diagnostics": [
+      "modules/Apps-Lillist-iOS-Sources-Settings.md",
+      "modules/Extensions-ShareExtension-iOS.md",
+      "modules/Extensions-ShortcutsActions-misc.md",
+      "modules/Packages-LillistCore-Sources-LillistCore-CLIBridge-Handlers-chunk-1.md",
+      "modules/Packages-LillistCore-Sources-LillistCore-Persistence.md",
+      "modules/Packages-LillistCore-Sources-LillistCore-Stores-chunk-1.md",
+      "modules/Packages-LillistCore-Sources-LillistCore-Stores-chunk-2.md",
+      "modules/Packages-LillistCore-Sources-LillistCore-misc.md",
+      "modules/Packages-LillistUI-Sources-LillistUI-DragReorder.md"
+    ],
+    "Packages-LillistCore-Sources-LillistCore-Export": [
+      "modules/Apps-Lillist-iOS-Sources-Settings.md",
+      "modules/Packages-LillistCore-Sources-LillistCore-CLIBridge-Handlers-chunk-1.md"
+    ],
+    "Packages-LillistCore-Sources-LillistCore-LinkPreview": [
+      "modules/Extensions-ShareExtension-iOS.md",
+      "modules/Packages-LillistCore-Sources-LillistCore-CLIBridge-Handlers-chunk-1.md"
+    ],
+    "Packages-LillistCore-Sources-LillistCore-ManagedObjects": [
+      "modules/Packages-LillistCore-Sources-LillistCore-CLIBridge-Handlers-chunk-1.md",
+      "modules/Packages-LillistCore-Sources-LillistCore-CLIBridge-Handlers-chunk-2.md",
+      "modules/Packages-LillistCore-Sources-LillistCore-CLIBridge-misc.md",
+      "modules/Packages-LillistCore-Sources-LillistCore-Export.md",
+      "modules/Packages-LillistCore-Sources-LillistCore-Model.md",
+      "modules/Packages-LillistCore-Sources-LillistCore-Notifications.md",
+      "modules/Packages-LillistCore-Sources-LillistCore-Persistence.md",
+      "modules/Packages-LillistCore-Sources-LillistCore-Recurrence.md",
+      "modules/Packages-LillistCore-Sources-LillistCore-Rules.md",
+      "modules/Packages-LillistCore-Sources-LillistCore-Stores-chunk-1.md",
+      "modules/Packages-LillistCore-Sources-LillistCore-Stores-chunk-2.md",
+      "modules/Packages-LillistCore-Sources-LillistCore-misc.md"
+    ],
+    "Packages-LillistCore-Sources-LillistCore-Model": [
+      "modules/Apps-Lillist-macOS-Sources-Views-TaskList.md",
+      "modules/Extensions-ShortcutsActions-Entities.md",
+      "modules/Packages-LillistCore-Sources-LillistCore-CLIBridge-Handlers-chunk-1.md",
+      "modules/Packages-LillistCore-Sources-LillistCore-CLIBridge-Handlers-chunk-2.md",
+      "modules/Packages-LillistCore-Sources-LillistCore-CLIBridge-Renderers.md",
+      "modules/Packages-LillistCore-Sources-LillistCore-CLIBridge-misc.md",
+      "modules/Packages-LillistCore-Sources-LillistCore-ManagedObjects.md",
+      "modules/Packages-LillistCore-Sources-LillistCore-Notifications.md",
+      "modules/Packages-LillistCore-Sources-LillistCore-Rules.md",
+      "modules/Packages-LillistCore-Sources-LillistCore-Stores-chunk-2.md",
+      "modules/Packages-LillistCore-Sources-lillist-cli-Commands-chunk-1.md",
+      "modules/Packages-LillistCore-misc.md",
+      "modules/Packages-LillistUI-Sources-LillistUI-Components.md",
+      "modules/Packages-LillistUI-Sources-LillistUI-Settings.md",
+      "modules/Packages-LillistUI-Sources-LillistUI-Theme-chunk-1.md",
+      "modules/Packages-LillistUI-Sources-LillistUI-iOS-Tasks.md",
+      "modules/Packages-LillistUI-Sources-LillistUI-iOS-misc.md",
+      "modules/Packages-LillistUI-Sources-LillistUI-misc.md"
+    ],
+    "Packages-LillistCore-Sources-LillistCore-Notifications": [
+      "modules/Extensions-ShortcutsActions-misc.md",
+      "modules/Packages-LillistCore-Sources-LillistCore-CLIBridge-Handlers-chunk-1.md",
+      "modules/Packages-LillistCore-Sources-LillistCore-Model.md",
+      "modules/Packages-LillistCore-Sources-LillistCore-Stores-chunk-1.md",
+      "modules/Packages-LillistCore-Sources-LillistCore-Stores-chunk-2.md",
+      "modules/Packages-LillistCore-Sources-LillistCore-Sync-chunk-1.md",
+      "modules/Packages-LillistUI-Sources-LillistUI-Onboarding.md"
+    ],
+    "Packages-LillistCore-Sources-LillistCore-Ordering": [
+      "modules/Apps-Lillist-macOS-Sources-Views-TaskList.md",
+      "modules/Packages-LillistCore-Sources-LillistCore-Stores-chunk-1.md",
+      "modules/Packages-LillistCore-Sources-LillistCore-Stores-chunk-2.md",
+      "modules/Packages-LillistUI-Sources-LillistUI-iOS-Tasks.md"
+    ],
+    "Packages-LillistCore-Sources-LillistCore-Persistence": [
+      "modules/Apps-Lillist-iOS-Sources-App.md",
+      "modules/Apps-Lillist-iOS-Sources-Settings.md",
+      "modules/Apps-Lillist-macOS-Sources-Preferences.md",
+      "modules/Extensions-ShareExtension-iOS.md",
+      "modules/Extensions-ShortcutsActions-misc.md",
+      "modules/Packages-LillistCore-Sources-LillistCore-CLIBridge-Handlers-chunk-1.md",
+      "modules/Packages-LillistCore-Sources-LillistCore-CLIBridge-misc.md",
+      "modules/Packages-LillistCore-Sources-LillistCore-Diagnostics.md",
+      "modules/Packages-LillistCore-Sources-LillistCore-Export.md",
+      "modules/Packages-LillistCore-Sources-LillistCore-Notifications.md",
+      "modules/Packages-LillistCore-Sources-LillistCore-Stores-chunk-1.md",
+      "modules/Packages-LillistCore-Sources-LillistCore-Stores-chunk-2.md",
+      "modules/Packages-LillistCore-Sources-LillistCore-Sync-chunk-1.md",
+      "modules/Packages-LillistCore-misc.md",
+      "modules/Packages-LillistUI-Sources-LillistUI-Sync.md"
+    ],
+    "Packages-LillistCore-Sources-LillistCore-Recurrence": [
+      "modules/Packages-LillistCore-Sources-LillistCore-ManagedObjects.md",
+      "modules/Packages-LillistCore-Sources-LillistCore-Stores-chunk-1.md",
+      "modules/Packages-LillistCore-Sources-LillistCore-Stores-chunk-2.md",
+      "modules/Packages-LillistUI-Sources-LillistUI-Recurrence.md"
+    ],
+    "Packages-LillistCore-Sources-LillistCore-Rules": [
+      "modules/Apps-Lillist-iOS-Sources-misc.md",
+      "modules/Extensions-ShortcutsActions-Entities.md",
+      "modules/Packages-LillistCore-Sources-LillistCore-CLIBridge-Handlers-chunk-1.md",
+      "modules/Packages-LillistCore-Sources-LillistCore-CLIBridge-Handlers-chunk-2.md",
+      "modules/Packages-LillistCore-Sources-LillistCore-CLIBridge-misc.md",
+      "modules/Packages-LillistCore-Sources-LillistCore-Stores-chunk-1.md"
+    ],
+    "Packages-LillistCore-Sources-LillistCore-Stores-chunk-1": [
+      "modules/Apps-Lillist-iOS-Sources-Detail.md",
+      "modules/Apps-Lillist-iOS-Sources-misc.md",
+      "modules/Apps-Lillist-macOS-Sources-Hotkey.md",
+      "modules/Apps-Lillist-macOS-Sources-Views-Detail.md",
+      "modules/Apps-Lillist-macOS-Sources-Views-Sidebar.md",
+      "modules/Apps-Lillist-macOS-Sources-Views-TaskList.md",
+      "modules/Extensions-ShareExtension-iOS.md",
+      "modules/Extensions-ShortcutsActions-Entities.md",
+      "modules/Extensions-ShortcutsActions-misc.md",
+      "modules/Packages-LillistCore-Sources-LillistCore-CLIBridge-Handlers-chunk-1.md",
+      "modules/Packages-LillistCore-Sources-LillistCore-CLIBridge-Handlers-chunk-2.md",
+      "modules/Packages-LillistCore-Sources-LillistCore-CLIBridge-Renderers.md",
+      "modules/Packages-LillistCore-Sources-LillistCore-CrashReporting.md",
+      "modules/Packages-LillistCore-Sources-LillistCore-Diagnostics.md",
+      "modules/Packages-LillistCore-Sources-LillistCore-Export.md",
+      "modules/Packages-LillistCore-Sources-LillistCore-LinkPreview.md",
+      "modules/Packages-LillistCore-Sources-LillistCore-ManagedObjects.md",
+      "modules/Packages-LillistCore-Sources-LillistCore-Model.md",
+      "modules/Packages-LillistCore-Sources-LillistCore-Notifications.md",
+      "modules/Packages-LillistCore-Sources-LillistCore-Ordering.md",
+      "modules/Packages-LillistCore-Sources-LillistCore-Persistence.md",
+      "modules/Packages-LillistCore-Sources-LillistCore-Recurrence.md",
+      "modules/Packages-LillistCore-Sources-LillistCore-Rules.md",
+      "modules/Packages-LillistCore-Sources-LillistCore-Sync-chunk-1.md",
+      "modules/Packages-LillistCore-Sources-LillistCore-misc.md",
+      "modules/Packages-LillistCore-Sources-lillist-cli-Commands-chunk-2.md",
+      "modules/Packages-LillistUI-Sources-LillistUI-iOS-Tasks.md"
+    ],
+    "Packages-LillistCore-Sources-LillistCore-Stores-chunk-2": [
+      "modules/Apps-Lillist-iOS-Sources-Detail.md",
+      "modules/Apps-Lillist-macOS-Sources-Views-Sidebar.md",
+      "modules/Extensions-ShareExtension-iOS.md",
+      "modules/Extensions-ShortcutsActions-Entities.md",
+      "modules/Packages-LillistCore-Sources-LillistCore-CLIBridge-Handlers-chunk-1.md",
+      "modules/Packages-LillistCore-Sources-LillistCore-CLIBridge-Handlers-chunk-2.md",
+      "modules/Packages-LillistCore-Sources-LillistCore-CrashReporting.md",
+      "modules/Packages-LillistCore-Sources-LillistCore-ManagedObjects.md",
+      "modules/Packages-LillistCore-Sources-LillistCore-Ordering.md",
+      "modules/Packages-LillistCore-Sources-LillistCore-Stores-chunk-1.md",
+      "modules/Packages-LillistCore-Sources-lillist-cli-Commands-chunk-1.md",
+      "modules/Packages-LillistCore-Sources-lillist-cli-Commands-chunk-2.md"
+    ],
+    "Packages-LillistCore-Sources-LillistCore-Sync": [
+      "modules/Apps-Lillist-iOS-Sources-Settings.md"
+    ],
+    "Packages-LillistCore-Sources-LillistCore-Sync-chunk-1": [
+      "modules/Apps-Lillist-iOS-Sources-App.md",
+      "modules/Apps-Lillist-macOS-Sources-Preferences.md",
+      "modules/Extensions-ShareExtension-iOS.md",
+      "modules/Extensions-ShortcutsActions-misc.md",
+      "modules/Packages-LillistCore-Sources-LillistCore-CLIBridge-misc.md",
+      "modules/Packages-LillistCore-Sources-LillistCore-Persistence.md",
+      "modules/Packages-LillistCore-Sources-LillistCore-Sync-chunk-2.md",
+      "modules/Packages-LillistUI-Sources-LillistUI-Settings.md",
+      "modules/Packages-LillistUI-Sources-LillistUI-Sync.md",
+      "modules/Packages-LillistUI-Sources-LillistUI-misc.md"
+    ],
+    "Packages-LillistCore-Sources-LillistCore-Sync-chunk-2": [
+      "modules/Apps-Lillist-iOS-Sources-App.md",
+      "modules/Packages-LillistCore-Sources-LillistCore-Notifications.md",
+      "modules/Packages-LillistCore-Sources-LillistCore-Sync-chunk-1.md"
+    ],
+    "Packages-LillistCore-Sources-LillistCore-Validation": [
+      "modules/Packages-LillistCore-Sources-LillistCore-Sync-chunk-1.md"
+    ],
+    "Packages-LillistCore-Sources-LillistCore-misc": [
+      "modules/Apps-Lillist-iOS-Sources-Settings.md",
+      "modules/Apps-Lillist-macOS-Sources-misc.md",
+      "modules/Extensions-ShareExtension-iOS.md",
+      "modules/Extensions-ShortcutsActions-misc.md",
+      "modules/Packages-LillistCore-Sources-LillistCore-CLIBridge-Handlers-chunk-1.md",
+      "modules/Packages-LillistCore-Sources-LillistCore-CLIBridge-Handlers-chunk-2.md",
+      "modules/Packages-LillistCore-Sources-LillistCore-CLIBridge-misc.md",
+      "modules/Packages-LillistCore-Sources-LillistCore-Export.md",
+      "modules/Packages-LillistCore-Sources-LillistCore-Persistence.md",
+      "modules/Packages-LillistCore-Sources-LillistCore-Rules.md",
+      "modules/Packages-LillistCore-Sources-LillistCore-Stores-chunk-1.md",
+      "modules/Packages-LillistCore-Sources-LillistCore-Stores-chunk-2.md",
+      "modules/Packages-LillistCore-Sources-LillistCore-Sync-chunk-2.md",
+      "modules/Packages-LillistCore-Sources-lillist-cli-Commands-chunk-1.md",
+      "modules/Packages-LillistCore-Sources-lillist-cli-Commands-chunk-2.md",
+      "modules/Packages-LillistCore-Sources-lillist-cli-Support.md",
+      "modules/Packages-LillistCore-Sources-lillist-cli-misc.md",
+      "modules/Packages-LillistUI-Sources-LillistUI-CrashReporting.md"
+    ],
+    "Packages-LillistCore-Sources-lillist-cli-Commands-chunk-1": [
+      "modules/Packages-LillistCore-Sources-LillistCore-CLIBridge-misc.md",
+      "modules/Packages-LillistCore-Sources-lillist-cli-misc.md"
+    ],
+    "Packages-LillistCore-Sources-lillist-cli-Commands-chunk-2": [
+      "modules/Packages-LillistCore-Sources-LillistCore-CrashReporting.md",
+      "modules/Packages-LillistCore-Sources-lillist-cli-misc.md"
+    ],
+    "Packages-LillistCore-Sources-lillist-cli-Support": [
+      "modules/Packages-LillistCore-Sources-LillistCore-CrashReporting.md",
+      "modules/Packages-LillistCore-Sources-lillist-cli-Commands-chunk-1.md",
+      "modules/Packages-LillistCore-Sources-lillist-cli-Commands-chunk-2.md",
+      "modules/Packages-LillistCore-Sources-lillist-cli-misc.md"
+    ],
+    "Packages-LillistCore-misc": [
+      "modules/Apps-Lillist-iOS-misc.md",
+      "modules/Apps-misc.md",
+      "modules/Packages-LillistUI-misc.md",
+      "modules/root-misc.md"
+    ],
+    "Packages-LillistUI-Sources-LillistUI-Accessibility": [
+      "modules/Apps-Lillist-iOS-Sources-Detail.md",
+      "modules/Apps-Lillist-macOS-Sources-Preferences.md",
+      "modules/Apps-Lillist-macOS-Sources-Views-Detail.md",
+      "modules/Packages-LillistUI-Sources-LillistUI-Components.md",
+      "modules/Packages-LillistUI-Sources-LillistUI-DragReorder.md",
+      "modules/Packages-LillistUI-Sources-LillistUI-Theme-chunk-1.md"
+    ],
+    "Packages-LillistUI-Sources-LillistUI-Components": [
+      "modules/Apps-Lillist-iOS-Sources-Detail.md",
+      "modules/Apps-Lillist-macOS-Sources-Views-Detail.md",
+      "modules/Apps-Lillist-macOS-Sources-Views-Sidebar.md",
+      "modules/Apps-Lillist-macOS-Sources-Views-TaskList.md",
+      "modules/Apps-Lillist-macOS-Sources-Views-misc.md",
+      "modules/Packages-LillistUI-Sources-LillistUI-Accessibility.md",
+      "modules/Packages-LillistUI-Sources-LillistUI-Onboarding.md",
+      "modules/Packages-LillistUI-Sources-LillistUI-QuickCapture.md",
+      "modules/Packages-LillistUI-Sources-LillistUI-Theme-chunk-1.md",
+      "modules/Packages-LillistUI-Sources-LillistUI-iOS-Tasks.md",
+      "modules/Packages-LillistUI-Sources-LillistUI-iOS-misc.md",
+      "modules/Packages-LillistUI-Sources-LillistUI-misc.md"
+    ],
+    "Packages-LillistUI-Sources-LillistUI-CrashReporting": [
+      "modules/Apps-Lillist-iOS-Sources-App.md",
+      "modules/Packages-LillistCore-Sources-LillistCore-CrashReporting.md"
+    ],
+    "Packages-LillistUI-Sources-LillistUI-DragReorder": [
+      "modules/Apps-Lillist-iOS-Sources-misc.md",
+      "modules/Apps-Lillist-macOS-Sources-Views-TaskList.md",
+      "modules/Packages-LillistCore-Sources-LillistCore-Diagnostics.md",
+      "modules/Packages-LillistUI-Sources-LillistUI-Accessibility.md",
+      "modules/Packages-LillistUI-Sources-LillistUI-Theme-chunk-2.md",
+      "modules/Packages-LillistUI-Sources-LillistUI-iOS-misc.md"
+    ],
+    "Packages-LillistUI-Sources-LillistUI-Onboarding": [
+      "modules/Apps-Lillist-iOS-Sources-App.md",
+      "modules/Apps-Lillist-iOS-Sources-misc.md"
+    ],
+    "Packages-LillistUI-Sources-LillistUI-QuickCapture": [
+      "modules/Apps-Lillist-iOS-Sources-misc.md",
+      "modules/Apps-Lillist-macOS-Sources-Hotkey.md",
+      "modules/Packages-LillistUI-Sources-LillistUI-iOS-misc.md"
+    ],
+    "Packages-LillistUI-Sources-LillistUI-Recurrence": [
+      "modules/Apps-Lillist-iOS-Sources-Detail.md",
+      "modules/Apps-Lillist-macOS-Sources-Views-Detail.md",
+      "modules/Packages-LillistCore-Sources-LillistCore-Recurrence.md"
+    ],
+    "Packages-LillistUI-Sources-LillistUI-Settings": [
+      "modules/Apps-Lillist-iOS-Sources-Settings.md",
+      "modules/Apps-Lillist-macOS-Sources-Preferences.md"
+    ],
+    "Packages-LillistUI-Sources-LillistUI-Sync": [
+      "modules/Apps-Lillist-iOS-Sources-App.md",
+      "modules/Apps-Lillist-iOS-Sources-Settings.md",
+      "modules/Apps-Lillist-macOS-Sources-Preferences.md"
+    ],
+    "Packages-LillistUI-Sources-LillistUI-Theme-chunk-1": [
+      "modules/Apps-Lillist-iOS-Sources-App.md",
+      "modules/Apps-Lillist-iOS-Sources-Detail.md",
+      "modules/Apps-Lillist-macOS-Sources-Views-Sidebar.md",
+      "modules/Apps-Lillist-macOS-Sources-Views-TaskList.md",
+      "modules/Extensions-ShareExtension-iOS.md",
+      "modules/Packages-LillistUI-Sources-LillistUI-Accessibility.md",
+      "modules/Packages-LillistUI-Sources-LillistUI-Components.md",
+      "modules/Packages-LillistUI-Sources-LillistUI-DragReorder.md",
+      "modules/Packages-LillistUI-Sources-LillistUI-Onboarding.md",
+      "modules/Packages-LillistUI-Sources-LillistUI-QuickCapture.md",
+      "modules/Packages-LillistUI-Sources-LillistUI-Recurrence.md",
+      "modules/Packages-LillistUI-Sources-LillistUI-Sync.md",
+      "modules/Packages-LillistUI-Sources-LillistUI-Theme-chunk-2.md",
+      "modules/Packages-LillistUI-Sources-LillistUI-iOS-Tasks.md"
+    ],
+    "Packages-LillistUI-Sources-LillistUI-Theme-chunk-2": [
+      "modules/Packages-LillistUI-Sources-LillistUI-Accessibility.md",
+      "modules/Packages-LillistUI-Sources-LillistUI-DragReorder.md",
+      "modules/Packages-LillistUI-Sources-LillistUI-QuickCapture.md",
+      "modules/Packages-LillistUI-Sources-LillistUI-Sync.md",
+      "modules/Packages-LillistUI-Sources-LillistUI-Theme-chunk-1.md"
+    ],
+    "Packages-LillistUI-Sources-LillistUI-iOS-Tasks": [
+      "modules/Packages-LillistCore-Sources-LillistCore-Ordering.md",
+      "modules/Packages-LillistUI-Sources-LillistUI-Accessibility.md",
+      "modules/Packages-LillistUI-Sources-LillistUI-Components.md",
+      "modules/Packages-LillistUI-Sources-LillistUI-iOS-misc.md"
+    ],
+    "Packages-LillistUI-Sources-LillistUI-iOS-misc": [
+      "modules/Apps-Lillist-iOS-Sources-Settings.md",
+      "modules/Apps-Lillist-iOS-Sources-misc.md",
+      "modules/Apps-Lillist-macOS-Sources-Preferences.md",
+      "modules/Packages-LillistUI-Sources-LillistUI-Accessibility.md",
+      "modules/Packages-LillistUI-Sources-LillistUI-DragReorder.md",
+      "modules/Packages-LillistUI-Sources-LillistUI-QuickCapture.md",
+      "modules/Packages-LillistUI-Sources-LillistUI-Theme-chunk-1.md",
+      "modules/Packages-LillistUI-Sources-LillistUI-Theme-chunk-2.md",
+      "modules/Packages-LillistUI-Sources-LillistUI-iOS-Tasks.md"
+    ],
+    "Packages-LillistUI-Sources-LillistUI-misc": [
+      "modules/Apps-Lillist-iOS-Sources-Detail.md",
+      "modules/Apps-Lillist-iOS-Sources-misc.md",
+      "modules/Apps-Lillist-macOS-Sources-misc.md",
+      "modules/Packages-LillistUI-Sources-LillistUI-Components.md",
+      "modules/Packages-LillistUI-Sources-LillistUI-Settings.md",
+      "modules/Packages-LillistUI-Sources-LillistUI-Theme-chunk-1.md",
+      "modules/Packages-LillistUI-Sources-LillistUI-iOS-misc.md"
+    ],
+    "Packages-LillistUI-misc": [
+      "modules/Apps-Lillist-iOS-misc.md",
+      "modules/Apps-misc.md",
+      "modules/Tools.md",
+      "modules/root-misc.md"
+    ],
+    "Tools": [
+      "modules/Apps-Config.md",
+      "modules/Apps-Lillist-iOS-misc.md",
+      "modules/root-misc.md"
+    ]
+  },
+  "version": 1
+}

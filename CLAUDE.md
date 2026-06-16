@@ -425,3 +425,16 @@ When you notice the user has completed a logical unit of work, suggest running `
 ### Configuration
 Versioning settings are in `.semver/config.yaml`. Do not modify this file unless the user explicitly asks to change semver settings.
 <!-- semver:end -->
+
+<!-- atlas:start -->
+## Codebase Map (atlas)
+
+@docs/atlas/INDEX.md
+
+- The imported INDEX above is this project's codebase map. Use its routing
+  table: read the listed module doc before working in that area.
+- The map covers code structure only; build/test/workflow guidance lives in
+  the rest of this file.
+- After committing changes to mapped source files, suggest running
+  `/atlas update`.
+<!-- atlas:end -->

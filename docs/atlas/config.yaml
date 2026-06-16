@@ -1,0 +1,13 @@
+# Atlas codebase-map configuration (human-edited).
+#
+# Scope: product/library/CLI SOURCE only — the navigable codebase an agent
+# reasons about. Excludes test suites, all docs (design docs + the
+# docs/superpowers archaeology), .rca/ root-cause scratch, generated
+# *.xcodeproj project files, and asset catalogs. To widen scope, drop the
+# matching exclude line and run `/atlas map` (remap) or `/atlas update`.
+exclude:
+  - "**/Tests/**"
+  - "docs/**"
+  - ".rca/**"
+  - "**/*.xcodeproj/**"
+  - "**/*.xcassets/**"
