@@ -2871,3 +2871,35 @@ glass. The opaque-fallback path is pre-26-only and therefore not
 exercisable from a 26 host at all. Its *logic* stays unit-covered in
 `GlassSurfaceTests` (`prefersSolidFallback`, chrome-vs-fill); the now-dead
 snapshot pair is quarantined alongside the other macOS glass suites.
+
+## 2026-06-16 — A per-row visual change must be re-recorded on BOTH snapshot paths
+
+**Context.** Reshaping the status chip (`StatusCubeView`: circle → squircle,
+started's leading-half → centered dot) and squaring the menu/picker glyphs
+(`StatusGlyph.symbol`: `circle*` → `square*`) touched a visual that appears in
+*every task row and detail surface*. The trap: the affected baselines are split
+across two recording mechanisms that don't overlap.
+
+- **iOS-rendered suites** (`LillistUITests` Tour/DragReorder + app-hosted
+  `GlassSnapshotTests`) record via the simulator:
+  `xcodebuild test -scheme Lillist-iOS -only-testing:LillistUITests
+  -only-testing:Lillist-iOSAppHostedTests/GlassSnapshotTests RECORD_SNAPSHOTS=YES`.
+  This pass compiles out every `#if os(macOS)` suite, so it silently leaves the
+  macOS cube/row/detail baselines stale.
+- **macOS-only suites** (`#if os(macOS)`: `StatusCubeSnapshotTests`,
+  `TaskListViewSnapshotTests`, `TaskDetailViewSnapshotTests`,
+  `LocalizationSnapshotTests`) render `NSView` and record **only** on the host:
+  `RECORD_SNAPSHOTS=YES swift test --package-path Packages/LillistUI --filter <suite>`.
+
+Lesson: when you change a shared per-row/per-detail visual, grep for every
+snapshot suite that renders it across **both** platforms and re-record both —
+`TEST SUCCEEDED` on the iOS scheme is *not* proof the macOS baselines are
+current (and CI doesn't run the host-pinned macOS suites, so the drift hides
+until someone runs host `swift test` snapshots). Quarantined glass suites
+(`QuickCaptureViewSnapshotTests`, `MacOSScreenTourTests`) stay manual.
+
+Tangent found en route: `Theme/GlassRowSpike.swift` (a dev preview harness) had
+three `Text`/`Picker` literals missing from `Localizable.xcstrings` — a
+pre-existing `check-lillistui-localization.sh` failure unrelated to this change,
+since the lint *does* extract SwiftUI `Text`/`Picker` `LocalizedStringKey`
+literals (not only `String(localized:)`). Added the empty `{}` entries.
