@@ -1,7 +1,7 @@
 ---
 module: "Packages/LillistCore/Sources/lillist-cli/Commands (chunk 1)"
 summary: "swift-argument-parser command structs for the lillist CLI; thin shells over CLIBridge handlers"
-read_when: lillist CLI verb structs
+read_when: "lillist CLI verb structs"
 sources:
   - path: Packages/LillistCore/Sources/lillist-cli/Commands/AddCommand.swift
     blob: faa8bc85ffe6ba35ce713b96b59c3d3c9fb21d85

@@ -1,7 +1,7 @@
 ---
 module: Extensions/ShortcutsActions/Entities
 summary: "AppEntity + EntityQuery surface exposing tasks to Shortcuts, Spotlight, and Lock Screen"
-read_when: Shortcuts task entity
+read_when: "Shortcuts task entity"
 sources:
   - path: Extensions/ShortcutsActions/Entities/StatusAppEnum.swift
     blob: 9014b1f271976eceb9cca9e9307258a7d4dcac9d

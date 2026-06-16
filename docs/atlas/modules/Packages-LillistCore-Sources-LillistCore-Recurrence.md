@@ -1,7 +1,7 @@
 ---
 module: Packages/LillistCore/Sources/LillistCore/Recurrence
 summary: "Recurrence model, pure-Swift occurrence expansion, and next-instance spawning for Series"
-read_when: Recurrence rules & spawning
+read_when: "Recurrence rules & spawning"
 sources:
   - path: Packages/LillistCore/Sources/LillistCore/Recurrence/RecurrenceExpander.swift
     blob: 8295dbcad3f9a43df5e169e244d796d4d3d7b63a

@@ -1,7 +1,7 @@
 ---
 module: Packages/LillistUI/Sources/LillistUI/Components
 summary: "Shared cross-platform SwiftUI row/chip/empty-state widgets both apps render"
-read_when: Shared SwiftUI row widgets
+read_when: "Shared SwiftUI row widgets"
 sources:
   - path: Packages/LillistUI/Sources/LillistUI/Components/BreadcrumbView.swift
     blob: c662c04cec8fb460c17ca9cfea3f78578e3d444a

@@ -1,7 +1,7 @@
 ---
 module: Packages/LillistUI/Sources/LillistUI/iOS/Tasks
 summary: "Pure-presentation pieces of the iOS Tasks screen — outline tree, flat projection, filter header, sort"
-read_when: iOS Tasks outline screen
+read_when: "iOS Tasks outline screen"
 sources:
   - path: Packages/LillistUI/Sources/LillistUI/iOS/Tasks/FilterChip.swift
     blob: d9c391dbdee40c9de6196eae330ba7a2398be0c7

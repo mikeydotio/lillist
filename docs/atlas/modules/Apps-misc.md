@@ -1,7 +1,7 @@
 ---
 module: "Apps (misc)"
 summary: "XcodeGen spec for the Lillist-macOS app + standalone test bundle, packages, signing, and build settings"
-read_when: macOS XcodeGen project spec
+read_when: "macOS XcodeGen project spec"
 sources:
   - path: Apps/project.yml
     blob: f237d599d624763bc3b7a244e3df60b9c06aaa85

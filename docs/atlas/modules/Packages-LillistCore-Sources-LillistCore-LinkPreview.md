@@ -1,7 +1,7 @@
 ---
 module: Packages/LillistCore/Sources/LillistCore/LinkPreview
 summary: "SSRF-guarded URL unfurl pipeline — fetch HTML, parse OpenGraph metadata, persist to attachment"
-read_when: link preview / URL unfurl
+read_when: "link preview / URL unfurl"
 sources:
   - path: Packages/LillistCore/Sources/LillistCore/LinkPreview/LinkPreviewFetching.swift
     blob: f520a770d2d7e21d3450199c06dd1c912c9dbf25

@@ -1,7 +1,7 @@
 ---
 module: Packages/LillistUI/Sources/LillistUI/Recurrence
 summary: "SwiftUI recurrence-rule editor plus a value-type summary it renders to localized text"
-read_when: recurrence editor UI
+read_when: "recurrence editor UI"
 sources:
   - path: Packages/LillistUI/Sources/LillistUI/Recurrence/RecurrenceEditorView.swift
     blob: 0a45e3b6f13912b4cb5c8a1b942759a9af126108

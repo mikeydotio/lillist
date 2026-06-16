@@ -1,7 +1,7 @@
 ---
 module: Packages/LillistUI/Sources/LillistUI/DragReorder
 summary: "Platform-agnostic custom drag-to-reorder engine — phantom, drop resolution, and store-mutation mapping"
-read_when: drag-to-reorder engine
+read_when: "drag-to-reorder engine"
 sources:
   - path: Packages/LillistUI/Sources/LillistUI/DragReorder/DragController.swift
     blob: aac3debd777545a224f31540a34abfbfbaabfa2f

@@ -1,7 +1,7 @@
 ---
 module: "Packages/LillistCore/Sources/LillistCore/Stores (chunk 1)"
 summary: "Core Data store facades for attachments, journal, preferences, series, smart filters, tags, plus TaskStore extensions"
-read_when: Core Data store facades
+read_when: "Core Data store facades"
 sources:
   - path: Packages/LillistCore/Sources/LillistCore/Stores/AttachmentStore.swift
     blob: af70d4e18ae0d9635865a60d0738a7fd7957293c

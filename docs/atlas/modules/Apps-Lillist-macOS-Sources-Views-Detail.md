@@ -1,7 +1,7 @@
 ---
 module: Apps/Lillist-macOS/Sources/Views/Detail
 summary: "macOS task-detail Form pane and its inline editors (title, dates, recurrence, follow-up, notes, subtasks, journal)"
-read_when: macOS task detail pane
+read_when: "macOS task detail pane"
 sources:
   - path: Apps/Lillist-macOS/Sources/Views/Detail/DetailHeaderView.swift
     blob: 5de5be34439b88cbb1ad0ba850e70199a0959ff6

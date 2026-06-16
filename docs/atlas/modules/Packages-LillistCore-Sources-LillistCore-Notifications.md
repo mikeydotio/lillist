@@ -1,7 +1,7 @@
 ---
 module: Packages/LillistCore/Sources/LillistCore/Notifications
 summary: "Reconciles NotificationSpec rows to the system notification center; permissions, snooze, morning summary"
-read_when: Notification scheduling
+read_when: "Notification scheduling"
 sources:
   - path: Packages/LillistCore/Sources/LillistCore/Notifications/DeviceFingerprint.swift
     blob: 017698e8236497dbf31c324921f892727511f7eb

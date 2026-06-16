@@ -1,7 +1,7 @@
 ---
 module: "Packages/LillistCore/Sources/LillistCore/Sync (chunk 2)"
 summary: "Observable CloudKit sync-state value types and the actor that aggregates events into them"
-read_when: CloudKit sync-status surface
+read_when: "CloudKit sync-status surface"
 sources:
   - path: Packages/LillistCore/Sources/LillistCore/Sync/SyncStatus.swift
     blob: 223dfb9083d24d793ee63be7e908eb838f1951c2

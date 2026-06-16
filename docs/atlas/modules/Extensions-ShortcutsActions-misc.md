@@ -1,7 +1,7 @@
 ---
 module: "Extensions/ShortcutsActions (misc)"
 summary: "App Intents extension exposing Lillist actions to Shortcuts, Siri, and Lock Screen widgets"
-read_when: App Intents / Shortcuts
+read_when: "App Intents / Shortcuts"
 sources:
   - path: Extensions/ShortcutsActions/AddNoteIntent.swift
     blob: 5479c7b84089fb60435ccc3a69d7134c0a4003bb

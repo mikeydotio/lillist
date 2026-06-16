@@ -1,7 +1,7 @@
 ---
 module: "Packages/LillistCore/Sources/LillistCore/CLIBridge/Handlers (chunk 1)"
 summary: "Stateless CLIBridge command handlers translating tokenized intents into store mutations and DTO reads"
-read_when: CLI task command handlers
+read_when: "CLI task command handlers"
 sources:
   - path: Packages/LillistCore/Sources/LillistCore/CLIBridge/Handlers/AddHandler.swift
     blob: ad229604e848b080167fb5143cbf2a2e69bb971b

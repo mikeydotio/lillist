@@ -1,7 +1,7 @@
 ---
 module: Packages/LillistCore/Sources/LillistCore/CLIBridge/Renderers
 summary: "Serializes store DTOs into the CLI's json/ndjson/tsv/pretty output formats"
-read_when: lillist CLI output format
+read_when: "lillist CLI output format"
 sources:
   - path: Packages/LillistCore/Sources/LillistCore/CLIBridge/Renderers/FilterRenderer.swift
     blob: 751ad48396684b394771f92078d1e4ff8af3887f

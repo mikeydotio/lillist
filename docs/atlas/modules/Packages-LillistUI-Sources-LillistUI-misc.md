@@ -1,7 +1,7 @@
 ---
 module: "Packages/LillistUI/Sources/LillistUI (misc)"
 summary: "LillistUI package root — landing namespace, status-cycle state machine, and UI-facing sync indicator protocol"
-read_when: LillistUI status seam
+read_when: "LillistUI status seam"
 sources:
   - path: Packages/LillistUI/Sources/LillistUI/LillistUI.swift
     blob: 6c093e3ce4c0bfbbd190533a80b07af79b36b648

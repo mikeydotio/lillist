@@ -1,7 +1,7 @@
 ---
 module: Apps/Lillist-iOS/Sources/Settings
 summary: "iOS Settings sections — env-coupled presenters wiring AppEnvironment into LillistUI chrome"
-read_when: iOS Settings sections
+read_when: "iOS Settings sections"
 sources:
   - path: Apps/Lillist-iOS/Sources/Settings/AdvancedSection.swift
     blob: 16cfb82d01a4ffc73a1cef2fd36960e58c4d2829

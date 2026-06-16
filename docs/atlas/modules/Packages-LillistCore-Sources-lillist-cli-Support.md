@@ -1,7 +1,7 @@
 ---
 module: Packages/LillistCore/Sources/lillist-cli/Support
 summary: "Shared CLI plumbing — output/color flags, stdin batch tokens, exit codes, crash-canary lifecycle"
-read_when: lillist CLI plumbing
+read_when: "lillist CLI plumbing"
 sources:
   - path: Packages/LillistCore/Sources/lillist-cli/Support/BatchTokens.swift
     blob: c84df24df145043a34c89c879bf446bbbfcbf80e

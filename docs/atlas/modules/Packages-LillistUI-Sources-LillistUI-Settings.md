@@ -1,7 +1,7 @@
 ---
 module: Packages/LillistUI/Sources/LillistUI/Settings
 summary: "Shared Settings/Preferences presentation helpers lifted out of the two app targets"
-read_when: Shared Settings helpers
+read_when: "Shared Settings helpers"
 sources:
   - path: Packages/LillistUI/Sources/LillistUI/Settings/CrashReportSample.swift
     blob: 0249e4862ab49f63844aea35f80adcec4dafe388

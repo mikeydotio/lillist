@@ -1,7 +1,7 @@
 ---
 module: Packages/LillistCore/Sources/LillistCore/Export
 summary: "Versioned JSON+assets backup bundle writer/reader for the full Core Data store"
-read_when: backup/restore + export
+read_when: "backup/restore + export"
 sources:
   - path: Packages/LillistCore/Sources/LillistCore/Export/ExportSchema.swift
     blob: 910872fc86a1d4636fd80e144664dbedcfbb3f2a

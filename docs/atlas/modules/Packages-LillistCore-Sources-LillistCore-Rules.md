@@ -1,7 +1,7 @@
 ---
 module: Packages/LillistCore/Sources/LillistCore/Rules
 summary: "Codable predicate DSL plus twin evaluators (NSPredicate + pure Swift) powering smart filters"
-read_when: smart filter rule engine
+read_when: "smart filter rule engine"
 sources:
   - path: Packages/LillistCore/Sources/LillistCore/Rules/AttachmentKindMatch.swift
     blob: 071e2efdc3c7c46c931283caa2463829e29128d5

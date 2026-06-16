@@ -1,7 +1,7 @@
 ---
 module: "Packages/LillistUI (misc)"
 summary: "SwiftPM manifest for the LillistUI library — products, platforms, deps, and build flags"
-read_when: LillistUI Package.swift
+read_when: "LillistUI Package.swift"
 sources:
   - path: Packages/LillistUI/Package.swift
     blob: dc98b12e06978bcdd28655daba94b87bb242f502

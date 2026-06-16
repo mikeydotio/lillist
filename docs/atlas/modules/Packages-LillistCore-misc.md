@@ -1,7 +1,7 @@
 ---
 module: "Packages/LillistCore (misc)"
 summary: "SwiftPM manifest, Core Data model-compile build plugin, and package README for LillistCore"
-read_when: LillistCore package/plugin
+read_when: "LillistCore package/plugin"
 sources:
   - path: Packages/LillistCore/Package.swift
     blob: 2114f2075b73500bfe780910899b44aa96568927

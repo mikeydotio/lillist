@@ -1,7 +1,7 @@
 ---
 module: Apps/Lillist-iOS/Sources/Detail
 summary: "iOS task-detail surface — segmented Notes/Subtasks/Journal/Attachments tabs plus recurrence sheet"
-read_when: iOS task detail screen
+read_when: "iOS task detail screen"
 sources:
   - path: Apps/Lillist-iOS/Sources/Detail/RecurrenceSheet.swift
     blob: 40a4472a16ef4ecfbb2ea527940175da846e0bcf

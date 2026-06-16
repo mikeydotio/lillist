@@ -1,7 +1,7 @@
 ---
 module: "Packages/LillistUI/Sources/LillistUI/Theme (chunk 1)"
 summary: "Rainbow Glass design tokens — colors, hues, gradients, glass seam, button/toggle styles, status/sync/tag palettes"
-read_when: Theme colors & glass tokens
+read_when: "Theme colors & glass tokens"
 sources:
   - path: "Packages/LillistUI/Sources/LillistUI/Theme/Color+Hex.swift"
     blob: 71bd769cdd3d9632ef4353f22cc0df0ebaa246cc

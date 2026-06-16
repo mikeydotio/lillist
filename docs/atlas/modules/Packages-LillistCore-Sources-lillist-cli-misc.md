@@ -1,7 +1,7 @@
 ---
 module: "Packages/LillistCore/Sources/lillist-cli (misc)"
 summary: "lillist CLI entry point — root command, subcommand registry, and LillistError-to-exit-code dispatch"
-read_when: lillist CLI entry point
+read_when: "lillist CLI entry point"
 sources:
   - path: Packages/LillistCore/Sources/lillist-cli/Lillist.swift
     blob: 79bcebeb5b2478ae49266dc79a55745b8eb79590

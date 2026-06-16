@@ -1,7 +1,7 @@
 ---
 module: Tools
 summary: "Repo-side build/CI shell hooks — iOS build-number bump and LillistUI localization-catalog check"
-read_when: CI/deploy build scripts
+read_when: "CI/deploy build scripts"
 sources:
   - path: Tools/CI/check-lillistui-localization.sh
     blob: 223c47dafe800fccb53e98157d3e88c6b8af73d7

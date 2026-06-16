@@ -1,7 +1,7 @@
 ---
 module: "Packages/LillistCore/Sources/lillist-cli/Commands (chunk 2)"
 summary: "ArgumentParser command structs (search through watch) that thin-wrap CLIBridge handlers and stores"
-read_when: CLI subcommands (search-watch)
+read_when: "CLI subcommands (search-watch)"
 sources:
   - path: Packages/LillistCore/Sources/lillist-cli/Commands/PurgeCommand.swift
     blob: 159cefdc40da3abbf80c9a4149c3ea8fc61eaff6

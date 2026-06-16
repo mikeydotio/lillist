@@ -1,7 +1,7 @@
 ---
 module: Apps/Lillist-macOS/Sources/Views/TaskList
 summary: "macOS task-list pane — outline/flat rendering, drag-reorder, inline create, status cycling"
-read_when: macOS task-list pane
+read_when: "macOS task-list pane"
 sources:
   - path: Apps/Lillist-macOS/Sources/Views/TaskList/InlineCreateField.swift
     blob: d737387de165974c77a26ca89529a57b51cbed99

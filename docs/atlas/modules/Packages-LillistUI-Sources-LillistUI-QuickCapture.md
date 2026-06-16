@@ -1,7 +1,7 @@
 ---
 module: Packages/LillistUI/Sources/LillistUI/QuickCapture
 summary: "Quick Capture text parsing, the macOS hotkey panel view, and the canonical date-token list"
-read_when: Quick Capture parsing
+read_when: "Quick Capture parsing"
 sources:
   - path: Packages/LillistUI/Sources/LillistUI/QuickCapture/QuickCaptureDateSuggestions.swift
     blob: 7cf0c3990da9d39095ebc898d37ae926931afcfc

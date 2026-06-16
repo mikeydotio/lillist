@@ -1,7 +1,7 @@
 ---
 module: "Packages/LillistCore/Sources/LillistCore/Stores (chunk 2)"
 summary: "TaskStore — the async CRUD/hierarchy/reorder/status gateway over the LillistTask Core Data graph"
-read_when: TaskStore CRUD/reorder
+read_when: "TaskStore CRUD/reorder"
 sources:
   - path: Packages/LillistCore/Sources/LillistCore/Stores/TaskStore.swift
     blob: 31713a7791397c8cb2de171f3b097900da664826

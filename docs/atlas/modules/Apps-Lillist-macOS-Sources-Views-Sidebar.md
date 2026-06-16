@@ -1,7 +1,7 @@
 ---
 module: Apps/Lillist-macOS/Sources/Views/Sidebar
 summary: "macOS sidebar source list — pinned items, tag tree, filters, trash, with inline rename/recolor editors"
-read_when: macOS sidebar source list
+read_when: "macOS sidebar source list"
 sources:
   - path: Apps/Lillist-macOS/Sources/Views/Sidebar/SidebarSection.swift
     blob: 26e2fea7d1dd00c25de2b07150377bd17e4ff010

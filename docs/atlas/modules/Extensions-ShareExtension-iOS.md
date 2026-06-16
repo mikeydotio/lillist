@@ -1,7 +1,7 @@
 ---
 module: Extensions/ShareExtension-iOS
 summary: "iOS share-sheet extension that captures shared text/URLs into a task via the App-Group store"
-read_when: iOS Share Extension capture
+read_when: "iOS Share Extension capture"
 sources:
   - path: Extensions/ShareExtension-iOS/Info.plist
     blob: 71d0dc72cdff29eb19d3eeb77caf214255b3b5c3

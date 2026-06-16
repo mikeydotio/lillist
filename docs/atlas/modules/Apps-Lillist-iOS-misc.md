@@ -1,7 +1,7 @@
 ---
 module: "Apps/Lillist-iOS (misc)"
 summary: "iOS app target manifest — xcodegen spec, bundle/entitlements/privacy plists, app-target localized strings"
-read_when: iOS app target config
+read_when: "iOS app target config"
 sources:
   - path: Apps/Lillist-iOS/Info.plist
     blob: 3fa4f9bb9a91d891e61b35325ec8f206701faf8f

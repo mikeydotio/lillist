@@ -1,7 +1,7 @@
 ---
 module: Packages/LillistCore/Sources/LillistCore/ManagedObjects
 summary: "Hand-written @NSManaged Core Data subclasses backing every Lillist entity"
-read_when: Core Data entity classes
+read_when: "Core Data entity classes"
 sources:
   - path: "Packages/LillistCore/Sources/LillistCore/ManagedObjects/AppPreferences+CoreData.swift"
     blob: 45b2c0207922cc1482ecc9454154885f40d6b504

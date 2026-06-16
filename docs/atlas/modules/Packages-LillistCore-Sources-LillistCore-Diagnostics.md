@@ -1,7 +1,7 @@
 ---
 module: Packages/LillistCore/Sources/LillistCore/Diagnostics
 summary: "On-disk JSONL diagnostic event log, history-derived attribution, and export-package builder"
-read_when: Diagnostic logging & export
+read_when: "Diagnostic logging & export"
 sources:
   - path: Packages/LillistCore/Sources/LillistCore/Diagnostics/DiagnosticDefaults.swift
     blob: e3f22151361ded3a01d1bcc2601f0a62ed095d8f

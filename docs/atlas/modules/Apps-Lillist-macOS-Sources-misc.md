@@ -1,7 +1,7 @@
 ---
 module: "Apps/Lillist-macOS/Sources (misc)"
 summary: "macOS app shell — @main scene graph, root @Observable environment, AppKit bridges, crash/Spotlight/Services hosts"
-read_when: macOS app shell wiring
+read_when: "macOS app shell wiring"
 sources:
   - path: Apps/Lillist-macOS/Sources/AppDelegate.swift
     blob: 62ce4ca17340759272beab7879d10fce70f392bb

@@ -1,7 +1,7 @@
 ---
 module: Packages/LillistCore/Sources/LillistCore/CrashReporting
 summary: "Canary-based crash detection plus opt-in, redacted, user-mediated crash reports"
-read_when: crash detection/reporting
+read_when: "crash detection/reporting"
 sources:
   - path: "Packages/LillistCore/Sources/LillistCore/CrashReporting/AppPreferences+Crash.swift"
     blob: 1903156bfc349c5fd5ab6ea58356e7f22cf20369

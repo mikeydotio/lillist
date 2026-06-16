@@ -1,7 +1,7 @@
 ---
 module: Packages/LillistUI/Sources/LillistUI/Onboarding
 summary: "Cross-platform onboarding + iCloud-unavailable presentation views shared by iOS and macOS shells"
-read_when: Onboarding & iCloud prompts
+read_when: "Onboarding & iCloud prompts"
 sources:
   - path: Packages/LillistUI/Sources/LillistUI/Onboarding/ICloudRequiredContent.swift
     blob: 3acdc95019c18123523312efbae30d9db650300b

@@ -1,7 +1,7 @@
 ---
 module: Apps/Lillist-macOS/Sources/Hotkey
 summary: "System-wide Quick Capture hotkey monitor, key-combo codec, and the borderless floating capture panel"
-read_when: macOS global hotkey/capture
+read_when: "macOS global hotkey/capture"
 sources:
   - path: Apps/Lillist-macOS/Sources/Hotkey/GlobalHotkeyMonitor.swift
     blob: aabfdf309ae61b86c6315570445b023b79f9dfca

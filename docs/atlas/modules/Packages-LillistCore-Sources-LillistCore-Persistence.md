@@ -1,7 +1,7 @@
 ---
 module: Packages/LillistCore/Sources/LillistCore/Persistence
 summary: "Core Data container ownership, sync-mode store swaps, quarantine backups, and history reconciliation"
-read_when: Core Data stack/sync swaps
+read_when: "Core Data stack/sync swaps"
 sources:
   - path: Packages/LillistCore/Sources/LillistCore/Persistence/AutoPurgeJob.swift
     blob: 98b3ec158aff941f4eca3fd7d7f8bfc994495fbc
