@@ -29,6 +29,9 @@ packages:
     path: ../Packages/LillistCore
   LillistUI:
     path: ../Packages/LillistUI
+  Sparkle:
+    url: https://github.com/sparkle-project/Sparkle
+    from: "2.6.0"
 
 targets:
   Lillist-macOS:
@@ -56,6 +59,8 @@ targets:
         product: LillistCore
       - package: LillistUI
         product: LillistUI
+      - package: Sparkle
+        product: Sparkle
       # `appintentsmetadataprocessor` runs on every app/test target and
       # warns when AppIntents.framework isn't linked. The macOS app does
       # not currently define App Intents, but linking the SDK keeps the

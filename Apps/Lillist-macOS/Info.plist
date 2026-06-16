@@ -49,5 +49,11 @@
     </array>
     <key>ITSAppUsesNonExemptEncryption</key>
     <false/>
+    <key>SUFeedURL</key>
+    <string>https://updates.example.com/deployit/p/io.mikeydotio.Lillist/macos/appcast.xml</string>
+    <key>SUPublicEDKey</key>
+    <string>GD8ch7WlXhDlTYHHV5fkeusEX3vj26mLGUM+ghp1j5U=</string>
+    <key>SUEnableAutomaticChecks</key>
+    <true/>
 </dict>
 </plist>

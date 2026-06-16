@@ -22,6 +22,7 @@
 		297F386CC41DF81630DAABC2 /* HotkeyRecorder.swift in Sources */ = {isa = PBXBuildFile; fileRef = D2F709C6BFFCBE01EB7EB243 /* HotkeyRecorder.swift */; };
 		2AE1F90D7F261EEFA392223F /* QuickCapturePane.swift in Sources */ = {isa = PBXBuildFile; fileRef = 23D285C988F042A513BC9303 /* QuickCapturePane.swift */; };
 		2D6DAC66A7B57213009DD506 /* TaskListHeaderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE0A7E026D6DBD214EB737F9 /* TaskListHeaderView.swift */; };
+		2F203B07FBD275E48F0ABB96 /* Sparkle in Frameworks */ = {isa = PBXBuildFile; productRef = CF695397835B406FC45EA94B /* Sparkle */; };
 		34205E56AB7BBAC39AABE64A /* LillistCore in Frameworks */ = {isa = PBXBuildFile; productRef = D5DCD7417305E330CB4C0DC0 /* LillistCore */; };
 		3B20971664653ADF6B7B8A39 /* FollowUpFormView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 40E496CC31EAABC3031FA783 /* FollowUpFormView.swift */; };
 		3BFAF02F4DF61C06EF1ACC64 /* TaskListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7428376E8AED267AF2F3C3EE /* TaskListView.swift */; };
@@ -187,6 +188,7 @@
 			files = (
 				34205E56AB7BBAC39AABE64A /* LillistCore in Frameworks */,
 				883E82B069F58DB56B18C7C4 /* LillistUI in Frameworks */,
+				2F203B07FBD275E48F0ABB96 /* Sparkle in Frameworks */,
 				03FBDEF7777954B9B884E193 /* AppIntents.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -468,6 +470,7 @@
 			packageProductDependencies = (
 				D5DCD7417305E330CB4C0DC0 /* LillistCore */,
 				FE69D0E9A4ADB1CDB38E1E3A /* LillistUI */,
+				CF695397835B406FC45EA94B /* Sparkle */,
 			);
 			productName = "Lillist-macOS";
 			productReference = D002EB6866402CB86776B481 /* Lillist-macOS.app */;
@@ -521,6 +524,7 @@
 			mainGroup = 4DFFF97A4360A65ED6EF76B3;
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
+				4B14E2DAF8C41C0B1D230388 /* XCRemoteSwiftPackageReference "Sparkle" */,
 				081C4657D6DCBF95D5E46B84 /* XCLocalSwiftPackageReference "../Packages/LillistCore" */,
 				5D034D84FFF031BB1D2F8D30 /* XCLocalSwiftPackageReference "../Packages/LillistUI" */,
 			);
@@ -886,6 +890,17 @@
 		};
 /* End XCLocalSwiftPackageReference section */
 
+/* Begin XCRemoteSwiftPackageReference section */
+		4B14E2DAF8C41C0B1D230388 /* XCRemoteSwiftPackageReference "Sparkle" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/sparkle-project/Sparkle";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 2.6.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
 /* Begin XCSwiftPackageProductDependency section */
 		1CBD90EC484EB04CE92F5794 /* LillistCore */ = {
 			isa = XCSwiftPackageProductDependency;
@@ -894,6 +909,11 @@
 		1ED4C893535B6A6E62346628 /* LillistUI */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = LillistUI;
+		};
+		CF695397835B406FC45EA94B /* Sparkle */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 4B14E2DAF8C41C0B1D230388 /* XCRemoteSwiftPackageReference "Sparkle" */;
+			productName = Sparkle;
 		};
 		D5DCD7417305E330CB4C0DC0 /* LillistCore */ = {
 			isa = XCSwiftPackageProductDependency;

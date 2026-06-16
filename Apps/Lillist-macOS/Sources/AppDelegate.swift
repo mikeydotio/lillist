@@ -2,6 +2,7 @@ import AppKit
 import CoreData
 import SwiftUI
 import LillistCore
+import Sparkle
 
 /// Owns AppKit-bridge objects (status bar item, quick-capture panel).
 /// The global hotkey monitor itself lives on ``AppEnvironment`` (Plan 11
@@ -18,6 +19,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// dock menu (which fires synchronously on right-click). Refreshed
     /// on every Core Data save by `installDockBadge()`'s observer.
     var pinnedFilterCache: [SmartFilterStore.SmartFilterRecord] = []
+
+    /// Sparkle auto-updater. `startingUpdater: true` reads SUFeedURL and
+    /// SUPublicEDKey from Info.plist and begins scheduled checks; the
+    /// "Check for Updates…" menu item (LillistApp `.commands`) calls
+    /// `checkForUpdates()`.
+    let updaterController = SPUStandardUpdaterController(
+        startingUpdater: true, updaterDelegate: nil, userDriverDelegate: nil)
+
+    /// Drives a manual update check from the app menu.
+    func checkForUpdates() {
+        updaterController.updater.checkForUpdates()
+    }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         // Wiring is deferred to `bootstrap()`, called from `LillistApp.task`

@@ -27,6 +27,13 @@ struct LillistApp: App {
         .defaultSize(width: 1180, height: 760)
         .windowResizability(.contentSize)
         .commands {
+            // Sparkle "Check for Updates…" in the app menu, just below
+            // "About Lillist". Always available (not gated on environment).
+            CommandGroup(after: .appInfo) {
+                Button("Check for Updates…") {
+                    appDelegate.checkForUpdates()
+                }
+            }
             if let environment {
                 LillistCommands(environment: environment)
             }
