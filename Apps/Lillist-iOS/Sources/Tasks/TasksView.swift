@@ -11,6 +11,7 @@ struct TasksView: View {
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @Environment(\.isQuickCapturePresentedBinding) private var isQuickCapturePresented
     @Environment(\.sortBinding) private var sortBinding
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     @State private var records: [TaskStore.TaskRecord] = []
     @State private var savedFilters: [SmartFilterStore.SmartFilterRecord] = []
@@ -24,6 +25,12 @@ struct TasksView: View {
     @State private var isSettingsPresented = false
 
     @State private var searchDebounceTask: Task<Void, Never>?
+
+    /// Suppresses the row-insertion animation on the very first populate
+    /// (empty → N rows on launch), where an animated cascade reads as a
+    /// flourish rather than a meaningful change. Every reload after the
+    /// first animates the diff.
+    @State private var hasLoadedOnce = false
 
     @StateObject private var dragController = DragController()
 
@@ -153,16 +160,30 @@ struct TasksView: View {
         }
     }
 
+    /// Reload the active list. The `records` reassignment runs inside an
+    /// explicit `withAnimation` transaction so SwiftUI `List` drives its
+    /// native row insert/remove/move animations off the stable
+    /// `FlatTaskRow` identity — newly captured tasks slide into place,
+    /// deletions and filter/sort changes settle with the same ~0.2s
+    /// ease-out. Reduce Motion drops to no animation; the first populate
+    /// is unanimated (see `hasLoadedOnce`).
     private func reload() async {
         do {
             let group = buildActivePredicateGroup()
-            records = try await env.smartFilterStore.evaluate(
+            let newRecords = try await env.smartFilterStore.evaluate(
                 group: group,
                 sort: storeSortField,
                 ascending: storeSortAscending,
                 includeArchived: selectedTokens.contains(.done)
             )
-            loadError = nil
+            let animation: Animation? = (reduceMotion || !hasLoadedOnce)
+                ? nil
+                : LillistMotion.easeOut(LillistMotion.base)
+            withAnimation(animation) {
+                records = newRecords
+                loadError = nil
+            }
+            hasLoadedOnce = true
         } catch {
             loadError = "\(error)"
             records = []
