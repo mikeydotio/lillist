@@ -3,6 +3,16 @@
 All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [v0.5.2] - 2026-06-16
+
+### Fixed
+- insert new tasks at top, show them immediately, unify FAB glass (1e47172)
+
+### Maintenance
+- bump iOS build number to 46 (6f8f3ae)
+
+_[manual]_
+
 ## [v0.5.1] - 2026-06-16
 
 ### Added
