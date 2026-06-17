@@ -1,26 +1,26 @@
 ---
 module: "Packages/LillistCore/Sources/LillistCore/CLIBridge/Handlers (chunk 2)"
 summary: "CLIBridge command handlers for restore, search, show, status, tag, tags, and watch flows"
-read_when: "CLI restore/search/tag/watch"
+read_when: "CLI restore/search/tag/watch verbs or the live watch event stream"
 sources:
   - path: Packages/LillistCore/Sources/LillistCore/CLIBridge/Handlers/RestoreHandler.swift
-    blob: 5fb928949c1e57886767e94329b7720eb70b8fe0
   - path: Packages/LillistCore/Sources/LillistCore/CLIBridge/Handlers/SearchHandler.swift
-    blob: f88c2be42dca13fbdc685967a9ee4f8c242f9c0d
   - path: Packages/LillistCore/Sources/LillistCore/CLIBridge/Handlers/ShowHandler.swift
-    blob: 6615a48fb355d8fd5307dc672ce8b5a5611a503f
   - path: Packages/LillistCore/Sources/LillistCore/CLIBridge/Handlers/StatusHandler.swift
-    blob: fccb6c4b458311f04ebd4cd9a7e0ba74739847d9
   - path: Packages/LillistCore/Sources/LillistCore/CLIBridge/Handlers/TagHandler.swift
-    blob: b4b1b66dc267a4988498e85d57b835d7ab4c2217
   - path: Packages/LillistCore/Sources/LillistCore/CLIBridge/Handlers/TagsHandler.swift
-    blob: ebee6ca1c1b39ed1d4db22dde1e7f532d05ea4f2
   - path: Packages/LillistCore/Sources/LillistCore/CLIBridge/Handlers/WatchHandler.swift
-    blob: 4304202cc87835019cdbaef8e1db3ff84e1c88c0
-references_modules: [Packages-LillistCore-Sources-LillistCore-CLIBridge-misc, Packages-LillistCore-Sources-LillistCore-CLIBridge-Handlers-chunk-1, Packages-LillistCore-Sources-LillistCore-CLIBridge-Renderers, Packages-LillistCore-Sources-LillistCore-Stores-chunk-1, Packages-LillistCore-Sources-LillistCore-Stores-chunk-2, Packages-LillistCore-Sources-LillistCore-Model, Packages-LillistCore-Sources-LillistCore-Rules, Packages-LillistCore-Sources-LillistCore-ManagedObjects, Packages-LillistCore-Sources-LillistCore-misc]
-generator: cartographer/1
-baseline: 85a4dc8648a4280e30f533268d65bfac16701d21
-verified: true
+references_modules:
+  - Packages-LillistCore-Sources-LillistCore-CLIBridge-misc
+  - Packages-LillistCore-Sources-LillistCore-CLIBridge-Handlers-chunk-1
+  - Packages-LillistCore-Sources-LillistCore-CLIBridge-Renderers
+  - Packages-LillistCore-Sources-LillistCore-Stores-chunk-1
+  - Packages-LillistCore-Sources-LillistCore-Stores-chunk-2
+  - Packages-LillistCore-Sources-LillistCore-Model
+  - Packages-LillistCore-Sources-LillistCore-Rules
+  - Packages-LillistCore-Sources-LillistCore-ManagedObjects
+  - Packages-LillistCore-Sources-LillistCore-misc
+generator: cartographer/1 model=claude-sonnet-4-6
 ---
 
 # Module: Packages/LillistCore/Sources/LillistCore/CLIBridge/Handlers (chunk 2)
@@ -33,7 +33,8 @@ the read/mutate verbs that are not core list/add: restore-from-trash, full-text
 search, task detail (`show`), status transitions, per-task tagging, the tag
 hierarchy CRUD, and the long-lived `watch` event stream. Handlers resolve a
 token to a task via `Resolver`, call the appropriate store, and return DTOs;
-they never touch `NSManagedObject`s (except `SearchHandler`'s direct fetch).
+they never expose `NSManagedObject`s (except `SearchHandler`'s direct fetch
+inside a confined `ctx.perform` block).
 
 ## Public API
 
@@ -69,8 +70,10 @@ they never touch `NSManagedObject`s (except `SearchHandler`'s direct fetch).
 | --- | --- | --- | --- |
 | `RestoreHandler.resolveTrashed` | func | `Packages/LillistCore/Sources/LillistCore/CLIBridge/Handlers/RestoreHandler.swift:22` | Trash-scoped token resolution; both `run` and `preflight` route through it |
 | `TagsHandler.findTag` | func | `Packages/LillistCore/Sources/LillistCore/CLIBridge/Handlers/TagsHandler.swift:58` | Name->id lookup backing every mutating `TagsHandler` verb; throws on ambiguity |
-| `TagsHandler.walk` | func | `Packages/LillistCore/Sources/LillistCore/CLIBridge/Handlers/TagsHandler.swift:10` | Depth-first tree flatten powering `list` and `findTag` |
-| `TagHandler.parseToken` | func | `Packages/LillistCore/Sources/LillistCore/CLIBridge/Handlers/TagHandler.swift:33` | Parses `+#`/`-#`/`#` tag tokens into add/remove ops |
+| `TagsHandler.walk` | func | `Packages/LillistCore/Sources/LillistCore/CLIBridge/Handlers/TagsHandler.swift:10` | Recursive depth-first tree flatten powering both `list` and `findTag` |
+| `TagHandler.parseToken` | func | `Packages/LillistCore/Sources/LillistCore/CLIBridge/Handlers/TagHandler.swift:33` | Parses `+#`/`-#`/`#` tag tokens into add/remove ops; throws on malformed input |
+| `WatchHandler.Coalescer` | actor | `Packages/LillistCore/Sources/LillistCore/CLIBridge/Handlers/WatchHandler.swift:49` | Serializes burst notifications into one drain loop; prevents interleaved tasks |
+| `WatchHandler.SnapshotBox` | actor | `Packages/LillistCore/Sources/LillistCore/CLIBridge/Handlers/WatchHandler.swift:77` | Actor-isolated last-emitted snapshot enabling safe drain-loop read/write |
 
 ## Relationships
 
@@ -110,7 +113,7 @@ directly inside `ctx.perform` and maps each hit through `LsHandler.record`.
 it serializes burst re-evaluations through one drain loop guarded by the private
 `Coalescer` actor and reads/writes the last snapshot through the private
 `SnapshotBox` actor, so strict concurrency holds without detached per-event
-Tasks. `snapshotStep` is pure and Sendable-safe — it is the unit-testable seam
+Tasks. `snapshotStep` is pure and `Sendable`-safe — it is the unit-testable seam
 for dedup logic. `ShowHandler.Result` and `WatchHandler.Event` are `Sendable`
 value bundles for crossing back to the CLI process.
 

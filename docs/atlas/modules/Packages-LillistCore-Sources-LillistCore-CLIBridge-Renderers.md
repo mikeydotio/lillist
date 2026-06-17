@@ -4,17 +4,11 @@ summary: "Serializes store DTOs into the CLI's json/ndjson/tsv/pretty output for
 read_when: "lillist CLI output format"
 sources:
   - path: Packages/LillistCore/Sources/LillistCore/CLIBridge/Renderers/FilterRenderer.swift
-    blob: 751ad48396684b394771f92078d1e4ff8af3887f
   - path: Packages/LillistCore/Sources/LillistCore/CLIBridge/Renderers/JournalRenderer.swift
-    blob: facea689a166003da677132304e1eeb8f4b4433c
   - path: Packages/LillistCore/Sources/LillistCore/CLIBridge/Renderers/TagRenderer.swift
-    blob: 95a9efc7b3fd0fa5dbbdcea0cfdb0663e35ca147
   - path: Packages/LillistCore/Sources/LillistCore/CLIBridge/Renderers/TaskRenderer.swift
-    blob: 0ef33ce9e0dd81909afeb708247b92db04a54fb9
-references_modules: [Packages-LillistCore-Sources-LillistCore-Stores-chunk-1, Packages-LillistCore-Sources-LillistCore-Model, Packages-LillistCore-Sources-LillistCore-CLIBridge-Handlers-chunk-1]
-generator: cartographer/1
-baseline: 85a4dc8648a4280e30f533268d65bfac16701d21
-verified: true
+references_modules: [Packages-LillistCore-Sources-LillistCore-Stores-chunk-1, Packages-LillistCore-Sources-LillistCore-Model, Packages-LillistCore-Sources-LillistCore-CLIBridge-Handlers-chunk-2]
+generator: cartographer/1 model=claude-sonnet-4-6
 ---
 
 # Module: Packages/LillistCore/Sources/LillistCore/CLIBridge/Renderers
@@ -70,7 +64,7 @@ scriptable output.
 - `Packages-LillistCore-Sources-LillistCore-CLIBridge-Renderers.JournalRenderer -> Packages-LillistCore-Sources-LillistCore-Stores-chunk-1.JournalRecord (reads)`
 - `Packages-LillistCore-Sources-LillistCore-CLIBridge-Renderers.TaskRenderer -> Packages-LillistCore-Sources-LillistCore-Model.Status (reads)`
 - `Packages-LillistCore-Sources-LillistCore-CLIBridge-Renderers.FilterRenderer -> Packages-LillistCore-Sources-LillistCore-Model.SortField (reads)`
-- `Packages-LillistCore-Sources-LillistCore-CLIBridge-Handlers-chunk-1.WatchHandler -> Packages-LillistCore-Sources-LillistCore-CLIBridge-Renderers.TaskRenderer (calls)`
+- `Packages-LillistCore-Sources-LillistCore-CLIBridge-Handlers-chunk-2.WatchHandler -> Packages-LillistCore-Sources-LillistCore-CLIBridge-Renderers.TaskRenderer (calls)`
 
 ## Type notes
 

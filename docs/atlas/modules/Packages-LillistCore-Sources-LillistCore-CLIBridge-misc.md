@@ -1,26 +1,17 @@
 ---
 module: "Packages/LillistCore/Sources/LillistCore/CLIBridge (misc)"
 summary: "Shared load-bearing primitives for the CLI and Shortcuts — store location, task resolution, date/filter parsing"
-read_when: "CLI/Shortcuts store access"
+read_when: "CLI/Shortcuts store access, fuzzy task resolution, date input parsing, or filter flag translation"
 sources:
   - path: Packages/LillistCore/Sources/LillistCore/CLIBridge/CLIBridge.swift
-    blob: c4bf1afbbb44a21b8a5162f4b1a1db2299deaf1f
   - path: Packages/LillistCore/Sources/LillistCore/CLIBridge/Config.swift
-    blob: 30810b649af3df23a2b16e8904d91656bbc898c2
   - path: Packages/LillistCore/Sources/LillistCore/CLIBridge/DateParsing.swift
-    blob: 832f427a2cca04791e3783ff2501735e0d2680aa
   - path: Packages/LillistCore/Sources/LillistCore/CLIBridge/FilterFlags.swift
-    blob: 6beb4def986435c783f9301805fb0dba74a10c6d
   - path: Packages/LillistCore/Sources/LillistCore/CLIBridge/OutputFormat.swift
-    blob: 95f838c57fcc1427c31d510dd578058ea1ecbdb1
   - path: Packages/LillistCore/Sources/LillistCore/CLIBridge/Resolver.swift
-    blob: 96b084b79bf8710a31e90cc520bb38402daf19c8
   - path: Packages/LillistCore/Sources/LillistCore/CLIBridge/StoreLocator.swift
-    blob: face1e87c95329651709b822e18bef6c20a765f4
 references_modules: [Packages-LillistCore-Sources-LillistCore-misc, Packages-LillistCore-Sources-LillistCore-Model, Packages-LillistCore-Sources-LillistCore-Rules, Packages-LillistCore-Sources-LillistCore-Persistence, Packages-LillistCore-Sources-LillistCore-Sync-chunk-1, Packages-LillistCore-Sources-LillistCore-ManagedObjects, Packages-LillistCore-Sources-LillistCore-CLIBridge-Handlers-chunk-1, Packages-LillistCore-Sources-lillist-cli-Commands-chunk-1]
-generator: cartographer/1
-baseline: 85a4dc8648a4280e30f533268d65bfac16701d21
-verified: true
+generator: cartographer/1 model=claude-sonnet-4-6
 ---
 
 # Module: Packages/LillistCore/Sources/LillistCore/CLIBridge (misc)
@@ -54,15 +45,15 @@ matching independently.
 
 ## Load-bearing internals
 
-| Symbol | Kind | Location | Why it matters |
-| --- | --- | --- | --- |
-| `StoreLocator.openAppGroup` | func | `Packages/LillistCore/Sources/LillistCore/CLIBridge/StoreLocator.swift:24` | Default CLI store entry point; consults MigrationGate before opening |
-| `Resolver.resolve` | func | `Packages/LillistCore/Sources/LillistCore/CLIBridge/Resolver.swift:47` | Core fuzzy-match routing: UUID → prefix → exact → substring |
-| `Resolver.resolveAll` | func | `Packages/LillistCore/Sources/LillistCore/CLIBridge/Resolver.swift:98` | All-or-nothing batch resolve; throws before any caller mutation |
-| `FilterFlags.toPredicateGroup` | func | `Packages/LillistCore/Sources/LillistCore/CLIBridge/FilterFlags.swift:34` | Translates flags to a `PredicateGroup`; resolves tag names to UUIDs |
-| `Config.resolvedCalendar` | func | `Packages/LillistCore/Sources/LillistCore/CLIBridge/Config.swift:23` | Calendar honoring configured `time_zone`; centralizes relative-date math |
-| `Config.defaultLocation` | func | `Packages/LillistCore/Sources/LillistCore/CLIBridge/Config.swift:73` | Default config path; `NSHomeDirectory`-based for iOS portability |
-| `DateParsing.startOfDay` | func | `Packages/LillistCore/Sources/LillistCore/CLIBridge/DateParsing.swift:222` | Calendar-anchored day floor underpinning all base-phrase math |
+| Symbol | Location | Why it matters |
+| --- | --- | --- |
+| `StoreLocator.openAppGroup` | `Packages/LillistCore/Sources/LillistCore/CLIBridge/StoreLocator.swift:24` | Default CLI store entry point; consults MigrationGate before opening |
+| `Resolver.resolve` | `Packages/LillistCore/Sources/LillistCore/CLIBridge/Resolver.swift:47` | Core fuzzy-match routing: UUID → prefix → exact → substring |
+| `Resolver.resolveAll` | `Packages/LillistCore/Sources/LillistCore/CLIBridge/Resolver.swift:98` | All-or-nothing batch resolve; throws before any caller mutation |
+| `FilterFlags.toPredicateGroup` | `Packages/LillistCore/Sources/LillistCore/CLIBridge/FilterFlags.swift:34` | Translates flags to a `PredicateGroup`; resolves tag names to UUIDs |
+| `Config.resolvedCalendar` | `Packages/LillistCore/Sources/LillistCore/CLIBridge/Config.swift:23` | Calendar honoring configured `time_zone`; centralizes relative-date math |
+| `Config.defaultLocation` | `Packages/LillistCore/Sources/LillistCore/CLIBridge/Config.swift:73` | Default config path; `NSHomeDirectory`-based for iOS portability |
+| `DateParsing.startOfDay` | `Packages/LillistCore/Sources/LillistCore/CLIBridge/DateParsing.swift:222` | Calendar-anchored day floor underpinning all base-phrase math |
 
 ## Relationships
 

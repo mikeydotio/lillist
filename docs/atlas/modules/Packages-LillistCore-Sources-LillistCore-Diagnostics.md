@@ -4,21 +4,13 @@ summary: "On-disk JSONL diagnostic event log, history-derived attribution, and e
 read_when: "Diagnostic logging & export"
 sources:
   - path: Packages/LillistCore/Sources/LillistCore/Diagnostics/DiagnosticDefaults.swift
-    blob: e3f22151361ded3a01d1bcc2601f0a62ed095d8f
   - path: Packages/LillistCore/Sources/LillistCore/Diagnostics/DiagnosticEvent.swift
-    blob: 4b41a93037c2cd610c2b5be293eaaab663cdef1e
   - path: Packages/LillistCore/Sources/LillistCore/Diagnostics/DiagnosticHistoryObserver.swift
-    blob: b9e07971ffd2c766b0df00813d441ad9e83e56d8
   - path: Packages/LillistCore/Sources/LillistCore/Diagnostics/DiagnosticLog.swift
-    blob: 0ac37c8392163db4b229f840218f263f1f5585bf
   - path: Packages/LillistCore/Sources/LillistCore/Diagnostics/DiagnosticPackageBuilder.swift
-    blob: 898d056563376af5cf9bfc705a624d3dd859af5f
   - path: Packages/LillistCore/Sources/LillistCore/Diagnostics/DiagnosticSink.swift
-    blob: e2584a0372a51010539bd69615fad14ed4e1d39a
-references_modules: [Packages-LillistCore-Sources-LillistCore-Persistence, Packages-LillistCore-Sources-LillistCore-Stores-chunk-1, Packages-LillistUI-Sources-LillistUI-DragReorder, Apps-Lillist-iOS-Sources-App, Apps-Lillist-macOS-Sources-Preferences, Packages-LillistCore-Sources-LillistCore-CLIBridge-Handlers-chunk-1]
-generator: cartographer/1
-baseline: 85a4dc8648a4280e30f533268d65bfac16701d21
-verified: true
+references_modules: [Packages-LillistCore-Sources-LillistCore-Persistence, Packages-LillistCore-Sources-LillistCore-Stores-chunk-1, Packages-LillistCore-Sources-LillistCore-Stores-chunk-2, Packages-LillistUI-Sources-LillistUI-DragReorder, Apps-Lillist-iOS-Sources-App, Apps-Lillist-macOS-Sources-Preferences, Packages-LillistCore-Sources-LillistCore-CLIBridge-Handlers-chunk-1]
+generator: cartographer/1 model=claude-sonnet-4-6
 ---
 
 # Module: Packages/LillistCore/Sources/LillistCore/Diagnostics
@@ -66,7 +58,8 @@ fact. If it vanished, the app loses its only persistent field-debugging trail.
 - `Packages-LillistCore-Sources-LillistCore-Diagnostics.DiagnosticHistoryObserver -> Packages-LillistCore-Sources-LillistCore-Diagnostics.DiagnosticSink (calls)`
 - `Packages-LillistCore-Sources-LillistCore-Diagnostics.DiagnosticHistoryObserver -> Packages-LillistCore-Sources-LillistCore-Persistence.PersistenceController (reads)`
 - `Packages-LillistCore-Sources-LillistCore-Diagnostics.DiagnosticHistoryObserver -> Packages-LillistCore-Sources-LillistCore-Persistence.PersistentHistoryTokenStore (reads)`
-- `Packages-LillistCore-Sources-LillistCore-Stores-chunk-1.TaskStore -> Packages-LillistCore-Sources-LillistCore-Diagnostics.DiagnosticSink (calls)`
+- `Packages-LillistCore-Sources-LillistCore-Stores-chunk-2.TaskStore -> Packages-LillistCore-Sources-LillistCore-Diagnostics.DiagnosticSink (calls)`
+- `Packages-LillistCore-Sources-LillistCore-Stores-chunk-1.SmartFilterStore -> Packages-LillistCore-Sources-LillistCore-Diagnostics.DiagnosticSink (calls)`
 - `Packages-LillistUI-Sources-LillistUI-DragReorder.DragController -> Packages-LillistCore-Sources-LillistCore-Diagnostics.DiagnosticSink (calls)`
 - `Apps-Lillist-iOS-Sources-App.AppEnvironment -> Packages-LillistCore-Sources-LillistCore-Diagnostics.DiagnosticLog (calls)`
 - `Apps-Lillist-iOS-Sources-App.AppEnvironment -> Packages-LillistCore-Sources-LillistCore-Diagnostics.DiagnosticHistoryObserver (owns)`
@@ -77,25 +70,25 @@ fact. If it vanished, the app loses its only persistent field-debugging trail.
 
 `DiagnosticLog` is an actor; its `enabled` flag is a cached `Bool` set at
 construction and mutated only via `setEnabled`, so `log` never awaits
-`DevicePreferencesStore` (`DiagnosticLog.swift:12`). The actor owns the
+`DevicePreferencesStore` (`Packages/LillistCore/Sources/LillistCore/Diagnostics/DiagnosticLog.swift:12`). The actor owns the
 authoritative `process` and the per-file monotonic `seq`; emitters pass
-placeholder values that `log` overwrites (`DiagnosticLog.swift:70`). `shared`
+placeholder values that `log` overwrites (`Packages/LillistCore/Sources/LillistCore/Diagnostics/DiagnosticLog.swift:70`). `shared`
 is backed by a lock-guarded `SharedRegistry` (not an actor) precisely because
-the factory is synchronous (`DiagnosticLog.swift:139`).
+the factory is synchronous (`Packages/LillistCore/Sources/LillistCore/Diagnostics/DiagnosticLog.swift:139`).
 
 `DiagnosticHistoryObserver` is `@unchecked Sendable`: the observer token is
 touched on the main actor, the token store is thread-safe, and `seq` is
-lock-guarded (`DiagnosticHistoryObserver.swift:20`). Its `DrainGate` actor
+lock-guarded (`Packages/LillistCore/Sources/LillistCore/Diagnostics/DiagnosticHistoryObserver.swift:20`). Its `DrainGate` actor
 enforces a single in-flight drain so the split watermark read-modify-write
 (read inside `perform`, advance after the emit loop) never double-emits
-(`DiagnosticHistoryObserver.swift:64`). It uses its own watermark key,
+(`Packages/LillistCore/Sources/LillistCore/Diagnostics/DiagnosticHistoryObserver.swift:64`). It uses its own watermark key,
 `PersistentHistoryTokenStore.diagnosticsKey`, to avoid clobbering the
-reconciler (`DiagnosticHistoryObserver.swift:84`).
+reconciler (`Packages/LillistCore/Sources/LillistCore/Diagnostics/DiagnosticHistoryObserver.swift:84`).
 
 `DiagnosticEvent` guarantees exactly one physical line per event because
-`JSONEncoder` escapes embedded newlines (`DiagnosticEvent.swift:80`). A store
+`JSONEncoder` escapes embedded newlines (`Packages/LillistCore/Sources/LillistCore/Diagnostics/DiagnosticEvent.swift:80`). A store
 snapshot failure degrades the package to logs-only with a manifest note rather
-than aborting (`DiagnosticPackageBuilder.swift:99`).
+than aborting (`Packages/LillistCore/Sources/LillistCore/Diagnostics/DiagnosticPackageBuilder.swift:99`).
 
 ## External deps
 
@@ -105,6 +98,6 @@ than aborting (`DiagnosticPackageBuilder.swift:99`).
 
 ## Gotchas
 
-- Delete events resolve a nil `objectUUID`: `id` is not flagged `preserveValueInHistoryOnDeletion`, so tombstones lack it (`DiagnosticHistoryObserver.swift:194`).
-- `flatten` reads `id`/`position` via `attributesByName` guards because `value(forKey:)` on an undeclared key raises an uncatchable Obj-C exception (`DiagnosticHistoryObserver.swift:180`).
-- Retention prune relies on lexical comparison of zero-padded `yyyy-MM-dd` stamps and assumes process names contain no `-` (`DiagnosticLog.swift:127`).
+- Delete events resolve a nil `objectUUID`: `id` is not flagged `preserveValueInHistoryOnDeletion`, so tombstones lack it (`Packages/LillistCore/Sources/LillistCore/Diagnostics/DiagnosticHistoryObserver.swift:194`).
+- `flatten` reads `id`/`position` via `attributesByName` guards because `value(forKey:)` on an undeclared key raises an uncatchable Obj-C exception (`Packages/LillistCore/Sources/LillistCore/Diagnostics/DiagnosticHistoryObserver.swift:180`).
+- Retention prune relies on lexical comparison of zero-padded `yyyy-MM-dd` stamps and assumes process names contain no `-` (`Packages/LillistCore/Sources/LillistCore/Diagnostics/DiagnosticLog.swift:127`).
