@@ -3,6 +3,39 @@
 All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [v0.6.1] - 2026-06-17
+
+### Fixed
+- restore long-press-to-reorder on task rows (d762a96)
+
+### Documentation
+- full codebase map (58 modules) (75fb608)
+- checkpoint — overview (8c52c45)
+- checkpoint — verified docs (3 regenerated) (4234727)
+- checkpoint — module docs wave 8 (all 58) (1a1562b)
+- checkpoint — module docs wave 7 (d59010b)
+- checkpoint — module docs wave 6 (7ddc69e)
+- checkpoint — module docs wave 5 (f243d59)
+- checkpoint — module docs wave 4 (7100e2e)
+- checkpoint — module docs wave 3 (0c9f79c)
+- checkpoint — module docs wave 2 (8beac75)
+- checkpoint — module docs wave 1 (9553b23)
+- checkpoint — orphan removal + module-id corrections (34dfea7)
+- checkpoint — module docs wave 8 (all 58) (8368a0d)
+- checkpoint — module docs wave 7 (ad8b1a3)
+- checkpoint — module docs wave 6 (259cfd7)
+- checkpoint — module docs wave 5 (b6e6936)
+- checkpoint — module docs wave 4 (dc2cdba)
+- checkpoint — module docs wave 3 (39c56d4)
+- checkpoint — module docs wave 2 (a859ee1)
+- checkpoint — module docs wave 1 (8745b6c)
+
+### Maintenance
+- mark docs/atlas as linguist-generated to collapse map diffs (028aa1b)
+- bump iOS build number to 49 (a8f7bfc)
+
+_[force]_
+
 ## [v0.6.0] - 2026-06-17
 
 ### Added
