@@ -3,6 +3,20 @@
 All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [v0.6.0] - 2026-06-17
+
+### Added
+- localization sync + iOS discard-undo toast (Wave 5) (8cac861)
+- macOS hosting + retire detail column (Wave 4) (e3fd38d)
+- iOS hosting + retire pushed detail (Wave 3) (0c2761e)
+- shared TaskEditorView + tag/reminder editors (Wave 2) (2c7c5a9)
+- TaskEditorModel state machine + auto-promote (Wave 1) (2169193)
+
+### Maintenance
+- bump iOS build number to 48 (7cab4b6)
+
+_[manual]_
+
 ## [v0.5.3] - 2026-06-17
 
 ### Documentation
