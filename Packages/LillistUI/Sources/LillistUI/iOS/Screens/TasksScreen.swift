@@ -35,6 +35,10 @@ public struct TasksScreen: View {
 
     @ObservedObject public var dragController: DragController
 
+    /// The single row whose swipe actions are currently held open (one at a
+    /// time). `SwipeableRow` reads/writes this to close peers on open.
+    @State private var openSwipeRowID: UUID?
+
     public var onToggleCollapsed: (UUID) -> Void
     public var onRefresh: @MainActor () async -> Void
     public var onStatusClick: @MainActor (TaskStore.TaskRecord) -> Void
@@ -220,28 +224,40 @@ public struct TasksScreen: View {
         // `proxy.frame(in: .named(...)).minY` shift.
         List {
             ForEach(flat) { row in
-                outlineRow(row)
-                    .listRowInsets(EdgeInsets(top: 3, leading: 12, bottom: 3, trailing: 12))
-                    .listRowSeparator(.hidden)
-                    .listRowBackground(Color.clear)
-                    .opacity(row.node.record.id == draggedID ? 0 : 1)
-                    .allowsHitTesting(row.node.record.id != draggedID)
-                    .swipeActions(edge: .trailing, allowsFullSwipe: true) {
-                        Button(role: .destructive) {
-                            onDelete(row.node.record)
-                        } label: {
-                            Label(
-                                String(localized: "Delete", bundle: .module),
-                                systemImage: "trash"
-                            )
-                        }
-                    }
-                    // Geometry only — the drag gesture lives inside
-                    // `outlineRow` on the inert text label so it never
-                    // covers the chevron or status controls (their taps
-                    // die under a row-wide long-press gesture; see
-                    // engineering-notes 2026-06-12).
-                    .reportRowGeometry(id: row.node.record.id)
+                // Custom swipe (left = Delete, right = Mark open) replaces
+                // `.swipeActions`, which can't coexist with the bespoke
+                // long-press drag-reorder gesture — see SwipeableRow's note
+                // and engineering-notes 2026-06-17.
+                SwipeableRow(
+                    rowID: row.node.record.id,
+                    leading: SwipeActionSpec(
+                        titleKey: "Mark open",
+                        systemImage: StatusGlyph.symbol(for: .todo),
+                        tint: RainbowPalette.focusBlue.base,
+                        perform: { onStatusSet(row.node.record, .todo) }
+                    ),
+                    trailing: SwipeActionSpec(
+                        titleKey: "Delete",
+                        systemImage: "trash",
+                        tint: RainbowPalette.actionOrange.base,
+                        isDestructive: true,
+                        perform: { onDelete(row.node.record) }
+                    ),
+                    isReorderActive: draggedID != nil,
+                    openRowID: $openSwipeRowID
+                ) {
+                    outlineRow(row)
+                }
+                .listRowInsets(EdgeInsets(top: 3, leading: 12, bottom: 3, trailing: 12))
+                .listRowSeparator(.hidden)
+                .listRowBackground(Color.clear)
+                .opacity(row.node.record.id == draggedID ? 0 : 1)
+                .allowsHitTesting(row.node.record.id != draggedID)
+                // Geometry only — the drag gesture lives inside `outlineRow`
+                // on the inert text label so it never covers the chevron or
+                // status controls (their taps die under a row-wide long-press
+                // gesture; see engineering-notes 2026-06-12).
+                .reportRowGeometry(id: row.node.record.id)
             }
         }
         .listStyle(.plain)
