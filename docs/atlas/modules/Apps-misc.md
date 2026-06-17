@@ -4,7 +4,7 @@ summary: "XcodeGen spec for the Lillist-macOS app + standalone test bundle, pack
 read_when: "Editing macOS target structure, package deps, signing xcconfig wiring, or test bundle co-compile list"
 sources:
   - path: Apps/project.yml
-references_modules: [Apps-Config, Apps-Lillist-macOS-Sources-Hotkey, Apps-Lillist-macOS-Sources-Commands, Apps-Lillist-macOS-Sources-Views-TaskList, Apps-Lillist-macOS-Sources-Views-Sidebar, Apps-Lillist-macOS-Sources-misc, Packages-LillistCore-misc, Packages-LillistUI-misc]
+references_modules: [Apps-Config, Apps-Lillist-macOS-Sources-Hotkey, Apps-Lillist-macOS-Sources-Commands, Apps-Lillist-macOS-Sources-Views, Apps-Lillist-macOS-Sources-misc, Packages-LillistCore-misc, Packages-LillistUI-misc]
 generator: cartographer/1 model=claude-sonnet-4-6
 ---
 
@@ -45,8 +45,7 @@ Regenerating from this file is mandatory after moving or deleting macOS sources.
 - `Apps-misc.configFiles -> Apps-Config (reads)`
 - `Apps-misc.Lillist-macOSTests -> Apps-Lillist-macOS-Sources-Hotkey (reads)`
 - `Apps-misc.Lillist-macOSTests -> Apps-Lillist-macOS-Sources-Commands (reads)`
-- `Apps-misc.Lillist-macOSTests -> Apps-Lillist-macOS-Sources-Views-TaskList (reads)`
-- `Apps-misc.Lillist-macOSTests -> Apps-Lillist-macOS-Sources-Views-Sidebar (reads)`
+- `Apps-misc.Lillist-macOSTests -> Apps-Lillist-macOS-Sources-Views (reads)`
 - `Apps-misc.Lillist-macOSTests -> Apps-Lillist-macOS-Sources-misc (reads)`
 
 ## Type notes

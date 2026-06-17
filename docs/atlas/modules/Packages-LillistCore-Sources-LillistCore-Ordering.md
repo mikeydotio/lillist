@@ -6,7 +6,7 @@ sources:
   - path: Packages/LillistCore/Sources/LillistCore/Ordering/FractionalPosition.swift
   - path: Packages/LillistCore/Sources/LillistCore/Ordering/PositionCompactor.swift
   - path: Packages/LillistCore/Sources/LillistCore/Ordering/SiblingOrder.swift
-references_modules: [Packages-LillistCore-Sources-LillistCore-Stores-chunk-1, Packages-LillistCore-Sources-LillistCore-Stores-chunk-2, Packages-LillistUI-Sources-LillistUI-iOS-Tasks, Apps-Lillist-macOS-Sources-Views-TaskList]
+references_modules: [Packages-LillistCore-Sources-LillistCore-Stores-chunk-1, Packages-LillistCore-Sources-LillistCore-Stores-chunk-2, Packages-LillistUI-Sources-LillistUI-iOS-Tasks, Apps-Lillist-macOS-Sources-Views]
 generator: cartographer/1 model=claude-sonnet-4-6
 ---
 
@@ -50,7 +50,7 @@ None — every symbol in this module is public surface.
 - `Packages-LillistCore-Sources-LillistCore-Stores-chunk-1.SmartFilterStore -> Packages-LillistCore-Sources-LillistCore-Ordering.SiblingOrder (calls)`
 - `Packages-LillistCore-Sources-LillistCore-Stores-chunk-1.TagStore -> Packages-LillistCore-Sources-LillistCore-Ordering.FractionalPosition (calls)`
 - `Packages-LillistUI-Sources-LillistUI-iOS-Tasks.TaskTree -> Packages-LillistCore-Sources-LillistCore-Ordering.SiblingOrder (calls)`
-- `Apps-Lillist-macOS-Sources-Views-TaskList.TaskListView -> Packages-LillistCore-Sources-LillistCore-Ordering.SiblingOrder (calls)`
+- `Apps-Lillist-macOS-Sources-Views.TaskListView -> Packages-LillistCore-Sources-LillistCore-Ordering.SiblingOrder (calls)`
 
 ## Type notes
 

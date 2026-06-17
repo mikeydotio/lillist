@@ -17,7 +17,7 @@ sources:
   - path: Apps/Lillist-macOS/Sources/Persistence/UIStatePersistence.swift
   - path: Apps/Lillist-macOS/Sources/Services/LillistServicesProvider.swift
   - path: Apps/Lillist-macOS/Sources/StatusBar/TodayPopoverView.swift
-references_modules: [Packages-LillistCore-Sources-LillistCore-misc, Packages-LillistUI-Sources-LillistUI-misc, Apps-Lillist-macOS-Sources-Views-misc, Apps-Lillist-macOS-Sources-Commands, Apps-Lillist-macOS-Sources-Preferences, Apps-Lillist-macOS-Sources-Hotkey]
+references_modules: [Packages-LillistCore-Sources-LillistCore-misc, Packages-LillistUI-Sources-LillistUI-misc, Apps-Lillist-macOS-Sources-Views, Apps-Lillist-macOS-Sources-Commands, Apps-Lillist-macOS-Sources-Preferences, Apps-Lillist-macOS-Sources-Hotkey]
 generator: cartographer/1 model=claude-sonnet-4-6
 ---
 
@@ -76,7 +76,7 @@ public surface is the `MailtoTransport` crash transport.
 - `Apps-Lillist-macOS-Sources-misc.MailtoTransport -> Packages-LillistCore-Sources-LillistCore-misc.CrashReportTransport (conforms-to)`
 - `Apps-Lillist-macOS-Sources-misc.MailtoTransport -> Packages-LillistCore-Sources-LillistCore-misc.FileSaveTransport (calls)`
 - `Apps-Lillist-macOS-Sources-misc.LillistApp -> Apps-Lillist-macOS-Sources-misc.AppDelegate (owns)`
-- `Apps-Lillist-macOS-Sources-misc.LillistApp -> Apps-Lillist-macOS-Sources-Views-misc.RootSplitView (calls)`
+- `Apps-Lillist-macOS-Sources-misc.LillistApp -> Apps-Lillist-macOS-Sources-Views.RootSplitView (calls)`
 - `Apps-Lillist-macOS-Sources-misc.LillistApp -> Apps-Lillist-macOS-Sources-Commands.LillistCommands (calls)`
 - `Apps-Lillist-macOS-Sources-misc.LillistApp -> Apps-Lillist-macOS-Sources-Preferences.PreferencesWindow (calls)`
 - `Apps-Lillist-macOS-Sources-misc.LillistApp -> Apps-Lillist-macOS-Sources-misc.CrashReporterHost (calls)`

@@ -19,7 +19,7 @@ references_modules:
   - Packages-LillistUI-Sources-LillistUI-Accessibility
   - Packages-LillistUI-Sources-LillistUI-iOS-Tasks
   - Apps-Lillist-iOS-Sources-misc
-  - Apps-Lillist-macOS-Sources-Views-TaskList
+  - Apps-Lillist-macOS-Sources-Views
 generator: cartographer/1 model=claude-sonnet-4-6
 ---
 
@@ -71,9 +71,9 @@ drops resolve to a `DragMutation`, so both apps map a release to `TaskStore` cal
 - `Packages-LillistUI-Sources-LillistUI-iOS-Tasks.TasksScreen -> Packages-LillistUI-Sources-LillistUI-DragReorder.DragController (owns)` — `Packages/LillistUI/Sources/LillistUI/iOS/Screens/TasksScreen.swift`
 - `Packages-LillistUI-Sources-LillistUI-iOS-Tasks.TasksScreen -> Packages-LillistUI-Sources-LillistUI-DragReorder.DragOverlay (calls)` — `Packages/LillistUI/Sources/LillistUI/iOS/Screens/TasksScreen.swift`
 - `Apps-Lillist-iOS-Sources-misc.TasksView -> Packages-LillistUI-Sources-LillistUI-DragReorder.DragDropResolver (calls)` — `Apps/Lillist-iOS/Sources/Tasks/TasksView.swift`
-- `Apps-Lillist-macOS-Sources-Views-TaskList.TaskListView -> Packages-LillistUI-Sources-LillistUI-DragReorder.DragController (owns)` — `Apps/Lillist-macOS/Sources/Views/TaskList/TaskListView.swift`
-- `Apps-Lillist-macOS-Sources-Views-TaskList.TaskListView -> Packages-LillistUI-Sources-LillistUI-DragReorder.DragDropResolver (calls)` — `Apps/Lillist-macOS/Sources/Views/TaskList/TaskListView.swift`
-- `Apps-Lillist-macOS-Sources-Views-TaskList.TaskListView -> Packages-LillistUI-Sources-LillistUI-DragReorder.DragReorderRow (owns)` — `Apps/Lillist-macOS/Sources/Views/TaskList/TaskListView.swift`
+- `Apps-Lillist-macOS-Sources-Views.TaskListView -> Packages-LillistUI-Sources-LillistUI-DragReorder.DragController (owns)` — `Apps/Lillist-macOS/Sources/Views/TaskList/TaskListView.swift`
+- `Apps-Lillist-macOS-Sources-Views.TaskListView -> Packages-LillistUI-Sources-LillistUI-DragReorder.DragDropResolver (calls)` — `Apps/Lillist-macOS/Sources/Views/TaskList/TaskListView.swift`
+- `Apps-Lillist-macOS-Sources-Views.TaskListView -> Packages-LillistUI-Sources-LillistUI-DragReorder.DragReorderRow (owns)` — `Apps/Lillist-macOS/Sources/Views/TaskList/TaskListView.swift`
 - `Packages-LillistUI-Sources-LillistUI-DragReorder.DragController -> Packages-LillistCore-Sources-LillistCore-Diagnostics.DiagnosticEvent (emits)` — `Packages/LillistUI/Sources/LillistUI/DragReorder/DragController.swift:347`
 - `Packages-LillistUI-Sources-LillistUI-DragReorder.DragOverlay -> Packages-LillistUI-Sources-LillistUI-Theme-chunk-1.RainbowGradient (reads)` — `Packages/LillistUI/Sources/LillistUI/DragReorder/DragOverlay.swift:132`
 - `Packages-LillistUI-Sources-LillistUI-DragReorder.DragOverlay -> Packages-LillistUI-Sources-LillistUI-Theme-chunk-2.LillistDragTokens (reads)` — `Packages/LillistUI/Sources/LillistUI/DragReorder/DragOverlay.swift:57`
