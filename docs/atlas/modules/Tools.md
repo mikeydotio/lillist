@@ -1,18 +1,13 @@
 ---
 module: Tools
-summary: "Repo-side build/CI shell hooks — iOS build-number bump and LillistUI localization-catalog check"
-read_when: "CI/deploy build scripts"
+summary: CI localization lint and iOS archive build-number bump scripts; deployment is handled by the external deployit plugin.
+read_when: Touching CI localization checks, iOS build-number bumping, or archive pre-actions
 sources:
   - path: Tools/CI/check-lillistui-localization.sh
-    blob: 223c47dafe800fccb53e98157d3e88c6b8af73d7
-  - path: Tools/Deploy/bump-build-number.sh
-    blob: b79272bdb5bf85d95db4b2eea071562470995dd3
   - path: Tools/Deploy/README.md
-    blob: 1b962f2af9704077efb0d9f601076a02e4f67ee8
+  - path: Tools/Deploy/bump-build-number.sh
 references_modules: [Apps-Config, Packages-LillistUI-misc]
-generator: cartographer/1
-baseline: 85a4dc8648a4280e30f533268d65bfac16701d21
-verified: true
+generator: cartographer/1 model=claude-sonnet-4-6
 ---
 
 # Module: Tools
@@ -40,8 +35,8 @@ git-tracked counter is the cross-machine source of truth.
 
 ## Relationships
 
-- `Tools.bump-build-number.sh -> Apps-Config.BuildNumber.xcconfig (writes)`
-- `Tools.check-lillistui-localization.sh -> Packages-LillistUI-misc.Localizable.xcstrings (reads)`
+- `Tools.bump-build-number.sh -> Apps-Config.BuildNumber.xcconfig (writes)` — script rewrites `Apps/Config/BuildNumber.xcconfig` with incremented value (`Tools/Deploy/bump-build-number.sh:25`)
+- `Tools.check-lillistui-localization.sh -> Packages-LillistUI-misc.Localizable.xcstrings (reads)` — script builds `Packages/LillistUI` with `-emit-localized-strings` and diffs against `Packages/LillistUI/Sources/LillistUI/Resources/Localizable.xcstrings` (`Tools/CI/check-lillistui-localization.sh:17`)
 
 ## Type notes
 
@@ -59,10 +54,16 @@ across machines; the bump must be committed after each archive
 scratch dir cleaned via an `EXIT` trap (`Tools/CI/check-lillistui-localization.sh:18`–`19`).
 It rebuilds LillistUI with `-emit-localized-strings`, then diffs compiler-extracted
 keys against the committed catalog with `jq` + `comm` rather than `xcstringstool sync`
-(the comment at `Tools/CI/check-lillistui-localization.sh:11`–`12` records that
-`sync` does not merge SwiftPM-emitted `.stringsdata` on the current toolchain). The
+— the comment at `Tools/CI/check-lillistui-localization.sh:11`–`12` records that
+`sync` does not merge SwiftPM-emitted `.stringsdata` on the current toolchain. The
 check is one-directional: keys in source but missing from the catalog fail; extra
 catalog keys are tolerated (`Tools/CI/check-lillistui-localization.sh:34`).
+
+`Tools/Deploy/` previously held a full deploy orchestrator (`deploy-ios.sh`,
+`ExportOptions.plist`, HTML/manifest templates). Those were retired when
+deployment moved to the external `deployit` plugin; only `bump-build-number.sh`
+survived because build-number bumping is the host repo's responsibility
+(`Tools/Deploy/README.md:1`–`8`).
 
 ## External deps
 
@@ -70,4 +71,9 @@ catalog keys are tolerated (`Tools/CI/check-lillistui-localization.sh:34`).
 - jq — extracts `.tables.Localizable[].key` from `.stringsdata` and catalog keys
 - swift (SwiftPM) — `swift build --package-path` with `-emit-localized-strings`
 - awk / comm / sort — value extraction and key set-difference in the CI check
-- deployit (external plugin) — owns iOS deploy; reads the resolved `CFBundleVersion` this bump produces (`Tools/Deploy/README.md`)
+- deployit (external plugin) — owns iOS deploy; reads the resolved `CFBundleVersion` this bump produces (`Tools/Deploy/README.md:12`)
+
+## Gotchas
+
+- `check-lillistui-localization.sh` only flags keys present in source but absent from the catalog; extra keys in the catalog are silently tolerated (`Tools/CI/check-lillistui-localization.sh:34`).
+- `bump-build-number.sh` falls back to `PREV=0` (producing `NEXT=1`) when `BuildNumber.xcconfig` is missing or malformed (`Tools/Deploy/bump-build-number.sh:31`).

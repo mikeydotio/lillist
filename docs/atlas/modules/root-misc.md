@@ -1,28 +1,19 @@
 ---
 module: "root (misc)"
-summary: "Repo-root config — CI matrix, workspace wiring, gitignore, semver state, and the canonical CLAUDE.md conventions"
-read_when: "CI, workspace, repo config"
+summary: "Repo-root control plane — CI matrix, workspace wiring, gitignore, semver state, CLAUDE.md conventions, and HANDOFF.md"
+read_when: "CI, workspace, repo config, or project conventions"
 sources:
   - path: .claude/settings.local.json
-    blob: f4307bbdd98b10593980431477406613e049a2f2
   - path: .github/workflows/ci.yml
-    blob: 07774b20f444741c99f3e94545ccebf4a3b5d4c5
   - path: .gitignore
-    blob: 4584f1163ec50f6b64de5046a96275dbd331061f
   - path: .semver/config.yaml
-    blob: 1a63526d97642edb6dea7e2e800b860b1919231e
   - path: CHANGELOG.md
-    blob: d56e4d25f1d8a16aea626cc444c20cbb7a79ba9f
   - path: CLAUDE.md
-    blob: ef834043d4a074b13d2a563edae7f9d50759800b
+  - path: HANDOFF.md
   - path: Lillist.xcworkspace/contents.xcworkspacedata
-    blob: 2e734ab16d5b95d519766950140eed52205e09c8
   - path: VERSION
-    blob: b0c2058e6b3b909200679fb9b0bc2386a3a00560
 references_modules: [Apps-Config, Tools, Packages-LillistCore-misc, Packages-LillistUI-misc, Apps-Lillist-iOS-misc, Apps-Lillist-macOS-misc]
-generator: cartographer/1
-baseline: db4037b64559daa37c32ba9c4ed478a6f8a83a43
-verified: true
+generator: cartographer/1 model=claude-sonnet-4-6
 ---
 
 # Module: root (misc)
@@ -35,6 +26,7 @@ in an app binary, but they govern how every other module is built, tested, and
 versioned. `CLAUDE.md` is the canonical narrative spec (topology, build/test
 recipes, house rules); `ci.yml` is its executable counterpart; the workspace
 file is the seam that joins the two packages and two apps into one buildable unit.
+`HANDOFF.md` carries point-in-time contributor context for active branch work.
 
 ## Public API
 
@@ -84,6 +76,15 @@ The signing indirection is preserved in CI by copying
 `version_prefix: "v"`, `target_branch: "main"`); they must agree on the current
 version string.
 
+`HANDOFF.md` describes point-in-time branch state for active feature work; it is
+not a permanent spec. Wave completion status and any remaining manual-verification
+items for a branch live there, not in CLAUDE.md. See `HANDOFF.md:139` for current
+wave summary.
+
+`.claude/settings.local.json` carries per-repo Claude Code permission grants
+(e.g. `Bash(curl:*)`, `Bash(python3:*)`); it is local to the project and gitignored
+by default patterns but committed here for developer consistency.
+
 ## External deps
 
 - GitHub Actions — runs the CI matrix on `macos-15` runners, Xcode 26.3
@@ -100,3 +101,4 @@ version string.
 - The xcworkspace `contents.xcworkspacedata` is force-tracked against the
   Xcode-Patch ignore block via `!*.xcworkspace/contents.xcworkspacedata`
   (`.gitignore:130`).
+- `.atlas/` runtime state is gitignored at `.gitignore:144`; never commit it.
