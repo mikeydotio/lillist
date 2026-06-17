@@ -4,38 +4,22 @@ summary: "swift-argument-parser command structs for the lillist CLI; thin shells
 read_when: "lillist CLI verb structs add through pin"
 sources:
   - path: Packages/LillistCore/Sources/lillist-cli/Commands/AddCommand.swift
-    blob: faa8bc85ffe6ba35ce713b96b59c3d3c9fb21d85
   - path: Packages/LillistCore/Sources/lillist-cli/Commands/AttachCommand.swift
-    blob: 68063ea70be3192e7fca5f8c35a160c7e1e78864
   - path: Packages/LillistCore/Sources/lillist-cli/Commands/CompletionCommand.swift
-    blob: 5ca5486e48b088901e39f1c30f3880b11e37e8c9
   - path: Packages/LillistCore/Sources/lillist-cli/Commands/CountCommand.swift
-    blob: 07fcd37d3f1b9a8a6fd92752f3eb3b829eae1581
   - path: Packages/LillistCore/Sources/lillist-cli/Commands/DeleteCommand.swift
-    blob: 092072d2868c153becf55eddfad26ce5fa757643
   - path: Packages/LillistCore/Sources/lillist-cli/Commands/EditCommand.swift
-    blob: 390df740cd37e21edecd76c2eec228f9fc5e5639
   - path: Packages/LillistCore/Sources/lillist-cli/Commands/EvalCommand.swift
-    blob: 84df2bd097cdfc178069b3790d4876674cd4d465
   - path: Packages/LillistCore/Sources/lillist-cli/Commands/ExportCommand.swift
-    blob: 286cbb35bc00f0fb31c651a1eae31de2d1afc588
   - path: Packages/LillistCore/Sources/lillist-cli/Commands/FiltersCommand.swift
-    blob: 8f878f52b352349cfadb4753df39e056f0bcdb97
   - path: Packages/LillistCore/Sources/lillist-cli/Commands/LinkCommand.swift
-    blob: 28a0e4fe9d7d414dbecd96bcc26d3cde50bb620c
   - path: Packages/LillistCore/Sources/lillist-cli/Commands/LsCommand.swift
-    blob: 4e3efcc491f99edd2c97eebc15536790f1aeaa10
   - path: Packages/LillistCore/Sources/lillist-cli/Commands/MoveCommand.swift
-    blob: d844f0d4bb2b6b80cce83776bb9cd7e79db249fc
   - path: Packages/LillistCore/Sources/lillist-cli/Commands/NoteCommand.swift
-    blob: f48e803aa718106b722892bea41aafb353c40cf3
   - path: Packages/LillistCore/Sources/lillist-cli/Commands/NudgeCommand.swift
-    blob: f1a0f0806294bf1de796ededb51a2c6d2d3e5e8d
   - path: Packages/LillistCore/Sources/lillist-cli/Commands/PinCommand.swift
-    blob: dca0ae768570cdd10e8c60719ed5f463a8537b4d
 references_modules: [Packages-LillistCore-Sources-LillistCore-CLIBridge-Handlers-chunk-1, Packages-LillistCore-Sources-LillistCore-CLIBridge-Handlers-chunk-2, Packages-LillistCore-Sources-LillistCore-CLIBridge-Renderers, Packages-LillistCore-Sources-LillistCore-CLIBridge-misc, Packages-LillistCore-Sources-LillistCore-Stores-chunk-2, Packages-LillistCore-Sources-LillistCore-Model, Packages-LillistCore-Sources-LillistCore-misc, Packages-LillistCore-Sources-lillist-cli-Support]
-generator: cartographer/1
-baseline: 34dfea7772679dbabc08fabd6fbba53f6ad5856b
+generator: cartographer/1 model=claude-sonnet-4-6
 ---
 
 # Module: Packages/LillistCore/Sources/lillist-cli/Commands (chunk 1)

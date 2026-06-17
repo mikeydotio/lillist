@@ -4,14 +4,16 @@ summary: "Observable CloudKit sync-state value types and the actor that aggregat
 read_when: "Touching sync-status display, iCloud account checks, SyncStatus, or iCloudAccountState"
 sources:
   - path: Packages/LillistCore/Sources/LillistCore/Sync/SyncStatus.swift
-    blob: 223dfb9083d24d793ee63be7e908eb838f1951c2
   - path: Packages/LillistCore/Sources/LillistCore/Sync/SyncStatusMonitor.swift
-    blob: f9bcc5757ae01fcbe270c0fb554473dab5d63c75
   - path: Packages/LillistCore/Sources/LillistCore/Sync/iCloudAccountState.swift
-    blob: bb8cbfb1b0244af352900f7d1d3a575ae5b3f842
-references_modules: [Packages-LillistCore-Sources-LillistCore-Sync-chunk-1, Packages-LillistCore-Sources-LillistCore-misc, Apps-Lillist-iOS-Sources-App, Apps-Lillist-iOS-Sources-Settings, Apps-Lillist-macOS-Sources-misc]
-generator: cartographer/1
-baseline: 34dfea7772679dbabc08fabd6fbba53f6ad5856b
+references_modules:
+  - Packages-LillistCore-Sources-LillistCore-Sync-chunk-1
+  - Packages-LillistCore-Sources-LillistCore-misc
+  - Apps-Lillist-iOS-Sources-App
+  - Apps-Lillist-iOS-Sources-Settings
+  - Apps-Lillist-macOS-Sources-misc
+  - Apps-Lillist-macOS-Sources-Preferences
+generator: cartographer/1 model=claude-sonnet-4-6
 ---
 
 # Module: Packages/LillistCore/Sources/LillistCore/Sync (chunk 2)
@@ -29,7 +31,7 @@ indicators and account-state banners would lose their single source of truth.
 | Symbol | Kind | Location | Contract |
 | --- | --- | --- | --- |
 | `iCloudAccountState` | enum | `Packages/LillistCore/Sources/LillistCore/Sync/iCloudAccountState.swift:8` | Four-case account verdict; `.accountChanged` signals the store must be quarantined |
-| `iCloudAccountState.from(ckAccountStatus:)` | static func | `Packages/LillistCore/Sources/LillistCore/Sync/iCloudAccountState.swift:24` | Maps a `CKAccountStatus` to a verdict; the sole translation point for CloudKit |
+| `iCloudAccountState.from(ckAccountStatus:)` | static func | `Packages/LillistCore/Sources/LillistCore/Sync/iCloudAccountState.swift:24` | Maps a `CKAccountStatus` to a verdict; the sole translation point for CloudKit account status |
 | `SyncStatus` | struct | `Packages/LillistCore/Sources/LillistCore/Sync/SyncStatus.swift:6` | Sendable snapshot of last-sync time, in-progress flag, and error; `.idle` is the zero value |
 | `SyncStatusMonitor` | actor | `Packages/LillistCore/Sources/LillistCore/Sync/SyncStatusMonitor.swift:5` | Owns the current `SyncStatus`; vends a multicast `statusStream` |
 | `SyncStatusMonitor.currentStatus` | var | `Packages/LillistCore/Sources/LillistCore/Sync/SyncStatusMonitor.swift:6` | Most-recent `SyncStatus`; `private(set)` — readable within actor isolation |
@@ -41,7 +43,7 @@ indicators and account-state banners would lose their single source of truth.
 
 | Symbol | Kind | Location | Why it matters |
 | --- | --- | --- | --- |
-| `apply(_:)` | func | `Packages/LillistCore/Sources/LillistCore/Sync/SyncStatusMonitor.swift:58` | The state machine — folds each `CloudKitSyncEvent` into the next `SyncStatus` and fans it out to subscribers |
+| `apply(_:)` | func | `Packages/LillistCore/Sources/LillistCore/Sync/SyncStatusMonitor.swift:58` | The state machine — folds each `CloudKitSyncEvent` into the next `SyncStatus` and fans it out to all subscribers |
 | `registerStatus(id:continuation:)` | func | `Packages/LillistCore/Sources/LillistCore/Sync/SyncStatusMonitor.swift:49` | Synchronous same-actor subscription that replays `currentStatus` so late subscribers aren't blank |
 
 ## Relationships
@@ -54,6 +56,7 @@ indicators and account-state banners would lose their single source of truth.
 - `Apps-Lillist-iOS-Sources-App.AppEnvironment -> Packages-LillistCore-Sources-LillistCore-Sync-chunk-2.iCloudAccountState (owns)`
 - `Apps-Lillist-iOS-Sources-Settings.ICloudSyncSection -> Packages-LillistCore-Sources-LillistCore-Sync-chunk-2.iCloudAccountState (reads)`
 - `Apps-Lillist-macOS-Sources-misc.AppEnvironment -> Packages-LillistCore-Sources-LillistCore-Sync-chunk-2.iCloudAccountState (owns)`
+- `Apps-Lillist-macOS-Sources-Preferences.ICloudSyncPane -> Packages-LillistCore-Sources-LillistCore-Sync-chunk-2.iCloudAccountState (reads)`
 
 ## Type notes
 

@@ -4,14 +4,11 @@ summary: "SwiftPM manifest, Core Data model-compile build plugin, and package RE
 read_when: "Touching Package.swift, the CompileCoreDataModel plugin, or target layout for LillistCore"
 sources:
   - path: Packages/LillistCore/Package.swift
-    blob: 2114f2075b73500bfe780910899b44aa96568927
   - path: Packages/LillistCore/Plugins/CompileCoreDataModel/CompileCoreDataModel.swift
-    blob: 27b2698783db0258c1ee5297e7219c6b00dfe679
   - path: Packages/LillistCore/README.md
-    blob: 3bc2ec5edf6b7b0d049d0dad1562702390d489a1
-references_modules: []
-generator: cartographer/1
-baseline: 34dfea7772679dbabc08fabd6fbba53f6ad5856b
+references_modules:
+  - Packages-LillistCore-Sources-LillistCore-Persistence
+generator: cartographer/1 model=claude-sonnet-4-6
 ---
 
 # Module: Packages/LillistCore (misc)
@@ -40,7 +37,7 @@ persistence layer would fail to load `NSEntityDescription`s at runtime.
 
 ## Relationships
 
-No cross-module Swift import edges exist within this module's source files; the plugin interacts with the build system, not with other Swift modules at the source level.
+- `Packages-LillistCore-misc.CompileCoreDataModel -> Packages-LillistCore-Sources-LillistCore-Persistence (writes)` — produces the `<name>.spm.momd` bundle that the persistence layer loads as a fallback when `<name>.momd` is absent (`Packages/LillistCore/Plugins/CompileCoreDataModel/CompileCoreDataModel.swift:32`)
 
 ## Type notes
 

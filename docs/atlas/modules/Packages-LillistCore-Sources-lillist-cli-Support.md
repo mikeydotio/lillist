@@ -1,26 +1,20 @@
 ---
 module: Packages/LillistCore/Sources/lillist-cli/Support
-summary: "Shared CLI plumbing — output/color flags, stdin batch tokens, exit codes, crash-canary lifecycle"
-read_when: "lillist CLI plumbing"
+summary: Shared CLI plumbing — output/color flags, stdin batch tokens, exit codes, crash-canary lifecycle
+read_when: Touching lillist CLI startup, output flags, batch stdin, exit codes, or crash-canary wiring
 sources:
   - path: Packages/LillistCore/Sources/lillist-cli/Support/BatchTokens.swift
-    blob: c84df24df145043a34c89c879bf446bbbfcbf80e
   - path: Packages/LillistCore/Sources/lillist-cli/Support/CLICanaryLifecycle.swift
-    blob: b492325d31ba448977841decc1891e5ff2a70d01
   - path: Packages/LillistCore/Sources/lillist-cli/Support/CLIMailtoTransport.swift
-    blob: 4a30bb1119b0100198dfd21cd97c2df31051e2f3
   - path: Packages/LillistCore/Sources/lillist-cli/Support/ExitCode.swift
-    blob: f5f5ffb1a175f5414cbda868ff0fd3ffd6bc981b
   - path: Packages/LillistCore/Sources/lillist-cli/Support/GlobalOptions.swift
-    blob: 4799e259a152e240436eeff1d8d2458037a9f8fd
   - path: Packages/LillistCore/Sources/lillist-cli/Support/StdinReader.swift
-    blob: 7ddf37b8827ee3a40b6d2ba58e4b6f2d7c6036fd
   - path: Packages/LillistCore/Sources/lillist-cli/Support/TTY.swift
-    blob: 57090a111e9ba0726fe08d55be48af9ef03d5915
-references_modules: [Packages-LillistCore-Sources-LillistCore-CrashReporting, Packages-LillistCore-Sources-LillistCore-CLIBridge-misc, Packages-LillistCore-Sources-LillistCore-misc]
-generator: cartographer/1
-baseline: 34dfea7772679dbabc08fabd6fbba53f6ad5856b
-verified: true
+references_modules:
+  - Packages-LillistCore-Sources-LillistCore-CrashReporting
+  - Packages-LillistCore-Sources-LillistCore-CLIBridge-misc
+  - Packages-LillistCore-Sources-LillistCore-misc
+generator: cartographer/1 model=claude-sonnet-4-6
 ---
 
 # Module: Packages/LillistCore/Sources/lillist-cli/Support
@@ -44,7 +38,7 @@ NO_COLOR honoring, exit-code mapping) consistent across the CLI surface.
 | `CLICanaryLifecycle` | enum | `Packages/LillistCore/Sources/lillist-cli/Support/CLICanaryLifecycle.swift:8` | Static hook bag for arming/clearing the crash canary |
 | `CLICanaryLifecycle.bootstrap` | func | `Packages/LillistCore/Sources/lillist-cli/Support/CLICanaryLifecycle.swift:30` | Arms canary at startup; warns on TTY if prior run crashed; returns stale canary |
 | `CLICanaryLifecycle.makeReporter` | func | `Packages/LillistCore/Sources/lillist-cli/Support/CLICanaryLifecycle.swift:12` | Builds a `CrashReporter` wired for the macOS CLI canary slot |
-| `CLICanaryLifecycle.teardown` | func | `Packages/LillistCore/Sources/lillist-cli/Support/CLICanaryLifecycle.swift:43` | Async clean-exit canary delete, bounded to 1s |
+| `CLICanaryLifecycle.teardown` | func | `Packages/LillistCore/Sources/lillist-cli/Support/CLICanaryLifecycle.swift:43` | Async clean-exit canary delete, bounded to 1 s |
 | `CLICanaryLifecycle.teardownSync` | func | `Packages/LillistCore/Sources/lillist-cli/Support/CLICanaryLifecycle.swift:55` | Signal-handler-safe synchronous canary delete |
 | `CLIMailtoTransport` | struct | `Packages/LillistCore/Sources/lillist-cli/Support/CLIMailtoTransport.swift:7` | `CrashReportTransport` that opens `mailto:` via `/usr/bin/open`, no AppKit |
 | `ExitCode` | enum | `Packages/LillistCore/Sources/lillist-cli/Support/ExitCode.swift:5` | Design Section 6 exit-code constants (`success`…`storeUnavailable`) |
@@ -90,9 +84,9 @@ only flag booleans plus the explicit `init()` argument-parser requires.
 
 `CLICanaryLifecycle` is a stateless static facade; `main.swift` holds the single
 `CrashReporter` instance and threads it through `bootstrap`/`teardown`. The split
-`teardown` (async, group-bounded to 1s) versus `teardownSync` (no async context)
+`teardown` (async, group-bounded to 1 s) versus `teardownSync` (no async context)
 exists because a POSIX signal handler cannot touch an async runtime — the sync
-path is the signal-safe variant (`Packages/LillistCore/Sources/lillist-cli/Support/CLICanaryLifecycle.swift:54`).
+path is the signal-safe variant (`Packages/LillistCore/Sources/lillist-cli/Support/CLICanaryLifecycle.swift:55`).
 
 `BatchTokens.resolveInput` takes its `stdin` reader as an injected closure
 defaulting to `StdinReader.readAllLines` so tests resolve tokens without touching
