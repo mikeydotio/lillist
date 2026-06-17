@@ -13,7 +13,13 @@ extension Notification.Name {
     static let lillistMarkBlocked       = Notification.Name("lillist.markBlocked")
     static let lillistFocusSidebar      = Notification.Name("lillist.focusSidebar")
     static let lillistFocusList         = Notification.Name("lillist.focusList")
-    static let lillistFocusDetail       = Notification.Name("lillist.focusDetail")
+    // Open the unified task editor for the focused list's selected task
+    // (keyboard "Open Task" command; row clicks use the env action). Replaces
+    // the retired `lillistFocusDetail` (the detail column is gone).
+    static let lillistOpenTaskEditor    = Notification.Name("lillist.openTaskEditor")
+    // Posted by the editor panel on close so the list refreshes its rows.
+    // NOT a command-menu post — excluded from `postedByCommands`.
+    static let lillistTasksDidChange    = Notification.Name("lillist.tasksDidChange")
     // Plan 15 Task 20: dock menu navigation.
     static let lillistSelectTodayFilter = Notification.Name("lillist.selectTodayFilter")
     static let lillistSelectFilter      = Notification.Name("lillist.selectFilter")
@@ -37,7 +43,7 @@ enum CommandNotifications {
         .lillistMarkBlocked,
         .lillistFocusSidebar,
         .lillistFocusList,
-        .lillistFocusDetail,
+        .lillistOpenTaskEditor,
         .lillistToggleSidebar
     ]
 }

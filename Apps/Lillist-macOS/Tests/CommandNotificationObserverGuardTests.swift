@@ -20,7 +20,7 @@ final class CommandNotificationObserverGuardTests: XCTestCase {
         .lillistMarkBlocked,
         .lillistFocusSidebar,
         .lillistFocusList,
-        .lillistFocusDetail,
+        .lillistOpenTaskEditor,
         .lillistToggleSidebar,
         .lillistSelectTodayFilter,
         .lillistSelectFilter,

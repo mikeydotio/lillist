@@ -4,6 +4,7 @@ import LillistUI
 
 struct TaskListView: View {
     @Environment(AppEnvironment.self) private var env
+    @Environment(\.openTaskEditorAction) private var openTaskEditorAction
     let selection: SidebarSelection
     @Binding var taskSelection: UUID?
     @Binding var sortField: SortField
@@ -87,6 +88,11 @@ struct TaskListView: View {
                                     isDone: rec.status == .closed
                                 )
                             }
+                            // Single-click opens the unified editor (the status
+                            // cube's own Menu still consumes clicks on it). Arrow
+                            // keys move the List highlight without firing this.
+                            .contentShape(Rectangle())
+                            .onTapGesture { openTaskEditorAction(rec.id) }
                             .listRowInsets(EdgeInsets(top: 3, leading: 10, bottom: 3, trailing: 10))
                             .listRowSeparator(.hidden)
                             .tag(rec.id)
@@ -113,6 +119,8 @@ struct TaskListView: View {
                                 accent: StatusPalette.color(for: node.record.status),
                                 isDone: node.record.status == .closed
                             )
+                            .contentShape(Rectangle())
+                            .onTapGesture { openTaskEditorAction(node.id) }
                             .listRowInsets(EdgeInsets(top: 3, leading: 10, bottom: 3, trailing: 10))
                             .listRowSeparator(.hidden)
                             .tag(node.id)
@@ -222,6 +230,11 @@ struct TaskListView: View {
             if let id = taskSelection {
                 inlineCreateParent = id
             }
+        }
+        // The floating editor panel posts this on close; reload so edits made
+        // in the editor (status, title, new subtasks, …) show in the list.
+        .onReceive(NotificationCenter.default.publisher(for: .lillistTasksDidChange)) { _ in
+            Task { await refresh() }
         }
     }
 

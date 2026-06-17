@@ -24,10 +24,10 @@ final class FocusedShortcutGatingPredicateTests: XCTestCase {
     func test_focusedColumns_enableShortcuts() {
         XCTAssertFalse(TaskListShortcutGate.isDisabled(listColumn: .sidebar))
         XCTAssertFalse(TaskListShortcutGate.isDisabled(listColumn: .list))
-        XCTAssertFalse(TaskListShortcutGate.isDisabled(listColumn: .detail))
     }
 
-    func test_listColumn_hasExactlyThreeCases() {
-        XCTAssertEqual(Set<ListColumn>([.sidebar, .list, .detail]).count, 3)
+    func test_listColumn_hasExactlyTwoCases() {
+        // `.detail` retired with the docked detail column.
+        XCTAssertEqual(Set<ListColumn>([.sidebar, .list]).count, 2)
     }
 }

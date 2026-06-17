@@ -96,6 +96,10 @@ targets:
       # CommandNotificationObserverGuardTests can read them without a
       # signed app test host.
       - path: Lillist-macOS/Sources/Commands/CommandNotifications.swift
+      # EditorOpenDecision is pure value-math for the unified editor's
+      # singleton rules (present / retarget / noop); co-compiled so
+      # EditorOpenDecisionTests can assert them without a live NSPanel.
+      - path: Lillist-macOS/Sources/Editor/EditorOpenDecision.swift
       # InlineCreateField is exercised by the empty-tab wiring guard in
       # InlineCreateInteractionTests (Plan 13 Task 6).
       - path: Lillist-macOS/Sources/Views/TaskList/InlineCreateField.swift

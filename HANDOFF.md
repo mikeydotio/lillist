@@ -91,16 +91,41 @@ because everything routes through the model.
   baselines (`test_editor_quick/full_light/dark`) in `GlassSnapshotTests`.
   `xcodebuild -scheme Lillist-iOS build` clean; both snapshot suites green.
 
-## Next — Waves 4–5 (see plan)
+## Done — Wave 4: macOS hosting + retirement ✅ (app builds, unit tests green)
 
-- **W4 macOS hosting + retirement:** extend `QuickCapturePanelController`
-  (resizable quick↔full, grow, singleton across hotkey/⌘N/`.lillistNewTask`,
-  **remove resign-key auto-dismiss** so the status menu popover + app-switching
-  don't nuke the editor), `EditorOpenDecision` helper, single-click open +
-  ↑/↓ keyboard-nav (Return/Space open), retire detail column
-  (`RootSplitView` 3→2 col, `LillistCommands` drop ⌘3, `CommandNotifications`
-  remove `.lillistFocusDetail`/add `.lillistOpenTaskEditor`, `FocusedListColumn`
-  drop `.detail`). `xcodegen generate` both projects; manual macOS glass verify.
+- `QuickCapturePanelController` rewritten: hosts `TaskEditorView` in the
+  non-activating floating `NSPanel`; `toggle()` = quick draft (no-op while
+  open), `open(taskID:)` = existing full (re-targets while open). Resizes
+  quick↔full via `withObservationTracking` on `model.mode` (top-pinned grow).
+  **Resign-key auto-dismiss removed** (status Menu popover / app-switch no
+  longer nuke it); close is explicit (Done / Esc via `onExitCommand` / cancel).
+  Attachment add → `NSOpenPanel`. Posts `.lillistTasksDidChange` on close.
+- `EditorOpenDecision` (new, pure: present/retarget/noop) + 4 unit tests.
+- `OpenTaskEditorAction` env key (new) injected by `LillistApp` → panel.open.
+- `RootSplitView` 3→2 col (`detail:` = task list; `contentColumn`/`splitView`
+  extracted so `body` type-checks); `taskSelection` is now list highlight;
+  observes `.lillistOpenTaskEditor` → opens selection. `.detail` focus removed.
+- `TaskListView`: row `.onTapGesture` → `openTaskEditorAction(id)`; observes
+  `.lillistTasksDidChange` → refresh.
+- `LillistCommands`: "Focus Detail" ⌘3 removed; "Open Task" (Return,
+  list-gated) added. `CommandNotifications`: `.lillistFocusDetail` →
+  `.lillistOpenTaskEditor` (+ `.lillistTasksDidChange`); guard test + observed
+  set updated. `FocusedListColumn`: `.detail` removed (gating test → 2 cases).
+- Retired macOS `Views/Detail/*` + `Views/EmptyView/NoSelectionDetailView`;
+  `Apps/project.yml` co-compiles `EditorOpenDecision` into the test bundle;
+  macOS project regenerated (pbxproj idempotent).
+- ⚠️ **macOS glass is manual-verify only** (no snapshot path). Mikey must
+  eyeball: hotkey quick capture floats over another app (Lillist not
+  activated); "…" grows the panel; single-click a row opens full; ↑/↓ move
+  highlight without opening, Return opens; the status Menu does NOT dismiss
+  the editor; resize; attachment NSOpenPanel; detail column gone; ⌘N inline
+  create still works. (Run macOS unit tests with `GENERATE_INFOPLIST_FILE=YES`.)
+- ⚠️ **Keymap call:** Return opens; **Space stays "Toggle Started"** (kept the
+  loved status fast-path rather than rebinding it to open). Adjust if you want
+  Space to open too.
+
+## Next — Wave 5 (see plan)
+
 - **W5 polish:** Reduce-Motion, discard/undo toasts, `lastCommitWarning` UI,
   localization sync across all three `Localizable.xcstrings`, delete folded-away
   quick-capture files + migrate baselines.

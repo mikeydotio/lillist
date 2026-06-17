@@ -88,6 +88,9 @@ struct LillistApp: App {
             ) {
                 RootSplitView()
                     .environment(environment)
+                    .environment(\.openTaskEditorAction) { id in
+                        appDelegate.quickCapturePanel?.open(taskID: id)
+                    }
                     .modifier(OnboardingPresentationModifier(environment: environment))
             }
         } else if let loadError {

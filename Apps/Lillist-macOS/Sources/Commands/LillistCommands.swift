@@ -46,6 +46,15 @@ struct LillistCommands: Commands {
                 NotificationCenter.default.post(name: .lillistMarkBlocked, object: nil)
             }.keyboardShortcut(".", modifiers: [.command])
               .disabled(TaskListShortcutGate.isDisabled(listColumn: listColumn))
+
+            // Open the highlighted task in the unified editor. Plain Return
+            // (⌘Return is "Mark Closed"); list-focus-gated so it never fires
+            // while a TextField is first responder. Single-click also opens
+            // (via the row's tap), so this is the keyboard-nav-mode path.
+            Button("Open Task") {
+                NotificationCenter.default.post(name: .lillistOpenTaskEditor, object: nil)
+            }.keyboardShortcut(.return, modifiers: [])
+              .disabled(TaskListShortcutGate.isDisabled(listColumn: listColumn))
         }
 
         CommandMenu("View") {
@@ -55,9 +64,7 @@ struct LillistCommands: Commands {
             Button("Focus List") {
                 NotificationCenter.default.post(name: .lillistFocusList, object: nil)
             }.keyboardShortcut("2", modifiers: [.command])
-            Button("Focus Detail") {
-                NotificationCenter.default.post(name: .lillistFocusDetail, object: nil)
-            }.keyboardShortcut("3", modifiers: [.command])
+            // "Focus Detail" (⌘3) retired — the docked detail column is gone.
         }
 
         // Plan 15 Task 29: ⌃⌘S toggles the sidebar (Mac convention,

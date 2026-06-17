@@ -8,7 +8,8 @@ import SwiftUI
 public enum ListColumn: Hashable, Sendable {
     case sidebar
     case list
-    case detail
+    // `.detail` retired with the docked detail column (the unified editor is
+    // a floating panel, not a focusable split-view column).
 }
 
 /// Single source of truth for whether the list-action keyboard

@@ -5,6 +5,7 @@ import LillistUI
 struct RootSplitView: View {
     @Environment(AppEnvironment.self) private var env
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.openTaskEditorAction) private var openTaskEditorAction
     @State private var uiState = UIStatePersistence()
     @State private var sidebarSelection: SidebarSelection?
     @State private var taskSelection: UUID?
@@ -42,39 +43,44 @@ struct RootSplitView: View {
         _sidebarSelection = State(initialValue: persisted)
     }
 
-    var body: some View {
+    @ViewBuilder private var contentColumn: some View {
+        if let sel = sidebarSelection {
+            TaskListView(
+                selection: sel,
+                taskSelection: $taskSelection,
+                sortField: $sortField,
+                sortAscending: $sortAscending
+            )
+            .focused($focusedColumn, equals: .list)
+            .navigationSplitViewColumnWidth(min: 320, ideal: 460)
+        } else {
+            EmptyStateView(title: "Select a source", message: "Pick a pinned item, tag, or filter from the sidebar.")
+        }
+    }
+
+    // Detail column retired: clicking/Return on a row opens the unified
+    // floating editor (`openTaskEditorAction`) instead of filling a docked
+    // pane. `taskSelection` now just drives the list highlight. The split view
+    // is extracted so `body`'s long modifier chain type-checks in time.
+    private var splitView: some View {
         NavigationSplitView(columnVisibility: columnVisibility) {
             SidebarView(selection: $sidebarSelection)
                 .focused($focusedColumn, equals: .sidebar)
                 .navigationSplitViewColumnWidth(min: 200, ideal: 240)
-        } content: {
-            if let sel = sidebarSelection {
-                TaskListView(
-                    selection: sel,
-                    taskSelection: $taskSelection,
-                    sortField: $sortField,
-                    sortAscending: $sortAscending
-                )
-                    .focused($focusedColumn, equals: .list)
-                    .navigationSplitViewColumnWidth(min: 320, ideal: 460)
-            } else {
-                EmptyStateView(title: "Select a source", message: "Pick a pinned item, tag, or filter from the sidebar.")
-            }
         } detail: {
-            if let id = taskSelection {
-                TaskDetailView(taskID: id)
-                    .focused($focusedColumn, equals: .detail)
-                    .navigationSplitViewColumnWidth(min: 360, ideal: 520)
-            } else {
-                NoSelectionDetailView()
-                    .navigationSplitViewColumnWidth(min: 360, ideal: 520)
-            }
+            contentColumn
         }
+    }
+
+    var body: some View {
+        splitView
         .toolbar { toolbarContent }
         .onAppear { focusedColumn = .list }
         .onReceive(NotificationCenter.default.publisher(for: .lillistFocusSidebar)) { _ in focusedColumn = .sidebar }
         .onReceive(NotificationCenter.default.publisher(for: .lillistFocusList)) { _ in focusedColumn = .list }
-        .onReceive(NotificationCenter.default.publisher(for: .lillistFocusDetail)) { _ in focusedColumn = .detail }
+        .onReceive(NotificationCenter.default.publisher(for: .lillistOpenTaskEditor)) { _ in
+            if let id = taskSelection { openTaskEditorAction(id) }
+        }
         .onReceive(NotificationCenter.default.publisher(for: .lillistMarkClosed)) { _ in
             if let id = taskSelection { Task { try? await env.taskStore.transition(id: id, to: .closed) } }
         }
