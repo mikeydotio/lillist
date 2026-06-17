@@ -995,8 +995,18 @@ public final class TaskStore: @unchecked Sendable {
         }
     }
 
+    /// Whether `title` would survive `validateTitle` — i.e. is non-empty
+    /// after trimming whitespace and newlines. Pure value-math, exposed
+    /// `nonisolated static` so non-actor callers (a SwiftUI "Add" button's
+    /// disabled state, the unified editor's pre-commit gate) can check
+    /// committability without an `async` round-trip into the store. This is
+    /// the single source of truth for the rule; `validateTitle` delegates.
+    public nonisolated static func isCommittableTitle(_ title: String) -> Bool {
+        !title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
     func validateTitle(_ title: String) throws {
-        if title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+        if !Self.isCommittableTitle(title) {
             throw LillistError.validationFailed([
                 .init(field: "title", message: "must not be empty")
             ])

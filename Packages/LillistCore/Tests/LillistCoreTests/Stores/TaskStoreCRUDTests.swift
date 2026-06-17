@@ -27,6 +27,15 @@ struct TaskStoreCRUDTests {
         }
     }
 
+    @Test("isCommittableTitle mirrors the create/update validation rule")
+    func committableTitle() {
+        #expect(TaskStore.isCommittableTitle("Buy milk"))
+        #expect(TaskStore.isCommittableTitle("  x  "))
+        #expect(TaskStore.isCommittableTitle("") == false)
+        #expect(TaskStore.isCommittableTitle("   ") == false)
+        #expect(TaskStore.isCommittableTitle("\n\t ") == false)
+    }
+
     @Test("Fetch by unknown id throws notFound")
     func notFound() async throws {
         let p = try await TestStore.make()

@@ -26,6 +26,10 @@ final class AppEnvironment {
     let taskStore: TaskStore
     let tagStore: TagStore
     let journalStore: JournalStore
+    /// Attachment store. Wired on both platforms so the unified task
+    /// editor's attachment section works on macOS (it previously existed
+    /// only on iOS, where the detail tabs used it).
+    let attachmentStore: AttachmentStore
     let seriesStore: SeriesStore
     let preferencesStore: PreferencesStore
     let devicePreferences: DevicePreferencesStore
@@ -83,6 +87,7 @@ final class AppEnvironment {
         self.taskStore = TaskStore(persistence: persistence)
         self.tagStore = TagStore(persistence: persistence)
         self.journalStore = JournalStore(persistence: persistence)
+        self.attachmentStore = AttachmentStore(persistence: persistence)
         self.seriesStore = SeriesStore(persistence: persistence)
         let preferencesStore = PreferencesStore(persistence: persistence)
         self.preferencesStore = preferencesStore
@@ -170,6 +175,7 @@ final class AppEnvironment {
         self.taskStore.breadcrumbs = breadcrumbs
         self.tagStore.breadcrumbs = breadcrumbs
         self.journalStore.breadcrumbs = breadcrumbs
+        self.attachmentStore.breadcrumbs = breadcrumbs
 
         // Diagnostics: shared log + net-new history observer (own watermark key).
         let diagnosticLog = DiagnosticLog.shared(
