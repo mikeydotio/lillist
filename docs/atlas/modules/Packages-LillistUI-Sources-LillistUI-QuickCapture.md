@@ -4,15 +4,15 @@ summary: "Quick Capture text parsing, the macOS hotkey panel view, and the canon
 read_when: "Quick Capture parsing"
 sources:
   - path: Packages/LillistUI/Sources/LillistUI/QuickCapture/QuickCaptureDateSuggestions.swift
-    blob: 7cf0c3990da9d39095ebc898d37ae926931afcfc
   - path: Packages/LillistUI/Sources/LillistUI/QuickCapture/QuickCaptureParser.swift
-    blob: 68c8306a5b319e84ca27198e96b7078aa75fd5be
   - path: Packages/LillistUI/Sources/LillistUI/QuickCapture/QuickCaptureView.swift
-    blob: 52746892ca8e7bf4b3184010c1a64b2d45c29f3a
-references_modules: [Packages-LillistUI-Sources-LillistUI-Components, Packages-LillistUI-Sources-LillistUI-Theme-chunk-1, Packages-LillistUI-Sources-LillistUI-Theme-chunk-2, Packages-LillistUI-Sources-LillistUI-iOS-misc, Apps-Lillist-macOS-Sources-Hotkey, Apps-Lillist-iOS-Sources-misc]
-generator: cartographer/1
-baseline: 85a4dc8648a4280e30f533268d65bfac16701d21
-verified: true
+references_modules:
+  - Packages-LillistUI-Sources-LillistUI-Components
+  - Packages-LillistUI-Sources-LillistUI-Theme-chunk-1
+  - Packages-LillistUI-Sources-LillistUI-Theme-chunk-2
+  - Packages-LillistUI-Sources-LillistUI-iOS-misc
+  - Packages-LillistUI-Sources-LillistUI-Editor
+generator: cartographer/1 model=claude-sonnet-4-6
 ---
 
 # Module: Packages/LillistUI/Sources/LillistUI/QuickCapture
@@ -48,14 +48,12 @@ becomes a task and the macOS panel would lose its UI.
 - `Packages-LillistUI-Sources-LillistUI-QuickCapture.QuickCaptureView -> Packages-LillistUI-Sources-LillistUI-QuickCapture.QuickCaptureDateSuggestions (reads)`
 - `Packages-LillistUI-Sources-LillistUI-QuickCapture.QuickCaptureView -> Packages-LillistUI-Sources-LillistUI-Components.TagChipView (calls)`
 - `Packages-LillistUI-Sources-LillistUI-QuickCapture.QuickCaptureView -> Packages-LillistUI-Sources-LillistUI-Theme-chunk-1.glassSurface (calls)`
-- `Packages-LillistUI-Sources-LillistUI-QuickCapture.QuickCaptureView -> Packages-LillistUI-Sources-LillistUI-Theme-chunk-1.rainbow (calls)`
 - `Packages-LillistUI-Sources-LillistUI-QuickCapture.QuickCaptureView -> Packages-LillistUI-Sources-LillistUI-Theme-chunk-1.LillistColor (reads)`
 - `Packages-LillistUI-Sources-LillistUI-QuickCapture.QuickCaptureView -> Packages-LillistUI-Sources-LillistUI-Theme-chunk-2.LillistTypography (reads)`
 - `Packages-LillistUI-Sources-LillistUI-QuickCapture.QuickCaptureView -> Packages-LillistUI-Sources-LillistUI-Theme-chunk-2.LillistSpacing (reads)`
-- `Apps-Lillist-macOS-Sources-Hotkey.QuickCapturePanelController -> Packages-LillistUI-Sources-LillistUI-QuickCapture.QuickCaptureView (calls)`
-- `Apps-Lillist-macOS-Sources-Hotkey.QuickCapturePanelController -> Packages-LillistUI-Sources-LillistUI-QuickCapture.QuickCaptureParser.Result (reads)`
 - `Packages-LillistUI-Sources-LillistUI-iOS-misc.QuickCaptureDialog -> Packages-LillistUI-Sources-LillistUI-QuickCapture.QuickCaptureParser.parse (calls)`
-- `Apps-Lillist-iOS-Sources-misc.QuickCaptureDialogHost -> Packages-LillistUI-Sources-LillistUI-QuickCapture.QuickCaptureParser.parse (calls)`
+- `Packages-LillistUI-Sources-LillistUI-Editor.TaskEditorModel -> Packages-LillistUI-Sources-LillistUI-QuickCapture.QuickCaptureParser.parse (calls)`
+- `Packages-LillistUI-Sources-LillistUI-Editor.TaskEditorView -> Packages-LillistUI-Sources-LillistUI-QuickCapture.QuickCaptureParser.parse (calls)`
 
 ## Type notes
 
@@ -86,3 +84,6 @@ is the host/CLI layer's job, not this module's.
 - Tokens stay English at the data layer even though chip labels may localize their
   display; label and parser token are presently the same string
   (`Packages/LillistUI/Sources/LillistUI/QuickCapture/QuickCaptureDateSuggestions.swift:17`).
+- `QuickCaptureView` is no longer hosted by `QuickCapturePanelController` — that controller
+  now hosts `TaskEditorView` from the Editor module. The macOS panel comment in the view
+  doc-comment (`QuickCaptureView.swift:3`) is historical; the live host is `TaskEditorView`.

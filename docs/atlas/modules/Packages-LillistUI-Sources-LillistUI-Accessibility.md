@@ -4,15 +4,10 @@ summary: "Accessibility primitives — Reduce Motion/Transparency/Contrast view 
 read_when: "Reduce Motion, AX, contrast"
 sources:
   - path: Packages/LillistUI/Sources/LillistUI/Accessibility/AccessibilityEnvironment.swift
-    blob: 616dac83a2a74bce122b17f5902762e17e6c1aed
   - path: Packages/LillistUI/Sources/LillistUI/Accessibility/Announcements.swift
-    blob: 6481f0dc2de465c4f63181e1e2e120456363e8b5
   - path: Packages/LillistUI/Sources/LillistUI/Accessibility/ContrastMath.swift
-    blob: 01dd8f7355b5e7998307adc84d6c30f53ee618d8
-references_modules: [Packages-LillistUI-Sources-LillistUI-Theme-chunk-1, Packages-LillistUI-Sources-LillistUI-Theme-chunk-2, Packages-LillistUI-Sources-LillistUI-Components, Packages-LillistUI-Sources-LillistUI-iOS-misc, Packages-LillistUI-Sources-LillistUI-iOS-Tasks, Packages-LillistUI-Sources-LillistUI-DragReorder, Apps-Lillist-iOS-Sources-Detail, Apps-Lillist-iOS-misc, Apps-Lillist-macOS-Sources-Views-Detail]
-generator: cartographer/1
-baseline: 85a4dc8648a4280e30f533268d65bfac16701d21
-verified: true
+references_modules: [Packages-LillistUI-Sources-LillistUI-Theme-chunk-1]
+generator: cartographer/1 model=claude-sonnet-4-6
 ---
 
 # Module: Packages/LillistUI/Sources/LillistUI/Accessibility
@@ -54,17 +49,7 @@ env-honoring paths via internal override keys without touching production code.
 
 ## Relationships
 
-- `Packages-LillistUI-Sources-LillistUI-Theme-chunk-1.TagTint -> Packages-LillistUI-Sources-LillistUI-Accessibility.ContrastMath (calls)`
-- `Packages-LillistUI-Sources-LillistUI-Theme-chunk-1.RainbowToggleStyle -> Packages-LillistUI-Sources-LillistUI-Accessibility.EnvironmentValues (reads)`
-- `Packages-LillistUI-Sources-LillistUI-Theme-chunk-1.StatusPalette -> Packages-LillistUI-Sources-LillistUI-Accessibility.EnvironmentValues (reads)`
-- `Packages-LillistUI-Sources-LillistUI-Components.StatusCubeView -> Packages-LillistUI-Sources-LillistUI-Accessibility.EnvironmentValues (reads)`
-- `Packages-LillistUI-Sources-LillistUI-Components.TagChipView -> Packages-LillistUI-Sources-LillistUI-Accessibility.EnvironmentValues (reads)`
-- `Packages-LillistUI-Sources-LillistUI-iOS-Tasks.FilterChip -> Packages-LillistUI-Sources-LillistUI-Accessibility.EnvironmentValues (reads)`
-- `Packages-LillistUI-Sources-LillistUI-iOS-misc.QuickCaptureDialogPresenter -> Packages-LillistUI-Sources-LillistUI-Accessibility.View (calls)`
-- `Packages-LillistUI-Sources-LillistUI-DragReorder.DragOverlay -> Packages-LillistUI-Sources-LillistUI-Accessibility.View (calls)`
-- `Apps-Lillist-iOS-Sources-Detail.RecurrenceSheet -> Packages-LillistUI-Sources-LillistUI-Accessibility.AccessibilityAnnouncements (calls)`
-- `Apps-Lillist-macOS-Sources-Views-Detail.TaskDetailView -> Packages-LillistUI-Sources-LillistUI-Accessibility.AccessibilityAnnouncements (calls)`
-- `Apps-Lillist-iOS-misc.OnboardingScreen -> Packages-LillistUI-Sources-LillistUI-Accessibility.View (calls)`
+- `Packages-LillistUI-Sources-LillistUI-Accessibility.ContrastMath -> Packages-LillistUI-Sources-LillistUI-Theme-chunk-1.TagTint (reads)` — `hsbToRGB` is the inverse of `TagTint.rgbToHSB` per `Packages/LillistUI/Sources/LillistUI/Accessibility/ContrastMath.swift:19`
 
 ## Type notes
 

@@ -1,20 +1,17 @@
 ---
 module: Packages/LillistUI/Sources/LillistUI/Recurrence
-summary: "SwiftUI recurrence-rule editor plus a value-type summary it renders to localized text"
-read_when: "recurrence editor UI"
+summary: SwiftUI recurrence-rule editor plus a value-type summary it renders to localized text
+read_when: Touching recurrence editing UI, recurrence summary display, or RecurrenceRule binding
 sources:
   - path: Packages/LillistUI/Sources/LillistUI/Recurrence/RecurrenceEditorView.swift
-    blob: 0a45e3b6f13912b4cb5c8a1b942759a9af126108
   - path: Packages/LillistUI/Sources/LillistUI/Recurrence/RecurrenceEditorViewModel.swift
-    blob: 222e0124667e98be7e37bdbbe336ae536573639c
   - path: Packages/LillistUI/Sources/LillistUI/Recurrence/RecurrenceSummary.swift
-    blob: 4431a7f040ca523f4e1aad880d5ae5e465d8f2ab
   - path: Packages/LillistUI/Sources/LillistUI/Recurrence/RecurrenceSummaryFormatter.swift
-    blob: c6541163a9cf3720b3b08e4e1fd985c4506fc743
-references_modules: [Packages-LillistCore-Sources-LillistCore-Recurrence, Packages-LillistUI-Sources-LillistUI-Theme-chunk-1, Apps-Lillist-macOS-Sources-Views-Detail, Apps-Lillist-iOS-Sources-Detail]
-generator: cartographer/1
-baseline: 85a4dc8648a4280e30f533268d65bfac16701d21
-verified: true
+references_modules:
+  - Packages-LillistCore-Sources-LillistCore-Model
+  - Packages-LillistUI-Sources-LillistUI-Theme-chunk-1
+  - Packages-LillistUI-Sources-LillistUI-Editor
+generator: cartographer/1 model=claude-sonnet-4-6
 ---
 
 # Module: Packages/LillistUI/Sources/LillistUI/Recurrence
@@ -51,16 +48,15 @@ types never embed English or pluralization rules.
 
 ## Relationships
 
-- `Packages-LillistUI-Sources-LillistUI-Recurrence.RecurrenceEditorViewModel -> Packages-LillistCore-Sources-LillistCore-Recurrence.RecurrenceRule (owns)`
-- `Packages-LillistUI-Sources-LillistUI-Recurrence.RecurrenceEditorViewModel -> Packages-LillistCore-Sources-LillistCore-Recurrence.Weekday (reads)`
-- `Packages-LillistUI-Sources-LillistUI-Recurrence.RecurrenceSummary -> Packages-LillistCore-Sources-LillistCore-Recurrence.RecurrenceRule (reads)`
-- `Packages-LillistUI-Sources-LillistUI-Recurrence.RecurrenceEditorView -> Packages-LillistCore-Sources-LillistCore-Recurrence.Weekday (reads)`
+- `Packages-LillistUI-Sources-LillistUI-Recurrence.RecurrenceEditorViewModel -> Packages-LillistCore-Sources-LillistCore-Model.RecurrenceRule (owns)`
+- `Packages-LillistUI-Sources-LillistUI-Recurrence.RecurrenceEditorViewModel -> Packages-LillistCore-Sources-LillistCore-Model.Weekday (reads)`
+- `Packages-LillistUI-Sources-LillistUI-Recurrence.RecurrenceSummary -> Packages-LillistCore-Sources-LillistCore-Model.RecurrenceRule (reads)`
+- `Packages-LillistUI-Sources-LillistUI-Recurrence.RecurrenceEditorView -> Packages-LillistCore-Sources-LillistCore-Model.Weekday (reads)`
 - `Packages-LillistUI-Sources-LillistUI-Recurrence.RecurrenceEditorView -> Packages-LillistUI-Sources-LillistUI-Theme-chunk-1.RainbowPalette (reads)`
 - `Packages-LillistUI-Sources-LillistUI-Recurrence.RecurrenceEditorView -> Packages-LillistUI-Sources-LillistUI-Theme-chunk-1.LillistColor (reads)`
-- `Apps-Lillist-macOS-Sources-Views-Detail.TaskDetailView -> Packages-LillistUI-Sources-LillistUI-Recurrence.RecurrenceEditorView (calls)`
-- `Apps-Lillist-iOS-Sources-Detail.RecurrenceSheet -> Packages-LillistUI-Sources-LillistUI-Recurrence.RecurrenceEditorView (calls)`
-- `Apps-Lillist-macOS-Sources-Views-Detail.TaskDetailView -> Packages-LillistUI-Sources-LillistUI-Recurrence.RecurrenceSummaryFormatter (calls)`
-- `Apps-Lillist-iOS-Sources-Detail.TaskDetailView -> Packages-LillistUI-Sources-LillistUI-Recurrence.RecurrenceSummaryFormatter (calls)`
+- `Packages-LillistUI-Sources-LillistUI-Editor.TaskEditorView -> Packages-LillistUI-Sources-LillistUI-Recurrence.RecurrenceEditorView (calls)`
+- `Packages-LillistUI-Sources-LillistUI-Editor.TaskEditorModel -> Packages-LillistUI-Sources-LillistUI-Recurrence.RecurrenceEditorViewModel (owns)`
+- `Packages-LillistUI-Sources-LillistUI-Editor.TaskEditorView -> Packages-LillistUI-Sources-LillistUI-Recurrence.RecurrenceSummaryFormatter (calls)`
 
 ## Type notes
 
@@ -78,3 +74,9 @@ math through `Calendar`, never `addingTimeInterval`.
 
 - SwiftUI — `Form`, `Picker`, `Toggle`, `DatePicker`, `LazyVGrid`, `@Binding`
 - Foundation — `Calendar`, `Locale`, `Date`, `TimeInterval`, `String(localized:bundle:)`
+
+## Gotchas
+
+- `RecurrenceSummaryFormatter` avoids `.xcstrings` plural-variation keys: SwiftPM copies `.xcstrings` verbatim without running `xcstringstool`, so plural variants are inert under `swift test`. Singular vs. plural is resolved by branching on `interval == 1` / `days == 1` with separate literal keys. (`Packages/LillistUI/Sources/LillistUI/Recurrence/RecurrenceSummaryFormatter.swift:14`)
+- `build()` preserves Monday-first ordering for `byDay` by filtering `Weekday.allCases` rather than sorting the set. (`Packages/LillistUI/Sources/LillistUI/Recurrence/RecurrenceEditorViewModel.swift:83`)
+- `defaultUntil()` anchors on `taskAnchorDate` (not `Date()`) so tasks scheduled far in the future receive a proportionate end-date default. (`Packages/LillistUI/Sources/LillistUI/Recurrence/RecurrenceEditorView.swift:211`)

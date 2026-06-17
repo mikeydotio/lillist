@@ -1,27 +1,29 @@
 ---
 module: Packages/LillistUI/Sources/LillistUI/Onboarding
-summary: "Cross-platform onboarding + iCloud-unavailable presentation views shared by iOS and macOS shells"
-read_when: "Onboarding & iCloud prompts"
+summary: Cross-platform SwiftUI onboarding screens: iCloud unavailability gate and feature-bullet onboarding body.
+read_when: Touching first-launch flow, iCloud unavailable screen, or onboarding content shared across iOS and macOS.
 sources:
   - path: Packages/LillistUI/Sources/LillistUI/Onboarding/ICloudRequiredContent.swift
-    blob: 3acdc95019c18123523312efbae30d9db650300b
   - path: Packages/LillistUI/Sources/LillistUI/Onboarding/ICloudUnavailableScreen.swift
-    blob: ecd20cfa8508fe993115a13f1a7a2b47ec101f9b
   - path: Packages/LillistUI/Sources/LillistUI/Onboarding/OnboardingContent.swift
-    blob: 91b2fd39738ad697fbef83ee270080719b69e1ba
-references_modules: [Packages-LillistCore-Sources-LillistCore-Notifications, Packages-LillistUI-Sources-LillistUI-Components, Packages-LillistUI-Sources-LillistUI-Theme-chunk-1, Apps-Lillist-iOS-Sources-App, Apps-Lillist-iOS-Sources-misc, Apps-Lillist-macOS-Sources-misc]
-generator: cartographer/1
-baseline: 85a4dc8648a4280e30f533268d65bfac16701d21
-verified: true
+references_modules:
+  - Packages-LillistCore-Sources-LillistCore-Notifications
+  - Packages-LillistUI-Sources-LillistUI-Components
+  - Packages-LillistUI-Sources-LillistUI-Theme-chunk-1
+  - Packages-LillistUI-Sources-LillistUI-Theme-chunk-2
+  - Apps-Lillist-iOS-Sources-App
+  - Apps-Lillist-iOS-Sources-misc
+  - Apps-Lillist-macOS-Sources-misc
+generator: cartographer/1 model=claude-sonnet-4-6
 ---
 
 # Module: Packages/LillistUI/Sources/LillistUI/Onboarding
 
 ## Purpose
 
-Holds the platform-neutral *body content* for first-launch surfaces so iOS and
+Holds the platform-neutral body content for first-launch surfaces so iOS and
 macOS render identical copy and font treatment. The design idea is a
-content/wrapper split: shared layout + strings live here, while the deep-link
+content/wrapper split: shared layout and strings live here, while deep-link
 URLs, header sizing, and action-bar shape stay in the app-target wrappers
 because they diverge enough that sharing them would add more conditionals than
 it removes (`Packages/LillistUI/Sources/LillistUI/Onboarding/OnboardingContent.swift:9`).
@@ -48,7 +50,12 @@ between platforms — the exact drift these types were lifted to fix
 
 - `Packages-LillistUI-Sources-LillistUI-Onboarding.OnboardingContent -> Packages-LillistCore-Sources-LillistCore-Notifications.NotificationPermissions (reads)`
 - `Packages-LillistUI-Sources-LillistUI-Onboarding.ICloudUnavailableScreen -> Packages-LillistUI-Sources-LillistUI-Components.DotGridBackdrop (calls)`
-- `Packages-LillistUI-Sources-LillistUI-Onboarding.ICloudUnavailableScreen -> Packages-LillistUI-Sources-LillistUI-Theme-chunk-1.RainbowButtonStyle (calls)`
+- `Packages-LillistUI-Sources-LillistUI-Onboarding.ICloudUnavailableScreen -> Packages-LillistUI-Sources-LillistUI-Theme-chunk-1.RainbowPalette (reads)`
+- `Packages-LillistUI-Sources-LillistUI-Onboarding.ICloudRequiredContent -> Packages-LillistUI-Sources-LillistUI-Theme-chunk-1.RainbowPalette (reads)`
+- `Packages-LillistUI-Sources-LillistUI-Onboarding.OnboardingContent -> Packages-LillistUI-Sources-LillistUI-Theme-chunk-1.RainbowPalette (reads)`
+- `Packages-LillistUI-Sources-LillistUI-Onboarding.ICloudUnavailableScreen -> Packages-LillistUI-Sources-LillistUI-Theme-chunk-2.LillistColor (reads)`
+- `Packages-LillistUI-Sources-LillistUI-Onboarding.ICloudUnavailableScreen -> Packages-LillistUI-Sources-LillistUI-Theme-chunk-2.LillistSpacing (reads)`
+- `Packages-LillistUI-Sources-LillistUI-Onboarding.ICloudUnavailableScreen -> Packages-LillistUI-Sources-LillistUI-Theme-chunk-2.LillistTypography (reads)`
 - `Apps-Lillist-iOS-Sources-misc.OnboardingScreen -> Packages-LillistUI-Sources-LillistUI-Onboarding.OnboardingContent (calls)`
 - `Apps-Lillist-macOS-Sources-misc.OnboardingSheet -> Packages-LillistUI-Sources-LillistUI-Onboarding.OnboardingContent (calls)`
 - `Apps-Lillist-iOS-Sources-App.LillistApp -> Packages-LillistUI-Sources-LillistUI-Onboarding.ICloudUnavailableScreen (calls)`
@@ -65,6 +72,17 @@ to advance onboarding state (`Packages/LillistUI/Sources/LillistUI/Onboarding/IC
 `OnboardingContent.Bullet` carries a `UUID` `id` for `ForEach` identity
 (`Packages/LillistUI/Sources/LillistUI/Onboarding/OnboardingContent.swift:15`).
 
+`ICloudUnavailableScreen` (Plan 21) and `ICloudRequiredContent` serve different
+scenarios: `ICloudUnavailableScreen` is the non-blocking informational screen
+shown when iCloud is absent but the app runs locally; `ICloudRequiredContent`
+is the older blocking-content fragment retained for the per-platform wrapper
+that still gates iCloud-required contexts.
+
 ## External deps
 
 - SwiftUI — `View` conformance, layout, `ForEach`, SF Symbols for all three surfaces
+- LillistCore — `import LillistCore` in `Packages/LillistUI/Sources/LillistUI/Onboarding/OnboardingContent.swift:2` for `NotificationPermissions.AuthorizationStatus`
+
+## Gotchas
+
+- `ICloudUnavailableScreen` renders `DotGridBackdrop()` (`Packages/LillistUI/Sources/LillistUI/Onboarding/ICloudUnavailableScreen.swift:49`), which uses `.drawingGroup()` / Metal and blanks the entire offscreen capture; this screen cannot be snapshot-tested offscreen and requires app-hosted or manual verification.
