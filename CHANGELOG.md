@@ -3,6 +3,28 @@
 All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [v0.7.0] - 2026-06-17
+
+### Added
+- row-style title header, collapsible journal, leaner activity (a42698a)
+
+### Fixed
+- restore task-row swipe actions via a custom gesture (79524c2)
+
+### Changed
+- stop auto-creating default notifications (8f7a5d6)
+
+### Documentation
+- record no-default-notifications + custom-swipe decisions (f2d6d80)
+
+### Testing
+- rebaseline DragReorder snapshots (stale since 9f37a24) (cb66086)
+
+### Maintenance
+- bump iOS build number to 50 (a9369df)
+
+_[manual]_
+
 ## [v0.6.1] - 2026-06-17
 
 ### Fixed
