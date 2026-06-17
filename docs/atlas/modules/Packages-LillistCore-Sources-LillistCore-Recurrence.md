@@ -1,22 +1,19 @@
 ---
 module: Packages/LillistCore/Sources/LillistCore/Recurrence
-summary: "Recurrence model, pure-Swift occurrence expansion, and next-instance spawning for Series"
-read_when: "Recurrence rules & spawning"
+summary: Recurrence rule types, pure-Swift occurrence expansion, and next-instance spawning for Series
+read_when: Touching recurrence rules, series spawning, or occurrence date expansion
 sources:
   - path: Packages/LillistCore/Sources/LillistCore/Recurrence/RecurrenceExpander.swift
-    blob: 8295dbcad3f9a43df5e169e244d796d4d3d7b63a
   - path: Packages/LillistCore/Sources/LillistCore/Recurrence/RecurrenceLog.swift
-    blob: 68f88ca6008fc34d527971db67145b4e59ef9f04
   - path: Packages/LillistCore/Sources/LillistCore/Recurrence/RecurrenceRule.swift
-    blob: 2eccd5ea55c65114c042d959e25ff2de10d92981
   - path: Packages/LillistCore/Sources/LillistCore/Recurrence/RecurrenceSpawner.swift
-    blob: 929d8f5ad9841970801b8eec49d47b6b7a8ddaf2
   - path: Packages/LillistCore/Sources/LillistCore/Recurrence/Weekday.swift
-    blob: 721acfa8295d34af2f90c59b1561c5fb3c606493
-references_modules: [Packages-LillistCore-Sources-LillistCore-ManagedObjects, Packages-LillistCore-Sources-LillistCore-Stores-chunk-1, Packages-LillistUI-Sources-LillistUI-Recurrence]
-generator: cartographer/1
-baseline: 85a4dc8648a4280e30f533268d65bfac16701d21
-verified: true
+references_modules:
+  - Packages-LillistCore-Sources-LillistCore-ManagedObjects
+  - Packages-LillistCore-Sources-LillistCore-Stores-chunk-1
+  - Packages-LillistCore-Sources-LillistCore-Stores-chunk-2
+  - Packages-LillistUI-Sources-LillistUI-Recurrence
+generator: cartographer/1 model=claude-sonnet-4-6
 ---
 
 # Module: Packages/LillistCore/Sources/LillistCore/Recurrence
@@ -57,14 +54,14 @@ stored rule JSON would have no decoder.
 
 ## Relationships
 
-- `Packages-LillistCore-Sources-LillistCore-Stores-chunk-1.TaskStore -> Packages-LillistCore-Sources-LillistCore-Recurrence.RecurrenceSpawner (calls)`
-- `Packages-LillistCore-Sources-LillistCore-Stores-chunk-1.SeriesStore -> Packages-LillistCore-Sources-LillistCore-Recurrence.RecurrenceExpander (calls)`
-- `Packages-LillistCore-Sources-LillistCore-ManagedObjects.Series -> Packages-LillistCore-Sources-LillistCore-Recurrence.RecurrenceRule (reads)`
-- `Packages-LillistCore-Sources-LillistCore-Recurrence.RecurrenceSpawner -> Packages-LillistCore-Sources-LillistCore-ManagedObjects.LillistTask (writes)`
-- `Packages-LillistCore-Sources-LillistCore-Recurrence.RecurrenceSpawner -> Packages-LillistCore-Sources-LillistCore-ManagedObjects.Series (reads)`
-- `Packages-LillistUI-Sources-LillistUI-Recurrence.RecurrenceEditorViewModel -> Packages-LillistCore-Sources-LillistCore-Recurrence.RecurrenceRule (writes)`
-- `Packages-LillistCore-Sources-LillistCore-Recurrence.RecurrenceSpawner -> Packages-LillistCore-Sources-LillistCore-Recurrence.RecurrenceExpander (calls)`
-- `Packages-LillistCore-Sources-LillistCore-Recurrence.RecurrenceRule -> Packages-LillistCore-Sources-LillistCore-Recurrence.RecurrenceLog (writes)`
+- `Packages-LillistCore-Sources-LillistCore-Stores-chunk-2.TaskStore -> Packages-LillistCore-Sources-LillistCore-Recurrence.RecurrenceSpawner (calls)` — `TaskStore.transition` calls `spawnIfNeeded` on the context queue (`Packages/LillistCore/Sources/LillistCore/Stores/TaskStore.swift:571`)
+- `Packages-LillistCore-Sources-LillistCore-Stores-chunk-1.SeriesStore -> Packages-LillistCore-Sources-LillistCore-Recurrence.RecurrenceExpander (calls)` — `SeriesStore.computeNextOccurrence` calls `nextOccurrences`/`nextAfterCompletion` (`Packages/LillistCore/Sources/LillistCore/Stores/SeriesStore.swift:138`)
+- `Packages-LillistCore-Sources-LillistCore-ManagedObjects.Series -> Packages-LillistCore-Sources-LillistCore-Recurrence.RecurrenceRule (reads)` — `series.rule` is a decoded `RecurrenceRule`; spawner reads it at `Packages/LillistCore/Sources/LillistCore/Recurrence/RecurrenceSpawner.swift:29`
+- `Packages-LillistCore-Sources-LillistCore-Recurrence.RecurrenceSpawner -> Packages-LillistCore-Sources-LillistCore-ManagedObjects.LillistTask (writes)` — spawner creates and copies `LillistTask` managed objects (`Packages/LillistCore/Sources/LillistCore/Recurrence/RecurrenceSpawner.swift:33`)
+- `Packages-LillistCore-Sources-LillistCore-Recurrence.RecurrenceSpawner -> Packages-LillistCore-Sources-LillistCore-ManagedObjects.Series (reads)` — reads `series.nextOccurrenceAfter`, `series.instances`, writes back after spawn (`Packages/LillistCore/Sources/LillistCore/Recurrence/RecurrenceSpawner.swift:66`)
+- `Packages-LillistUI-Sources-LillistUI-Recurrence.RecurrenceEditorViewModel -> Packages-LillistCore-Sources-LillistCore-Recurrence.RecurrenceRule (writes)` — editor builds `CalendarRule`/`AfterCompletionRule` values and reads `Weekday` (`Packages/LillistUI/Sources/LillistUI/Recurrence/RecurrenceEditorViewModel.swift`)
+- `Packages-LillistCore-Sources-LillistCore-Recurrence.RecurrenceSpawner -> Packages-LillistCore-Sources-LillistCore-Recurrence.RecurrenceExpander (calls)` — `advance` dispatches to expander for next occurrence (`Packages/LillistCore/Sources/LillistCore/Recurrence/RecurrenceSpawner.swift:105`)
+- `Packages-LillistCore-Sources-LillistCore-Recurrence.RecurrenceRule -> Packages-LillistCore-Sources-LillistCore-Recurrence.RecurrenceLog (writes)` — `normalizedInterval` emits a warning via `RecurrenceLog.normalization` on clamped input (`Packages/LillistCore/Sources/LillistCore/Recurrence/RecurrenceRule.swift:96`)
 
 ## Type notes
 

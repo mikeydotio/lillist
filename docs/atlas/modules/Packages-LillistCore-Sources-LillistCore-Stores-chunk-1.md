@@ -1,32 +1,30 @@
 ---
 module: "Packages/LillistCore/Sources/LillistCore/Stores (chunk 1)"
-summary: "Core Data store facades for attachments, journal, preferences, series, smart filters, tags, plus TaskStore extensions"
-read_when: "Core Data store facades"
+summary: Core Data facades for attachments, journal, preferences, series, smart filters, tags, plus TaskStore query/follow-up extensions
+read_when: Touching attachments, journal, preferences, recurrence series, smart filters, or tags
 sources:
   - path: Packages/LillistCore/Sources/LillistCore/Stores/AttachmentStore.swift
-    blob: af70d4e18ae0d9635865a60d0738a7fd7957293c
   - path: Packages/LillistCore/Sources/LillistCore/Stores/JournalStore.swift
-    blob: 4deba503a11896230e9a21dc091cd75dd9b7726e
   - path: Packages/LillistCore/Sources/LillistCore/Stores/PreferencesStore.swift
-    blob: bd5a5268cb8cc339f73a5e85aa8d5ff8c366850f
   - path: Packages/LillistCore/Sources/LillistCore/Stores/SeriesStore.swift
-    blob: ee2963186428c389bb77f393cca23f1ebad56218
-  - path: "Packages/LillistCore/Sources/LillistCore/Stores/SmartFilterStore+Defaults.swift"
-    blob: 3710bb423e779c73223094f2df20aff7135cb8e1
+  - path: Packages/LillistCore/Sources/LillistCore/Stores/SmartFilterStore+Defaults.swift
   - path: Packages/LillistCore/Sources/LillistCore/Stores/SmartFilterStore.swift
-    blob: 4bdfc4c6eab859c84adbecad3c19c15e8315fb22
-  - path: "Packages/LillistCore/Sources/LillistCore/Stores/TagStore+FindOrCreate.swift"
-    blob: fbc084e94d18ae6747564cb8e4b0c32399efc2d0
+  - path: Packages/LillistCore/Sources/LillistCore/Stores/TagStore+FindOrCreate.swift
   - path: Packages/LillistCore/Sources/LillistCore/Stores/TagStore.swift
-    blob: 2fc1dc6f0c94a92e9db32d06599663b47d9a5ea6
-  - path: "Packages/LillistCore/Sources/LillistCore/Stores/TaskStore+FollowUp.swift"
-    blob: e68ae07cbdcf46468b09f0c292aa4353209ae773
-  - path: "Packages/LillistCore/Sources/LillistCore/Stores/TaskStore+Queries.swift"
-    blob: f86757470cea6dcb8c5994fb9bc741ebffd033f0
-references_modules: [Packages-LillistCore-Sources-LillistCore-Persistence, Packages-LillistCore-Sources-LillistCore-ManagedObjects, Packages-LillistCore-Sources-LillistCore-Rules, Packages-LillistCore-Sources-LillistCore-Ordering, Packages-LillistCore-Sources-LillistCore-Recurrence, Packages-LillistCore-Sources-LillistCore-Stores-chunk-2, Packages-LillistCore-Sources-LillistCore-CrashReporting, Packages-LillistCore-Sources-LillistCore-Diagnostics, Packages-LillistCore-Sources-LillistCore-Notifications, Packages-LillistCore-Sources-LillistCore-misc]
-generator: cartographer/1
-baseline: 85a4dc8648a4280e30f533268d65bfac16701d21
-verified: true
+  - path: Packages/LillistCore/Sources/LillistCore/Stores/TaskStore+FollowUp.swift
+  - path: Packages/LillistCore/Sources/LillistCore/Stores/TaskStore+Queries.swift
+references_modules:
+  - Packages-LillistCore-Sources-LillistCore-Persistence
+  - Packages-LillistCore-Sources-LillistCore-ManagedObjects
+  - Packages-LillistCore-Sources-LillistCore-Rules
+  - Packages-LillistCore-Sources-LillistCore-Ordering
+  - Packages-LillistCore-Sources-LillistCore-Recurrence
+  - Packages-LillistCore-Sources-LillistCore-Stores-chunk-2
+  - Packages-LillistCore-Sources-LillistCore-CrashReporting
+  - Packages-LillistCore-Sources-LillistCore-Diagnostics
+  - Packages-LillistCore-Sources-LillistCore-Notifications
+  - Packages-LillistCore-Sources-LillistCore-misc
+generator: cartographer/1 model=claude-sonnet-4-6
 ---
 
 # Module: Packages/LillistCore/Sources/LillistCore/Stores (chunk 1)
@@ -61,6 +59,7 @@ flat list views.
 | `PreferencesStore.read()` | func | `Packages/LillistCore/Sources/LillistCore/Stores/PreferencesStore.swift:74` | Reads the singleton row, creating defaults if absent |
 | `PreferencesStore.singletonID` | static let | `Packages/LillistCore/Sources/LillistCore/Stores/PreferencesStore.swift:14` | Fixed UUID for the one prefs row; never regenerate it |
 | `PreferencesStore.update(_:)` | func | `Packages/LillistCore/Sources/LillistCore/Stores/PreferencesStore.swift:95` | Mutates prefs via closure, saves, then broadcasts |
+| `PreferencesStore.normalizeSingletons()` | func | `Packages/LillistCore/Sources/LillistCore/Stores/PreferencesStore.swift:231` | Bootstrap convergence pass collapsing duplicate prefs rows to one canonical row |
 | `SeriesStore` | class | `Packages/LillistCore/Sources/LillistCore/Stores/SeriesStore.swift:4` | Recurring-series CRUD; computes `nextOccurrenceAfter` on create/update/fork |
 | `SeriesStore.SeriesRecord` | struct | `Packages/LillistCore/Sources/LillistCore/Stores/SeriesStore.swift:13` | Value-type series DTO |
 | `SeriesStore.create(fromSeedTask:rule:)` | func | `Packages/LillistCore/Sources/LillistCore/Stores/SeriesStore.swift:23` | Roots a series on a seed task and a `RecurrenceRule` |
@@ -68,7 +67,8 @@ flat list views.
 | `SmartFilterStore` | class | `Packages/LillistCore/Sources/LillistCore/Stores/SmartFilterStore.swift:7` | Saved smart filters; serializes `PredicateGroup` to JSON at `predicateGroupJSON` |
 | `SmartFilterStore.SmartFilterRecord` | struct | `Packages/LillistCore/Sources/LillistCore/Stores/SmartFilterStore.swift:27` | Value-type filter DTO with explicit public init |
 | `SmartFilterStore.evaluate(id:now:calendar:)` | func | `Packages/LillistCore/Sources/LillistCore/Stores/SmartFilterStore.swift:437` | Runs a saved filter, returns sorted `TaskStore.TaskRecord`s |
-| `SmartFilterStore.evaluate(group:...)` | func | `Packages/LillistCore/Sources/LillistCore/Stores/SmartFilterStore.swift:469` | Runs an ad-hoc `PredicateGroup` with limit/offset/archived options |
+| `SmartFilterStore.evaluate(group:sort:ascending:now:calendar:includeArchived:limit:offset:)` | func | `Packages/LillistCore/Sources/LillistCore/Stores/SmartFilterStore.swift:469` | Runs an ad-hoc `PredicateGroup` with limit/offset/archived options |
+| `SmartFilterStore.count(id:now:calendar:)` | func | `Packages/LillistCore/Sources/LillistCore/Stores/SmartFilterStore.swift:497` | Counts matching tasks without materializing records; used for badge counts |
 | `SmartFilterStore.installDefaultsIfNeeded()` | func | `Packages/LillistCore/Sources/LillistCore/Stores/SmartFilterStore+Defaults.swift:11` | Idempotently installs the five default filters by name |
 | `SmartFilterStore.reorder(id:after:before:)` | func | `Packages/LillistCore/Sources/LillistCore/Stores/SmartFilterStore.swift:334` | Heal-then-recheck fractional reorder; emits `filter.reorder` diag |
 | `TagStore` | class | `Packages/LillistCore/Sources/LillistCore/Stores/TagStore.swift:4` | Hierarchical tag CRUD; enforces sibling-name uniqueness and cycle-free reparenting |
@@ -79,7 +79,7 @@ flat list views.
 | `TaskStore.breadcrumbs(for:)` | func | `Packages/LillistCore/Sources/LillistCore/Stores/TaskStore+Queries.swift:74` | Parent-title trail per task id for flat list rows |
 | `TaskStore.pinned()` | func | `Packages/LillistCore/Sources/LillistCore/Stores/TaskStore+Queries.swift:10` | Non-deleted pinned tasks across the tree, position-ordered |
 | `TaskStore.scheduleFollowUp(parentTaskID:title:deadline:)` | func | `Packages/LillistCore/Sources/LillistCore/Stores/TaskStore+FollowUp.swift:16` | Creates a sibling follow-up + parent journal entry; reconciles notifications |
-| `TaskStore.tasks(forTag:...)` | func | `Packages/LillistCore/Sources/LillistCore/Stores/TaskStore+Queries.swift:28` | De-duped non-trash tasks for a tag and optionally its descendants |
+| `TaskStore.tasks(forTag:includeDescendants:sort:ascending:)` | func | `Packages/LillistCore/Sources/LillistCore/Stores/TaskStore+Queries.swift:28` | De-duped non-trash tasks for a tag and optionally its descendants |
 
 ## Load-bearing internals
 
@@ -90,7 +90,6 @@ flat list views.
 | `DefaultSmartFilters` | enum | `Packages/LillistCore/Sources/LillistCore/Stores/SmartFilterStore+Defaults.swift:27` | Declares the five seed filters (Today/This Week/No Tags/Recently Closed/Stale) |
 | `SeriesStore.computeNextOccurrence(rule:after:)` | static func | `Packages/LillistCore/Sources/LillistCore/Stores/SeriesStore.swift:138` | Single point where series schedule advances via `RecurrenceExpander` |
 | `PreferencesStore.fetchOrCreateSingleton(in:)` | func | `Packages/LillistCore/Sources/LillistCore/Stores/PreferencesStore.swift:185` | Canonical-id-first lookup with legacy-row adoption; defines all default values |
-| `PreferencesStore.normalizeSingletons()` | func | `Packages/LillistCore/Sources/LillistCore/Stores/PreferencesStore.swift:231` | Bootstrap convergence pass collapsing duplicate prefs rows to one canonical row |
 | `TagStore.uniqueNameUnder(parent:desired:excluding:)` | func | `Packages/LillistCore/Sources/LillistCore/Stores/TagStore.swift:174` | Enforces sibling-name uniqueness on create/rename/reparent via `Validators` |
 
 ## Relationships
@@ -145,3 +144,4 @@ class's internal `fetchManagedObject`/`nextPosition`/`validateTitle` helpers (de
 - `installDefaultsIfNeeded` matches by name and never overwrites user edits to an existing default filter (`Packages/LillistCore/Sources/LillistCore/Stores/SmartFilterStore+Defaults.swift:7`).
 - Follow-ups are created as siblings, not children, so collapsing the blocked task doesn't hide them (`Packages/LillistCore/Sources/LillistCore/Stores/TaskStore+FollowUp.swift:5`).
 - System journal entries (non-`isUserEditable` kinds) reject edit and delete (`Packages/LillistCore/Sources/LillistCore/Stores/JournalStore.swift:78`).
+- `SeriesStore.fetchManagedObject` is `internal` (not `private`) so `RecurrenceSpawner` in the Recurrence module can call it without going through the public API (`Packages/LillistCore/Sources/LillistCore/Stores/SeriesStore.swift:128`).

@@ -1,38 +1,29 @@
 ---
 module: Packages/LillistCore/Sources/LillistCore/Persistence
-summary: "Core Data container ownership, sync-mode store swaps, quarantine backups, and history reconciliation"
-read_when: "Core Data stack/sync swaps"
+summary: Core Data stack ownership, sync-mode store swapping, Trash purge, history tracking, and quarantine safety net
+read_when: Touching the Core Data container, CloudKit store swap, persistent history, Trash purge, or quarantine backup
 sources:
   - path: Packages/LillistCore/Sources/LillistCore/Persistence/AutoPurgeJob.swift
-    blob: 98b3ec158aff941f4eca3fd7d7f8bfc994495fbc
   - path: Packages/LillistCore/Sources/LillistCore/Persistence/BackgroundPurgeSchedule.swift
-    blob: a59cb962bb9d7b5724a736a4d3ceea4df23a6ff7
   - path: Packages/LillistCore/Sources/LillistCore/Persistence/CascadeReaper.swift
-    blob: 4ac9cbee9e72909b142862e76dd1ddce5afdb49a
   - path: Packages/LillistCore/Sources/LillistCore/Persistence/CloudKitSchemaInitializer.swift
-    blob: a1429f8ddbeb6b8be958d6ae09286788853c4ef2
   - path: Packages/LillistCore/Sources/LillistCore/Persistence/DiskSpaceProbe.swift
-    blob: f9c68ab9c461c0f98677f45285a79dcbd9254841
   - path: Packages/LillistCore/Sources/LillistCore/Persistence/HistoryPruner.swift
-    blob: c82fdfe5863409fcc05dd79e3fb6abc960ad116d
   - path: Packages/LillistCore/Sources/LillistCore/Persistence/PersistenceController.swift
-    blob: 2d4b47fd93c289592437720aee3d03917f2c7a93
   - path: Packages/LillistCore/Sources/LillistCore/Persistence/PersistenceHost.swift
-    blob: a75cf68a9964a389a2609a7d4f1662d57b7008e2
   - path: Packages/LillistCore/Sources/LillistCore/Persistence/PersistenceReconfiguring.swift
-    blob: 4250478520895ef87f47c2f434a18cad0ff9d2c9
   - path: Packages/LillistCore/Sources/LillistCore/Persistence/PersistentHistoryTokenStore.swift
-    blob: 391db33b538a4a8039800a174114d541bd1ec73e
   - path: Packages/LillistCore/Sources/LillistCore/Persistence/QuarantineManager.swift
-    blob: ac21b6021fe13c001d2c704218672f4aea0d6477
   - path: Packages/LillistCore/Sources/LillistCore/Persistence/RemoteChangeReconciler.swift
-    blob: a22bbf2eb5f6ddcc8cb57ade1affb0cdbd7b6a8b
   - path: Packages/LillistCore/Sources/LillistCore/Persistence/StoreConfiguration.swift
-    blob: 1a6cc56f1f145d58d4a48ea8649a82068a891807
-references_modules: [Apps-Lillist-iOS-Sources-App, Packages-LillistCore-Sources-LillistCore-Sync-chunk-1, Packages-LillistCore-Sources-LillistCore-Stores-chunk-1, Packages-LillistCore-Sources-LillistCore-ManagedObjects, Packages-LillistCore-Sources-LillistCore-Diagnostics, Packages-LillistCore-Sources-LillistCore-misc]
-generator: cartographer/1
-baseline: 85a4dc8648a4280e30f533268d65bfac16701d21
-verified: true
+references_modules:
+  - Packages-LillistCore-Sources-LillistCore-Sync-chunk-1
+  - Packages-LillistCore-Sources-LillistCore-Stores-chunk-1
+  - Packages-LillistCore-Sources-LillistCore-ManagedObjects
+  - Packages-LillistCore-Sources-LillistCore-Diagnostics
+  - Packages-LillistCore-Sources-LillistCore-misc
+  - Apps-Lillist-iOS-Sources-App
+generator: cartographer/1 model=claude-sonnet-4-6
 ---
 
 # Module: Packages/LillistCore/Sources/LillistCore/Persistence

@@ -4,11 +4,8 @@ summary: "TaskStore — the async CRUD/hierarchy/reorder/status gateway over the
 read_when: "TaskStore CRUD/reorder"
 sources:
   - path: Packages/LillistCore/Sources/LillistCore/Stores/TaskStore.swift
-    blob: 6f5a3d2439e01519804c7948357665ccd5226653
 references_modules: [Packages-LillistCore-Sources-LillistCore-Persistence, Packages-LillistCore-Sources-LillistCore-Ordering, Packages-LillistCore-Sources-LillistCore-Recurrence, Packages-LillistCore-Sources-LillistCore-Notifications, Packages-LillistCore-Sources-LillistCore-CrashReporting, Packages-LillistCore-Sources-LillistCore-Diagnostics, Packages-LillistCore-Sources-LillistCore-ManagedObjects, Packages-LillistCore-Sources-LillistCore-Model, Packages-LillistCore-Sources-LillistCore-misc]
-generator: cartographer/1
-baseline: db4037b64559daa37c32ba9c4ed478a6f8a83a43
-verified: true
+generator: cartographer/1 model=claude-sonnet-4-6
 ---
 
 # Module: Packages/LillistCore/Sources/LillistCore/Stores (chunk 2)
@@ -53,6 +50,7 @@ recompaction are the load-bearing heart of the file.
 | `TaskStore.update(id:_:)` | func | `Packages/LillistCore/Sources/LillistCore/Stores/TaskStore.swift:205` | Applies a draft mutation, validates, reconciles notifications |
 | `TaskStore.breadcrumbs` | property | `Packages/LillistCore/Sources/LillistCore/Stores/TaskStore.swift:34` | Optional crumb sink; mutations record verb-only entries |
 | `TaskStore.diagnosticLog` | property | `Packages/LillistCore/Sources/LillistCore/Stores/TaskStore.swift:40` | Optional structured diagnostic sink |
+| `TaskStore.isCommittableTitle(_:)` | func | `Packages/LillistCore/Sources/LillistCore/Stores/TaskStore.swift:1004` | `nonisolated static`; sync-safe empty-title check for SwiftUI disabled states |
 | `TaskStore.notificationScheduler` | property | `Packages/LillistCore/Sources/LillistCore/Stores/TaskStore.swift:29` | Property-injected reconciler; nil disables reconcile calls |
 
 ## Load-bearing internals
@@ -60,7 +58,7 @@ recompaction are the load-bearing heart of the file.
 | Symbol | Kind | Location | Why it matters |
 | --- | --- | --- | --- |
 | `fetchManagedObject(id:in:)` | func | `Packages/LillistCore/Sources/LillistCore/Stores/TaskStore.swift:879` | The one id→`LillistTask` lookup every mutation calls; throws `notFound` |
-| `record(from:)` | func | `Packages/LillistCore/Sources/LillistCore/Stores/TaskStore.swift:1006` | The single `LillistTask`→`TaskRecord` projection enforcing the DTO boundary |
+| `record(from:)` | func | `Packages/LillistCore/Sources/LillistCore/Stores/TaskStore.swift:1016` | The single `LillistTask`→`TaskRecord` projection enforcing the DTO boundary |
 | `childrenFetchRequest(parentID:in:)` | func | `Packages/LillistCore/Sources/LillistCore/Stores/TaskStore.swift:298` | Shared paged fetch builder; sets `fetchBatchSize` so reloads fault lazily |
 | `nextPositionDetail(forParent:placement:)` | func | `Packages/LillistCore/Sources/LillistCore/Stores/TaskStore.swift:903` | Computes next position: `edge + 1.0` for `.bottom`, `edge - 1.0` for `.top`; basis of `create`/`reparent` ordering |
 | `recompactSiblings(ofParent:)` | func | `Packages/LillistCore/Sources/LillistCore/Stores/TaskStore.swift:939` | Re-spaces siblings to integer gaps in canonical `SiblingOrder` during heals |
@@ -113,3 +111,9 @@ The default is `.bottom` for backward compatibility with all existing `create` c
 - CoreData — `NSManagedObjectContext`, `NSFetchRequest`, `NSPredicate`, `NSBatchDeleteRequest`
 - Foundation — `UUID`, `Date`, `JSONSerialization`
 - os — `OSSignposter` intervals around the `children` fetch
+
+## Gotchas
+
+- Reorder tie-healing swaps anchor positions to honour drag intent when canonical UUID order conflicts with the caller's after/before; see `Packages/LillistCore/Sources/LillistCore/Stores/TaskStore.swift:449`.
+- After recompaction, `reorder` uses `afterTask.position + 0.5` (not the midpoint) to avoid collision with integer sibling positions; see `Packages/LillistCore/Sources/LillistCore/Stores/TaskStore.swift:462`.
+- `batchPurge` rebuilds `NSPredicate` inside the `@Sendable` background-context closure because `NSPredicate` is not `Sendable`; see `Packages/LillistCore/Sources/LillistCore/Stores/TaskStore.swift:773`.

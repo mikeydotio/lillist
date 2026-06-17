@@ -4,15 +4,10 @@ summary: "Gap-based fractional ordering math and canonical sibling sort for reor
 read_when: "row reorder position math"
 sources:
   - path: Packages/LillistCore/Sources/LillistCore/Ordering/FractionalPosition.swift
-    blob: 6fbaf3984109921be4e307d398ad898e7862c2fe
   - path: Packages/LillistCore/Sources/LillistCore/Ordering/PositionCompactor.swift
-    blob: 3d0bf5e1c4d35ae2c6804e901366317858e98e04
   - path: Packages/LillistCore/Sources/LillistCore/Ordering/SiblingOrder.swift
-    blob: ad5e6ff0259801e3fe4c769c3e1122c0dcb7782d
 references_modules: [Packages-LillistCore-Sources-LillistCore-Stores-chunk-1, Packages-LillistCore-Sources-LillistCore-Stores-chunk-2, Packages-LillistUI-Sources-LillistUI-iOS-Tasks, Apps-Lillist-macOS-Sources-Views-TaskList]
-generator: cartographer/1
-baseline: 85a4dc8648a4280e30f533268d65bfac16701d21
-verified: true
+generator: cartographer/1 model=claude-sonnet-4-6
 ---
 
 # Module: Packages/LillistCore/Sources/LillistCore/Ordering
