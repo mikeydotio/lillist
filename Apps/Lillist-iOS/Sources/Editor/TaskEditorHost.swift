@@ -24,9 +24,14 @@ struct TaskEditorHost: ViewModifier {
     @State private var isPresented = false
     @State private var showPhotoPicker = false
     @State private var pickedItem: PhotosPickerItem?
+    @State private var discardedText = ""
+    @State private var showDiscardToast = false
 
     func body(content: Content) -> some View {
         content
+            .overlay(alignment: .bottom) {
+                QuickCaptureDiscardToast(isPresented: $showDiscardToast, onUndo: undoDiscard)
+            }
             .taskEditorOverlay(isPresented: $isPresented, onCancel: cancel) {
                 if let model {
                     TaskEditorView(
@@ -64,9 +69,11 @@ struct TaskEditorHost: ViewModifier {
             }
     }
 
-    private func openNewCapture() {
+    private func openNewCapture(prefill: String = "") {
         guard !isPresented else { return }   // singleton: ignore while open
-        model = TaskEditorModel(stores: stores, opening: .newCapture(parentID: nil, placement: .top))
+        let m = TaskEditorModel(stores: stores, opening: .newCapture(parentID: nil, placement: .top))
+        m.captureText = prefill
+        model = m
         isPresented = true
     }
 
@@ -86,15 +93,34 @@ struct TaskEditorHost: ViewModifier {
 
     /// Tap-outside / Esc: discard a capture draft (nothing persisted, or a
     /// soft-delete to Trash if it auto-promoted); an existing task just closes.
+    /// A non-empty pure draft offers an Undo toast that re-opens it.
     private func cancel() {
         isPresented = false
+        let model = self.model
         Task {
             if let model, model.presentation == .capture {
+                // Preserve the user's text for Undo before discarding (only
+                // for a pure, never-promoted draft — a promoted one lands in
+                // Trash with its own recovery).
+                if model.taskID == nil {
+                    let text = model.captureText.isEmpty ? model.title : model.captureText
+                    if !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                        discardedText = text
+                        showDiscardToast = true
+                    }
+                }
                 await model.discard()
             } else {
                 await model?.saveTextNow()
             }
             await onChanged()
         }
+    }
+
+    private func undoDiscard() {
+        let text = discardedText
+        discardedText = ""
+        showDiscardToast = false
+        openNewCapture(prefill: text)
     }
 }

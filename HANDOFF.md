@@ -124,11 +124,38 @@ because everything routes through the model.
   loved status fast-path rather than rebinding it to open). Adjust if you want
   Space to open too.
 
-## Next — Wave 5 (see plan)
+## Done — Wave 5: polish ✅
 
-- **W5 polish:** Reduce-Motion, discard/undo toasts, `lastCommitWarning` UI,
-  localization sync across all three `Localizable.xcstrings`, delete folded-away
-  quick-capture files + migrate baselines.
+- **Localization:** 44 new LillistUI `bundle:.module` keys added to
+  `Resources/Localizable.xcstrings`; `Tools/CI/check-lillistui-localization.sh`
+  passes (220 keys). App-target catalogs need no manual sync (Xcode
+  auto-extracts; "Open Task" etc. fall back to the literal meanwhile).
+- **Discard/undo toast (iOS):** restored in `TaskEditorHost` — cancelling a
+  non-empty pure capture draft shows `QuickCaptureDiscardToast`; Undo re-opens
+  quick capture pre-filled.
+- **`lastCommitWarning`** already surfaced in `TaskEditorView` footer;
+  **Reduce-Motion** handled (expand gate, overlay transition, macOS `setFrame`).
+
+## Status: ALL 5 WAVES IMPLEMENTED + COMMITTED on `feat/unified-task-editor`
+
+Automated verification done by Claude: LillistUI builds clean (warnings=errors);
+25 editor/model tests + 19 touched-core tests green; iOS app builds + tour and
+app-hosted editor snapshots green; macOS app builds + macOS unit tests green;
+localization lint green; pbxproj idempotent.
+
+## Remaining (needs Mikey — can't be automated)
+
+- **Manual macOS glass verification** (no snapshot path): hotkey quick capture
+  floats over another app w/o activating Lillist; "…" grows the panel;
+  single-click a row opens full; ↑/↓ move highlight w/o opening, Return opens;
+  status Menu does NOT dismiss the editor; resize; attachment NSOpenPanel;
+  detail column gone; ⌘N inline create still works.
+- **Device/e2e pass** (iCloud live-swap tests need a real account): exercise
+  the full iPhone/iPad flows from the plan's verification checklist.
+- **Optional follow-ups:** retire the now app-dead `QuickCaptureDialog` /
+  `QuickCaptureDialogPresenter` (kept only for their existing snapshot tests —
+  removing them means migrating those tests); decide whether **Space** should
+  also open on macOS (currently Return opens, Space stays "Toggle Started").
 
 ## Notes
 - SourceKit "No such module 'LillistCore'/'Testing'" warnings on the new files
