@@ -4,10 +4,8 @@ summary: "XcodeGen spec for the Lillist-macOS app + standalone test bundle, pack
 read_when: "Editing macOS target structure, package deps, signing xcconfig wiring, or test bundle co-compile list"
 sources:
   - path: Apps/project.yml
-    blob: a6959715c29191fcad40a90e6eb3bfc481ecfe89
 references_modules: [Apps-Config, Apps-Lillist-macOS-Sources-Hotkey, Apps-Lillist-macOS-Sources-Commands, Apps-Lillist-macOS-Sources-Views, Apps-Lillist-macOS-Sources-misc, Packages-LillistCore-misc, Packages-LillistUI-misc]
-generator: cartographer/1
-baseline: 34dfea7772679dbabc08fabd6fbba53f6ad5856b
+generator: cartographer/1 model=claude-sonnet-4-6
 ---
 
 # Module: Apps (misc)

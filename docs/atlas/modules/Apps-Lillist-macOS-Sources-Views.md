@@ -1,33 +1,32 @@
 ---
 module: Apps/Lillist-macOS/Sources/Views
-summary: "macOS three-column window layout — sidebar source selection, task outline/flat list, and all toolbar wiring"
-read_when: "Touching macOS window layout, sidebar, task list, sort control, or inline task creation"
+summary: macOS three-column shell — sidebar source list, task outline/flat list, root NavigationSplitView wiring
+read_when: Touching macOS sidebar, task list, split-view layout, or column-visibility persistence
 sources:
   - path: Apps/Lillist-macOS/Sources/Views/RootSplitView.swift
-    blob: 652354694da3643b5962a4711ad6bf7fffb7dce8
   - path: Apps/Lillist-macOS/Sources/Views/Sidebar/SidebarSection.swift
-    blob: 26e2fea7d1dd00c25de2b07150377bd17e4ff010
   - path: Apps/Lillist-macOS/Sources/Views/Sidebar/SidebarSelection.swift
-    blob: 5db8773c57a6a070482eabffcf8c7e8a275432b0
   - path: Apps/Lillist-macOS/Sources/Views/Sidebar/SidebarView.swift
-    blob: 0e7d65010a0bc5d8a55b0c447df628ab7867e4d9
   - path: Apps/Lillist-macOS/Sources/Views/TaskList/InlineCreateField.swift
-    blob: d737387de165974c77a26ca89529a57b51cbed99
   - path: Apps/Lillist-macOS/Sources/Views/TaskList/SelectionAdvance.swift
-    blob: 7c6f317dc02fa7336bcd3d01b0bcd21d5caa6f81
   - path: Apps/Lillist-macOS/Sources/Views/TaskList/SourceTitleResolver.swift
-    blob: 5cbcc6b0c3e27b91cf341718ef0e77e271657590
   - path: Apps/Lillist-macOS/Sources/Views/TaskList/TaskListHeaderView.swift
-    blob: 5a3ae2804869198bed5d951672e40a791fe53a48
   - path: Apps/Lillist-macOS/Sources/Views/TaskList/TaskListSortControl.swift
-    blob: ed61e10f26e474710792a98401490c63b52c5ca2
   - path: Apps/Lillist-macOS/Sources/Views/TaskList/TaskListView.swift
-    blob: 2a2fe450e3a8b6934c1840eb8966bb6d9746c7d6
   - path: Apps/Lillist-macOS/Sources/Views/TaskList/TaskOutlineNode.swift
-    blob: e6b6844fe1d32663306460de539630d0252b07e4
-references_modules: [Apps-Lillist-macOS-Sources-misc, Packages-LillistCore-Sources-LillistCore-Stores-chunk-1, Packages-LillistCore-Sources-LillistCore-Stores-chunk-2, Packages-LillistCore-Sources-LillistCore-Model, Packages-LillistCore-Sources-LillistCore-Ordering, Packages-LillistUI-Sources-LillistUI-Components, Packages-LillistUI-Sources-LillistUI-DragReorder, Packages-LillistUI-Sources-LillistUI-Theme-chunk-1, Packages-LillistUI-Sources-LillistUI-Theme-chunk-2, Packages-LillistUI-Sources-LillistUI-Sync]
+references_modules:
+  - Apps-Lillist-macOS-Sources-misc
+  - Packages-LillistCore-Sources-LillistCore-Stores-chunk-1
+  - Packages-LillistCore-Sources-LillistCore-Stores-chunk-2
+  - Packages-LillistCore-Sources-LillistCore-Model
+  - Packages-LillistCore-Sources-LillistCore-Ordering
+  - Packages-LillistUI-Sources-LillistUI-Components
+  - Packages-LillistUI-Sources-LillistUI-DragReorder
+  - Packages-LillistUI-Sources-LillistUI-Theme-chunk-1
+  - Packages-LillistUI-Sources-LillistUI-Theme-chunk-2
+  - Packages-LillistUI-Sources-LillistUI-misc
+  - Packages-LillistUI-Sources-LillistUI-Sync
 generator: cartographer/1
-baseline: 34dfea7772679dbabc08fabd6fbba53f6ad5856b
 ---
 
 # Module: Apps/Lillist-macOS/Sources/Views
@@ -60,6 +59,7 @@ This module is the entire visible macOS window: a `NavigationSplitView` rooted a
 | `TaskListView.refresh()` | `Apps/Lillist-macOS/Sources/Views/TaskList/TaskListView.swift:308` | Dispatches to the correct store API (filter evaluate, tag tree, trash, pinnedTask) based on `SidebarSelection`; populates `rootNodes` vs `flatResults` |
 | `TaskListView.buildTree(from:)` | `Apps/Lillist-macOS/Sources/Views/TaskList/TaskListView.swift:343` | Fetches children per task record and assembles `TaskOutlineNode` tree sorted by `SiblingOrder.precedes`; bridges flat store records to `OutlineGroup` |
 | `TaskListView.applyDrop(dragged:target:)` | `Apps/Lillist-macOS/Sources/Views/TaskList/TaskListView.swift:276` | `@MainActor` drop handler; resolves `DragTarget` to reorder/reparent/noop via `DragDropResolver` then calls `TaskStore.reorder` or `TaskStore.reparent` |
+| `TaskListView.setStatus(_:to:)` | `Apps/Lillist-macOS/Sources/Views/TaskList/TaskListView.swift:368` | Calls `taskStore.transition` then refreshes; used by every `TaskRowView` status callback in both outline and flat list branches |
 | `RootSplitView.pruneStaleSidebarSelectionIfNeeded()` | `Apps/Lillist-macOS/Sources/Views/RootSplitView.swift:145` | On appear, verifies the persisted selection's UUID still exists in its store; clears stale selection from inter-launch CloudKit deletions |
 | `TagDisclosureView` (private) | `Apps/Lillist-macOS/Sources/Views/Sidebar/SidebarView.swift:135` | Recursive `DisclosureGroup` for nested tags; each instance fetches its own children via `tagStore.children(of:)` on `.task` |
 
@@ -70,16 +70,21 @@ This module is the entire visible macOS window: a `NavigationSplitView` rooted a
 - `Apps-Lillist-macOS-Sources-Views.RootSplitView -> Apps-Lillist-macOS-Sources-misc.StatusCycler (calls)` — `StatusCycler.nextOnSpace(from:)` at `Apps/Lillist-macOS/Sources/Views/RootSplitView.swift:92`
 - `Apps-Lillist-macOS-Sources-Views.TaskListView -> Packages-LillistCore-Sources-LillistCore-Stores-chunk-2.TaskStore (calls)` — `env.taskStore.tasks(forTag:...)`, `.reorder`, `.reparent`, `.create` throughout `Apps/Lillist-macOS/Sources/Views/TaskList/TaskListView.swift`
 - `Apps-Lillist-macOS-Sources-Views.TaskListView -> Packages-LillistCore-Sources-LillistCore-Stores-chunk-1.SmartFilterStore (calls)` — `env.smartFilterStore.evaluate(id:)` at `Apps/Lillist-macOS/Sources/Views/TaskList/TaskListView.swift:312`
-- `Apps-Lillist-macOS-Sources-Views.TaskListView -> Packages-LillistCore-Sources-LillistCore-Model.SortField (reads)` — `SortField` binding drives sort in `Apps/Lillist-macOS/Sources/Views/TaskList/TaskListView.swift:11`
-- `Apps-Lillist-macOS-Sources-Views.TaskListView -> Packages-LillistCore-Sources-LillistCore-Ordering.SiblingOrder (calls)` — `SiblingOrder.precedes` used in `buildTree` at `Apps/Lillist-macOS/Sources/Views/TaskList/TaskListView.swift:347`
+- `Apps-Lillist-macOS-Sources-Views.TaskListView -> Packages-LillistCore-Sources-LillistCore-Model.SortField (reads)` — `SortField` binding drives sort at `Apps/Lillist-macOS/Sources/Views/TaskList/TaskListView.swift:11`
+- `Apps-Lillist-macOS-Sources-Views.TaskListView -> Packages-LillistCore-Sources-LillistCore-Ordering.SiblingOrder (calls)` — `SiblingOrder.precedes` in `buildTree` at `Apps/Lillist-macOS/Sources/Views/TaskList/TaskListView.swift:347`
 - `Apps-Lillist-macOS-Sources-Views.TaskListView -> Packages-LillistUI-Sources-LillistUI-DragReorder.DragController (owns)` — `@StateObject private var dragController = DragController()` at `Apps/Lillist-macOS/Sources/Views/TaskList/TaskListView.swift:22`
 - `Apps-Lillist-macOS-Sources-Views.TaskListView -> Packages-LillistUI-Sources-LillistUI-DragReorder.DragDropResolver (calls)` — `DragDropResolver.resolve(target:flatRows:)` at `Apps/Lillist-macOS/Sources/Views/TaskList/TaskListView.swift:278`
-- `Apps-Lillist-macOS-Sources-Views.TaskListView -> Packages-LillistUI-Sources-LillistUI-Components.TaskRowView (owns)` — used in both flat and outline list branches in `Apps/Lillist-macOS/Sources/Views/TaskList/TaskListView.swift`
+- `Apps-Lillist-macOS-Sources-Views.TaskListView -> Packages-LillistUI-Sources-LillistUI-Components.TaskRowView (owns)` — used in both flat and outline list branches throughout `Apps/Lillist-macOS/Sources/Views/TaskList/TaskListView.swift`
+- `Apps-Lillist-macOS-Sources-Views.TaskListView -> Packages-LillistUI-Sources-LillistUI-misc.StatusPalette (calls)` — `StatusPalette.color(for:)` at `Apps/Lillist-macOS/Sources/Views/TaskList/TaskListView.swift:88`
+- `Apps-Lillist-macOS-Sources-Views.TaskListView -> Packages-LillistUI-Sources-LillistUI-Theme-chunk-1.LillistColor (reads)` — `.background(LillistColor.workspace)` at `Apps/Lillist-macOS/Sources/Views/TaskList/TaskListView.swift:102`
 - `Apps-Lillist-macOS-Sources-Views.InlineCreateField -> Packages-LillistUI-Sources-LillistUI-Theme-chunk-1.LillistColor (reads)` — `LillistColor.borderHair` at `Apps/Lillist-macOS/Sources/Views/TaskList/InlineCreateField.swift:31`
 - `Apps-Lillist-macOS-Sources-Views.InlineCreateField -> Packages-LillistUI-Sources-LillistUI-Theme-chunk-2.LillistRadius (reads)` — `LillistRadius.m` at `Apps/Lillist-macOS/Sources/Views/TaskList/InlineCreateField.swift:25`
 - `Apps-Lillist-macOS-Sources-Views.SidebarView -> Packages-LillistCore-Sources-LillistCore-Stores-chunk-1.SmartFilterStore (calls)` — `env.smartFilterStore.list()`, `.delete`, `.update` throughout `Apps/Lillist-macOS/Sources/Views/Sidebar/SidebarView.swift`
+- `Apps-Lillist-macOS-Sources-Views.SidebarView -> Packages-LillistCore-Sources-LillistCore-Stores-chunk-1.TagStore (calls)` — `env.tagStore.children(of:)`, `.rename`, `.setTintColor`, `.delete` at `Apps/Lillist-macOS/Sources/Views/Sidebar/SidebarView.swift:127`
 - `Apps-Lillist-macOS-Sources-Views.RootSplitView -> Packages-LillistUI-Sources-LillistUI-Sync.SyncStatusDotView (owns)` — toolbar `.status` item at `Apps/Lillist-macOS/Sources/Views/RootSplitView.swift:224`
 - `Apps-Lillist-macOS-Sources-Views.SourceTitleResolver -> Packages-LillistCore-Sources-LillistCore-Stores-chunk-2.TaskStore (calls)` — `taskStore.fetch(id:)` at `Apps/Lillist-macOS/Sources/Views/TaskList/SourceTitleResolver.swift:23`
+- `Apps-Lillist-macOS-Sources-Views.SourceTitleResolver -> Packages-LillistCore-Sources-LillistCore-Stores-chunk-1.SmartFilterStore (calls)` — `smartFilterStore.list()` at `Apps/Lillist-macOS/Sources/Views/TaskList/SourceTitleResolver.swift:25`
+- `Apps-Lillist-macOS-Sources-Views.SourceTitleResolver -> Packages-LillistCore-Sources-LillistCore-Stores-chunk-1.TagStore (calls)` — `tagStore.fetch(id:)` at `Apps/Lillist-macOS/Sources/Views/TaskList/SourceTitleResolver.swift:29`
 
 ## Type notes
 
@@ -95,7 +100,7 @@ The `@retroactive Identifiable` extensions on `TaskStore.TaskRecord`, `SmartFilt
 
 ## External deps
 
-- SwiftUI — `NavigationSplitView`, `OutlineGroup`, `List(selection:)`, `@FocusState`, `@SceneStorage`, `DragOverlay`, `DisclosureGroup`
+- SwiftUI — `NavigationSplitView`, `OutlineGroup`, `List(selection:)`, `@FocusState`, `@SceneStorage`, `DisclosureGroup`
 - Foundation — `NotificationCenter`, `UUID`, `Codable`
 
 ## Gotchas
@@ -103,3 +108,4 @@ The `@retroactive Identifiable` extensions on `TaskStore.TaskRecord`, `SmartFilt
 - The detail column is intentionally retired: `RootSplitView` is a two-column split (`sidebar + detail`), with the "detail" slot housing `TaskListView`. A comment at `Apps/Lillist-macOS/Sources/Views/RootSplitView.swift:61` explains that clicking a row opens the floating `openTaskEditorAction` instead of a docked pane; `taskSelection` only drives list highlight.
 - `SelectionAdvance` exists for documentation and regression-test coverage of arrow-key behavior that SwiftUI now handles natively — see `Apps/Lillist-macOS/Sources/Views/TaskList/SelectionAdvance.swift:6`. If SwiftUI regresses, wire `advance(...)` via `.onKeyPress` on the list.
 - Tab in `InlineCreateField` is swallowed only when the field is non-empty; an empty field lets Tab escape focus — intentional escape hatch noted at `Apps/Lillist-macOS/Sources/Views/TaskList/InlineCreateField.swift:43`.
+- `SidebarView.refresh()` silently swallows store errors at `Apps/Lillist-macOS/Sources/Views/Sidebar/SidebarView.swift:129`; a future banner is noted in the comment but not yet implemented.

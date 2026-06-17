@@ -1,39 +1,33 @@
 ---
-module: "Extensions/ShortcutsActions (misc)"
-summary: "App Intents extension exposing Lillist actions to Shortcuts, Siri, and Lock Screen widgets"
-read_when: "Touching App Intents, Shortcuts actions, or the extension's persistence/diagnostic wiring"
+module: Extensions/ShortcutsActions (misc)
+summary: App Intents extension exposing Lillist actions to Shortcuts, Siri, and Lock Screen widgets
+read_when: Touching App Intents, Shortcuts actions, or the extension's persistence/diagnostic wiring
 sources:
   - path: Extensions/ShortcutsActions/AddNoteIntent.swift
-    blob: 5479c7b84089fb60435ccc3a69d7134c0a4003bb
   - path: Extensions/ShortcutsActions/AddNudgeIntent.swift
-    blob: 9ef7abfdcea19ec80bead733408d60b241ae7661
   - path: Extensions/ShortcutsActions/AddTaskIntent.swift
-    blob: a282eecc4ca5781082558d429106ef4b965e4ec6
   - path: Extensions/ShortcutsActions/CompleteTaskIntent.swift
-    blob: ee52ad97a2814037665355e4d61f48fefb0aebc2
   - path: Extensions/ShortcutsActions/Info.plist
-    blob: bb54fe71bb383ecfa907d8e1e62c0b2bd15fe749
   - path: Extensions/ShortcutsActions/IntentSupport.swift
-    blob: 0d89cca032cb960afe49d9e56244d5a1f43e7dca
   - path: Extensions/ShortcutsActions/Lillist.entitlements
-    blob: dc82d6a78df2d35115ff154e8888e3d7e0ef3469
   - path: Extensions/ShortcutsActions/LillistShortcuts.swift
-    blob: 2b8bf798b2b60e4b69191a5eabd0283f4325a529
   - path: Extensions/ShortcutsActions/OpenTaskIntent.swift
-    blob: a5525ff6de1796d9f8185c10e60ad343507e4c2f
   - path: Extensions/ShortcutsActions/PrivacyInfo.xcprivacy
-    blob: 4e7e051bbe5e2753a0a80b85ae78289d250bdce7
   - path: Extensions/ShortcutsActions/QuickCaptureLockScreenIntent.swift
-    blob: ff2cfee19b0ce40fd1261905003b826cff34f3b4
   - path: Extensions/ShortcutsActions/ReportCrashIntent.swift
-    blob: b5cadb7d4c02e2e41c94ab25e6bd9d8517e006a7
   - path: Extensions/ShortcutsActions/SearchTasksIntent.swift
-    blob: 33326bf5c2bdcae30181985681d13a70a9a69999
   - path: Extensions/ShortcutsActions/ToggleStatusIntent.swift
-    blob: 6087eb324c84eccdf453f561995740af6c718cc4
-references_modules: [Extensions-ShortcutsActions-Entities, Packages-LillistCore-Sources-LillistCore-CLIBridge-Handlers-chunk-1, Packages-LillistCore-Sources-LillistCore-CLIBridge-Handlers-chunk-2, Packages-LillistCore-Sources-LillistCore-Stores-chunk-2, Packages-LillistCore-Sources-LillistCore-Notifications, Packages-LillistCore-Sources-LillistCore-Persistence, Packages-LillistCore-Sources-LillistCore-Diagnostics, Packages-LillistCore-Sources-LillistCore-CrashReporting, Packages-LillistCore-Sources-LillistCore-misc]
-generator: cartographer/1
-baseline: 34dfea7772679dbabc08fabd6fbba53f6ad5856b
+references_modules:
+  - Extensions-ShortcutsActions-Entities
+  - Packages-LillistCore-Sources-LillistCore-CLIBridge-Handlers-chunk-1
+  - Packages-LillistCore-Sources-LillistCore-CLIBridge-Handlers-chunk-2
+  - Packages-LillistCore-Sources-LillistCore-CrashReporting
+  - Packages-LillistCore-Sources-LillistCore-Diagnostics
+  - Packages-LillistCore-Sources-LillistCore-Notifications
+  - Packages-LillistCore-Sources-LillistCore-Persistence
+  - Packages-LillistCore-Sources-LillistCore-Stores-chunk-2
+  - Packages-LillistCore-Sources-LillistCore-misc
+generator: cartographer/1 model=claude-sonnet-4-6
 ---
 
 # Module: Extensions/ShortcutsActions (misc)
@@ -80,9 +74,9 @@ don't race a foreground sync-mode swap.
 - `Extensions-ShortcutsActions-misc.IntentSupport -> Packages-LillistCore-Sources-LillistCore-Diagnostics.DiagnosticLog (calls)` — `Extensions/ShortcutsActions/IntentSupport.swift:90`
 - `Extensions-ShortcutsActions-misc.IntentSupport -> Packages-LillistCore-Sources-LillistCore-misc.DevicePreferencesStore (reads)` — `Extensions/ShortcutsActions/IntentSupport.swift:93`
 - `Extensions-ShortcutsActions-misc.AddTaskIntent -> Packages-LillistCore-Sources-LillistCore-CLIBridge-Handlers-chunk-1.CLIBridge.AddHandler (calls)` — `Extensions/ShortcutsActions/AddTaskIntent.swift:26`
-- `Extensions-ShortcutsActions-misc.CompleteTaskIntent -> Packages-LillistCore-Sources-LillistCore-CLIBridge-Handlers-chunk-1.CLIBridge.StatusHandler (calls)` — `Extensions/ShortcutsActions/CompleteTaskIntent.swift:17`
-- `Extensions-ShortcutsActions-misc.ToggleStatusIntent -> Packages-LillistCore-Sources-LillistCore-CLIBridge-Handlers-chunk-1.CLIBridge.StatusHandler (calls)` — `Extensions/ShortcutsActions/ToggleStatusIntent.swift:18`
-- `Extensions-ShortcutsActions-misc.AddNoteIntent -> Packages-LillistCore-Sources-LillistCore-CLIBridge-Handlers-chunk-2.CLIBridge.NoteHandler (calls)` — `Extensions/ShortcutsActions/AddNoteIntent.swift:20`
+- `Extensions-ShortcutsActions-misc.CompleteTaskIntent -> Packages-LillistCore-Sources-LillistCore-CLIBridge-Handlers-chunk-2.CLIBridge.StatusHandler (calls)` — `Extensions/ShortcutsActions/CompleteTaskIntent.swift:17`
+- `Extensions-ShortcutsActions-misc.ToggleStatusIntent -> Packages-LillistCore-Sources-LillistCore-CLIBridge-Handlers-chunk-2.CLIBridge.StatusHandler (calls)` — `Extensions/ShortcutsActions/ToggleStatusIntent.swift:18`
+- `Extensions-ShortcutsActions-misc.AddNoteIntent -> Packages-LillistCore-Sources-LillistCore-CLIBridge-Handlers-chunk-1.CLIBridge.NoteHandler (calls)` — `Extensions/ShortcutsActions/AddNoteIntent.swift:20`
 - `Extensions-ShortcutsActions-misc.SearchTasksIntent -> Packages-LillistCore-Sources-LillistCore-CLIBridge-Handlers-chunk-2.CLIBridge.SearchHandler (calls)` — `Extensions/ShortcutsActions/SearchTasksIntent.swift:17`
 - `Extensions-ShortcutsActions-misc.AddTaskIntent -> Packages-LillistCore-Sources-LillistCore-Stores-chunk-2.TaskStore (calls)` — `Extensions/ShortcutsActions/AddTaskIntent.swift:40`
 - `Extensions-ShortcutsActions-misc.AddNudgeIntent -> Packages-LillistCore-Sources-LillistCore-Notifications.NotificationSpecStore (calls)` — `Extensions/ShortcutsActions/AddNudgeIntent.swift:23`
