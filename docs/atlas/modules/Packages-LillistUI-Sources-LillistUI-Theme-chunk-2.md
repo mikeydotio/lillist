@@ -4,8 +4,10 @@ summary: "Shared design tokens — spacing, radius, timing, semantic typography,
 read_when: "Touching spacing, radius, timing, typography, or drag-reorder visual constants"
 sources:
   - path: Packages/LillistUI/Sources/LillistUI/Theme/Tokens.swift
+    blob: 4641bb3810568f46beec79e5477085395c202892
 references_modules: [Packages-LillistUI-Sources-LillistUI-Theme-chunk-1, Packages-LillistUI-Sources-LillistUI-DragReorder, Packages-LillistUI-Sources-LillistUI-iOS-misc, Apps-Lillist-iOS-Sources-Settings, Apps-Lillist-macOS-Sources-Preferences]
-generator: cartographer/1 model=claude-sonnet-4-6
+generator: cartographer/1
+baseline: 34dfea7772679dbabc08fabd6fbba53f6ad5856b
 ---
 
 # Module: Packages/LillistUI/Sources/LillistUI/Theme (chunk 2)

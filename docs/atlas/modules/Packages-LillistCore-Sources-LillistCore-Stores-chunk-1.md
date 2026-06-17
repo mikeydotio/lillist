@@ -1,30 +1,31 @@
 ---
 module: "Packages/LillistCore/Sources/LillistCore/Stores (chunk 1)"
-summary: Core Data facades for attachments, journal, preferences, series, smart filters, tags, plus TaskStore query/follow-up extensions
-read_when: Touching attachments, journal, preferences, recurrence series, smart filters, or tags
+summary: "Core Data facades for attachments, journal, preferences, series, smart filters, tags, plus TaskStore query/follow-up extensions"
+read_when: "Touching attachments, journal, preferences, recurrence series, smart filters, or tags"
 sources:
   - path: Packages/LillistCore/Sources/LillistCore/Stores/AttachmentStore.swift
+    blob: af70d4e18ae0d9635865a60d0738a7fd7957293c
   - path: Packages/LillistCore/Sources/LillistCore/Stores/JournalStore.swift
+    blob: 4deba503a11896230e9a21dc091cd75dd9b7726e
   - path: Packages/LillistCore/Sources/LillistCore/Stores/PreferencesStore.swift
+    blob: bd5a5268cb8cc339f73a5e85aa8d5ff8c366850f
   - path: Packages/LillistCore/Sources/LillistCore/Stores/SeriesStore.swift
-  - path: Packages/LillistCore/Sources/LillistCore/Stores/SmartFilterStore+Defaults.swift
+    blob: ee2963186428c389bb77f393cca23f1ebad56218
+  - path: "Packages/LillistCore/Sources/LillistCore/Stores/SmartFilterStore+Defaults.swift"
+    blob: 3710bb423e779c73223094f2df20aff7135cb8e1
   - path: Packages/LillistCore/Sources/LillistCore/Stores/SmartFilterStore.swift
-  - path: Packages/LillistCore/Sources/LillistCore/Stores/TagStore+FindOrCreate.swift
+    blob: 4bdfc4c6eab859c84adbecad3c19c15e8315fb22
+  - path: "Packages/LillistCore/Sources/LillistCore/Stores/TagStore+FindOrCreate.swift"
+    blob: fbc084e94d18ae6747564cb8e4b0c32399efc2d0
   - path: Packages/LillistCore/Sources/LillistCore/Stores/TagStore.swift
-  - path: Packages/LillistCore/Sources/LillistCore/Stores/TaskStore+FollowUp.swift
-  - path: Packages/LillistCore/Sources/LillistCore/Stores/TaskStore+Queries.swift
-references_modules:
-  - Packages-LillistCore-Sources-LillistCore-Persistence
-  - Packages-LillistCore-Sources-LillistCore-ManagedObjects
-  - Packages-LillistCore-Sources-LillistCore-Rules
-  - Packages-LillistCore-Sources-LillistCore-Ordering
-  - Packages-LillistCore-Sources-LillistCore-Recurrence
-  - Packages-LillistCore-Sources-LillistCore-Stores-chunk-2
-  - Packages-LillistCore-Sources-LillistCore-CrashReporting
-  - Packages-LillistCore-Sources-LillistCore-Diagnostics
-  - Packages-LillistCore-Sources-LillistCore-Notifications
-  - Packages-LillistCore-Sources-LillistCore-misc
-generator: cartographer/1 model=claude-sonnet-4-6
+    blob: 2fc1dc6f0c94a92e9db32d06599663b47d9a5ea6
+  - path: "Packages/LillistCore/Sources/LillistCore/Stores/TaskStore+FollowUp.swift"
+    blob: e68ae07cbdcf46468b09f0c292aa4353209ae773
+  - path: "Packages/LillistCore/Sources/LillistCore/Stores/TaskStore+Queries.swift"
+    blob: f86757470cea6dcb8c5994fb9bc741ebffd033f0
+references_modules: [Packages-LillistCore-Sources-LillistCore-Persistence, Packages-LillistCore-Sources-LillistCore-ManagedObjects, Packages-LillistCore-Sources-LillistCore-Rules, Packages-LillistCore-Sources-LillistCore-Ordering, Packages-LillistCore-Sources-LillistCore-Recurrence, Packages-LillistCore-Sources-LillistCore-Stores-chunk-2, Packages-LillistCore-Sources-LillistCore-CrashReporting, Packages-LillistCore-Sources-LillistCore-Diagnostics, Packages-LillistCore-Sources-LillistCore-Notifications, Packages-LillistCore-Sources-LillistCore-misc]
+generator: cartographer/1
+baseline: 34dfea7772679dbabc08fabd6fbba53f6ad5856b
 ---
 
 # Module: Packages/LillistCore/Sources/LillistCore/Stores (chunk 1)

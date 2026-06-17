@@ -4,11 +4,16 @@ summary: "macOS app bundle config — Info.plist, sandbox/iCloud entitlements, p
 read_when: "macOS bundle entitlements, CloudKit/App Group IDs, Sparkle OTA, or macOS-only localized strings"
 sources:
   - path: Apps/Lillist-macOS/Info.plist
+    blob: 77bee3c5e56ace15bb627ba59aa18edf5f4544b3
   - path: Apps/Lillist-macOS/Lillist.entitlements
+    blob: bbcb3bfbc5f58c2efb616805c4867d1b24a7d644
   - path: Apps/Lillist-macOS/Resources/Localizable.xcstrings
+    blob: 7487e9c9eb037dcf3d359808de8a5b58e1b4c96d
   - path: Apps/Lillist-macOS/Resources/PrivacyInfo.xcprivacy
+    blob: 4e7e051bbe5e2753a0a80b85ae78289d250bdce7
 references_modules: [Apps-Lillist-macOS-Sources-misc, Apps-Lillist-macOS-Sources-Preferences]
-generator: cartographer/1 model=claude-sonnet-4-6
+generator: cartographer/1
+baseline: 34dfea7772679dbabc08fabd6fbba53f6ad5856b
 ---
 
 # Module: Apps/Lillist-macOS (misc)

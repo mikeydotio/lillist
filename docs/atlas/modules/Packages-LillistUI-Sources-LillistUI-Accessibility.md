@@ -4,10 +4,14 @@ summary: "Accessibility primitives — Reduce Motion/Transparency/Contrast view 
 read_when: "Reduce Motion, AX, contrast"
 sources:
   - path: Packages/LillistUI/Sources/LillistUI/Accessibility/AccessibilityEnvironment.swift
+    blob: 616dac83a2a74bce122b17f5902762e17e6c1aed
   - path: Packages/LillistUI/Sources/LillistUI/Accessibility/Announcements.swift
+    blob: 6481f0dc2de465c4f63181e1e2e120456363e8b5
   - path: Packages/LillistUI/Sources/LillistUI/Accessibility/ContrastMath.swift
+    blob: 01dd8f7355b5e7998307adc84d6c30f53ee618d8
 references_modules: [Packages-LillistUI-Sources-LillistUI-Theme-chunk-1]
-generator: cartographer/1 model=claude-sonnet-4-6
+generator: cartographer/1
+baseline: 34dfea7772679dbabc08fabd6fbba53f6ad5856b
 ---
 
 # Module: Packages/LillistUI/Sources/LillistUI/Accessibility

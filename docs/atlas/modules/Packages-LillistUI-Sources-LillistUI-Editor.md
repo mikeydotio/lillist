@@ -1,25 +1,23 @@
 ---
 module: Packages/LillistUI/Sources/LillistUI/Editor
-summary: Unified cross-platform task editor (quick-capture + full form) with draft-to-live auto-promotion
-read_when: Touching task creation, full task editing, quick capture, or the editor model/view
+summary: "Unified cross-platform task editor (quick-capture + full form) with draft-to-live auto-promotion"
+read_when: "Touching task creation, full task editing, quick capture, or the editor model/view"
 sources:
   - path: Packages/LillistUI/Sources/LillistUI/Editor/TaskEditorMode.swift
+    blob: 2ae5bdf058a64ebd4870d75e09c0bf70afed1be6
   - path: Packages/LillistUI/Sources/LillistUI/Editor/TaskEditorModel.swift
+    blob: 3cea74d6b328a2b443dfd95957fc880e3e5459e0
   - path: Packages/LillistUI/Sources/LillistUI/Editor/TaskEditorView.swift
+    blob: 027bd0b960330456662789459e932cf1f4caaf47
   - path: Packages/LillistUI/Sources/LillistUI/Editor/TaskEditorCollectionSections.swift
+    blob: 6138a27882e6de0e3a4ffae8f946f7820be3e879
   - path: Packages/LillistUI/Sources/LillistUI/Editor/ReminderEditorSection.swift
+    blob: 93caf7cb59e69d0d734a499f5e0b0eeaf18f5222
   - path: Packages/LillistUI/Sources/LillistUI/Editor/TagAssignmentField.swift
-references_modules:
-  - Packages-LillistCore-Sources-LillistCore-Stores-chunk-1
-  - Packages-LillistCore-Sources-LillistCore-Stores-chunk-2
-  - Packages-LillistCore-Sources-LillistCore-Notifications
-  - Packages-LillistCore-Sources-LillistCore-Recurrence
-  - Packages-LillistUI-Sources-LillistUI-QuickCapture
-  - Packages-LillistUI-Sources-LillistUI-Recurrence
-  - Packages-LillistUI-Sources-LillistUI-Theme-chunk-1
-  - Packages-LillistUI-Sources-LillistUI-Theme-chunk-2
-  - Packages-LillistUI-Sources-LillistUI-misc
-generator: cartographer/1 model=claude-sonnet-4-6
+    blob: 9c44691f6d951431aeb7a4d066530345a63e180f
+references_modules: [Packages-LillistCore-Sources-LillistCore-Stores-chunk-1, Packages-LillistCore-Sources-LillistCore-Stores-chunk-2, Packages-LillistCore-Sources-LillistCore-Notifications, Packages-LillistCore-Sources-LillistCore-Recurrence, Packages-LillistUI-Sources-LillistUI-QuickCapture, Packages-LillistUI-Sources-LillistUI-Recurrence, Packages-LillistUI-Sources-LillistUI-Theme-chunk-1, Packages-LillistUI-Sources-LillistUI-Theme-chunk-2, Packages-LillistUI-Sources-LillistUI-misc]
+generator: cartographer/1
+baseline: 34dfea7772679dbabc08fabd6fbba53f6ad5856b
 ---
 
 # Module: Packages/LillistUI/Sources/LillistUI/Editor

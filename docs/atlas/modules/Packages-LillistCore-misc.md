@@ -4,10 +4,14 @@ summary: "SwiftPM manifest, Core Data model-compile build plugin, and package RE
 read_when: "Touching Package.swift, the CompileCoreDataModel plugin, or target layout for LillistCore"
 sources:
   - path: Packages/LillistCore/Package.swift
+    blob: 2114f2075b73500bfe780910899b44aa96568927
   - path: Packages/LillistCore/Plugins/CompileCoreDataModel/CompileCoreDataModel.swift
+    blob: 27b2698783db0258c1ee5297e7219c6b00dfe679
   - path: Packages/LillistCore/README.md
+    blob: 3bc2ec5edf6b7b0d049d0dad1562702390d489a1
 references_modules: []
-generator: cartographer/1 model=claude-sonnet-4-6
+generator: cartographer/1
+baseline: 34dfea7772679dbabc08fabd6fbba53f6ad5856b
 ---
 
 # Module: Packages/LillistCore (misc)

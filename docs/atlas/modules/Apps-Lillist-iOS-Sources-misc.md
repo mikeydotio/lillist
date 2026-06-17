@@ -78,7 +78,7 @@ presented re-targets to the new task (existing) or is silently ignored (new capt
 a never-promoted draft triggers an undo toast (`QuickCaptureDiscardToast`) that re-opens the editor
 with the preserved text (`Apps/Lillist-iOS/Sources/Editor/TaskEditorHost.swift:120–125`).
 
-`TasksView`, and `OnboardingScreen` read dependencies via `@Environment(AppEnvironment.self)` (e.g.
+`TasksView` reads dependencies via `@Environment(AppEnvironment.self)` (e.g.
 `Apps/Lillist-iOS/Sources/Tasks/TasksView.swift:10`), never holding stores directly. Scene state
 lives one level up in `LillistApp`: the two EnvironmentKeys in `SceneBindings.swift` thread
 `Binding<Bool>` (Quick Capture presentation) and `Binding<TasksSort>` (`@AppStorage`-backed sort)

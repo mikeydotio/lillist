@@ -1,17 +1,19 @@
 ---
 module: Packages/LillistUI/Sources/LillistUI/Settings
-summary: Shared Settings UI helpers — iCloud sync section, sort-field labels, crash report preview, date picker utility
-read_when: Touching Settings/Preferences UI shared across iOS and macOS
+summary: "Shared Settings UI helpers — iCloud sync section, sort-field labels, crash report preview, date picker utility"
+read_when: "Touching Settings/Preferences UI shared across iOS and macOS"
 sources:
   - path: Packages/LillistUI/Sources/LillistUI/Settings/CrashReportSample.swift
+    blob: 0249e4862ab49f63844aea35f80adcec4dafe388
   - path: Packages/LillistUI/Sources/LillistUI/Settings/HourMinuteDate.swift
+    blob: c86f0a9040a23521ff241e157fd83b0e0fcc5e1e
   - path: Packages/LillistUI/Sources/LillistUI/Settings/ICloudSyncSettingsSection.swift
-  - path: Packages/LillistUI/Sources/LillistUI/Settings/SortField+DisplayName.swift
-references_modules:
-  - Packages-LillistCore-Sources-LillistCore-Model
-  - Packages-LillistCore-Sources-LillistCore-Sync-chunk-1
-  - Packages-LillistUI-Sources-LillistUI-misc
-generator: cartographer/1 model=claude-sonnet-4-6
+    blob: 42bb0aef222c2b60d6656a085b397148f85ebd71
+  - path: "Packages/LillistUI/Sources/LillistUI/Settings/SortField+DisplayName.swift"
+    blob: 1ebd38dd6f73717121b152688be85cd73fdbcf1d
+references_modules: [Packages-LillistCore-Sources-LillistCore-Model, Packages-LillistCore-Sources-LillistCore-Sync-chunk-1, Packages-LillistUI-Sources-LillistUI-misc]
+generator: cartographer/1
+baseline: 34dfea7772679dbabc08fabd6fbba53f6ad5856b
 ---
 
 # Module: Packages/LillistUI/Sources/LillistUI/Settings

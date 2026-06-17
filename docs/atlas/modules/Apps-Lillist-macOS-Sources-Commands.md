@@ -1,14 +1,12 @@
 ---
 module: Apps/Lillist-macOS/Sources/Commands
-summary: macOS menu bar commands and keyboard shortcuts wired via Notification broadcast
-read_when: Touching macOS menu commands, keyboard shortcuts, or focused-column gating
+summary: "macOS menu bar commands and keyboard shortcuts wired via Notification broadcast"
+read_when: "Touching macOS menu commands, keyboard shortcuts, or focused-column gating"
 sources:
   - path: Apps/Lillist-macOS/Sources/Commands/CommandNotifications.swift
   - path: Apps/Lillist-macOS/Sources/Commands/FocusedListColumn.swift
   - path: Apps/Lillist-macOS/Sources/Commands/LillistCommands.swift
-references_modules:
-  - Apps-Lillist-macOS-Sources-misc
-  - Apps-Lillist-macOS-Sources-Views
+references_modules: [Apps-Lillist-macOS-Sources-misc, Apps-Lillist-macOS-Sources-Views]
 generator: cartographer/1 model=claude-sonnet-4-6
 ---
 

@@ -7,7 +7,7 @@ sources:
   - path: Apps/Config/Signing.xcconfig
   - path: Apps/Config/Signing.local.xcconfig.example
 references_modules: [Apps-misc, Apps-Lillist-iOS-misc, Tools]
-generator: cartographer/1 model=claude-sonnet-4-6
+generator: cartographer/1
 ---
 
 # Module: Apps/Config

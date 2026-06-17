@@ -4,12 +4,18 @@ summary: "LillistUI package root — landing namespace, status-cycle state machi
 read_when: "LillistUI status seam"
 sources:
   - path: Packages/LillistUI/Sources/LillistUI/LillistUI.swift
+    blob: 6c093e3ce4c0bfbbd190533a80b07af79b36b648
   - path: Packages/LillistUI/Sources/LillistUI/Resources/Fonts/OFL.txt
+    blob: ea69b0ca12a02556c436680ea0a159efb7a748fa
   - path: Packages/LillistUI/Sources/LillistUI/Resources/Localizable.xcstrings
+    blob: 857508cf8735ef743c4e6b32dc4bddeab083123b
   - path: Packages/LillistUI/Sources/LillistUI/Status/StatusCycler.swift
+    blob: 83cae2f8fa475b9e58f9b7cd0893ceea380ac5c9
   - path: Packages/LillistUI/Sources/LillistUI/Status/SyncStatusMonitor.swift
+    blob: 86767bf3ab935f3c12fd21b488de7a4bccfb2377
 references_modules: [Packages-LillistCore-Sources-LillistCore-Model, Packages-LillistCore-Sources-LillistCore-Sync-chunk-1, Packages-LillistUI-Sources-LillistUI-Components, Apps-Lillist-iOS-Sources-App, Apps-Lillist-macOS-Sources-Views]
-generator: cartographer/1 model=claude-sonnet-4-6
+generator: cartographer/1
+baseline: 34dfea7772679dbabc08fabd6fbba53f6ad5856b
 ---
 
 # Module: Packages/LillistUI/Sources/LillistUI (misc)

@@ -1,7 +1,7 @@
 ---
 module: Apps/Lillist-macOS/Sources/Preferences
-summary: "macOS Settings scene — eight env-coupled preference panes wrapping LillistCore stores and LillistUI sections"
-read_when: "Touching macOS Preferences panes, iCloud sync toggle, notifications, trash, quick capture, diagnostics, or export/import"
+summary: macOS Settings scene — eight env-coupled preference panes wrapping LillistCore stores and LillistUI sections
+read_when: Touching macOS Preferences panes, iCloud sync toggle, notifications, trash, quick capture, diagnostics, or export/import
 sources:
   - path: Apps/Lillist-macOS/Sources/Preferences/AdvancedPane.swift
   - path: Apps/Lillist-macOS/Sources/Preferences/CrashReportingPane.swift
@@ -13,7 +13,7 @@ sources:
   - path: Apps/Lillist-macOS/Sources/Preferences/QuickCapturePane.swift
   - path: Apps/Lillist-macOS/Sources/Preferences/TrashPane.swift
 references_modules: [Apps-Lillist-macOS-Sources-misc, Apps-Lillist-macOS-Sources-Hotkey, Packages-LillistCore-Sources-LillistCore-Stores-chunk-1, Packages-LillistCore-Sources-LillistCore-Stores-chunk-2, Packages-LillistCore-Sources-LillistCore-Export, Packages-LillistCore-Sources-LillistCore-Diagnostics, Packages-LillistCore-Sources-LillistCore-Notifications, Packages-LillistCore-Sources-LillistCore-Sync-chunk-1, Packages-LillistUI-Sources-LillistUI-Settings, Packages-LillistUI-Sources-LillistUI-Sync, Packages-LillistUI-Sources-LillistUI-Accessibility]
-generator: cartographer/1 model=claude-sonnet-4-6
+generator: cartographer/1
 ---
 
 # Module: Apps/Lillist-macOS/Sources/Preferences

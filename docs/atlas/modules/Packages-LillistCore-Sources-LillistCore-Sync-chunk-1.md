@@ -4,22 +4,38 @@ summary: "Sync-mode model, in-flight-migration journal/gate, and the mode-change
 read_when: "iCloud sync-mode migrations"
 sources:
   - path: Packages/LillistCore/Sources/LillistCore/Sync/AccountStateMonitor.swift
+    blob: 43ede62cf0943fa3e0a4003c0743463c9a98d778
   - path: Packages/LillistCore/Sources/LillistCore/Sync/CloudKitErrorClassifier.swift
+    blob: d0c27352b128e8c7a0c0e3a340a0efe0d6eaa0a1
   - path: Packages/LillistCore/Sources/LillistCore/Sync/CloudKitEventBridge.swift
+    blob: 51f39616ad7eb6960aaa54fc1ae71388b7b089ba
   - path: Packages/LillistCore/Sources/LillistCore/Sync/CloudKitZoneEraser.swift
+    blob: ad119cf1626b1790cfe98a52a42155c6fb08ef9d
   - path: Packages/LillistCore/Sources/LillistCore/Sync/CloudKitZoneEraserImpl.swift
+    blob: bbf1a0495a5e246ba2c26723d035b4647abe2fb6
   - path: Packages/LillistCore/Sources/LillistCore/Sync/GatedPersistenceResolver.swift
+    blob: dd439297585e852a76724ec77944b8b3c9467faa
   - path: Packages/LillistCore/Sources/LillistCore/Sync/MigrationCoordinator.swift
+    blob: 8f41de1325769ca05f8f9eed3915f96399084c6d
   - path: Packages/LillistCore/Sources/LillistCore/Sync/MigrationGate.swift
+    blob: fd1c5076844276dea05bc94f398c46feb2366c81
   - path: Packages/LillistCore/Sources/LillistCore/Sync/MigrationJournal.swift
+    blob: 33c6d7934e71807ed5cc9ae81d38e338c1171d82
   - path: Packages/LillistCore/Sources/LillistCore/Sync/MigrationJournalStore.swift
+    blob: 7573e9327e0629237b53d89e1bb746965d2c2e37
   - path: Packages/LillistCore/Sources/LillistCore/Sync/PauseReason.swift
+    blob: 5f5f1025b26851f66bcd2cc10181047dbf6eb2e6
   - path: Packages/LillistCore/Sources/LillistCore/Sync/PauseReasonClassifier.swift
+    blob: 8b6d341bd0b2774e8d55e4f3056606a0cbf75f48
   - path: Packages/LillistCore/Sources/LillistCore/Sync/SyncMode.swift
+    blob: 166a5b012d34db879015f01f7634e7c80c4d969f
   - path: Packages/LillistCore/Sources/LillistCore/Sync/SyncModeStore.swift
+    blob: e091111832b444bedd2bd2d0272c0bebbaca9a40
   - path: Packages/LillistCore/Sources/LillistCore/Sync/SyncQuiesceMonitor.swift
+    blob: ad9399267df89701c33893a29e31d3be9950bcce
 references_modules: [Packages-LillistCore-Sources-LillistCore-Sync-chunk-2, Packages-LillistCore-Sources-LillistCore-Persistence, Packages-LillistCore-Sources-LillistCore-Notifications, Packages-LillistCore-Sources-LillistCore-Stores-chunk-1, Packages-LillistCore-Sources-LillistCore-CrashReporting, Packages-LillistCore-Sources-LillistCore-misc, Extensions-ShareExtension-iOS, Extensions-ShortcutsActions-misc, Packages-LillistCore-Sources-LillistCore-CLIBridge-misc, Apps-Lillist-iOS-Sources-App]
-generator: cartographer/1 model=claude-sonnet-4-6
+generator: cartographer/1
+baseline: 34dfea7772679dbabc08fabd6fbba53f6ad5856b
 ---
 
 # Module: Packages/LillistCore/Sources/LillistCore/Sync (chunk 1)

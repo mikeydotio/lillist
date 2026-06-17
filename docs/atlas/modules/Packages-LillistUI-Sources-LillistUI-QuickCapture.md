@@ -4,15 +4,14 @@ summary: "Quick Capture text parsing, the macOS hotkey panel view, and the canon
 read_when: "Quick Capture parsing"
 sources:
   - path: Packages/LillistUI/Sources/LillistUI/QuickCapture/QuickCaptureDateSuggestions.swift
+    blob: 7cf0c3990da9d39095ebc898d37ae926931afcfc
   - path: Packages/LillistUI/Sources/LillistUI/QuickCapture/QuickCaptureParser.swift
+    blob: 68c8306a5b319e84ca27198e96b7078aa75fd5be
   - path: Packages/LillistUI/Sources/LillistUI/QuickCapture/QuickCaptureView.swift
-references_modules:
-  - Packages-LillistUI-Sources-LillistUI-Components
-  - Packages-LillistUI-Sources-LillistUI-Theme-chunk-1
-  - Packages-LillistUI-Sources-LillistUI-Theme-chunk-2
-  - Packages-LillistUI-Sources-LillistUI-iOS-misc
-  - Packages-LillistUI-Sources-LillistUI-Editor
-generator: cartographer/1 model=claude-sonnet-4-6
+    blob: 52746892ca8e7bf4b3184010c1a64b2d45c29f3a
+references_modules: [Packages-LillistUI-Sources-LillistUI-Components, Packages-LillistUI-Sources-LillistUI-Theme-chunk-1, Packages-LillistUI-Sources-LillistUI-Theme-chunk-2, Packages-LillistUI-Sources-LillistUI-iOS-misc, Packages-LillistUI-Sources-LillistUI-Editor]
+generator: cartographer/1
+baseline: 34dfea7772679dbabc08fabd6fbba53f6ad5856b
 ---
 
 # Module: Packages/LillistUI/Sources/LillistUI/QuickCapture

@@ -4,8 +4,10 @@ summary: "TaskStore — the async CRUD/hierarchy/reorder/status gateway over the
 read_when: "TaskStore CRUD/reorder"
 sources:
   - path: Packages/LillistCore/Sources/LillistCore/Stores/TaskStore.swift
+    blob: d6550bd426a2e84b71525b65fa4905e743804429
 references_modules: [Packages-LillistCore-Sources-LillistCore-Persistence, Packages-LillistCore-Sources-LillistCore-Ordering, Packages-LillistCore-Sources-LillistCore-Recurrence, Packages-LillistCore-Sources-LillistCore-Notifications, Packages-LillistCore-Sources-LillistCore-CrashReporting, Packages-LillistCore-Sources-LillistCore-Diagnostics, Packages-LillistCore-Sources-LillistCore-ManagedObjects, Packages-LillistCore-Sources-LillistCore-Model, Packages-LillistCore-Sources-LillistCore-misc]
-generator: cartographer/1 model=claude-sonnet-4-6
+generator: cartographer/1
+baseline: 34dfea7772679dbabc08fabd6fbba53f6ad5856b
 ---
 
 # Module: Packages/LillistCore/Sources/LillistCore/Stores (chunk 2)

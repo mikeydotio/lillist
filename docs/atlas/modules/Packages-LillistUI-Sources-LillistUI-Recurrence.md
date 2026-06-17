@@ -1,17 +1,19 @@
 ---
 module: Packages/LillistUI/Sources/LillistUI/Recurrence
-summary: SwiftUI recurrence-rule editor plus a value-type summary it renders to localized text
-read_when: Touching recurrence editing UI, recurrence summary display, or RecurrenceRule binding
+summary: "SwiftUI recurrence-rule editor plus a value-type summary it renders to localized text"
+read_when: "Touching recurrence editing UI, recurrence summary display, or RecurrenceRule binding"
 sources:
   - path: Packages/LillistUI/Sources/LillistUI/Recurrence/RecurrenceEditorView.swift
+    blob: 0a45e3b6f13912b4cb5c8a1b942759a9af126108
   - path: Packages/LillistUI/Sources/LillistUI/Recurrence/RecurrenceEditorViewModel.swift
+    blob: 222e0124667e98be7e37bdbbe336ae536573639c
   - path: Packages/LillistUI/Sources/LillistUI/Recurrence/RecurrenceSummary.swift
+    blob: 4431a7f040ca523f4e1aad880d5ae5e465d8f2ab
   - path: Packages/LillistUI/Sources/LillistUI/Recurrence/RecurrenceSummaryFormatter.swift
-references_modules:
-  - Packages-LillistCore-Sources-LillistCore-Model
-  - Packages-LillistUI-Sources-LillistUI-Theme-chunk-1
-  - Packages-LillistUI-Sources-LillistUI-Editor
-generator: cartographer/1 model=claude-sonnet-4-6
+    blob: c6541163a9cf3720b3b08e4e1fd985c4506fc743
+references_modules: [Packages-LillistCore-Sources-LillistCore-Model, Packages-LillistUI-Sources-LillistUI-Theme-chunk-1, Packages-LillistUI-Sources-LillistUI-Editor]
+generator: cartographer/1
+baseline: 34dfea7772679dbabc08fabd6fbba53f6ad5856b
 ---
 
 # Module: Packages/LillistUI/Sources/LillistUI/Recurrence

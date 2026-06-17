@@ -4,14 +4,22 @@ summary: "Shared load-bearing primitives for the CLI and Shortcuts — store loc
 read_when: "CLI/Shortcuts store access, fuzzy task resolution, date input parsing, or filter flag translation"
 sources:
   - path: Packages/LillistCore/Sources/LillistCore/CLIBridge/CLIBridge.swift
+    blob: c4bf1afbbb44a21b8a5162f4b1a1db2299deaf1f
   - path: Packages/LillistCore/Sources/LillistCore/CLIBridge/Config.swift
+    blob: 30810b649af3df23a2b16e8904d91656bbc898c2
   - path: Packages/LillistCore/Sources/LillistCore/CLIBridge/DateParsing.swift
+    blob: 832f427a2cca04791e3783ff2501735e0d2680aa
   - path: Packages/LillistCore/Sources/LillistCore/CLIBridge/FilterFlags.swift
+    blob: 6beb4def986435c783f9301805fb0dba74a10c6d
   - path: Packages/LillistCore/Sources/LillistCore/CLIBridge/OutputFormat.swift
+    blob: 95f838c57fcc1427c31d510dd578058ea1ecbdb1
   - path: Packages/LillistCore/Sources/LillistCore/CLIBridge/Resolver.swift
+    blob: 96b084b79bf8710a31e90cc520bb38402daf19c8
   - path: Packages/LillistCore/Sources/LillistCore/CLIBridge/StoreLocator.swift
+    blob: face1e87c95329651709b822e18bef6c20a765f4
 references_modules: [Packages-LillistCore-Sources-LillistCore-misc, Packages-LillistCore-Sources-LillistCore-Model, Packages-LillistCore-Sources-LillistCore-Rules, Packages-LillistCore-Sources-LillistCore-Persistence, Packages-LillistCore-Sources-LillistCore-Sync-chunk-1, Packages-LillistCore-Sources-LillistCore-ManagedObjects, Packages-LillistCore-Sources-LillistCore-CLIBridge-Handlers-chunk-1, Packages-LillistCore-Sources-lillist-cli-Commands-chunk-1]
-generator: cartographer/1 model=claude-sonnet-4-6
+generator: cartographer/1
+baseline: 34dfea7772679dbabc08fabd6fbba53f6ad5856b
 ---
 
 # Module: Packages/LillistCore/Sources/LillistCore/CLIBridge (misc)

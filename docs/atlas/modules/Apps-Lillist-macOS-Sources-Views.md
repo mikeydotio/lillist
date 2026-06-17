@@ -1,31 +1,33 @@
 ---
 module: Apps/Lillist-macOS/Sources/Views
-summary: macOS three-column window layout — sidebar source selection, task outline/flat list, and all toolbar wiring
-read_when: Touching macOS window layout, sidebar, task list, sort control, or inline task creation
+summary: "macOS three-column window layout — sidebar source selection, task outline/flat list, and all toolbar wiring"
+read_when: "Touching macOS window layout, sidebar, task list, sort control, or inline task creation"
 sources:
   - path: Apps/Lillist-macOS/Sources/Views/RootSplitView.swift
+    blob: 652354694da3643b5962a4711ad6bf7fffb7dce8
   - path: Apps/Lillist-macOS/Sources/Views/Sidebar/SidebarSection.swift
+    blob: 26e2fea7d1dd00c25de2b07150377bd17e4ff010
   - path: Apps/Lillist-macOS/Sources/Views/Sidebar/SidebarSelection.swift
+    blob: 5db8773c57a6a070482eabffcf8c7e8a275432b0
   - path: Apps/Lillist-macOS/Sources/Views/Sidebar/SidebarView.swift
+    blob: 0e7d65010a0bc5d8a55b0c447df628ab7867e4d9
   - path: Apps/Lillist-macOS/Sources/Views/TaskList/InlineCreateField.swift
+    blob: d737387de165974c77a26ca89529a57b51cbed99
   - path: Apps/Lillist-macOS/Sources/Views/TaskList/SelectionAdvance.swift
+    blob: 7c6f317dc02fa7336bcd3d01b0bcd21d5caa6f81
   - path: Apps/Lillist-macOS/Sources/Views/TaskList/SourceTitleResolver.swift
+    blob: 5cbcc6b0c3e27b91cf341718ef0e77e271657590
   - path: Apps/Lillist-macOS/Sources/Views/TaskList/TaskListHeaderView.swift
+    blob: 5a3ae2804869198bed5d951672e40a791fe53a48
   - path: Apps/Lillist-macOS/Sources/Views/TaskList/TaskListSortControl.swift
+    blob: ed61e10f26e474710792a98401490c63b52c5ca2
   - path: Apps/Lillist-macOS/Sources/Views/TaskList/TaskListView.swift
+    blob: 2a2fe450e3a8b6934c1840eb8966bb6d9746c7d6
   - path: Apps/Lillist-macOS/Sources/Views/TaskList/TaskOutlineNode.swift
-references_modules:
-  - Apps-Lillist-macOS-Sources-misc
-  - Packages-LillistCore-Sources-LillistCore-Stores-chunk-1
-  - Packages-LillistCore-Sources-LillistCore-Stores-chunk-2
-  - Packages-LillistCore-Sources-LillistCore-Model
-  - Packages-LillistCore-Sources-LillistCore-Ordering
-  - Packages-LillistUI-Sources-LillistUI-Components
-  - Packages-LillistUI-Sources-LillistUI-DragReorder
-  - Packages-LillistUI-Sources-LillistUI-Theme-chunk-1
-  - Packages-LillistUI-Sources-LillistUI-Theme-chunk-2
-  - Packages-LillistUI-Sources-LillistUI-Sync
-generator: cartographer/1 model=claude-sonnet-4-6
+    blob: e6b6844fe1d32663306460de539630d0252b07e4
+references_modules: [Apps-Lillist-macOS-Sources-misc, Packages-LillistCore-Sources-LillistCore-Stores-chunk-1, Packages-LillistCore-Sources-LillistCore-Stores-chunk-2, Packages-LillistCore-Sources-LillistCore-Model, Packages-LillistCore-Sources-LillistCore-Ordering, Packages-LillistUI-Sources-LillistUI-Components, Packages-LillistUI-Sources-LillistUI-DragReorder, Packages-LillistUI-Sources-LillistUI-Theme-chunk-1, Packages-LillistUI-Sources-LillistUI-Theme-chunk-2, Packages-LillistUI-Sources-LillistUI-Sync]
+generator: cartographer/1
+baseline: 34dfea7772679dbabc08fabd6fbba53f6ad5856b
 ---
 
 # Module: Apps/Lillist-macOS/Sources/Views

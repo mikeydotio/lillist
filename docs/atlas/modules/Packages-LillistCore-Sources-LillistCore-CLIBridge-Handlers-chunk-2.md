@@ -4,23 +4,22 @@ summary: "CLIBridge command handlers for restore, search, show, status, tag, tag
 read_when: "CLI restore/search/tag/watch verbs or the live watch event stream"
 sources:
   - path: Packages/LillistCore/Sources/LillistCore/CLIBridge/Handlers/RestoreHandler.swift
+    blob: 5fb928949c1e57886767e94329b7720eb70b8fe0
   - path: Packages/LillistCore/Sources/LillistCore/CLIBridge/Handlers/SearchHandler.swift
+    blob: f88c2be42dca13fbdc685967a9ee4f8c242f9c0d
   - path: Packages/LillistCore/Sources/LillistCore/CLIBridge/Handlers/ShowHandler.swift
+    blob: 6615a48fb355d8fd5307dc672ce8b5a5611a503f
   - path: Packages/LillistCore/Sources/LillistCore/CLIBridge/Handlers/StatusHandler.swift
+    blob: fccb6c4b458311f04ebd4cd9a7e0ba74739847d9
   - path: Packages/LillistCore/Sources/LillistCore/CLIBridge/Handlers/TagHandler.swift
+    blob: b4b1b66dc267a4988498e85d57b835d7ab4c2217
   - path: Packages/LillistCore/Sources/LillistCore/CLIBridge/Handlers/TagsHandler.swift
+    blob: ebee6ca1c1b39ed1d4db22dde1e7f532d05ea4f2
   - path: Packages/LillistCore/Sources/LillistCore/CLIBridge/Handlers/WatchHandler.swift
-references_modules:
-  - Packages-LillistCore-Sources-LillistCore-CLIBridge-misc
-  - Packages-LillistCore-Sources-LillistCore-CLIBridge-Handlers-chunk-1
-  - Packages-LillistCore-Sources-LillistCore-CLIBridge-Renderers
-  - Packages-LillistCore-Sources-LillistCore-Stores-chunk-1
-  - Packages-LillistCore-Sources-LillistCore-Stores-chunk-2
-  - Packages-LillistCore-Sources-LillistCore-Model
-  - Packages-LillistCore-Sources-LillistCore-Rules
-  - Packages-LillistCore-Sources-LillistCore-ManagedObjects
-  - Packages-LillistCore-Sources-LillistCore-misc
-generator: cartographer/1 model=claude-sonnet-4-6
+    blob: 4304202cc87835019cdbaef8e1db3ff84e1c88c0
+references_modules: [Packages-LillistCore-Sources-LillistCore-CLIBridge-misc, Packages-LillistCore-Sources-LillistCore-CLIBridge-Handlers-chunk-1, Packages-LillistCore-Sources-LillistCore-CLIBridge-Renderers, Packages-LillistCore-Sources-LillistCore-Stores-chunk-1, Packages-LillistCore-Sources-LillistCore-Stores-chunk-2, Packages-LillistCore-Sources-LillistCore-Model, Packages-LillistCore-Sources-LillistCore-Rules, Packages-LillistCore-Sources-LillistCore-ManagedObjects, Packages-LillistCore-Sources-LillistCore-misc]
+generator: cartographer/1
+baseline: 34dfea7772679dbabc08fabd6fbba53f6ad5856b
 ---
 
 # Module: Packages/LillistCore/Sources/LillistCore/CLIBridge/Handlers (chunk 2)

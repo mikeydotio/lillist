@@ -1,19 +1,21 @@
 ---
 module: Packages/LillistCore/Sources/LillistCore/Recurrence
-summary: Recurrence rule types, pure-Swift occurrence expansion, and next-instance spawning for Series
-read_when: Touching recurrence rules, series spawning, or occurrence date expansion
+summary: "Recurrence rule types, pure-Swift occurrence expansion, and next-instance spawning for Series"
+read_when: "Touching recurrence rules, series spawning, or occurrence date expansion"
 sources:
   - path: Packages/LillistCore/Sources/LillistCore/Recurrence/RecurrenceExpander.swift
+    blob: 8295dbcad3f9a43df5e169e244d796d4d3d7b63a
   - path: Packages/LillistCore/Sources/LillistCore/Recurrence/RecurrenceLog.swift
+    blob: 68f88ca6008fc34d527971db67145b4e59ef9f04
   - path: Packages/LillistCore/Sources/LillistCore/Recurrence/RecurrenceRule.swift
+    blob: 2eccd5ea55c65114c042d959e25ff2de10d92981
   - path: Packages/LillistCore/Sources/LillistCore/Recurrence/RecurrenceSpawner.swift
+    blob: 929d8f5ad9841970801b8eec49d47b6b7a8ddaf2
   - path: Packages/LillistCore/Sources/LillistCore/Recurrence/Weekday.swift
-references_modules:
-  - Packages-LillistCore-Sources-LillistCore-ManagedObjects
-  - Packages-LillistCore-Sources-LillistCore-Stores-chunk-1
-  - Packages-LillistCore-Sources-LillistCore-Stores-chunk-2
-  - Packages-LillistUI-Sources-LillistUI-Recurrence
-generator: cartographer/1 model=claude-sonnet-4-6
+    blob: 721acfa8295d34af2f90c59b1561c5fb3c606493
+references_modules: [Packages-LillistCore-Sources-LillistCore-ManagedObjects, Packages-LillistCore-Sources-LillistCore-Stores-chunk-1, Packages-LillistCore-Sources-LillistCore-Stores-chunk-2, Packages-LillistUI-Sources-LillistUI-Recurrence]
+generator: cartographer/1
+baseline: 34dfea7772679dbabc08fabd6fbba53f6ad5856b
 ---
 
 # Module: Packages/LillistCore/Sources/LillistCore/Recurrence

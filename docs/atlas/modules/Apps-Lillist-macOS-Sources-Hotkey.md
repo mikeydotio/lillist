@@ -1,18 +1,15 @@
 ---
 module: Apps/Lillist-macOS/Sources/Hotkey
-summary: Global hotkey monitor, Quick Capture panel controller, hotkey recorder UI, and placement math for macOS
-read_when: Touching the macOS global hotkey, Quick Capture panel, or hotkey preferences recorder
+summary: "Global hotkey monitor, Quick Capture panel controller, hotkey recorder UI, and placement math for macOS"
+read_when: "Touching the macOS global hotkey, Quick Capture panel, or hotkey preferences recorder"
 sources:
   - path: Apps/Lillist-macOS/Sources/Hotkey/GlobalHotkeyMonitor.swift
   - path: Apps/Lillist-macOS/Sources/Hotkey/HotkeyKeyTable.swift
   - path: Apps/Lillist-macOS/Sources/Hotkey/HotkeyRecorder.swift
   - path: Apps/Lillist-macOS/Sources/Hotkey/QuickCapturePanelController.swift
   - path: Apps/Lillist-macOS/Sources/Hotkey/QuickCapturePlacementMath.swift
-references_modules:
-  - Packages-LillistUI-Sources-LillistUI-Editor
-  - Apps-Lillist-macOS-Sources-misc
-  - Apps-Lillist-macOS-Sources-Preferences
-generator: cartographer/1 model=claude-sonnet-4-6
+references_modules: [Packages-LillistUI-Sources-LillistUI-Editor, Apps-Lillist-macOS-Sources-misc, Apps-Lillist-macOS-Sources-Preferences]
+generator: cartographer/1
 ---
 
 # Module: Apps/Lillist-macOS/Sources/Hotkey
