@@ -24,13 +24,14 @@ public struct FloatingAddButton: View {
                 .font(LillistTypography.floatingAddGlyph)
                 .foregroundStyle(RainbowPalette.scriptPurple.ink)
                 .frame(width: Self.diameter, height: Self.diameter)
-                // Rainbow Glass: prominent tinted glass. The brand purple
-                // *is* the primary-create signal (functional color), and
-                // the interactive glass supplies the fill, specular
-                // highlight, and contact shadow the hand-rolled
-                // `RainbowTopHighlight` + drop shadow used to fake. The
-                // iOS app floors at 26, so this always renders as glass.
-                .glassSurface(.primaryAction, in: Circle())
+                // Rainbow Glass: the same lavender tinted glass as the Quick
+                // Capture dialog's "Add task" button (`.rainbow(.lavender)`),
+                // so the two add-actions read as one surface. Lavender is the
+                // signature add/capture hue; the glass supplies the fill,
+                // specular highlight, and contact shadow the hand-rolled
+                // `RainbowTopHighlight` + drop shadow used to fake. The iOS
+                // app floors at 26, so this always renders as glass.
+                .glassSurface(.statusTinted(LillistColor.lavender), in: Circle())
         }
         .buttonStyle(SquishPressStyle())
         .accessibilityLabel(String(localized: "New task", bundle: .module))

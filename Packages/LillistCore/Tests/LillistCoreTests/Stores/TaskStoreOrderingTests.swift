@@ -99,4 +99,53 @@ struct TaskStoreOrderingTests {
         #expect(Set(positions).count == positions.count)
         _ = tail
     }
+
+    // MARK: - Placement
+
+    @Test("create(placement: .top) inserts each new root task above the rest")
+    func createAtTopReversesOrder() async throws {
+        let p = try await TestStore.make()
+        let store = TaskStore(persistence: p)
+        _ = try await store.create(title: "A", placement: .top)
+        _ = try await store.create(title: "B", placement: .top)
+        _ = try await store.create(title: "C", placement: .top)
+        // Each capture lands at the head, so the newest is first.
+        let titles = (try await store.children(of: nil)).map(\.title)
+        #expect(titles == ["C", "B", "A"])
+    }
+
+    @Test("create(placement: .top) into an empty group is the only/first child")
+    func createAtTopEmptyGroup() async throws {
+        let p = try await TestStore.make()
+        let store = TaskStore(persistence: p)
+        let parent = try await store.create(title: "P")
+        _ = try await store.create(title: "only", parent: parent, placement: .top)
+        let titles = (try await store.children(of: parent)).map(\.title)
+        #expect(titles == ["only"])
+    }
+
+    @Test("create(placement: .top) lands above earlier .bottom-appended siblings")
+    func topInsertSitsAboveAppendedSiblings() async throws {
+        let p = try await TestStore.make()
+        let store = TaskStore(persistence: p)
+        // Default placement appends (the historical behavior the rest of the
+        // suite relies on).
+        _ = try await store.create(title: "first")
+        _ = try await store.create(title: "second")
+        // A top capture must jump ahead of both.
+        _ = try await store.create(title: "newest", placement: .top)
+        let titles = (try await store.children(of: nil)).map(\.title)
+        #expect(titles == ["newest", "first", "second"])
+    }
+
+    @Test("create default placement still appends to the bottom")
+    func defaultPlacementAppends() async throws {
+        let p = try await TestStore.make()
+        let store = TaskStore(persistence: p)
+        _ = try await store.create(title: "A")
+        _ = try await store.create(title: "B")
+        _ = try await store.create(title: "C")
+        let titles = (try await store.children(of: nil)).map(\.title)
+        #expect(titles == ["A", "B", "C"])
+    }
 }

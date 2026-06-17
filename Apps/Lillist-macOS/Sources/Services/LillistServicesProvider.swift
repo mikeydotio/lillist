@@ -46,7 +46,7 @@ final class LillistServicesProvider: NSObject {
 
         Task { @MainActor in
             do {
-                let id = try await environment.taskStore.create(title: title)
+                let id = try await environment.taskStore.create(title: title, placement: .top)
                 if !notes.isEmpty {
                     try await environment.taskStore.update(id: id) { $0.notes = notes }
                 }

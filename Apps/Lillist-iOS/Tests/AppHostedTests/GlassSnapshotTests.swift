@@ -4,10 +4,10 @@ import SnapshotTesting
 import LillistCore
 import LillistUI
 
-/// App-hosted snapshot regression for the Rainbow Glass surfaces — and
-/// for the two iOS controls that blank the *offscreen* `LillistUITests`
-/// capture and therefore must render here instead:
-///   - the FAB (`.primaryAction` interactive glass),
+/// App-hosted snapshot regression for the Rainbow Glass surfaces — the
+/// FAB (lavender glass, matching the Quick Capture "Add task" button),
+/// buttons, and toggles — and for the two iOS controls that blank the
+/// *offscreen* `LillistUITests` capture and therefore must render here:
 ///   - the `QuickCaptureDialog` (`.panel` glass), and
 ///   - `StatusIndicatorView` (a `Menu` hit layer — the Menu, not glass,
 ///     is what blanks offscreen; see the 2026-06-14 refinement).

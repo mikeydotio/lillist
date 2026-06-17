@@ -115,7 +115,7 @@ struct ShareRootView: View {
             let taskID: UUID
             switch ShareSaveFlow.next(savedTaskID: savedTaskID, hasURL: allowedURL != nil) {
             case .createTask:
-                taskID = try await taskStore.create(title: title, notes: notes)
+                taskID = try await taskStore.create(title: title, notes: notes, placement: .top)
                 savedTaskID = taskID
             case .attachLinkOnly(let existing):
                 taskID = existing

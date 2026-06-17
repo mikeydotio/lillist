@@ -36,11 +36,6 @@ public enum GlassSurface: Sendable, Equatable {
     /// A transient toast capsule (archive, reorder, status, capture
     /// discard). Untinted `.regular` glass with a hairline border.
     case toast
-    /// The signature primary action (the add-task FAB). Tinted with the
-    /// brand hue and interactive — the one place "color is functional"
-    /// and Liquid Glass agree, because the tint *is* the primary-create
-    /// signal.
-    case primaryAction
     /// A plain neutral control with no functional tint.
     case control
     /// A content-layer card surface. Use only where the Wave 0 spike
@@ -57,7 +52,7 @@ public enum GlassSurface: Sendable, Equatable {
     /// False for genuine chrome (panels, toasts) that *was* material.
     var prefersSolidFallback: Bool {
         switch self {
-        case .primaryAction, .statusTinted, .card, .control: true
+        case .statusTinted, .card, .control: true
         case .panel, .toast: false
         }
     }
@@ -76,8 +71,6 @@ public enum GlassSurface: Sendable, Equatable {
             AnyShapeStyle(LillistColor.card)
         case .panel:
             AnyShapeStyle(LillistColor.workspace)
-        case .primaryAction:
-            AnyShapeStyle(LillistColor.lavender)
         case .statusTinted(let color):
             AnyShapeStyle(color)
         }
@@ -86,19 +79,11 @@ public enum GlassSurface: Sendable, Equatable {
     /// Functional tint applied to OS-26 glass, or `nil` for neutral glass.
     var tint: Color? {
         switch self {
-        case .primaryAction:
-            RainbowPalette.scriptPurple.base
         case .statusTinted(let color):
             color
         case .panel, .toast, .control, .card:
             nil
         }
-    }
-
-    /// Whether the glass reacts to touch with the system's interactive
-    /// shimmer/scale. Reserved for the primary action.
-    var isInteractive: Bool {
-        self == .primaryAction
     }
 }
 
@@ -172,9 +157,6 @@ private struct GlassSurfaceModifier: ViewModifier {
         var resolved: Glass = .regular
         if let tint = surface.tint {
             resolved = resolved.tint(tint)
-        }
-        if surface.isInteractive {
-            resolved = resolved.interactive()
         }
         return resolved
     }

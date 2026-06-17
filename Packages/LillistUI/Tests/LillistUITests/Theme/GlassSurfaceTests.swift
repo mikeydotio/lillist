@@ -9,25 +9,12 @@ import SwiftUI
 /// signed Mac as each call-site adopts the seam.
 ///
 /// These guard the house rule "color is functional, never decorative":
-/// neutral chrome must never carry a tint, and the one tinted surface
-/// (the primary action) must carry the brand hue so its color *is* the
-/// primary-create signal.
+/// neutral chrome must never carry a tint, and a status-tinted surface
+/// must carry exactly the functional hue it was handed so its color *is*
+/// the signal.
 final class GlassSurfaceTests: XCTestCase {
 
     private static let neutralSurfaces: [GlassSurface] = [.panel, .toast, .control, .card]
-
-    // MARK: Interactivity
-
-    func testOnlyPrimaryActionIsInteractive() {
-        XCTAssertTrue(GlassSurface.primaryAction.isInteractive)
-        for surface in Self.neutralSurfaces {
-            XCTAssertFalse(surface.isInteractive, "\(surface) must not be interactive glass")
-        }
-        XCTAssertFalse(
-            GlassSurface.statusTinted(RainbowPalette.focusBlue.base).isInteractive,
-            "a status-tinted content surface is not an interactive control"
-        )
-    }
 
     // MARK: Tinting (the functional-color contract)
 
@@ -35,15 +22,6 @@ final class GlassSurfaceTests: XCTestCase {
         for surface in Self.neutralSurfaces {
             XCTAssertNil(surface.tint, "\(surface) is non-semantic chrome and must be neutral glass")
         }
-    }
-
-    func testPrimaryActionTintIsBrandPurpleInBothSchemes() {
-        guard let tint = GlassSurface.primaryAction.tint else {
-            return XCTFail("the primary action must carry a functional tint")
-        }
-        // scriptPurple.base — the signature brand hue (light 0x8B45E8 / dark 0x9D63EE).
-        XCTAssertEqual(RainbowPaletteTests.resolve(tint, dark: false), 0x8B45E8)
-        XCTAssertEqual(RainbowPaletteTests.resolve(tint, dark: true), 0x9D63EE)
     }
 
     func testStatusTintedReturnsTheProvidedHue() {
@@ -66,7 +44,6 @@ final class GlassSurfaceTests: XCTestCase {
     func testTintedFillsPreferSolidFallback() {
         // Tinted fills were never frosted chrome — on pre-26 (e.g. macOS
         // Sequoia) they must stay solid, not turn translucent.
-        XCTAssertTrue(GlassSurface.primaryAction.prefersSolidFallback)
         XCTAssertTrue(GlassSurface.statusTinted(RainbowPalette.focusBlue.base).prefersSolidFallback)
         XCTAssertTrue(GlassSurface.card.prefersSolidFallback)
         XCTAssertTrue(GlassSurface.control.prefersSolidFallback)
@@ -84,7 +61,7 @@ final class GlassSurfaceTests: XCTestCase {
     func testEquatableDistinguishesRoles() {
         XCTAssertEqual(GlassSurface.panel, .panel)
         XCTAssertNotEqual(GlassSurface.panel, .toast)
-        XCTAssertNotEqual(GlassSurface.primaryAction, .control)
+        XCTAssertNotEqual(GlassSurface.control, .card)
     }
 
     func testStatusTintedEqualityFollowsTheHue() {

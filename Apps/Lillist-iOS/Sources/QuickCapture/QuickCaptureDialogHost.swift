@@ -18,6 +18,15 @@ import LillistUI
 /// live here). `QuickCaptureDialogGuardTests` covers the predicate.
 struct QuickCaptureDialogHost: ViewModifier {
     @Binding var isPresented: Bool
+
+    /// Invoked after a task is successfully created (and its tags/deadline
+    /// applied). The host owns the create pipeline but not the list, so the
+    /// owning surface passes `{ await reload() }` here to refresh
+    /// immediately — otherwise the new task wouldn't appear until the next
+    /// fetch. Defaults to a no-op so callers that don't display a list
+    /// (or tests) need not supply one.
+    var onCreated: () async -> Void = {}
+
     @Environment(AppEnvironment.self) private var env
 
     @State private var text: String = ""
@@ -76,7 +85,7 @@ struct QuickCaptureDialogHost: ViewModifier {
         submitting = true
         Task {
             do {
-                let taskID = try await env.taskStore.create(title: title)
+                let taskID = try await env.taskStore.create(title: title, placement: .top)
                 for name in parsed.tags {
                     let tagID = try await env.tagStore.findOrCreate(name: name)
                     try await env.taskStore.assignTag(taskID: taskID, tagID: tagID)
@@ -89,6 +98,10 @@ struct QuickCaptureDialogHost: ViewModifier {
                     }
                 }
                 submitting = false
+                // Refresh the owning list before dismissing so the freshly
+                // captured task is already on screen (at the top) when the
+                // dialog closes, rather than waiting for the next fetch.
+                await onCreated()
                 AccessibilityAnnouncements.post(
                     String(localized: "Task created: \(title)"),
                     priority: .low

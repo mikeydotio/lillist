@@ -101,7 +101,10 @@ struct TasksView: View {
                 .padding(.bottom, 16)
                 .accessibilityIdentifier("TasksQuickCaptureFAB")
         }
-        .modifier(QuickCaptureDialogHost(isPresented: isQuickCapturePresented))
+        .modifier(QuickCaptureDialogHost(
+            isPresented: isQuickCapturePresented,
+            onCreated: { await reload() }
+        ))
         .task { await initialLoad() }
         .onAppear {
             dragController.setOnDrop { dragged, target in

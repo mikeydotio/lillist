@@ -366,18 +366,21 @@ All waves landed, including the Wave 6 snapshot reconciliation.
 - **Seam:** `Theme/GlassSurface.swift` — `glassSurface(_:in:)`,
   `glassGroup()`, `glassElevation()`. Centralizes the OS-26 `#available`
   gate + degradation (glass → solid fill for tints / `.regularMaterial`
-  for chrome → opaque under Reduce Transparency). Only `.primaryAction`
-  (the FAB) is `.interactive()`.
-- **Snapshot rules (hard-won — see engineering-notes 2026-06-12/14/15):**
-  - *Interactive* glass (the FAB) and the `StatusIndicatorView` `Menu`
-    blank the **whole** offscreen capture; **`.drawingGroup()`/Metal**
-    (e.g. `RainbowEmptyStateView`'s `DotGridBackdrop`) blanks the same
-    way. *Non-interactive* glass (panels, toasts, `.rainbow`
-    buttons/toggles) renders offscreen fine with the tour strategy.
-  - These live-window-only surfaces are snapshotted **app-hosted** in
-    `Lillist-iOSAppHostedTests/GlassSnapshotTests` (FAB, buttons, toggles,
-    QuickCaptureDialog, status control, empty state). Everything else
-    stays in offscreen `LillistUITests`.
+  for chrome → opaque under Reduce Transparency). No surface uses
+  `.interactive()` glass — the FAB shares the `.statusTinted(.lavender)`
+  surface with the Quick Capture "Add task" button (see engineering-notes
+  2026-06-16).
+- **Snapshot rules (hard-won — see engineering-notes 2026-06-12/14/15/16):**
+  - The `StatusIndicatorView` `Menu` hit layer and **`.drawingGroup()`/
+    Metal** (e.g. `RainbowEmptyStateView`'s `DotGridBackdrop`) blank the
+    **whole** offscreen capture. Plain tinted glass (the FAB, panels,
+    toasts, `.rainbow` buttons/toggles) renders offscreen fine with the
+    tour strategy.
+  - The app-hosted `Lillist-iOSAppHostedTests/GlassSnapshotTests` hosts the
+    glass surfaces (FAB, buttons, toggles, QuickCaptureDialog, status
+    control, empty state). The status control and empty state *must* live
+    here (they blank offscreen); the FAB/buttons/toggles live here with
+    them for grouping. Everything else stays in offscreen `LillistUITests`.
   - **macOS glass is NOT offscreen-snapshottable and has no app-hosted
     path** — AppKit has no `drawHierarchyInKeyWindow`, and window-server
     capture needs `CGWindowListCreateImage` (obsoleted in macOS 15) or

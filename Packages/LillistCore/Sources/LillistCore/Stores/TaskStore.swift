@@ -2,6 +2,19 @@ import Foundation
 import CoreData
 import os
 
+/// Where a freshly created task lands within its sibling group.
+///
+/// - `bottom`: appended after the last sibling (the historical default).
+///   Used by structural creates (subtasks, inline outline rows) and
+///   order-preserving paths (backup import).
+/// - `top`: inserted before the first sibling. Used by user-facing
+///   capture entry points so a just-captured task is visible immediately
+///   at the head of the list rather than buried at the end.
+public enum NewTaskPlacement: Sendable {
+    case top
+    case bottom
+}
+
 public final class TaskStore: @unchecked Sendable {
     let persistence: PersistenceController
     private var context: NSManagedObjectContext { persistence.container.viewContext }
@@ -130,17 +143,18 @@ public final class TaskStore: @unchecked Sendable {
     public func create(
         title: String,
         notes: String = "",
-        parent: UUID? = nil
+        parent: UUID? = nil,
+        placement: NewTaskPlacement = .bottom
     ) async throws -> UUID {
         do {
             try validateTitle(title)
             let result: (id: UUID, assigned: Double, observedMax: Double?) = try await context.perform { [self] in
                 let parentTask = try parent.map { try fetchManagedObject(id: $0, in: context) }
                 // Compute the position BEFORE inserting the new row, so the
-                // observed-max fetch reflects real siblings — not the new task's
+                // observed-edge fetch reflects real siblings — not the new task's
                 // own default 0.0. Behavior-preserving for `assigned`:
                 // position(after: nil) == position(after: 0.0) == 1.0.
-                let detail = try nextPositionDetail(forParent: parentTask)
+                let detail = try nextPositionDetail(forParent: parentTask, placement: placement)
                 let task = LillistTask(context: context)
                 let id = UUID()
                 task.id = id
@@ -876,20 +890,37 @@ public final class TaskStore: @unchecked Sendable {
         try nextPositionDetail(forParent: parent).assigned
     }
 
-    /// As `nextPosition`, but also surfaces the observed max sibling position so
-    /// `create` can record `observedMaxPosition` in its diagnostic — the value
-    /// the non-atomic `max + 1` allocation saw, central to the reorder-tie RCA.
-    func nextPositionDetail(forParent parent: LillistTask?) throws -> (assigned: Double, observedMax: Double?) {
+    /// As `nextPosition`, but also surfaces the observed edge sibling position
+    /// so `create` can record `observedMaxPosition` in its diagnostic — the
+    /// value the non-atomic edge allocation saw, central to the reorder-tie RCA.
+    ///
+    /// `placement` selects which end the new row lands at:
+    /// - `.bottom` (default): the edge is the *max* sibling position and the
+    ///   row is placed after it (`edge + 1.0`).
+    /// - `.top`: the edge is the *min* sibling position and the row is placed
+    ///   before it (`edge - 1.0`).
+    /// An empty sibling group yields `1.0` either way.
+    func nextPositionDetail(
+        forParent parent: LillistTask?,
+        placement: NewTaskPlacement = .bottom
+    ) throws -> (assigned: Double, observedMax: Double?) {
         let req = NSFetchRequest<LillistTask>(entityName: "LillistTask")
         if let parent {
             req.predicate = NSPredicate(format: "parent == %@", parent)
         } else {
             req.predicate = NSPredicate(format: "parent == nil")
         }
-        req.sortDescriptors = [NSSortDescriptor(key: "position", ascending: false)]
+        // For `.bottom` we need the largest position (sort desc); for `.top`
+        // the smallest (sort asc). Either way we fetch a single edge row.
+        req.sortDescriptors = [NSSortDescriptor(key: "position", ascending: placement == .top)]
         req.fetchLimit = 1
-        let lastPosition = try context.fetch(req).first?.position
-        return (FractionalPosition.position(after: lastPosition, before: nil), lastPosition)
+        let edgePosition = try context.fetch(req).first?.position
+        switch placement {
+        case .bottom:
+            return (FractionalPosition.position(after: edgePosition, before: nil), edgePosition)
+        case .top:
+            return (FractionalPosition.position(after: nil, before: edgePosition), edgePosition)
+        }
     }
 
     /// Re-space every non-trashed sibling under `parent` to even 1.0 gaps,

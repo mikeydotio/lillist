@@ -35,7 +35,7 @@ extension CLIBridge {
                 parentID = resolution.id
             }
 
-            let id = try await tasks.create(title: title, notes: notes, parent: parentID)
+            let id = try await tasks.create(title: title, notes: notes, parent: parentID, placement: .top)
 
             if startToken != nil || deadlineToken != nil {
                 let start = try startToken.map { try DateParsing.parse($0, now: now, calendar: calendar) }

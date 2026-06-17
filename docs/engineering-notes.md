@@ -2903,3 +2903,34 @@ three `Text`/`Picker` literals missing from `Localizable.xcstrings` — a
 pre-existing `check-lillistui-localization.sh` failure unrelated to this change,
 since the lint *does* extract SwiftUI `Text`/`Picker` `LocalizedStringKey`
 literals (not only `String(localized:)`). Added the empty `{}` entries.
+
+## 2026-06-16 — The FAB dropped interactive glass; `GlassSurface.primaryAction` is gone
+
+**Context.** The add-task FAB was the *only* `.interactive()` glass in the app
+(`GlassSurface.primaryAction`, tinted `scriptPurple.base`). To unify it with the
+Quick Capture "Add task" button — itself `.rainbow(.lavender)` →
+`.glassSurface(.statusTinted(LillistColor.lavender))` — the FAB moved to that
+same surface (`FloatingAddButton` now does
+`.glassSurface(.statusTinted(LillistColor.lavender), in: Circle())`). With no
+remaining caller, the `.primaryAction` enum case **and the whole interactive-
+glass path** (`isInteractive`, the `glass.interactive()` branch) were removed
+from `GlassSurface`. There is now **no interactive glass anywhere** in Lillist.
+
+Consequences for anyone re-reading the older glass notes (2026-06-12/14):
+- The "interactive glass reliably blanks the *entire* offscreen capture" lesson
+  is now **moot for the FAB** — non-interactive tinted glass renders offscreen
+  fine. The surfaces that still blank offscreen are the `StatusIndicatorView`
+  `Menu` hit layer and `.drawingGroup()`/Metal (`DotGridBackdrop`). Those, not
+  interactivity, are why `GlassSnapshotTests` is app-hosted.
+- The FAB snapshot (`test_fab_light/dark`) **stays app-hosted** with the other
+  glass surfaces even though it no longer *needs* a live window — kept there for
+  grouping, not necessity. Its baselines were re-recorded for the new lavender
+  tint (the only visual delta: saturated purple → softer lavender, no shimmer).
+- The FAB's pre-26 opaque fallback is unchanged: `.primaryAction` already fell
+  back to `LillistColor.lavender`, and `.statusTinted(.lavender)` resolves to the
+  same color — so Sequoia keeps the identical solid lavender fill.
+
+Lesson: when retiring the sole user of a design-token case, delete the case *and*
+the machinery it was the only trigger for (here, the entire `.interactive()`
+branch), rather than leaving an always-false vestige — and append a note so the
+prior "interactive glass blanks offscreen" entry isn't mistaken for current law.

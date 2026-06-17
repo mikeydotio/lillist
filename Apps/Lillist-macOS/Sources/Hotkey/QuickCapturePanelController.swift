@@ -88,7 +88,7 @@ final class QuickCapturePanelController {
         let title = r.title
         let tags = r.tags
         Task { @MainActor in
-            guard let id = try? await environment.taskStore.create(title: title) else { return }
+            guard let id = try? await environment.taskStore.create(title: title, placement: .top) else { return }
             for tagName in tags {
                 if let tagID = try? await environment.tagStore.findOrCreate(name: tagName, parent: nil) {
                     try? await environment.taskStore.assignTag(taskID: id, tagID: tagID)

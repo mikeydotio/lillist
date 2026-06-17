@@ -15,12 +15,13 @@ import SnapshotTesting
 /// per-view shells compose; stable visual regressions on these atoms catch
 /// the same drift the per-view snapshots would.
 ///
-/// Glass-bearing atoms that blank the offscreen capture — the FAB
-/// (`.primaryAction` interactive glass), `QuickCaptureDialog` (`.panel`
-/// glass), and the interactive `StatusIndicatorView` (a `Menu` hit layer)
-/// — moved to `Lillist-iOSAppHostedTests/GlassSnapshotTests`, which renders
-/// through a live key window. See docs/engineering-notes.md 2026-06-12 and
-/// the 2026-06-14 refinement.
+/// Glass-bearing iOS atoms render in `Lillist-iOSAppHostedTests/
+/// GlassSnapshotTests` through a live key window: the FAB (lavender
+/// glass, matching the Quick Capture "Add task" button), plus the two
+/// controls that blank the *offscreen* capture entirely —
+/// `QuickCaptureDialog` (`.panel` glass) and the interactive
+/// `StatusIndicatorView` (a `Menu` hit layer). See
+/// docs/engineering-notes.md 2026-06-12 and the 2026-06-14 refinement.
 final class iOSSnapshotTests: RecordableSnapshotTestCase {
     @MainActor
     func test_syncStatusBadge_idle() {
