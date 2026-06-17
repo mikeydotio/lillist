@@ -28,7 +28,9 @@ struct NotificationSchedulerLayer2AllDayTests {
             d.deadline = allDayDate
             d.deadlineHasTime = false
         }
-        await scheduler.reconcile(taskID: taskID)
+        // Defaults are no longer auto-created; a user offset reminder (offset
+        // 0 = fire at the anchor) exercises the same all-day time resolution.
+        _ = try await scheduler.addOffset(taskID: taskID, anchor: .deadline, offsetMinutes: 0)
 
         let pending = await fake.pendingNotificationRequests()
         #expect(pending.count == 1)
@@ -63,7 +65,7 @@ struct NotificationSchedulerLayer2AllDayTests {
             d.deadline = timed
             d.deadlineHasTime = true
         }
-        await scheduler.reconcile(taskID: taskID)
+        _ = try await scheduler.addOffset(taskID: taskID, anchor: .deadline, offsetMinutes: 0)
 
         let pending = await fake.pendingNotificationRequests()
         let trigger = pending[0].trigger as? UNCalendarNotificationTrigger

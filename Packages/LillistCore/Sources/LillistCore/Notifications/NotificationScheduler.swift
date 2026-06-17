@@ -46,8 +46,9 @@ public actor NotificationScheduler: NotificationReconciling {
     public func reconcile(taskID: UUID) async {
         do {
             let snapshot = try await loadTaskSnapshot(taskID: taskID)
-            // Ensure default specs exist (or don't) per the task's anchor fields.
-            try await materializeDefaultSpecs(for: snapshot)
+            // Lillist no longer auto-schedules defaults — purge any legacy
+            // defaultStart/defaultDeadline specs so they stop firing.
+            try await purgeDefaultSpecs(for: snapshot)
 
             let specs = try await specStore.specs(forTask: taskID)
             let desired = computeDesiredRequests(task: snapshot, specs: specs)
@@ -55,8 +56,8 @@ public actor NotificationScheduler: NotificationReconciling {
             let pending = await center.pendingNotificationRequests()
             // Match by task identity via userInfo + device fingerprint suffix.
             // Filtering by current spec IDs alone misses pending requests
-            // whose specs were just deleted (e.g. by materializeDefaultSpecs
-            // when an anchor field is cleared).
+            // whose specs were just deleted (e.g. by purgeDefaultSpecs, or
+            // when a user removes a reminder).
             let ourPending = pending.filter { isPendingForTask($0, taskID: taskID) }
             let pendingByID = Dictionary(uniqueKeysWithValues: ourPending.map { ($0.identifier, $0) })
             let desiredByID = Dictionary(uniqueKeysWithValues: desired.map { ($0.identifier, $0) })
@@ -146,31 +147,20 @@ public actor NotificationScheduler: NotificationReconciling {
         }
     }
 
-    // MARK: - Default spec materialization (Layer 1/2)
+    // MARK: - Default spec purge (Layer 1/2)
 
-    private func materializeDefaultSpecs(for task: TaskSnapshot) async throws {
+    /// Lillist no longer auto-schedules notifications from a task's `start`
+    /// or `deadline` — only user-added reminders (`offsetStart`,
+    /// `offsetDeadline`, `nudge`) fire. This purges any `defaultStart` /
+    /// `defaultDeadline` spec rows so legacy defaults created before this
+    /// behavior change are cleaned up on the next `reconcile`, and so no new
+    /// default ever produces a pending request. The `NotificationSpecStore`
+    /// API is unchanged — defaults can still be constructed explicitly (e.g.
+    /// in tests); they are simply never materialized automatically here.
+    private func purgeDefaultSpecs(for task: TaskSnapshot) async throws {
         let existing = try await specStore.specs(forTask: task.id)
-        let existingDefaultStart = existing.first { $0.kind == .defaultStart }
-        let existingDefaultDeadline = existing.first { $0.kind == .defaultDeadline }
-
-        // Default specs exist iff their anchor field is present. Closed
-        // and soft-deleted status is handled separately in
-        // `computeDesiredRequests` so that spec rows are *preserved*
-        // across status transitions — design Section 4: "→ Closed:
-        // cancel all pending (spec rows preserved for history)". On
-        // re-open, the still-present spec is re-registered.
-        let needsStart = task.start != nil
-        if needsStart && existingDefaultStart == nil {
-            _ = try await specStore.add(taskID: task.id, kind: .defaultStart, offsetMinutes: nil, fireDate: nil)
-        } else if needsStart == false, let s = existingDefaultStart {
-            try await specStore.delete(id: s.id)
-        }
-
-        let needsDeadline = task.deadline != nil
-        if needsDeadline && existingDefaultDeadline == nil {
-            _ = try await specStore.add(taskID: task.id, kind: .defaultDeadline, offsetMinutes: nil, fireDate: nil)
-        } else if needsDeadline == false, let s = existingDefaultDeadline {
-            try await specStore.delete(id: s.id)
+        for spec in existing where spec.kind == .defaultStart || spec.kind == .defaultDeadline {
+            try await specStore.delete(id: spec.id)
         }
     }
 
@@ -327,9 +317,11 @@ public actor NotificationScheduler: NotificationReconciling {
     // MARK: - Preference change
 
     /// Update the default all-day notification time. Reconciles every task
-    /// that has at least one all-day default spec (design Section 4 Layer 2:
-    /// the configured time is used at delivery, so changing it must
-    /// re-trigger every dependent request).
+    /// with an all-day anchor (`start`/`deadline` with no time), since a
+    /// user reminder on such a task resolves its fire time through this
+    /// configured default — so changing it must re-trigger every dependent
+    /// request. (Lillist no longer auto-creates default specs; this default
+    /// time now only shapes user reminders on all-day tasks.)
     public func updateDefaultAllDayTime(hour: Int, minute: Int) async {
         self.defaultAllDayHour = hour
         self.defaultAllDayMinute = minute

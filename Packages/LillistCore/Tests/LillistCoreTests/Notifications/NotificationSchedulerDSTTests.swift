@@ -31,7 +31,8 @@ struct NotificationSchedulerDSTTests {
             d.deadline = when
             d.deadlineHasTime = true
         }
-        await scheduler.reconcile(taskID: taskID)
+        // Defaults removed — drive the DST-safe trigger via a user offset (0).
+        _ = try await scheduler.addOffset(taskID: taskID, anchor: .deadline, offsetMinutes: 0)
 
         let pending = await fake.pendingNotificationRequests()
         let trigger = pending[0].trigger as? UNCalendarNotificationTrigger
@@ -67,7 +68,7 @@ struct NotificationSchedulerDSTTests {
             d.deadline = allDay
             d.deadlineHasTime = false
         }
-        await scheduler.reconcile(taskID: taskID)
+        _ = try await scheduler.addOffset(taskID: taskID, anchor: .deadline, offsetMinutes: 0)
 
         let pending = await fake.pendingNotificationRequests()
         let trigger = pending[0].trigger as? UNCalendarNotificationTrigger

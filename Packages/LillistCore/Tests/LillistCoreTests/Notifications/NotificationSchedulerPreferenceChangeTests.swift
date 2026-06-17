@@ -28,7 +28,10 @@ struct NotificationSchedulerPreferenceChangeTests {
             d.deadline = allDay
             d.deadlineHasTime = false
         }
-        await scheduler.reconcile(taskID: taskID)
+        // Defaults removed — a user offset on an all-day deadline still
+        // resolves through the configurable default time, and
+        // updateDefaultAllDayTime reschedules by all-day anchor.
+        _ = try await scheduler.addOffset(taskID: taskID, anchor: .deadline, offsetMinutes: 0)
         var pending = await fake.pendingNotificationRequests()
         var trigger = pending[0].trigger as? UNCalendarNotificationTrigger
         #expect(trigger?.dateComponents.hour == 9)

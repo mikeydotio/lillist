@@ -15,7 +15,7 @@ struct NotificationSchedulerStatusTransitionsTests {
         )
     }
 
-    @Test("Closing a task cancels all pending deliveries (specs preserved)")
+    @Test("Closing a task cancels all pending deliveries (user spec preserved)")
     func closedCancels() async throws {
         let p = try await TestStore.make()
         let tasks = TaskStore(persistence: p)
@@ -28,16 +28,17 @@ struct NotificationSchedulerStatusTransitionsTests {
         try await tasks.update(id: taskID) { d in
             d.deadline = Date().addingTimeInterval(3600); d.deadlineHasTime = true
         }
-        await scheduler.reconcile(taskID: taskID)
+        // Defaults are no longer auto-created — a user reminder is what schedules.
+        _ = try await scheduler.addOffset(taskID: taskID, anchor: .deadline, offsetMinutes: -10)
         #expect(await fake.addedCount() == 1)
 
         try await tasks.transition(id: taskID, to: .closed)
         let pending = await fake.pendingNotificationRequests()
         #expect(pending.isEmpty)
 
-        // Specs preserved (defaultDeadline still in store, not cascaded away).
+        // The user spec is preserved (offsetDeadline still in store, not cascaded away).
         let allSpecs = try await specs.specs(forTask: taskID)
-        #expect(allSpecs.contains { $0.kind == .defaultDeadline })
+        #expect(allSpecs.contains { $0.kind == .offsetDeadline })
     }
 
     @Test("Re-opening a closed task re-registers future specs")
@@ -53,7 +54,7 @@ struct NotificationSchedulerStatusTransitionsTests {
         try await tasks.update(id: taskID) { d in
             d.deadline = Date().addingTimeInterval(3600); d.deadlineHasTime = true
         }
-        await scheduler.reconcile(taskID: taskID)
+        _ = try await scheduler.addOffset(taskID: taskID, anchor: .deadline, offsetMinutes: -10)
         try await tasks.transition(id: taskID, to: .closed)
         #expect(await fake.pendingNotificationRequests().isEmpty)
 
@@ -74,7 +75,7 @@ struct NotificationSchedulerStatusTransitionsTests {
         try await tasks.update(id: taskID) { d in
             d.deadline = Date().addingTimeInterval(3600); d.deadlineHasTime = true
         }
-        await scheduler.reconcile(taskID: taskID)
+        _ = try await scheduler.addOffset(taskID: taskID, anchor: .deadline, offsetMinutes: -10)
         #expect(await fake.addedCount() == 1)
 
         try await tasks.transition(id: taskID, to: .blocked)
@@ -94,15 +95,15 @@ struct NotificationSchedulerStatusTransitionsTests {
         try await tasks.update(id: taskID) { d in
             d.deadline = Date().addingTimeInterval(3600); d.deadlineHasTime = true
         }
-        await scheduler.reconcile(taskID: taskID)
+        _ = try await scheduler.addOffset(taskID: taskID, anchor: .deadline, offsetMinutes: -10)
         #expect(await fake.addedCount() == 1)
 
         try await tasks.softDelete(id: taskID)
         #expect(await fake.pendingNotificationRequests().isEmpty)
     }
 
-    @Test("Closing a recurring instance schedules notifications on the spawn")
-    func recurringSpawnGetsReconciled() async throws {
+    @Test("Closing a recurring instance spawns the next, with no auto-scheduled default")
+    func recurringSpawnHasNoDefault() async throws {
         let p = try await TestStore.make()
         let tasks = TaskStore(persistence: p)
         let series = SeriesStore(persistence: p)
@@ -123,18 +124,12 @@ struct NotificationSchedulerStatusTransitionsTests {
 
         try await tasks.transition(id: seedID, to: .closed)
 
-        // Spawn has been created and reconciled — pending requests include one
-        // for the spawn's defaultStart, but none for the closed seed.
-        // (Identifiers are "{specID}#{fingerprint}", so we match on
-        // userInfo["taskID"] rather than the identifier prefix.)
-        let pending = await fake.pendingNotificationRequests()
+        // The spawn is created and reconciled, but defaults are no longer
+        // auto-created and spawns don't copy user specs — so nothing is
+        // scheduled for the spawn or the closed seed.
         let roots = try await tasks.children(of: nil)
-        let spawn = roots.first { $0.id != seedID && $0.title == "Daily standup" }!
-        #expect(pending.contains {
-            ($0.content.userInfo["taskID"] as? String) == spawn.id.uuidString
-        })
-        #expect(pending.contains {
-            ($0.content.userInfo["taskID"] as? String) == seedID.uuidString
-        } == false)
+        let spawn = roots.first { $0.id != seedID && $0.title == "Daily standup" }
+        #expect(spawn != nil)
+        #expect(await fake.pendingNotificationRequests().isEmpty)
     }
 }

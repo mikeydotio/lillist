@@ -8,18 +8,14 @@ import UserNotifications
 /// actor-isolated entry point every mutation funnels through; this suite
 /// hammers it concurrently to prove its invariants hold under contention.
 ///
-/// The load-bearing invariant is at-most-one default spec per
-/// `(taskID, kind)`. `materializeDefaultSpecs` does a check-then-add
-/// (`specs(forTask:)` → `add(...)`); two interleaved reconciles can both
-/// miss the row and both attempt to insert.
-///
-/// ENFORCEMENT: the invariant is enforced in `NotificationSpecStore.add`
-/// (Wave 3 `cloudkit-convergence`, merged): the default-kind guard returns
-/// the existing survivor and self-heals any duplicate rows a prior race
-/// created. This suite is the regression guard verifying that enforcement.
-/// Do NOT "fix" a failure here by adding a lock or dedup inside the
-/// scheduler's reconcile loop; the per-(task,kind) row guard in
-/// `NotificationSpecStore` is the correct seam — restore it there.
+/// `NotificationScheduler` is an `actor`, but actors are *reentrant*: an
+/// `await` inside `reconcile` can suspend and let another `reconcile` run,
+/// so the two genuinely interleave. The concurrency-sensitive work is:
+///   1. The pending add/remove loop (one pending request per user spec).
+///   2. `purgeDefaultSpecs` — a check-then-delete that two interleaved
+///      reconciles can both attempt on the same row.
+/// (Lillist no longer auto-creates default specs, so the former
+/// check-then-add race in `materializeDefaultSpecs` is gone.)
 @Suite("NotificationScheduler — concurrent reconcile stress", .serialized)
 struct NotificationSchedulerConcurrentReconcileTests {
     /// High iteration count per CLAUDE.md "add stress repetitions for any
@@ -29,9 +25,11 @@ struct NotificationSchedulerConcurrentReconcileTests {
     private static let concurrentReconciles = 16
 
     /// Build a scheduler over a fresh in-memory store with a single
-    /// deadline-bearing task, returning the parts a test needs.
+    /// deadline-bearing task carrying one user offset reminder, returning
+    /// the parts a test needs.
     private static func makeFixture() async throws -> (
         scheduler: NotificationScheduler,
+        tasks: TaskStore,
         specs: NotificationSpecStore,
         fake: FakeUserNotificationCenter,
         taskID: UUID
@@ -48,34 +46,53 @@ struct NotificationSchedulerConcurrentReconcileTests {
             timeZone: TimeZone(identifier: "UTC")!
         )
         let taskID = try await tasks.create(title: "T")
-        // Deadline 1h out with explicit time so the default-deadline spec
-        // materializes and the computed fire date is in the future.
+        // Deadline 1h out with explicit time + a user offset reminder so the
+        // computed fire date is in the future and one pending request is due.
         let deadline = Date().addingTimeInterval(3600)
         try await tasks.update(id: taskID) { d in
             d.deadline = deadline
             d.deadlineHasTime = true
         }
-        return (scheduler, specs, fake, taskID)
+        _ = try await scheduler.addOffset(taskID: taskID, anchor: .deadline, offsetMinutes: -10)
+        return (scheduler, tasks, specs, fake, taskID)
     }
 
-    @Test("Concurrent reconciles of one task materialize exactly one default-deadline spec")
-    func concurrentReconcileSingleDefaultSpec() async throws {
+    @Test("Concurrent reconciles purge a legacy default spec, converging to zero")
+    func concurrentReconcilePurgesLegacyDefault() async throws {
         for iteration in 0..<Self.iterations {
-            let f = try await Self.makeFixture()
+            let p = try await TestStore.make()
+            let tasks = TaskStore(persistence: p)
+            let specs = NotificationSpecStore(persistence: p)
+            let fake = FakeUserNotificationCenter()
+            let registry = SnoozeRegistry(defaultAllDayHour: 9, defaultAllDayMinute: 0, timeZone: .current)
+            let scheduler = NotificationScheduler(
+                persistence: p, specs: specs, center: fake,
+                snoozeRegistry: registry, deviceFingerprint: "stress-dev",
+                defaultAllDayHour: 9, defaultAllDayMinute: 0,
+                timeZone: TimeZone(identifier: "UTC")!
+            )
+            let taskID = try await tasks.create(title: "T")
+            try await tasks.update(id: taskID) { d in
+                d.deadline = Date().addingTimeInterval(3600); d.deadlineHasTime = true
+            }
+            // A legacy default spec from before defaults were removed.
+            _ = try await specs.add(taskID: taskID, kind: .defaultDeadline, offsetMinutes: nil, fireDate: nil)
 
             await withTaskGroup(of: Void.self) { group in
                 for _ in 0..<Self.concurrentReconciles {
-                    group.addTask {
-                        await f.scheduler.reconcile(taskID: f.taskID)
-                    }
+                    group.addTask { await scheduler.reconcile(taskID: taskID) }
                 }
             }
 
-            let allSpecs = try await f.specs.specs(forTask: f.taskID)
-            let defaultDeadlineSpecs = allSpecs.filter { $0.kind == .defaultDeadline }
+            let defaultDeadlineSpecs = try await specs.specs(forTask: taskID).filter { $0.kind == .defaultDeadline }
             #expect(
-                defaultDeadlineSpecs.count == 1,
-                "iteration \(iteration): expected exactly one defaultDeadline spec, got \(defaultDeadlineSpecs.count)"
+                defaultDeadlineSpecs.isEmpty,
+                "iteration \(iteration): expected the legacy default purged, got \(defaultDeadlineSpecs.count)"
+            )
+            let pending = await fake.pendingNotificationRequests()
+            #expect(
+                pending.filter { ($0.content.userInfo["taskID"] as? String) == taskID.uuidString }.isEmpty,
+                "iteration \(iteration): expected no pending for the purged default"
             )
         }
     }
@@ -104,42 +121,29 @@ struct NotificationSchedulerConcurrentReconcileTests {
         }
     }
 
-    @Test("Clearing the deadline under concurrent reconciles leaves no default spec and no pending request")
+    @Test("Clearing the deadline under concurrent reconciles leaves no pending request")
     func concurrentReconcileClearsDeadline() async throws {
-        let p = try await TestStore.make()
-        let tasks = TaskStore(persistence: p)
-        let specs = NotificationSpecStore(persistence: p)
-        let fake = FakeUserNotificationCenter()
-        let registry = SnoozeRegistry(defaultAllDayHour: 9, defaultAllDayMinute: 0, timeZone: .current)
-        let scheduler = NotificationScheduler(
-            persistence: p, specs: specs, center: fake,
-            snoozeRegistry: registry, deviceFingerprint: "stress-dev",
-            defaultAllDayHour: 9, defaultAllDayMinute: 0,
-            timeZone: TimeZone(identifier: "UTC")!
-        )
-        let taskID = try await tasks.create(title: "T")
-        try await tasks.update(id: taskID) { d in
-            d.deadline = Date().addingTimeInterval(3600)
-            d.deadlineHasTime = true
-        }
-        // Materialize the default spec first.
-        await scheduler.reconcile(taskID: taskID)
-        #expect(try await specs.specs(forTask: taskID).filter { $0.kind == .defaultDeadline }.count == 1)
+        let f = try await Self.makeFixture()
+        // The offset reminder is scheduled while the deadline exists.
+        await f.scheduler.reconcile(taskID: f.taskID)
+        #expect(await f.fake.pendingNotificationRequests().filter {
+            ($0.content.userInfo["taskID"] as? String) == f.taskID.uuidString
+        }.count == 1)
 
-        // Now clear the deadline and hammer reconcile concurrently. Every
-        // reconcile should converge on "no anchor → no default spec".
-        try await tasks.update(id: taskID) { d in
+        // Now clear the deadline and hammer reconcile concurrently. With no
+        // anchor, the offset reminder can't compute a fire date, so every
+        // reconcile should converge on "no pending request".
+        try await f.tasks.update(id: f.taskID) { d in
             d.deadline = nil
             d.deadlineHasTime = false
         }
         await withTaskGroup(of: Void.self) { group in
             for _ in 0..<Self.concurrentReconciles {
-                group.addTask { await scheduler.reconcile(taskID: taskID) }
+                group.addTask { await f.scheduler.reconcile(taskID: f.taskID) }
             }
         }
 
-        #expect(try await specs.specs(forTask: taskID).filter { $0.kind == .defaultDeadline }.isEmpty)
-        let pending = await fake.pendingNotificationRequests()
-        #expect(pending.filter { ($0.content.userInfo["taskID"] as? String) == taskID.uuidString }.isEmpty)
+        let pending = await f.fake.pendingNotificationRequests()
+        #expect(pending.filter { ($0.content.userInfo["taskID"] as? String) == f.taskID.uuidString }.isEmpty)
     }
 }

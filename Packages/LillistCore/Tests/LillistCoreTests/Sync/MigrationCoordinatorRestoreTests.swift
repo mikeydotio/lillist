@@ -48,6 +48,9 @@ struct MigrationCoordinatorRestoreTests {
             d.deadline = Date().addingTimeInterval(7200)
             d.deadlineHasTime = true
         }
+        // Defaults are no longer auto-created — add a user reminder so the
+        // task owns a per-task spec for restoreSteadyState to re-install.
+        _ = try await scheduler.addOffset(taskID: id, anchor: .deadline, offsetMinutes: -10)
         #expect(await fake.addedCount() >= 1)
 
         let journal = InMemoryMigrationJournalStore()

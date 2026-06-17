@@ -32,6 +32,9 @@ struct NotificationSchedulerRestoreSteadyStateTests {
             d.deadline = deadline
             d.deadlineHasTime = true
         }
+        // Defaults are no longer auto-created — a user reminder is the
+        // surviving per-task spec restoreSteadyState re-installs.
+        _ = try await scheduler.addOffset(taskID: id, anchor: .deadline, offsetMinutes: -10)
         await scheduler.cancelAllPending()
         #expect(await fake.addedCount() == 0)
 
@@ -75,6 +78,8 @@ struct NotificationSchedulerRestoreSteadyStateTests {
             d.deadline = Date().addingTimeInterval(3600)
             d.deadlineHasTime = true
         }
+        // Defaults removed — a user reminder provides the per-task pending.
+        _ = try await scheduler.addOffset(taskID: id, anchor: .deadline, offsetMinutes: -10)
         #expect(await fake.pendingNotificationRequests().contains { $0.identifier == MorningSummary.requestID })
         #expect(await fake.pendingNotificationRequests().contains { $0.identifier.hasSuffix("#devA") })
 

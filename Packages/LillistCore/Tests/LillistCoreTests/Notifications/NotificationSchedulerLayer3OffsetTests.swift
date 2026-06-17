@@ -27,8 +27,8 @@ struct NotificationSchedulerLayer3OffsetTests {
         await scheduler.reconcile(taskID: taskID)
 
         let pending = await fake.pendingNotificationRequests()
-        // Two pending: the defaultDeadline + the offsetDeadline.
-        #expect(pending.count == 2)
+        // Only the user offset fires — defaults are no longer auto-created.
+        #expect(pending.count == 1)
         let offsetReq = pending.first { $0.identifier.hasPrefix(specID.uuidString) }
         #expect(offsetReq?.content.categoryIdentifier == "lillist.offsetDeadline")
     }
