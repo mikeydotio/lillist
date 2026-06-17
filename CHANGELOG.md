@@ -3,6 +3,16 @@
 All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [v0.5.3] - 2026-06-17
+
+### Documentation
+- update map (10 docs — new-task top-insert + FAB glass) (50a41fd)
+
+### Maintenance
+- bump iOS build number to 47 (4cc3bb2)
+
+_[force]_
+
 ## [v0.5.2] - 2026-06-16
 
 ### Fixed
