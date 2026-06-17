@@ -15,8 +15,8 @@ sources:
     blob: 7888c20651cafd6509b97b2de2c4eabde8305685
   - path: Apps/Lillist-iOS/Sources/App/MetricKitObserver.swift
     blob: 198daf20635d64ed69d25a5b805147d26a4d653f
-references_modules: [Apps-Lillist-iOS-Sources-misc, Packages-LillistCore-Sources-LillistCore-Stores-chunk-1, Packages-LillistCore-Sources-LillistCore-Sync-chunk-1, Packages-LillistCore-Sources-LillistCore-CrashReporting, Packages-LillistUI-Sources-LillistUI-CrashReporting, Packages-LillistUI-Sources-LillistUI-Onboarding, Packages-LillistUI-Sources-LillistUI-Sync]
-generator: cartographer/1
+references_modules: [Apps-Lillist-iOS-Sources-misc, Packages-LillistCore-Sources-LillistCore-Stores-chunk-2, Packages-LillistCore-Sources-LillistCore-Sync-chunk-1, Packages-LillistCore-Sources-LillistCore-CrashReporting, Packages-LillistUI-Sources-LillistUI-CrashReporting, Packages-LillistUI-Sources-LillistUI-Onboarding, Packages-LillistUI-Sources-LillistUI-Sync]
+generator: cartographer/1 model=claude-sonnet-4-6
 baseline: f01d150d9612ba87d7a01645e22fe452c9cfe995
 verified: true
 ---
@@ -57,7 +57,7 @@ singletons. If this module vanished, nothing downstream could be constructed.
 
 ## Relationships
 
-- `Apps-Lillist-iOS-Sources-App.AppEnvironment -> Packages-LillistCore-Sources-LillistCore-Stores-chunk-1.TaskStore (owns)`
+- `Apps-Lillist-iOS-Sources-App.AppEnvironment -> Packages-LillistCore-Sources-LillistCore-Stores-chunk-2.TaskStore (owns)`
 - `Apps-Lillist-iOS-Sources-App.AppEnvironment -> Packages-LillistCore-Sources-LillistCore-Sync-chunk-1.MigrationCoordinator (owns)`
 - `Apps-Lillist-iOS-Sources-App.AppEnvironment -> Packages-LillistCore-Sources-LillistCore-Sync-chunk-1.AccountStateMonitor (reads)`
 - `Apps-Lillist-iOS-Sources-App.AppEnvironment -> Packages-LillistCore-Sources-LillistCore-CrashReporting.CrashReporter (owns)`

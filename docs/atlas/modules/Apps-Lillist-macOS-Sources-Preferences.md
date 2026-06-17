@@ -1,30 +1,19 @@
 ---
 module: Apps/Lillist-macOS/Sources/Preferences
 summary: "macOS Settings scene — eight env-coupled preference panes wrapping LillistCore stores and LillistUI sections"
-read_when: "macOS Preferences panes"
+read_when: "Touching macOS Preferences panes, iCloud sync toggle, notifications, trash, quick capture, diagnostics, or export/import"
 sources:
   - path: Apps/Lillist-macOS/Sources/Preferences/AdvancedPane.swift
-    blob: d89420303de7b130199435dc699956cff06ff2f0
   - path: Apps/Lillist-macOS/Sources/Preferences/CrashReportingPane.swift
-    blob: 312ea7bc27fa054e887e39c71e5dd9cc4972a14c
   - path: Apps/Lillist-macOS/Sources/Preferences/DiagnosticsPane.swift
-    blob: 86fc83af2047fc182ca7de9e1937aec14e208bde
   - path: Apps/Lillist-macOS/Sources/Preferences/GeneralPane.swift
-    blob: a602b3a6e933cb743488655d4afb9327b6bad435
   - path: Apps/Lillist-macOS/Sources/Preferences/ICloudSyncPane.swift
-    blob: 525535d588bc6f86021c5d604e1221dcb6b0ef74
   - path: Apps/Lillist-macOS/Sources/Preferences/NotificationsPane.swift
-    blob: 97b81ffa9738b1d17d8b99e163a8ca5645203f67
   - path: Apps/Lillist-macOS/Sources/Preferences/PreferencesWindow.swift
-    blob: 28817f36b86d2de4a1505301f64534ae2e45981d
   - path: Apps/Lillist-macOS/Sources/Preferences/QuickCapturePane.swift
-    blob: b66909ec19bf98e3361b4d5dcdbec551b82adb1c
   - path: Apps/Lillist-macOS/Sources/Preferences/TrashPane.swift
-    blob: 915336ea3a34d64d61da2fbd11f3d9f9c6fe239f
-references_modules: [Apps-Lillist-macOS-Sources-misc, Apps-Lillist-macOS-Sources-Hotkey, Packages-LillistCore-Sources-LillistCore-Persistence, Packages-LillistCore-Sources-LillistCore-Sync-chunk-1, Packages-LillistUI-Sources-LillistUI-Settings, Packages-LillistUI-Sources-LillistUI-Sync, Packages-LillistUI-Sources-LillistUI-iOS-misc, Packages-LillistUI-Sources-LillistUI-Accessibility]
-generator: cartographer/1
-baseline: 85a4dc8648a4280e30f533268d65bfac16701d21
-verified: true
+references_modules: [Apps-Lillist-macOS-Sources-misc, Apps-Lillist-macOS-Sources-Hotkey, Packages-LillistCore-Sources-LillistCore-Stores-chunk-1, Packages-LillistCore-Sources-LillistCore-Stores-chunk-2, Packages-LillistCore-Sources-LillistCore-Export, Packages-LillistCore-Sources-LillistCore-Diagnostics, Packages-LillistCore-Sources-LillistCore-Notifications, Packages-LillistCore-Sources-LillistCore-Sync-chunk-1, Packages-LillistUI-Sources-LillistUI-Settings, Packages-LillistUI-Sources-LillistUI-Sync, Packages-LillistUI-Sources-LillistUI-Accessibility]
+generator: cartographer/1 model=claude-sonnet-4-6
 ---
 
 # Module: Apps/Lillist-macOS/Sources/Preferences
@@ -67,21 +56,21 @@ itself is the module's single externally-instantiated surface.
 
 ## Relationships
 
-- `Apps-Lillist-macOS-Sources-Preferences.GeneralPane -> Apps-Lillist-macOS-Sources-misc.AppEnvironment (reads)`
-- `Apps-Lillist-macOS-Sources-Preferences.GeneralPane -> Packages-LillistCore-Sources-LillistCore-Persistence.PreferencesStore (reads)`
-- `Apps-Lillist-macOS-Sources-Preferences.NotificationsPane -> Packages-LillistCore-Sources-LillistCore-Persistence.PreferencesStore (writes)`
-- `Apps-Lillist-macOS-Sources-Preferences.ICloudSyncPane -> Packages-LillistUI-Sources-LillistUI-Settings.ICloudSyncSettingsSection (calls)`
-- `Apps-Lillist-macOS-Sources-Preferences.ICloudSyncPane -> Packages-LillistUI-Sources-LillistUI-Sync.SyncMigrationProgressSheet (calls)`
-- `Apps-Lillist-macOS-Sources-Preferences.ICloudSyncPane -> Packages-LillistUI-Sources-LillistUI-Sync.SyncMigrationChoiceSheet (calls)`
-- `Apps-Lillist-macOS-Sources-Preferences.ICloudSyncPane -> Packages-LillistUI-Sources-LillistUI-Sync.SyncDisableConfirmationSheet (calls)`
-- `Apps-Lillist-macOS-Sources-Preferences.ICloudSyncPane -> Packages-LillistUI-Sources-LillistUI-Sync.PauseExplainerDialog (calls)`
-- `Apps-Lillist-macOS-Sources-Preferences.ICloudSyncPane -> Packages-LillistCore-Sources-LillistCore-Sync-chunk-1.MigrationCoordinator (calls)`
-- `Apps-Lillist-macOS-Sources-Preferences.ICloudSyncPane -> Packages-LillistCore-Sources-LillistCore-Persistence.MigrationPhase (extends)`
-- `Apps-Lillist-macOS-Sources-Preferences.QuickCapturePane -> Apps-Lillist-macOS-Sources-Hotkey.HotkeyRecorder (calls)`
-- `Apps-Lillist-macOS-Sources-Preferences.QuickCapturePane -> Apps-Lillist-macOS-Sources-Hotkey.GlobalHotkeyMonitor (calls)`
-- `Apps-Lillist-macOS-Sources-Preferences.DiagnosticsPane -> Packages-LillistUI-Sources-LillistUI-iOS-misc.DiagnosticsIncludeSheet (calls)`
-- `Apps-Lillist-macOS-Sources-Preferences.DiagnosticsPane -> Packages-LillistUI-Sources-LillistUI-iOS-misc.DiagnosticZipDocument (owns)`
-- `Apps-Lillist-macOS-Sources-Preferences.TrashPane -> Packages-LillistUI-Sources-LillistUI-Accessibility.AccessibilityAnnouncements (calls)`
+- `Apps-Lillist-macOS-Sources-Preferences.GeneralPane -> Apps-Lillist-macOS-Sources-misc.AppEnvironment (reads)` — `@Environment(AppEnvironment.self)` in every pane (`Apps/Lillist-macOS/Sources/Preferences/GeneralPane.swift:12`)
+- `Apps-Lillist-macOS-Sources-Preferences.GeneralPane -> Packages-LillistCore-Sources-LillistCore-Stores-chunk-1.PreferencesStore (reads)` — subscribes to `prefsStream` and calls `preferencesStore.update` (`Apps/Lillist-macOS/Sources/Preferences/GeneralPane.swift:56`)
+- `Apps-Lillist-macOS-Sources-Preferences.NotificationsPane -> Packages-LillistCore-Sources-LillistCore-Notifications.NotificationScheduler (calls)` — `applySchedulerSideEffects` calls `updateDefaultAllDayTime`, `installMorningSummary`, `uninstallMorningSummary` (`Apps/Lillist-macOS/Sources/Preferences/NotificationsPane.swift:133`)
+- `Apps-Lillist-macOS-Sources-Preferences.TrashPane -> Packages-LillistCore-Sources-LillistCore-Stores-chunk-2.TaskStore (calls)` — `emptyTrash` calls `environment.taskStore.purgeAll()` (`Apps/Lillist-macOS/Sources/Preferences/TrashPane.swift:97`)
+- `Apps-Lillist-macOS-Sources-Preferences.TrashPane -> Packages-LillistUI-Sources-LillistUI-Accessibility.AccessibilityAnnouncements (calls)` — posts result string with priority after purge (`Apps/Lillist-macOS/Sources/Preferences/TrashPane.swift:103`)
+- `Apps-Lillist-macOS-Sources-Preferences.ICloudSyncPane -> Packages-LillistUI-Sources-LillistUI-Sync.ICloudSyncSettingsSection (calls)` — instantiates `ICloudSyncSettingsSection(viewState:actions:)` (`Apps/Lillist-macOS/Sources/Preferences/ICloudSyncPane.swift:20`)
+- `Apps-Lillist-macOS-Sources-Preferences.ICloudSyncPane -> Packages-LillistUI-Sources-LillistUI-Sync.SyncMigrationChoiceSheet (calls)` — sheet on enable toggle (`Apps/Lillist-macOS/Sources/Preferences/ICloudSyncPane.swift:30`)
+- `Apps-Lillist-macOS-Sources-Preferences.ICloudSyncPane -> Packages-LillistUI-Sources-LillistUI-Sync.SyncMigrationProgressSheet (calls)` — sheet keyed on `activePhase` (`Apps/Lillist-macOS/Sources/Preferences/ICloudSyncPane.swift:52`)
+- `Apps-Lillist-macOS-Sources-Preferences.ICloudSyncPane -> Packages-LillistUI-Sources-LillistUI-Sync.SyncDisableConfirmationSheet (calls)` — sheet on disable toggle (`Apps/Lillist-macOS/Sources/Preferences/ICloudSyncPane.swift:60`)
+- `Apps-Lillist-macOS-Sources-Preferences.ICloudSyncPane -> Packages-LillistUI-Sources-LillistUI-Sync.PauseExplainerDialog (calls)` — sheet when paused indicator is tapped (`Apps/Lillist-macOS/Sources/Preferences/ICloudSyncPane.swift:74`)
+- `Apps-Lillist-macOS-Sources-Preferences.ICloudSyncPane -> Packages-LillistCore-Sources-LillistCore-Sync-chunk-1.MigrationCoordinator (calls)` — `runMigration` calls `beginEnable`/`beginDisable` and reads `progressStream` (`Apps/Lillist-macOS/Sources/Preferences/ICloudSyncPane.swift:164`)
+- `Apps-Lillist-macOS-Sources-Preferences.AdvancedPane -> Packages-LillistCore-Sources-LillistCore-Export.Exporter (calls)` — `runExport` constructs `Exporter(persistence:preferences:)` and calls `.export(to:)` (`Apps/Lillist-macOS/Sources/Preferences/AdvancedPane.swift:92`)
+- `Apps-Lillist-macOS-Sources-Preferences.AdvancedPane -> Packages-LillistCore-Sources-LillistCore-Export.Importer (calls)` — `runImport` constructs `Importer(persistence:)` and calls `.importBundle(at:conflictPolicy:)` (`Apps/Lillist-macOS/Sources/Preferences/AdvancedPane.swift:114`)
+- `Apps-Lillist-macOS-Sources-Preferences.DiagnosticsPane -> Packages-LillistCore-Sources-LillistCore-Diagnostics.DiagnosticPackageBuilder (calls)` — `prepare()` constructs and calls `builder.build(options:)` (`Apps/Lillist-macOS/Sources/Preferences/DiagnosticsPane.swift:104`)
+- `Apps-Lillist-macOS-Sources-Preferences.QuickCapturePane -> Apps-Lillist-macOS-Sources-Hotkey.GlobalHotkeyMonitor (calls)` — `onChange` calls `monitor.reregister(combo:)` after prefs write (`Apps/Lillist-macOS/Sources/Preferences/QuickCapturePane.swift:49`)
 
 ## Type notes
 
@@ -92,12 +81,12 @@ hydrate via `subscribe()` (initial `read()` then `prefsStream`), gate a derived
 `binding`, and on `onChange(of: prefs)` write the full snapshot via
 `preferencesStore.update`. `DiagnosticsPane` deviates — its toggle lives in
 `DevicePreferencesStore`, so it uses local `@State` + a write-through binding and
-a `didHydrate` guard (`DiagnosticsPane.swift:83`) instead of the prefs stream.
+a `didHydrate` guard (`Apps/Lillist-macOS/Sources/Preferences/DiagnosticsPane.swift:83`) instead of the prefs stream.
 `ICloudSyncPane` owns the migration UI: `runMigration` spawns a phase-stream task
-that mutates `activePhase`, cancelled via `defer` (`ICloudSyncPane.swift:185`); the
+that mutates `activePhase`, cancelled via `defer` (`Apps/Lillist-macOS/Sources/Preferences/ICloudSyncPane.swift:185`); the
 retroactive `MigrationPhase: Identifiable` conformance keys the progress
 `.sheet(item:)`. Every pane ends in `.fixedSize()` so the pane content drives the
-window size and the `TabView` animates between tabs (`PreferencesWindow.swift:31`).
+window size and the `TabView` animates between tabs (`Apps/Lillist-macOS/Sources/Preferences/PreferencesWindow.swift:31`).
 
 ## External deps
 

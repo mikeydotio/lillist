@@ -21,8 +21,8 @@ sources:
     blob: ab94fc70cb6b095d01a17d991bf7824320909a59
   - path: Apps/Lillist-iOS/Sources/Settings/TrashSection.swift
     blob: 047a2d56222b6c4b659d138012e3afa69d484205
-references_modules: [Apps-Lillist-iOS-Sources-App, Apps-Lillist-iOS-Sources-misc, Packages-LillistUI-Sources-LillistUI-Settings, Packages-LillistUI-Sources-LillistUI-Sync, Packages-LillistUI-Sources-LillistUI-iOS-misc, Packages-LillistCore-Sources-LillistCore-Persistence, Packages-LillistCore-Sources-LillistCore-Sync, Packages-LillistCore-Sources-LillistCore-Export, Packages-LillistCore-Sources-LillistCore-Diagnostics, Packages-LillistCore-Sources-LillistCore-misc]
-generator: cartographer/1
+references_modules: [Apps-Lillist-iOS-Sources-App, Apps-Lillist-iOS-Sources-misc, Packages-LillistUI-Sources-LillistUI-Settings, Packages-LillistUI-Sources-LillistUI-Sync, Packages-LillistUI-Sources-LillistUI-iOS-misc, Packages-LillistCore-Sources-LillistCore-Persistence, Packages-LillistCore-Sources-LillistCore-Sync-chunk-1, Packages-LillistCore-Sources-LillistCore-Export, Packages-LillistCore-Sources-LillistCore-Diagnostics, Packages-LillistCore-Sources-LillistCore-misc]
+generator: cartographer/1 model=claude-sonnet-4-6
 baseline: 85a4dc8648a4280e30f533268d65bfac16701d21
 verified: true
 ---
@@ -71,7 +71,7 @@ only symbol consumed outside this directory (by the Tasks tab's gear action).
 - `Apps-Lillist-iOS-Sources-Settings.ICloudSyncSection -> Packages-LillistUI-Sources-LillistUI-Sync.SyncMigrationProgressSheet (calls)`
 - `Apps-Lillist-iOS-Sources-Settings.ICloudSyncSection -> Packages-LillistUI-Sources-LillistUI-Sync.SyncDisableConfirmationSheet (calls)`
 - `Apps-Lillist-iOS-Sources-Settings.ICloudSyncSection -> Packages-LillistUI-Sources-LillistUI-Sync.PauseExplainerDialog (calls)`
-- `Apps-Lillist-iOS-Sources-Settings.runMigration -> Packages-LillistCore-Sources-LillistCore-Sync.MigrationCoordinator (calls)`
+- `Apps-Lillist-iOS-Sources-Settings.runMigration -> Packages-LillistCore-Sources-LillistCore-Sync-chunk-1.MigrationCoordinator (calls)`
 - `Apps-Lillist-iOS-Sources-Settings.MigrationPhase -> Packages-LillistCore-Sources-LillistCore-Persistence.MigrationPhase (extends)`
 - `Apps-Lillist-iOS-Sources-Settings.AdvancedSection -> Packages-LillistCore-Sources-LillistCore-Export.Exporter (calls)`
 - `Apps-Lillist-iOS-Sources-Settings.AdvancedSection -> Packages-LillistCore-Sources-LillistCore-Export.Importer (calls)`

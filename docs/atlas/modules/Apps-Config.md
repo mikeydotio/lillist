@@ -4,15 +4,10 @@ summary: "Shared xcconfig scaffold keeping the signing team ID out of git and tr
 read_when: "Code signing & build number"
 sources:
   - path: Apps/Config/BuildNumber.xcconfig
-    blob: b2e6763323d1ebc8c6941d0afc3ea3a2d4c9d906
   - path: Apps/Config/Signing.xcconfig
-    blob: 91c22af2ba9d10704a892e78b54461d6bc12d1cf
   - path: Apps/Config/Signing.local.xcconfig.example
-    blob: 2c771256d16c8c8d3f09dcba171065b72979afe2
 references_modules: [Apps-misc, Apps-Lillist-iOS-misc, Tools]
-generator: cartographer/1
-baseline: db4037b64559daa37c32ba9c4ed478a6f8a83a43
-verified: true
+generator: cartographer/1 model=claude-sonnet-4-6
 ---
 
 # Module: Apps/Config
@@ -47,10 +42,10 @@ settings are:
 
 ## Relationships
 
-- `Apps-misc.project.yml -> Apps-Config.Signing.xcconfig (reads)`
-- `Apps-Lillist-iOS-misc.project.yml -> Apps-Config.Signing.xcconfig (reads)`
-- `Apps-Config.Signing.xcconfig -> Apps-Config.BuildNumber.xcconfig (reads)`
-- `Tools.bump-build-number.sh -> Apps-Config.BuildNumber.xcconfig (writes)`
+- `Apps-misc.project.yml -> Apps-Config.Signing.xcconfig (reads)` — `Apps/project.yml:14-15` sets `configFiles` for both Debug and Release
+- `Apps-Lillist-iOS-misc.project.yml -> Apps-Config.Signing.xcconfig (reads)` — `Apps/Lillist-iOS/project.yml:14-15` sets `configFiles` for both Debug and Release
+- `Apps-Config.Signing.xcconfig -> Apps-Config.BuildNumber.xcconfig (reads)` — `Apps/Config/Signing.xcconfig:17` hard-includes BuildNumber
+- `Tools.bump-build-number.sh -> Apps-Config.BuildNumber.xcconfig (writes)` — Archive pre-action at `Apps/Lillist-iOS/project.yml:271` invokes bump script
 
 ## Type notes
 
@@ -69,3 +64,8 @@ build (`Apps/Config/Signing.local.xcconfig.example:4`).
 ## External deps
 
 - xcconfig — Xcode build-configuration format; `#include` / `#include?` and `$()` variable expansion
+
+## Gotchas
+
+- `CURRENT_PROJECT_VERSION` holds the NEXT build's number before an archive — the deployed build ships the pre-bump value; report the number from deployit's output, not this file (`Apps/Config/BuildNumber.xcconfig:1-5`)
+- `Signing.local.xcconfig` is gitignored; omitting it does not break CI (optional include) but no signed build succeeds until a contributor fills in their Team ID (`Apps/Config/Signing.xcconfig:13`, `Apps/Config/Signing.local.xcconfig.example:4-11`)

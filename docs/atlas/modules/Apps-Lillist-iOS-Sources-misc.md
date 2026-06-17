@@ -1,37 +1,28 @@
 ---
 module: "Apps/Lillist-iOS/Sources (misc)"
-summary: "iOS app shell, primary tasks container, onboarding, Quick Capture host, and scene command/binding plumbing"
-read_when: "iOS root shell, Quick Capture"
+summary: "iOS root shell, task list container, unified editor host, onboarding, and scene command/binding plumbing"
+read_when: "iOS root shell, Quick Capture, task editor overlay, onboarding, or scene bindings"
 sources:
   - path: Apps/Lillist-iOS/Sources/Commands/LillistCommands.swift
-    blob: 166463128417565918949336bd955c5f5226882c
   - path: Apps/Lillist-iOS/Sources/Common/SceneBindings.swift
-    blob: 4c5ed74be926c762f0403a874c3427d9b503d503
+  - path: Apps/Lillist-iOS/Sources/Editor/TaskEditorHost.swift
   - path: Apps/Lillist-iOS/Sources/Onboarding/OnboardingScreen.swift
-    blob: bd8a5898a5de3b3ec6ebf2feb8ce63b9659f4758
-  - path: Apps/Lillist-iOS/Sources/QuickCapture/QuickCaptureDialogHost.swift
-    blob: 7a2ea82fc390b5621830749b29643bc1165eec38
   - path: Apps/Lillist-iOS/Sources/Root/RootShell.swift
-    blob: 81fd318944a7aa6870c2de2944e184f110e85dd7
   - path: Apps/Lillist-iOS/Sources/Tasks/TasksView.swift
-    blob: 5fcd554cddd7a3c44bb76148409278e4400aef49
-references_modules: [Apps-Lillist-iOS-Sources-App, Apps-Lillist-iOS-Sources-Detail, Apps-Lillist-iOS-Sources-Settings, Packages-LillistCore-Sources-LillistCore-Stores-chunk-1, Packages-LillistCore-Sources-LillistCore-Rules, Packages-LillistUI-Sources-LillistUI-iOS-misc, Packages-LillistUI-Sources-LillistUI-QuickCapture, Packages-LillistUI-Sources-LillistUI-DragReorder, Packages-LillistUI-Sources-LillistUI-Onboarding, Packages-LillistUI-Sources-LillistUI-misc]
-generator: cartographer/1
-baseline: db4037b64559daa37c32ba9c4ed478a6f8a83a43
-verified: true
+references_modules: [Apps-Lillist-iOS-Sources-App, Apps-Lillist-iOS-Sources-Settings, Packages-LillistCore-Sources-LillistCore-Stores-chunk-2, Packages-LillistCore-Sources-LillistCore-Rules, Packages-LillistCore-Sources-LillistCore-Notifications, Packages-LillistUI-Sources-LillistUI-iOS-Tasks, Packages-LillistUI-Sources-LillistUI-iOS-misc, Packages-LillistUI-Sources-LillistUI-Onboarding, Packages-LillistUI-Sources-LillistUI-DragReorder, Packages-LillistUI-Sources-LillistUI-misc]
+generator: cartographer/1 model=claude-sonnet-4-6
 ---
 
 # Module: Apps/Lillist-iOS/Sources (misc)
 
 ## Purpose
 
-The iOS app-target glue between SwiftUI scenes and the shared `LillistUI` presentation
-layer, after the 3-tab restructure collapsed to a single primary surface. These container
-views own `@State`, `.task` lifecycle, `AppEnvironment` reads, and navigation wiring while
-delegating all rendering to pure `LillistUI` screens — the container/presenter split that
-lets tour tests render screens with frozen mock data. If this layer vanished, the iOS app
-would have no root shell, no list-to-store mutation routing, and no Quick Capture or
-onboarding entry points.
+The iOS app-target glue between SwiftUI scenes and the shared `LillistUI` presentation layer,
+after the 3-tab restructure collapsed to a single primary surface. Container views own `@State`,
+`.task` lifecycle, `AppEnvironment` reads, and navigation wiring while delegating all rendering to
+pure `LillistUI` screens. `TaskEditorHost` replaced `QuickCaptureDialogHost`: a singleton floating
+overlay that handles both new capture and full task editing. If this layer vanished, the iOS app
+would have no root shell, no list-to-store mutation routing, and no editor or onboarding entry points.
 
 ## Public API
 
@@ -43,68 +34,78 @@ symbols other files in the target construct or wire up.
 | `IsQuickCapturePresentedBindingKey` | struct | `Apps/Lillist-iOS/Sources/Common/SceneBindings.swift:14` | EnvironmentKey defaulting the Quick Capture presentation binding to `.constant(false)` |
 | `LillistCommands` | struct | `Apps/Lillist-iOS/Sources/Commands/LillistCommands.swift:15` | Scene `Commands`; exposes only Quick Capture (`⌘⇧N`) to the iPadOS hold-⌘ overlay |
 | `OnboardingScreen` | struct | `Apps/Lillist-iOS/Sources/Onboarding/OnboardingScreen.swift:16` | First-launch full-screen cover; takes four injected deps, calls `onCompleted` when done |
-| `QuickCaptureDialogHost` | struct | `Apps/Lillist-iOS/Sources/QuickCapture/QuickCaptureDialogHost.swift:19` | ViewModifier hosting the capture dialog + discard toast; runs parse→create→tag→deadline; accepts `onCreated: () async -> Void` (default no-op) invoked after a successful create, before dismiss |
-| `RootShell` | struct | `Apps/Lillist-iOS/Sources/Root/RootShell.swift:15` | Top-level iOS shell; `NavigationSplitView` with `TasksView` sidebar + detail column |
+| `RootShell` | struct | `Apps/Lillist-iOS/Sources/Root/RootShell.swift:12` | Top-level iOS shell; `NavigationStack` with `TasksView` as sole primary content |
 | `SortBindingKey` | struct | `Apps/Lillist-iOS/Sources/Common/SceneBindings.swift:18` | EnvironmentKey defaulting `TasksSort` selection to `.personalized` |
+| `TaskEditorHost` | struct | `Apps/Lillist-iOS/Sources/Editor/TaskEditorHost.swift:17` | `ViewModifier` singleton floating editor; driven by `newCaptureTrigger` and `openTaskID` bindings |
 | `TasksView` | struct | `Apps/Lillist-iOS/Sources/Tasks/TasksView.swift:9` | Container for the single primary surface; owns fetch/reload and delegates to `TasksScreen` |
 
 ## Load-bearing internals
 
 | Symbol | Kind | Location | Why it matters |
 | --- | --- | --- | --- |
-| `reload` | func | `Apps/Lillist-iOS/Sources/Tasks/TasksView.swift:173` | Single re-fetch path; every mutation and filter/sort/search change funnels through it |
-| `buildActivePredicateGroup` | func | `Apps/Lillist-iOS/Sources/Tasks/TasksView.swift:204` | Composes quick tokens, saved filters, and search text into the store query |
-| `submit` | func | `Apps/Lillist-iOS/Sources/QuickCapture/QuickCaptureDialogHost.swift:77` | Quick Capture pipeline; holds the empty-title gate and double-write lock; creates with `placement: .top`, then calls `onCreated()` before dismiss |
-| `applyDrop` | func | `Apps/Lillist-iOS/Sources/Tasks/TasksView.swift:305` | Routes resolved drag-drop to reorder/reparent store mutations |
-| `setStatus` | func | `Apps/Lillist-iOS/Sources/Tasks/TasksView.swift:333` | Status transition; surfaces a toast on failure rather than swallowing it |
-| `performRefreshArchive` | func | `Apps/Lillist-iOS/Sources/Tasks/TasksView.swift:271` | Pull-to-refresh archives visible closed tasks and arms the undo banner |
-| `isQuickCapturePresentedBinding` | var | `Apps/Lillist-iOS/Sources/Common/SceneBindings.swift:23` | EnvironmentValues accessor shared by `LillistCommands`, the FAB, and the host |
+| `reload` | func | `Apps/Lillist-iOS/Sources/Tasks/TasksView.swift:192` | Single re-fetch path; every mutation and filter/sort/search change funnels through it |
+| `buildActivePredicateGroup` | func | `Apps/Lillist-iOS/Sources/Tasks/TasksView.swift:223` | Composes quick tokens, saved filters, and search text into the store query |
+| `applyDrop` | func | `Apps/Lillist-iOS/Sources/Tasks/TasksView.swift:324` | Routes resolved drag-drop to reorder/reparent store mutations via `DragDropResolver` |
+| `setStatus` | func | `Apps/Lillist-iOS/Sources/Tasks/TasksView.swift:352` | Status transition; surfaces a toast on failure rather than swallowing it |
+| `performRefreshArchive` | func | `Apps/Lillist-iOS/Sources/Tasks/TasksView.swift:290` | Pull-to-refresh archives visible closed tasks and arms the undo banner |
+| `isQuickCapturePresentedBinding` | var | `Apps/Lillist-iOS/Sources/Common/SceneBindings.swift:23` | EnvironmentValues accessor shared by `LillistCommands`, the FAB, and `TaskEditorHost` |
+| `complete` | func | `Apps/Lillist-iOS/Sources/Onboarding/OnboardingScreen.swift:122` | Calls `installer.installIfNeeded`, marks onboarding done, posts AX announcement on error |
 
 ## Relationships
 
-- `Apps-Lillist-iOS-Sources-misc.TasksView -> Packages-LillistUI-Sources-LillistUI-iOS-misc.TasksScreen (calls)`
-- `Apps-Lillist-iOS-Sources-misc.TasksView -> Packages-LillistCore-Sources-LillistCore-Stores-chunk-1.TaskStore (calls)`
+- `Apps-Lillist-iOS-Sources-misc.TasksView -> Packages-LillistUI-Sources-LillistUI-iOS-Tasks.TasksScreen (calls)`
+- `Apps-Lillist-iOS-Sources-misc.TasksView -> Packages-LillistCore-Sources-LillistCore-Stores-chunk-2.TaskStore (calls)`
 - `Apps-Lillist-iOS-Sources-misc.TasksView -> Packages-LillistCore-Sources-LillistCore-Rules.PredicateGroup (owns)`
 - `Apps-Lillist-iOS-Sources-misc.TasksView -> Packages-LillistUI-Sources-LillistUI-DragReorder.DragDropResolver (calls)`
 - `Apps-Lillist-iOS-Sources-misc.TasksView -> Packages-LillistUI-Sources-LillistUI-misc.StatusCycler (calls)`
 - `Apps-Lillist-iOS-Sources-misc.TasksView -> Apps-Lillist-iOS-Sources-Settings.SettingsTab (calls)`
 - `Apps-Lillist-iOS-Sources-misc.TasksView -> Apps-Lillist-iOS-Sources-App.AppEnvironment (reads)`
-- `Apps-Lillist-iOS-Sources-misc.RootShell -> Apps-Lillist-iOS-Sources-Detail.TaskDetailView (calls)`
+- `Apps-Lillist-iOS-Sources-misc.TasksView -> Apps-Lillist-iOS-Sources-misc.TaskEditorHost (owns)`
 - `Apps-Lillist-iOS-Sources-misc.RootShell -> Apps-Lillist-iOS-Sources-misc.TasksView (calls)`
-- `Apps-Lillist-iOS-Sources-misc.QuickCaptureDialogHost -> Packages-LillistUI-Sources-LillistUI-QuickCapture.QuickCaptureParser (calls)`
-- `Apps-Lillist-iOS-Sources-misc.QuickCaptureDialogHost -> Packages-LillistUI-Sources-LillistUI-iOS-misc.QuickCaptureDialog (calls)`
-- `Apps-Lillist-iOS-Sources-misc.QuickCaptureDialogHost -> Packages-LillistCore-Sources-LillistCore-Rules.RelativeDateResolver (calls)`
+- `Apps-Lillist-iOS-Sources-misc.TaskEditorHost -> Packages-LillistUI-Sources-LillistUI-misc.TaskEditorView (calls)`
+- `Apps-Lillist-iOS-Sources-misc.TaskEditorHost -> Packages-LillistUI-Sources-LillistUI-iOS-misc.QuickCaptureDiscardToast (calls)`
 - `Apps-Lillist-iOS-Sources-misc.OnboardingScreen -> Packages-LillistUI-Sources-LillistUI-Onboarding.OnboardingContent (calls)`
+- `Apps-Lillist-iOS-Sources-misc.OnboardingScreen -> Packages-LillistCore-Sources-LillistCore-Notifications.NotificationPermissions (calls)`
 - `Apps-Lillist-iOS-Sources-App.LillistApp -> Apps-Lillist-iOS-Sources-misc.LillistCommands (calls)`
 - `Apps-Lillist-iOS-Sources-App.LillistApp -> Apps-Lillist-iOS-Sources-misc.RootShell (calls)`
 - `Apps-Lillist-iOS-Sources-App.LillistApp -> Apps-Lillist-iOS-Sources-misc.OnboardingScreen (calls)`
 
 ## Type notes
 
-`TasksView`, `QuickCaptureDialogHost`, and `OnboardingScreen` read dependencies via
-`@Environment(AppEnvironment.self)` (e.g. `Apps/Lillist-iOS/Sources/Tasks/TasksView.swift:10`),
-never holding stores directly. Scene state lives one level up in `LillistApp`: the two
-EnvironmentKeys in `SceneBindings.swift` thread `Binding<Bool>` (Quick Capture presentation)
-and `Binding<TasksSort>` (`@AppStorage`-backed sort) down to deep views; both default to
-`.constant(...)` so previews render without a host. `submit()` is guarded against
-double-writes by the `submitting` flag and gates empty titles inline since the redesigned
-dialog has no Save button (`Apps/Lillist-iOS/Sources/QuickCapture/QuickCaptureDialogHost.swift:84`).
-`QuickCaptureDialogHost.onCreated` is a `() async -> Void` callback (default `{}`) invoked after
-create+tag+deadline apply, before `isPresented = false` — the owning view passes `{ await reload() }`
-so the new task (inserted `.top`) appears on screen before the dialog closes
-(`Apps/Lillist-iOS/Sources/Tasks/TasksView.swift:104`–`106`).
-`applyDrop` is `@MainActor` and uses `DragDropResolver` as the single drop-resolution source
-shared with macOS. First populate is unanimated via `hasLoadedOnce`
-(`Apps/Lillist-iOS/Sources/Tasks/TasksView.swift:33`).
+`TaskEditorHost` is a `ViewModifier`, not a `View` — applied via `.modifier(TaskEditorHost(...))` at
+`Apps/Lillist-iOS/Sources/Tasks/TasksView.swift:109`. It is a singleton: opening while already
+presented re-targets to the new task (existing) or is silently ignored (new capture). A discard of
+a never-promoted draft triggers an undo toast (`QuickCaptureDiscardToast`) that re-opens the editor
+with the preserved text (`Apps/Lillist-iOS/Sources/Editor/TaskEditorHost.swift:120–125`).
+
+`TasksView`, and `OnboardingScreen` read dependencies via `@Environment(AppEnvironment.self)` (e.g.
+`Apps/Lillist-iOS/Sources/Tasks/TasksView.swift:10`), never holding stores directly. Scene state
+lives one level up in `LillistApp`: the two EnvironmentKeys in `SceneBindings.swift` thread
+`Binding<Bool>` (Quick Capture presentation) and `Binding<TasksSort>` (`@AppStorage`-backed sort)
+down to deep views; both default to `.constant(...)` so previews render without a host.
+
+`RootShell` retired the `NavigationSplitView` + detail column in favor of a plain `NavigationStack`;
+row taps set `openTaskID` which `TaskEditorHost` observes to open the floating editor
+(`Apps/Lillist-iOS/Sources/Root/RootShell.swift:14`).
+
+`applyDrop` is `@MainActor` and uses `DragDropResolver` as the single drop-resolution source shared
+with macOS. First populate is unanimated via `hasLoadedOnce`
+(`Apps/Lillist-iOS/Sources/Tasks/TasksView.swift:33`). Search input is debounced with a 250 ms
+`Task.sleep` cancellation pattern (`Apps/Lillist-iOS/Sources/Tasks/TasksView.swift:126–134`).
+
+`OnboardingScreen` follows explicit constructor injection — the presenting view reads
+`@Environment(AppEnvironment.self)` and forwards only the four needed dependencies
+(`Apps/Lillist-iOS/Sources/Onboarding/OnboardingScreen.swift:17–20`).
 
 ## External deps
 
-- SwiftUI — all views, `Commands`, `EnvironmentKey`, `NavigationSplitView`, `@AppStorage`
+- SwiftUI — all views, `Commands`, `EnvironmentKey`, `NavigationStack`, `@AppStorage`
+- PhotosUI — `PhotosPicker` for image attachment selection in `TaskEditorHost`
 - LillistCore — store DTOs, predicate/rules value types, notification permission types
-- LillistUI — presenter screens, theme tokens, Quick Capture parser/dialog, drag controller
+- LillistUI — presenter screens, theme tokens, drag controller, editor view, discard toast
 
 ## Gotchas
 
-- Status-tap failures must stay distinguishable from no-op taps — `setStatus` raises a toast on a failed write (`Apps/Lillist-iOS/Sources/Tasks/TasksView.swift:333`), per the dead-status-tap RCA.
-- `submit()` records a `quick_capture.submit_failed` breadcrumb on error as belt-and-suspenders against a future `try?` swallowing the failure (`Apps/Lillist-iOS/Sources/QuickCapture/QuickCaptureDialogHost.swift:121`).
-- Pull-to-refresh in the Done view falls back to plain reload so it doesn't archive the tasks the user is browsing (`Apps/Lillist-iOS/Sources/Tasks/TasksView.swift:273`).
+- `LillistCommands` uses `⌘⇧N` (not `⌘N`) because `⌘N` is reserved by iPadOS (`Apps/Lillist-iOS/Sources/Commands/LillistCommands.swift:9`).
+- `setStatus` raises a toast on a failed write rather than swallowing it, per the dead-status-tap RCA (`Apps/Lillist-iOS/Sources/Tasks/TasksView.swift:352`).
+- Pull-to-refresh in the Done view falls back to plain reload so it doesn't archive the tasks the user is browsing (`Apps/Lillist-iOS/Sources/Tasks/TasksView.swift:291–294`).
