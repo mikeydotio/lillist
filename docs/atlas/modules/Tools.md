@@ -4,14 +4,10 @@ summary: "CI localization lint and iOS archive build-number bump scripts; deploy
 read_when: "Touching CI localization checks, iOS build-number bumping, or archive pre-actions"
 sources:
   - path: Tools/CI/check-lillistui-localization.sh
-    blob: 223c47dafe800fccb53e98157d3e88c6b8af73d7
   - path: Tools/Deploy/README.md
-    blob: 1b962f2af9704077efb0d9f601076a02e4f67ee8
   - path: Tools/Deploy/bump-build-number.sh
-    blob: b79272bdb5bf85d95db4b2eea071562470995dd3
 references_modules: [Apps-Config, Packages-LillistUI-misc]
-generator: cartographer/1
-baseline: 34dfea7772679dbabc08fabd6fbba53f6ad5856b
+generator: cartographer/1 model=claude-sonnet-4-6
 ---
 
 # Module: Tools
