@@ -3,25 +3,16 @@ module: Packages/LillistCore/Sources/LillistCore/ManagedObjects
 summary: "Hand-written @NSManaged subclasses — the private Core Data row types that stores read/write and DTOs are projected from"
 read_when: "Touching Core Data entity shape, adding attributes, or tracing store-layer NSManagedObject access"
 sources:
-  - path: "Packages/LillistCore/Sources/LillistCore/ManagedObjects/AppPreferences+CoreData.swift"
-    blob: 45b2c0207922cc1482ecc9454154885f40d6b504
-  - path: "Packages/LillistCore/Sources/LillistCore/ManagedObjects/Attachment+CoreData.swift"
-    blob: f9c9ef801251fb7cf32a3cf91c777614bb04ffe6
-  - path: "Packages/LillistCore/Sources/LillistCore/ManagedObjects/JournalEntry+CoreData.swift"
-    blob: 2f5063ad7f2bcad77405aeb1331a14e7715b07d7
-  - path: "Packages/LillistCore/Sources/LillistCore/ManagedObjects/LillistTask+CoreData.swift"
-    blob: cefeac967fc046c6d5551fdb48501d970c2afb30
-  - path: "Packages/LillistCore/Sources/LillistCore/ManagedObjects/NotificationSpec+CoreData.swift"
-    blob: 0d3763da50f713f1f1928b03adec02d8d92b5eb5
-  - path: "Packages/LillistCore/Sources/LillistCore/ManagedObjects/Series+CoreData.swift"
-    blob: 5571ecb640c8eac0151caf139ba25ac8379f14e4
-  - path: "Packages/LillistCore/Sources/LillistCore/ManagedObjects/SmartFilter+CoreData.swift"
-    blob: a742d4be2470d4706931d2cb182777f1b3f7bae2
-  - path: "Packages/LillistCore/Sources/LillistCore/ManagedObjects/Tag+CoreData.swift"
-    blob: 2bdf18d272d768aaeed043a1f3714df7d148a25b
+  - path: Packages/LillistCore/Sources/LillistCore/ManagedObjects/AppPreferences+CoreData.swift
+  - path: Packages/LillistCore/Sources/LillistCore/ManagedObjects/Attachment+CoreData.swift
+  - path: Packages/LillistCore/Sources/LillistCore/ManagedObjects/JournalEntry+CoreData.swift
+  - path: Packages/LillistCore/Sources/LillistCore/ManagedObjects/LillistTask+CoreData.swift
+  - path: Packages/LillistCore/Sources/LillistCore/ManagedObjects/NotificationSpec+CoreData.swift
+  - path: Packages/LillistCore/Sources/LillistCore/ManagedObjects/Series+CoreData.swift
+  - path: Packages/LillistCore/Sources/LillistCore/ManagedObjects/SmartFilter+CoreData.swift
+  - path: Packages/LillistCore/Sources/LillistCore/ManagedObjects/Tag+CoreData.swift
 references_modules: [Packages-LillistCore-Sources-LillistCore-Model, Packages-LillistCore-Sources-LillistCore-Recurrence]
-generator: cartographer/1
-baseline: 34dfea7772679dbabc08fabd6fbba53f6ad5856b
+generator: cartographer/1 model=claude-sonnet-4-6
 ---
 
 # Module: Packages/LillistCore/Sources/LillistCore/ManagedObjects

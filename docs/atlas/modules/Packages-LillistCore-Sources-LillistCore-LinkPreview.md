@@ -4,20 +4,13 @@ summary: "URL unfurl pipeline — SSRF-gated fetch, OpenGraph parsing, and metad
 read_when: "Touching link preview, URL unfurling, OpenGraph metadata, or SSRF policy"
 sources:
   - path: Packages/LillistCore/Sources/LillistCore/LinkPreview/LinkPreviewFetching.swift
-    blob: f520a770d2d7e21d3450199c06dd1c912c9dbf25
   - path: Packages/LillistCore/Sources/LillistCore/LinkPreview/LinkPreviewMetadata.swift
-    blob: 083976837615055d4a04b2123ab1b8e4a4007626
   - path: Packages/LillistCore/Sources/LillistCore/LinkPreview/LinkPreviewUnfurler.swift
-    blob: d292e0ea74212553d800ff98fc7ea5c4d4e24ad7
   - path: Packages/LillistCore/Sources/LillistCore/LinkPreview/OpenGraphParser.swift
-    blob: ad3ca6edceb8c1b9e40cecb09f1a52cd4beec693
   - path: Packages/LillistCore/Sources/LillistCore/LinkPreview/URLPreviewPolicy.swift
-    blob: 6fdaac257e7c6e4a0fa0fc7bc010ec3326b09de7
   - path: Packages/LillistCore/Sources/LillistCore/LinkPreview/URLSessionLinkPreviewFetcher.swift
-    blob: a0806e059cf1ad66ed6e81ff912f662b77096e13
 references_modules: [Packages-LillistCore-Sources-LillistCore-Stores-chunk-1, Packages-LillistCore-Sources-LillistCore-CLIBridge-Handlers-chunk-1, Extensions-ShareExtension-iOS]
 generator: cartographer/1
-baseline: 34dfea7772679dbabc08fabd6fbba53f6ad5856b
 ---
 
 # Module: Packages/LillistCore/Sources/LillistCore/LinkPreview
