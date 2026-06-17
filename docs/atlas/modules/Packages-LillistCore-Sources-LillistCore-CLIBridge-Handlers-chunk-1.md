@@ -1,7 +1,7 @@
 ---
 module: "Packages/LillistCore/Sources/LillistCore/CLIBridge/Handlers (chunk 1)"
 summary: "Stateless CLIBridge command handlers translating tokenized intents into store mutations and DTO reads"
-read_when: "Touching CLI or App Intents verbs for add/edit/delete/ls/count/filter/attach/link/export"
+read_when: "Touching CLI or App Intents verbs for"
 sources:
   - path: Packages/LillistCore/Sources/LillistCore/CLIBridge/Handlers/AddHandler.swift
     blob: 5436b7d736e7667127026b4a74916bbc699663c5

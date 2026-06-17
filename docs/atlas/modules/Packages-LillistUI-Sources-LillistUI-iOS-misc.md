@@ -1,7 +1,7 @@
 ---
 module: "Packages/LillistUI/Sources/LillistUI/iOS (misc)"
 summary: "iOS-only LillistUI surfaces — FAB, Quick Capture dialog, toasts, sync badge, and the Tasks/Settings screen shells"
-read_when: "iOS Quick Capture, FAB, toasts, task editor overlay, or TasksScreen/SettingsScreen shells"
+read_when: "iOS Quick Capture, FAB or toasts"
 sources:
   - path: Packages/LillistUI/Sources/LillistUI/iOS/ArchiveToast.swift
     blob: 29e16f29a8e2cef387387bcc878d5790d533c5a8

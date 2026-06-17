@@ -1,7 +1,7 @@
 ---
 module: "Apps/Lillist-macOS (misc)"
 summary: "macOS app bundle config — Info.plist, sandbox/iCloud entitlements, privacy manifest, app-only strings"
-read_when: "macOS bundle entitlements, CloudKit/App Group IDs, Sparkle OTA, or macOS-only localized strings"
+read_when: "macOS bundle entitlements"
 sources:
   - path: Apps/Lillist-macOS/Info.plist
     blob: 77bee3c5e56ace15bb627ba59aa18edf5f4544b3

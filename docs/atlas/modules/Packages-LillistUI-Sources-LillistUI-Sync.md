@@ -1,7 +1,7 @@
 ---
 module: Packages/LillistUI/Sources/LillistUI/Sync
 summary: "Pure-presentation SwiftUI sheets and dialogs for the iCloud sync-mode change and pause-explainer flows"
-read_when: "Touching iCloud sync mode UI, pause explainer, migration progress, or sync-disable flows"
+read_when: "Touching iCloud sync mode UI"
 sources:
   - path: Packages/LillistUI/Sources/LillistUI/Sync/PauseExplainerDialog.swift
     blob: dae02594c447a8a058e4dfecf8145a405554b0fa

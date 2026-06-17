@@ -1,7 +1,7 @@
 ---
 module: Packages/LillistUI/Sources/LillistUI/QuickCapture
 summary: "Inline text parser and date-suggestion chips for `#tag ^date` Quick Capture entry"
-read_when: "Touching Quick Capture input, tag/date token parsing, or QuickCaptureParser"
+read_when: "Touching Quick Capture input"
 sources:
   - path: Packages/LillistUI/Sources/LillistUI/QuickCapture/QuickCaptureDateSuggestions.swift
     blob: 7cf0c3990da9d39095ebc898d37ae926931afcfc

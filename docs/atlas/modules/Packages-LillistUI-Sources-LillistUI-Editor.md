@@ -1,7 +1,7 @@
 ---
 module: Packages/LillistUI/Sources/LillistUI/Editor
 summary: "Unified task editor — draft/live lifecycle model, quick/full presentation, and all editor sub-sections"
-read_when: "Touching task creation, editing, quick capture, or the editor's draft-promote flow"
+read_when: "Touching task creation or editing"
 sources:
   - path: Packages/LillistUI/Sources/LillistUI/Editor/TaskEditorModel.swift
     blob: 3cea74d6b328a2b443dfd95957fc880e3e5459e0

@@ -1,7 +1,7 @@
 ---
 module: Packages/LillistCore/Sources/LillistCore/Ordering
 summary: "Gap-based fractional ordering math and canonical sibling sort for reorderable rows"
-read_when: "Touching row reorder, drag-and-drop position assignment, or sibling sort order"
+read_when: "Touching row reorder"
 sources:
   - path: Packages/LillistCore/Sources/LillistCore/Ordering/FractionalPosition.swift
     blob: 6fbaf3984109921be4e307d398ad898e7862c2fe

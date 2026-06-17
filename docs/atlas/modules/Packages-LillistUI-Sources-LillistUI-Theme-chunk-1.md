@@ -1,7 +1,7 @@
 ---
 module: "Packages/LillistUI/Sources/LillistUI/Theme (chunk 1)"
 summary: "Rainbow Glass design tokens — colors, hues, gradients, glass seam, button/toggle styles, status/sync/tag palettes"
-read_when: "Touching theme colors, glass surfaces, elevation, motion, button/toggle styles, or status/tag/sync palette"
+read_when: "Touching theme colors or glass surfaces"
 sources:
   - path: "Packages/LillistUI/Sources/LillistUI/Theme/Color+Hex.swift"
     blob: 71bd769cdd3d9632ef4353f22cc0df0ebaa246cc

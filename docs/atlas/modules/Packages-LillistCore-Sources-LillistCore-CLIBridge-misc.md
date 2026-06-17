@@ -1,7 +1,7 @@
 ---
 module: "Packages/LillistCore/Sources/LillistCore/CLIBridge (misc)"
 summary: "Shared load-bearing primitives for the CLI and Shortcuts — store location, task resolution, date/filter parsing"
-read_when: "CLI/Shortcuts store access, fuzzy task resolution, date input parsing, or filter flag translation"
+read_when: "CLI/Shortcuts store access"
 sources:
   - path: Packages/LillistCore/Sources/LillistCore/CLIBridge/CLIBridge.swift
     blob: c4bf1afbbb44a21b8a5162f4b1a1db2299deaf1f

@@ -1,7 +1,7 @@
 ---
 module: Packages/LillistUI/Sources/LillistUI/Onboarding
 summary: "Pure-presentation onboarding and iCloud-gate screens shared across iOS and macOS app targets"
-read_when: "Touching first-launch flow, iCloud availability handling, or notification permission prompts"
+read_when: "Touching first-launch flow"
 sources:
   - path: Packages/LillistUI/Sources/LillistUI/Onboarding/ICloudRequiredContent.swift
     blob: 3acdc95019c18123523312efbae30d9db650300b

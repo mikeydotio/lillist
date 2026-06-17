@@ -1,7 +1,7 @@
 ---
 module: Packages/LillistCore/Sources/LillistCore/Model
 summary: "Core Data schema (xcdatamodeld) and the persisted enums that type its raw integer/string columns"
-read_when: "Touching Core Data entities, persisted enum raw values, or sort/status/notification semantics"
+read_when: "Touching Core Data entities"
 sources:
   - path: Packages/LillistCore/Sources/LillistCore/Model/AttachmentKind.swift
     blob: 71c49cd3ddb11ee8616dfe2f26f48750b7f72d57

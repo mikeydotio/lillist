@@ -1,7 +1,7 @@
 ---
 module: Apps/Lillist-iOS/Sources/Settings
 summary: "Env-coupled iOS Settings sections wiring AppEnvironment into LillistUI chrome; owns full iCloud sync migration UI"
-read_when: "Touching iOS Settings screens, iCloud sync migration UI, notification prefs, or data export/import"
+read_when: "Touching iOS Settings screens"
 sources:
   - path: Apps/Lillist-iOS/Sources/Settings/AdvancedSection.swift
     blob: 16cfb82d01a4ffc73a1cef2fd36960e58c4d2829

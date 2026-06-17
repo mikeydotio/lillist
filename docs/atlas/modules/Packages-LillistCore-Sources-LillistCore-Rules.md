@@ -1,7 +1,7 @@
 ---
 module: Packages/LillistCore/Sources/LillistCore/Rules
 summary: "Smart-filter rule engine — predicate AST types, twin NSPredicate/Swift evaluators, date resolution"
-read_when: "Touching smart filters, predicate evaluation, or filter serialization"
+read_when: "Touching smart filters"
 sources:
   - path: Packages/LillistCore/Sources/LillistCore/Rules/AttachmentKindMatch.swift
     blob: 071e2efdc3c7c46c931283caa2463829e29128d5

@@ -1,7 +1,7 @@
 ---
 module: Packages/LillistUI/Sources/LillistUI/DragReorder
 summary: "Custom drag-reorder engine for hierarchical task lists — state machine, geometry, hit-testing, and overlay rendering"
-read_when: "Touching drag-to-reorder behavior, drop targets, phantom overlay, or row geometry collection"
+read_when: "Touching drag-to-reorder behavior"
 sources:
   - path: Packages/LillistUI/Sources/LillistUI/DragReorder/DragController.swift
     blob: aac3debd777545a224f31540a34abfbfbaabfa2f

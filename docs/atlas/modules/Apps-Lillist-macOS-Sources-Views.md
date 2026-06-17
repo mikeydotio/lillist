@@ -1,7 +1,7 @@
 ---
 module: Apps/Lillist-macOS/Sources/Views
 summary: "macOS three-column shell — sidebar source list, task outline/flat list, root NavigationSplitView wiring"
-read_when: "Touching macOS sidebar, task list, split-view layout, or column-visibility persistence"
+read_when: "Touching macOS sidebar or task list"
 sources:
   - path: Apps/Lillist-macOS/Sources/Views/RootSplitView.swift
     blob: 652354694da3643b5962a4711ad6bf7fffb7dce8

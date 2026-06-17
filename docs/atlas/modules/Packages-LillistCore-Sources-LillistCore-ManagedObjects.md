@@ -1,7 +1,7 @@
 ---
 module: Packages/LillistCore/Sources/LillistCore/ManagedObjects
 summary: "Hand-written @NSManaged subclasses — the private Core Data row types that stores read/write and DTOs are projected from"
-read_when: "Touching Core Data entity shape, adding attributes, or tracing store-layer NSManagedObject access"
+read_when: "Touching Core Data entity shape"
 sources:
   - path: "Packages/LillistCore/Sources/LillistCore/ManagedObjects/AppPreferences+CoreData.swift"
     blob: 45b2c0207922cc1482ecc9454154885f40d6b504

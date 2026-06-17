@@ -1,7 +1,7 @@
 ---
 module: Packages/LillistCore/Sources/LillistCore/LinkPreview
 summary: "URL unfurl pipeline — SSRF-gated fetch, OpenGraph parsing, and metadata persistence via AttachmentStore"
-read_when: "Touching link preview, URL unfurling, OpenGraph metadata, or SSRF policy"
+read_when: "Touching link preview or URL unfurling"
 sources:
   - path: Packages/LillistCore/Sources/LillistCore/LinkPreview/LinkPreviewFetching.swift
     blob: f520a770d2d7e21d3450199c06dd1c912c9dbf25

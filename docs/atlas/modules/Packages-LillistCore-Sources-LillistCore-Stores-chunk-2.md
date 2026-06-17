@@ -1,7 +1,7 @@
 ---
 module: "Packages/LillistCore/Sources/LillistCore/Stores (chunk 2)"
 summary: "TaskStore — the single async gateway for all LillistTask CRUD, reorder, status, soft-delete, and tag ops"
-read_when: "Touching task creation, status transitions, reorder, soft-delete, restore, archive, or tag assignment"
+read_when: "Touching task creation or status transitions"
 sources:
   - path: Packages/LillistCore/Sources/LillistCore/Stores/TaskStore.swift
     blob: d6550bd426a2e84b71525b65fa4905e743804429

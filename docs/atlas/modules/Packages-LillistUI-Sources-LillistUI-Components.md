@@ -1,7 +1,7 @@
 ---
 module: Packages/LillistUI/Sources/LillistUI/Components
 summary: "Shared SwiftUI row and surface widgets consumed by both iOS and macOS app targets"
-read_when: "Touching task rows, status chips, tag chips, sidebar rows, empty states, or sync dot"
+read_when: "Touching task rows or status chips"
 sources:
   - path: Packages/LillistUI/Sources/LillistUI/Components/BreadcrumbView.swift
     blob: c662c04cec8fb460c17ca9cfea3f78578e3d444a

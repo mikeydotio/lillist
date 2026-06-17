@@ -1,7 +1,7 @@
 ---
 module: Tools
 summary: "CI localization lint and iOS archive build-number bump scripts; deployment is handled by the external deployit plugin."
-read_when: "Touching CI localization checks, iOS build-number bumping, or archive pre-actions"
+read_when: "Touching CI localization checks"
 sources:
   - path: Tools/CI/check-lillistui-localization.sh
     blob: 223c47dafe800fccb53e98157d3e88c6b8af73d7

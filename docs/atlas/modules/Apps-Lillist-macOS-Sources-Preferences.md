@@ -1,7 +1,7 @@
 ---
 module: Apps/Lillist-macOS/Sources/Preferences
 summary: "macOS Settings scene — eight env-coupled preference panes wrapping LillistCore stores and LillistUI sections"
-read_when: "Touching macOS Preferences panes, iCloud sync toggle, notifications, trash, quick capture, diagnostics, or export/import"
+read_when: "Touching macOS Preferences panes"
 sources:
   - path: Apps/Lillist-macOS/Sources/Preferences/AdvancedPane.swift
     blob: d89420303de7b130199435dc699956cff06ff2f0

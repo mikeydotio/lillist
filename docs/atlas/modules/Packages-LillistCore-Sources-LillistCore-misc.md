@@ -1,7 +1,7 @@
 ---
 module: "Packages/LillistCore/Sources/LillistCore (misc)"
 summary: "Cross-cutting LillistCore primitives — error type, device prefs, onboarding, logging taxonomy, validators"
-read_when: "Touching LillistCore errors, device preferences, onboarding state, logging, or contact info"
+read_when: "Touching LillistCore errors"
 sources:
   - path: Packages/LillistCore/Sources/LillistCore/LillistCore.swift
     blob: f9753554726ec514cc2870e7c07ccbe049702c11

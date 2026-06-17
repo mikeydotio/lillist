@@ -1,7 +1,7 @@
 ---
 module: Packages/LillistUI/Sources/LillistUI/Settings
 summary: "Shared Settings UI helpers — iCloud sync section, sort-field labels, crash report preview, date picker utility"
-read_when: "Touching Settings/Preferences UI shared across iOS and macOS"
+read_when: "Touching Settings/Preferences UI shared"
 sources:
   - path: Packages/LillistUI/Sources/LillistUI/Settings/CrashReportSample.swift
     blob: 0249e4862ab49f63844aea35f80adcec4dafe388

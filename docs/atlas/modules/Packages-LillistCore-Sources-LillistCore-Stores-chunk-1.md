@@ -1,7 +1,7 @@
 ---
 module: "Packages/LillistCore/Sources/LillistCore/Stores (chunk 1)"
 summary: "Core Data facades for attachments, journal, preferences, series, smart filters, tags, plus TaskStore query/follow-up extensions"
-read_when: "Touching attachments, journal, preferences, recurrence series, smart filters, or tags"
+read_when: "Touching attachments, journal or preferences"
 sources:
   - path: Packages/LillistCore/Sources/LillistCore/Stores/AttachmentStore.swift
     blob: af70d4e18ae0d9635865a60d0738a7fd7957293c

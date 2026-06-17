@@ -1,7 +1,7 @@
 ---
 module: Apps/Lillist-macOS/Sources/Hotkey
 summary: "Global hotkey monitor, Quick Capture panel controller, hotkey recorder UI, and placement math for macOS"
-read_when: "Touching the macOS global hotkey, Quick Capture panel, or hotkey preferences recorder"
+read_when: "Touching the macOS global hotkey"
 sources:
   - path: Apps/Lillist-macOS/Sources/Hotkey/GlobalHotkeyMonitor.swift
     blob: aabfdf309ae61b86c6315570445b023b79f9dfca

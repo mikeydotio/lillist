@@ -1,7 +1,7 @@
 ---
 module: Packages/LillistUI/Sources/LillistUI/CrashReporting
 summary: "SwiftUI crash-report consent sheet and its observable view model over LillistCore's CrashReporter"
-read_when: "Touching crash-report consent UI, report preview, or send/don't-send decision flow"
+read_when: "Touching crash-report consent UI"
 sources:
   - path: Packages/LillistUI/Sources/LillistUI/CrashReporting/CrashReportPreviewSheet.swift
     blob: 4eebb55707cfa2ee7ad6b6d0657875f5b557db97

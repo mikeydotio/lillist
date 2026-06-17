@@ -1,7 +1,7 @@
 ---
 module: "Apps/Lillist-iOS/Sources (misc)"
 summary: "iOS root shell, task list container, unified editor host, onboarding, and scene command/binding plumbing"
-read_when: "iOS root shell, Quick Capture, task editor overlay, onboarding, or scene bindings"
+read_when: "iOS root shell or Quick Capture"
 sources:
   - path: Apps/Lillist-iOS/Sources/Commands/LillistCommands.swift
     blob: 166463128417565918949336bd955c5f5226882c

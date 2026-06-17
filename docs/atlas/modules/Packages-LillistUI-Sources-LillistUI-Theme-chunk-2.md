@@ -1,7 +1,7 @@
 ---
 module: "Packages/LillistUI/Sources/LillistUI/Theme (chunk 2)"
 summary: "Design tokens — spacing, radius, timing, semantic typography, drag-reorder constants, and tag tint default"
-read_when: "Touching spacing, radius, timing, typography, drag-reorder visual constants, or tag tint defaults"
+read_when: "Touching spacing, radius or timing"
 sources:
   - path: Packages/LillistUI/Sources/LillistUI/Theme/Tokens.swift
     blob: 4641bb3810568f46beec79e5477085395c202892

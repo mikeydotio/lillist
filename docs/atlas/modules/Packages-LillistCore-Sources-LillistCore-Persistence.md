@@ -1,7 +1,7 @@
 ---
 module: Packages/LillistCore/Sources/LillistCore/Persistence
 summary: "Core Data stack ownership, sync-mode store swapping, Trash purge, history tracking, and quarantine safety net"
-read_when: "Touching the Core Data container, CloudKit store swap, persistent history, Trash purge, or quarantine backup"
+read_when: "Touching the Core Data container"
 sources:
   - path: Packages/LillistCore/Sources/LillistCore/Persistence/AutoPurgeJob.swift
     blob: 98b3ec158aff941f4eca3fd7d7f8bfc994495fbc

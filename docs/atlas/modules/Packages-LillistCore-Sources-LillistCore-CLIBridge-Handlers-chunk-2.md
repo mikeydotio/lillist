@@ -1,7 +1,7 @@
 ---
 module: "Packages/LillistCore/Sources/LillistCore/CLIBridge/Handlers (chunk 2)"
 summary: "CLIBridge command handlers for restore, search, show, status, tag, tags, and watch flows"
-read_when: "CLI restore/search/tag/watch verbs or the live watch event stream"
+read_when: "CLI restore/search/tag/watch verbs or the"
 sources:
   - path: Packages/LillistCore/Sources/LillistCore/CLIBridge/Handlers/RestoreHandler.swift
     blob: 5fb928949c1e57886767e94329b7720eb70b8fe0

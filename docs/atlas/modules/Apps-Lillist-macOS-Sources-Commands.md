@@ -1,7 +1,7 @@
 ---
 module: Apps/Lillist-macOS/Sources/Commands
 summary: "macOS menu bar commands and keyboard shortcuts wired via Notification broadcast"
-read_when: "Touching macOS menu commands, keyboard shortcuts, or focused-column gating"
+read_when: "Touching macOS menu commands"
 sources:
   - path: Apps/Lillist-macOS/Sources/Commands/CommandNotifications.swift
     blob: 81e589f69219472b3db0c94bf82379bd82b13916

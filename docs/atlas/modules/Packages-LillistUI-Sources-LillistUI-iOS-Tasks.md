@@ -1,7 +1,7 @@
 ---
 module: Packages/LillistUI/Sources/LillistUI/iOS/Tasks
 summary: "Tree-building, flat-projection, sort, and filter-UI primitives for the iOS Tasks outline screen"
-read_when: "Touching iOS task list rendering, outline expand/collapse, filter chips, or sort logic"
+read_when: "Touching iOS task list rendering"
 sources:
   - path: Packages/LillistUI/Sources/LillistUI/iOS/Tasks/FilterChip.swift
     blob: d9c391dbdee40c9de6196eae330ba7a2398be0c7

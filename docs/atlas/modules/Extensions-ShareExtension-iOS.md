@@ -1,7 +1,7 @@
 ---
 module: Extensions/ShareExtension-iOS
 summary: "iOS Share Extension — captures URLs and text from other apps into a new Lillist task via the shared App Group store"
-read_when: "Touching share-sheet capture, extension lifecycle, or App-Group task creation"
+read_when: "Touching share-sheet capture"
 sources:
   - path: Extensions/ShareExtension-iOS/Info.plist
     blob: 71d0dc72cdff29eb19d3eeb77caf214255b3b5c3

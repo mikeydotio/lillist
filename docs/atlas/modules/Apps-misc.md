@@ -1,7 +1,7 @@
 ---
 module: "Apps (misc)"
 summary: "XcodeGen spec for the Lillist-macOS app + standalone test bundle, packages, signing, and build settings"
-read_when: "Editing macOS target structure, package deps, signing xcconfig wiring, or test bundle co-compile list"
+read_when: "Editing macOS target structure"
 sources:
   - path: Apps/project.yml
     blob: a6959715c29191fcad40a90e6eb3bfc481ecfe89

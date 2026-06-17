@@ -1,7 +1,7 @@
 ---
 module: "root (misc)"
 summary: "Repo-root control plane — CI matrix, workspace wiring, gitignore, semver state, CLAUDE.md conventions, and HANDOFF.md"
-read_when: "CI, workspace, repo config, or project conventions"
+read_when: "CI, workspace or repo config"
 sources:
   - path: .claude/settings.local.json
     blob: f4307bbdd98b10593980431477406613e049a2f2

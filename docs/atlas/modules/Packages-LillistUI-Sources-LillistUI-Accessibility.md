@@ -1,7 +1,7 @@
 ---
 module: Packages/LillistUI/Sources/LillistUI/Accessibility
 summary: "Cross-platform AX helpers — reduce-motion/contrast modifiers, VoiceOver announcements, WCAG contrast math"
-read_when: "Touching animations, motion gating, contrast, transparency, or VoiceOver announcements"
+read_when: "Touching animations or motion gating"
 sources:
   - path: Packages/LillistUI/Sources/LillistUI/Accessibility/AccessibilityEnvironment.swift
     blob: 616dac83a2a74bce122b17f5902762e17e6c1aed

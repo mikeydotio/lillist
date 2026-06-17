@@ -1,7 +1,7 @@
 ---
 module: "Packages/LillistCore/Sources/LillistCore/Sync (chunk 1)"
 summary: "Sync-mode migration engine, gate guard, journal, CloudKit event bridge, and iCloud account/status primitives"
-read_when: "Touching sync-mode changes, iCloud migration, MigrationGate, GatedPersistenceResolver, or pause-reason status"
+read_when: "Touching sync-mode changes"
 sources:
   - path: Packages/LillistCore/Sources/LillistCore/Sync/AccountStateMonitor.swift
     blob: 43ede62cf0943fa3e0a4003c0743463c9a98d778
