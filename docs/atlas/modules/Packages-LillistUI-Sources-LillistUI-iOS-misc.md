@@ -4,36 +4,21 @@ summary: "iOS-only LillistUI surfaces — FAB, Quick Capture dialog, toasts, syn
 read_when: "iOS Quick Capture, FAB, toasts, task editor overlay, or TasksScreen/SettingsScreen shells"
 sources:
   - path: Packages/LillistUI/Sources/LillistUI/iOS/ArchiveToast.swift
-    blob: 29e16f29a8e2cef387387bcc878d5790d533c5a8
   - path: Packages/LillistUI/Sources/LillistUI/iOS/DiagnosticsIncludeSheet.swift
-    blob: d47c7f5d13cf599edef0f443c815a870abb68ca9
   - path: Packages/LillistUI/Sources/LillistUI/iOS/FloatingAddButton.swift
-    blob: 3cff96726b149c499ff0ba0edf0c2b60af1ee220
   - path: Packages/LillistUI/Sources/LillistUI/iOS/QuickCaptureActionEnvironment.swift
-    blob: 4cd70e2ac439f86bdb12031e3784ddf7ebdea73b
   - path: Packages/LillistUI/Sources/LillistUI/iOS/QuickCaptureDialog.swift
-    blob: 28f6efa09540598d7311a777da5d4be4f0a4452e
   - path: Packages/LillistUI/Sources/LillistUI/iOS/QuickCaptureDialogPresenter.swift
-    blob: 5e69c48782936c4c950b83ceac7b9128b6fee63a
   - path: Packages/LillistUI/Sources/LillistUI/iOS/QuickCaptureDiscardToast.swift
-    blob: 2ed1f32bbe49a090527a60702ca5327d5388df1a
   - path: Packages/LillistUI/Sources/LillistUI/iOS/ReorderFailureToast.swift
-    blob: 0715994fd02c6510687e9d41a630777fac072dcb
   - path: Packages/LillistUI/Sources/LillistUI/iOS/Screens/SettingsScreen.swift
-    blob: 35b24834fa6e44b5e3cf8a41693bdd914b0d678f
   - path: Packages/LillistUI/Sources/LillistUI/iOS/Screens/TasksScreen.swift
-    blob: 4fd82b0819cc365ad5bd7804518e3ee1554762ee
   - path: Packages/LillistUI/Sources/LillistUI/iOS/SizeClassRouter.swift
-    blob: 1bf4ae6409a26c607411ef5490b451172f3d99c4
   - path: Packages/LillistUI/Sources/LillistUI/iOS/SyncStatusBadge.swift
-    blob: deb46ec7b905384f236781bd3cb27ca4f5697666
   - path: Packages/LillistUI/Sources/LillistUI/iOS/TaskEditorOverlay.swift
-    blob: ee599d6fe5392fcfc2e57b473788b1a91d1d4048
   - path: Packages/LillistUI/Sources/LillistUI/iOS/ToastChrome.swift
-    blob: b70db2d1499bec0e34c308d83e8587d7f0062637
-references_modules: [Packages-LillistUI-Sources-LillistUI-iOS-Tasks, Packages-LillistUI-Sources-LillistUI-DragReorder, Packages-LillistUI-Sources-LillistUI-QuickCapture, Packages-LillistUI-Sources-LillistUI-Components, Packages-LillistUI-Sources-LillistUI-misc, Packages-LillistCore-Sources-LillistCore-Model]
-generator: cartographer/1
-baseline: 34dfea7772679dbabc08fabd6fbba53f6ad5856b
+references_modules: [Packages-LillistUI-Sources-LillistUI-iOS-Tasks, Packages-LillistUI-Sources-LillistUI-DragReorder, Packages-LillistUI-Sources-LillistUI-QuickCapture, Packages-LillistUI-Sources-LillistUI-Components, Packages-LillistUI-Sources-LillistUI-misc, Packages-LillistUI-Sources-LillistUI-Accessibility, Packages-LillistUI-Sources-LillistUI-Theme-chunk-1, Packages-LillistUI-Sources-LillistUI-Theme-chunk-2, Packages-LillistCore-Sources-LillistCore-Stores-chunk-2, Packages-LillistCore-Sources-LillistCore-Sync-chunk-2]
+generator: cartographer/1 model=claude-sonnet-4-6
 ---
 
 # Module: Packages/LillistUI/Sources/LillistUI/iOS (misc)
@@ -56,7 +41,7 @@ fetches, and navigation destinations that these views can't reach.
 | `ArchiveToast` | struct | `Packages/LillistUI/Sources/LillistUI/iOS/ArchiveToast.swift:12` | Plural-aware "N archived. Tap to undo." pill; whole capsule fires `onUndo`; self-dismisses |
 | `DiagnosticZipDocument` | struct | `Packages/LillistUI/Sources/LillistUI/iOS/DiagnosticsIncludeSheet.swift:56` | `FileDocument` wrapping a finished diagnostic `.zip` for `.fileExporter`; iOS + macOS |
 | `DiagnosticsIncludeSheet` | struct | `Packages/LillistUI/Sources/LillistUI/iOS/DiagnosticsIncludeSheet.swift:8` | Stateless include-step sheet (two toggles + Create/Cancel via `init` bindings) |
-| `FloatingAddButton` | struct | `Packages/LillistUI/Sources/LillistUI/iOS/FloatingAddButton.swift:8` | 52pt glass FAB; `onTap` create, optional `onLongPress` clipboard affordance |
+| `FloatingAddButton` | struct | `Packages/LillistUI/Sources/LillistUI/iOS/FloatingAddButton.swift:8` | 52pt lavender-glass FAB; `onTap` create, optional `onLongPress` clipboard affordance |
 | `QuickCaptureActionKey` | struct | `Packages/LillistUI/Sources/LillistUI/iOS/QuickCaptureActionEnvironment.swift:10` | EnvironmentKey carrying a `@MainActor () -> Void` present-Quick-Capture closure |
 | `QuickCaptureDialog` | struct | `Packages/LillistUI/Sources/LillistUI/iOS/QuickCaptureDialog.swift:20` | Centered capture field; renders parser chips; `onSubmit` on Return/Add |
 | `QuickCaptureDiscardToast` | struct | `Packages/LillistUI/Sources/LillistUI/iOS/QuickCaptureDiscardToast.swift:12` | "Discarded · Undo" pill; `onUndo` restores text and re-presents the dialog |
@@ -79,7 +64,7 @@ fetches, and navigation destinations that these views can't reach.
 | `QuickCaptureDialogPresenter` | struct | `Packages/LillistUI/Sources/LillistUI/iOS/QuickCaptureDialogPresenter.swift:30` | ViewModifier behind `quickCaptureDialog`; owns backdrop, transition, Esc handling |
 | `TaskEditorOverlay` | struct | `Packages/LillistUI/Sources/LillistUI/iOS/TaskEditorOverlay.swift:19` | ViewModifier behind `taskEditorOverlay`; keyboard-lifts the card unlike the QC presenter |
 | `syncDragControllerInputs(flat:)` | func | `Packages/LillistUI/Sources/LillistUI/iOS/Screens/TasksScreen.swift:285` | Pushes flat rows, sort mode, and filter-active flag into the `DragController` |
-| `SquishPressStyle` | struct | `Packages/LillistUI/Sources/LillistUI/iOS/FloatingAddButton.swift:52` | FAB-local press squish gated on Reduce Motion; distinct from `RainbowButtonStyle` |
+| `SquishPressStyle` | struct | `Packages/LillistUI/Sources/LillistUI/iOS/FloatingAddButton.swift:53` | FAB-local press squish gated on Reduce Motion; distinct from `RainbowButtonStyle` |
 
 ## Relationships
 
@@ -92,7 +77,12 @@ fetches, and navigation destinations that these views can't reach.
 - `Packages-LillistUI-Sources-LillistUI-iOS-misc.QuickCaptureDialog -> Packages-LillistUI-Sources-LillistUI-QuickCapture.QuickCaptureParser (calls)`
 - `Packages-LillistUI-Sources-LillistUI-iOS-misc.QuickCaptureDialog -> Packages-LillistUI-Sources-LillistUI-Components.TagChipView (owns)`
 - `Packages-LillistUI-Sources-LillistUI-iOS-misc.SyncStatusBadge -> Packages-LillistUI-Sources-LillistUI-misc.SyncIndicator (reads)`
-- `Packages-LillistUI-Sources-LillistUI-iOS-misc.SyncStatusBadge -> Packages-LillistCore-Sources-LillistCore-Model.Status (reads)`
+- `Packages-LillistUI-Sources-LillistUI-iOS-misc.SyncStatusBadge -> Packages-LillistUI-Sources-LillistUI-Accessibility.AccessibilityAnnouncements (calls)`
+- `Packages-LillistUI-Sources-LillistUI-iOS-misc.TasksScreen -> Packages-LillistCore-Sources-LillistCore-Stores-chunk-2.TaskStore.TaskRecord (reads)`
+- `Packages-LillistUI-Sources-LillistUI-iOS-misc.SyncStatusBadge -> Packages-LillistCore-Sources-LillistCore-Sync-chunk-2.PauseReason (reads)`
+- `Packages-LillistUI-Sources-LillistUI-iOS-misc.FloatingAddButton -> Packages-LillistUI-Sources-LillistUI-Theme-chunk-1.glassSurface (calls)`
+- `Packages-LillistUI-Sources-LillistUI-iOS-misc.rainbowToastChrome -> Packages-LillistUI-Sources-LillistUI-Theme-chunk-1.glassSurface (calls)`
+- `Packages-LillistUI-Sources-LillistUI-iOS-misc.SettingsScreen -> Packages-LillistUI-Sources-LillistUI-Theme-chunk-2.LillistColor (reads)`
 - `Packages-LillistUI-Sources-LillistUI-iOS-misc.ArchiveToast -> Packages-LillistUI-Sources-LillistUI-iOS-misc.rainbowToastChrome (calls)`
 - `Packages-LillistUI-Sources-LillistUI-iOS-misc.TransientFailureToast -> Packages-LillistUI-Sources-LillistUI-iOS-misc.rainbowToastChrome (calls)`
 - `Packages-LillistUI-Sources-LillistUI-iOS-misc.ReorderFailureToast -> Packages-LillistUI-Sources-LillistUI-iOS-misc.TransientFailureToast (calls)`
@@ -105,7 +95,7 @@ fetches, and navigation destinations that these views can't reach.
 `.paused(reason:)` case carries a `PauseReason` whose human copy is mapped by
 `reasonDescription(_:)` at `Packages/LillistUI/Sources/LillistUI/iOS/SyncStatusBadge.swift:113`,
 and a state change posts a VoiceOver announcement at line 62.
-`SyncStatusBadge`, `TasksScreen` import `LillistCore`; `TasksScreen`'s action
+`SyncStatusBadge` and `TasksScreen` import `LillistCore`; `TasksScreen`'s action
 closures traffic in `LillistCore` DTOs (`TaskStore.TaskRecord`, `Status`) but
 never hold Core Data types.
 All four toasts and the dialog presenter self-dismiss after ~4s via a

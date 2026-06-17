@@ -1,23 +1,21 @@
 ---
 module: Packages/LillistUI/Sources/LillistUI/iOS/Tasks
-summary: "Pure-presentation pieces of the iOS Tasks screen — outline tree, flat projection, filter header, sort"
-read_when: "iOS Tasks outline screen, filter header, sort menu, or task row layout"
+summary: Tree-building, flat-projection, sort, and filter-UI primitives for the iOS Tasks outline screen
+read_when: Touching iOS task list rendering, outline expand/collapse, filter chips, or sort logic
 sources:
   - path: Packages/LillistUI/Sources/LillistUI/iOS/Tasks/FilterChip.swift
-    blob: d9c391dbdee40c9de6196eae330ba7a2398be0c7
   - path: Packages/LillistUI/Sources/LillistUI/iOS/Tasks/FilterHeader.swift
-    blob: b3091afc0ea60c53aedb7d03df94d83469dea1cd
   - path: Packages/LillistUI/Sources/LillistUI/iOS/Tasks/FlatTaskRow.swift
-    blob: 33960b025a31e092cf601d9a68fb22423cfc7933
   - path: Packages/LillistUI/Sources/LillistUI/iOS/Tasks/TaskOutlineRowView.swift
-    blob: 8cb73c03a7c176c7544269aeee5c9847f4cedd6b
   - path: Packages/LillistUI/Sources/LillistUI/iOS/Tasks/TaskTree.swift
-    blob: a3e62822968acad7c6d73eccda8e7d4e8b0f70ca
   - path: Packages/LillistUI/Sources/LillistUI/iOS/Tasks/TasksSort.swift
-    blob: ec113d2e4e3de800b679902e317ff0b6b6bb8d20
-references_modules: [Packages-LillistCore-Sources-LillistCore-Stores-chunk-2, Packages-LillistCore-Sources-LillistCore-Ordering, Packages-LillistCore-Sources-LillistCore-Model, Packages-LillistUI-Sources-LillistUI-Components, Packages-LillistUI-Sources-LillistUI-Theme-chunk-1]
-generator: cartographer/1
-baseline: 34dfea7772679dbabc08fabd6fbba53f6ad5856b
+references_modules:
+  - Packages-LillistCore-Sources-LillistCore-Stores-chunk-2
+  - Packages-LillistCore-Sources-LillistCore-Ordering
+  - Packages-LillistCore-Sources-LillistCore-Model
+  - Packages-LillistUI-Sources-LillistUI-Components
+  - Packages-LillistUI-Sources-LillistUI-Theme-chunk-1
+generator: cartographer/1 model=claude-sonnet-4-6
 ---
 
 # Module: Packages/LillistUI/Sources/LillistUI/iOS/Tasks
