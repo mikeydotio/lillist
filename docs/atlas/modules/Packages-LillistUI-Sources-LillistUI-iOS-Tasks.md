@@ -1,24 +1,21 @@
 ---
 module: Packages/LillistUI/Sources/LillistUI/iOS/Tasks
 summary: "Pure-presentation pieces of the iOS Tasks screen — outline tree, flat projection, filter header, sort"
-read_when: "iOS Tasks outline screen"
+read_when: "iOS Tasks outline screen, filter header, sort menu, or task row layout"
 sources:
   - path: Packages/LillistUI/Sources/LillistUI/iOS/Tasks/FilterChip.swift
-    blob: d9c391dbdee40c9de6196eae330ba7a2398be0c7
   - path: Packages/LillistUI/Sources/LillistUI/iOS/Tasks/FilterHeader.swift
-    blob: b3091afc0ea60c53aedb7d03df94d83469dea1cd
   - path: Packages/LillistUI/Sources/LillistUI/iOS/Tasks/FlatTaskRow.swift
-    blob: 33960b025a31e092cf601d9a68fb22423cfc7933
   - path: Packages/LillistUI/Sources/LillistUI/iOS/Tasks/TaskOutlineRowView.swift
-    blob: 8cb73c03a7c176c7544269aeee5c9847f4cedd6b
   - path: Packages/LillistUI/Sources/LillistUI/iOS/Tasks/TaskTree.swift
-    blob: a3e62822968acad7c6d73eccda8e7d4e8b0f70ca
   - path: Packages/LillistUI/Sources/LillistUI/iOS/Tasks/TasksSort.swift
-    blob: ec113d2e4e3de800b679902e317ff0b6b6bb8d20
-references_modules: [Packages-LillistCore-Sources-LillistCore-Stores-chunk-1, Packages-LillistCore-Sources-LillistCore-Model, Packages-LillistCore-Sources-LillistCore-Ordering, Packages-LillistUI-Sources-LillistUI-Components, Packages-LillistUI-Sources-LillistUI-Theme-chunk-1, Packages-LillistUI-Sources-LillistUI-iOS-misc, Apps-Lillist-iOS-Sources-misc]
-generator: cartographer/1
-baseline: 85a4dc8648a4280e30f533268d65bfac16701d21
-verified: true
+references_modules:
+  - Packages-LillistCore-Sources-LillistCore-Stores-chunk-2
+  - Packages-LillistCore-Sources-LillistCore-Ordering
+  - Packages-LillistCore-Sources-LillistCore-Model
+  - Packages-LillistUI-Sources-LillistUI-Components
+  - Packages-LillistUI-Sources-LillistUI-Theme-chunk-1
+generator: cartographer/1 model=claude-sonnet-4-6
 ---
 
 # Module: Packages/LillistUI/Sources/LillistUI/iOS/Tasks
@@ -59,7 +56,7 @@ is wrapped in `#if os(iOS)`.
 
 ## Relationships
 
-- `Packages-LillistUI-Sources-LillistUI-iOS-Tasks.TaskNode -> Packages-LillistCore-Sources-LillistCore-Stores-chunk-1.TaskRecord (owns)`
+- `Packages-LillistUI-Sources-LillistUI-iOS-Tasks.TaskNode -> Packages-LillistCore-Sources-LillistCore-Stores-chunk-2.TaskStore (owns)`
 - `Packages-LillistUI-Sources-LillistUI-iOS-Tasks.TaskTree -> Packages-LillistCore-Sources-LillistCore-Ordering.SiblingOrder (calls)`
 - `Packages-LillistUI-Sources-LillistUI-iOS-Tasks.TaskOutlineRowView -> Packages-LillistUI-Sources-LillistUI-Components.StatusIndicatorView (calls)`
 - `Packages-LillistUI-Sources-LillistUI-iOS-Tasks.TaskOutlineRowLabel -> Packages-LillistUI-Sources-LillistUI-Components.TaskRowLabel (calls)`
@@ -67,8 +64,6 @@ is wrapped in `#if os(iOS)`.
 - `Packages-LillistUI-Sources-LillistUI-iOS-Tasks.TaskOutlineRowView -> Packages-LillistUI-Sources-LillistUI-Theme-chunk-1.StatusPalette (calls)`
 - `Packages-LillistUI-Sources-LillistUI-iOS-Tasks.FilterChip -> Packages-LillistUI-Sources-LillistUI-Theme-chunk-1.LillistColor (reads)`
 - `Packages-LillistUI-Sources-LillistUI-iOS-Tasks.FilterHeader -> Packages-LillistUI-Sources-LillistUI-Theme-chunk-1.RainbowPalette (reads)`
-- `Apps-Lillist-iOS-Sources-misc.TasksView -> Packages-LillistUI-Sources-LillistUI-iOS-Tasks.TaskTree (calls)`
-- `Packages-LillistUI-Sources-LillistUI-iOS-misc.TasksScreen -> Packages-LillistUI-Sources-LillistUI-iOS-Tasks.FilterHeader (calls)`
 
 ## Type notes
 
@@ -79,12 +74,12 @@ boundaries and use as SwiftUI diff identity. `TaskNode.hash` is hand-written
 `TaskRecord` is only `Equatable`; it hashes `record.id` while `==` compares full
 content. `TaskTree.build` promotes any record whose `parentID` is absent from the
 input set to a root, so a filtered view never drops orphan-matched subtasks
-(`TaskTree.swift:57`). `TaskOutlineRowView` deliberately constructs the chevron
+(`Packages/LillistUI/Sources/LillistUI/iOS/Tasks/TaskTree.swift:57`). `TaskOutlineRowView` deliberately constructs the chevron
 and `StatusIndicatorView` *outside* the `linkContent` closure so a row-level
 drag/navigation wrapper can never cover those controls — the closure only ever
-receives the inert `TaskOutlineRowLabel` (`TaskOutlineRowView.swift:9`).
+receives the inert `TaskOutlineRowLabel` (`Packages/LillistUI/Sources/LillistUI/iOS/Tasks/TaskOutlineRowView.swift:9`).
 `TaskOutlineRowLabel` is standalone (not nested in the generic view) to keep
-`LinkContent` inference non-circular (`TaskOutlineRowView.swift:22`).
+`LinkContent` inference non-circular (`Packages/LillistUI/Sources/LillistUI/iOS/Tasks/TaskOutlineRowView.swift:22`).
 
 ## External deps
 

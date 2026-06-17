@@ -4,21 +4,19 @@ summary: "Pure-presentation SwiftUI sheets/dialogs for the iCloud sync-mode chan
 read_when: "iCloud sync-mode change UI"
 sources:
   - path: Packages/LillistUI/Sources/LillistUI/Sync/PauseExplainerDialog.swift
-    blob: dae02594c447a8a058e4dfecf8145a405554b0fa
   - path: Packages/LillistUI/Sources/LillistUI/Sync/SyncDisableConfirmationSheet.swift
-    blob: 256921bb870b9d40bc20af70f93ea73be940e790
   - path: Packages/LillistUI/Sources/LillistUI/Sync/SyncMigrationChoiceSheet.swift
-    blob: 3119ede020bb8360759bc671375e9c4c1a1c0b4c
   - path: Packages/LillistUI/Sources/LillistUI/Sync/SyncMigrationConfirmationDialog.swift
-    blob: cec35a30c637384550600a236608f9c5da0c3ae9
   - path: Packages/LillistUI/Sources/LillistUI/Sync/SyncMigrationProgressSheet.swift
-    blob: 700e0f1f0739980cf8ee8c6c295b8f65f0f65539
   - path: Packages/LillistUI/Sources/LillistUI/Sync/SyncMigrationRecoverySheet.swift
-    blob: 94595d3885ceeeba0cb2be0b21c30a828e862b8d
-references_modules: [Packages-LillistCore-Sources-LillistCore-Sync-chunk-1, Packages-LillistCore-Sources-LillistCore-Persistence, Packages-LillistUI-Sources-LillistUI-Theme-chunk-1, Packages-LillistUI-Sources-LillistUI-Theme-chunk-2, Apps-Lillist-iOS-Sources-Settings, Apps-Lillist-macOS-Sources-Preferences]
-generator: cartographer/1
-baseline: 85a4dc8648a4280e30f533268d65bfac16701d21
-verified: true
+references_modules:
+  - Packages-LillistCore-Sources-LillistCore-Sync-chunk-1
+  - Packages-LillistCore-Sources-LillistCore-Persistence
+  - Packages-LillistUI-Sources-LillistUI-Theme-chunk-1
+  - Packages-LillistUI-Sources-LillistUI-Theme-chunk-2
+  - Apps-Lillist-iOS-Sources-Settings
+  - Apps-Lillist-macOS-Sources-Preferences
+generator: cartographer/1 model=claude-sonnet-4-6
 ---
 
 # Module: Packages/LillistUI/Sources/LillistUI/Sync
@@ -76,6 +74,11 @@ logic off the MainActor; the public one has a dedicated test in
 `Packages/LillistUI/Tests/LillistUITests/SyncMigrationRecoverySheetTests.swift`. User-visible
 copy is localized via `String(localized:bundle:.module)` and must stay verbatim-aligned
 across iOS/macOS (snapshot-guarded).
+
+`SyncMigrationConfirmationDialog` exposes `title` and `message` as `public var String`
+computed properties so a host can bind them into SwiftUI's native `.confirmationDialog`
+modifier; the `body` is an alternate full-panel rendering path for hosts that cannot use
+the modifier — both are valid presentation routes for the same `Direction` value.
 
 ## External deps
 

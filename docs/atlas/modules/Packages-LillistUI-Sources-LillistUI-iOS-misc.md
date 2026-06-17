@@ -1,38 +1,24 @@
 ---
 module: "Packages/LillistUI/Sources/LillistUI/iOS (misc)"
 summary: "iOS-only LillistUI surfaces — FAB, Quick Capture dialog, toasts, sync badge, and the Tasks/Settings screen shells"
-read_when: "iOS Quick Capture, FAB, toasts"
+read_when: "iOS Quick Capture, FAB, toasts, task editor overlay, or TasksScreen/SettingsScreen shells"
 sources:
   - path: Packages/LillistUI/Sources/LillistUI/iOS/ArchiveToast.swift
-    blob: 29e16f29a8e2cef387387bcc878d5790d533c5a8
   - path: Packages/LillistUI/Sources/LillistUI/iOS/DiagnosticsIncludeSheet.swift
-    blob: d47c7f5d13cf599edef0f443c815a870abb68ca9
   - path: Packages/LillistUI/Sources/LillistUI/iOS/FloatingAddButton.swift
-    blob: 3cff96726b149c499ff0ba0edf0c2b60af1ee220
   - path: Packages/LillistUI/Sources/LillistUI/iOS/QuickCaptureActionEnvironment.swift
-    blob: 4cd70e2ac439f86bdb12031e3784ddf7ebdea73b
   - path: Packages/LillistUI/Sources/LillistUI/iOS/QuickCaptureDialog.swift
-    blob: 28f6efa09540598d7311a777da5d4be4f0a4452e
   - path: Packages/LillistUI/Sources/LillistUI/iOS/QuickCaptureDialogPresenter.swift
-    blob: 5e69c48782936c4c950b83ceac7b9128b6fee63a
   - path: Packages/LillistUI/Sources/LillistUI/iOS/QuickCaptureDiscardToast.swift
-    blob: 2ed1f32bbe49a090527a60702ca5327d5388df1a
   - path: Packages/LillistUI/Sources/LillistUI/iOS/ReorderFailureToast.swift
-    blob: 0715994fd02c6510687e9d41a630777fac072dcb
   - path: Packages/LillistUI/Sources/LillistUI/iOS/Screens/SettingsScreen.swift
-    blob: 35b24834fa6e44b5e3cf8a41693bdd914b0d678f
   - path: Packages/LillistUI/Sources/LillistUI/iOS/Screens/TasksScreen.swift
-    blob: ec7bb4b5af67a83610c42c39b93cdcb8732cca1d
   - path: Packages/LillistUI/Sources/LillistUI/iOS/SizeClassRouter.swift
-    blob: 1bf4ae6409a26c607411ef5490b451172f3d99c4
   - path: Packages/LillistUI/Sources/LillistUI/iOS/SyncStatusBadge.swift
-    blob: deb46ec7b905384f236781bd3cb27ca4f5697666
+  - path: Packages/LillistUI/Sources/LillistUI/iOS/TaskEditorOverlay.swift
   - path: Packages/LillistUI/Sources/LillistUI/iOS/ToastChrome.swift
-    blob: b70db2d1499bec0e34c308d83e8587d7f0062637
 references_modules: [Packages-LillistUI-Sources-LillistUI-iOS-Tasks, Packages-LillistUI-Sources-LillistUI-DragReorder, Packages-LillistUI-Sources-LillistUI-QuickCapture, Packages-LillistUI-Sources-LillistUI-Components, Packages-LillistUI-Sources-LillistUI-misc, Packages-LillistCore-Sources-LillistCore-Model]
-generator: cartographer/1
-baseline: db4037b64559daa37c32ba9c4ed478a6f8a83a43
-verified: true
+generator: cartographer/1 model=claude-sonnet-4-6
 ---
 
 # Module: Packages/LillistUI/Sources/LillistUI/iOS (misc)
@@ -69,13 +55,15 @@ fetches, and navigation destinations that these views can't reach.
 | `quickCaptureAction` | property | `Packages/LillistUI/Sources/LillistUI/iOS/QuickCaptureActionEnvironment.swift:15` | `EnvironmentValues` accessor for the present-Quick-Capture closure |
 | `quickCaptureDialog(isPresented:onCancel:content:)` | func | `Packages/LillistUI/Sources/LillistUI/iOS/QuickCaptureDialogPresenter.swift:17` | `View` modifier: dim backdrop, tap/Esc dismiss, `onCancel` before flip |
 | `rainbowToastChrome()` | func | `Packages/LillistUI/Sources/LillistUI/iOS/ToastChrome.swift:15` | Shared glass-capsule toast chrome so the four toasts can't drift apart |
+| `taskEditorOverlay(isPresented:onCancel:content:)` | func | `Packages/LillistUI/Sources/LillistUI/iOS/TaskEditorOverlay.swift:7` | `View` modifier: keyboard-aware floating editor card; tap/Esc fire `onCancel` before dismiss |
 
 ## Load-bearing internals
 
 | Symbol | Kind | Location | Why it matters |
 | --- | --- | --- | --- |
 | `QuickCaptureDialogPresenter` | struct | `Packages/LillistUI/Sources/LillistUI/iOS/QuickCaptureDialogPresenter.swift:30` | ViewModifier behind `quickCaptureDialog`; owns backdrop, transition, Esc handling |
-| `syncDragControllerInputs(flat:)` | func | `Packages/LillistUI/Sources/LillistUI/iOS/Screens/TasksScreen.swift:280` | Pushes flat rows, sort mode, and filter-active flag into the `DragController` |
+| `TaskEditorOverlay` | struct | `Packages/LillistUI/Sources/LillistUI/iOS/TaskEditorOverlay.swift:19` | ViewModifier behind `taskEditorOverlay`; keyboard-lifts the card unlike the QC presenter |
+| `syncDragControllerInputs(flat:)` | func | `Packages/LillistUI/Sources/LillistUI/iOS/Screens/TasksScreen.swift:285` | Pushes flat rows, sort mode, and filter-active flag into the `DragController` |
 | `SquishPressStyle` | struct | `Packages/LillistUI/Sources/LillistUI/iOS/FloatingAddButton.swift:52` | FAB-local press squish gated on Reduce Motion; distinct from `RainbowButtonStyle` |
 
 ## Relationships
@@ -112,6 +100,9 @@ All four toasts and the dialog presenter self-dismiss after ~4s via a
 `quickCaptureAction` is an *inbound* contract: the iOS shells inject the closure
 into the environment and empty-state CTAs (e.g. `TasksScreen` emptyState at
 `Packages/LillistUI/Sources/LillistUI/iOS/Screens/TasksScreen.swift:189`) read it.
+`taskEditorOverlay` differs from `quickCaptureDialog` in that its card respects
+the keyboard (no `.ignoresSafeArea(.keyboard)`), lifting above the software keyboard
+so multi-field editor forms stay reachable — `Packages/LillistUI/Sources/LillistUI/iOS/TaskEditorOverlay.swift:44`.
 
 ## External deps
 
