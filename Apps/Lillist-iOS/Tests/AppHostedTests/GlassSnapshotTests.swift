@@ -70,6 +70,15 @@ final class GlassSnapshotTests: XCTestCase {
     @MainActor func test_emptyState_light() { snapshot(emptyState, size: emptySize, dark: false) }
     @MainActor func test_emptyState_dark()  { snapshot(emptyState, size: emptySize, dark: true) }
 
+    // The unified TaskEditorView. Full mode embeds a `StatusIndicatorView`
+    // (`Menu` hit layer) so the assembled editor blanks offscreen and must
+    // be captured here. Quick mode is the capture card; full mode shows every
+    // section over an in-memory draft (collections render empty).
+    @MainActor func test_editor_quick_light() async throws { snapshot(try await quickEditor(), size: editorQuickSize, dark: false) }
+    @MainActor func test_editor_quick_dark()  async throws { snapshot(try await quickEditor(), size: editorQuickSize, dark: true) }
+    @MainActor func test_editor_full_light()  async throws { snapshot(try await fullEditor(), size: editorFullSize, dark: false) }
+    @MainActor func test_editor_full_dark()   async throws { snapshot(try await fullEditor(), size: editorFullSize, dark: true) }
+
     // MARK: - fixtures
 
     private let fabSize = CGSize(width: 220, height: 180)
@@ -79,6 +88,53 @@ final class GlassSnapshotTests: XCTestCase {
     private let captureTallSize = CGSize(width: 380, height: 240)
     private let statusSize = CGSize(width: 240, height: 80)
     private let emptySize = CGSize(width: 390, height: 600)
+    private let editorQuickSize = CGSize(width: 390, height: 260)
+    private let editorFullSize = CGSize(width: 393, height: 760)
+
+    /// In-memory store bundle for the editor fixtures (no CloudKit).
+    @MainActor
+    private func editorStores() async throws -> TaskEditorModel.Stores {
+        let p = try await PersistenceController(configuration: .inMemory)
+        return TaskEditorModel.Stores(
+            tasks: TaskStore(persistence: p),
+            tags: TagStore(persistence: p),
+            series: SeriesStore(persistence: p),
+            journal: JournalStore(persistence: p),
+            notifications: NotificationSpecStore(persistence: p),
+            attachments: AttachmentStore(persistence: p)
+        )
+    }
+
+    /// Quick-capture draft over the dimmed scrim its real presentation uses.
+    @MainActor
+    private func quickEditor() async throws -> some View {
+        let model = TaskEditorModel(stores: try await editorStores(), opening: .newCapture(parentID: nil, placement: .top))
+        model.captureText = "Buy milk #errands ^tomorrow"
+        return ZStack {
+            Color.black.opacity(0.35).ignoresSafeArea()
+            TaskEditorView(model: model, onDismiss: {})
+                .padding(.horizontal, 24)
+        }
+    }
+
+    /// Full editor over an in-memory draft with representative scalar fields.
+    @MainActor
+    private func fullEditor() async throws -> some View {
+        let model = TaskEditorModel(stores: try await editorStores(), opening: .newCapture(parentID: nil, placement: .top))
+        model.title = "Draft launch email"
+        model.notes = "Ship the v1 announcement to the list."
+        model.status = .started
+        model.deadline = Date(timeIntervalSince1970: 1_780_000_000)
+        await model.addTag(name: "launch")
+        await model.addTag(name: "marketing")
+        model.isPinned = true
+        model.mode = .full
+        return ZStack {
+            Color.black.opacity(0.35).ignoresSafeArea()
+            TaskEditorView(model: model, onDismiss: {})
+                .padding(.horizontal, 16)
+        }
+    }
 
     /// Mirrors `TasksScreen`'s no-tasks empty state: the rainbow-gradient
     /// checklist icon, headline + message, dot-grid backdrop, and the

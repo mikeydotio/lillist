@@ -20,17 +20,23 @@ public struct ReminderEditorSection: View {
     private static let offsetOptions: [Int32] = [0, 5, 10, 30, 60, 120, 1440]
 
     @State private var choice: Choice = .atTime
-    @State private var fireDate: Date = Date()
+    @State private var fireDate: Date
     @State private var offsetMinutes: Int32 = 30
 
+    /// `defaultDate` seeds the "at a time" picker — the task's deadline/start
+    /// when set, so a new reminder lands near the task's own time rather than
+    /// "now". Falls back to `Date()` when nil. (Passing a fixed value also
+    /// keeps snapshots deterministic.)
     public init(
         reminders: [NotificationSpecStore.SpecRecord],
+        defaultDate: Date? = nil,
         onAdd: @escaping (NotificationKind, Int32?, Date?) -> Void,
         onDelete: @escaping (UUID) -> Void
     ) {
         self.reminders = reminders
         self.onAdd = onAdd
         self.onDelete = onDelete
+        self._fireDate = State(initialValue: defaultDate ?? Date())
     }
 
     public var body: some View {

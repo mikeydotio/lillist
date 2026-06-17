@@ -42,6 +42,9 @@ public struct TasksScreen: View {
     public var onClearFilter: @MainActor () -> Void
     public var onOpenSettings: @MainActor () -> Void
     public var onUndoArchive: @MainActor () -> Void
+    /// Open the unified task editor for the tapped row. Replaces the former
+    /// `NavigationLink`-to-detail push.
+    public var onOpenTask: @MainActor (UUID) -> Void
 
     @Environment(\.quickCaptureAction) private var quickCaptureAction
 
@@ -69,7 +72,8 @@ public struct TasksScreen: View {
         onDelete: @escaping @MainActor (TaskStore.TaskRecord) -> Void = { _ in },
         onClearFilter: @escaping @MainActor () -> Void = {},
         onOpenSettings: @escaping @MainActor () -> Void = {},
-        onUndoArchive: @escaping @MainActor () -> Void = {}
+        onUndoArchive: @escaping @MainActor () -> Void = {},
+        onOpenTask: @escaping @MainActor (UUID) -> Void = { _ in }
     ) {
         self.roots = roots
         self.loadError = loadError
@@ -95,6 +99,7 @@ public struct TasksScreen: View {
         self.onClearFilter = onClearFilter
         self.onOpenSettings = onOpenSettings
         self.onUndoArchive = onUndoArchive
+        self.onOpenTask = onOpenTask
     }
 
     // MARK: - Derived
@@ -293,11 +298,12 @@ public struct TasksScreen: View {
 
     @ViewBuilder
     private func outlineRow(_ row: FlatTaskRow) -> some View {
-        // The NavigationLink and drag gesture wrap ONLY the text label
+        // The open-editor button and drag gesture wrap ONLY the text label
         // (the closure's parameter); the chevron and status indicator
         // are composed outside them by `TaskOutlineRowView` so their
-        // taps are never consumed by the link or the long-press drag
-        // sequence.
+        // taps are never consumed by the button or the long-press drag
+        // sequence. (Tapping the label opens the unified editor; the
+        // former `NavigationLink`-to-detail push was retired.)
         TaskOutlineRowView(
             row: row,
             isCollapsed: collapsedNodeIDs.contains(row.node.id),
@@ -305,9 +311,12 @@ public struct TasksScreen: View {
             onStatusClick: { onStatusClick(row.node.record) },
             onStatusSet: { newStatus in onStatusSet(row.node.record, newStatus) }
         ) { label in
-            NavigationLink(value: row.node.record.id) {
+            Button {
+                onOpenTask(row.node.record.id)
+            } label: {
                 label
             }
+            .buttonStyle(.plain)
             .dragReorderGesture(id: row.node.record.id, controller: dragController)
         }
         .tag(row.node.record.id)

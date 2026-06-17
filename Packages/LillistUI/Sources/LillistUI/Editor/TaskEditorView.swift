@@ -112,6 +112,7 @@ public struct TaskEditorView: View {
                 section("Reminders") {
                     ReminderEditorSection(
                         reminders: model.reminders,
+                        defaultDate: model.deadline ?? model.start,
                         onAdd: { kind, offset, date in
                             Task { try? await model.addReminder(kind: kind, offsetMinutes: offset, fireDate: date) }
                         },

@@ -69,14 +69,30 @@ ONLY for genuinely platform-specific bits: attachment acquisition
 (host re-targets the singleton editor). LillistUI stays `AppEnvironment`-free
 because everything routes through the model.
 
-## Next — Waves 3–5 (see plan)
+## Done — Wave 3: iOS hosting + retirement ✅ (app builds, snapshots green)
 
-- **W3 iOS hosting + retirement:** `TaskEditorHost` (replaces
-  `QuickCaptureDialogHost`), generalize `QuickCaptureDialogPresenter`, reroute
-  3 open sites (`TasksScreen` NavigationLink→Button `onOpenTask`,
-  `TaskSubtasksTab`, `RootShell` collapse), delete iOS `Detail/TaskDetailView`.
-  App-hosted quick+full snapshots; re-verify the tour. Signed `xcodebuild test
-  -scheme Lillist-iOS`; regenerate baselines via `RECORD_SNAPSHOTS=YES`.
+- `Apps/Lillist-iOS/Sources/Editor/TaskEditorHost.swift` (new) — singleton
+  overlay host: `newCaptureTrigger` (FAB/⌘⇧N) → quick draft; `openTaskID` (row
+  tap) → existing full; tap-outside/Esc discards a capture draft / closes an
+  existing task; PhotosPicker wired to `addImageAttachment`. Replaces
+  `QuickCaptureDialogHost` (deleted).
+- `LillistUI/iOS/TaskEditorOverlay.swift` (new) — keyboard-aware dim-backed
+  floating-card presenter (`taskEditorOverlay`).
+- `TasksScreen`: `NavigationLink(value:)` → `Button { onOpenTask(id) }`
+  (drag gesture preserved). New `onOpenTask` param (default no-op).
+- `RootShell` collapsed `NavigationSplitView`+detail → `NavigationStack { TasksView() }`.
+- `TasksView`: `TaskEditorHost` modifier + `editorStores` + `onOpenTask`.
+- Retired `Apps/Lillist-iOS/Sources/Detail/*` (TaskDetailView + tabs) and
+  `QuickCaptureDialogHost.swift`; iOS pbxproj regenerated.
+- `ReminderEditorSection` gained `defaultDate` (new reminder seeds off the
+  task's deadline/start, not "now" — better UX + deterministic snapshots).
+- Snapshots: 7 `IOSScreenTourTests` task-row baselines regenerated (chevron
+  removed — rows open the editor now, not push); 4 new app-hosted editor
+  baselines (`test_editor_quick/full_light/dark`) in `GlassSnapshotTests`.
+  `xcodebuild -scheme Lillist-iOS build` clean; both snapshot suites green.
+
+## Next — Waves 4–5 (see plan)
+
 - **W4 macOS hosting + retirement:** extend `QuickCapturePanelController`
   (resizable quick↔full, grow, singleton across hotkey/⌘N/`.lillistNewTask`,
   **remove resign-key auto-dismiss** so the status menu popover + app-switching

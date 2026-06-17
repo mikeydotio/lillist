@@ -45,6 +45,10 @@ struct TasksView: View {
     @State private var isReorderToastPresented = false
     @State private var isStatusToastPresented = false
 
+    /// Set by a row tap to open the unified editor for that task (observed by
+    /// `TaskEditorHost`).
+    @State private var openTaskID: UUID?
+
     var body: some View {
         TasksScreen(
             roots: tree,
@@ -89,7 +93,8 @@ struct TasksView: View {
             onOpenSettings: {
                 isSettingsPresented = true
             },
-            onUndoArchive: { Task { await undoArchive() } }
+            onUndoArchive: { Task { await undoArchive() } },
+            onOpenTask: { id in openTaskID = id }
         )
         .sheet(isPresented: $isSettingsPresented) {
             SettingsTab()
@@ -101,9 +106,11 @@ struct TasksView: View {
                 .padding(.bottom, 16)
                 .accessibilityIdentifier("TasksQuickCaptureFAB")
         }
-        .modifier(QuickCaptureDialogHost(
-            isPresented: isQuickCapturePresented,
-            onCreated: { await reload() }
+        .modifier(TaskEditorHost(
+            newCaptureTrigger: isQuickCapturePresented,
+            openTaskID: $openTaskID,
+            stores: editorStores,
+            onChanged: { await reload() }
         ))
         .task { await initialLoad() }
         .onAppear {
@@ -128,6 +135,18 @@ struct TasksView: View {
     }
 
     // MARK: - Derived
+
+    /// Store bundle for the unified editor, assembled from the environment.
+    private var editorStores: TaskEditorModel.Stores {
+        TaskEditorModel.Stores(
+            tasks: env.taskStore,
+            tags: env.tagStore,
+            series: env.seriesStore,
+            journal: env.journalStore,
+            notifications: env.notificationSpecStore,
+            attachments: env.attachmentStore
+        )
+    }
 
     private var tree: [TaskNode] {
         TaskTree.build(
