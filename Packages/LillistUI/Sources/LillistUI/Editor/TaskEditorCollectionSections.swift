@@ -70,64 +70,46 @@ struct EditorSubtasksSection: View {
     }
 }
 
-/// Journal stream (read-only entries) + a note composer.
+/// Journal stream (read-only entries). Each entry shows its absolute
+/// timestamp inline with the change text to stay compact — no auto-updating
+/// relative labels, and no note composer (manual notes were retired).
 struct EditorJournalSection: View {
     var entries: [JournalStore.JournalRecord]
-    var onAddNote: (String) -> Void
 
-    @State private var draft: String = ""
+    /// Fixed `yyyy-MM-dd HH:mm:ss` stamp. POSIX locale so the numeric format
+    /// is stable regardless of the user's locale; current time zone so the
+    /// time reads as wall-clock-local to the user.
+    private static let timestampFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.locale = Locale(identifier: "en_US_POSIX")
+        f.dateFormat = "yyyy-MM-dd HH:mm:ss"
+        return f
+    }()
 
     var body: some View {
         VStack(alignment: .leading, spacing: LillistSpacing.s) {
+            if entries.isEmpty {
+                Text("No activity yet.", bundle: .module)
+                    .font(LillistTypography.caption)
+                    .foregroundStyle(LillistColor.textFaint)
+            }
             ForEach(entries, id: \.id) { entry in
-                VStack(alignment: .leading, spacing: 2) {
+                HStack(alignment: .firstTextBaseline, spacing: LillistSpacing.xs + 2) {
+                    if let at = entry.createdAt {
+                        Text(Self.timestampFormatter.string(from: at))
+                            .font(LillistTypography.caption2)
+                            .monospaced()
+                            .foregroundStyle(LillistColor.textFaint)
+                            .layoutPriority(1)
+                    }
                     Text(entry.body)
                         .font(LillistTypography.subheadline)
                         .foregroundStyle(LillistColor.textBody)
-                    if let at = entry.createdAt {
-                        Text(at, style: .relative)
-                            .font(LillistTypography.caption2)
-                            .foregroundStyle(LillistColor.textFaint)
-                    }
+                    Spacer(minLength: 0)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
-
-            HStack(spacing: LillistSpacing.s) {
-                TextField(
-                    text: $draft,
-                    prompt: Text("Add a note", bundle: .module)
-                ) {
-                    Text("Add a note", bundle: .module)
-                }
-                .textFieldStyle(.plain)
-                .font(LillistTypography.body)
-                .submitLabel(.done)
-                .onSubmit(commit)
-                .accessibilityIdentifier("AddJournalNoteField")
-
-                Button(action: commit) {
-                    Image(systemName: "plus.circle.fill")
-                        .foregroundStyle(RainbowPalette.scriptPurple.base)
-                }
-                .buttonStyle(.plain)
-                .disabled(draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-                .accessibilityLabel(String(localized: "Add note", bundle: .module))
-            }
-            .padding(.horizontal, LillistSpacing.m)
-            .padding(.vertical, LillistSpacing.s)
-            .background {
-                RoundedRectangle(cornerRadius: LillistRadius.s, style: .continuous)
-                    .fill(.rainbowWell)
-            }
         }
-    }
-
-    private func commit() {
-        let trimmed = draft.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else { return }
-        onAddNote(trimmed)
-        draft = ""
     }
 }
 

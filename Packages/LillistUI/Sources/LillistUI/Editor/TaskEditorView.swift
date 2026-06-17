@@ -18,6 +18,7 @@ public struct TaskEditorView: View {
     public var onAddAttachment: (() -> Void)?
 
     @State private var showRecurrenceSheet = false
+    @State private var showJournal = false
 
     @Environment(\.accessibilityReduceMotion) private var systemReduceMotion
     @Environment(\.reduceMotionOverride) private var overrideReduceMotion
@@ -97,8 +98,8 @@ public struct TaskEditorView: View {
     private var fullBody: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: LillistSpacing.l) {
-                titleSection
-                statusSection
+                titleHeader
+                notesSection
                 datesSection
                 pinSection
                 section("Tags") {
@@ -119,7 +120,6 @@ public struct TaskEditorView: View {
                         onDelete: { id in Task { await model.deleteReminder(id: id) } }
                     )
                 }
-                notesSection
                 section("Subtasks") {
                     EditorSubtasksSection(
                         subtasks: model.subtasks,
@@ -127,12 +127,7 @@ public struct TaskEditorView: View {
                         onOpen: onOpenSubtask
                     )
                 }
-                section("Journal") {
-                    EditorJournalSection(
-                        entries: model.journal,
-                        onAddNote: { body in Task { try? await model.addJournalNote(body) } }
-                    )
-                }
+                journalSection
                 section("Attachments") {
                     EditorAttachmentsSection(
                         attachments: model.attachments,
@@ -157,33 +152,32 @@ public struct TaskEditorView: View {
 
     // MARK: - Full-mode sections
 
-    private var titleSection: some View {
-        TextField(
-            text: $model.title,
-            prompt: Text("Title", bundle: .module),
-            axis: .vertical
-        ) {
-            Text("Title", bundle: .module)
-        }
-        .textFieldStyle(.plain)
-        .font(LillistTypography.title3)
-        .foregroundStyle(LillistColor.textStrong)
-        .accessibilityIdentifier("EditorTitleField")
-    }
-
-    private var statusSection: some View {
-        section("Status") {
-            HStack(spacing: LillistSpacing.m) {
-                StatusIndicatorView(
-                    status: model.status,
-                    onClick: { Task { await model.setStatus(StatusCycler.nextOnClick(from: model.status)) } },
-                    onSetStatus: { s in Task { await model.setStatus(s) } }
-                )
-                Text(Self.statusName(model.status), bundle: .module)
-                    .font(LillistTypography.body)
-                    .foregroundStyle(LillistColor.textBody)
-                Spacer(minLength: 0)
+    /// Title rendered the way a task row is — the tappable status indicator
+    /// beside the title — so the editor header and the list row read as the
+    /// same object. The title stays inline-editable; closed tasks take the
+    /// row's muted treatment. (Replaces the former separate Status section.)
+    private var titleHeader: some View {
+        // Default (center) alignment mirrors TaskRowView's status+title row.
+        HStack(spacing: LillistSpacing.s) {
+            StatusIndicatorView(
+                status: model.status,
+                onClick: { Task { await model.setStatus(StatusCycler.nextOnClick(from: model.status)) } },
+                onSetStatus: { s in Task { await model.setStatus(s) } }
+            )
+            TextField(
+                text: $model.title,
+                prompt: Text("Title", bundle: .module),
+                axis: .vertical
+            ) {
+                Text("Title", bundle: .module)
             }
+            .textFieldStyle(.plain)
+            .font(LillistTypography.title3)
+            // Match TaskRowLabel's closed treatment. Strikethrough only renders
+            // on static Text, not an editable field, so closed state reads
+            // through the muted colour alone (the field stays editable).
+            .foregroundStyle(model.status == .closed ? LillistColor.textFaint : LillistColor.textStrong)
+            .accessibilityIdentifier("EditorTitleField")
         }
     }
 
@@ -284,6 +278,35 @@ public struct TaskEditorView: View {
                         .fill(.rainbowWell)
                 }
                 .accessibilityIdentifier("EditorNotesField")
+        }
+    }
+
+    /// Journal is collapsed behind a button — it's reference history, not a
+    /// primary edit surface, so it stays out of the way until asked for.
+    private var journalSection: some View {
+        section("Journal") {
+            VStack(alignment: .leading, spacing: LillistSpacing.s) {
+                Button {
+                    withAnimation(reduceMotion ? nil : LillistMotion.squish(LillistMotion.fast)) {
+                        showJournal.toggle()
+                    }
+                } label: {
+                    HStack(spacing: LillistSpacing.xs) {
+                        Image(systemName: showJournal ? "chevron.down" : "chevron.right")
+                            .font(LillistTypography.caption)
+                        Text(showJournal ? "Hide Journal" : "Show Journal", bundle: .module)
+                            .font(LillistTypography.body)
+                    }
+                    .foregroundStyle(LillistColor.textBody)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityIdentifier("EditorJournalToggle")
+
+                if showJournal {
+                    EditorJournalSection(entries: model.journal)
+                }
+            }
         }
     }
 
@@ -399,15 +422,6 @@ public struct TaskEditorView: View {
             content()
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-    }
-
-    private static func statusName(_ s: Status) -> LocalizedStringKey {
-        switch s {
-        case .todo: return "To-do"
-        case .started: return "Started"
-        case .blocked: return "Blocked"
-        case .closed: return "Closed"
-        }
     }
 }
 
