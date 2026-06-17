@@ -29,7 +29,32 @@ swift test --package-path Packages/LillistUI --filter TaskEditorModel
 swift test --package-path Packages/LillistCore --filter committableTitle --parallel --num-workers 2
 ```
 
-## Refinement to carry into Wave 2 (improves on the plan)
+## Done — Wave 2: Shared editor view + components ✅ (builds clean, tests green)
+
+In `Packages/LillistUI/Sources/LillistUI/Editor/`:
+- **`TaskEditorView`** — cross-platform presenter over `@Bindable model`. Quick
+  mode = capture field (`#tag ^date`) + parsed chips + Add + "…" expand
+  (animated via `LillistMotion.squish`). Full mode = ScrollView of sections
+  rendered natively through the model: title, status (`StatusIndicatorView`),
+  dates (+ time toggles), pin, tags, recurrence (sheet → `RecurrenceEditorView`),
+  reminders, notes (debounced `.task(id:)`), subtasks, journal, attachments,
+  footer (Done / Delete / `lastCommitWarning`). Live-save wired via `.task`
+  debounce + `.onChange(scalarKey)`. Host seams: `onOpenSubtask`,
+  `onAddAttachment`.
+- **`TagAssignmentField`** (net-new), **`ReminderEditorSection`** (net-new,
+  pure `offsetLabel`/`describe` helpers), **`TaskEditorCollectionSections`**
+  (`EditorSubtasksSection`/`EditorJournalSection`/`EditorAttachmentsSection`).
+- Model gained `captureText` + `ingestCaptureText`/`isQuickCommittable`/
+  `commitQuickCapture`; `expandToFull` now folds quick text into fields;
+  `displayedTagNames`.
+- `NotificationSpecStore.SpecRecord` got the explicit public init CLAUDE.md
+  mandates (was missing).
+
+Tests: `TaskEditorQuickCaptureTests` (4) + `ReminderFormattingTests` (2), all
+green. `swift build --package-path Packages/LillistUI` clean (no warnings).
+Verify: `swift test --package-path Packages/LillistUI --filter "TaskEditorQuickCaptureTests|ReminderFormattingTests"`.
+
+## Refinement applied in Wave 2 (improves on the plan)
 
 The plan assumed the shared editor would take **injected ViewBuilder closures**
 for notes/subtasks/journal/followUp because those components were
@@ -44,31 +69,7 @@ ONLY for genuinely platform-specific bits: attachment acquisition
 (host re-targets the singleton editor). LillistUI stays `AppEnvironment`-free
 because everything routes through the model.
 
-## Next — Wave 2: Shared editor view + net-new components
-
-In `Packages/LillistUI/Sources/LillistUI/Editor/`:
-- **`TaskEditorView`** — pure presenter, `@Bindable model`. Quick mode = title
-  field + token chips (fold in `iOS/QuickCaptureDialog` body). Full mode =
-  ScrollView of sections rendered natively via the model: title, status
-  (reuse `StatusIndicatorView`/`StatusGlyph`), dates (+hasTime toggles), pin
-  (`RainbowToggleStyle`), tags (`TagAssignmentField`), recurrence (row →
-  reuse `RecurrenceEditorView`), reminders (`ReminderEditorSection`), notes
-  (debounced TextEditor), subtasks list (`TaskRowView` + add field), journal
-  list, attachments (injected acquisition). Use `GlassSurface` `.panel`,
-  `LillistMotion`/`LillistSpacing`/`LillistRadius`/`LillistTypography`.
-- **`TagAssignmentField`** (net-new) — removable `TagChipView` chips + add/create
-  field over `tagStore.children(of:)`; calls `model.addTag/removeTag`. Tag
-  filter/dedupe as `nonisolated static` helpers.
-- **`ReminderEditorSection`** (net-new) — `NotificationKind` picker + offset/
-  fire-date; lists `model.reminders`; calls `model.addReminder/deleteReminder`.
-- Offscreen unit/snapshot tests for sub-components WITHOUT a status `Menu`
-  (dates, token row, tag field). Assembled editor snapshots are app-hosted in
-  Wave 3 (the status `Menu` blanks offscreen captures — see plan Testing).
-
-Build/verify: `swift build --package-path Packages/LillistUI` (strict
-concurrency + warnings-as-errors), plus `swift test --package-path Packages/LillistUI --filter <name>`.
-
-## Then — Waves 3–5 (see plan)
+## Next — Waves 3–5 (see plan)
 
 - **W3 iOS hosting + retirement:** `TaskEditorHost` (replaces
   `QuickCaptureDialogHost`), generalize `QuickCaptureDialogPresenter`, reroute

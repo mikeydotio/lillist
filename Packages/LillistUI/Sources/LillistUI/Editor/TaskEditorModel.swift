@@ -93,6 +93,14 @@ public final class TaskEditorModel {
     /// entire quick→full expansion at the data layer.
     public var mode: TaskEditorMode
 
+    // MARK: - Quick-capture raw text
+
+    /// The raw text of the `quick` mode single field, which keeps the
+    /// `#tag ^date` Quick Capture syntax. Parsed into the structured fields
+    /// (`title` / `draftTagNames` / `deadline`) on expand or commit. Unused
+    /// once in `full` mode or for an existing task.
+    public var captureText: String = ""
+
     // MARK: - Scalar field mirror (editing surface for BOTH draft and live)
 
     public var title: String = ""
@@ -111,6 +119,12 @@ public final class TaskEditorModel {
     public internal(set) var draftTagNames: [String] = []
     /// Materialized tags once live.
     public private(set) var assignedTags: [TagStore.TagRecord] = []
+    /// Tag names to show regardless of phase: buffered draft names while a
+    /// draft, materialized tag names once live.
+    public var displayedTagNames: [String] {
+        if case .live = phase { return assignedTags.map(\.name) }
+        return draftTagNames
+    }
     /// Recurrence editor VM — buffered while draft, round-tripped from the
     /// series once live.
     public var recurrence: RecurrenceEditorViewModel = .init(rule: nil)
@@ -179,15 +193,55 @@ public final class TaskEditorModel {
         await reloadRelations(id: id)
     }
 
+    // MARK: - Quick-capture parsing
+
+    /// Whether the quick field would produce a committable task — i.e. its
+    /// parsed title is non-empty. Drives the quick-mode "Add" button.
+    public var isQuickCommittable: Bool {
+        TaskStore.isCommittableTitle(QuickCaptureParser.parse(captureText).title)
+    }
+
+    /// Parse `captureText`'s `#tag ^date` syntax into the structured draft
+    /// fields. `title` becomes the parsed title; parsed tags are appended
+    /// (case-insensitive dedupe); a resolvable `^date` sets the deadline.
+    /// No-op when the parsed title is empty (don't wipe a real title on an
+    /// accidental expand of empty text).
+    public func ingestCaptureText() {
+        let parsed = QuickCaptureParser.parse(captureText)
+        let trimmed = parsed.title.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        title = trimmed
+        for name in parsed.tags
+        where !draftTagNames.contains(where: { $0.caseInsensitiveCompare(name) == .orderedSame }) {
+            draftTagNames.append(name)
+        }
+        if let token = parsed.dateToken, let rel = try? RelativeDate.parse(token) {
+            deadline = RelativeDateResolver.resolve(rel)
+            deadlineHasTime = false
+        }
+    }
+
     // MARK: - Expansion
 
-    /// Flip quick → full. Pure mode change; the buffered draft carries over
-    /// with zero data migration.
-    public func expandToFull() { mode = .full }
+    /// Flip quick → full, first folding the quick field's `#tag ^date` text
+    /// into the structured fields so nothing typed is lost. Pure
+    /// in-memory; the buffered draft carries over with zero data migration.
+    public func expandToFull() {
+        ingestCaptureText()
+        mode = .full
+    }
 
-    // MARK: - Explicit commit (quick "Add")
+    // MARK: - Explicit commit
 
-    /// Commit a pure draft to a real task (the quick-mode "Add" path) and
+    /// Commit the quick field (the quick-mode "Add" path): parse `captureText`
+    /// then commit. Returns the new task id.
+    @discardableResult
+    public func commitQuickCapture() async throws -> UUID {
+        ingestCaptureText()
+        return try await ensureLive()
+    }
+
+    /// Commit a pure draft to a real task (full-mode explicit save) and
     /// return its id. Idempotent with auto-promote — both funnel through
     /// `ensureLive()`.
     @discardableResult

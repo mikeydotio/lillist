@@ -21,6 +21,26 @@ public final class NotificationSpecStore: @unchecked Sendable {
         public var lastFiredAt: Date?
         public var snoozedUntil: Date?
         public var createdAt: Date?
+
+        public init(
+            id: UUID,
+            taskID: UUID,
+            kind: NotificationKind,
+            offsetMinutes: Int32?,
+            fireDate: Date?,
+            lastFiredAt: Date?,
+            snoozedUntil: Date?,
+            createdAt: Date?
+        ) {
+            self.id = id
+            self.taskID = taskID
+            self.kind = kind
+            self.offsetMinutes = offsetMinutes
+            self.fireDate = fireDate
+            self.lastFiredAt = lastFiredAt
+            self.snoozedUntil = snoozedUntil
+            self.createdAt = createdAt
+        }
     }
 
     public struct SpecDraft: Sendable {
