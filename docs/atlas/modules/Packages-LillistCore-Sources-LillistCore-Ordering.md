@@ -1,17 +1,18 @@
 ---
 module: Packages/LillistCore/Sources/LillistCore/Ordering
 summary: "Gap-based fractional ordering math and canonical sibling sort for reorderable rows"
-read_when: Touching row reorder, drag-and-drop position assignment, or sibling sort order
+read_when: "Touching row reorder, drag-and-drop position assignment, or sibling sort order"
 sources:
   - path: Packages/LillistCore/Sources/LillistCore/Ordering/FractionalPosition.swift
+    blob: 6fbaf3984109921be4e307d398ad898e7862c2fe
   - path: Packages/LillistCore/Sources/LillistCore/Ordering/PositionCompactor.swift
+    blob: 3d0bf5e1c4d35ae2c6804e901366317858e98e04
   - path: Packages/LillistCore/Sources/LillistCore/Ordering/SiblingOrder.swift
-references_modules:
-  - Packages-LillistCore-Sources-LillistCore-Stores-chunk-1
-  - Packages-LillistCore-Sources-LillistCore-Stores-chunk-2
-  - Packages-LillistUI-Sources-LillistUI-iOS-Tasks
-  - Apps-Lillist-macOS-Sources-Views
-generator: cartographer/1 model=claude-sonnet-4-6
+    blob: ad5e6ff0259801e3fe4c769c3e1122c0dcb7782d
+references_modules: [Packages-LillistCore-Sources-LillistCore-Stores-chunk-1, Packages-LillistCore-Sources-LillistCore-Stores-chunk-2, Packages-LillistUI-Sources-LillistUI-iOS-Tasks, Apps-Lillist-macOS-Sources-Views]
+generator: cartographer/1
+baseline: 1a1562b636e43ebbdc35c7939ab6989b387f50e9
+verified: true
 ---
 
 # Module: Packages/LillistCore/Sources/LillistCore/Ordering

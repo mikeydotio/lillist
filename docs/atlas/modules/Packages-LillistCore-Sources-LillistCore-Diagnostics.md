@@ -1,16 +1,24 @@
 ---
 module: Packages/LillistCore/Sources/LillistCore/Diagnostics
 summary: "On-disk JSONL diagnostic event log, history-derived attribution, and export-package builder"
-read_when: Touching diagnostic logging, data-layer change observability, or diagnostic export/zip
+read_when: "Touching diagnostic logging, data-layer change observability, or diagnostic export/zip"
 sources:
   - path: Packages/LillistCore/Sources/LillistCore/Diagnostics/DiagnosticDefaults.swift
+    blob: e3f22151361ded3a01d1bcc2601f0a62ed095d8f
   - path: Packages/LillistCore/Sources/LillistCore/Diagnostics/DiagnosticEvent.swift
+    blob: 4b41a93037c2cd610c2b5be293eaaab663cdef1e
   - path: Packages/LillistCore/Sources/LillistCore/Diagnostics/DiagnosticHistoryObserver.swift
+    blob: b9e07971ffd2c766b0df00813d441ad9e83e56d8
   - path: Packages/LillistCore/Sources/LillistCore/Diagnostics/DiagnosticLog.swift
+    blob: 0ac37c8392163db4b229f840218f263f1f5585bf
   - path: Packages/LillistCore/Sources/LillistCore/Diagnostics/DiagnosticPackageBuilder.swift
+    blob: 898d056563376af5cf9bfc705a624d3dd859af5f
   - path: Packages/LillistCore/Sources/LillistCore/Diagnostics/DiagnosticSink.swift
+    blob: e2584a0372a51010539bd69615fad14ed4e1d39a
 references_modules: [Packages-LillistCore-Sources-LillistCore-Persistence]
-generator: cartographer/1 model=claude-sonnet-4-6
+generator: cartographer/1
+baseline: 1a1562b636e43ebbdc35c7939ab6989b387f50e9
+verified: true
 ---
 
 # Module: Packages/LillistCore/Sources/LillistCore/Diagnostics

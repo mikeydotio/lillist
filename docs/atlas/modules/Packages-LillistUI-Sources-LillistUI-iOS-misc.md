@@ -4,21 +4,37 @@ summary: "iOS-only LillistUI surfaces — FAB, Quick Capture dialog, toasts, syn
 read_when: "iOS Quick Capture, FAB, toasts, task editor overlay, or TasksScreen/SettingsScreen shells"
 sources:
   - path: Packages/LillistUI/Sources/LillistUI/iOS/ArchiveToast.swift
+    blob: 29e16f29a8e2cef387387bcc878d5790d533c5a8
   - path: Packages/LillistUI/Sources/LillistUI/iOS/DiagnosticsIncludeSheet.swift
+    blob: d47c7f5d13cf599edef0f443c815a870abb68ca9
   - path: Packages/LillistUI/Sources/LillistUI/iOS/FloatingAddButton.swift
+    blob: 3cff96726b149c499ff0ba0edf0c2b60af1ee220
   - path: Packages/LillistUI/Sources/LillistUI/iOS/QuickCaptureActionEnvironment.swift
+    blob: 4cd70e2ac439f86bdb12031e3784ddf7ebdea73b
   - path: Packages/LillistUI/Sources/LillistUI/iOS/QuickCaptureDialog.swift
+    blob: 28f6efa09540598d7311a777da5d4be4f0a4452e
   - path: Packages/LillistUI/Sources/LillistUI/iOS/QuickCaptureDialogPresenter.swift
+    blob: 5e69c48782936c4c950b83ceac7b9128b6fee63a
   - path: Packages/LillistUI/Sources/LillistUI/iOS/QuickCaptureDiscardToast.swift
+    blob: 2ed1f32bbe49a090527a60702ca5327d5388df1a
   - path: Packages/LillistUI/Sources/LillistUI/iOS/ReorderFailureToast.swift
+    blob: 0715994fd02c6510687e9d41a630777fac072dcb
   - path: Packages/LillistUI/Sources/LillistUI/iOS/Screens/SettingsScreen.swift
+    blob: 35b24834fa6e44b5e3cf8a41693bdd914b0d678f
   - path: Packages/LillistUI/Sources/LillistUI/iOS/Screens/TasksScreen.swift
+    blob: 4fd82b0819cc365ad5bd7804518e3ee1554762ee
   - path: Packages/LillistUI/Sources/LillistUI/iOS/SizeClassRouter.swift
+    blob: 1bf4ae6409a26c607411ef5490b451172f3d99c4
   - path: Packages/LillistUI/Sources/LillistUI/iOS/SyncStatusBadge.swift
+    blob: deb46ec7b905384f236781bd3cb27ca4f5697666
   - path: Packages/LillistUI/Sources/LillistUI/iOS/TaskEditorOverlay.swift
+    blob: ee599d6fe5392fcfc2e57b473788b1a91d1d4048
   - path: Packages/LillistUI/Sources/LillistUI/iOS/ToastChrome.swift
+    blob: b70db2d1499bec0e34c308d83e8587d7f0062637
 references_modules: [Packages-LillistUI-Sources-LillistUI-iOS-Tasks, Packages-LillistUI-Sources-LillistUI-DragReorder, Packages-LillistUI-Sources-LillistUI-QuickCapture, Packages-LillistUI-Sources-LillistUI-Components, Packages-LillistUI-Sources-LillistUI-misc, Packages-LillistUI-Sources-LillistUI-Accessibility, Packages-LillistUI-Sources-LillistUI-Theme-chunk-1, Packages-LillistUI-Sources-LillistUI-Theme-chunk-2, Packages-LillistCore-Sources-LillistCore-Stores-chunk-2, Packages-LillistCore-Sources-LillistCore-Sync-chunk-2]
-generator: cartographer/1 model=claude-sonnet-4-6
+generator: cartographer/1
+baseline: 1a1562b636e43ebbdc35c7939ab6989b387f50e9
+verified: true
 ---
 
 # Module: Packages/LillistUI/Sources/LillistUI/iOS (misc)

@@ -4,10 +4,15 @@ summary: "macOS menu bar commands and keyboard shortcuts wired via Notification 
 read_when: "Touching macOS menu commands, keyboard shortcuts, or focused-column gating"
 sources:
   - path: Apps/Lillist-macOS/Sources/Commands/CommandNotifications.swift
+    blob: 81e589f69219472b3db0c94bf82379bd82b13916
   - path: Apps/Lillist-macOS/Sources/Commands/FocusedListColumn.swift
+    blob: 7d3bfea4ff5ac04bdc336b4638311b7f19fb10f4
   - path: Apps/Lillist-macOS/Sources/Commands/LillistCommands.swift
+    blob: 619f36e358e5539e180aaade98f648b998e8d8ea
 references_modules: [Apps-Lillist-macOS-Sources-misc, Apps-Lillist-macOS-Sources-Views]
-generator: cartographer/1 model=claude-sonnet-4-6
+generator: cartographer/1
+baseline: 1a1562b636e43ebbdc35c7939ab6989b387f50e9
+verified: true
 ---
 
 # Module: Apps/Lillist-macOS/Sources/Commands

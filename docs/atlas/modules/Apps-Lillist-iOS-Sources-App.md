@@ -4,13 +4,21 @@ summary: "iOS app entry point, composition-root environment graph, and crash-rep
 read_when: "iOS app launch + env graph"
 sources:
   - path: Apps/Lillist-iOS/Sources/App/AppEnvironment.swift
+    blob: 02254d0d5ac21d7c890d7dc26d09dc8f8d882edd
   - path: Apps/Lillist-iOS/Sources/App/CrashReporterHost.swift
+    blob: 10e38c4524e8eb68e95e9d0cfae0be658b1ee067
   - path: Apps/Lillist-iOS/Sources/App/LillistApp.swift
+    blob: d18ba5f75b127be1501a9780023a8856ddcf8013
   - path: Apps/Lillist-iOS/Sources/App/MailComposerTransport.swift
+    blob: af54dda7da2700518a16e86aebb5d4735e0bcc16
   - path: Apps/Lillist-iOS/Sources/App/MailComposerView.swift
+    blob: 7888c20651cafd6509b97b2de2c4eabde8305685
   - path: Apps/Lillist-iOS/Sources/App/MetricKitObserver.swift
+    blob: 198daf20635d64ed69d25a5b805147d26a4d653f
 references_modules: [Apps-Lillist-iOS-Sources-misc, Packages-LillistCore-Sources-LillistCore-Stores-chunk-2, Packages-LillistCore-Sources-LillistCore-Sync-chunk-1, Packages-LillistCore-Sources-LillistCore-CrashReporting, Packages-LillistUI-Sources-LillistUI-CrashReporting, Packages-LillistUI-Sources-LillistUI-Onboarding, Packages-LillistUI-Sources-LillistUI-Sync]
 generator: cartographer/1
+baseline: 1a1562b636e43ebbdc35c7939ab6989b387f50e9
+verified: true
 ---
 
 # Module: Apps/Lillist-iOS/Sources/App

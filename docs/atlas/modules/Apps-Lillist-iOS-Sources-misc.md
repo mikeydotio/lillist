@@ -4,13 +4,21 @@ summary: "iOS root shell, task list container, unified editor host, onboarding, 
 read_when: "iOS root shell, Quick Capture, task editor overlay, onboarding, or scene bindings"
 sources:
   - path: Apps/Lillist-iOS/Sources/Commands/LillistCommands.swift
+    blob: 166463128417565918949336bd955c5f5226882c
   - path: Apps/Lillist-iOS/Sources/Common/SceneBindings.swift
+    blob: 4c5ed74be926c762f0403a874c3427d9b503d503
   - path: Apps/Lillist-iOS/Sources/Editor/TaskEditorHost.swift
+    blob: e3878642168a8fe675bb69e4de980d00390003e8
   - path: Apps/Lillist-iOS/Sources/Onboarding/OnboardingScreen.swift
+    blob: bd8a5898a5de3b3ec6ebf2feb8ce63b9659f4758
   - path: Apps/Lillist-iOS/Sources/Root/RootShell.swift
+    blob: 8adba00f5dcabd13817ce262915f3f9963ce92ab
   - path: Apps/Lillist-iOS/Sources/Tasks/TasksView.swift
+    blob: 96de4d0b6dd826ebfab4465fc73b25beff8a056e
 references_modules: [Apps-Lillist-iOS-Sources-App, Apps-Lillist-iOS-Sources-Settings, Packages-LillistCore-Sources-LillistCore-Stores-chunk-2, Packages-LillistCore-Sources-LillistCore-Rules, Packages-LillistCore-Sources-LillistCore-Notifications, Packages-LillistUI-Sources-LillistUI-iOS-Tasks, Packages-LillistUI-Sources-LillistUI-iOS-misc, Packages-LillistUI-Sources-LillistUI-Onboarding, Packages-LillistUI-Sources-LillistUI-DragReorder, Packages-LillistUI-Sources-LillistUI-misc]
-generator: cartographer/1 model=claude-sonnet-4-6
+generator: cartographer/1
+baseline: 1a1562b636e43ebbdc35c7939ab6989b387f50e9
+verified: true
 ---
 
 # Module: Apps/Lillist-iOS/Sources (misc)

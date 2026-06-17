@@ -12,7 +12,9 @@ sources:
   - path: Apps/Lillist-macOS/Resources/PrivacyInfo.xcprivacy
     blob: 4e7e051bbe5e2753a0a80b85ae78289d250bdce7
 references_modules: [Apps-Lillist-macOS-Sources-misc, Apps-Lillist-macOS-Sources-Preferences]
-generator: cartographer/1 model=claude-sonnet-4-6
+generator: cartographer/1
+baseline: 1a1562b636e43ebbdc35c7939ab6989b387f50e9
+verified: true
 ---
 
 # Module: Apps/Lillist-macOS (misc)

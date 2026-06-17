@@ -4,18 +4,31 @@ summary: "Canary-based crash detection plus opt-in, redacted, user-mediated cras
 read_when: "Touching crash detection, breadcrumb recording, log redaction, or crash report transport"
 sources:
   - path: "Packages/LillistCore/Sources/LillistCore/CrashReporting/AppPreferences+Crash.swift"
+    blob: 1903156bfc349c5fd5ab6ea58356e7f22cf20369
   - path: Packages/LillistCore/Sources/LillistCore/CrashReporting/Breadcrumb.swift
+    blob: 74efe7dff31af290939d779fcf47d49c583a50a2
   - path: Packages/LillistCore/Sources/LillistCore/CrashReporting/BreadcrumbBuffer.swift
+    blob: 81a5e9be1a41d4a0caaeec1c3f8ac171a0d2f82f
   - path: Packages/LillistCore/Sources/LillistCore/CrashReporting/CanaryFile.swift
+    blob: 38d7987b5923484837d05e7945c357847968768b
   - path: Packages/LillistCore/Sources/LillistCore/CrashReporting/CrashCanary.swift
+    blob: ed24bc86615ecbc0ba4ab5b07a2830565cb72adb
   - path: Packages/LillistCore/Sources/LillistCore/CrashReporting/CrashReport.swift
+    blob: 0f8bd614f6f1960e4a52edb574b8c65df9ca0747
   - path: Packages/LillistCore/Sources/LillistCore/CrashReporting/CrashReportTransport.swift
+    blob: adee929b22263f1fe25a2b36454e2103a21a17da
   - path: Packages/LillistCore/Sources/LillistCore/CrashReporting/CrashReporter.swift
+    blob: 0aaab69bf29d3f1233860d00b0dc14b2a965ef7c
   - path: Packages/LillistCore/Sources/LillistCore/CrashReporting/CrashReporting.swift
+    blob: 4c6d076cc721126adc479b806625d5a46ba8b5ce
   - path: Packages/LillistCore/Sources/LillistCore/CrashReporting/LogRedactor.swift
+    blob: cb4793e61bc5abc2a0fe8e401a72484c3bc312fd
   - path: Packages/LillistCore/Sources/LillistCore/CrashReporting/OSLogFetcher.swift
+    blob: fdb21347e99f1aba3d1718cbfcf699687413377c
 references_modules: [Apps-Lillist-iOS-Sources-App, Apps-Lillist-macOS-Sources-misc, Packages-LillistUI-Sources-LillistUI-CrashReporting, Packages-LillistCore-Sources-lillist-cli-Support, Packages-LillistCore-Sources-lillist-cli-Commands-chunk-2, Packages-LillistCore-Sources-LillistCore-Stores-chunk-1, Packages-LillistCore-Sources-LillistCore-Stores-chunk-2]
-generator: cartographer/1 model=claude-sonnet-4-6
+generator: cartographer/1
+baseline: 1a1562b636e43ebbdc35c7939ab6989b387f50e9
+verified: true
 ---
 
 # Module: Packages/LillistCore/Sources/LillistCore/CrashReporting

@@ -1,20 +1,26 @@
 ---
 module: Packages/LillistCore/Sources/lillist-cli/Support
-summary: Shared CLI plumbing — output/color flags, stdin batch tokens, exit codes, crash-canary lifecycle
-read_when: Touching lillist CLI startup, output flags, batch stdin, exit codes, or crash-canary wiring
+summary: "Shared CLI plumbing — output/color flags, stdin batch tokens, exit codes, crash-canary lifecycle"
+read_when: "Touching lillist CLI startup, output flags, batch stdin, exit codes, or crash-canary wiring"
 sources:
   - path: Packages/LillistCore/Sources/lillist-cli/Support/BatchTokens.swift
+    blob: c84df24df145043a34c89c879bf446bbbfcbf80e
   - path: Packages/LillistCore/Sources/lillist-cli/Support/CLICanaryLifecycle.swift
+    blob: b492325d31ba448977841decc1891e5ff2a70d01
   - path: Packages/LillistCore/Sources/lillist-cli/Support/CLIMailtoTransport.swift
+    blob: 4a30bb1119b0100198dfd21cd97c2df31051e2f3
   - path: Packages/LillistCore/Sources/lillist-cli/Support/ExitCode.swift
+    blob: f5f5ffb1a175f5414cbda868ff0fd3ffd6bc981b
   - path: Packages/LillistCore/Sources/lillist-cli/Support/GlobalOptions.swift
+    blob: 4799e259a152e240436eeff1d8d2458037a9f8fd
   - path: Packages/LillistCore/Sources/lillist-cli/Support/StdinReader.swift
+    blob: 7ddf37b8827ee3a40b6d2ba58e4b6f2d7c6036fd
   - path: Packages/LillistCore/Sources/lillist-cli/Support/TTY.swift
-references_modules:
-  - Packages-LillistCore-Sources-LillistCore-CrashReporting
-  - Packages-LillistCore-Sources-LillistCore-CLIBridge-misc
-  - Packages-LillistCore-Sources-LillistCore-misc
-generator: cartographer/1 model=claude-sonnet-4-6
+    blob: 57090a111e9ba0726fe08d55be48af9ef03d5915
+references_modules: [Packages-LillistCore-Sources-LillistCore-CrashReporting, Packages-LillistCore-Sources-LillistCore-CLIBridge-misc, Packages-LillistCore-Sources-LillistCore-misc]
+generator: cartographer/1
+baseline: 1a1562b636e43ebbdc35c7939ab6989b387f50e9
+verified: true
 ---
 
 # Module: Packages/LillistCore/Sources/lillist-cli/Support

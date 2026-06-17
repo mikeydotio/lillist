@@ -4,21 +4,37 @@ summary: "Shared SwiftUI row and surface widgets consumed by both iOS and macOS 
 read_when: "Touching task rows, status chips, tag chips, sidebar rows, empty states, or sync dot"
 sources:
   - path: Packages/LillistUI/Sources/LillistUI/Components/BreadcrumbView.swift
+    blob: c662c04cec8fb460c17ca9cfea3f78578e3d444a
   - path: Packages/LillistUI/Sources/LillistUI/Components/BuildVersionLabel.swift
+    blob: 8623d335a16e13884f0d8985100db6a3e6f6b079
   - path: Packages/LillistUI/Sources/LillistUI/Components/ConfettiBurstView.swift
+    blob: 9a7d9046cea6ecf02cba1784d60f393c8e812bb7
   - path: Packages/LillistUI/Sources/LillistUI/Components/EmptyStateView.swift
+    blob: fd41846d18ba5b3c9409c5d35a3d9114325b3d3d
   - path: Packages/LillistUI/Sources/LillistUI/Components/JournalEntryRow.swift
+    blob: d483247acd32c1841e88d0d2e472e904a083c170
   - path: Packages/LillistUI/Sources/LillistUI/Components/RainbowCard.swift
+    blob: 2c4cc98753dfa85326b234c64740e392dde6af4c
   - path: Packages/LillistUI/Sources/LillistUI/Components/RainbowEmptyStateView.swift
+    blob: 53610b2d3ffd8906b213cd9b9b652a78fefbf1ee
   - path: Packages/LillistUI/Sources/LillistUI/Components/ReorderActionDispatch.swift
+    blob: d003af836af61b395d86b30749b4ea9e26e3c7b3
   - path: Packages/LillistUI/Sources/LillistUI/Components/SidebarRowView.swift
+    blob: dbb33dba3b233d3b5da45981806e3463f57c424d
   - path: Packages/LillistUI/Sources/LillistUI/Components/StatusCubeView.swift
+    blob: 3803a29e4efcfef948ff89b2d259ce78fe182f7b
   - path: Packages/LillistUI/Sources/LillistUI/Components/StatusIndicatorView.swift
+    blob: 122166666a5b0b9cc725e703b24bf447078f192a
   - path: Packages/LillistUI/Sources/LillistUI/Components/SyncStatusDotView.swift
+    blob: dbc3a9bc1d13fef3c9ed1eefc6e7871c9291bf27
   - path: Packages/LillistUI/Sources/LillistUI/Components/TagChipView.swift
+    blob: fe7f32f66f4aff83ad028f9d2626f63ced2e4fe0
   - path: Packages/LillistUI/Sources/LillistUI/Components/TaskRowView.swift
+    blob: be869c93455b323a44844a3d0392ff2c63238193
 references_modules: [Packages-LillistCore-Sources-LillistCore-Model, Packages-LillistCore-Sources-LillistCore-Stores-chunk-1, Packages-LillistCore-Sources-LillistCore-Stores-chunk-2, Packages-LillistCore-Sources-LillistCore-Sync-chunk-2, Packages-LillistUI-Sources-LillistUI-Theme-chunk-1, Packages-LillistUI-Sources-LillistUI-misc, Packages-LillistUI-Sources-LillistUI-Accessibility]
-generator: cartographer/1 model=claude-sonnet-4-6
+generator: cartographer/1
+baseline: 1a1562b636e43ebbdc35c7939ab6989b387f50e9
+verified: true
 ---
 
 # Module: Packages/LillistUI/Sources/LillistUI/Components

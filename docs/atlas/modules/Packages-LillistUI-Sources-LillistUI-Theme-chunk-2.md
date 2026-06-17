@@ -4,8 +4,11 @@ summary: "Design tokens — spacing, radius, timing, semantic typography, drag-r
 read_when: "Touching spacing, radius, timing, typography, drag-reorder visual constants, or tag tint defaults"
 sources:
   - path: Packages/LillistUI/Sources/LillistUI/Theme/Tokens.swift
+    blob: 4641bb3810568f46beec79e5477085395c202892
 references_modules: [Packages-LillistUI-Sources-LillistUI-Theme-chunk-1, Packages-LillistUI-Sources-LillistUI-DragReorder, Packages-LillistUI-Sources-LillistUI-iOS-misc, Apps-Lillist-iOS-Sources-Settings, Apps-Lillist-macOS-Sources-Preferences]
-generator: cartographer/1 model=claude-sonnet-4-6
+generator: cartographer/1
+baseline: 1a1562b636e43ebbdc35c7939ab6989b387f50e9
+verified: true
 ---
 
 # Module: Packages/LillistUI/Sources/LillistUI/Theme (chunk 2)

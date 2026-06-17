@@ -1,14 +1,18 @@
 ---
 module: Packages/LillistUI/Sources/LillistUI/Accessibility
-summary: Cross-platform AX helpers — reduce-motion/contrast modifiers, VoiceOver announcements, WCAG contrast math
-read_when: Touching animations, motion gating, contrast, transparency, or VoiceOver announcements
+summary: "Cross-platform AX helpers — reduce-motion/contrast modifiers, VoiceOver announcements, WCAG contrast math"
+read_when: "Touching animations, motion gating, contrast, transparency, or VoiceOver announcements"
 sources:
   - path: Packages/LillistUI/Sources/LillistUI/Accessibility/AccessibilityEnvironment.swift
+    blob: 616dac83a2a74bce122b17f5902762e17e6c1aed
   - path: Packages/LillistUI/Sources/LillistUI/Accessibility/Announcements.swift
+    blob: 6481f0dc2de465c4f63181e1e2e120456363e8b5
   - path: Packages/LillistUI/Sources/LillistUI/Accessibility/ContrastMath.swift
-references_modules:
-  - Packages-LillistUI-Sources-LillistUI-Theme-chunk-1
-generator: cartographer/1 model=claude-sonnet-4-6
+    blob: 01dd8f7355b5e7998307adc84d6c30f53ee618d8
+references_modules: []
+generator: cartographer/1
+baseline: 1a1562b636e43ebbdc35c7939ab6989b387f50e9
+verified: true
 ---
 
 # Module: Packages/LillistUI/Sources/LillistUI/Accessibility
@@ -50,7 +54,7 @@ env-honoring paths via internal override keys without touching production code.
 
 ## Relationships
 
-- `Packages-LillistUI-Sources-LillistUI-Accessibility.ContrastMath -> Packages-LillistUI-Sources-LillistUI-Theme-chunk-1.TagTint (reads)` — `hsbToRGB` is the inverse of `TagTint.rgbToHSB` per `Packages/LillistUI/Sources/LillistUI/Accessibility/ContrastMath.swift:19`
+_(no outbound cross-module edges — this module is called by others but calls none)_
 
 ## Type notes
 

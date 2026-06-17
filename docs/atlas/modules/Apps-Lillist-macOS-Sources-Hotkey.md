@@ -4,12 +4,19 @@ summary: "Global hotkey monitor, Quick Capture panel controller, hotkey recorder
 read_when: "Touching the macOS global hotkey, Quick Capture panel, or hotkey preferences recorder"
 sources:
   - path: Apps/Lillist-macOS/Sources/Hotkey/GlobalHotkeyMonitor.swift
+    blob: aabfdf309ae61b86c6315570445b023b79f9dfca
   - path: Apps/Lillist-macOS/Sources/Hotkey/HotkeyKeyTable.swift
+    blob: 3d177e8680a0aee5d6228b0b090193f1d50571d5
   - path: Apps/Lillist-macOS/Sources/Hotkey/HotkeyRecorder.swift
+    blob: f62390a36a429269bee13dc122ad58d397fe4b49
   - path: Apps/Lillist-macOS/Sources/Hotkey/QuickCapturePanelController.swift
+    blob: 88cf1b1b08f3f31ab6b652a0fe12febcab8ca796
   - path: Apps/Lillist-macOS/Sources/Hotkey/QuickCapturePlacementMath.swift
+    blob: e38650e29d0abcec51fa15a17dc25951b981d8ae
 references_modules: [Packages-LillistUI-Sources-LillistUI-Editor, Apps-Lillist-macOS-Sources-misc, Apps-Lillist-macOS-Sources-Preferences]
 generator: cartographer/1
+baseline: 1a1562b636e43ebbdc35c7939ab6989b387f50e9
+verified: true
 ---
 
 # Module: Apps/Lillist-macOS/Sources/Hotkey

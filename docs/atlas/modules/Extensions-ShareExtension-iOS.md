@@ -4,14 +4,23 @@ summary: "iOS Share Extension — captures URLs and text from other apps into a 
 read_when: "Touching share-sheet capture, extension lifecycle, or App-Group task creation"
 sources:
   - path: Extensions/ShareExtension-iOS/Info.plist
+    blob: 71d0dc72cdff29eb19d3eeb77caf214255b3b5c3
   - path: Extensions/ShareExtension-iOS/Lillist.entitlements
+    blob: dc82d6a78df2d35115ff154e8888e3d7e0ef3469
   - path: Extensions/ShareExtension-iOS/PrivacyInfo.xcprivacy
+    blob: 4e7e051bbe5e2753a0a80b85ae78289d250bdce7
   - path: Extensions/ShareExtension-iOS/SharePayload.swift
+    blob: 1cc6f7b55a70113401f7d165c563a00347e31c9d
   - path: Extensions/ShareExtension-iOS/ShareRootView.swift
+    blob: 1139f567e7a51a2a9ddb8f5627291c924665603d
   - path: Extensions/ShareExtension-iOS/ShareSaveFlow.swift
+    blob: e76d10124e5f2b6565471213778516cb7892e9cf
   - path: Extensions/ShareExtension-iOS/ShareViewController.swift
+    blob: 824f5b49a323d6341a59dcd07922257f22a02a13
 references_modules: [Packages-LillistCore-Sources-LillistCore-Stores-chunk-2, Packages-LillistCore-Sources-LillistCore-Stores-chunk-1, Packages-LillistCore-Sources-LillistCore-Persistence, Packages-LillistCore-Sources-LillistCore-Diagnostics, Packages-LillistCore-Sources-LillistCore-misc, Packages-LillistCore-Sources-LillistCore-LinkPreview, Packages-LillistUI-Sources-LillistUI-Theme-chunk-1]
 generator: cartographer/1
+baseline: 1a1562b636e43ebbdc35c7939ab6989b387f50e9
+verified: true
 ---
 
 # Module: Extensions/ShareExtension-iOS

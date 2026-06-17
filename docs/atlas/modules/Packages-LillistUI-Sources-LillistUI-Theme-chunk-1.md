@@ -1,7 +1,7 @@
 ---
 module: "Packages/LillistUI/Sources/LillistUI/Theme (chunk 1)"
 summary: "Rainbow Glass design tokens — colors, hues, gradients, glass seam, button/toggle styles, status/sync/tag palettes"
-read_when: Touching theme colors, glass surfaces, elevation, motion, button/toggle styles, or status/tag/sync palette
+read_when: "Touching theme colors, glass surfaces, elevation, motion, button/toggle styles, or status/tag/sync palette"
 sources:
   - path: "Packages/LillistUI/Sources/LillistUI/Theme/Color+Hex.swift"
     blob: 71bd769cdd3d9632ef4353f22cc0df0ebaa246cc
@@ -34,8 +34,9 @@ sources:
   - path: Packages/LillistUI/Sources/LillistUI/Theme/TagTint.swift
     blob: ef5e3e2cdc62a9a405f12d0f0f5b70933ef34c89
 references_modules: [Packages-LillistUI-Sources-LillistUI-Accessibility, Packages-LillistUI-Sources-LillistUI-Theme-chunk-2, Packages-LillistUI-Sources-LillistUI-Components, Packages-LillistUI-Sources-LillistUI-iOS-misc, Packages-LillistUI-Sources-LillistUI-misc, Packages-LillistCore-Sources-LillistCore-Model, Apps-Lillist-macOS-Sources-Preferences]
-generator: cartographer/1 model=claude-sonnet-4-6
-baseline: 34dfea7772679dbabc08fabd6fbba53f6ad5856b
+generator: cartographer/1
+baseline: 1a1562b636e43ebbdc35c7939ab6989b387f50e9
+verified: true
 ---
 
 # Module: Packages/LillistUI/Sources/LillistUI/Theme (chunk 1)

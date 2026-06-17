@@ -4,12 +4,19 @@ summary: "iOS app target manifest — xcodegen spec, bundle/entitlements/privacy
 read_when: "iOS app target config"
 sources:
   - path: Apps/Lillist-iOS/Info.plist
+    blob: 3fa4f9bb9a91d891e61b35325ec8f206701faf8f
   - path: Apps/Lillist-iOS/Lillist.entitlements
+    blob: 45bd89c75fc209577a9f050691030a2000e74ca6
   - path: Apps/Lillist-iOS/Resources/Localizable.xcstrings
+    blob: 0b929bb5c527e9ff19f4af825b212291536fd153
   - path: Apps/Lillist-iOS/Resources/PrivacyInfo.xcprivacy
+    blob: 4e7e051bbe5e2753a0a80b85ae78289d250bdce7
   - path: Apps/Lillist-iOS/project.yml
+    blob: 93659656ee8b438360ff4ea8b20aa801dfbc0b77
 references_modules: [Packages-LillistCore-misc, Packages-LillistUI-misc, Extensions-ShareExtension-iOS, Extensions-ShortcutsActions-misc, Apps-Config, Tools]
-generator: cartographer/1 model=claude-sonnet-4-6
+generator: cartographer/1
+baseline: 1a1562b636e43ebbdc35c7939ab6989b387f50e9
+verified: true
 ---
 
 # Module: Apps/Lillist-iOS (misc)

@@ -4,16 +4,27 @@ summary: "Repo-root control plane — CI matrix, workspace wiring, gitignore, se
 read_when: "CI, workspace, repo config, or project conventions"
 sources:
   - path: .claude/settings.local.json
+    blob: f4307bbdd98b10593980431477406613e049a2f2
   - path: .github/workflows/ci.yml
+    blob: 07774b20f444741c99f3e94545ccebf4a3b5d4c5
   - path: .gitignore
+    blob: 4584f1163ec50f6b64de5046a96275dbd331061f
   - path: .semver/config.yaml
+    blob: 1a63526d97642edb6dea7e2e800b860b1919231e
   - path: CHANGELOG.md
+    blob: 4f9900f271c6a5908f7fcae12a878d9ae08bfe0f
   - path: CLAUDE.md
+    blob: ef834043d4a074b13d2a563edae7f9d50759800b
   - path: HANDOFF.md
+    blob: 1375345682e65162c93f4fbddfcec3a596d87e89
   - path: Lillist.xcworkspace/contents.xcworkspacedata
+    blob: 2e734ab16d5b95d519766950140eed52205e09c8
   - path: VERSION
+    blob: 60f63432822572778c3b473659da636103e7cb98
 references_modules: [Apps-Config, Tools, Packages-LillistCore-misc, Packages-LillistUI-misc, Apps-Lillist-iOS-misc, Apps-Lillist-macOS-misc]
 generator: cartographer/1
+baseline: 1a1562b636e43ebbdc35c7939ab6989b387f50e9
+verified: true
 ---
 
 # Module: root (misc)

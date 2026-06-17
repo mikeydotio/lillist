@@ -4,40 +4,37 @@ summary: "macOS app shell — @main scene graph, root @Observable environment, A
 read_when: "macOS app shell wiring, launch sequence, AppEnvironment graph, or AppKit bridges"
 sources:
   - path: Apps/Lillist-macOS/Sources/AppDelegate.swift
+    blob: 62ce4ca17340759272beab7879d10fce70f392bb
   - path: Apps/Lillist-macOS/Sources/AppEnvironment.swift
+    blob: 811902651b2e50baf715b11b479a1680895bc210
   - path: Apps/Lillist-macOS/Sources/CrashReporterHost.swift
+    blob: b3a56574761886ab64c2efdb80bab618ec92c82e
   - path: Apps/Lillist-macOS/Sources/Editor/EditorOpenDecision.swift
+    blob: 886dc8df7fdd02054ac98860626e6748af72fda2
   - path: Apps/Lillist-macOS/Sources/Editor/OpenTaskEditorAction.swift
+    blob: c8160a65773bdd5635392b0308a2a16dd16c17ba
   - path: Apps/Lillist-macOS/Sources/Indexing/IndexingMappers.swift
+    blob: 8ec987eef9c37edd3c6abde3093dac44962e0044
   - path: Apps/Lillist-macOS/Sources/Indexing/IndexingService.swift
+    blob: add637f94bf65575631a2b81dc0f1cba26977bb0
   - path: Apps/Lillist-macOS/Sources/LillistApp.swift
+    blob: 129004c268f7d30a958bea8e39249381c5fdd209
   - path: Apps/Lillist-macOS/Sources/MailtoTransport.swift
+    blob: 62d6df19a2ee52c3dfa72c411577dd2e4dd94d22
   - path: Apps/Lillist-macOS/Sources/MenuBar/MenuBarExtraScene.swift
+    blob: 02305835ca157cd328fca49ebd3ce7147f10c615
   - path: Apps/Lillist-macOS/Sources/Onboarding/OnboardingSheet.swift
+    blob: e252864f910909a073621b494fddf7d062eade3f
   - path: Apps/Lillist-macOS/Sources/Persistence/UIStatePersistence.swift
+    blob: 324a7b17096296dc7dafb6eb869e19312bc3ead7
   - path: Apps/Lillist-macOS/Sources/Services/LillistServicesProvider.swift
+    blob: 7fbe83aa6c8cda947dd2df8601c8b2166e107e4a
   - path: Apps/Lillist-macOS/Sources/StatusBar/TodayPopoverView.swift
-references_modules:
-  - Packages-LillistCore-Sources-LillistCore-misc
-  - Packages-LillistCore-Sources-LillistCore-Persistence
-  - Packages-LillistCore-Sources-LillistCore-Stores-chunk-1
-  - Packages-LillistCore-Sources-LillistCore-Stores-chunk-2
-  - Packages-LillistCore-Sources-LillistCore-Sync-chunk-1
-  - Packages-LillistCore-Sources-LillistCore-Sync-chunk-2
-  - Packages-LillistCore-Sources-LillistCore-Notifications
-  - Packages-LillistCore-Sources-LillistCore-CrashReporting
-  - Packages-LillistCore-Sources-LillistCore-Diagnostics
-  - Packages-LillistUI-Sources-LillistUI-misc
-  - Packages-LillistUI-Sources-LillistUI-Onboarding
-  - Packages-LillistUI-Sources-LillistUI-CrashReporting
-  - Packages-LillistUI-Sources-LillistUI-Sync
-  - Packages-LillistUI-Sources-LillistUI-Components
-  - Packages-LillistUI-Sources-LillistUI-Theme-chunk-1
-  - Apps-Lillist-macOS-Sources-Views
-  - Apps-Lillist-macOS-Sources-Commands
-  - Apps-Lillist-macOS-Sources-Preferences
-  - Apps-Lillist-macOS-Sources-Hotkey
-generator: cartographer/1 model=claude-sonnet-4-6
+    blob: 90274bef31060bca2bee37d3cd550a68dc1fca93
+references_modules: [Packages-LillistCore-Sources-LillistCore-misc, Packages-LillistCore-Sources-LillistCore-Persistence, Packages-LillistCore-Sources-LillistCore-Stores-chunk-1, Packages-LillistCore-Sources-LillistCore-Stores-chunk-2, Packages-LillistCore-Sources-LillistCore-Sync-chunk-1, Packages-LillistCore-Sources-LillistCore-Sync-chunk-2, Packages-LillistCore-Sources-LillistCore-Notifications, Packages-LillistCore-Sources-LillistCore-CrashReporting, Packages-LillistCore-Sources-LillistCore-Diagnostics, Packages-LillistUI-Sources-LillistUI-misc, Packages-LillistUI-Sources-LillistUI-Onboarding, Packages-LillistUI-Sources-LillistUI-CrashReporting, Packages-LillistUI-Sources-LillistUI-Sync, Packages-LillistUI-Sources-LillistUI-Components, Packages-LillistUI-Sources-LillistUI-Theme-chunk-1, Apps-Lillist-macOS-Sources-Views, Apps-Lillist-macOS-Sources-Commands, Apps-Lillist-macOS-Sources-Preferences, Apps-Lillist-macOS-Sources-Hotkey]
+generator: cartographer/1
+baseline: 1a1562b636e43ebbdc35c7939ab6989b387f50e9
+verified: true
 ---
 
 # Module: Apps/Lillist-macOS/Sources (misc)

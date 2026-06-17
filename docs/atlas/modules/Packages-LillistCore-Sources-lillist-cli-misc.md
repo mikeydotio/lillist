@@ -4,10 +4,15 @@ summary: "lillist CLI entry point — root command, subcommand registry, and Lil
 read_when: "Touching the lillist CLI binary entry point, exit codes, or crash-canary wiring"
 sources:
   - path: Packages/LillistCore/Sources/lillist-cli/Lillist.swift
+    blob: 79bcebeb5b2478ae49266dc79a55745b8eb79590
   - path: Packages/LillistCore/Sources/lillist-cli/README.md
+    blob: 5c8c96a2b16dac9e4e1636307fe95ef1087268ab
   - path: Packages/LillistCore/Sources/lillist-cli/main.swift
+    blob: c367855ff18222c56fe80651b096c6baeb243fe9
 references_modules: [Packages-LillistCore-Sources-LillistCore-misc, Packages-LillistCore-Sources-LillistCore-CrashReporting, Packages-LillistCore-Sources-lillist-cli-Support, Packages-LillistCore-Sources-lillist-cli-Commands-chunk-1, Packages-LillistCore-Sources-lillist-cli-Commands-chunk-2]
-generator: cartographer/1 model=claude-sonnet-4-6
+generator: cartographer/1
+baseline: 1a1562b636e43ebbdc35c7939ab6989b387f50e9
+verified: true
 ---
 
 # Module: Packages/LillistCore/Sources/lillist-cli (misc)

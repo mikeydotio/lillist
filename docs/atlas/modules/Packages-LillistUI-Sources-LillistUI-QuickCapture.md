@@ -1,17 +1,18 @@
 ---
 module: Packages/LillistUI/Sources/LillistUI/QuickCapture
-summary: Inline text parser and macOS panel view for `#tag ^date` Quick Capture entry
-read_when: Touching Quick Capture input, tag/date token parsing, or the macOS hotkey panel
+summary: "Inline text parser and date-suggestion chips for `#tag ^date` Quick Capture entry"
+read_when: "Touching Quick Capture input, tag/date token parsing, or QuickCaptureParser"
 sources:
   - path: Packages/LillistUI/Sources/LillistUI/QuickCapture/QuickCaptureDateSuggestions.swift
+    blob: 7cf0c3990da9d39095ebc898d37ae926931afcfc
   - path: Packages/LillistUI/Sources/LillistUI/QuickCapture/QuickCaptureParser.swift
+    blob: 68c8306a5b319e84ca27198e96b7078aa75fd5be
   - path: Packages/LillistUI/Sources/LillistUI/QuickCapture/QuickCaptureView.swift
-references_modules:
-  - Packages-LillistUI-Sources-LillistUI-Components
-  - Packages-LillistUI-Sources-LillistUI-Theme-chunk-1
-  - Packages-LillistUI-Sources-LillistUI-Theme-chunk-2
-  - Apps-Lillist-macOS-Sources-Hotkey
-generator: cartographer/1 model=claude-sonnet-4-6
+    blob: 52746892ca8e7bf4b3184010c1a64b2d45c29f3a
+references_modules: [Packages-LillistUI-Sources-LillistUI-Components, Packages-LillistUI-Sources-LillistUI-Theme-chunk-1, Packages-LillistUI-Sources-LillistUI-Theme-chunk-2]
+generator: cartographer/1
+baseline: 1a1562b636e43ebbdc35c7939ab6989b387f50e9
+verified: true
 ---
 
 # Module: Packages/LillistUI/Sources/LillistUI/QuickCapture
@@ -20,11 +21,12 @@ generator: cartographer/1 model=claude-sonnet-4-6
 
 The shared Quick Capture primitives behind both platforms' fast task entry.
 `QuickCaptureParser` is the single tokenizer for the `#tag` / `^date` mini-syntax
-(design Section 7), so the macOS panel, the iOS dialog, and their hosts all derive
-title/tags/dateToken the same way. `QuickCaptureView` is the macOS hotkey panel's
-pure-SwiftUI body; `QuickCaptureDateSuggestions` is the canonical date-token chip
-list. If this module vanished, both capture surfaces would diverge on how raw text
-becomes a task and the macOS panel would lose its UI.
+(design Section 7), so the macOS hotkey flow, the iOS dialog, and their hosts all derive
+title/tags/dateToken the same way. `QuickCaptureDateSuggestions` is the canonical
+date-token chip list. `QuickCaptureView` is a pure-SwiftUI field + chip panel that is
+no longer hosted by the macOS hotkey panel (which now hosts `TaskEditorView` from the
+Editor module); it is effectively test-only / superseded for production use. If this
+module vanished, both capture surfaces would diverge on how raw text becomes a task.
 
 ## Public API
 
@@ -35,7 +37,7 @@ becomes a task and the macOS panel would lose its UI.
 | `QuickCaptureParser` | enum | `Packages/LillistUI/Sources/LillistUI/QuickCapture/QuickCaptureParser.swift:5` | Stateless namespace for the capture-text tokenizer |
 | `QuickCaptureParser.Result` | struct | `Packages/LillistUI/Sources/LillistUI/QuickCapture/QuickCaptureParser.swift:6` | Value-type DTO: `title`, `tags`, optional `dateToken`; `Equatable`, `Sendable`, explicit public init |
 | `QuickCaptureParser.parse(_:)` | static func | `Packages/LillistUI/Sources/LillistUI/QuickCapture/QuickCaptureParser.swift:18` | Splits on spaces; `#x`→tag, `^x`→dateToken (last wins), rest→title; never throws |
-| `QuickCaptureView` | struct | `Packages/LillistUI/Sources/LillistUI/QuickCapture/QuickCaptureView.swift:5` | macOS panel body; `text` binding, `onSubmit(Result)`, `onCancel`; parses inline on each render |
+| `QuickCaptureView` | struct | `Packages/LillistUI/Sources/LillistUI/QuickCapture/QuickCaptureView.swift:5` | Pure-SwiftUI field + chip panel (test-only / superseded); `text` binding, `onSubmit(Result)`, `onCancel`; parses inline on each render |
 
 ## Load-bearing internals
 
@@ -50,7 +52,6 @@ becomes a task and the macOS panel would lose its UI.
 - `Packages-LillistUI-Sources-LillistUI-QuickCapture.QuickCaptureView -> Packages-LillistUI-Sources-LillistUI-Theme-chunk-1.glassSurface (calls)`
 - `Packages-LillistUI-Sources-LillistUI-QuickCapture.QuickCaptureView -> Packages-LillistUI-Sources-LillistUI-Theme-chunk-2.LillistTypography (reads)`
 - `Packages-LillistUI-Sources-LillistUI-QuickCapture.QuickCaptureView -> Packages-LillistUI-Sources-LillistUI-Theme-chunk-2.LillistSpacing (reads)`
-- `Apps-Lillist-macOS-Sources-Hotkey.QuickCapturePanelController -> Packages-LillistUI-Sources-LillistUI-QuickCapture.QuickCaptureView (owns)`
 
 ## Type notes
 
@@ -61,13 +62,9 @@ module can construct it; it carries no Core Data type. `QuickCaptureView` recomp
 `QuickCaptureParser.parse(text)` on every `body` render
 (`Packages/LillistUI/Sources/LillistUI/QuickCapture/QuickCaptureView.swift:21`) rather
 than caching — the parse is cheap and keeps the chip/preview row in lockstep with the
-field. The view is pure SwiftUI for snapshot testing; the macOS app target wraps it in
-an `NSPanel` host (`QuickCaptureView.swift:87`). Parsing produces only a `dateToken`
-string — actual date resolution is the host/CLI layer's job, not this module's.
-
-The `glassSurface(.panel, ...)` modifier at `Packages/LillistUI/Sources/LillistUI/QuickCapture/QuickCaptureView.swift:88`
-requires the hosting `NSPanel` to be non-opaque for Liquid Glass to show through; that
-responsibility sits with the macOS app target's `QuickCapturePanelController`.
+field. The view is pure SwiftUI; it is no longer hosted by the macOS hotkey panel (which
+now hosts `TaskEditorView`), so its production use is effectively test-only. Parsing
+produces only a `dateToken` string — actual date resolution is the host/CLI layer's job.
 
 ## External deps
 
@@ -85,6 +82,3 @@ responsibility sits with the macOS app target's `QuickCapturePanelController`.
 - Tokens stay English at the data layer even though chip labels may localize their
   display; label and parser token are presently the same string
   (`Packages/LillistUI/Sources/LillistUI/QuickCapture/QuickCaptureDateSuggestions.swift:17`).
-- The `NSPanel` host must be non-opaque for the `glassSurface(.panel)` Liquid Glass
-  treatment to render correctly; this is handled by `QuickCapturePanelController` in the
-  macOS app target (`Packages/LillistUI/Sources/LillistUI/QuickCapture/QuickCaptureView.swift:87`).

@@ -1,17 +1,18 @@
 ---
 module: Packages/LillistUI/Sources/LillistUI/Onboarding
-summary: Pure-presentation onboarding and iCloud-gate screens shared across iOS and macOS app targets
-read_when: Touching first-launch flow, iCloud availability handling, or notification permission prompts
+summary: "Pure-presentation onboarding and iCloud-gate screens shared across iOS and macOS app targets"
+read_when: "Touching first-launch flow, iCloud availability handling, or notification permission prompts"
 sources:
   - path: Packages/LillistUI/Sources/LillistUI/Onboarding/ICloudRequiredContent.swift
+    blob: 3acdc95019c18123523312efbae30d9db650300b
   - path: Packages/LillistUI/Sources/LillistUI/Onboarding/ICloudUnavailableScreen.swift
+    blob: ecd20cfa8508fe993115a13f1a7a2b47ec101f9b
   - path: Packages/LillistUI/Sources/LillistUI/Onboarding/OnboardingContent.swift
-references_modules:
-  - Packages-LillistCore-Sources-LillistCore-Notifications
-  - Packages-LillistUI-Sources-LillistUI-Components
-  - Packages-LillistUI-Sources-LillistUI-Theme-chunk-1
-  - Packages-LillistUI-Sources-LillistUI-Theme-chunk-2
-generator: cartographer/1 model=claude-sonnet-4-6
+    blob: 91b2fd39738ad697fbef83ee270080719b69e1ba
+references_modules: [Packages-LillistCore-Sources-LillistCore-Notifications, Packages-LillistUI-Sources-LillistUI-Components, Packages-LillistUI-Sources-LillistUI-Theme-chunk-1, Packages-LillistUI-Sources-LillistUI-Theme-chunk-2]
+generator: cartographer/1
+baseline: 1a1562b636e43ebbdc35c7939ab6989b387f50e9
+verified: true
 ---
 
 # Module: Packages/LillistUI/Sources/LillistUI/Onboarding

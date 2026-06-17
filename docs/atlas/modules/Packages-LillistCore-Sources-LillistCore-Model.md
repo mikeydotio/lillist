@@ -4,14 +4,23 @@ summary: "Core Data schema (xcdatamodeld) and the persisted enums that type its 
 read_when: "Touching Core Data entities, persisted enum raw values, or sort/status/notification semantics"
 sources:
   - path: Packages/LillistCore/Sources/LillistCore/Model/AttachmentKind.swift
+    blob: 71c49cd3ddb11ee8616dfe2f26f48750b7f72d57
   - path: Packages/LillistCore/Sources/LillistCore/Model/JournalEntryKind.swift
+    blob: 93d02c6c8bf56046428b4deeebcd3991b2e03bb5
   - path: Packages/LillistCore/Sources/LillistCore/Model/LillistModel.xcdatamodeld/.xccurrentversion
+    blob: 0b7ad51749d1fec30479832e5654dc4ab039a7bc
   - path: Packages/LillistCore/Sources/LillistCore/Model/LillistModel.xcdatamodeld/LillistModel.xcdatamodel/contents
+    blob: bf6557c0c1cfb21e7dc18cdad51d0fe20a7568ba
   - path: Packages/LillistCore/Sources/LillistCore/Model/NotificationKind.swift
+    blob: 19eca0cca8609b9de59145cea207f200f95fbfad
   - path: Packages/LillistCore/Sources/LillistCore/Model/SortField.swift
+    blob: 8813896cae4dfd955cc80e81553f4c68b1065893
   - path: Packages/LillistCore/Sources/LillistCore/Model/Status.swift
+    blob: 2b474b3b3224e2f4963e5e230484a29ed438478e
 references_modules: [Packages-LillistCore-Sources-LillistCore-ManagedObjects, Packages-LillistCore-Sources-LillistCore-Notifications, Packages-LillistCore-Sources-LillistCore-Stores-chunk-1, Packages-LillistCore-Sources-LillistCore-Stores-chunk-2, Packages-LillistUI-Sources-LillistUI-misc, Packages-LillistUI-Sources-LillistUI-Settings]
 generator: cartographer/1
+baseline: 1a1562b636e43ebbdc35c7939ab6989b387f50e9
+verified: true
 ---
 
 # Module: Packages/LillistCore/Sources/LillistCore/Model
@@ -77,7 +86,12 @@ in the doc comment at `Packages/LillistCore/Sources/LillistCore/Model/SortField.
 The xcdatamodeld defines eight entities: `LillistTask`, `Tag`, `JournalEntry`, `Attachment`,
 `AppPreferences`, `SmartFilter`, `Series`, and `NotificationSpec`. All are marked
 `syncable="YES"` for CloudKit. `Attachment.data` uses `allowsExternalBinaryDataStorage="YES"`.
-`LillistTask.children` and `Tag.children` cascade deletes; all other relationships use Nullify.
+Six relationships use `deletionRule="Cascade"` (contents lines 20, 22, 23, 26, 34, 45):
+`LillistTask.children`, `LillistTask.journalEntries`, `LillistTask.attachments`,
+`LillistTask.notificationSpecs`, `Tag.children`, and `JournalEntry.attachments`.
+All remaining relationships (`LillistTask.parent`, `.tags`, `.series`, `.seriesAsSeed`;
+`Tag.parent`, `.tasks`; `JournalEntry.task`; `Attachment.task`, `.journalEntry`;
+`Series.seedTask`, `.instances`; `NotificationSpec.task`) use Nullify.
 `.xccurrentversion` pins `LillistModel.xcdatamodel` as the active model version.
 
 ## External deps

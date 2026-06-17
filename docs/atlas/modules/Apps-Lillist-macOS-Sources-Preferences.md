@@ -1,19 +1,30 @@
 ---
 module: Apps/Lillist-macOS/Sources/Preferences
-summary: macOS Settings scene — eight env-coupled preference panes wrapping LillistCore stores and LillistUI sections
-read_when: Touching macOS Preferences panes, iCloud sync toggle, notifications, trash, quick capture, diagnostics, or export/import
+summary: "macOS Settings scene — eight env-coupled preference panes wrapping LillistCore stores and LillistUI sections"
+read_when: "Touching macOS Preferences panes, iCloud sync toggle, notifications, trash, quick capture, diagnostics, or export/import"
 sources:
   - path: Apps/Lillist-macOS/Sources/Preferences/AdvancedPane.swift
+    blob: d89420303de7b130199435dc699956cff06ff2f0
   - path: Apps/Lillist-macOS/Sources/Preferences/CrashReportingPane.swift
+    blob: 312ea7bc27fa054e887e39c71e5dd9cc4972a14c
   - path: Apps/Lillist-macOS/Sources/Preferences/DiagnosticsPane.swift
+    blob: 86fc83af2047fc182ca7de9e1937aec14e208bde
   - path: Apps/Lillist-macOS/Sources/Preferences/GeneralPane.swift
+    blob: a602b3a6e933cb743488655d4afb9327b6bad435
   - path: Apps/Lillist-macOS/Sources/Preferences/ICloudSyncPane.swift
+    blob: 525535d588bc6f86021c5d604e1221dcb6b0ef74
   - path: Apps/Lillist-macOS/Sources/Preferences/NotificationsPane.swift
+    blob: 97b81ffa9738b1d17d8b99e163a8ca5645203f67
   - path: Apps/Lillist-macOS/Sources/Preferences/PreferencesWindow.swift
+    blob: 28817f36b86d2de4a1505301f64534ae2e45981d
   - path: Apps/Lillist-macOS/Sources/Preferences/QuickCapturePane.swift
+    blob: b66909ec19bf98e3361b4d5dcdbec551b82adb1c
   - path: Apps/Lillist-macOS/Sources/Preferences/TrashPane.swift
+    blob: 915336ea3a34d64d61da2fbd11f3d9f9c6fe239f
 references_modules: [Apps-Lillist-macOS-Sources-misc, Apps-Lillist-macOS-Sources-Hotkey, Packages-LillistCore-Sources-LillistCore-Stores-chunk-1, Packages-LillistCore-Sources-LillistCore-Stores-chunk-2, Packages-LillistCore-Sources-LillistCore-Export, Packages-LillistCore-Sources-LillistCore-Diagnostics, Packages-LillistCore-Sources-LillistCore-Notifications, Packages-LillistCore-Sources-LillistCore-Sync-chunk-1, Packages-LillistUI-Sources-LillistUI-Settings, Packages-LillistUI-Sources-LillistUI-Sync, Packages-LillistUI-Sources-LillistUI-Accessibility]
 generator: cartographer/1
+baseline: 1a1562b636e43ebbdc35c7939ab6989b387f50e9
+verified: true
 ---
 
 # Module: Apps/Lillist-macOS/Sources/Preferences

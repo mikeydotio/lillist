@@ -4,10 +4,15 @@ summary: "Versioned JSON+assets backup bundle writer/reader for the full Core Da
 read_when: "backup/restore + export"
 sources:
   - path: Packages/LillistCore/Sources/LillistCore/Export/ExportSchema.swift
+    blob: 910872fc86a1d4636fd80e144664dbedcfbb3f2a
   - path: Packages/LillistCore/Sources/LillistCore/Export/Exporter.swift
+    blob: c79c28caee95ab53be9d287223098c4ebc11defb
   - path: Packages/LillistCore/Sources/LillistCore/Export/Importer.swift
+    blob: 35b5ecabbe116205844cab3557936a43eaf469a7
 references_modules: [Packages-LillistCore-Sources-LillistCore-Persistence, Packages-LillistCore-Sources-LillistCore-Stores-chunk-1, Packages-LillistCore-Sources-LillistCore-ManagedObjects, Packages-LillistCore-Sources-LillistCore-misc]
 generator: cartographer/1
+baseline: 1a1562b636e43ebbdc35c7939ab6989b387f50e9
+verified: true
 ---
 
 # Module: Packages/LillistCore/Sources/LillistCore/Export

@@ -4,11 +4,17 @@ summary: "Shared Settings UI helpers — iCloud sync section, sort-field labels,
 read_when: "Touching Settings/Preferences UI shared across iOS and macOS"
 sources:
   - path: Packages/LillistUI/Sources/LillistUI/Settings/CrashReportSample.swift
+    blob: 0249e4862ab49f63844aea35f80adcec4dafe388
   - path: Packages/LillistUI/Sources/LillistUI/Settings/HourMinuteDate.swift
+    blob: c86f0a9040a23521ff241e157fd83b0e0fcc5e1e
   - path: Packages/LillistUI/Sources/LillistUI/Settings/ICloudSyncSettingsSection.swift
+    blob: 42bb0aef222c2b60d6656a085b397148f85ebd71
   - path: "Packages/LillistUI/Sources/LillistUI/Settings/SortField+DisplayName.swift"
+    blob: 1ebd38dd6f73717121b152688be85cd73fdbcf1d
 references_modules: [Packages-LillistCore-Sources-LillistCore-Model, Packages-LillistCore-Sources-LillistCore-Sync-chunk-1, Packages-LillistUI-Sources-LillistUI-misc]
-generator: cartographer/1 model=claude-sonnet-4-6
+generator: cartographer/1
+baseline: 1a1562b636e43ebbdc35c7939ab6989b387f50e9
+verified: true
 ---
 
 # Module: Packages/LillistUI/Sources/LillistUI/Settings

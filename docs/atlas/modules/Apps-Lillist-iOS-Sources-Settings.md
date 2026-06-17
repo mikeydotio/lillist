@@ -1,32 +1,30 @@
 ---
 module: Apps/Lillist-iOS/Sources/Settings
-summary: Env-coupled iOS Settings sections wiring AppEnvironment into LillistUI chrome; owns full iCloud sync migration UI
-read_when: Touching iOS Settings screens, iCloud sync migration UI, notification prefs, or data export/import
+summary: "Env-coupled iOS Settings sections wiring AppEnvironment into LillistUI chrome; owns full iCloud sync migration UI"
+read_when: "Touching iOS Settings screens, iCloud sync migration UI, notification prefs, or data export/import"
 sources:
   - path: Apps/Lillist-iOS/Sources/Settings/AdvancedSection.swift
+    blob: 16cfb82d01a4ffc73a1cef2fd36960e58c4d2829
   - path: Apps/Lillist-iOS/Sources/Settings/CrashReportingSection.swift
+    blob: cff94248ca46cb78c31e1cb676f3a99756c7dcfe
   - path: Apps/Lillist-iOS/Sources/Settings/DiagnosticsSection.swift
+    blob: afeafdf9990d22c3fa4c758946a3ccd56529c834
   - path: Apps/Lillist-iOS/Sources/Settings/GeneralSection.swift
+    blob: 7721b21e7727ca5f670c16d04fe0c82eca82e677
   - path: Apps/Lillist-iOS/Sources/Settings/ICloudSyncSection.swift
+    blob: 323be3ad575e487b01656468b1d7b0c348725e60
   - path: Apps/Lillist-iOS/Sources/Settings/NotificationsSection.swift
+    blob: 254a5ffeb365bd10ddca648b74241275df310079
   - path: Apps/Lillist-iOS/Sources/Settings/QuickCaptureSection.swift
+    blob: bf450601d8c0b95a98aee0f0ea499f2eeffeca61
   - path: Apps/Lillist-iOS/Sources/Settings/SettingsTab.swift
+    blob: ab94fc70cb6b095d01a17d991bf7824320909a59
   - path: Apps/Lillist-iOS/Sources/Settings/TrashSection.swift
-references_modules:
-  - Apps-Lillist-iOS-Sources-App
-  - Apps-Lillist-iOS-Sources-misc
-  - Packages-LillistUI-Sources-LillistUI-Settings
-  - Packages-LillistUI-Sources-LillistUI-Sync
-  - Packages-LillistUI-Sources-LillistUI-iOS-misc
-  - Packages-LillistCore-Sources-LillistCore-Persistence
-  - Packages-LillistCore-Sources-LillistCore-Sync-chunk-1
-  - Packages-LillistCore-Sources-LillistCore-Export
-  - Packages-LillistCore-Sources-LillistCore-Diagnostics
-  - Packages-LillistCore-Sources-LillistCore-Notifications
-  - Packages-LillistCore-Sources-LillistCore-CrashReporting
-  - Packages-LillistCore-Sources-LillistCore-Stores-chunk-2
-  - Packages-LillistCore-Sources-LillistCore-misc
-generator: cartographer/1 model=claude-sonnet-4-6
+    blob: 047a2d56222b6c4b659d138012e3afa69d484205
+references_modules: [Apps-Lillist-iOS-Sources-App, Apps-Lillist-iOS-Sources-misc, Packages-LillistUI-Sources-LillistUI-Settings, Packages-LillistUI-Sources-LillistUI-Sync, Packages-LillistUI-Sources-LillistUI-iOS-misc, Packages-LillistCore-Sources-LillistCore-Persistence, Packages-LillistCore-Sources-LillistCore-Sync-chunk-1, Packages-LillistCore-Sources-LillistCore-Export, Packages-LillistCore-Sources-LillistCore-Diagnostics, Packages-LillistCore-Sources-LillistCore-Notifications, Packages-LillistCore-Sources-LillistCore-CrashReporting, Packages-LillistCore-Sources-LillistCore-Stores-chunk-2, Packages-LillistCore-Sources-LillistCore-misc]
+generator: cartographer/1
+baseline: 1a1562b636e43ebbdc35c7939ab6989b387f50e9
+verified: true
 ---
 
 # Module: Apps/Lillist-iOS/Sources/Settings

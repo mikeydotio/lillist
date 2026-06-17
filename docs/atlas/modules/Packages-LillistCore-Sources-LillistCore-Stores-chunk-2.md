@@ -4,17 +4,11 @@ summary: "TaskStore — the single async gateway for all LillistTask CRUD, reord
 read_when: "Touching task creation, status transitions, reorder, soft-delete, restore, archive, or tag assignment"
 sources:
   - path: Packages/LillistCore/Sources/LillistCore/Stores/TaskStore.swift
-references_modules:
-  - Packages-LillistCore-Sources-LillistCore-Persistence
-  - Packages-LillistCore-Sources-LillistCore-Ordering
-  - Packages-LillistCore-Sources-LillistCore-Recurrence
-  - Packages-LillistCore-Sources-LillistCore-Notifications
-  - Packages-LillistCore-Sources-LillistCore-CrashReporting
-  - Packages-LillistCore-Sources-LillistCore-Diagnostics
-  - Packages-LillistCore-Sources-LillistCore-ManagedObjects
-  - Packages-LillistCore-Sources-LillistCore-Model
-  - Packages-LillistCore-Sources-LillistCore-misc
+    blob: d6550bd426a2e84b71525b65fa4905e743804429
+references_modules: [Packages-LillistCore-Sources-LillistCore-Persistence, Packages-LillistCore-Sources-LillistCore-Ordering, Packages-LillistCore-Sources-LillistCore-Recurrence, Packages-LillistCore-Sources-LillistCore-Notifications, Packages-LillistCore-Sources-LillistCore-CrashReporting, Packages-LillistCore-Sources-LillistCore-Diagnostics, Packages-LillistCore-Sources-LillistCore-ManagedObjects, Packages-LillistCore-Sources-LillistCore-Model, Packages-LillistCore-Sources-LillistCore-misc]
 generator: cartographer/1
+baseline: 1a1562b636e43ebbdc35c7939ab6989b387f50e9
+verified: true
 ---
 
 # Module: Packages/LillistCore/Sources/LillistCore/Stores (chunk 2)

@@ -4,18 +4,31 @@ summary: "ArgumentParser command structs (search through watch) that thin-wrap C
 read_when: "CLI subcommands (search-watch)"
 sources:
   - path: Packages/LillistCore/Sources/lillist-cli/Commands/PurgeCommand.swift
+    blob: 159cefdc40da3abbf80c9a4149c3ea8fc61eaff6
   - path: Packages/LillistCore/Sources/lillist-cli/Commands/ReportCrashCommand.swift
+    blob: fdeaeb26f6aa029d639546fed7d50ecec4b88d9a
   - path: Packages/LillistCore/Sources/lillist-cli/Commands/RestoreCommand.swift
+    blob: e5b33199c792c34fd1538baf016b12b7d295da8b
   - path: Packages/LillistCore/Sources/lillist-cli/Commands/SearchCommand.swift
+    blob: ac683f734781214fb0cfe5bf1b3f65cbde2e386f
   - path: Packages/LillistCore/Sources/lillist-cli/Commands/ShowCommand.swift
+    blob: 0f84799cb374b93130fb2f28613b8f1136515418
   - path: Packages/LillistCore/Sources/lillist-cli/Commands/StatusCommand.swift
+    blob: cab9236d53fefbb14e6f657f59e7faf5d6757b07
   - path: Packages/LillistCore/Sources/lillist-cli/Commands/TagCommand.swift
+    blob: b664d7c9d82b8dcdc67f0ce37ea2118a3b7d51d5
   - path: Packages/LillistCore/Sources/lillist-cli/Commands/TagsCommand.swift
+    blob: 805074eab490a961e307c1d6c6dd22cc5741d6ea
   - path: Packages/LillistCore/Sources/lillist-cli/Commands/UnpinCommand.swift
+    blob: e3cd905d77bf86c6e1588d2d2c932c6dc0554f40
   - path: Packages/LillistCore/Sources/lillist-cli/Commands/VersionCommand.swift
+    blob: 44292568f9ab6968ef4f4c996972bef54956a8c5
   - path: Packages/LillistCore/Sources/lillist-cli/Commands/WatchCommand.swift
+    blob: e011e2d70efe07d24161dbd5a2f7c51c0a2f9be4
 references_modules: [Packages-LillistCore-Sources-LillistCore-CLIBridge-Handlers-chunk-1, Packages-LillistCore-Sources-LillistCore-CLIBridge-Handlers-chunk-2, Packages-LillistCore-Sources-LillistCore-CLIBridge-Renderers, Packages-LillistCore-Sources-LillistCore-CLIBridge-misc, Packages-LillistCore-Sources-LillistCore-CrashReporting, Packages-LillistCore-Sources-LillistCore-Stores-chunk-1, Packages-LillistCore-Sources-LillistCore-Stores-chunk-2, Packages-LillistCore-Sources-LillistCore-misc, Packages-LillistCore-Sources-lillist-cli-Support]
 generator: cartographer/1
+baseline: 1a1562b636e43ebbdc35c7939ab6989b387f50e9
+verified: true
 ---
 
 # Module: Packages/LillistCore/Sources/lillist-cli/Commands (chunk 2)

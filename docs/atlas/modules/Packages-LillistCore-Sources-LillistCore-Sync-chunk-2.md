@@ -4,16 +4,15 @@ summary: "Observable CloudKit sync-state value types and the actor that aggregat
 read_when: "Touching sync-status display, iCloud account checks, SyncStatus, or iCloudAccountState"
 sources:
   - path: Packages/LillistCore/Sources/LillistCore/Sync/SyncStatus.swift
+    blob: 223dfb9083d24d793ee63be7e908eb838f1951c2
   - path: Packages/LillistCore/Sources/LillistCore/Sync/SyncStatusMonitor.swift
+    blob: f9bcc5757ae01fcbe270c0fb554473dab5d63c75
   - path: Packages/LillistCore/Sources/LillistCore/Sync/iCloudAccountState.swift
-references_modules:
-  - Packages-LillistCore-Sources-LillistCore-Sync-chunk-1
-  - Packages-LillistCore-Sources-LillistCore-misc
-  - Apps-Lillist-iOS-Sources-App
-  - Apps-Lillist-iOS-Sources-Settings
-  - Apps-Lillist-macOS-Sources-misc
-  - Apps-Lillist-macOS-Sources-Preferences
-generator: cartographer/1 model=claude-sonnet-4-6
+    blob: bb8cbfb1b0244af352900f7d1d3a575ae5b3f842
+references_modules: [Packages-LillistCore-Sources-LillistCore-Sync-chunk-1, Packages-LillistCore-Sources-LillistCore-misc, Apps-Lillist-iOS-Sources-App, Apps-Lillist-iOS-Sources-Settings, Apps-Lillist-macOS-Sources-misc, Apps-Lillist-macOS-Sources-Preferences]
+generator: cartographer/1
+baseline: 1a1562b636e43ebbdc35c7939ab6989b387f50e9
+verified: true
 ---
 
 # Module: Packages/LillistCore/Sources/LillistCore/Sync (chunk 2)

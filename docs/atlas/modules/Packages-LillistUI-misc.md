@@ -4,8 +4,11 @@ summary: "SwiftPM manifest for the LillistUI library — products, platforms, de
 read_when: "Changing LillistUI package structure, dependencies, platforms, or build flags"
 sources:
   - path: Packages/LillistUI/Package.swift
+    blob: dc98b12e06978bcdd28655daba94b87bb242f502
 references_modules: [Packages-LillistCore-misc]
 generator: cartographer/1
+baseline: 1a1562b636e43ebbdc35c7939ab6989b387f50e9
+verified: true
 ---
 
 # Module: Packages/LillistUI (misc)
