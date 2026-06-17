@@ -4,26 +4,16 @@ summary: "Custom drag-reorder engine for hierarchical task lists — state machi
 read_when: "Touching drag-to-reorder behavior, drop targets, phantom overlay, or row geometry collection"
 sources:
   - path: Packages/LillistUI/Sources/LillistUI/DragReorder/DragController.swift
-    blob: aac3debd777545a224f31540a34abfbfbaabfa2f
   - path: Packages/LillistUI/Sources/LillistUI/DragReorder/DragDropResolver.swift
-    blob: 8f836bc997a9af166b142f201da8f1d2ba0eb77f
   - path: Packages/LillistUI/Sources/LillistUI/DragReorder/DragOverlay.swift
-    blob: 001bb91b34fec88226557689e8b1f32927959769
   - path: Packages/LillistUI/Sources/LillistUI/DragReorder/DragReorderRow.swift
-    blob: b598b1592af7855b780250afd2f084f35987c510
   - path: Packages/LillistUI/Sources/LillistUI/DragReorder/DragReorderable.swift
-    blob: b5c984f2aa0930702a1a3b8b4a780d94ea70dcf4
   - path: Packages/LillistUI/Sources/LillistUI/DragReorder/DragSession.swift
-    blob: baae4992c8080524d5bef21e45d37f7e442fcfbb
   - path: Packages/LillistUI/Sources/LillistUI/DragReorder/DragSortMode.swift
-    blob: 5835f4e289cf93d3cbf3fc739e31006a8783a9cd
   - path: Packages/LillistUI/Sources/LillistUI/DragReorder/DragTarget.swift
-    blob: 7d25e4ee30e826d15a158e6b92c26628c283df6b
   - path: Packages/LillistUI/Sources/LillistUI/DragReorder/RowGeometryReporter.swift
-    blob: 039204fca9709263f21f1c51e39e17a59ee4f35e
 references_modules: [Packages-LillistCore-Sources-LillistCore-Diagnostics, Packages-LillistUI-Sources-LillistUI-Theme-chunk-1, Packages-LillistUI-Sources-LillistUI-Theme-chunk-2, Packages-LillistUI-Sources-LillistUI-Accessibility, Packages-LillistUI-Sources-LillistUI-iOS-Tasks, Apps-Lillist-iOS-Sources-misc, Apps-Lillist-macOS-Sources-Views]
-generator: cartographer/1
-baseline: 34dfea7772679dbabc08fabd6fbba53f6ad5856b
+generator: cartographer/1 model=claude-sonnet-4-6
 ---
 
 # Module: Packages/LillistUI/Sources/LillistUI/DragReorder

@@ -1,17 +1,13 @@
 ---
 module: Packages/LillistUI/Sources/LillistUI/CrashReporting
-summary: "SwiftUI crash-report consent sheet and its view model over LillistCore's CrashReporter"
-read_when: "crash-report consent UI"
+summary: SwiftUI crash-report consent sheet and its observable view model over LillistCore's CrashReporter
+read_when: Touching crash-report consent UI, report preview, or send/don't-send decision flow
 sources:
   - path: Packages/LillistUI/Sources/LillistUI/CrashReporting/CrashReportPreviewSheet.swift
-    blob: 4eebb55707cfa2ee7ad6b6d0657875f5b557db97
   - path: Packages/LillistUI/Sources/LillistUI/CrashReporting/CrashReportSheet.swift
-    blob: 4fa4f36260b52e51d8ac15607cc35c2e727b31ca
   - path: Packages/LillistUI/Sources/LillistUI/CrashReporting/CrashReportViewModel.swift
-    blob: 41a6b325226f75b650b581c4b7d4e843dd87e5a1
 references_modules: [Packages-LillistCore-Sources-LillistCore-CrashReporting, Packages-LillistCore-Sources-LillistCore-misc, Packages-LillistUI-Sources-LillistUI-Theme-chunk-1]
-generator: cartographer/1
-baseline: 34dfea7772679dbabc08fabd6fbba53f6ad5856b
+generator: cartographer/1 model=claude-sonnet-4-6
 ---
 
 # Module: Packages/LillistUI/Sources/LillistUI/CrashReporting
