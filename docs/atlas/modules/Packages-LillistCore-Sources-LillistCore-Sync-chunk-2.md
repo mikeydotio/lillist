@@ -1,18 +1,18 @@
 ---
 module: "Packages/LillistCore/Sources/LillistCore/Sync (chunk 2)"
 summary: "Observable CloudKit sync-state value types and the actor that aggregates events into them"
-read_when: "CloudKit sync-status surface"
+read_when: "Touching sync-status display, iCloud account checks, SyncStatus, or iCloudAccountState"
 sources:
   - path: Packages/LillistCore/Sources/LillistCore/Sync/SyncStatus.swift
-    blob: 223dfb9083d24d793ee63be7e908eb838f1951c2
   - path: Packages/LillistCore/Sources/LillistCore/Sync/SyncStatusMonitor.swift
-    blob: f9bcc5757ae01fcbe270c0fb554473dab5d63c75
   - path: Packages/LillistCore/Sources/LillistCore/Sync/iCloudAccountState.swift
-    blob: bb8cbfb1b0244af352900f7d1d3a575ae5b3f842
-references_modules: [Packages-LillistCore-Sources-LillistCore-Sync-chunk-1, Packages-LillistCore-Sources-LillistCore-misc, Apps-Lillist-iOS-Sources-App, Apps-Lillist-iOS-Sources-Settings]
-generator: cartographer/1
-baseline: 85a4dc8648a4280e30f533268d65bfac16701d21
-verified: true
+references_modules:
+  - Packages-LillistCore-Sources-LillistCore-Sync-chunk-1
+  - Packages-LillistCore-Sources-LillistCore-misc
+  - Apps-Lillist-iOS-Sources-App
+  - Apps-Lillist-iOS-Sources-Settings
+  - Apps-Lillist-macOS-Sources-misc
+generator: cartographer/1 model=claude-sonnet-4-6
 ---
 
 # Module: Packages/LillistCore/Sources/LillistCore/Sync (chunk 2)
@@ -33,6 +33,7 @@ indicators and account-state banners would lose their single source of truth.
 | `iCloudAccountState.from(ckAccountStatus:)` | static func | `Packages/LillistCore/Sources/LillistCore/Sync/iCloudAccountState.swift:24` | Maps a `CKAccountStatus` to a verdict; the sole translation point for CloudKit |
 | `SyncStatus` | struct | `Packages/LillistCore/Sources/LillistCore/Sync/SyncStatus.swift:6` | Sendable snapshot of last-sync time, in-progress flag, and error; `.idle` is the zero value |
 | `SyncStatusMonitor` | actor | `Packages/LillistCore/Sources/LillistCore/Sync/SyncStatusMonitor.swift:5` | Owns the current `SyncStatus`; vends a multicast `statusStream` |
+| `SyncStatusMonitor.currentStatus` | var | `Packages/LillistCore/Sources/LillistCore/Sync/SyncStatusMonitor.swift:6` | Most-recent `SyncStatus`; `private(set)` — readable within actor isolation |
 | `SyncStatusMonitor.start()` | func | `Packages/LillistCore/Sources/LillistCore/Sync/SyncStatusMonitor.swift:25` | Idempotently begins consuming the bridge's event stream |
 | `SyncStatusMonitor.stop()` | func | `Packages/LillistCore/Sources/LillistCore/Sync/SyncStatusMonitor.swift:18` | Cancels the consumer task; lets tests halt deterministically |
 | `SyncStatusMonitor.statusStream` | computed var | `Packages/LillistCore/Sources/LillistCore/Sync/SyncStatusMonitor.swift:35` | `AsyncStream<SyncStatus>`; immediately yields the current value on subscribe |
@@ -53,6 +54,7 @@ indicators and account-state banners would lose their single source of truth.
 - `Packages-LillistCore-Sources-LillistCore-Sync-chunk-1.AccountStateMonitor -> Packages-LillistCore-Sources-LillistCore-Sync-chunk-2.iCloudAccountState (calls)`
 - `Apps-Lillist-iOS-Sources-App.AppEnvironment -> Packages-LillistCore-Sources-LillistCore-Sync-chunk-2.iCloudAccountState (owns)`
 - `Apps-Lillist-iOS-Sources-Settings.ICloudSyncSection -> Packages-LillistCore-Sources-LillistCore-Sync-chunk-2.iCloudAccountState (reads)`
+- `Apps-Lillist-macOS-Sources-misc.AppEnvironment -> Packages-LillistCore-Sources-LillistCore-Sync-chunk-2.iCloudAccountState (owns)`
 
 ## Type notes
 

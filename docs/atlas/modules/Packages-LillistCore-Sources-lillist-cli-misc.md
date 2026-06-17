@@ -1,18 +1,13 @@
 ---
 module: "Packages/LillistCore/Sources/lillist-cli (misc)"
 summary: "lillist CLI entry point — root command, subcommand registry, and LillistError-to-exit-code dispatch"
-read_when: "lillist CLI entry point"
+read_when: "Touching the lillist CLI binary entry point, exit codes, or crash-canary wiring"
 sources:
   - path: Packages/LillistCore/Sources/lillist-cli/Lillist.swift
-    blob: 79bcebeb5b2478ae49266dc79a55745b8eb79590
   - path: Packages/LillistCore/Sources/lillist-cli/README.md
-    blob: 5c8c96a2b16dac9e4e1636307fe95ef1087268ab
   - path: Packages/LillistCore/Sources/lillist-cli/main.swift
-    blob: c367855ff18222c56fe80651b096c6baeb243fe9
 references_modules: [Packages-LillistCore-Sources-LillistCore-misc, Packages-LillistCore-Sources-LillistCore-CrashReporting, Packages-LillistCore-Sources-lillist-cli-Support, Packages-LillistCore-Sources-lillist-cli-Commands-chunk-1, Packages-LillistCore-Sources-lillist-cli-Commands-chunk-2]
-generator: cartographer/1
-baseline: 85a4dc8648a4280e30f533268d65bfac16701d21
-verified: true
+generator: cartographer/1 model=claude-sonnet-4-6
 ---
 
 # Module: Packages/LillistCore/Sources/lillist-cli (misc)
@@ -20,7 +15,7 @@ verified: true
 ## Purpose
 
 The process entry point and top-level wiring of the `lillist` CLI executable.
-`Lillist` is the ArgumentParser root command that registers all ~26 subcommands;
+`Lillist` is the ArgumentParser root command that registers all subcommands;
 `main.swift` is the top-level script that runs the crash-reporting canary
 lifecycle and then dispatches into the parser. The design intent is a custom
 main (`@main` was deliberately removed) so thrown `LillistError`s map onto the

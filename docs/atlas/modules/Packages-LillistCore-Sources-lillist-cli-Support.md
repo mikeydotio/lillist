@@ -18,7 +18,7 @@ sources:
   - path: Packages/LillistCore/Sources/lillist-cli/Support/TTY.swift
     blob: 57090a111e9ba0726fe08d55be48af9ef03d5915
 references_modules: [Packages-LillistCore-Sources-LillistCore-CrashReporting, Packages-LillistCore-Sources-LillistCore-CLIBridge-misc, Packages-LillistCore-Sources-LillistCore-misc]
-generator: cartographer/1
+generator: cartographer/1 model=claude-sonnet-4-6
 baseline: 85a4dc8648a4280e30f533268d65bfac16701d21
 verified: true
 ---

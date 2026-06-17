@@ -1,18 +1,13 @@
 ---
 module: "Packages/LillistCore (misc)"
 summary: "SwiftPM manifest, Core Data model-compile build plugin, and package README for LillistCore"
-read_when: "LillistCore package/plugin"
+read_when: "Touching Package.swift, the CompileCoreDataModel plugin, or target layout for LillistCore"
 sources:
   - path: Packages/LillistCore/Package.swift
-    blob: 2114f2075b73500bfe780910899b44aa96568927
   - path: Packages/LillistCore/Plugins/CompileCoreDataModel/CompileCoreDataModel.swift
-    blob: 27b2698783db0258c1ee5297e7219c6b00dfe679
   - path: Packages/LillistCore/README.md
-    blob: 3bc2ec5edf6b7b0d049d0dad1562702390d489a1
-references_modules: [Packages-LillistCore-Sources-LillistCore-Persistence, Packages-LillistCore-Sources-LillistCore-Model]
-generator: cartographer/1
-baseline: 85a4dc8648a4280e30f533268d65bfac16701d21
-verified: true
+references_modules: []
+generator: cartographer/1 model=claude-sonnet-4-6
 ---
 
 # Module: Packages/LillistCore (misc)
@@ -31,7 +26,7 @@ persistence layer would fail to load `NSEntityDescription`s at runtime.
 | Symbol | Kind | Location | Contract |
 | --- | --- | --- | --- |
 | `CompileCoreDataModel` | struct | `Packages/LillistCore/Plugins/CompileCoreDataModel/CompileCoreDataModel.swift:12` | `@main` BuildToolPlugin; emits a `momc` command per `.xcdatamodeld` on the target |
-| `createBuildCommands(context:target:)` | func | `Packages/LillistCore/Plugins/CompileCoreDataModel/CompileCoreDataModel.swift:13` | BuildToolPlugin entry; maps each model dir to a `xcrun momc` build command |
+| `createBuildCommands(context:target:)` | func | `Packages/LillistCore/Plugins/CompileCoreDataModel/CompileCoreDataModel.swift:13` | BuildToolPlugin entry; maps each model dir to an `xcrun momc` build command |
 
 ## Load-bearing internals
 
@@ -41,8 +36,7 @@ persistence layer would fail to load `NSEntityDescription`s at runtime.
 
 ## Relationships
 
-- `Packages-LillistCore-misc.CompileCoreDataModel -> Packages-LillistCore-Sources-LillistCore-Model (reads)`
-- `Packages-LillistCore-Sources-LillistCore-Persistence.PersistenceController -> Packages-LillistCore-misc.CompileCoreDataModel (reads)`
+No cross-module Swift import edges exist within this module's source files; the plugin interacts with the build system, not with other Swift modules at the source level.
 
 ## Type notes
 
@@ -53,22 +47,21 @@ acts on a target it can cast to `SourceModuleTarget`
 returning `[]` otherwise. The output filename is deliberately `<name>.spm.momd`,
 not `<name>.momd`, to avoid colliding with Xcode's built-in `DataModelCompile`
 rule in a workspace build
-(`Packages/LillistCore/Plugins/CompileCoreDataModel/CompileCoreDataModel.swift:24`).
+(`Packages/LillistCore/Plugins/CompileCoreDataModel/CompileCoreDataModel.swift:28`).
 `modelInputFiles(in:)` returns an empty array on enumeration failure so the build
 degrades to directory-only behaviour rather than crashing the plugin
-(`Packages/LillistCore/Plugins/CompileCoreDataModel/CompileCoreDataModel.swift:60`).
+(`Packages/LillistCore/Plugins/CompileCoreDataModel/CompileCoreDataModel.swift:76`).
 
-The manifest pins the `LillistCore` source target to StrictConcurrency and
-treats all warnings as errors
-(`Packages/LillistCore/Package.swift:27`); the `LillistCore` library and the
-`lillist` executable are the two products
+The manifest pins the `LillistCore` source target to StrictConcurrency and treats
+all warnings as errors (`Packages/LillistCore/Package.swift:27`); the two products
+are the `LillistCore` library and the `lillist` executable
 (`Packages/LillistCore/Package.swift:10`).
 
 ## External deps
 
-- PackagePlugin — SwiftPM build-tool plugin API (`BuildToolPlugin`, `Command`, `PluginContext`)
-- swift-argument-parser — `ArgumentParser` product, dependency of the `lillist-cli` target
-- xcrun / momc — Xcode's Core Data model compiler, invoked as the plugin's build command
+- `PackagePlugin` — SwiftPM build-tool plugin API (`BuildToolPlugin`, `Command`, `PluginContext`)
+- `swift-argument-parser` — `ArgumentParser` product, dependency of the `lillist-cli` target
+- `xcrun` / `momc` — Xcode's Core Data model compiler, invoked as the plugin's build command
 
 ## Gotchas
 
