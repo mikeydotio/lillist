@@ -4,15 +4,10 @@ summary: "AppEntity + EntityQuery surface exposing tasks to Shortcuts, Spotlight
 read_when: "Shortcuts task entity"
 sources:
   - path: Extensions/ShortcutsActions/Entities/StatusAppEnum.swift
-    blob: 9014b1f271976eceb9cca9e9307258a7d4dcac9d
   - path: Extensions/ShortcutsActions/Entities/TaskEntity.swift
-    blob: 61233f71d3aa63d6858122a3e92651961a03c853
   - path: Extensions/ShortcutsActions/Entities/TaskEntityQuery.swift
-    blob: 1187dea2d080b75705127c87e392ee2c50ad0503
 references_modules: [Extensions-ShortcutsActions-misc, Packages-LillistCore-Sources-LillistCore-Stores-chunk-1, Packages-LillistCore-Sources-LillistCore-Stores-chunk-2, Packages-LillistCore-Sources-LillistCore-Model, Packages-LillistCore-Sources-LillistCore-Rules]
-generator: cartographer/1
-baseline: 85a4dc8648a4280e30f533268d65bfac16701d21
-verified: true
+generator: cartographer/1 model=claude-sonnet-4-6
 ---
 
 # Module: Extensions/ShortcutsActions/Entities

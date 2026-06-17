@@ -1,42 +1,25 @@
 ---
 module: "Packages/LillistCore/Sources/LillistCore/CLIBridge/Handlers (chunk 1)"
 summary: "Stateless CLIBridge command handlers translating tokenized intents into store mutations and DTO reads"
-read_when: "CLI task command handlers"
+read_when: "Touching CLI or App Intents verbs for add/edit/delete/ls/count/filter/attach/link/export"
 sources:
   - path: Packages/LillistCore/Sources/LillistCore/CLIBridge/Handlers/AddHandler.swift
-    blob: 5436b7d736e7667127026b4a74916bbc699663c5
   - path: Packages/LillistCore/Sources/LillistCore/CLIBridge/Handlers/AttachHandler.swift
-    blob: eded77747680c5577ccefbde43cac1851d253c42
   - path: Packages/LillistCore/Sources/LillistCore/CLIBridge/Handlers/CountHandler.swift
-    blob: 3672518f651534a19075e57c04c701921e79aaf3
   - path: Packages/LillistCore/Sources/LillistCore/CLIBridge/Handlers/DeleteHandler.swift
-    blob: 458b4876b22e1d6a5ad985d13b826542cc8f94af
   - path: Packages/LillistCore/Sources/LillistCore/CLIBridge/Handlers/EditHandler.swift
-    blob: 9c4f282ee4b580b7823d6c9d55da9fedb330bc2a
   - path: Packages/LillistCore/Sources/LillistCore/CLIBridge/Handlers/EvalHandler.swift
-    blob: e6abcfafe279ea31ab920c4e231f72e8fd3a85ea
   - path: Packages/LillistCore/Sources/LillistCore/CLIBridge/Handlers/ExportHandler.swift
-    blob: 73a3743f5f294b95a912be44ac2dbd7e653189ca
   - path: Packages/LillistCore/Sources/LillistCore/CLIBridge/Handlers/FiltersHandler.swift
-    blob: 42221eb81deb1f2aee907240a0e6869fb8fdbc32
   - path: Packages/LillistCore/Sources/LillistCore/CLIBridge/Handlers/LinkHandler.swift
-    blob: 7de8ab03712224c1854bef490a9ff9cfc00ef5a7
   - path: Packages/LillistCore/Sources/LillistCore/CLIBridge/Handlers/LsHandler.swift
-    blob: 192754aeeda1b620b2bd60745e2b6dbe6876c9c3
   - path: Packages/LillistCore/Sources/LillistCore/CLIBridge/Handlers/MoveHandler.swift
-    blob: 406f775d8b674f480531ea7ccfe3add93fd56302
   - path: Packages/LillistCore/Sources/LillistCore/CLIBridge/Handlers/NoteHandler.swift
-    blob: 2636c60994789aae317319f897cd5d595b118332
   - path: Packages/LillistCore/Sources/LillistCore/CLIBridge/Handlers/NudgeHandler.swift
-    blob: c64410299f77fdbf3716634b151aeef057e2880b
   - path: Packages/LillistCore/Sources/LillistCore/CLIBridge/Handlers/PinHandler.swift
-    blob: 845931cf4fbe1add526c17176e2825d59c79e774
   - path: Packages/LillistCore/Sources/LillistCore/CLIBridge/Handlers/PurgeHandler.swift
-    blob: 946f138edf9a34b1ea75996454db62a4d885993c
 references_modules: [Packages-LillistCore-Sources-LillistCore-CLIBridge-misc, Packages-LillistCore-Sources-LillistCore-Stores-chunk-1, Packages-LillistCore-Sources-LillistCore-Stores-chunk-2, Packages-LillistCore-Sources-LillistCore-Notifications, Packages-LillistCore-Sources-LillistCore-Rules, Packages-LillistCore-Sources-LillistCore-Model, Packages-LillistCore-Sources-LillistCore-ManagedObjects, Packages-LillistCore-Sources-LillistCore-LinkPreview, Packages-LillistCore-Sources-LillistCore-Export, Packages-LillistCore-Sources-LillistCore-Persistence, Packages-LillistCore-Sources-LillistCore-Diagnostics, Packages-LillistCore-Sources-LillistCore-misc]
-generator: cartographer/1
-baseline: db4037b64559daa37c32ba9c4ed478a6f8a83a43
-verified: true
+generator: cartographer/1 model=claude-sonnet-4-6
 ---
 
 # Module: Packages/LillistCore/Sources/LillistCore/CLIBridge/Handlers (chunk 1)
@@ -56,7 +39,7 @@ this layer vanished, both the CLI and Shortcuts would lose every task verb.
 
 | Symbol | Kind | Location | Contract |
 | --- | --- | --- | --- |
-| `AddHandler` | enum | `Packages/LillistCore/Sources/LillistCore/CLIBridge/Handlers/AddHandler.swift:4` | `run` creates a task (tags/dates/status/parent) with `placement: .top` so CLI/Shortcuts `add` inserts at the top; returns the new UUID |
+| `AddHandler` | enum | `Packages/LillistCore/Sources/LillistCore/CLIBridge/Handlers/AddHandler.swift:4` | `run` creates a task (tags/dates/status/parent) with `placement: .top`; returns the new UUID |
 | `AddHandler.status` | func | `Packages/LillistCore/Sources/LillistCore/CLIBridge/Handlers/AddHandler.swift:77` | Maps a status token to `Status?`; nil for unknown tokens |
 | `AttachHandler` | enum | `Packages/LillistCore/Sources/LillistCore/CLIBridge/Handlers/AttachHandler.swift:4` | `run` attaches files to a resolved task; returns attachment UUIDs |
 | `CountHandler` | enum | `Packages/LillistCore/Sources/LillistCore/CLIBridge/Handlers/CountHandler.swift:4` | `run` returns the count of records matching flags/saved filter |

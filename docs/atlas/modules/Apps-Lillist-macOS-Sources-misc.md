@@ -4,33 +4,21 @@ summary: "macOS app shell — @main scene graph, root @Observable environment, A
 read_when: "macOS app shell wiring"
 sources:
   - path: Apps/Lillist-macOS/Sources/AppDelegate.swift
-    blob: 62ce4ca17340759272beab7879d10fce70f392bb
   - path: Apps/Lillist-macOS/Sources/AppEnvironment.swift
-    blob: 22f0a3d452bda96525896b47d9c461ea385e73dd
   - path: Apps/Lillist-macOS/Sources/CrashReporterHost.swift
-    blob: b3a56574761886ab64c2efdb80bab618ec92c82e
+  - path: Apps/Lillist-macOS/Sources/Editor/EditorOpenDecision.swift
+  - path: Apps/Lillist-macOS/Sources/Editor/OpenTaskEditorAction.swift
   - path: Apps/Lillist-macOS/Sources/Indexing/IndexingMappers.swift
-    blob: 8ec987eef9c37edd3c6abde3093dac44962e0044
   - path: Apps/Lillist-macOS/Sources/Indexing/IndexingService.swift
-    blob: add637f94bf65575631a2b81dc0f1cba26977bb0
   - path: Apps/Lillist-macOS/Sources/LillistApp.swift
-    blob: dc3f2c22592a35f5b813d658ad3346d6e45d9135
   - path: Apps/Lillist-macOS/Sources/MailtoTransport.swift
-    blob: 62d6df19a2ee52c3dfa72c411577dd2e4dd94d22
   - path: Apps/Lillist-macOS/Sources/MenuBar/MenuBarExtraScene.swift
-    blob: 02305835ca157cd328fca49ebd3ce7147f10c615
   - path: Apps/Lillist-macOS/Sources/Onboarding/OnboardingSheet.swift
-    blob: e252864f910909a073621b494fddf7d062eade3f
   - path: Apps/Lillist-macOS/Sources/Persistence/UIStatePersistence.swift
-    blob: 324a7b17096296dc7dafb6eb869e19312bc3ead7
   - path: Apps/Lillist-macOS/Sources/Services/LillistServicesProvider.swift
-    blob: 7fbe83aa6c8cda947dd2df8601c8b2166e107e4a
   - path: Apps/Lillist-macOS/Sources/StatusBar/TodayPopoverView.swift
-    blob: 90274bef31060bca2bee37d3cd550a68dc1fca93
 references_modules: [Packages-LillistCore-Sources-LillistCore-misc, Packages-LillistUI-Sources-LillistUI-misc, Apps-Lillist-macOS-Sources-Views-misc, Apps-Lillist-macOS-Sources-Commands, Apps-Lillist-macOS-Sources-Preferences, Apps-Lillist-macOS-Sources-Hotkey]
-generator: cartographer/1
-baseline: db4037b64559daa37c32ba9c4ed478a6f8a83a43
-verified: true
+generator: cartographer/1 model=claude-sonnet-4-6
 ---
 
 # Module: Apps/Lillist-macOS/Sources (misc)
@@ -52,7 +40,10 @@ public surface is the `MailtoTransport` crash transport.
 
 | Symbol | Kind | Location | Contract |
 | --- | --- | --- | --- |
+| `EditorOpenDecision` | enum | `Apps/Lillist-macOS/Sources/Editor/EditorOpenDecision.swift:16` | Pure value-math: `decide(isOpen:request:)` returns present/retarget/noop for panel routing |
+| `EditorOpenRequest` | enum | `Apps/Lillist-macOS/Sources/Editor/EditorOpenDecision.swift:11` | Input to `EditorOpenDecision.decide`; `.quickCapture` or `.existing(UUID)` |
 | `MailtoTransport` | struct | `Apps/Lillist-macOS/Sources/MailtoTransport.swift:10` | `CrashReportTransport` impl; writes a `.lillistcrash` temp file and opens a `mailto:` URL |
+| `OpenTaskEditorAction` | — | `Apps/Lillist-macOS/Sources/Editor/OpenTaskEditorAction.swift:12` | `EnvironmentKey` + `EnvironmentValues` extension; closure injected by `LillistApp`, consumed by task rows |
 
 ## Load-bearing internals
 
@@ -120,6 +111,17 @@ empty modal is structurally impossible
 lazily by this host's `.task`, not by `AppEnvironment.bootstrap()`, to avoid a
 self-triggered report on every launch
 (`Apps/Lillist-macOS/Sources/AppEnvironment.swift:295`).
+
+`EditorOpenDecision` is pure value-math with no AppKit dependency —
+`decide(isOpen:request:)` is the testable seam for panel routing. A
+`.quickCapture` request while the panel is open resolves to `.noop`; an
+`.existing(UUID)` request resolves to `.retarget` so no second panel spawns
+(`Apps/Lillist-macOS/Sources/Editor/EditorOpenDecision.swift:24`).
+
+`OpenTaskEditorAction` is injected at `LillistApp.content` via
+`.environment(\.openTaskEditorAction)` and calls
+`appDelegate.quickCapturePanel?.open(taskID:)`, keeping the panel reference
+out of child views (`Apps/Lillist-macOS/Sources/LillistApp.swift:91`).
 
 `UIStatePersistence` is per-machine and deliberately unsynced;
 `persistenceKey(for:)` mirrors `TaskListView.sourceKey` so sort and

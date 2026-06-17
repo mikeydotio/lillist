@@ -1,20 +1,14 @@
 ---
 module: "Apps/Lillist-macOS (misc)"
 summary: "macOS app bundle config — Info.plist, sandbox/iCloud entitlements, privacy manifest, app-only strings"
-read_when: "macOS bundle entitlements"
+read_when: "macOS bundle entitlements, CloudKit/App Group IDs, Sparkle OTA, or macOS-only localized strings"
 sources:
   - path: Apps/Lillist-macOS/Info.plist
-    blob: 77bee3c5e56ace15bb627ba59aa18edf5f4544b3
   - path: Apps/Lillist-macOS/Lillist.entitlements
-    blob: bbcb3bfbc5f58c2efb616805c4867d1b24a7d644
   - path: Apps/Lillist-macOS/Resources/Localizable.xcstrings
-    blob: 7487e9c9eb037dcf3d359808de8a5b58e1b4c96d
   - path: Apps/Lillist-macOS/Resources/PrivacyInfo.xcprivacy
-    blob: 4e7e051bbe5e2753a0a80b85ae78289d250bdce7
 references_modules: [Apps-Lillist-macOS-Sources-misc, Apps-Lillist-macOS-Sources-Preferences]
-generator: cartographer/1
-baseline: 85a4dc8648a4280e30f533268d65bfac16701d21
-verified: true
+generator: cartographer/1 model=claude-sonnet-4-6
 ---
 
 # Module: Apps/Lillist-macOS (misc)
@@ -38,8 +32,8 @@ either fails to launch, loses CloudKit sync, or breaks OTA updates.
 | Symbol | Kind | Location | Why it matters |
 | --- | --- | --- | --- |
 | `NSServices` | plist key | `Apps/Lillist-macOS/Info.plist:29` | Registers a system Services menu item routed to the `addToLillistAsTask` message |
-| `SUFeedURL` | plist key | `Apps/Lillist-macOS/Info.plist:52` | Sparkle appcast URL served over Tailscale for OTA macOS updates |
-| `SUPublicEDKey` | plist key | `Apps/Lillist-macOS/Info.plist:54` | EdDSA public key Sparkle verifies update signatures against |
+| `SUFeedURL` | plist key | `Apps/Lillist-macOS/Info.plist:53` | Sparkle appcast URL served over Tailscale for OTA macOS updates |
+| `SUPublicEDKey` | plist key | `Apps/Lillist-macOS/Info.plist:55` | EdDSA public key Sparkle verifies update signatures against |
 | `com.apple.security.application-groups` | entitlement | `Apps/Lillist-macOS/Lillist.entitlements:11` | App Group `group.io.mikeydotio.Lillist` shared with iOS app and extensions |
 | `com.apple.developer.icloud-container-identifiers` | entitlement | `Apps/Lillist-macOS/Lillist.entitlements:15` | CloudKit container `iCloud.com.mikeydotio.lillist` backing sync |
 | `com.apple.security.app-sandbox` | entitlement | `Apps/Lillist-macOS/Lillist.entitlements:5` | App Sandbox enabled; pairs with user-selected file and network-client grants |
@@ -55,7 +49,7 @@ either fails to launch, loses CloudKit sync, or breaks OTA updates.
 is the Objective-C selector AppKit invokes when the Services menu item fires;
 it must match the `@objc func` of the same name verbatim or the menu item
 silently no-ops. `CFBundleShortVersionString` is hand-pinned to `1.0.0`
-(`Apps/Lillist-macOS/Info.plist:20`); `CFBundleVersion` here is a static value
+(`Apps/Lillist-macOS/Info.plist:19`); `CFBundleVersion` here is a static placeholder
 (`Apps/Lillist-macOS/Info.plist:22`) — the deploy-time build-number bump
 targets the iOS target's xcconfig, not this plist.
 
@@ -63,6 +57,17 @@ The entitlements form one capability set: sandbox on, user-selected files
 read-write, network client (for Sparkle + CloudKit), the shared App Group, and
 the CloudKit container with the `CloudKit` service. The App Group string must
 stay identical across all targets that share it.
+
+`Localizable.xcstrings` carries five macOS-only strings scoped to the Diagnostics
+feature (`Apps/Lillist-macOS/Resources/Localizable.xcstrings:4–9`); cross-platform
+strings live in `LillistUI`'s own xcstrings file and must be kept aligned per
+project convention.
+
+`PrivacyInfo.xcprivacy` declares no tracking and one collected data type
+(`NSPrivacyCollectedDataTypeOtherUserContent`, linked, for app functionality).
+Three accessed API categories are declared: `UserDefaults` (CA92.1),
+`FileTimestamp` (C617.1), and `DiskSpace` (85F4.1)
+(`Apps/Lillist-macOS/Resources/PrivacyInfo.xcprivacy:24–50`).
 
 ## External deps
 
@@ -73,4 +78,4 @@ stay identical across all targets that share it.
 ## Gotchas
 
 - `ITSAppUsesNonExemptEncryption` is `false` (`Apps/Lillist-macOS/Info.plist:50`) — export-compliance declaration; flipping it triggers App Store encryption review.
-- `PrivacyInfo.xcprivacy` declares UserDefaults/FileTimestamp/DiskSpace API reasons (`Apps/Lillist-macOS/Resources/PrivacyInfo.xcprivacy:24`); adding such an API without a matching reason fails App Store submission.
+- `PrivacyInfo.xcprivacy` declares UserDefaults/FileTimestamp/DiskSpace API reasons (`Apps/Lillist-macOS/Resources/PrivacyInfo.xcprivacy:26`); adding such an API without a matching reason fails App Store submission.

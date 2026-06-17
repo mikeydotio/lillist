@@ -1,26 +1,24 @@
 ---
 module: Extensions/ShareExtension-iOS
-summary: "iOS share-sheet extension that captures shared text/URLs into a task via the App-Group store"
-read_when: "iOS Share Extension capture"
+summary: iOS Share Extension — captures URLs and text from other apps into a new Lillist task via the shared App Group store
+read_when: Touching share-sheet capture, extension lifecycle, or App-Group task creation
 sources:
   - path: Extensions/ShareExtension-iOS/Info.plist
-    blob: 71d0dc72cdff29eb19d3eeb77caf214255b3b5c3
   - path: Extensions/ShareExtension-iOS/Lillist.entitlements
-    blob: dc82d6a78df2d35115ff154e8888e3d7e0ef3469
   - path: Extensions/ShareExtension-iOS/PrivacyInfo.xcprivacy
-    blob: 4e7e051bbe5e2753a0a80b85ae78289d250bdce7
   - path: Extensions/ShareExtension-iOS/SharePayload.swift
-    blob: 1cc6f7b55a70113401f7d165c563a00347e31c9d
   - path: Extensions/ShareExtension-iOS/ShareRootView.swift
-    blob: 1139f567e7a51a2a9ddb8f5627291c924665603d
   - path: Extensions/ShareExtension-iOS/ShareSaveFlow.swift
-    blob: e76d10124e5f2b6565471213778516cb7892e9cf
   - path: Extensions/ShareExtension-iOS/ShareViewController.swift
-    blob: 824f5b49a323d6341a59dcd07922257f22a02a13
-references_modules: [Packages-LillistCore-Sources-LillistCore-Sync-chunk-1, Packages-LillistCore-Sources-LillistCore-Persistence, Packages-LillistCore-Sources-LillistCore-Stores-chunk-1, Packages-LillistCore-Sources-LillistCore-Stores-chunk-2, Packages-LillistCore-Sources-LillistCore-Diagnostics, Packages-LillistCore-Sources-LillistCore-LinkPreview, Packages-LillistCore-Sources-LillistCore-misc, Packages-LillistUI-Sources-LillistUI-Theme-chunk-1]
-generator: cartographer/1
-baseline: 85a4dc8648a4280e30f533268d65bfac16701d21
-verified: true
+references_modules:
+  - Packages-LillistCore-Sources-LillistCore-Stores-chunk-2
+  - Packages-LillistCore-Sources-LillistCore-Stores-chunk-1
+  - Packages-LillistCore-Sources-LillistCore-Persistence
+  - Packages-LillistCore-Sources-LillistCore-Diagnostics
+  - Packages-LillistCore-Sources-LillistCore-misc
+  - Packages-LillistCore-Sources-LillistCore-LinkPreview
+  - Packages-LillistUI-Sources-LillistUI-Theme-chunk-1
+generator: cartographer/1 model=claude-sonnet-4-6
 ---
 
 # Module: Extensions/ShareExtension-iOS
@@ -61,7 +59,7 @@ externally referenced symbol is the principal class named in `Info.plist`.
 - `Extensions-ShareExtension-iOS.ShareViewController -> Extensions-ShareExtension-iOS.ShareRootView (owns)`
 - `Extensions-ShareExtension-iOS.ShareViewController -> Packages-LillistUI-Sources-LillistUI-Theme-chunk-1.LillistFonts (calls)`
 - `Extensions-ShareExtension-iOS.ShareRootView.save -> Extensions-ShareExtension-iOS.ShareSaveFlow (calls)`
-- `Extensions-ShareExtension-iOS.ShareRootView.save -> Packages-LillistCore-Sources-LillistCore-Sync-chunk-1.GatedPersistenceResolver (calls)`
+- `Extensions-ShareExtension-iOS.ShareRootView.save -> Packages-LillistCore-Sources-LillistCore-Persistence.GatedPersistenceResolver (calls)`
 - `Extensions-ShareExtension-iOS.ShareRootView.save -> Packages-LillistCore-Sources-LillistCore-Persistence.PersistenceController (reads)`
 - `Extensions-ShareExtension-iOS.ShareRootView.save -> Packages-LillistCore-Sources-LillistCore-Stores-chunk-2.TaskStore (calls)`
 - `Extensions-ShareExtension-iOS.ShareRootView.save -> Packages-LillistCore-Sources-LillistCore-Stores-chunk-1.AttachmentStore (calls)`
@@ -78,18 +76,18 @@ externally referenced symbol is the principal class named in `Info.plist`.
 `decode()` pipeline; the unchecked vouch covers the not-yet-`Sendable`
 `NSItemProvider` (`Extensions/ShareExtension-iOS/SharePayload.swift:18`). Its
 private `Source` enum funnels two construction paths — production providers and
-test-injected items — into one `decode()` (`SharePayload.swift:41`).
+test-injected items — into one `decode()` (`Extensions/ShareExtension-iOS/SharePayload.swift:41`).
 `init(extensionContext:)` only **captures** matching providers; the data is
 loaded later via the async `loadItem` overload, because the synchronous form
-returns `Void` and silently drops the payload (`SharePayload.swift:11`).
+returns `Void` and silently drops the payload (`Extensions/ShareExtension-iOS/SharePayload.swift:11`).
 `ShareRootView.savedTaskID` is the retry latch: set once a task is created so a
 re-save after a failed link attachment reuses it instead of duplicating
-(`ShareRootView.swift:22`). The `create` call passes `placement: .top` so
+(`Extensions/ShareExtension-iOS/ShareRootView.swift:22`). The `create` call passes `placement: .top` so
 shared tasks land at the top of the inbox rather than the bottom
-(`ShareRootView.swift:118`). Writes are stamped with
+(`Extensions/ShareExtension-iOS/ShareRootView.swift:118`). Writes are stamped with
 `PersistenceController.shareExtensionTransactionAuthor` so the main app's
 diagnostics observer attributes extension-authored rows
-(`ShareRootView.swift:86`).
+(`Extensions/ShareExtension-iOS/ShareRootView.swift:86`).
 
 ## External deps
 
