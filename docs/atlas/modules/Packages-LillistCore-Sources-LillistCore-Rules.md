@@ -4,32 +4,22 @@ summary: "Smart-filter rule engine — predicate AST types, twin NSPredicate/Swi
 read_when: "Touching smart filters, predicate evaluation, or filter serialization"
 sources:
   - path: Packages/LillistCore/Sources/LillistCore/Rules/AttachmentKindMatch.swift
-    blob: 071e2efdc3c7c46c931283caa2463829e29128d5
   - path: Packages/LillistCore/Sources/LillistCore/Rules/Field.swift
-    blob: 49d5f767e230d29c01450cd67027888abd48f3d7
   - path: Packages/LillistCore/Sources/LillistCore/Rules/Leaf.swift
-    blob: a40f275c65b2e79af210f0cb93e6db05620d3275
   - path: Packages/LillistCore/Sources/LillistCore/Rules/NSPredicateCompiler.swift
-    blob: 78267b3f92158b51995acd741547a0c97b4c2319
   - path: Packages/LillistCore/Sources/LillistCore/Rules/Op.swift
-    blob: eb24e7cb50a1ccb191828c2a08e76a5df68516cc
   - path: Packages/LillistCore/Sources/LillistCore/Rules/Predicate.swift
-    blob: d3edfffb5ac1b7c574dce97f7de4e90ac41a5ce3
   - path: Packages/LillistCore/Sources/LillistCore/Rules/PredicateGroup.swift
-    blob: d4cf3e1c1bcb84742898f223a149256da197aa7e
   - path: Packages/LillistCore/Sources/LillistCore/Rules/PredicateLimits.swift
-    blob: 3f8122a6a5f83afc8ff06406e0b99bfcda52e827
   - path: Packages/LillistCore/Sources/LillistCore/Rules/RelativeDate.swift
-    blob: 1cbb98f43dd21fb84cc8da757427b96186248779
   - path: Packages/LillistCore/Sources/LillistCore/Rules/RelativeDateResolver.swift
-    blob: 087cfd03ba37d608c7de44999e6d837fa0d98ff0
   - path: Packages/LillistCore/Sources/LillistCore/Rules/SwiftEvaluator.swift
-    blob: 0736ee0213facdca48d5bdccb767249190d44b04
   - path: Packages/LillistCore/Sources/LillistCore/Rules/Value.swift
-    blob: ded7f8565dde48e25d60dd17266298baa5d173a7
-references_modules: [Packages-LillistCore-Sources-LillistCore-Model, Packages-LillistCore-Sources-LillistCore-ManagedObjects, Packages-LillistCore-Sources-LillistCore-misc, Packages-LillistCore-Sources-LillistCore-Stores-chunk-1, Packages-LillistCore-Sources-LillistCore-CLIBridge-Handlers-chunk-1, Packages-LillistCore-Sources-LillistCore-CLIBridge-misc]
-generator: cartographer/1
-baseline: 34dfea7772679dbabc08fabd6fbba53f6ad5856b
+references_modules:
+  - Packages-LillistCore-Sources-LillistCore-Model
+  - Packages-LillistCore-Sources-LillistCore-ManagedObjects
+  - Packages-LillistCore-Sources-LillistCore-misc
+generator: cartographer/1 model=claude-sonnet-4-6
 ---
 
 # Module: Packages/LillistCore/Sources/LillistCore/Rules
@@ -89,9 +79,6 @@ by a parity fixture suite, so a divergence here silently breaks filter results.
 - `Packages-LillistCore-Sources-LillistCore-Rules.SwiftEvaluator -> Packages-LillistCore-Sources-LillistCore-ManagedObjects.JournalEntry (reads)`
 - `Packages-LillistCore-Sources-LillistCore-Rules.SwiftEvaluator -> Packages-LillistCore-Sources-LillistCore-ManagedObjects.Attachment (reads)`
 - `Packages-LillistCore-Sources-LillistCore-Rules.RelativeDate -> Packages-LillistCore-Sources-LillistCore-misc.LillistError (emits)`
-- `Packages-LillistCore-Sources-LillistCore-CLIBridge-Handlers-chunk-1.EvalHandler -> Packages-LillistCore-Sources-LillistCore-Rules.NSPredicateCompiler (calls)`
-- `Packages-LillistCore-Sources-LillistCore-CLIBridge-misc.FilterFlags -> Packages-LillistCore-Sources-LillistCore-Rules.PredicateGroup (owns)`
-- `Packages-LillistCore-Sources-LillistCore-Stores-chunk-1.SmartFilterStore -> Packages-LillistCore-Sources-LillistCore-Rules.NSPredicateCompiler (calls)`
 
 ## Type notes
 

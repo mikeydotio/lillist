@@ -4,22 +4,14 @@ summary: "Core Data schema (xcdatamodeld) and the persisted enums that type its 
 read_when: "Touching Core Data entities, persisted enum raw values, or sort/status/notification semantics"
 sources:
   - path: Packages/LillistCore/Sources/LillistCore/Model/AttachmentKind.swift
-    blob: 71c49cd3ddb11ee8616dfe2f26f48750b7f72d57
   - path: Packages/LillistCore/Sources/LillistCore/Model/JournalEntryKind.swift
-    blob: 93d02c6c8bf56046428b4deeebcd3991b2e03bb5
   - path: Packages/LillistCore/Sources/LillistCore/Model/LillistModel.xcdatamodeld/.xccurrentversion
-    blob: 0b7ad51749d1fec30479832e5654dc4ab039a7bc
   - path: Packages/LillistCore/Sources/LillistCore/Model/LillistModel.xcdatamodeld/LillistModel.xcdatamodel/contents
-    blob: bf6557c0c1cfb21e7dc18cdad51d0fe20a7568ba
   - path: Packages/LillistCore/Sources/LillistCore/Model/NotificationKind.swift
-    blob: 19eca0cca8609b9de59145cea207f200f95fbfad
   - path: Packages/LillistCore/Sources/LillistCore/Model/SortField.swift
-    blob: 8813896cae4dfd955cc80e81553f4c68b1065893
   - path: Packages/LillistCore/Sources/LillistCore/Model/Status.swift
-    blob: 2b474b3b3224e2f4963e5e230484a29ed438478e
 references_modules: [Packages-LillistCore-Sources-LillistCore-ManagedObjects, Packages-LillistCore-Sources-LillistCore-Notifications, Packages-LillistCore-Sources-LillistCore-Stores-chunk-1, Packages-LillistCore-Sources-LillistCore-Stores-chunk-2, Packages-LillistUI-Sources-LillistUI-misc, Packages-LillistUI-Sources-LillistUI-Settings]
 generator: cartographer/1
-baseline: 34dfea7772679dbabc08fabd6fbba53f6ad5856b
 ---
 
 # Module: Packages/LillistCore/Sources/LillistCore/Model

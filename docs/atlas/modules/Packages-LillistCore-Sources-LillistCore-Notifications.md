@@ -1,31 +1,28 @@
 ---
 module: Packages/LillistCore/Sources/LillistCore/Notifications
-summary: "Notification scheduling, permissions, snooze, and cross-device de-dup for LillistCore"
-read_when: "Touching notification scheduling, snooze actions, permissions, or morning summary"
+summary: Notification scheduling, permissions, snooze, and cross-device de-dup for LillistCore
+read_when: Touching notification scheduling, snooze actions, permissions, or morning summary
 sources:
   - path: Packages/LillistCore/Sources/LillistCore/Notifications/DeviceFingerprint.swift
-    blob: 017698e8236497dbf31c324921f892727511f7eb
   - path: Packages/LillistCore/Sources/LillistCore/Notifications/MorningSummaryRequestID.swift
-    blob: d6059297c0840d9e4cef84f6a431c21ba0e34264
   - path: Packages/LillistCore/Sources/LillistCore/Notifications/NotificationCategoryFactory.swift
-    blob: 0ed484910145ec08b21f6f3efe00e8960d0f5163
   - path: Packages/LillistCore/Sources/LillistCore/Notifications/NotificationPermissions.swift
-    blob: 3715fdd24935b9584645329f17c14ccce1462c18
   - path: Packages/LillistCore/Sources/LillistCore/Notifications/NotificationReconciling.swift
-    blob: 8ea9d70de48667e45bb44efa7aa5b881509d3cdd
   - path: Packages/LillistCore/Sources/LillistCore/Notifications/NotificationScheduler.swift
-    blob: d85cade15d640aa96c0d298c63151ac4f4e7d312
   - path: Packages/LillistCore/Sources/LillistCore/Notifications/NotificationSpecStore.swift
-    blob: 4c06302b9716636d5da60addd3d9d189ac65306c
   - path: Packages/LillistCore/Sources/LillistCore/Notifications/SnoozeAction.swift
-    blob: 8b12e554a99d47e88381ed4614718c2c9f8576db
   - path: Packages/LillistCore/Sources/LillistCore/Notifications/SnoozeRegistry.swift
-    blob: 1449db3718e98237232b036e757b5ef2d9587144
   - path: Packages/LillistCore/Sources/LillistCore/Notifications/UNUserNotificationCenterProtocol.swift
-    blob: 36c1281750042203b07725b7278ef6680ce99a1e
-references_modules: [Packages-LillistCore-Sources-LillistCore-Persistence, Packages-LillistCore-Sources-LillistCore-Model, Packages-LillistCore-Sources-LillistCore-ManagedObjects, Packages-LillistCore-Sources-LillistCore-Stores-chunk-2, Packages-LillistCore-Sources-LillistCore-Sync-chunk-1, Apps-Lillist-iOS-Sources-App, Apps-Lillist-macOS-Sources-misc]
+references_modules:
+  - Packages-LillistCore-Sources-LillistCore-Persistence
+  - Packages-LillistCore-Sources-LillistCore-Model
+  - Packages-LillistCore-Sources-LillistCore-ManagedObjects
+  - Packages-LillistCore-Sources-LillistCore-Stores-chunk-2
+  - Packages-LillistCore-Sources-LillistCore-Sync-chunk-1
+  - Packages-LillistCore-Sources-LillistCore-misc
+  - Apps-Lillist-iOS-Sources-App
+  - Apps-Lillist-macOS-Sources-misc
 generator: cartographer/1
-baseline: 34dfea7772679dbabc08fabd6fbba53f6ad5856b
 ---
 
 # Module: Packages/LillistCore/Sources/LillistCore/Notifications
@@ -89,6 +86,7 @@ Key scheduler methods: `bootstrap()` (`NotificationScheduler.swift:299`), `cance
 - `Packages-LillistCore-Sources-LillistCore-Notifications.NotificationSpecStore -> Packages-LillistCore-Sources-LillistCore-ManagedObjects.NotificationSpec (owns)`
 - `Packages-LillistCore-Sources-LillistCore-Notifications.NotificationSpecStore -> Packages-LillistCore-Sources-LillistCore-Persistence.PersistenceController (reads)`
 - `Packages-LillistCore-Sources-LillistCore-Notifications.NotificationScheduler -> Packages-LillistCore-Sources-LillistCore-Model.NotificationKind (reads)`
+- `Packages-LillistCore-Sources-LillistCore-Notifications.NotificationScheduler -> Packages-LillistCore-Sources-LillistCore-misc.LillistError (reads)`
 - `Packages-LillistCore-Sources-LillistCore-Notifications.SystemUserNotificationCenter -> Packages-LillistCore-Sources-LillistCore-Notifications.UNUserNotificationCenterProtocol (conforms-to)`
 - `Apps-Lillist-iOS-Sources-App.AppEnvironment -> Packages-LillistCore-Sources-LillistCore-Notifications.NotificationScheduler (owns)`
 - `Apps-Lillist-macOS-Sources-misc.AppEnvironment -> Packages-LillistCore-Sources-LillistCore-Notifications.NotificationScheduler (owns)`
