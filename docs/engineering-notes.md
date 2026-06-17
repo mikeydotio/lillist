@@ -4,6 +4,54 @@ Append-only log of cross-cutting engineering lessons learned while building
 Lillist. Each entry captures a non-obvious gotcha — usually one that took real
 investigation to find — so future work doesn't re-learn it the hard way.
 
+## 2026-06-17 — Custom row swipe can't share a cell with `.swipeActions`; removing default notifications
+
+**Swipe vs. the custom drag.** `.swipeActions` is a UIKit-layer `List`
+feature: it natively arbitrates horizontal-swipe vs. vertical-scroll, but it
+loses every time to a SwiftUI `DragGesture` placed on the cell's content. The
+iOS task rows carry exactly such a gesture (the `DragController` long-press
+reorder, on the inert label region). So even though `TasksScreen` still had a
+`.swipeActions(edge: .trailing) { Delete }` block, the drag recognizer claimed
+the horizontal pan the instant the finger landed and swipe-to-delete silently
+never fired. This is the same family as the 2026-06-12 / 2026-06-17 reorder
+regressions: a control with an intrinsic gesture and the long-press drag can't
+both own the same region.
+
+The fix is `Packages/LillistUI/.../iOS/Tasks/SwipeableRow.swift`: drop
+`.swipeActions` and own *both* gestures so arbitration is deterministic, not
+left to UIKit. Mechanics that matter:
+- The swipe gesture is a `simultaneousGesture` (not `.gesture`) so it runs
+  *alongside* the List's scroll rather than starving it. It commits to an axis
+  on the first ≥10 pt of movement and **returns early for vertical drags**, so
+  the scroll keeps the touch.
+- The reorder long-press (0.3 s) is what disambiguates: a quick horizontal
+  flick fails it and reads as a swipe; a held drag reads as reorder. A hard
+  gate (`isReorderActive = dragController.state != .idle`) disables the swipe
+  entirely once a drag is confirmed, so a diagonal reorder can't trip Delete.
+- "One row open at a time" is a `@Binding openRowID` threaded from
+  `TasksScreen`; an open row overlays a transparent tap-catcher so a tap
+  closes it instead of opening the editor.
+- Tuning (`actionWidth`, `fullSwipeThreshold`, axis ratio, rubber-band) is
+  empirical — `.swipeActions`' scroll arbitration is free; rolling our own
+  means verifying on the simulator/device.
+
+**No default notifications (app-wide).** Setting a `start`/`deadline` used to
+auto-create a `defaultStart`/`defaultDeadline` `NotificationSpec` inside
+`NotificationScheduler.reconcile` (`materializeDefaultSpecs`). That is gone:
+the method is now `purgeDefaultSpecs` — it creates nothing and deletes any
+existing default specs, so legacy ones are cleaned up on the next reconcile
+and only user-added reminders (`offsetStart/offsetDeadline/nudge`) ever fire.
+The *machinery* survives: `resolvedAnchorDate` (all-day → default time) and the
+DST-safe `makeCalendarTrigger` are still used by **offset** reminders, and
+`updateDefaultAllDayTime` reschedules by all-day *anchor* (not spec kind), so
+all of Layer 2 / DST / preference-change behavior is still exercised — the
+tests for those were converted from bare-date defaults to `addOffset(…, 0)`.
+Blast radius was wider than "a few tests": every scheduler suite that scheduled
+by setting a date alone had to move to a user reminder (Layer1, Layer2AllDay,
+DST, PreferenceChange, StatusTransitions, ConcurrentReconcile, RestoreSteady,
+and the live-swap `MigrationCoordinatorRestoreTests`). Suites driven by nudges
+or manual specs (Nudge, Snooze, SnoozeAction, CrossDeviceDedup) were untouched.
+
 ## 2026-05-17 — Plan 20a IOSScreenTourTests refactor: container/presenter split for testable iOS screens
 
 **Context.** Plan 20a executed the deferred Task 4 from Plan 20. The

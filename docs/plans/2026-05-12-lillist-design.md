@@ -241,11 +241,19 @@ Lightweight (auto-inferable) preferred; hand-written mapping models otherwise. C
 
 `UNUserNotificationCenter` on all three platforms. `LillistCore.NotificationScheduler` maps `NotificationSpec` rows to scheduled requests.
 
+> **Revision (2026-06-17): no default notifications.** Setting a `start` or
+> `deadline` no longer auto-schedules anything. The `defaultStart` /
+> `defaultDeadline` spec kinds are no longer materialized by the scheduler
+> (and legacy ones are purged on reconcile) — only **user-added** reminders
+> fire. Layers 1–2 below are retained as history; their *machinery* (all-day
+> resolution to the default time, DST-safe triggers) lives on and now shapes
+> user reminders placed on all-day tasks, but nothing is created automatically.
+
 ### Layers
 
-1. **Time-bearing dates auto-schedule.** `start` or `deadline` with a time → `UNCalendarNotificationTrigger`.
-2. **All-day dates use the user's default time.** Configurable in `AppPreferences.defaultAllDayNotificationTime`.
-3. **Per-task overrides.** Zero or more additional `NotificationSpec`s with `offsetMinutes`. v1 UI exposes "Add reminder" with quick presets; data model permits arbitrary offsets.
+1. ~~**Time-bearing dates auto-schedule.**~~ *(removed — see revision above)*
+2. ~~**All-day dates use the user's default time.**~~ *(no longer auto-created; the default time still resolves all-day **user** reminders.)*
+3. **Per-task reminders (now the only scheduling source).** One or more `NotificationSpec`s of kind `offsetStart` / `offsetDeadline` (with `offsetMinutes`) relative to the anchor. UI exposes "Add reminder" with quick presets; the data model permits arbitrary offsets.
 4. **Morning summary.** Daily repeating trigger at user-configured time. Body computed at delivery from `LillistCore`.
 5. **Nudges.** First-class `NotificationSpec` of kind `nudge` with an absolute `fireDate`. Independent of start/deadline.
 
