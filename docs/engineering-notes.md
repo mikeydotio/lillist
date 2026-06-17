@@ -2934,3 +2934,44 @@ Lesson: when retiring the sole user of a design-token case, delete the case *and
 the machinery it was the only trigger for (here, the entire `.interactive()`
 branch), rather than leaving an always-false vestige — and append a note so the
 prior "interactive glass blanks offscreen" entry isn't mistaken for current law.
+
+## 2026-06-17 — A `Button` in the drag region starves the long-press reorder (inverse of the 2026-06-12 rule)
+
+**Context.** Wave 3 (`0c2761e`) wired the unified editor into iOS and retired the
+pushed detail view. The iOS task-row label changed from `NavigationLink(value:)`
+to `Button { onOpenTask(id) }`, keeping `.dragReorderGesture(...)` on it — the
+commit even claimed "drag gesture preserved." It wasn't: tapping a row opened the
+editor, but long/force-pressing to begin a reorder no longer fired.
+
+**The rule (the other face of 2026-06-12).** A SwiftUI `Button` wrapping the row
+label **starves** the row's `.gesture(LongPressGesture.sequenced(before:
+DragGesture))`. The `Button`'s intrinsic press recognizer wins gesture arbitration
+over the lower-priority added `.gesture`, so the sequence never reaches `.second`
+and `controller.beginDrag` is never called — tap works, reorder is dead. The
+2026-06-12 entry recorded the *inverse* (an added long-press eating an embedded
+`Menu`'s taps); both are the same underlying truth: **a control with an intrinsic
+gesture and an added `.gesture` in the same region arbitrate unreliably.**
+
+**The fix — own the tap, don't tune arbitration.** Open the editor via
+`.onTapGesture { onOpenTask(id) }` on the inert `TaskOutlineRowLabel` (no
+`Button`), with `.dragReorderGesture` applied after it so the long-press is the
+higher-priority gesture. A quick tap fails the 0.3s long-press and falls through
+to the tap; a held press wins the long-press and starts the drag — the two
+disambiguate purely by time because neither is a control's intrinsic gesture. This
+is exactly what macOS `TaskListView` already did
+(`.onTapGesture { openTaskEditorAction(id) }` + `.dragReorderable`), so the fix
+brings iOS in line with the existing convention rather than inventing one. Restore
+the VoiceOver button affordance the `Button` provided for free with
+`.accessibilityElement(children: .combine)` + `.accessibilityAddTraits(.isButton)`
++ `.accessibilityAction { onOpenTask(id) }`.
+
+**Why no test caught it.** As in 2026-06-12, no test exercises real gesture
+arbitration — the `DragController*Tests` drive the state machine directly, and
+snapshots render a visually identical row. Simulator XCUITest gesture arbitration
+also differs from device (it won't even push `NavigationLink` details), so the
+long-press-drag path is a manual on-device check. Rejected alternatives:
+`.highPriorityGesture`/`.simultaneousGesture` on the `Button` (still fighting the
+control's recognizer; `.simultaneous` risks the tap *also* firing after a
+settle-in-place drag), and composing the tap into `.dragReorderGesture` via
+`.exclusively(before:)` (more deterministic but changes a shared cross-platform API
+and diverges iOS from the proven macOS `.onTapGesture` convention).

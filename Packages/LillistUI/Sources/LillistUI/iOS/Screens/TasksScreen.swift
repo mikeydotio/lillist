@@ -9,8 +9,9 @@ import LillistCore
 ///
 /// Pure presentation. The hosting `TasksView` owns the Core Data fetch,
 /// the @AppStorage-backed sort selection, the filter state, the
-/// `DragController` lifecycle, and the `.navigationDestination(for: UUID.self)
-/// { TaskDetailView(taskID:) }` that turns a row tap into a detail push.
+/// `DragController` lifecycle, and the `onOpenTask` handler that turns a
+/// row tap into a unified-editor presentation (the former
+/// `NavigationLink`-to-`TaskDetailView` push was retired).
 public struct TasksScreen: View {
 
     // MARK: - Inputs
@@ -236,7 +237,7 @@ public struct TasksScreen: View {
                         }
                     }
                     // Geometry only — the drag gesture lives inside
-                    // `outlineRow` on the NavigationLink so it never
+                    // `outlineRow` on the inert text label so it never
                     // covers the chevron or status controls (their taps
                     // die under a row-wide long-press gesture; see
                     // engineering-notes 2026-06-12).
@@ -298,12 +299,17 @@ public struct TasksScreen: View {
 
     @ViewBuilder
     private func outlineRow(_ row: FlatTaskRow) -> some View {
-        // The open-editor button and drag gesture wrap ONLY the text label
+        // The tap gesture and drag gesture wrap ONLY the text label
         // (the closure's parameter); the chevron and status indicator
         // are composed outside them by `TaskOutlineRowView` so their
-        // taps are never consumed by the button or the long-press drag
-        // sequence. (Tapping the label opens the unified editor; the
-        // former `NavigationLink`-to-detail push was retired.)
+        // taps are never consumed by the long-press drag sequence.
+        // Tapping the label opens the unified editor (the former
+        // `NavigationLink`-to-detail push was retired). We own the tap
+        // as `.onTapGesture` rather than a `Button` on purpose: a
+        // `Button`'s intrinsic press recognizer wins gesture arbitration
+        // over the lower-priority `.dragReorderGesture` long-press and
+        // starves it (tap works, reorder dies). Mirrors the macOS
+        // `TaskListView` pattern; see engineering-notes 2026-06-17.
         TaskOutlineRowView(
             row: row,
             isCollapsed: collapsedNodeIDs.contains(row.node.id),
@@ -311,13 +317,17 @@ public struct TasksScreen: View {
             onStatusClick: { onStatusClick(row.node.record) },
             onStatusSet: { newStatus in onStatusSet(row.node.record, newStatus) }
         ) { label in
-            Button {
-                onOpenTask(row.node.record.id)
-            } label: {
-                label
-            }
-            .buttonStyle(.plain)
-            .dragReorderGesture(id: row.node.record.id, controller: dragController)
+            label
+                .contentShape(Rectangle())
+                .onTapGesture { onOpenTask(row.node.record.id) }
+                .dragReorderGesture(id: row.node.record.id, controller: dragController)
+                // Restore the VoiceOver affordance the dropped `Button`
+                // gave for free: a single "button, double-tap to open"
+                // element. Status circle and chevron stay outside this
+                // closure, so their accessibility is unaffected.
+                .accessibilityElement(children: .combine)
+                .accessibilityAddTraits(.isButton)
+                .accessibilityAction { onOpenTask(row.node.record.id) }
         }
         .tag(row.node.record.id)
     }

@@ -7,20 +7,21 @@ import LillistCore
 /// leading inset so the outline shape stays visible at a glance.
 ///
 /// The label region is handed to the caller through `linkContent` so
-/// the screen can wrap *only the text* in a `NavigationLink` and the
-/// drag-reorder gesture. The chevron and status indicator are
-/// constructed outside that closure by design — a row-level long-press
-/// drag gesture (or navigation wrapper) laid over interactive controls
+/// the screen can wrap *only the text* in a tap gesture (`.onTapGesture`
+/// to open the editor) and the drag-reorder gesture. The chevron and
+/// status indicator are constructed outside that closure by design — a
+/// row-level long-press drag gesture laid over interactive controls
 /// eats their taps, which shipped as the "tapping the status circle
-/// does nothing" regression (engineering-notes 2026-06-12). This API
-/// shape makes that regression unrepresentable: the closure only ever
+/// does nothing" regression (engineering-notes 2026-06-12); a `Button`
+/// in the closure inverts it and starves the long-press (2026-06-17).
+/// This API shape makes both unrepresentable: the closure only ever
 /// receives the inert text label.
 /// The tappable text region `TaskOutlineRowView` hands to its
 /// `linkContent` closure — title, tag chips, deadline caption, and the
-/// trailing flexible space. The only part of the row a navigation
-/// wrapper or gesture may cover. Standalone (not nested) so the
-/// closure's parameter type doesn't depend on the row's generic
-/// parameter — nesting it would make `LinkContent` inference circular.
+/// trailing flexible space. The only part of the row a tap or drag
+/// gesture may cover. Standalone (not nested) so the closure's parameter
+/// type doesn't depend on the row's generic parameter — nesting it would
+/// make `LinkContent` inference circular.
 public struct TaskOutlineRowLabel: View {
     let task: TaskStore.TaskRecord
     let tagNames: [String]

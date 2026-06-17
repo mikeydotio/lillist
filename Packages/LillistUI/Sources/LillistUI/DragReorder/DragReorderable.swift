@@ -8,12 +8,14 @@ extension View {
     /// row. iOS requires a long-press first to disambiguate from
     /// scroll; macOS uses a plain `DragGesture` (mouse-down + slop).
     ///
-    /// ⚠️ Never lay this over interactive controls (buttons, menus):
-    /// the long-press sequence eats their quick taps — that shipped as
-    /// the dead status-circle regression (engineering-notes
-    /// 2026-06-12). For rows with embedded controls, keep
-    /// `.reportRowGeometry(id:)` on the full row and attach
-    /// `.dragReorderGesture(id:controller:)` to the inert region only.
+    /// ⚠️ Never lay this over a control with an intrinsic gesture
+    /// (`Button`, `Menu`, `NavigationLink`): the control's recognizer
+    /// either eats the long-press (dead reorder) or has its quick taps
+    /// eaten by it (dead control) — both shipped as regressions
+    /// (engineering-notes 2026-06-12 / 2026-06-17). For rows with
+    /// embedded controls, keep `.reportRowGeometry(id:)` on the full row,
+    /// attach `.dragReorderGesture(id:controller:)` to the inert region
+    /// only, and open/activate via `.onTapGesture` (not a `Button`).
     public func dragReorderable(
         id: UUID,
         controller: DragController
