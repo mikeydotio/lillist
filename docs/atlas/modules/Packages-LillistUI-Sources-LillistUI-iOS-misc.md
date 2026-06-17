@@ -8,7 +8,7 @@ sources:
   - path: Packages/LillistUI/Sources/LillistUI/iOS/DiagnosticsIncludeSheet.swift
     blob: d47c7f5d13cf599edef0f443c815a870abb68ca9
   - path: Packages/LillistUI/Sources/LillistUI/iOS/FloatingAddButton.swift
-    blob: 1506081b02d63f3f398bc950fb1a6dc7027c9b0a
+    blob: 3cff96726b149c499ff0ba0edf0c2b60af1ee220
   - path: Packages/LillistUI/Sources/LillistUI/iOS/QuickCaptureActionEnvironment.swift
     blob: 4cd70e2ac439f86bdb12031e3784ddf7ebdea73b
   - path: Packages/LillistUI/Sources/LillistUI/iOS/QuickCaptureDialog.swift
@@ -31,7 +31,7 @@ sources:
     blob: b70db2d1499bec0e34c308d83e8587d7f0062637
 references_modules: [Packages-LillistUI-Sources-LillistUI-iOS-Tasks, Packages-LillistUI-Sources-LillistUI-DragReorder, Packages-LillistUI-Sources-LillistUI-QuickCapture, Packages-LillistUI-Sources-LillistUI-Components, Packages-LillistUI-Sources-LillistUI-misc, Packages-LillistCore-Sources-LillistCore-Model]
 generator: cartographer/1
-baseline: 85a4dc8648a4280e30f533268d65bfac16701d21
+baseline: db4037b64559daa37c32ba9c4ed478a6f8a83a43
 verified: true
 ---
 

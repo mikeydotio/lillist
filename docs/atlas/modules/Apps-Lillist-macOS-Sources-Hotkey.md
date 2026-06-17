@@ -10,12 +10,12 @@ sources:
   - path: Apps/Lillist-macOS/Sources/Hotkey/HotkeyRecorder.swift
     blob: f62390a36a429269bee13dc122ad58d397fe4b49
   - path: Apps/Lillist-macOS/Sources/Hotkey/QuickCapturePanelController.swift
-    blob: 0f04e35542b6cdf014f7f540707be0d70c9fe31d
+    blob: 3e74efc60410b43277f1381ab0b33aa52be1f3a8
   - path: Apps/Lillist-macOS/Sources/Hotkey/QuickCapturePlacementMath.swift
     blob: e38650e29d0abcec51fa15a17dc25951b981d8ae
 references_modules: [Apps-Lillist-macOS-Sources-misc, Apps-Lillist-macOS-Sources-Preferences, Packages-LillistUI-Sources-LillistUI-QuickCapture, Packages-LillistCore-Sources-LillistCore-Stores-chunk-1]
 generator: cartographer/1
-baseline: 85a4dc8648a4280e30f533268d65bfac16701d21
+baseline: db4037b64559daa37c32ba9c4ed478a6f8a83a43
 verified: true
 ---
 
@@ -50,7 +50,7 @@ app loses its global capture affordance.
 | `HotkeyRecorder.encode` | func | `Apps/Lillist-macOS/Sources/Hotkey/HotkeyRecorder.swift:157` | Pure encoder; rejects modifier-free and bare-⌘ combos to avoid shadowing shortcuts |
 | `QuickCapturePanelController` | class | `Apps/Lillist-macOS/Sources/Hotkey/QuickCapturePanelController.swift:8` | `@MainActor`; hosts `QuickCaptureView` in a floating borderless `NSPanel` |
 | `QuickCapturePanelController.toggle` | func | `Apps/Lillist-macOS/Sources/Hotkey/QuickCapturePanelController.swift:15` | Show/hide entry point invoked by the hotkey callback |
-| `QuickCapturePanelController.submit` | func | `Apps/Lillist-macOS/Sources/Hotkey/QuickCapturePanelController.swift:87` | Creates the task + assigns parsed tags via the environment stores |
+| `QuickCapturePanelController.submit` | func | `Apps/Lillist-macOS/Sources/Hotkey/QuickCapturePanelController.swift:87` | Creates the task at `placement: .top` (top of list) + assigns parsed tags via the environment stores |
 | `QuickCapturePlacementMath.placementOrigin` | func | `Apps/Lillist-macOS/Sources/Hotkey/QuickCapturePlacementMath.swift:16` | Pure panel-origin math; isolated in its own file for the standalone test bundle |
 
 ## Relationships

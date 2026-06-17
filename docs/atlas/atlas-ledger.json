@@ -1,5 +1,5 @@
 {
-  "baseline": "f01d150d9612ba87d7a01645e22fe452c9cfe995",
+  "baseline": "b065c07e56fab688ee0e7cb50bc7b93c8cbf359d",
   "docs": {
     "modules/Apps-Config.md": {
       "generator": "cartographer/1",
@@ -10,7 +10,7 @@
         "Tools"
       ],
       "sources": {
-        "Apps/Config/BuildNumber.xcconfig": "9de55af1f2dce8d8cfff66e1bb83858ab0486d3f",
+        "Apps/Config/BuildNumber.xcconfig": "b2e6763323d1ebc8c6941d0afc3ea3a2d4c9d906",
         "Apps/Config/Signing.local.xcconfig.example": "2c771256d16c8c8d3f09dcba171065b72979afe2",
         "Apps/Config/Signing.xcconfig": "91c22af2ba9d10704a892e78b54461d6bc12d1cf"
       },
@@ -112,9 +112,9 @@
         "Apps/Lillist-iOS/Sources/Commands/LillistCommands.swift": "166463128417565918949336bd955c5f5226882c",
         "Apps/Lillist-iOS/Sources/Common/SceneBindings.swift": "4c5ed74be926c762f0403a874c3427d9b503d503",
         "Apps/Lillist-iOS/Sources/Onboarding/OnboardingScreen.swift": "bd8a5898a5de3b3ec6ebf2feb8ce63b9659f4758",
-        "Apps/Lillist-iOS/Sources/QuickCapture/QuickCaptureDialogHost.swift": "f1fd69a974c93c1313e4907e811648ee2e08038f",
+        "Apps/Lillist-iOS/Sources/QuickCapture/QuickCaptureDialogHost.swift": "7a2ea82fc390b5621830749b29643bc1165eec38",
         "Apps/Lillist-iOS/Sources/Root/RootShell.swift": "81fd318944a7aa6870c2de2944e184f110e85dd7",
-        "Apps/Lillist-iOS/Sources/Tasks/TasksView.swift": "b0f506a6514fcd5e46055989ca3695048ac1978f"
+        "Apps/Lillist-iOS/Sources/Tasks/TasksView.swift": "5fcd554cddd7a3c44bb76148409278e4400aef49"
       },
       "summary": "iOS app shell, primary tasks container, onboarding, Quick Capture host, and scene command/binding plumbing",
       "verified": true
@@ -169,7 +169,7 @@
         "Apps/Lillist-macOS/Sources/Hotkey/GlobalHotkeyMonitor.swift": "aabfdf309ae61b86c6315570445b023b79f9dfca",
         "Apps/Lillist-macOS/Sources/Hotkey/HotkeyKeyTable.swift": "3d177e8680a0aee5d6228b0b090193f1d50571d5",
         "Apps/Lillist-macOS/Sources/Hotkey/HotkeyRecorder.swift": "f62390a36a429269bee13dc122ad58d397fe4b49",
-        "Apps/Lillist-macOS/Sources/Hotkey/QuickCapturePanelController.swift": "0f04e35542b6cdf014f7f540707be0d70c9fe31d",
+        "Apps/Lillist-macOS/Sources/Hotkey/QuickCapturePanelController.swift": "3e74efc60410b43277f1381ab0b33aa52be1f3a8",
         "Apps/Lillist-macOS/Sources/Hotkey/QuickCapturePlacementMath.swift": "e38650e29d0abcec51fa15a17dc25951b981d8ae"
       },
       "summary": "System-wide Quick Capture hotkey monitor, key-combo codec, and the borderless floating capture panel",
@@ -310,7 +310,7 @@
         "Apps/Lillist-macOS/Sources/MenuBar/MenuBarExtraScene.swift": "02305835ca157cd328fca49ebd3ce7147f10c615",
         "Apps/Lillist-macOS/Sources/Onboarding/OnboardingSheet.swift": "e252864f910909a073621b494fddf7d062eade3f",
         "Apps/Lillist-macOS/Sources/Persistence/UIStatePersistence.swift": "324a7b17096296dc7dafb6eb869e19312bc3ead7",
-        "Apps/Lillist-macOS/Sources/Services/LillistServicesProvider.swift": "bc0fa7c4100a95e20333e55990bb8aa9262f532b",
+        "Apps/Lillist-macOS/Sources/Services/LillistServicesProvider.swift": "7fbe83aa6c8cda947dd2df8601c8b2166e107e4a",
         "Apps/Lillist-macOS/Sources/StatusBar/TodayPopoverView.swift": "90274bef31060bca2bee37d3cd550a68dc1fca93"
       },
       "summary": "macOS app shell \u2014 @main scene graph, root @Observable environment, AppKit bridges, crash/Spotlight/Services hosts",
@@ -369,7 +369,7 @@
         "Extensions/ShareExtension-iOS/Lillist.entitlements": "dc82d6a78df2d35115ff154e8888e3d7e0ef3469",
         "Extensions/ShareExtension-iOS/PrivacyInfo.xcprivacy": "4e7e051bbe5e2753a0a80b85ae78289d250bdce7",
         "Extensions/ShareExtension-iOS/SharePayload.swift": "1cc6f7b55a70113401f7d165c563a00347e31c9d",
-        "Extensions/ShareExtension-iOS/ShareRootView.swift": "81f5afdb40d9a2b94bffd08b8422136237b9fd6d",
+        "Extensions/ShareExtension-iOS/ShareRootView.swift": "1139f567e7a51a2a9ddb8f5627291c924665603d",
         "Extensions/ShareExtension-iOS/ShareSaveFlow.swift": "e76d10124e5f2b6565471213778516cb7892e9cf",
         "Extensions/ShareExtension-iOS/ShareViewController.swift": "824f5b49a323d6341a59dcd07922257f22a02a13"
       },
@@ -446,7 +446,7 @@
         "Packages-LillistCore-Sources-LillistCore-misc"
       ],
       "sources": {
-        "Packages/LillistCore/Sources/LillistCore/CLIBridge/Handlers/AddHandler.swift": "ad229604e848b080167fb5143cbf2a2e69bb971b",
+        "Packages/LillistCore/Sources/LillistCore/CLIBridge/Handlers/AddHandler.swift": "5436b7d736e7667127026b4a74916bbc699663c5",
         "Packages/LillistCore/Sources/LillistCore/CLIBridge/Handlers/AttachHandler.swift": "eded77747680c5577ccefbde43cac1851d253c42",
         "Packages/LillistCore/Sources/LillistCore/CLIBridge/Handlers/CountHandler.swift": "3672518f651534a19075e57c04c701921e79aaf3",
         "Packages/LillistCore/Sources/LillistCore/CLIBridge/Handlers/DeleteHandler.swift": "458b4876b22e1d6a5ad985d13b826542cc8f94af",
@@ -824,7 +824,7 @@
         "Packages-LillistCore-Sources-LillistCore-misc"
       ],
       "sources": {
-        "Packages/LillistCore/Sources/LillistCore/Stores/TaskStore.swift": "31713a7791397c8cb2de171f3b097900da664826"
+        "Packages/LillistCore/Sources/LillistCore/Stores/TaskStore.swift": "6f5a3d2439e01519804c7948357665ccd5226653"
       },
       "summary": "TaskStore \u2014 the async CRUD/hierarchy/reorder/status gateway over the LillistTask Core Data graph",
       "verified": true
@@ -1227,7 +1227,7 @@
         "Packages/LillistUI/Sources/LillistUI/Theme/Color+Hex.swift": "71bd769cdd3d9632ef4353f22cc0df0ebaa246cc",
         "Packages/LillistUI/Sources/LillistUI/Theme/Fonts/LillistFonts.swift": "ec07c427560d4df7f0fd2eb1e8fdd17afd2482aa",
         "Packages/LillistUI/Sources/LillistUI/Theme/GlassRowSpike.swift": "83db647bca06e91ed8d75a86aa52d6bacc7d3260",
-        "Packages/LillistUI/Sources/LillistUI/Theme/GlassSurface.swift": "83ae8d6ba69497251b8af6352fad82e12d14aa9f",
+        "Packages/LillistUI/Sources/LillistUI/Theme/GlassSurface.swift": "8eb677573dc0a43fd12098c04266c98d132b30b2",
         "Packages/LillistUI/Sources/LillistUI/Theme/LillistColor.swift": "3cd18bceeb600d9bd002b349487badcea99916d5",
         "Packages/LillistUI/Sources/LillistUI/Theme/LillistElevation.swift": "0cd223bcb1c64678fe88d554fb2e80bc97b3b0bc",
         "Packages/LillistUI/Sources/LillistUI/Theme/LillistMotion.swift": "ac5368821890aa6ebe93adfa19aaf8117f523f07",
@@ -1296,7 +1296,7 @@
       "sources": {
         "Packages/LillistUI/Sources/LillistUI/iOS/ArchiveToast.swift": "29e16f29a8e2cef387387bcc878d5790d533c5a8",
         "Packages/LillistUI/Sources/LillistUI/iOS/DiagnosticsIncludeSheet.swift": "d47c7f5d13cf599edef0f443c815a870abb68ca9",
-        "Packages/LillistUI/Sources/LillistUI/iOS/FloatingAddButton.swift": "1506081b02d63f3f398bc950fb1a6dc7027c9b0a",
+        "Packages/LillistUI/Sources/LillistUI/iOS/FloatingAddButton.swift": "3cff96726b149c499ff0ba0edf0c2b60af1ee220",
         "Packages/LillistUI/Sources/LillistUI/iOS/QuickCaptureActionEnvironment.swift": "4cd70e2ac439f86bdb12031e3784ddf7ebdea73b",
         "Packages/LillistUI/Sources/LillistUI/iOS/QuickCaptureDialog.swift": "28f6efa09540598d7311a777da5d4be4f0a4452e",
         "Packages/LillistUI/Sources/LillistUI/iOS/QuickCaptureDialogPresenter.swift": "5e69c48782936c4c950b83ceac7b9128b6fee63a",
@@ -1374,10 +1374,10 @@
         ".github/workflows/ci.yml": "07774b20f444741c99f3e94545ccebf4a3b5d4c5",
         ".gitignore": "4584f1163ec50f6b64de5046a96275dbd331061f",
         ".semver/config.yaml": "1a63526d97642edb6dea7e2e800b860b1919231e",
-        "CHANGELOG.md": "67eb1a50ee5232710adb83f5af64551a3d193a74",
-        "CLAUDE.md": "7aa68e6f42c33846ce7973bc819015fc30b8ac9f",
+        "CHANGELOG.md": "d56e4d25f1d8a16aea626cc444c20cbb7a79ba9f",
+        "CLAUDE.md": "ef834043d4a074b13d2a563edae7f9d50759800b",
         "Lillist.xcworkspace/contents.xcworkspacedata": "2e734ab16d5b95d519766950140eed52205e09c8",
-        "VERSION": "b043aa648f5977ee9476818a572001e989cf5348"
+        "VERSION": "b0c2058e6b3b909200679fb9b0bc2386a3a00560"
       },
       "summary": "Repo-root config \u2014 CI matrix, workspace wiring, gitignore, semver state, and the canonical CLAUDE.md conventions",
       "verified": true
@@ -1387,26 +1387,26 @@
       "module": "overview/ARCHITECTURE",
       "references_modules": [],
       "sources": {
-        "docs/atlas/modules/Apps-Config.md": "2493d2a6c36b174f49d935d5804cad1240e50cc6",
+        "docs/atlas/modules/Apps-Config.md": "e98343f58de535ac960e0590ba238ecbb1b111f2",
         "docs/atlas/modules/Apps-Lillist-iOS-Sources-App.md": "209180ded87dadc7058cb0d9795e3bf3c611b822",
         "docs/atlas/modules/Apps-Lillist-iOS-Sources-Detail.md": "47f9edd9b02f549a1566126a13adb5a93ce6b0f2",
         "docs/atlas/modules/Apps-Lillist-iOS-Sources-Settings.md": "d078d39850a20a1d0bbfde0ae3b880b8555766ae",
-        "docs/atlas/modules/Apps-Lillist-iOS-Sources-misc.md": "70b06f133befcd6316dbf0c3a8e3d1482e048062",
+        "docs/atlas/modules/Apps-Lillist-iOS-Sources-misc.md": "99fe0c2f0e05dbc83a9f1f8c9773419d3f80e000",
         "docs/atlas/modules/Apps-Lillist-iOS-misc.md": "a5f554d43591f50a79f72f2cb8cb2939e29af771",
         "docs/atlas/modules/Apps-Lillist-macOS-Sources-Commands.md": "a85a427908f399e8a83ee6c7551818e11bc50d58",
-        "docs/atlas/modules/Apps-Lillist-macOS-Sources-Hotkey.md": "95622695e076cf1f6a43f9c0f39602902a103dfc",
+        "docs/atlas/modules/Apps-Lillist-macOS-Sources-Hotkey.md": "ed88eba2ad884be5452757944acca0a401f7c44e",
         "docs/atlas/modules/Apps-Lillist-macOS-Sources-Preferences.md": "3ecc47bab5e03f12e0f2df5b4a6c007440b6c287",
         "docs/atlas/modules/Apps-Lillist-macOS-Sources-Views-Detail.md": "fc509e85abd799c83d203e682f8b9bb07652ce4c",
         "docs/atlas/modules/Apps-Lillist-macOS-Sources-Views-Sidebar.md": "35d0fe41396e4925eeb700c26719b33c419ba4d2",
         "docs/atlas/modules/Apps-Lillist-macOS-Sources-Views-TaskList.md": "fd076008120f3759a0c27fa36576718426818cee",
         "docs/atlas/modules/Apps-Lillist-macOS-Sources-Views-misc.md": "555161b72c2877b8e3db1fe6b6e8e40acc983ecc",
-        "docs/atlas/modules/Apps-Lillist-macOS-Sources-misc.md": "bc6b999b91ded693ff45588fc6bfe33bc76d1fe2",
+        "docs/atlas/modules/Apps-Lillist-macOS-Sources-misc.md": "41e885e14a3f99cb5a175d1dc7c2d88e9075dd6b",
         "docs/atlas/modules/Apps-Lillist-macOS-misc.md": "0c9b60af342a94a5d27b5be7a392805e58105b40",
         "docs/atlas/modules/Apps-misc.md": "ea1b47c8ef9a4b9f414e6439901c8fc02190571b",
-        "docs/atlas/modules/Extensions-ShareExtension-iOS.md": "3ec476e1b80c8dde3dd33a0b125bde9b424f4724",
+        "docs/atlas/modules/Extensions-ShareExtension-iOS.md": "a847cd344f58d9b92f732ad8007a561e3155afa4",
         "docs/atlas/modules/Extensions-ShortcutsActions-Entities.md": "6ad9be035a2028be15404a21b5b7306ed0c06000",
         "docs/atlas/modules/Extensions-ShortcutsActions-misc.md": "cb2fabfd2929196badf00d6d8246fcad1a3d51f9",
-        "docs/atlas/modules/Packages-LillistCore-Sources-LillistCore-CLIBridge-Handlers-chunk-1.md": "3b5e49bfa3b9756f125d19ec19d2c07c71eeeb59",
+        "docs/atlas/modules/Packages-LillistCore-Sources-LillistCore-CLIBridge-Handlers-chunk-1.md": "719df526a2c1d80952d8f30093e9865452ff9374",
         "docs/atlas/modules/Packages-LillistCore-Sources-LillistCore-CLIBridge-Handlers-chunk-2.md": "29638a357806b6327af59e60acb064d303dc18da",
         "docs/atlas/modules/Packages-LillistCore-Sources-LillistCore-CLIBridge-Renderers.md": "b746165d7a39bcd8203d52451576e5963f2c87d4",
         "docs/atlas/modules/Packages-LillistCore-Sources-LillistCore-CLIBridge-misc.md": "95c063188c265161cc59cfdb6d281fb4e82efce5",
@@ -1422,7 +1422,7 @@
         "docs/atlas/modules/Packages-LillistCore-Sources-LillistCore-Recurrence.md": "ef87fee0b27cff55672ca235d6c78d5d1eae2dea",
         "docs/atlas/modules/Packages-LillistCore-Sources-LillistCore-Rules.md": "44fbc7477ef9b38586b8c44b1d72cdff154ecea6",
         "docs/atlas/modules/Packages-LillistCore-Sources-LillistCore-Stores-chunk-1.md": "7d6ff9089e6efb7d7b3dbc6429995ae0d271f3a7",
-        "docs/atlas/modules/Packages-LillistCore-Sources-LillistCore-Stores-chunk-2.md": "a0607b6ced5a955b4f7d2085a4e22be9f4c3c3ca",
+        "docs/atlas/modules/Packages-LillistCore-Sources-LillistCore-Stores-chunk-2.md": "953482b093b8906a70e11bf7486a94e6f34bbb0d",
         "docs/atlas/modules/Packages-LillistCore-Sources-LillistCore-Sync-chunk-1.md": "5a6c083eef548fc5381b21b9eac8523ba36d05f3",
         "docs/atlas/modules/Packages-LillistCore-Sources-LillistCore-Sync-chunk-2.md": "c586669c68dec6919f77fda23f3e4f8c18b52807",
         "docs/atlas/modules/Packages-LillistCore-Sources-LillistCore-misc.md": "f77d18abcd13660b300837c36a3894666a8ca0ae",
@@ -1440,14 +1440,14 @@
         "docs/atlas/modules/Packages-LillistUI-Sources-LillistUI-Recurrence.md": "617c703eaabcca611c997ea223e26937e16b3f53",
         "docs/atlas/modules/Packages-LillistUI-Sources-LillistUI-Settings.md": "b8bbb925bbcd14798166bc715a36a5a76089cc68",
         "docs/atlas/modules/Packages-LillistUI-Sources-LillistUI-Sync.md": "aee273972d2a0d167d95cb07b0ae1aa2979bb2e2",
-        "docs/atlas/modules/Packages-LillistUI-Sources-LillistUI-Theme-chunk-1.md": "4b0cb0750a00aba7c8028059d8e1fc49e62b10bf",
+        "docs/atlas/modules/Packages-LillistUI-Sources-LillistUI-Theme-chunk-1.md": "c64ab5f1731980ca7df371f70c65a01aa5d859ed",
         "docs/atlas/modules/Packages-LillistUI-Sources-LillistUI-Theme-chunk-2.md": "d112c48ad4f1ff66563ca4936774b6cfb321e20e",
         "docs/atlas/modules/Packages-LillistUI-Sources-LillistUI-iOS-Tasks.md": "5e2ca25c816f0f29d8f16f5bfc6f2fe1dddd316d",
-        "docs/atlas/modules/Packages-LillistUI-Sources-LillistUI-iOS-misc.md": "4f4b6f01f08674ffc10809c7bf515db54519a5a4",
+        "docs/atlas/modules/Packages-LillistUI-Sources-LillistUI-iOS-misc.md": "1593511a45b2070652d299a8f15824b7f2167ec3",
         "docs/atlas/modules/Packages-LillistUI-Sources-LillistUI-misc.md": "b30c60a00e420c79948e34a0e6c74b84de5997cd",
         "docs/atlas/modules/Packages-LillistUI-misc.md": "0716ead932138a0b1076e2ed62970478b03dcb42",
         "docs/atlas/modules/Tools.md": "dfaf03b2897e7f3e285ae68dec24083f1be33096",
-        "docs/atlas/modules/root-misc.md": "b3532351462cc8e40b9dc37be77b0654b0b720bd"
+        "docs/atlas/modules/root-misc.md": "3312858c5d7d85dc206f741883fc422c54fea2aa"
       },
       "summary": "System architecture and cross-module relationships",
       "verified": null

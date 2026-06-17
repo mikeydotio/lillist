@@ -3,7 +3,7 @@ module: overview/ARCHITECTURE
 summary: "System architecture and cross-module relationships"
 sources:
   - path: docs/atlas/modules/Apps-Config.md
-    blob: 2493d2a6c36b174f49d935d5804cad1240e50cc6
+    blob: e98343f58de535ac960e0590ba238ecbb1b111f2
   - path: docs/atlas/modules/Apps-Lillist-iOS-Sources-App.md
     blob: 209180ded87dadc7058cb0d9795e3bf3c611b822
   - path: docs/atlas/modules/Apps-Lillist-iOS-Sources-Detail.md
@@ -11,13 +11,13 @@ sources:
   - path: docs/atlas/modules/Apps-Lillist-iOS-Sources-Settings.md
     blob: d078d39850a20a1d0bbfde0ae3b880b8555766ae
   - path: docs/atlas/modules/Apps-Lillist-iOS-Sources-misc.md
-    blob: 70b06f133befcd6316dbf0c3a8e3d1482e048062
+    blob: 99fe0c2f0e05dbc83a9f1f8c9773419d3f80e000
   - path: docs/atlas/modules/Apps-Lillist-iOS-misc.md
     blob: a5f554d43591f50a79f72f2cb8cb2939e29af771
   - path: docs/atlas/modules/Apps-Lillist-macOS-Sources-Commands.md
     blob: a85a427908f399e8a83ee6c7551818e11bc50d58
   - path: docs/atlas/modules/Apps-Lillist-macOS-Sources-Hotkey.md
-    blob: 95622695e076cf1f6a43f9c0f39602902a103dfc
+    blob: ed88eba2ad884be5452757944acca0a401f7c44e
   - path: docs/atlas/modules/Apps-Lillist-macOS-Sources-Preferences.md
     blob: 3ecc47bab5e03f12e0f2df5b4a6c007440b6c287
   - path: docs/atlas/modules/Apps-Lillist-macOS-Sources-Views-Detail.md
@@ -29,19 +29,19 @@ sources:
   - path: docs/atlas/modules/Apps-Lillist-macOS-Sources-Views-misc.md
     blob: 555161b72c2877b8e3db1fe6b6e8e40acc983ecc
   - path: docs/atlas/modules/Apps-Lillist-macOS-Sources-misc.md
-    blob: bc6b999b91ded693ff45588fc6bfe33bc76d1fe2
+    blob: 41e885e14a3f99cb5a175d1dc7c2d88e9075dd6b
   - path: docs/atlas/modules/Apps-Lillist-macOS-misc.md
     blob: 0c9b60af342a94a5d27b5be7a392805e58105b40
   - path: docs/atlas/modules/Apps-misc.md
     blob: ea1b47c8ef9a4b9f414e6439901c8fc02190571b
   - path: docs/atlas/modules/Extensions-ShareExtension-iOS.md
-    blob: 3ec476e1b80c8dde3dd33a0b125bde9b424f4724
+    blob: a847cd344f58d9b92f732ad8007a561e3155afa4
   - path: docs/atlas/modules/Extensions-ShortcutsActions-Entities.md
     blob: 6ad9be035a2028be15404a21b5b7306ed0c06000
   - path: docs/atlas/modules/Extensions-ShortcutsActions-misc.md
     blob: cb2fabfd2929196badf00d6d8246fcad1a3d51f9
   - path: docs/atlas/modules/Packages-LillistCore-Sources-LillistCore-CLIBridge-Handlers-chunk-1.md
-    blob: 3b5e49bfa3b9756f125d19ec19d2c07c71eeeb59
+    blob: 719df526a2c1d80952d8f30093e9865452ff9374
   - path: docs/atlas/modules/Packages-LillistCore-Sources-LillistCore-CLIBridge-Handlers-chunk-2.md
     blob: 29638a357806b6327af59e60acb064d303dc18da
   - path: docs/atlas/modules/Packages-LillistCore-Sources-LillistCore-CLIBridge-Renderers.md
@@ -73,7 +73,7 @@ sources:
   - path: docs/atlas/modules/Packages-LillistCore-Sources-LillistCore-Stores-chunk-1.md
     blob: 7d6ff9089e6efb7d7b3dbc6429995ae0d271f3a7
   - path: docs/atlas/modules/Packages-LillistCore-Sources-LillistCore-Stores-chunk-2.md
-    blob: a0607b6ced5a955b4f7d2085a4e22be9f4c3c3ca
+    blob: 953482b093b8906a70e11bf7486a94e6f34bbb0d
   - path: docs/atlas/modules/Packages-LillistCore-Sources-LillistCore-Sync-chunk-1.md
     blob: 5a6c083eef548fc5381b21b9eac8523ba36d05f3
   - path: docs/atlas/modules/Packages-LillistCore-Sources-LillistCore-Sync-chunk-2.md
@@ -109,13 +109,13 @@ sources:
   - path: docs/atlas/modules/Packages-LillistUI-Sources-LillistUI-Sync.md
     blob: aee273972d2a0d167d95cb07b0ae1aa2979bb2e2
   - path: docs/atlas/modules/Packages-LillistUI-Sources-LillistUI-Theme-chunk-1.md
-    blob: 4b0cb0750a00aba7c8028059d8e1fc49e62b10bf
+    blob: c64ab5f1731980ca7df371f70c65a01aa5d859ed
   - path: docs/atlas/modules/Packages-LillistUI-Sources-LillistUI-Theme-chunk-2.md
     blob: d112c48ad4f1ff66563ca4936774b6cfb321e20e
   - path: docs/atlas/modules/Packages-LillistUI-Sources-LillistUI-iOS-Tasks.md
     blob: 5e2ca25c816f0f29d8f16f5bfc6f2fe1dddd316d
   - path: docs/atlas/modules/Packages-LillistUI-Sources-LillistUI-iOS-misc.md
-    blob: 4f4b6f01f08674ffc10809c7bf515db54519a5a4
+    blob: 1593511a45b2070652d299a8f15824b7f2167ec3
   - path: docs/atlas/modules/Packages-LillistUI-Sources-LillistUI-misc.md
     blob: b30c60a00e420c79948e34a0e6c74b84de5997cd
   - path: docs/atlas/modules/Packages-LillistUI-misc.md
@@ -123,18 +123,18 @@ sources:
   - path: docs/atlas/modules/Tools.md
     blob: dfaf03b2897e7f3e285ae68dec24083f1be33096
   - path: docs/atlas/modules/root-misc.md
-    blob: b3532351462cc8e40b9dc37be77b0654b0b720bd
+    blob: 3312858c5d7d85dc206f741883fc422c54fea2aa
 scopes:
   - tree: Apps
-    sha: 2598af9f0921ed7173763f1a0f4f618e0e85cfaa
+    sha: ef3f7cce1d641936f97237fa755c51a14bc0bb18
   - tree: Extensions
-    sha: 96c33867d5cc70171ae43dffc775cd4ffcc4bdb0
+    sha: ff597562e13b8945b1b6ea230258f0d890b839c8
   - tree: Packages
-    sha: 2a66e34c8ed9a030e9e6e44fbb5d54ee039acddd
+    sha: 26c3dc464a91b3c02cefade64d0de07ccc153112
   - tree: Tools
     sha: bad5b3cc8ef622898ae59320b9781f85949723b4
 generator: cartographer/1
-baseline: f01d150d9612ba87d7a01645e22fe452c9cfe995
+baseline: b065c07e56fab688ee0e7cb50bc7b93c8cbf359d
 ---
 
 # Architecture

@@ -24,12 +24,12 @@ sources:
   - path: Apps/Lillist-macOS/Sources/Persistence/UIStatePersistence.swift
     blob: 324a7b17096296dc7dafb6eb869e19312bc3ead7
   - path: Apps/Lillist-macOS/Sources/Services/LillistServicesProvider.swift
-    blob: bc0fa7c4100a95e20333e55990bb8aa9262f532b
+    blob: 7fbe83aa6c8cda947dd2df8601c8b2166e107e4a
   - path: Apps/Lillist-macOS/Sources/StatusBar/TodayPopoverView.swift
     blob: 90274bef31060bca2bee37d3cd550a68dc1fca93
 references_modules: [Packages-LillistCore-Sources-LillistCore-misc, Packages-LillistUI-Sources-LillistUI-misc, Apps-Lillist-macOS-Sources-Views-misc, Apps-Lillist-macOS-Sources-Commands, Apps-Lillist-macOS-Sources-Preferences, Apps-Lillist-macOS-Sources-Hotkey]
 generator: cartographer/1
-baseline: 85a4dc8648a4280e30f533268d65bfac16701d21
+baseline: db4037b64559daa37c32ba9c4ed478a6f8a83a43
 verified: true
 ---
 

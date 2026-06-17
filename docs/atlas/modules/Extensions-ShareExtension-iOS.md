@@ -12,7 +12,7 @@ sources:
   - path: Extensions/ShareExtension-iOS/SharePayload.swift
     blob: 1cc6f7b55a70113401f7d165c563a00347e31c9d
   - path: Extensions/ShareExtension-iOS/ShareRootView.swift
-    blob: 81f5afdb40d9a2b94bffd08b8422136237b9fd6d
+    blob: 1139f567e7a51a2a9ddb8f5627291c924665603d
   - path: Extensions/ShareExtension-iOS/ShareSaveFlow.swift
     blob: e76d10124e5f2b6565471213778516cb7892e9cf
   - path: Extensions/ShareExtension-iOS/ShareViewController.swift
@@ -84,7 +84,9 @@ loaded later via the async `loadItem` overload, because the synchronous form
 returns `Void` and silently drops the payload (`SharePayload.swift:11`).
 `ShareRootView.savedTaskID` is the retry latch: set once a task is created so a
 re-save after a failed link attachment reuses it instead of duplicating
-(`ShareRootView.swift:22`). Writes are stamped with
+(`ShareRootView.swift:22`). The `create` call passes `placement: .top` so
+shared tasks land at the top of the inbox rather than the bottom
+(`ShareRootView.swift:118`). Writes are stamped with
 `PersistenceController.shareExtensionTransactionAuthor` so the main app's
 diagnostics observer attributes extension-authored rows
 (`ShareRootView.swift:86`).

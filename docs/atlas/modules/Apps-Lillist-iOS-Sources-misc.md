@@ -10,14 +10,14 @@ sources:
   - path: Apps/Lillist-iOS/Sources/Onboarding/OnboardingScreen.swift
     blob: bd8a5898a5de3b3ec6ebf2feb8ce63b9659f4758
   - path: Apps/Lillist-iOS/Sources/QuickCapture/QuickCaptureDialogHost.swift
-    blob: f1fd69a974c93c1313e4907e811648ee2e08038f
+    blob: 7a2ea82fc390b5621830749b29643bc1165eec38
   - path: Apps/Lillist-iOS/Sources/Root/RootShell.swift
     blob: 81fd318944a7aa6870c2de2944e184f110e85dd7
   - path: Apps/Lillist-iOS/Sources/Tasks/TasksView.swift
-    blob: b0f506a6514fcd5e46055989ca3695048ac1978f
+    blob: 5fcd554cddd7a3c44bb76148409278e4400aef49
 references_modules: [Apps-Lillist-iOS-Sources-App, Apps-Lillist-iOS-Sources-Detail, Apps-Lillist-iOS-Sources-Settings, Packages-LillistCore-Sources-LillistCore-Stores-chunk-1, Packages-LillistCore-Sources-LillistCore-Rules, Packages-LillistUI-Sources-LillistUI-iOS-misc, Packages-LillistUI-Sources-LillistUI-QuickCapture, Packages-LillistUI-Sources-LillistUI-DragReorder, Packages-LillistUI-Sources-LillistUI-Onboarding, Packages-LillistUI-Sources-LillistUI-misc]
 generator: cartographer/1
-baseline: 85a4dc8648a4280e30f533268d65bfac16701d21
+baseline: db4037b64559daa37c32ba9c4ed478a6f8a83a43
 verified: true
 ---
 
@@ -43,7 +43,7 @@ symbols other files in the target construct or wire up.
 | `IsQuickCapturePresentedBindingKey` | struct | `Apps/Lillist-iOS/Sources/Common/SceneBindings.swift:14` | EnvironmentKey defaulting the Quick Capture presentation binding to `.constant(false)` |
 | `LillistCommands` | struct | `Apps/Lillist-iOS/Sources/Commands/LillistCommands.swift:15` | Scene `Commands`; exposes only Quick Capture (`⌘⇧N`) to the iPadOS hold-⌘ overlay |
 | `OnboardingScreen` | struct | `Apps/Lillist-iOS/Sources/Onboarding/OnboardingScreen.swift:16` | First-launch full-screen cover; takes four injected deps, calls `onCompleted` when done |
-| `QuickCaptureDialogHost` | struct | `Apps/Lillist-iOS/Sources/QuickCapture/QuickCaptureDialogHost.swift:19` | ViewModifier hosting the capture dialog + discard toast; runs parse→create→tag→deadline |
+| `QuickCaptureDialogHost` | struct | `Apps/Lillist-iOS/Sources/QuickCapture/QuickCaptureDialogHost.swift:19` | ViewModifier hosting the capture dialog + discard toast; runs parse→create→tag→deadline; accepts `onCreated: () async -> Void` (default no-op) invoked after a successful create, before dismiss |
 | `RootShell` | struct | `Apps/Lillist-iOS/Sources/Root/RootShell.swift:15` | Top-level iOS shell; `NavigationSplitView` with `TasksView` sidebar + detail column |
 | `SortBindingKey` | struct | `Apps/Lillist-iOS/Sources/Common/SceneBindings.swift:18` | EnvironmentKey defaulting `TasksSort` selection to `.personalized` |
 | `TasksView` | struct | `Apps/Lillist-iOS/Sources/Tasks/TasksView.swift:9` | Container for the single primary surface; owns fetch/reload and delegates to `TasksScreen` |
@@ -52,12 +52,12 @@ symbols other files in the target construct or wire up.
 
 | Symbol | Kind | Location | Why it matters |
 | --- | --- | --- | --- |
-| `reload` | func | `Apps/Lillist-iOS/Sources/Tasks/TasksView.swift:170` | Single re-fetch path; every mutation and filter/sort/search change funnels through it |
-| `buildActivePredicateGroup` | func | `Apps/Lillist-iOS/Sources/Tasks/TasksView.swift:201` | Composes quick tokens, saved filters, and search text into the store query |
-| `submit` | func | `Apps/Lillist-iOS/Sources/QuickCapture/QuickCaptureDialogHost.swift:68` | Quick Capture pipeline; holds the empty-title gate and double-write lock |
-| `applyDrop` | func | `Apps/Lillist-iOS/Sources/Tasks/TasksView.swift:302` | Routes resolved drag-drop to reorder/reparent store mutations |
-| `setStatus` | func | `Apps/Lillist-iOS/Sources/Tasks/TasksView.swift:330` | Status transition; surfaces a toast on failure rather than swallowing it |
-| `performRefreshArchive` | func | `Apps/Lillist-iOS/Sources/Tasks/TasksView.swift:268` | Pull-to-refresh archives visible closed tasks and arms the undo banner |
+| `reload` | func | `Apps/Lillist-iOS/Sources/Tasks/TasksView.swift:173` | Single re-fetch path; every mutation and filter/sort/search change funnels through it |
+| `buildActivePredicateGroup` | func | `Apps/Lillist-iOS/Sources/Tasks/TasksView.swift:204` | Composes quick tokens, saved filters, and search text into the store query |
+| `submit` | func | `Apps/Lillist-iOS/Sources/QuickCapture/QuickCaptureDialogHost.swift:77` | Quick Capture pipeline; holds the empty-title gate and double-write lock; creates with `placement: .top`, then calls `onCreated()` before dismiss |
+| `applyDrop` | func | `Apps/Lillist-iOS/Sources/Tasks/TasksView.swift:305` | Routes resolved drag-drop to reorder/reparent store mutations |
+| `setStatus` | func | `Apps/Lillist-iOS/Sources/Tasks/TasksView.swift:333` | Status transition; surfaces a toast on failure rather than swallowing it |
+| `performRefreshArchive` | func | `Apps/Lillist-iOS/Sources/Tasks/TasksView.swift:271` | Pull-to-refresh archives visible closed tasks and arms the undo banner |
 | `isQuickCapturePresentedBinding` | var | `Apps/Lillist-iOS/Sources/Common/SceneBindings.swift:23` | EnvironmentValues accessor shared by `LillistCommands`, the FAB, and the host |
 
 ## Relationships
@@ -88,7 +88,11 @@ EnvironmentKeys in `SceneBindings.swift` thread `Binding<Bool>` (Quick Capture p
 and `Binding<TasksSort>` (`@AppStorage`-backed sort) down to deep views; both default to
 `.constant(...)` so previews render without a host. `submit()` is guarded against
 double-writes by the `submitting` flag and gates empty titles inline since the redesigned
-dialog has no Save button (`Apps/Lillist-iOS/Sources/QuickCapture/QuickCaptureDialogHost.swift:75`).
+dialog has no Save button (`Apps/Lillist-iOS/Sources/QuickCapture/QuickCaptureDialogHost.swift:84`).
+`QuickCaptureDialogHost.onCreated` is a `() async -> Void` callback (default `{}`) invoked after
+create+tag+deadline apply, before `isPresented = false` — the owning view passes `{ await reload() }`
+so the new task (inserted `.top`) appears on screen before the dialog closes
+(`Apps/Lillist-iOS/Sources/Tasks/TasksView.swift:104`–`106`).
 `applyDrop` is `@MainActor` and uses `DragDropResolver` as the single drop-resolution source
 shared with macOS. First populate is unanimated via `hasLoadedOnce`
 (`Apps/Lillist-iOS/Sources/Tasks/TasksView.swift:33`).
@@ -101,6 +105,6 @@ shared with macOS. First populate is unanimated via `hasLoadedOnce`
 
 ## Gotchas
 
-- Status-tap failures must stay distinguishable from no-op taps — `setStatus` raises a toast on a failed write (`Apps/Lillist-iOS/Sources/Tasks/TasksView.swift:330`), per the dead-status-tap RCA.
-- `submit()` records a `quick_capture.submit_failed` breadcrumb on error as belt-and-suspenders against a future `try?` swallowing the failure (`Apps/Lillist-iOS/Sources/QuickCapture/QuickCaptureDialogHost.swift:108`).
-- Pull-to-refresh in the Done view falls back to plain reload so it doesn't archive the tasks the user is browsing (`Apps/Lillist-iOS/Sources/Tasks/TasksView.swift:269`).
+- Status-tap failures must stay distinguishable from no-op taps — `setStatus` raises a toast on a failed write (`Apps/Lillist-iOS/Sources/Tasks/TasksView.swift:333`), per the dead-status-tap RCA.
+- `submit()` records a `quick_capture.submit_failed` breadcrumb on error as belt-and-suspenders against a future `try?` swallowing the failure (`Apps/Lillist-iOS/Sources/QuickCapture/QuickCaptureDialogHost.swift:121`).
+- Pull-to-refresh in the Done view falls back to plain reload so it doesn't archive the tasks the user is browsing (`Apps/Lillist-iOS/Sources/Tasks/TasksView.swift:273`).

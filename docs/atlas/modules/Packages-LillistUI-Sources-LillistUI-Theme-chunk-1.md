@@ -10,7 +10,7 @@ sources:
   - path: Packages/LillistUI/Sources/LillistUI/Theme/GlassRowSpike.swift
     blob: 83db647bca06e91ed8d75a86aa52d6bacc7d3260
   - path: Packages/LillistUI/Sources/LillistUI/Theme/GlassSurface.swift
-    blob: 83ae8d6ba69497251b8af6352fad82e12d14aa9f
+    blob: 8eb677573dc0a43fd12098c04266c98d132b30b2
   - path: Packages/LillistUI/Sources/LillistUI/Theme/LillistColor.swift
     blob: 3cd18bceeb600d9bd002b349487badcea99916d5
   - path: Packages/LillistUI/Sources/LillistUI/Theme/LillistElevation.swift
@@ -35,7 +35,7 @@ sources:
     blob: ef5e3e2cdc62a9a405f12d0f0f5b70933ef34c89
 references_modules: [Packages-LillistUI-Sources-LillistUI-Accessibility, Packages-LillistUI-Sources-LillistUI-Theme-chunk-2, Packages-LillistUI-Sources-LillistUI-Components, Packages-LillistUI-Sources-LillistUI-iOS-misc, Packages-LillistUI-Sources-LillistUI-misc, Packages-LillistCore-Sources-LillistCore-Model, Apps-Lillist-macOS-Sources-Preferences]
 generator: cartographer/1
-baseline: 85a4dc8648a4280e30f533268d65bfac16701d21
+baseline: db4037b64559daa37c32ba9c4ed478a6f8a83a43
 verified: true
 ---
 
@@ -56,7 +56,7 @@ no semantic palette and no availability-gated glass to render against.
 | --- | --- | --- | --- |
 | `Color.init?(hex:)` | init | `Packages/LillistUI/Sources/LillistUI/Theme/Color+Hex.swift:23` | Parse 6-digit (or 3-digit) hex into a raw `Color`; nil on parse fail |
 | `Color.toHex()` | func | `Packages/LillistUI/Sources/LillistUI/Theme/Color+Hex.swift:40` | Render a `Color` as `#RRGGBB`; nil if not sRGB-reducible |
-| `GlassSurface` | enum | `Packages/LillistUI/Sources/LillistUI/Theme/GlassSurface.swift:32` | The glass role taxonomy (panel/toast/primaryAction/control/card/statusTinted) |
+| `GlassSurface` | enum | `Packages/LillistUI/Sources/LillistUI/Theme/GlassSurface.swift:32` | The glass role taxonomy (panel/toast/control/card/statusTinted) |
 | `LillistColor` | enum | `Packages/LillistUI/Sources/LillistUI/Theme/LillistColor.swift:11` | Semantic surface/text/border colors; the only color API components reach for |
 | `LillistElevation` | enum | `Packages/LillistUI/Sources/LillistUI/Theme/LillistElevation.swift:17` | Two-layer shadow levels; `.xs` is the hard cap for repeating rows |
 | `LillistFonts` | enum | `Packages/LillistUI/Sources/LillistUI/Theme/Fonts/LillistFonts.swift:22` | Registers bundled Plus Jakarta Sans for the process |
@@ -68,9 +68,9 @@ no semantic palette and no availability-gated glass to render against.
 | `StatusGlyph` | enum | `Packages/LillistUI/Sources/LillistUI/Theme/StatusGlyph.swift:9` | SF Symbol + localized a11y label per `Status` |
 | `StatusPalette` | enum | `Packages/LillistUI/Sources/LillistUI/Theme/StatusPalette.swift:20` | `color`/`ink`/`fill` per `Status`; never use `color` as text |
 | `TagTint` | struct | `Packages/LillistUI/Sources/LillistUI/Theme/TagTint.swift:4` | Tag color value; `resolved(in:)` applies dark desaturation + contrast floor |
-| `View.glassSurface(_:in:)` | func | `Packages/LillistUI/Sources/LillistUI/Theme/GlassSurface.swift:113` | Apply a glass surface with full pre-26 degradation |
-| `View.glassGroup(spacing:)` | func | `Packages/LillistUI/Sources/LillistUI/Theme/GlassSurface.swift:123` | Group overlapping glass so it blends; no-op below OS 26 |
-| `View.glassElevation(_:)` | func | `Packages/LillistUI/Sources/LillistUI/Theme/GlassSurface.swift:137` | Yield shadow to glass on OS 26; fall back to `rainbowShadow` below |
+| `View.glassSurface(_:in:)` | func | `Packages/LillistUI/Sources/LillistUI/Theme/GlassSurface.swift:98` | Apply a glass surface with full pre-26 degradation |
+| `View.glassGroup(spacing:)` | func | `Packages/LillistUI/Sources/LillistUI/Theme/GlassSurface.swift:108` | Group overlapping glass so it blends; no-op below OS 26 |
+| `View.glassElevation(_:)` | func | `Packages/LillistUI/Sources/LillistUI/Theme/GlassSurface.swift:122` | Yield shadow to glass on OS 26; fall back to `rainbowShadow` below |
 | `View.rainbowShadow(_:)` | func | `Packages/LillistUI/Sources/LillistUI/Theme/LillistElevation.swift:45` | Two-layer soft drop shadow at the given elevation |
 | `ShapeStyle.rainbowWell` | static var | `Packages/LillistUI/Sources/LillistUI/Theme/LillistElevation.swift:67` | Inset-well fill for sunken fields |
 | `SyncIndicator.color` (ext) | var | `Packages/LillistUI/Sources/LillistUI/Theme/SyncPalette.swift:27` | Canonical tint per sync state; recency-gated idle |
@@ -82,7 +82,7 @@ no semantic palette and no availability-gated glass to render against.
 | `RainbowPalette.dynamic` | func | `Packages/LillistUI/Sources/LillistUI/Theme/RainbowPalette.swift:29` | The (light,dark) → trait-resolving `Color` factory every color is built on |
 | `RainbowPalette.Functional` | struct | `Packages/LillistUI/Sources/LillistUI/Theme/RainbowPalette.swift:83` | `base`/`soft`/`ink`/`deep` axis; `base` is never text, `ink` is |
 | `RainbowPalette.Spectrum` | enum | `Packages/LillistUI/Sources/LillistUI/Theme/RainbowPalette.swift:54` | Six scheme-invariant spectrum stops feeding `RainbowGradient` |
-| `GlassSurfaceModifier` | struct | `Packages/LillistUI/Sources/LillistUI/Theme/GlassSurface.swift:146` | The `#available` gate + degradation logic behind `glassSurface` |
+| `GlassSurfaceModifier` | struct | `Packages/LillistUI/Sources/LillistUI/Theme/GlassSurface.swift:131` | The `#available` gate + degradation logic behind `glassSurface` |
 | `TagTint.resolved(in:)` | func | `Packages/LillistUI/Sources/LillistUI/Theme/TagTint.swift:37` | Dark desaturation + 4.5:1 contrast-floor iteration for tag chips |
 
 ## Relationships
@@ -124,9 +124,8 @@ a functional hue's `base` is an object-fill color and never text — text uses
 
 ## Gotchas
 
-- OS-26 Liquid Glass self-handles Reduce Transparency; `GlassSurfaceModifier` deliberately does NOT branch on it on OS 26 (`Packages/LillistUI/Sources/LillistUI/Theme/GlassSurface.swift:153`).
-- `prefersSolidFallback` keeps tinted fills (FAB, status, card) solid (not translucent) on pre-26 OS (`Packages/LillistUI/Sources/LillistUI/Theme/GlassSurface.swift:58`).
-- Only `.primaryAction` is interactive glass (`Packages/LillistUI/Sources/LillistUI/Theme/GlassSurface.swift:100`).
+- OS-26 Liquid Glass self-handles Reduce Transparency; `GlassSurfaceModifier` deliberately does NOT branch on it on OS 26 (`Packages/LillistUI/Sources/LillistUI/Theme/GlassSurface.swift:138`).
+- `prefersSolidFallback` keeps tinted fills (FAB, status, card) solid (not translucent) on pre-26 OS (`Packages/LillistUI/Sources/LillistUI/Theme/GlassSurface.swift:53`).
 - `Color(hex:)` and `TagTint.init?(hex:)` are intentionally distinct — do not collapse them (`Packages/LillistUI/Sources/LillistUI/Theme/Color+Hex.swift:13`).
 - `GlassRowSpike` is a DEBUG-only Wave 0 spike harness, slated for deletion (`Packages/LillistUI/Sources/LillistUI/Theme/GlassRowSpike.swift:4`).
 - Repeating list rows must never exceed `.xs` elevation — a scroll-perf rule (`Packages/LillistUI/Sources/LillistUI/Theme/LillistElevation.swift:17`).

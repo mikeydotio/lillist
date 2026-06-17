@@ -4,7 +4,7 @@ summary: "Stateless CLIBridge command handlers translating tokenized intents int
 read_when: "CLI task command handlers"
 sources:
   - path: Packages/LillistCore/Sources/LillistCore/CLIBridge/Handlers/AddHandler.swift
-    blob: ad229604e848b080167fb5143cbf2a2e69bb971b
+    blob: 5436b7d736e7667127026b4a74916bbc699663c5
   - path: Packages/LillistCore/Sources/LillistCore/CLIBridge/Handlers/AttachHandler.swift
     blob: eded77747680c5577ccefbde43cac1851d253c42
   - path: Packages/LillistCore/Sources/LillistCore/CLIBridge/Handlers/CountHandler.swift
@@ -35,7 +35,7 @@ sources:
     blob: 946f138edf9a34b1ea75996454db62a4d885993c
 references_modules: [Packages-LillistCore-Sources-LillistCore-CLIBridge-misc, Packages-LillistCore-Sources-LillistCore-Stores-chunk-1, Packages-LillistCore-Sources-LillistCore-Stores-chunk-2, Packages-LillistCore-Sources-LillistCore-Notifications, Packages-LillistCore-Sources-LillistCore-Rules, Packages-LillistCore-Sources-LillistCore-Model, Packages-LillistCore-Sources-LillistCore-ManagedObjects, Packages-LillistCore-Sources-LillistCore-LinkPreview, Packages-LillistCore-Sources-LillistCore-Export, Packages-LillistCore-Sources-LillistCore-Persistence, Packages-LillistCore-Sources-LillistCore-Diagnostics, Packages-LillistCore-Sources-LillistCore-misc]
 generator: cartographer/1
-baseline: 85a4dc8648a4280e30f533268d65bfac16701d21
+baseline: db4037b64559daa37c32ba9c4ed478a6f8a83a43
 verified: true
 ---
 
@@ -56,7 +56,7 @@ this layer vanished, both the CLI and Shortcuts would lose every task verb.
 
 | Symbol | Kind | Location | Contract |
 | --- | --- | --- | --- |
-| `AddHandler` | enum | `Packages/LillistCore/Sources/LillistCore/CLIBridge/Handlers/AddHandler.swift:4` | `run` creates a task (tags/dates/status/parent), returns its UUID |
+| `AddHandler` | enum | `Packages/LillistCore/Sources/LillistCore/CLIBridge/Handlers/AddHandler.swift:4` | `run` creates a task (tags/dates/status/parent) with `placement: .top` so CLI/Shortcuts `add` inserts at the top; returns the new UUID |
 | `AddHandler.status` | func | `Packages/LillistCore/Sources/LillistCore/CLIBridge/Handlers/AddHandler.swift:77` | Maps a status token to `Status?`; nil for unknown tokens |
 | `AttachHandler` | enum | `Packages/LillistCore/Sources/LillistCore/CLIBridge/Handlers/AttachHandler.swift:4` | `run` attaches files to a resolved task; returns attachment UUIDs |
 | `CountHandler` | enum | `Packages/LillistCore/Sources/LillistCore/CLIBridge/Handlers/CountHandler.swift:4` | `run` returns the count of records matching flags/saved filter |

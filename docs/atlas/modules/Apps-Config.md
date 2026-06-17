@@ -4,14 +4,14 @@ summary: "Shared xcconfig scaffold keeping the signing team ID out of git and tr
 read_when: "Code signing & build number"
 sources:
   - path: Apps/Config/BuildNumber.xcconfig
-    blob: 9de55af1f2dce8d8cfff66e1bb83858ab0486d3f
+    blob: b2e6763323d1ebc8c6941d0afc3ea3a2d4c9d906
   - path: Apps/Config/Signing.xcconfig
     blob: 91c22af2ba9d10704a892e78b54461d6bc12d1cf
   - path: Apps/Config/Signing.local.xcconfig.example
     blob: 2c771256d16c8c8d3f09dcba171065b72979afe2
 references_modules: [Apps-misc, Apps-Lillist-iOS-misc, Tools]
 generator: cartographer/1
-baseline: 85a4dc8648a4280e30f533268d65bfac16701d21
+baseline: db4037b64559daa37c32ba9c4ed478a6f8a83a43
 verified: true
 ---
 

@@ -12,16 +12,16 @@ sources:
   - path: .semver/config.yaml
     blob: 1a63526d97642edb6dea7e2e800b860b1919231e
   - path: CHANGELOG.md
-    blob: 67eb1a50ee5232710adb83f5af64551a3d193a74
+    blob: d56e4d25f1d8a16aea626cc444c20cbb7a79ba9f
   - path: CLAUDE.md
-    blob: 7aa68e6f42c33846ce7973bc819015fc30b8ac9f
+    blob: ef834043d4a074b13d2a563edae7f9d50759800b
   - path: Lillist.xcworkspace/contents.xcworkspacedata
     blob: 2e734ab16d5b95d519766950140eed52205e09c8
   - path: VERSION
-    blob: b043aa648f5977ee9476818a572001e989cf5348
+    blob: b0c2058e6b3b909200679fb9b0bc2386a3a00560
 references_modules: [Apps-Config, Tools, Packages-LillistCore-misc, Packages-LillistUI-misc, Apps-Lillist-iOS-misc, Apps-Lillist-macOS-misc]
 generator: cartographer/1
-baseline: 85a4dc8648a4280e30f533268d65bfac16701d21
+baseline: db4037b64559daa37c32ba9c4ed478a6f8a83a43
 verified: true
 ---
 
