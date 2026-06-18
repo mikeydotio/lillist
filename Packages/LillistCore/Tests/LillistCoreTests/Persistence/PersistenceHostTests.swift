@@ -138,4 +138,83 @@ struct PersistenceHostTests {
         // so a later re-enable of iCloudSync still works.
         #expect((rollbackDesc.options[NSPersistentHistoryTrackingKey] as? NSNumber)?.boolValue == true)
     }
+
+    // MARK: - Destructive reset (PersistenceResetting)
+
+    @Test("tearDownStore + rebuildEmptyStore wipes data and leaves a usable empty store", .enabled(if: liveSwapAllowed))
+    func resetWipesAndRebuilds() async throws {
+        let url = Self.freshStoreURL()
+        // localOnly: no CloudKit mirroring delegate to tear down, so the
+        // wipe round-trip is exercised without an iCloud account.
+        let host = try await PersistenceHost.make(initialMode: .localOnly, storeURL: url)
+        let controller = await host.controller
+        let ctx = controller.container.viewContext
+        try await ctx.perform {
+            let row = LillistTask(context: ctx)
+            row.id = UUID()
+            row.title = "reset-test"
+            row.statusRaw = 0
+            row.createdAt = Date()
+            row.modifiedAt = Date()
+            row.position = 0
+            try ctx.save()
+        }
+
+        let quarantine = QuarantineManager(rootDirectory: url.deletingLastPathComponent())
+        let backup = try await host.tearDownStore(backupVia: quarantine)
+        // A recovery anchor was captured before the destroy.
+        #expect(backup != nil)
+        #expect(try quarantine.latestQuarantinedStore() != nil)
+
+        try await host.rebuildEmptyStore()
+
+        // The rebuilt store is empty and the shared viewContext is usable.
+        let count = try await ctx.perform {
+            try ctx.count(for: NSFetchRequest<LillistTask>(entityName: "LillistTask"))
+        }
+        #expect(count == 0)
+        // A fresh write into the rebuilt store succeeds.
+        try await ctx.perform {
+            let row = LillistTask(context: ctx)
+            row.id = UUID()
+            row.title = "post-reset"
+            row.statusRaw = 0
+            row.createdAt = Date()
+            row.modifiedAt = Date()
+            row.position = 0
+            try ctx.save()
+        }
+        let after = try await ctx.perform {
+            try ctx.count(for: NSFetchRequest<LillistTask>(entityName: "LillistTask"))
+        }
+        #expect(after == 1)
+    }
+
+    @Test("reattachStore restores the original data after a tear-down (rollback path)", .enabled(if: liveSwapAllowed))
+    func reattachRestoresOriginalData() async throws {
+        let url = Self.freshStoreURL()
+        let host = try await PersistenceHost.make(initialMode: .localOnly, storeURL: url)
+        let controller = await host.controller
+        let ctx = controller.container.viewContext
+        try await ctx.perform {
+            let row = LillistTask(context: ctx)
+            row.id = UUID()
+            row.title = "reattach-test"
+            row.statusRaw = 0
+            row.createdAt = Date()
+            row.modifiedAt = Date()
+            row.position = 0
+            try ctx.save()
+        }
+
+        // Tear the store off (files left on disk), then re-attach instead
+        // of destroying — the seeded row must survive.
+        _ = try await host.tearDownStore(backupVia: nil)
+        try await host.reattachStore()
+
+        let count = try await ctx.perform {
+            try ctx.count(for: NSFetchRequest<LillistTask>(entityName: "LillistTask"))
+        }
+        #expect(count == 1)
+    }
 }

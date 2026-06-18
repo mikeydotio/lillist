@@ -34,7 +34,7 @@ public enum MigrationPhase: Sendable, Equatable {
 /// Other Stores still read `controller.container.viewContext` exactly
 /// as before — the context survives a `reconfigure(to:)` swap because
 /// it stays attached to the same coordinator.
-public actor PersistenceHost: PersistenceReconfiguring {
+public actor PersistenceHost: PersistenceReconfiguring, PersistenceResetting {
     public private(set) var controller: PersistenceController
     public private(set) var currentMode: SyncMode
 
@@ -287,5 +287,81 @@ public actor PersistenceHost: PersistenceReconfiguring {
             cloudKitContainerIdentifier: cloudKitContainerIdentifier,
             syncMode: newMode
         )
+    }
+
+    // MARK: - Destructive reset (PersistenceResetting)
+
+    /// Tear the live store off the coordinator and capture a recovery
+    /// backup. See `PersistenceResetting.tearDownStore`.
+    ///
+    /// Unsaved `viewContext` edits are *discarded* (rollback), not
+    /// flushed: the store is being wiped, and a corrupt store — the very
+    /// reason a reset is invoked — could make `save()` throw and block
+    /// the recovery the user asked for. The backup is taken from the
+    /// on-disk files after the SQLite connection is closed, mirroring
+    /// `MigrationCoordinator`'s reconfigure-then-copy ordering (persist-3).
+    public func tearDownStore(
+        backupVia quarantine: QuarantineManager?
+    ) async throws -> QuarantineManager.QuarantinedBackup? {
+        guard let storeURL else {
+            throw LillistError.storeUnavailable(reason: "Cannot reset an in-memory store (no on-disk URL).")
+        }
+        let ctx = controller.container.viewContext
+        let coordinator = controller.container.persistentStoreCoordinator
+        try await ctx.perform {
+            if ctx.hasChanges { ctx.rollback() }
+            if let store = coordinator.persistentStores.first {
+                try coordinator.remove(store)
+            }
+        }
+        // Connection closed: copy the now-quiescent files as the recovery
+        // anchor. `copyStore` runs the quarantine disk-space pre-flight and
+        // throws *before* the caller's irreversible CloudKit erase
+        // (blind-spot #5). Returns nil when no quarantine was requested or
+        // the file is already gone.
+        guard let quarantine,
+              FileManager.default.fileExists(atPath: storeURL.path) else { return nil }
+        return try quarantine.copyStore(at: storeURL)
+    }
+
+    /// Destroy the torn-down store and add a fresh empty one for the
+    /// current mode. See `PersistenceResetting.rebuildEmptyStore`.
+    public func rebuildEmptyStore() async throws {
+        guard let storeURL else {
+            throw LillistError.storeUnavailable(reason: "Cannot reset an in-memory store (no on-disk URL).")
+        }
+        let ctx = controller.container.viewContext
+        let coordinator = controller.container.persistentStoreCoordinator
+        // Build the Sendable config on the actor; the (non-Sendable)
+        // description is rebuilt inside the perform closure from it, exactly
+        // as `flushAndSwap` does.
+        let config = configuration(for: currentMode)
+        try await ctx.perform {
+            // `destroyPersistentStore` deletes the SQLite file and its
+            // -wal/-shm sidecars. The store must not be loaded — it was
+            // removed in `tearDownStore`.
+            try coordinator.destroyPersistentStore(at: storeURL, type: .sqlite, options: nil)
+            let desc = PersistenceController.makeStoreDescription(for: config)
+            try Self.addStore(desc, to: coordinator)
+            // Drop any registered objects so views never read freed rows
+            // from the destroyed store.
+            ctx.reset()
+        }
+    }
+
+    /// Re-attach the original store after a failed mid-reset step. See
+    /// `PersistenceResetting.reattachStore`.
+    public func reattachStore() async throws {
+        guard storeURL != nil else {
+            throw LillistError.storeUnavailable(reason: "Cannot reset an in-memory store (no on-disk URL).")
+        }
+        let ctx = controller.container.viewContext
+        let coordinator = controller.container.persistentStoreCoordinator
+        let config = configuration(for: currentMode)
+        try await ctx.perform {
+            guard coordinator.persistentStores.isEmpty else { return }
+            let desc = PersistenceController.makeStoreDescription(for: config)
+            try Self.addStore(desc, to: coordinator)
+        }
     }
 }

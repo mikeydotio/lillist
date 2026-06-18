@@ -34,6 +34,11 @@ final class AppEnvironment {
     let syncModeStore: SyncModeStore
     let migrationJournalStore: any MigrationJournalStore
     let migrationCoordinator: MigrationCoordinator
+    /// Debug-only full data-store reset (Settings → Debug). Wipes the
+    /// local store and, when syncing, the CloudKit zone, then rebuilds
+    /// empty. Reuses the same quarantine / zone-eraser / quiesce pieces
+    /// as `migrationCoordinator`.
+    let dataStoreReset: DataStoreResetService
     let pauseReasonClassifier: PauseReasonClassifier
     /// Latest resolved sync mode, mirrored off the actor so SwiftUI
     /// can observe it.
@@ -119,9 +124,10 @@ final class AppEnvironment {
         self.defaultsInstaller = DefaultsInstaller(filters: smartFilterStore)
         self.autoPurgeJob = AutoPurgeJob(persistence: persistence, preferences: preferencesStore)
         let ckContainerID = StoreConfiguration.defaultCloudKitContainerIdentifier
-        self.accountStateMonitor = AccountStateMonitor(
+        let accountStateMonitor = AccountStateMonitor(
             provider: CloudKitAccountStatusProvider(container: CKContainer(identifier: ckContainerID))
         )
+        self.accountStateMonitor = accountStateMonitor
         let specStore = NotificationSpecStore(persistence: persistence)
         self.notificationSpecStore = specStore
 
@@ -261,6 +267,24 @@ final class AppEnvironment {
             breadcrumbs: breadcrumbs,
             cloudKitContainerIdentifier: ckContainerID,
             localStoreRowCount: localStoreRowCount
+        )
+        // Debug full-reset service. Same building blocks as the migration
+        // coordinator (quarantine backup, CloudKit zone eraser, quiesce
+        // wait) but a distinct type: a reset is not a mode transition and
+        // must not touch the migration journal. The account-changed probe
+        // guards against erasing the wrong account's zone after a switch.
+        let resetAccountProbe: AccountStateProviding = { [accountStateMonitor] in
+            await accountStateMonitor.currentState
+        }
+        self.dataStoreReset = DataStoreResetService(
+            host: persistenceHost,
+            quarantine: quarantine,
+            zoneEraser: LiveCloudKitZoneEraser(),
+            quiesceMonitor: quiesceMonitor,
+            notificationScheduler: scheduler,
+            cloudKitContainerIdentifier: ckContainerID,
+            accountStateProvider: resetAccountProbe,
+            breadcrumbs: breadcrumbs
         )
     }
 
