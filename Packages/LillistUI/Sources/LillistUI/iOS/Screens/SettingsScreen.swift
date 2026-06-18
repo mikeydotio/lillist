@@ -34,12 +34,13 @@ public struct SettingsScreen<SectionsContent: View>: View {
                     // builder content so every app-target section
                     // inherits without knowing about the theme:
                     // card-surface rows on the cool-gray workspace and
-                    // the tactile switch (the full-whimsy decision).
+                    // the tactile switch (the full-whimsy decision). The
+                    // form-level chrome (switch style, workspace fill) is
+                    // shared with each pushed `SettingsDetailScreen` via
+                    // `settingsFormStyle()` so landing + sub-pages match.
                     .listRowBackground(LillistColor.card)
             }
-            .toggleStyle(.rainbow)
-            .scrollContentBackground(.hidden)
-            .background(LillistColor.workspace)
+            .settingsFormStyle()
             .navigationTitle(Text(String(localized: "Settings", bundle: .module)))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

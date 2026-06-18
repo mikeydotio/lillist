@@ -267,30 +267,35 @@ final class IOSScreenTourTests: RecordableSnapshotTestCase {
     // in the offscreen `CALayer.render(in:)` capture (it blanks the whole
     // empty-state subtree). See docs/engineering-notes.md 2026-06-15.
 
+    /// A mock Settings landing row mirroring `SettingsTab`'s drill-down
+    /// rows: a wayfinding `SettingsRowIcon` tile + title pushing a
+    /// (dummy) destination within the screen's navigation stack.
+    @ViewBuilder
+    private func settingsNavRow(_ title: String, _ systemImage: String, _ tint: Color) -> some View {
+        NavigationLink {
+            EmptyView()
+        } label: {
+            Label {
+                Text(title)
+            } icon: {
+                SettingsRowIcon(systemImage: systemImage, tint: tint)
+            }
+        }
+    }
+
     func test_08_settings_light() {
+        // The icon-row landing screen (Plan: Settings sub-pages). Each row
+        // carries a fixed RainbowPalette wayfinding hue and drills into a
+        // focused sub-page (rendered for real in the app target).
         let view = SettingsScreen(onDone: {}) {
-            Section("GENERAL") {
-                settingRow(label: "Default list", value: "Today")
-                settingRow(label: "First weekday", value: "Monday")
-                settingRow(label: "Show subtasks inline", value: "On")
-            }
-            Section("NOTIFICATIONS") {
-                settingRow(label: "Notifications", value: "Enabled")
-                settingRow(label: "All-day reminder", value: "9:00 AM")
-                settingRow(label: "Snooze default", value: "1 hour")
-                settingRow(label: "Morning summary", value: "Weekdays")
-            }
-            Section("QUICK CAPTURE") {
-                settingRow(label: "Share extension", value: "Enabled")
-                settingRow(label: "Default list", value: "Inbox")
-            }
-            Section("CRASH REPORTING") {
-                settingRow(label: "Prompt after crashes", value: "On")
-                settingRow(label: "Include logs", value: "On")
-            }
-            Section("ABOUT") {
-                settingRow(label: "Version", value: "1.0 (42)")
-                settingRow(label: "iCloud", value: "Synced just now")
+            Section {
+                settingsNavRow("Appearance", "paintpalette.fill", RainbowPalette.scriptPurple.base)
+                settingsNavRow("Task Defaults", "checklist", RainbowPalette.focusBlue.base)
+                settingsNavRow("Notifications", "bell.badge.fill", RainbowPalette.cautionAmber.base)
+                settingsNavRow("iCloud Sync", "icloud.fill", RainbowPalette.Spectrum.cyan)
+                settingsNavRow("Quick Capture", "bolt.fill", RainbowPalette.actionOrange.base)
+                settingsNavRow("Data Management", "externaldrive.fill", RainbowPalette.growthGreen.base)
+                settingsNavRow("Debug", "ladybug.fill", LillistColor.textMuted)
             }
         }
         .frame(width: phoneSize.width, height: phoneSize.height)
@@ -300,6 +305,24 @@ final class IOSScreenTourTests: RecordableSnapshotTestCase {
         // tour snapshot to the Form precision pair; all other tour snapshots
         // stay exact-pixel so they keep catching real regressions.
         assertScreen(view, name: "08-settings-light", colorScheme: .light,
+                     size: phoneSize, precision: 0.99, perceptualPrecision: 0.98)
+    }
+
+    func test_08b_settingsDetail_light() {
+        // A drill-down sub-page (`SettingsDetailScreen`) — the shared chrome
+        // reused by every Settings sub-page. Wrapped in a NavigationStack so
+        // the inline title renders, mirroring how it's pushed at runtime.
+        let view = NavigationStack {
+            SettingsDetailScreen("Appearance") {
+                Section {
+                    settingRow(label: "Default tag tint", value: "Purple")
+                } footer: {
+                    Text("Applied to new tags. Existing tags keep their custom color.")
+                }
+            }
+        }
+        .frame(width: phoneSize.width, height: phoneSize.height)
+        assertScreen(view, name: "08b-settings-detail-light", colorScheme: .light,
                      size: phoneSize, precision: 0.99, perceptualPrecision: 0.98)
     }
 
