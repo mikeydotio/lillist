@@ -3,6 +3,20 @@
 All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [v0.8.0] - 2026-06-18
+
+### Added
+- group Settings into icon-row sub-pages (69e6d39)
+- add full data-store reset for debugging (caccf93)
+
+### Documentation
+- note the destructive debug data-store reset (a30cd21)
+
+### Maintenance
+- bump iOS build number to 51 (8f4f991)
+
+_[manual]_
+
 ## [v0.7.0] - 2026-06-17
 
 ### Added
