@@ -3023,3 +3023,54 @@ control's recognizer; `.simultaneous` risks the tap *also* firing after a
 settle-in-place drag), and composing the tap into `.dragReorderGesture` via
 `.exclusively(before:)` (more deterministic but changes a shared cross-platform API
 and diverges iOS from the proven macOS `.onTapGesture` convention).
+
+## 2026-06-18 — Debug data-store reset: `reconfigure` preserves data, a wipe must `destroyPersistentStore`
+
+The Settings → Debug "Reset data store…" button (for a suspected-corrupt
+store) needed a **full, irreversible wipe**: back up → erase the CloudKit zone
+→ destroy the local store → rebuild empty. The non-obvious trap: the existing
+Plan 21 machinery looks like it already does this, but it does **not**.
+`PersistenceHost.reconfigure(to:)` and `MigrationCoordinator` only ever *swap
+the store description* (sync mode) on a coordinator that keeps the same on-disk
+files — they **preserve data by design**. `QuarantineManager.copyStore` copies;
+nothing in the codebase ever called `destroyPersistentStore`. So "rebuild
+empty" was genuinely new behavior, not a reuse.
+
+**What was added.** A focused `PersistenceResetting` protocol (segregated from
+`PersistenceReconfiguring` so `MigrationCoordinator` never gains a destroy
+surface and the reset service never gains a mode-swap surface) with three
+primitives on `PersistenceHost`: `tearDownStore(backupVia:)` (flush →
+`coordinator.remove(store)` → quarantine copy of the now-closed files),
+`rebuildEmptyStore()` (`coordinator.destroyPersistentStore(at:type:.sqlite,...)`
+→ re-add a fresh empty store for `currentMode` → `viewContext.reset()`), and
+`reattachStore()` (re-add the original files — the rollback path). The
+`@MainActor DataStoreResetService` orchestrates, **reusing** the same building
+blocks as `MigrationCoordinator` (zone eraser, quiesce monitor, notification
+cancel, quarantine).
+
+**Ordering invariants (same as the migration path, re-derived):**
+1. `cancelAllPending()` *first* — a wipe must not leave stale fires pointing at
+   deleted rows (skeptic G9).
+2. Account-changed pre-flight *before* the zone erase — never wipe the wrong
+   account's zone after an identity switch.
+3. Backup *before* the irreversible erase — `copyStore`'s disk-space pre-flight
+   throws ahead of the cloud erase (blind-spot #5).
+4. On zone-erase failure, `reattachStore()` so the coordinator is never left
+   store-less, then rethrow.
+
+**Two deliberate departures from the migration machinery.** (a) It is **not**
+journaled — the `MigrationJournal` invariants (`previousMode`, restore-reverts-
+mode) are transition-shaped and a same-mode wipe would corrupt them; the
+quarantine copy (30-day retention) is the recovery anchor instead. (b) There is
+a brief **store-less window** between `tearDownStore` and `rebuildEmptyStore`
+(the async zone erase runs in between); this is acceptable only because the op
+is behind a blocking Settings modal with notifications already cancelled.
+
+**Testing.** The orchestration (ordering, localOnly-skips-erase, erase-failure-
+reattaches, account-changed-aborts) is covered by fakes under plain `swift test`
+(`DataStoreResetServiceTests`). The live destroy/rebuild/reattach primitives
+touch a real container, so — like the other `PersistenceHost` live cases — they
+are `liveSwapAllowed`-gated (skip under `swift test`, run in
+`Lillist-iOSAppHostedTests`). They use `.localOnly` so they need no iCloud
+account, unlike the iCloudSync swap cases. The real full-wipe-including-iCloud
+path is a manual on-device check (CloudKit zone erase needs a signed-in account).
