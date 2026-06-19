@@ -3,6 +3,16 @@
 All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [v0.8.4] - 2026-06-19
+
+### Fixed
+- shrink-wrap ghost, align indicator to landing edge + current gap (a6892e7)
+
+### Maintenance
+- bump iOS build number to 55 (f18cfcd)
+
+_[manual]_
+
 ## [v0.8.3] - 2026-06-19
 
 ### Added
