@@ -31,12 +31,12 @@ row's primary gesture — wins ambiguous drags. The commit distance (8 pt,
 `LillistDragTokens.macReorderAxisCommitDistance`) sits between reorder's 4 pt
 min and the swipe's 10 pt commit.
 
-Scope: leading "Mark open" only, and **not in Trash** (where reset/delete
-semantics differ). macOS still has no row Delete affordance — a trailing Delete
-swipe is a clean follow-up. As with iOS, the trackpad feel (which gesture wins a
-near-45° drag, rubber-band, full-swipe threshold) is **empirical and must be
-verified on a real trackpad** — the unit tests pin the decision boundary, not
-SwiftUI's runtime recognizer arbitration.
+Scope: leading "Mark open" + trailing "Delete" (soft-delete to Trash,
+recoverable — mirrors iOS), but **not in Trash** itself (where reset/delete
+semantics differ; both edges are suppressed there). As with iOS, the trackpad
+feel (which gesture wins a near-45° drag, rubber-band, full-swipe threshold) is
+**empirical and must be verified on a real trackpad** — the unit tests pin the
+decision boundary, not SwiftUI's runtime recognizer arbitration.
 
 ## 2026-06-17 — Custom row swipe can't share a cell with `.swipeActions`; removing default notifications
 

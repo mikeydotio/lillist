@@ -43,6 +43,18 @@ struct TaskListView: View {
         )
     }
 
+    /// Trailing "Delete" swipe — soft-deletes to Trash (recoverable), mirroring
+    /// the iOS row swipe. Trackpad swipe left → moves the task to Trash.
+    private func deleteSpec(for id: UUID) -> SwipeActionSpec {
+        SwipeActionSpec(
+            titleKey: "Delete",
+            systemImage: "trash",
+            tint: RainbowPalette.actionOrange.base,
+            isDestructive: true,
+            perform: { delete(id) }
+        )
+    }
+
     private var sourceKey: String {
         switch selection {
         case .pinnedTask(let id):   return "pinnedTask.\(id)"
@@ -96,6 +108,7 @@ struct TaskListView: View {
                             SwipeableRow(
                                 rowID: rec.id,
                                 leading: isTrash ? nil : markOpenSpec(for: rec.id),
+                                trailing: isTrash ? nil : deleteSpec(for: rec.id),
                                 isReorderActive: false,   // flat lists don't reorder
                                 openRowID: $openSwipeRowID
                             ) {
@@ -139,6 +152,7 @@ struct TaskListView: View {
                             SwipeableRow(
                                 rowID: node.id,
                                 leading: markOpenSpec(for: node.id),
+                                trailing: deleteSpec(for: node.id),
                                 isReorderActive: draggedID != nil,
                                 openRowID: $openSwipeRowID
                             ) {
@@ -402,6 +416,14 @@ struct TaskListView: View {
     private func setStatus(_ id: UUID, to newStatus: Status) {
         Task {
             try? await env.taskStore.transition(id: id, to: newStatus)
+            await refresh()
+        }
+    }
+
+    /// Soft-delete a task to Trash (recoverable). Wired to the trailing swipe.
+    private func delete(_ id: UUID) {
+        Task {
+            try? await env.taskStore.softDelete(id: id)
             await refresh()
         }
     }
