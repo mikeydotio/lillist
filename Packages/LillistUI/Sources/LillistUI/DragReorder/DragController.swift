@@ -189,6 +189,18 @@ public final class DragController: ObservableObject {
         state = .idle
     }
 
+    /// The cell the dragged row will nest under if dropped now — the resolved
+    /// `.between` target's `parentID` while actively dragging. `nil` for
+    /// top-level drops, and while settling or idle. Screens read this to give
+    /// the future-parent row a gentle highlight; it updates reactively as the
+    /// resolved depth changes mid-drag.
+    public var dropTargetParentID: UUID? {
+        guard case .dragging(let session) = state,
+              case .between(_, _, let parentID) = session.target
+        else { return nil }
+        return parentID
+    }
+
     // MARK: - Resolution
 
     /// Compute the drop target for a cursor position. Pure function of the
@@ -242,23 +254,27 @@ public final class DragController: ObservableObject {
     }
 
     /// Vertical position for the drop indicator: the insertion fencepost
-    /// nearest the drag touch in the **current** visual list — i.e. computed
-    /// from where the rows are *now*, including the dragged row's own slot, not
-    /// from where the row will land after the list re-sorts.
+    /// nearest the drag touch, computed over the **reference rows** — the
+    /// current visual list minus the dragged row and its descendants (the same
+    /// set the resolver's `gapNeighbors` uses).
     ///
-    /// This is deliberately decoupled from the resolved target's anchors. When a
-    /// drag de-parents/re-parents a row, the anchors describe the *future* list
-    /// (e.g. "after A" — but A and the row's old neighbour are adjacent only
-    /// once the row moves), which can place the line *above* a downward drag and
-    /// read as wrong. Anchoring the line to the current fencepost under the
-    /// finger keeps it where the user is pointing; it is still accurate (the
-    /// chosen gap is between the same two visible rows the drop lands between).
+    /// Excluding the dragged subtree collapses its slot into the surrounding
+    /// gap, so there is exactly **one** fencepost per reference gap — the line
+    /// and the resolver share a single gap model. Without this, the dragged
+    /// row's own slot splits into two equivalent fenceposts (just-above and
+    /// just-below the source) that resolve to the same drop, showing a bogus
+    /// second destination.
     ///
-    /// Each row owns the half-gap above and below its vertical midline: a cursor
-    /// in a row's upper half snaps to the fencepost above it, the lower half to
-    /// the fencepost below. Returns `nil` only when no row geometry is known.
-    public func insertionIndicatorY(forCursorY cursorY: CGFloat) -> CGFloat? {
+    /// Still anchored to *current* positions (not the post-sort layout), so for
+    /// a de-parenting drag the line stays where the finger points rather than
+    /// jumping to where the row will land after the list re-sorts. Each
+    /// reference row owns the half-gap above and below its midline; a cursor in
+    /// the collapsed gap resolves to that gap's midpoint (≈ the dragged row's
+    /// current centre). Returns `nil` when no reference geometry is known.
+    public func insertionIndicatorY(forCursorY cursorY: CGFloat, draggedID: UUID) -> CGFloat? {
+        let refIDs = Set(referenceRows(excludingSubtreeOf: draggedID).map(\.id))
         let placed = flatRows
+            .filter { refIDs.contains($0.id) }
             .compactMap { geometry[$0.id] }
             .sorted { $0.minY < $1.minY }
         guard !placed.isEmpty else { return nil }

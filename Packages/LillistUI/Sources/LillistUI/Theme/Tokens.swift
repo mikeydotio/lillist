@@ -106,32 +106,19 @@ public enum LillistDragTokens {
     /// Focus-blue: drag targeting is "work in flight" in the Rainbow
     /// Logic functional-color language.
     public static let indicatorColor: Color = RainbowPalette.focusBlue.base
-    /// Border color drawn on the phantom row when the resolved target
-    /// is `.rejected` (cycle). Deep action-orange — the urgent hue —
-    /// replaces the old red (Rainbow Logic has no red).
-    public static let rejectionColor: Color = RainbowPalette.actionOrange.deep.opacity(0.85)
     /// Thickness of the between-row divider when active.
     public static let dividerThickness: CGFloat = 2.5
-    /// Stroke thickness of the rejection border drawn around the phantom
-    /// when the resolved target is `.rejected` (cycle).
-    public static let rowBorderThickness: CGFloat = 2.0
-    /// Corner radius of the phantom's border (rejection stroke + rainbow
-    /// halo). Matches the Rainbow card radius so the stroke hugs the card.
-    public static let rowBorderCornerRadius: CGFloat = 12
-    /// Scale applied to the dragged-row phantom while *lifted* — i.e.
-    /// during the active `.dragging` phase. The phantom inserts via a
-    /// transition that animates from the natural scale (1.0) to this
-    /// value, and the settle animation walks it back to 1.0.
-    public static let phantomLiftedScale: CGFloat = 0.85
+    /// Scale applied to the dragged-row phantom while *lifted*. `1.0` = no
+    /// shrink: the cell lifts at full size, with the shadow (not a resize) as
+    /// the "picked up" cue. The settle machinery still interpolates this back
+    /// to 1.0, so it remains a single tunable point if a shrink is reintroduced.
+    public static let phantomLiftedScale: CGFloat = 1.0
     /// Opacity applied to the dragged-row phantom while lifted.
     public static let phantomLiftedOpacity: Double = 0.70
     /// Shadow radius of the dragged-row phantom while lifted —
     /// `LillistElevation.pop`'s key layer, kept as a single animatable
     /// shadow so the settle interpolation stays smooth.
     public static let phantomShadowRadius: CGFloat = 18
-    /// Opacity of the rainbow halo stroked around the lifted phantom
-    /// (the one place the halo appears on iPhone).
-    public static let phantomHaloOpacity: Double = 0.5
     /// Vertical shadow offset of the dragged-row phantom while lifted.
     public static let phantomShadowYOffset: CGFloat = 8
     /// Duration of the lift animation on drag pickup (idle → dragging).

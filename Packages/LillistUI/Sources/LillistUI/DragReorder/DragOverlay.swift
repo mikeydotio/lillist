@@ -60,7 +60,7 @@ public struct DragOverlay<PhantomContent: View>: View {
                 if let session = activeSession {
                     Group {
                         if case .dragging = controller.state {
-                            indicator(for: session.target)
+                            indicator(for: session.target, draggedID: session.draggedID)
                         }
                         phantom(for: session)
                             .transition(.lift)
@@ -135,26 +135,14 @@ public struct DragOverlay<PhantomContent: View>: View {
             ? settleY(for: session, target: activeTarget)
             : session.cursorY
 
+        // The rainbow border is the phantom card's *own* border (the screen
+        // builds `phantomContent` with `.rainbowCard(border: .rainbow)`), so no
+        // separate overlay stroke floats around the lifted cell.
         phantomContent(session.draggedID)
             .frame(height: session.originalHeight)
             .scaleEffect(scale)
             .opacity(opacity)
             .shadow(color: .black.opacity(0.22), radius: shadow, y: yOffset)
-            .overlay(
-                // Rainbow halo on the lifted card — the drag is the one
-                // surface where the halo shows on iPhone. Fades out as
-                // the phantom settles.
-                RoundedRectangle(cornerRadius: LillistDragTokens.rowBorderCornerRadius, style: .continuous)
-                    .strokeBorder(RainbowGradient.halo, lineWidth: 1.5)
-                    .opacity(isSettling ? 0 : LillistDragTokens.phantomHaloOpacity)
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: LillistDragTokens.rowBorderCornerRadius)
-                    .stroke(
-                        LillistDragTokens.rejectionColor,
-                        lineWidth: activeTarget == .rejected ? LillistDragTokens.rowBorderThickness : 0
-                    )
-            )
             .position(
                 x: phantomCenterX,
                 y: y
@@ -198,7 +186,7 @@ public struct DragOverlay<PhantomContent: View>: View {
     /// settle. `.rejected` / `.none` bounce back to the source row.
     private func settleY(for session: DragSession, target: DragTarget) -> CGFloat {
         if case .between = target,
-           let y = controller.insertionIndicatorY(forCursorY: session.cursorY) {
+           let y = controller.insertionIndicatorY(forCursorY: session.cursorY, draggedID: session.draggedID) {
             return y
         }
         return Self.settlePosition(for: session, target: target, geometry: controller.geometry)
@@ -207,10 +195,10 @@ public struct DragOverlay<PhantomContent: View>: View {
     // MARK: - Indicators
 
     @ViewBuilder
-    private func indicator(for target: DragTarget) -> some View {
+    private func indicator(for target: DragTarget, draggedID: UUID) -> some View {
         switch target {
         case .between(_, _, let parentID):
-            betweenDivider(parentID: parentID)
+            betweenDivider(parentID: parentID, draggedID: draggedID)
         case .rejected, .none:
             EmptyView()
         }
@@ -222,14 +210,14 @@ public struct DragOverlay<PhantomContent: View>: View {
     /// depth the row will land at (`indentLeadingX`) — the two are independent
     /// so the line tracks the finger while previewing the drop depth.
     @ViewBuilder
-    private func betweenDivider(parentID: UUID?) -> some View {
+    private func betweenDivider(parentID: UUID?, draggedID: UUID) -> some View {
         // Any visible row supplies the horizontal extent (all rows are
         // full-width with the same min/maxX; on macOS the reference row's depth
         // is folded into `indentLeadingX`). Prefer the parent (its depth anchors
         // the macOS inset math); fall back to the first known frame.
         let referenceID = parentID ?? controller.flatRows.first?.id
         if let cursorY = activeCursorY,
-           let y = controller.insertionIndicatorY(forCursorY: cursorY),
+           let y = controller.insertionIndicatorY(forCursorY: cursorY, draggedID: draggedID),
            let referenceID,
            let frame = controller.geometry[referenceID] {
             let referenceDepth = controller.flatRows.first(where: { $0.id == referenceID })?.depth ?? 0
@@ -272,29 +260,24 @@ public struct DragOverlay<PhantomContent: View>: View {
 // MARK: - Lift transition
 
 extension AnyTransition {
-    /// **Insertion** (`.idle → .dragging`): the phantom enters at the
-    /// row's *natural* scale/opacity and animates down to the lifted
-    /// values — the visible "lift" the user sees on long-press.
+    /// **Insertion** (`.idle → .dragging`): the phantom enters at the row's
+    /// *natural* scale and animates to the lifted scale — no fade. With the
+    /// lifted scale at `1.0` (no shrink) this is effectively identity: the
+    /// cell appears full-size in place, gains its shadow, and tracks the
+    /// finger — a clean lift with no fly-in. (The inverse-scale composition is
+    /// retained so reintroducing a shrink via `phantomLiftedScale` animates the
+    /// resize rather than popping.)
     ///
-    /// SwiftUI's `scaleEffect` composes multiplicatively, so the
-    /// insertion is built by adding an *inverse* `scaleEffect` on top
-    /// of the permanently-applied lifted `scaleEffect`: at the active
-    /// state the inverse cancels the lifted scale (composite = 1.0),
-    /// and at the identity state the inverse is 1.0 (composite = the
-    /// lifted scale). Opacity is animated via the built-in `.opacity`
-    /// transition; the phantom emerges as the source row is hidden.
-    ///
-    /// **Removal** (`.dropping → .idle`): identity — the phantom has
-    /// already animated to natural appearance and settle position
-    /// during `.dropping`, so the actual unmount is instantaneous and
-    /// the user only sees the in-tree settle.
+    /// **Removal** (`.dropping → .idle`): identity — the phantom has already
+    /// animated to its settle position during `.dropping`, so the unmount is
+    /// instantaneous and the user only sees the in-tree settle.
     static var lift: AnyTransition {
         let inverseScale = 1.0 / LillistDragTokens.phantomLiftedScale
         return .asymmetric(
             insertion: .modifier(
                 active: LiftInsertionModifier(scaleMultiplier: inverseScale),
                 identity: LiftInsertionModifier(scaleMultiplier: 1.0)
-            ).combined(with: .opacity),
+            ),
             removal: .identity
         )
     }

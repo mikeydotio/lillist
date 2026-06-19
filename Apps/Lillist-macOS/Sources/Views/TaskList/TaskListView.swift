@@ -164,7 +164,9 @@ struct TaskListView: View {
                                 )
                                 .rainbowCard(
                                     accent: StatusPalette.color(for: node.record.status),
-                                    isDone: node.record.status == .closed
+                                    isDone: node.record.status == .closed,
+                                    border: dragController.dropTargetParentID == node.id
+                                        ? .dropTargetParent : .hairline
                                 )
                                 .contentShape(Rectangle())
                                 .onTapGesture { openTaskEditorAction(node.id) }
@@ -224,7 +226,8 @@ struct TaskListView: View {
                                 )
                                 .rainbowCard(
                                     accent: StatusPalette.color(for: rec.status),
-                                    isDone: rec.status == .closed
+                                    isDone: rec.status == .closed,
+                                    border: .rainbow
                                 )
                                 .padding(.horizontal, 8)
                             }

@@ -38,6 +38,9 @@ public struct TaskOutlineRowLabel: View {
 public struct TaskOutlineRowView<LinkContent: View>: View {
     public let row: FlatTaskRow
     public let isCollapsed: Bool
+    /// When `true`, this row is the cell the in-flight dragged row will nest
+    /// under, so its card shows the gentle drop-target-parent border.
+    public let isDropTargetParent: Bool
     public let onToggleDisclosure: () -> Void
     public let onStatusClick: () -> Void
     public let onStatusSet: (Status) -> Void
@@ -49,6 +52,7 @@ public struct TaskOutlineRowView<LinkContent: View>: View {
     public init(
         row: FlatTaskRow,
         isCollapsed: Bool,
+        isDropTargetParent: Bool = false,
         onToggleDisclosure: @escaping () -> Void,
         onStatusClick: @escaping () -> Void,
         onStatusSet: @escaping (Status) -> Void,
@@ -56,6 +60,7 @@ public struct TaskOutlineRowView<LinkContent: View>: View {
     ) {
         self.row = row
         self.isCollapsed = isCollapsed
+        self.isDropTargetParent = isDropTargetParent
         self.onToggleDisclosure = onToggleDisclosure
         self.onStatusClick = onStatusClick
         self.onStatusSet = onStatusSet
@@ -89,7 +94,8 @@ public struct TaskOutlineRowView<LinkContent: View>: View {
             .padding(.trailing, LillistSpacing.m)
             .rainbowCard(
                 accent: StatusPalette.color(for: row.node.record.status),
-                isDone: row.node.record.status == .closed
+                isDone: row.node.record.status == .closed,
+                border: isDropTargetParent ? .dropTargetParent : .hairline
             )
         }
     }

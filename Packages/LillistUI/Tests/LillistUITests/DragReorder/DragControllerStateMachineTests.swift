@@ -69,6 +69,21 @@ final class DragControllerStateMachineTests: XCTestCase {
         XCTAssertEqual(c.state, .idle)
     }
 
+    // MARK: - Drop-target parent (future-parent highlight)
+
+    func test_dropTargetParentID_reflectsBetweenTargetParent() {
+        let c = DragController(onDrop: { _, _ in })
+        let parent = UUID()
+        XCTAssertNil(c.dropTargetParentID, "idle has no drop-target parent")
+        c.beginDrag(rowID: UUID(), originalHeight: 44, cursorY: 100)
+        XCTAssertNil(c.dropTargetParentID, "no resolved target yet")
+        c.setResolvedTarget(.between(beforeID: nil, afterID: nil, parentID: parent))
+        XCTAssertEqual(c.dropTargetParentID, parent)
+        // Top-level drop → no parent highlight.
+        c.setResolvedTarget(.between(beforeID: UUID(), afterID: UUID(), parentID: nil))
+        XCTAssertNil(c.dropTargetParentID)
+    }
+
     func test_beginDrag_whileAlreadyDragging_isIgnored() {
         let id1 = UUID(), id2 = UUID()
         let c = DragController(onDrop: { _, _ in })

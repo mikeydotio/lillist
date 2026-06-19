@@ -302,7 +302,8 @@ public struct TasksScreen: View {
             )
             .rainbowCard(
                 accent: StatusPalette.color(for: row.node.record.status),
-                isDone: row.node.record.status == .closed
+                isDone: row.node.record.status == .closed,
+                border: .rainbow
             )
             .padding(.horizontal, 12)
         }
@@ -338,6 +339,7 @@ public struct TasksScreen: View {
         TaskOutlineRowView(
             row: row,
             isCollapsed: collapsedNodeIDs.contains(row.node.id),
+            isDropTargetParent: dragController.dropTargetParentID == row.node.id,
             onToggleDisclosure: { onToggleCollapsed(row.node.id) },
             onStatusClick: { onStatusClick(row.node.record) },
             onStatusSet: { newStatus in onStatusSet(row.node.record, newStatus) }
