@@ -4,6 +4,51 @@ Append-only log of cross-cutting engineering lessons learned while building
 Lillist. Each entry captures a non-obvious gotcha — usually one that took real
 investigation to find — so future work doesn't re-learn it the hard way.
 
+## 2026-06-19 — Drag-reorder: gap+horizontal-depth model, de-parent fix
+
+The drag-reorder resolver moved from a vertical-only 25/50/25 zone model (with a
+middle "onto" zone for nesting) to a **gap + horizontal-depth** model, reversing
+the explicit *non-goal* in `docs/plans/2026-05-26-drag-reorder-redesign-design.md`
+("Indent/outdent via horizontal cursor movement"). Vertical position now picks a
+*gap* between two reference rows; horizontal translation picks the *depth* within
+that gap's valid range (`min = below.depth`, `max = above.depth + 1`), Reminders-
+style. The `.onto` target/gesture was removed entirely; nesting under a childless
+or collapsed parent is a `.between` with no anchors → `reparent`-append.
+
+Three non-obvious traps:
+
+1. **De-parent to top level was silently refused.** `TaskStore.reorder` inferred
+   the parent as `afterParent ?? beforeParent ?? m.parent`, which cannot tell
+   "top level" (`nil`) apart from "no anchor info" — so dragging a child above
+   its top-level parent collapsed back to the current parent. Fix: the resolver
+   now carries an **authoritative** `parentID` (`DragTarget.between`), threaded
+   through `DragMutation.reorder(parent:)` to `TaskStore.reorder(…, parent:)`
+   with a `ReparentTarget.explicit(UUID?)` (default `.infer` preserves every
+   existing caller/test). Never re-infer a parent the UI already resolved.
+
+2. **The dragged row's subtree must be excluded from the reference list, by
+   walking parent links — not by visibility.** During a drag only the dragged
+   row itself is hidden (`opacity 0`); its descendants stay visible and still
+   occupy slots. If they're left in the reference list a parent can resolve to
+   its own child. Exclusion relies on `flatRows` being DFS-ordered (one forward
+   pass propagates the excluded set).
+
+3. **The depth-aware drop indicator needs platform-specific inset math.** On iOS
+   every row reports a *full-width* frame (depth is rendered *inside* via a
+   leading spacer), so all `frame.minX` are equal and the divider insets by
+   `targetDepth * indentPerLevel`. On macOS `OutlineGroup` shifts each row's
+   *frame* by its depth, so the divider insets by the *delta*
+   `(targetDepth − referenceDepth) * macOutlineIndentPerLevel`. `DragOverlay`
+   takes an `indentLeadingX` closure; iOS uses the default, macOS passes its own.
+   `macOutlineIndentPerLevel` (16 pt) approximates OutlineGroup's private indent
+   metric and is **tunable on-device**.
+
+macOS gets horizontal depth too: once the axis arbiter commits to `.vertical`
+(see 2026-06-18) the horizontal component is free to drive depth — so reorder is
+"drag down to start, then sideways to nest." The horizontal *feel* (dead-zone,
+baseline = keep-current-nesting, the macOS indent step) is empirical and must be
+verified on device; unit tests pin the depth-derivation math, not the feel.
+
 ## 2026-06-18 — macOS trackpad swipe coexists with reorder via axis-gating
 
 When the status cycle went one-way (forward-only; reset moved off the tap),
