@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [v0.8.1] - 2026-06-18
+
+### Added
+- add trackpad swipe-to-reset on task rows (fc9c96b)
+- make status-control cycling one-way (open → in-progress → done) (fa7fdd6)
+
+### Maintenance
+- bump iOS build number to 52 (9bf92ac)
+
+_[manual]_
+
 ## [v0.8.0] - 2026-06-18
 
 ### Added
