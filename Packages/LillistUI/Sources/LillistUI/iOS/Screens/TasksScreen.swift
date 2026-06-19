@@ -290,12 +290,21 @@ public struct TasksScreen: View {
     @ViewBuilder
     private func phantomRow(forID id: UUID) -> some View {
         if let row = flat.first(where: { $0.node.record.id == id }) {
-            // The row's own Rainbow card supplies the opaque surface;
-            // no extra background — the lifted card floats over the
-            // workspace with DragOverlay's pop shadow.
-            outlineRow(row)
-                .listRowInsets(EdgeInsets(top: 3, leading: 12, bottom: 3, trailing: 12))
-                .padding(.horizontal, 12)
+            // The drag ghost is the bare Rainbow card — no depth indent or
+            // disclosure chevron — so DragOverlay's rainbow halo shrink-wraps
+            // the card instead of the full-width row slot. Mirrors the macOS
+            // phantom (`TaskRowView` + `.rainbowCard`).
+            TaskRowView(
+                task: row.node.record,
+                tagNames: row.node.tagNames,
+                onStatusClick: {},
+                onStatusSet: { _ in }
+            )
+            .rainbowCard(
+                accent: StatusPalette.color(for: row.node.record.status),
+                isDone: row.node.record.status == .closed
+            )
+            .padding(.horizontal, 12)
         }
     }
 

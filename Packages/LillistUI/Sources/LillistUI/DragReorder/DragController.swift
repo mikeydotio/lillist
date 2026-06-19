@@ -241,6 +241,38 @@ public final class DragController: ObservableObject {
         )
     }
 
+    /// Vertical position for the drop indicator: the insertion fencepost
+    /// nearest the drag touch in the **current** visual list — i.e. computed
+    /// from where the rows are *now*, including the dragged row's own slot, not
+    /// from where the row will land after the list re-sorts.
+    ///
+    /// This is deliberately decoupled from the resolved target's anchors. When a
+    /// drag de-parents/re-parents a row, the anchors describe the *future* list
+    /// (e.g. "after A" — but A and the row's old neighbour are adjacent only
+    /// once the row moves), which can place the line *above* a downward drag and
+    /// read as wrong. Anchoring the line to the current fencepost under the
+    /// finger keeps it where the user is pointing; it is still accurate (the
+    /// chosen gap is between the same two visible rows the drop lands between).
+    ///
+    /// Each row owns the half-gap above and below its vertical midline: a cursor
+    /// in a row's upper half snaps to the fencepost above it, the lower half to
+    /// the fencepost below. Returns `nil` only when no row geometry is known.
+    public func insertionIndicatorY(forCursorY cursorY: CGFloat) -> CGFloat? {
+        let placed = flatRows
+            .compactMap { geometry[$0.id] }
+            .sorted { $0.minY < $1.minY }
+        guard !placed.isEmpty else { return nil }
+        var previousMaxY: CGFloat?
+        for frame in placed {
+            if cursorY < frame.midY {
+                if let previousMaxY { return (previousMaxY + frame.minY) / 2 }
+                return frame.minY
+            }
+            previousMaxY = frame.maxY
+        }
+        return previousMaxY
+    }
+
     /// The visible rows that can serve as drop neighbors — `flatRows` minus the
     /// dragged row and its descendants. Descendants stay *visible* during a drag
     /// (only the dragged row itself is hidden), so they're excluded by walking

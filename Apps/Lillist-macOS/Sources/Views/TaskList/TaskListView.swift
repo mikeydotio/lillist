@@ -207,9 +207,11 @@ struct TaskListView: View {
                             controller: dragController,
                             // macOS `OutlineGroup` already indents each row's
                             // frame by its depth, so offset by the *delta* from
-                            // the reference row's depth to the target depth.
+                            // the reference row's depth to the target depth —
+                            // landing the line's leading edge where the dropped
+                            // row's leading edge will be (no extra inset).
                             indentLeadingX: { frame, referenceDepth, targetDepth in
-                                frame.minX + LillistDragTokens.dividerHorizontalInset
+                                frame.minX
                                     + CGFloat(targetDepth - referenceDepth) * LillistDragTokens.macOutlineIndentPerLevel
                             }
                         ) { id in

@@ -29,8 +29,12 @@ public struct DragOverlay<PhantomContent: View>: View {
     public init(
         controller: DragController,
         indentLeadingX: @escaping (_ referenceFrame: CGRect, _ referenceDepth: Int, _ targetDepth: Int) -> CGFloat = { frame, _, targetDepth in
-            frame.minX + LillistDragTokens.dividerHorizontalInset
-                + CGFloat(targetDepth) * LillistDragTokens.indentPerLevel
+            // Leading edge of the dragged row's slot at `targetDepth`, matching
+            // the row's own indentation (`TaskOutlineRowView` indents by
+            // `indentPerLevel` per level from `frame.minX`). No extra inset —
+            // the line's leading edge lands exactly where the dropped row's
+            // leading edge will be.
+            frame.minX + CGFloat(targetDepth) * LillistDragTokens.indentPerLevel
         },
         @ViewBuilder phantomContent: @escaping (UUID) -> PhantomContent
     ) {
@@ -128,7 +132,7 @@ public struct DragOverlay<PhantomContent: View>: View {
         let shadow: CGFloat = isSettling ? 0 : LillistDragTokens.phantomShadowRadius
         let yOffset: CGFloat = isSettling ? 0 : LillistDragTokens.phantomShadowYOffset
         let y: CGFloat = isSettling
-            ? Self.settlePosition(for: session, target: activeTarget, geometry: controller.geometry)
+            ? settleY(for: session, target: activeTarget)
             : session.cursorY
 
         phantomContent(session.draggedID)
@@ -188,32 +192,46 @@ public struct DragOverlay<PhantomContent: View>: View {
         }
     }
 
+    /// Settle target for the phantom on release. `.between` settles to the same
+    /// insertion line the indicator shows (the current fencepost under the
+    /// finger) so the lifted card doesn't jump to a different gap during the
+    /// settle. `.rejected` / `.none` bounce back to the source row.
+    private func settleY(for session: DragSession, target: DragTarget) -> CGFloat {
+        if case .between = target,
+           let y = controller.insertionIndicatorY(forCursorY: session.cursorY) {
+            return y
+        }
+        return Self.settlePosition(for: session, target: target, geometry: controller.geometry)
+    }
+
     // MARK: - Indicators
 
     @ViewBuilder
     private func indicator(for target: DragTarget) -> some View {
         switch target {
-        case .between(let beforeID, let afterID, let parentID):
-            betweenDivider(beforeID: beforeID, afterID: afterID, parentID: parentID)
+        case .between(_, _, let parentID):
+            betweenDivider(parentID: parentID)
         case .rejected, .none:
             EmptyView()
         }
     }
 
-    /// The between-row divider, drawn at the gap boundary and **indented to the
-    /// depth the row will land at** (`indentLeadingX`). The boundary line is
-    /// `afterID.maxY` (sit after that row), else `beforeID.minY` (sit before it),
-    /// else — when there is no sibling anchor (first/only child of `parentID`) —
-    /// just below the parent row.
+    /// The between-row divider. Its **vertical** position is the insertion
+    /// fencepost nearest the touch in the *current* list
+    /// (`insertionIndicatorY`), and its **leading edge** is indented to the
+    /// depth the row will land at (`indentLeadingX`) — the two are independent
+    /// so the line tracks the finger while previewing the drop depth.
     @ViewBuilder
-    private func betweenDivider(beforeID: UUID?, afterID: UUID?, parentID: UUID?) -> some View {
-        let referenceID = afterID ?? beforeID ?? parentID
-        if let referenceID, let frame = controller.geometry[referenceID] {
-            let y: CGFloat = {
-                if afterID != nil { return frame.maxY }   // sit after the anchor
-                if beforeID != nil { return frame.minY }  // sit before the anchor
-                return frame.maxY                         // first child: below the parent
-            }()
+    private func betweenDivider(parentID: UUID?) -> some View {
+        // Any visible row supplies the horizontal extent (all rows are
+        // full-width with the same min/maxX; on macOS the reference row's depth
+        // is folded into `indentLeadingX`). Prefer the parent (its depth anchors
+        // the macOS inset math); fall back to the first known frame.
+        let referenceID = parentID ?? controller.flatRows.first?.id
+        if let cursorY = activeCursorY,
+           let y = controller.insertionIndicatorY(forCursorY: cursorY),
+           let referenceID,
+           let frame = controller.geometry[referenceID] {
             let referenceDepth = controller.flatRows.first(where: { $0.id == referenceID })?.depth ?? 0
             let targetDepth = depth(forParentID: parentID)
             let leadingX = indentLeadingX(frame, referenceDepth, targetDepth)
@@ -224,6 +242,14 @@ public struct DragOverlay<PhantomContent: View>: View {
                 .frame(width: width, height: LillistDragTokens.dividerThickness)
                 .position(x: leadingX + width / 2, y: y)
                 .transition(.opacity)
+        }
+    }
+
+    /// The current drag cursor Y, if a drag is in flight.
+    private var activeCursorY: CGFloat? {
+        switch controller.state {
+        case .dragging(let s), .dropping(let s, _): return s.cursorY
+        case .idle: return nil
         }
     }
 
