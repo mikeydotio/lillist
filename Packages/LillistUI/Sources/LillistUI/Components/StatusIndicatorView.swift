@@ -3,11 +3,11 @@ import LillistCore
 
 /// Clickable status indicator per design Section 7.
 ///
-/// Tap fires `onClick` (the cycle contract from `StatusCycler.nextOnClick`).
-/// Long-press expands an inline menu of explicit setters — Started, Blocked,
-/// Closed — wired through `onSetStatus`. The Plan 13 a11y action
-/// "Cycle status" still drives the cycle path so AT users get the same
-/// behaviour as a tap.
+/// Tap fires `onClick` (the forward-only advance from `StatusCycler.nextOnClick`:
+/// todo → started → closed, with closed terminal). Long-press expands an inline
+/// menu of explicit setters — Started, Blocked, Closed — wired through
+/// `onSetStatus`. The Plan 13 a11y action "Cycle status" still drives the same
+/// path so AT users get the same behaviour as a tap.
 ///
 /// Plan 18 swapped the underlying gesture from `simultaneousGesture(LongPressGesture)`
 /// on a `.plain` Button to `Menu(primaryAction:)`. The simultaneous gesture

@@ -22,9 +22,9 @@ final class StatusCycleUITests: XCTestCase {
         continueAfterFailure = false
     }
 
-    /// Tap cycles todo → Started → Closed, never navigates, and the
-    /// final status survives a relaunch (store write, not just glyph
-    /// state).
+    /// Tap advances todo → Started → Closed (one-way: Closed is terminal,
+    /// a further tap is a no-op), never navigates, and the final status
+    /// survives a relaunch (store write, not just glyph state).
     func test_statusTap_cycles_and_persists() throws {
         let (app, title) = UITestHelpers.launchWithOneTask()
         let cell = UITestHelpers.cell(in: app, containing: title)
@@ -44,6 +44,15 @@ final class StatusCycleUITests: XCTestCase {
         XCTAssertTrue(
             UITestHelpers.waitForLabel(of: cell, toContain: "Closed", timeout: 4),
             "Second tap should cycle Started → Closed"
+        )
+
+        // Closed is terminal under the one-way cycle — a further tap must
+        // NOT loop back to "To do" (resetting is the swipe's job now).
+        status.tap()
+        XCTAssertFalse(
+            UITestHelpers.waitForLabel(of: cell, toContain: "To do", timeout: 2),
+            "Third tap on a Closed task looped back to todo — the status " +
+            "cycle is no longer one-way"
         )
 
         app.terminate()

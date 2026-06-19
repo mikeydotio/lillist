@@ -32,7 +32,11 @@ struct LillistCommands: Commands {
         }
 
         CommandMenu("Task") {
-            Button("Toggle Started") {
+            // Space advances the status one step forward (todo → started →
+            // closed), matching the iOS status-cube tap. The notification
+            // symbol is still named `.lillistToggleStarted` for historical
+            // reasons — it predates the one-way cycle change.
+            Button("Advance Status") {
                 NotificationCenter.default.post(name: .lillistToggleStarted, object: nil)
             }.keyboardShortcut(.space, modifiers: [])
               .disabled(TaskListShortcutGate.isDisabled(listColumn: listColumn))

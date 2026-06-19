@@ -80,7 +80,7 @@ struct TaskListView: View {
                                 TaskRowView(
                                     task: rec,
                                     tagNames: [],
-                                    onStatusClick: { cycle(rec.id, rec.status, click: true) },
+                                    onStatusClick: { cycle(rec.id, rec.status) },
                                     onStatusSet: { newStatus in setStatus(rec.id, to: newStatus) }
                                 )
                                 .rainbowCard(
@@ -112,7 +112,7 @@ struct TaskListView: View {
                             TaskRowView(
                                 task: node.record,
                                 tagNames: [],
-                                onStatusClick: { cycle(node.id, node.record.status, click: true) },
+                                onStatusClick: { cycle(node.id, node.record.status) },
                                 onStatusSet: { newStatus in setStatus(node.id, to: newStatus) }
                             )
                             .rainbowCard(
@@ -357,8 +357,8 @@ struct TaskListView: View {
         }
     }
 
-    private func cycle(_ id: UUID, _ current: Status, click: Bool) {
-        let next = click ? StatusCycler.nextOnClick(from: current) : StatusCycler.nextOnSpace(from: current)
+    private func cycle(_ id: UUID, _ current: Status) {
+        let next = StatusCycler.nextOnClick(from: current)
         Task {
             try? await env.taskStore.transition(id: id, to: next)
             await refresh()

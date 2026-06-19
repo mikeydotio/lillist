@@ -512,7 +512,7 @@ The sidebar is navigation, not the task tree. Tasks-as-tree are content (middle 
 **Middle column (task list):**
 - Header with source name, counts, sort/group control.
 - Outline view when source has children; flat list with breadcrumb when results span multiple parents (e.g. smart filter).
-- Left-side status indicator (`◯ todo`, `◐ started`, `◌ blocked`, `✓ closed`). Click cycles; long-press / right-click opens menu including "schedule follow-up" for Blocked.
+- Left-side status indicator (`◯ todo`, `◐ started`, `◌ blocked`, `✓ closed`). Click advances one-way (todo → started → closed; closed is terminal; blocked → started). Resetting to `todo` is a separate affordance — the "Mark open" swipe on the row. Long-press / right-click opens menu including "schedule follow-up" for Blocked.
 - Inline tag chips.
 - Drag handle, location-sensitive DnD: between two tasks = reorder, onto a task = re-parent.
 - Inline create: Return = sibling, Tab = indent, Shift-Tab = outdent.

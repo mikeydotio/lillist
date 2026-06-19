@@ -15,21 +15,24 @@ final class KeyboardShortcutTests: XCTestCase {
         XCTAssertNotNil(r.closedAt)
     }
 
-    func test_toggleStarted_cyclesViaStatusCycler() async throws {
+    func test_advanceStatus_usesForwardStatusCycle() async throws {
+        // The Space shortcut ("Advance Status") drives the same one-way
+        // StatusCycler.nextOnClick path as the iOS status-cube tap.
         let p = try await PersistenceController(configuration: .inMemory)
         let store = TaskStore(persistence: p)
         let id = try await store.create(title: "Test")
         var current = try await store.fetch(id: id).status
+        XCTAssertEqual(current, .todo)
 
-        current = StatusCycler.nextOnSpace(from: current)
+        current = StatusCycler.nextOnClick(from: current)
         try await store.transition(id: id, to: current)
         let s1 = try await store.fetch(id: id).status
         XCTAssertEqual(s1, .started)
 
-        current = StatusCycler.nextOnSpace(from: current)
+        current = StatusCycler.nextOnClick(from: current)
         try await store.transition(id: id, to: current)
         let s2 = try await store.fetch(id: id).status
-        XCTAssertEqual(s2, .todo)
+        XCTAssertEqual(s2, .closed)
     }
 
     func test_indentOutdentReparentsCorrectly() async throws {

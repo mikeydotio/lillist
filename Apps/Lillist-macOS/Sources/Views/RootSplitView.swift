@@ -88,7 +88,7 @@ struct RootSplitView: View {
             if let id = taskSelection {
                 Task {
                     guard let r = try? await env.taskStore.fetch(id: id) else { return }
-                    try? await env.taskStore.transition(id: id, to: StatusCycler.nextOnSpace(from: r.status))
+                    try? await env.taskStore.transition(id: id, to: StatusCycler.nextOnClick(from: r.status))
                 }
             }
         }
