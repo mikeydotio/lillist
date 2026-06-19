@@ -3,6 +3,20 @@
 All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [v0.8.3] - 2026-06-19
+
+### Added
+- gap+horizontal-depth reorder with de-parenting (3996ae9)
+- thread an explicit parent through TaskStore.reorder (8d07037)
+
+### Documentation
+- record drag-reorder gap/depth model (19b5a02)
+
+### Maintenance
+- bump iOS build number to 54 (703abcb)
+
+_[manual]_
+
 ## [v0.8.2] - 2026-06-19
 
 ### Added
