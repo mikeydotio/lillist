@@ -3,6 +3,16 @@
 All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [v0.8.2] - 2026-06-19
+
+### Added
+- add trailing Delete swipe on task rows (e507f76)
+
+### Maintenance
+- bump iOS build number to 53 (25d166d)
+
+_[force]_
+
 ## [v0.8.1] - 2026-06-18
 
 ### Added
