@@ -5,14 +5,19 @@ import SnapshotTesting
 import LillistCore
 @testable import LillistUI
 
-/// Visual regression baselines for the four drag-reorder states:
-/// idle, dragging-between (divider), dragging-onto (border), and
-/// dragging-rejected (red phantom border).
+/// Screen-scaffold baselines for `TasksScreen` while a drag is in flight
+/// (idle / between / rejected controller states).
 ///
-/// Pinned to iPhone 16 Pro logical size (393×852) per IOSScreenTourTests
-/// convention. Geometry is injected synthetically into the controller so
-/// the overlay renders without live layout — this is the accepted baseline
-/// approach documented in the Task 14 plan.
+/// ⚠️ These capture the *list scaffold only* — the `DragOverlay` (phantom +
+/// drop indicator) does **not** render in this offscreen `UIHostingController`
+/// capture (its `GeometryReader`/named-coordinate-space content blanks
+/// offscreen, like the app-hosted glass surfaces — see CLAUDE.md). All three
+/// baselines are byte-identical as a result. The drop indicator's depth/anchor
+/// behavior is verified by `DragControllerGapDepthTests` (resolver logic) and
+/// on-device; the indented-divider *visual* is not snapshot-covered. Capturing
+/// the overlay would require app-hosting these like `GlassSnapshotTests`.
+///
+/// Pinned to iPhone 16 Pro logical size (393×852) per IOSScreenTourTests.
 @MainActor
 final class DragReorderSnapshotTests: RecordableSnapshotTestCase {
 
@@ -116,9 +121,8 @@ final class DragReorderSnapshotTests: RecordableSnapshotTestCase {
         assertDragScreen(screen(controller: controller), named: "idle")
     }
 
-    /// The drag indicator for a `.between` target renders as a tinted
-    /// capsule divider between two rows. We inject synthetic geometry so
-    /// the overlay renders independently of live list layout.
+    /// `TasksScreen` scaffold while a `.between` drag is resolved. (The divider
+    /// itself does not render offscreen — see the suite note.)
     func test_dragging_betweenZone() {
         let controller = DragController()
         let draggedID = UUID()
@@ -144,26 +148,6 @@ final class DragReorderSnapshotTests: RecordableSnapshotTestCase {
             .between(beforeID: belowID, afterID: aboveID, parentID: nil)
         )
         assertDragScreen(screen(controller: controller), named: "dragging-between")
-    }
-
-    /// The drag indicator for an `.onto` target renders as a tinted
-    /// rounded-rectangle border around the target row.
-    func test_dragging_ontoZone() {
-        let controller = DragController()
-        let draggedID = UUID()
-        let targetID  = UUID()
-        controller.flatRows = [
-            DragReorderRow(id: draggedID, parentID: nil, depth: 0),
-            DragReorderRow(id: targetID,  parentID: nil, depth: 0),
-        ]
-        controller.geometry = [
-            draggedID: CGRect(x: 12, y: 100, width: 369, height: 44),
-            targetID:  CGRect(x: 12, y: 150, width: 369, height: 44),
-        ]
-        // cursorY=172 is targetID's middle-50% (y=[160,183)) — onto zone.
-        controller.beginDrag(rowID: draggedID, originalHeight: 44, cursorY: 172)
-        controller.setResolvedTarget(.onto(targetID: targetID))
-        assertDragScreen(screen(controller: controller), named: "dragging-onto")
     }
 
     /// A `.rejected` target renders the phantom with a red border and

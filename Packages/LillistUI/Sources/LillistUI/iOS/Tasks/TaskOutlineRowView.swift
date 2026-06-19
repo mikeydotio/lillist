@@ -43,7 +43,7 @@ public struct TaskOutlineRowView<LinkContent: View>: View {
     public let onStatusSet: (Status) -> Void
     private let linkContent: (TaskOutlineRowLabel) -> LinkContent
 
-    private static var indentPerLevel: CGFloat { 22 }
+    private static var indentPerLevel: CGFloat { LillistDragTokens.indentPerLevel }
     private static var chevronWidth: CGFloat { 22 }
 
     public init(

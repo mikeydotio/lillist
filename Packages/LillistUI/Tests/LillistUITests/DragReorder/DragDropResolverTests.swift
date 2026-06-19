@@ -2,67 +2,46 @@ import XCTest
 @testable import LillistUI
 
 /// Unit coverage for the pure `DragTarget` → store-mutation mapping shared
-/// by macOS `TaskListView.applyDrop` and iOS `TasksView.applyDrop`. The
-/// previous macOS `DragDropInteractionTests` re-implemented this mapping
-/// and silently mis-mapped `.onto` to an unconditional reparent, never
-/// exercising the "drop as first child when the target has visible
-/// children" branch the apps actually perform.
+/// by macOS `TaskListView.applyDrop` and iOS `TasksView.applyDrop`.
 final class DragDropResolverTests: XCTestCase {
 
-    // The `.between` target routes straight to a `reorder`; the dragged ID is
-    // supplied by the dispatching app at dispatch time, not by the resolver,
-    // so `DragMutation.reorder` carries only `after`/`before`.
-    func test_between_mapsToReorderWithBeforeAndAfter() {
+    // A `.between` with anchors routes to a `reorder` carrying the authoritative
+    // target parent (so a de-parent is honored, not re-inferred). The dragged ID
+    // is supplied by the dispatching app, not the resolver.
+    func test_between_mapsToReorderWithParentAndAnchors() {
         let before = UUID()
         let after = UUID()
+        let parent = UUID()
         let mutation = DragDropResolver.resolve(
-            target: .between(beforeID: before, afterID: after, parentID: nil),
-            flatRows: []
+            target: .between(beforeID: before, afterID: after, parentID: parent)
         )
-        XCTAssertEqual(mutation, .reorder(after: after, before: before))
+        XCTAssertEqual(mutation, .reorder(parent: parent, after: after, before: before))
     }
 
-    func test_ontoTargetWithVisibleChild_mapsToReorderBeforeFirstChild() {
-        let parent = UUID()
-        let firstChild = UUID()
-        let secondChild = UUID()
-        let flatRows = [
-            DragReorderRow(id: parent, parentID: nil, depth: 0),
-            DragReorderRow(id: firstChild, parentID: parent, depth: 1),
-            DragReorderRow(id: secondChild, parentID: parent, depth: 1),
-        ]
+    // A de-parent to top level carries parentID == nil through to the reorder.
+    func test_between_topLevel_mapsToReorderWithNilParent() {
+        let after = UUID()
         let mutation = DragDropResolver.resolve(
-            target: .onto(targetID: parent),
-            flatRows: flatRows
+            target: .between(beforeID: nil, afterID: after, parentID: nil)
         )
-        XCTAssertEqual(mutation, .reorder(after: nil, before: firstChild))
+        XCTAssertEqual(mutation, .reorder(parent: nil, after: after, before: nil))
     }
 
-    func test_ontoCollapsedOrLeafTarget_mapsToReparentAppend() {
+    // No sibling anchors (first/only child of a childless or collapsed parent) →
+    // reparent-append, since there is no sibling to position against.
+    func test_between_noAnchors_mapsToReparent() {
         let parent = UUID()
-        // No row whose parentID == parent → target is collapsed or a leaf.
-        let flatRows = [
-            DragReorderRow(id: parent, parentID: nil, depth: 0),
-            DragReorderRow(id: UUID(), parentID: nil, depth: 0),
-        ]
         let mutation = DragDropResolver.resolve(
-            target: .onto(targetID: parent),
-            flatRows: flatRows
+            target: .between(beforeID: nil, afterID: nil, parentID: parent)
         )
         XCTAssertEqual(mutation, .reparent(newParent: parent))
     }
 
     func test_rejectedTarget_mapsToNoop() {
-        XCTAssertEqual(
-            DragDropResolver.resolve(target: .rejected, flatRows: []),
-            .noop
-        )
+        XCTAssertEqual(DragDropResolver.resolve(target: .rejected), .noop)
     }
 
     func test_noneTarget_mapsToNoop() {
-        XCTAssertEqual(
-            DragDropResolver.resolve(target: .none, flatRows: []),
-            .noop
-        )
+        XCTAssertEqual(DragDropResolver.resolve(target: .none), .noop)
     }
 }

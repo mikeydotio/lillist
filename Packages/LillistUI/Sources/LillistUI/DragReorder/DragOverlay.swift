@@ -11,19 +11,31 @@ import SwiftUI
 ///    transition so SwiftUI can interpolate its scale, opacity, and
 ///    position into the settle.
 /// 2. The active drop indicator (during `.dragging` only):
-///    - `.between(...)` → a `Capsule` divider at the row boundary.
-///    - `.onto(...)`    → a stroked `RoundedRectangle` around the target.
+///    - `.between(...)` → a `Capsule` divider at the row boundary, indented to
+///      the depth the row will land at.
 ///    - `.rejected`     → no indicator; the phantom is bordered red.
 ///    - `.none`         → nothing.
 public struct DragOverlay<PhantomContent: View>: View {
     @ObservedObject var controller: DragController
     let phantomContent: (UUID) -> PhantomContent
+    /// Maps a reference row's frame + depth and the drop's target depth to the
+    /// leading x of the between-divider, so the indicator renders at the
+    /// indentation the dragged row will land at. Platform-specific because iOS
+    /// renders depth *inside* a full-width row (frames are depth-invariant)
+    /// while macOS `OutlineGroup` shifts each row's frame. Defaults to the iOS
+    /// formula; macOS passes its own.
+    let indentLeadingX: (_ referenceFrame: CGRect, _ referenceDepth: Int, _ targetDepth: Int) -> CGFloat
 
     public init(
         controller: DragController,
+        indentLeadingX: @escaping (_ referenceFrame: CGRect, _ referenceDepth: Int, _ targetDepth: Int) -> CGFloat = { frame, _, targetDepth in
+            frame.minX + LillistDragTokens.dividerHorizontalInset
+                + CGFloat(targetDepth) * LillistDragTokens.indentPerLevel
+        },
         @ViewBuilder phantomContent: @escaping (UUID) -> PhantomContent
     ) {
         self.controller = controller
+        self.indentLeadingX = indentLeadingX
         self.phantomContent = phantomContent
     }
 
@@ -150,7 +162,6 @@ public struct DragOverlay<PhantomContent: View>: View {
     /// - `.between(beforeID, afterID, _)` resolves to the boundary line
     ///   of the gap (just below `afterID` if known, else just above
     ///   `beforeID`).
-    /// - `.onto(targetID)` resolves to the target row's `midY`.
     /// - `.rejected` and `.none` resolve to the session's
     ///   `initialCursorY` — the source row's natural center — so the
     ///   phantom appears to bounce back.
@@ -172,9 +183,6 @@ public struct DragOverlay<PhantomContent: View>: View {
                 return frame.minY - session.originalHeight / 2
             }
             return session.initialCursorY
-        case .onto(let id):
-            if let frame = geometry[id] { return frame.midY }
-            return session.initialCursorY
         case .rejected, .none:
             return session.initialCursorY
         }
@@ -185,51 +193,47 @@ public struct DragOverlay<PhantomContent: View>: View {
     @ViewBuilder
     private func indicator(for target: DragTarget) -> some View {
         switch target {
-        case .between(let beforeID, let afterID, _):
-            betweenDivider(beforeID: beforeID, afterID: afterID)
-        case .onto(let id):
-            ontoBorder(targetID: id)
+        case .between(let beforeID, let afterID, let parentID):
+            betweenDivider(beforeID: beforeID, afterID: afterID, parentID: parentID)
         case .rejected, .none:
             EmptyView()
         }
     }
 
+    /// The between-row divider, drawn at the gap boundary and **indented to the
+    /// depth the row will land at** (`indentLeadingX`). The boundary line is
+    /// `afterID.maxY` (sit after that row), else `beforeID.minY` (sit before it),
+    /// else — when there is no sibling anchor (first/only child of `parentID`) —
+    /// just below the parent row.
     @ViewBuilder
-    private func betweenDivider(beforeID: UUID?, afterID: UUID?) -> some View {
-        // Position the capsule at the boundary line:
-        // - prefer afterID's maxY if available
-        // - else beforeID's minY
-        // NOTE: the anchor naming follows TaskStore.reorder semantics —
-        // `beforeID` is the row the dragged row will sit BEFORE, so the
-        // gap line is at beforeID.minY. `afterID` is the row the dragged
-        // row will sit AFTER, so the gap line is at afterID.maxY.
-        let y: CGFloat? = {
-            if let id = afterID,  let f = controller.geometry[id] { return f.maxY }
-            if let id = beforeID, let f = controller.geometry[id] { return f.minY }
-            return nil
-        }()
-        if let y {
-            let referenceID = afterID ?? beforeID
-            let frame = referenceID.flatMap { controller.geometry[$0] } ?? .zero
-            let inset = LillistDragTokens.dividerHorizontalInset
+    private func betweenDivider(beforeID: UUID?, afterID: UUID?, parentID: UUID?) -> some View {
+        let referenceID = afterID ?? beforeID ?? parentID
+        if let referenceID, let frame = controller.geometry[referenceID] {
+            let y: CGFloat = {
+                if afterID != nil { return frame.maxY }   // sit after the anchor
+                if beforeID != nil { return frame.minY }  // sit before the anchor
+                return frame.maxY                         // first child: below the parent
+            }()
+            let referenceDepth = controller.flatRows.first(where: { $0.id == referenceID })?.depth ?? 0
+            let targetDepth = depth(forParentID: parentID)
+            let leadingX = indentLeadingX(frame, referenceDepth, targetDepth)
+            let trailingX = frame.maxX - LillistDragTokens.dividerHorizontalInset
+            let width = max(0, trailingX - leadingX)
             Capsule()
                 .fill(LillistDragTokens.indicatorColor)
-                .frame(width: frame.width - inset * 2, height: LillistDragTokens.dividerThickness)
-                .position(x: frame.midX, y: y)
+                .frame(width: width, height: LillistDragTokens.dividerThickness)
+                .position(x: leadingX + width / 2, y: y)
                 .transition(.opacity)
         }
     }
 
-    @ViewBuilder
-    private func ontoBorder(targetID: UUID) -> some View {
-        if let frame = controller.geometry[targetID] {
-            let outset = LillistDragTokens.rowBorderOutset
-            RoundedRectangle(cornerRadius: LillistDragTokens.rowBorderCornerRadius)
-                .stroke(LillistDragTokens.indicatorColor, lineWidth: LillistDragTokens.rowBorderThickness)
-                .frame(width: frame.width + outset * 2, height: frame.height + outset * 2)
-                .position(x: frame.midX, y: frame.midY)
-                .transition(.opacity)
-        }
+    /// Depth the dragged row will land at, from the resolved target parent:
+    /// top level (nil parent) is 0, otherwise the parent's depth + 1.
+    private func depth(forParentID parentID: UUID?) -> Int {
+        guard let parentID,
+              let parentRow = controller.flatRows.first(where: { $0.id == parentID })
+        else { return 0 }
+        return parentRow.depth + 1
     }
 
     private var phantomCenterX: CGFloat {

@@ -203,7 +203,16 @@ struct TaskListView: View {
                         syncDragControllerInputs(nodes: rootNodes)
                     }
                     .overlay {
-                        DragOverlay(controller: dragController) { id in
+                        DragOverlay(
+                            controller: dragController,
+                            // macOS `OutlineGroup` already indents each row's
+                            // frame by its depth, so offset by the *delta* from
+                            // the reference row's depth to the target depth.
+                            indentLeadingX: { frame, referenceDepth, targetDepth in
+                                frame.minX + LillistDragTokens.dividerHorizontalInset
+                                    + CGFloat(targetDepth - referenceDepth) * LillistDragTokens.macOutlineIndentPerLevel
+                            }
+                        ) { id in
                             if let rec = flatRecord(id: id) {
                                 TaskRowView(
                                     task: rec,
@@ -323,9 +332,11 @@ struct TaskListView: View {
     @MainActor
     private func applyDrop(dragged: UUID, target: DragTarget) async {
         do {
-            switch DragDropResolver.resolve(target: target, flatRows: dragController.flatRows) {
-            case .reorder(let after, let before):
-                try await env.taskStore.reorder(id: dragged, after: after, before: before)
+            switch DragDropResolver.resolve(target: target) {
+            case .reorder(let parent, let after, let before):
+                try await env.taskStore.reorder(
+                    id: dragged, after: after, before: before, parent: .explicit(parent)
+                )
             case .reparent(let newParent):
                 try await env.taskStore.reparent(id: dragged, newParent: newParent)
             case .noop:

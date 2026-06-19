@@ -213,10 +213,10 @@ final class IOSScreenTourTests: RecordableSnapshotTestCase {
                      colorScheme: .light, size: phoneSize)
     }
 
-    /// Snapshot showing `TasksScreen` with an in-progress `.onto` drag:
-    /// the phantom "Reply to investors" row should appear near "Sync with
-    /// design", which should be rendered with a drop-target border. The
-    /// source row at index 3 is invisible (opacity 0) while dragging.
+    /// Snapshot showing `TasksScreen` with an in-progress `.between` drag:
+    /// the phantom "Reply to investors" row appears near "Sync with design",
+    /// with a top-level drop divider just below it. The source row at index 3
+    /// is invisible (opacity 0) while dragging.
     func test_13_tasks_mid_drag_light() {
         let controller = DragController(onDrop: { _, _ in })
         let roots = sampleRoots()
@@ -241,7 +241,9 @@ final class IOSScreenTourTests: RecordableSnapshotTestCase {
             originalHeight: 44,
             cursorY: controller.geometry[targetID]?.midY ?? 250
         )
-        controller.setResolvedTarget(.onto(targetID: targetID))
+        controller.setResolvedTarget(
+            .between(beforeID: nil, afterID: targetID, parentID: nil)
+        )
 
         let view = phoneShell(fab: true) {
             TasksScreen(

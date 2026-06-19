@@ -57,7 +57,7 @@ public final class DragController: ObservableObject {
     // MARK: - Callback
 
     /// Internal drop handler. Called exactly once per successful drop
-    /// (target is `.between` or `.onto`). Never called for `.rejected`
+    /// (target is `.between`). Never called for `.rejected`
     /// or `.none`. Late-bound via `setOnDrop(_:)` so SwiftUI containers
     /// that can't capture `self` in `@StateObject` init can wire the
     /// real closure from `.onAppear`.
@@ -140,7 +140,7 @@ public final class DragController: ObservableObject {
     /// Complete the drag.
     ///
     /// 1. Invoke the drop handler immediately if the target is
-    ///    actionable (`.between` or `.onto`) — data updates are never
+    ///    actionable (`.between`) — data updates are never
     ///    delayed by the settle animation.
     /// 2. If `settleDuration > 0`, transition `.dragging → .dropping`
     ///    so the overlay can animate the phantom from its lifted
@@ -161,7 +161,7 @@ public final class DragController: ObservableObject {
         emit("drag.drop", dropPayload)
 
         switch target {
-        case .between, .onto:
+        case .between:
             handler(session.draggedID, target)
         case .rejected, .none:
             break
@@ -191,132 +191,116 @@ public final class DragController: ObservableObject {
 
     // MARK: - Resolution
 
-    /// Compute the drop target for a cursor y-position. Pure function of
-    /// the controller's `flatRows`, `geometry`, `sortMode`,
-    /// `isFilterActive`, and the dragged row id.
-    public func resolveTarget(forDraggedID draggedID: UUID, atY y: CGFloat) -> DragTarget {
+    /// Compute the drop target for a cursor position. Pure function of the
+    /// controller's `flatRows`, `geometry`, `sortMode`, `isFilterActive`, the
+    /// dragged row id, and the gesture's vertical/horizontal translation.
+    ///
+    /// Vertical position selects the **gap** between two visible rows; horizontal
+    /// translation selects the **depth** within that gap's valid range
+    /// (Reminders-style indent/outdent). With no horizontal movement the row
+    /// keeps its current nesting depth (clamped to what the gap allows); pulling
+    /// left outdents (toward top level), pulling right nests deeper. The dragged
+    /// row's own subtree is excluded from the reference list so it can never
+    /// become its own neighbor or parent.
+    public func resolveTarget(
+        forDraggedID draggedID: UUID,
+        atY y: CGFloat,
+        horizontalTranslation: CGFloat = 0
+    ) -> DragTarget {
         if isFilterActive { return .none }
-        guard !flatRows.isEmpty else { return .none }
+        // Reordering is only meaningful in the personalized (manual) sort.
+        guard sortMode == .personalized else { return .none }
 
-        // 1. Find the row whose effective range contains y. Each row's
-        //    effective range claims half of every inter-row gap (gaps
-        //    arise from List's `listRowInsets`). The insertion indicator
-        //    is drawn *inside* such a gap; without this expansion a
-        //    cursor on the indicator line would resolve to `.none` and
-        //    the line would fade out — see engineering-notes.md
-        //    (2026-05-27).
-        if let hit = hitRow(atY: y), let frame = geometry[hit.id] {
-            let zone = classifyZone(y: y, in: frame)
-            return resolve(zone: zone, hit: hit, draggedID: draggedID)
-        }
+        let refs = referenceRows(excludingSubtreeOf: draggedID)
+        guard !refs.isEmpty else { return .none }
 
-        // 2. Below the last row — treat as drop at root end.
-        if let last = flatRows.last,
-           let lastFrame = geometry[last.id],
-           y >= lastFrame.maxY,
-           sortMode == .personalized {
-            return finalize(
-                target: .between(beforeID: nil, afterID: last.id, parentID: nil),
-                draggedID: draggedID
-            )
-        }
+        let (above, below) = gapNeighbors(atY: y, in: refs)
 
-        return .none
+        // Valid depth range for this gap. In a DFS-flattened list this is always
+        // non-empty: `below.depth <= above.depth + 1`.
+        let minDepth = below?.depth ?? 0
+        let maxDepth = above.map { $0.depth + 1 } ?? 0
+
+        // Baseline = the dragged row's current depth (→ "keep current nesting").
+        // Each ~half-indent of horizontal travel shifts one level; `rounded()`
+        // gives the half-indent dead-zone for free so incidental wobble is inert.
+        let baseline = flatRows.first(where: { $0.id == draggedID })?.depth ?? 0
+        let shift = Int((horizontalTranslation / LillistDragTokens.indentPerLevel).rounded())
+        let depth = min(max(baseline + shift, minDepth), maxDepth)
+
+        // Derive parent + sibling anchors from the gap and chosen depth.
+        let parentID = depth == 0
+            ? nil
+            : above.flatMap { ancestorOrSelf(of: $0, atDepth: depth - 1, in: refs)?.id }
+        let afterID = above.flatMap { ancestorOrSelf(of: $0, atDepth: depth, in: refs)?.id }
+        let beforeID = (below?.depth == depth) ? below?.id : nil
+
+        return finalize(
+            target: .between(beforeID: beforeID, afterID: afterID, parentID: parentID),
+            draggedID: draggedID
+        )
     }
 
-    /// Locate the row whose effective vertical range contains `y`.
-    /// Effective range = the row's reported frame expanded into half of
-    /// each adjacent inter-row gap (midpoint split). With contiguous
-    /// frames the range equals the original frame, so existing
-    /// in-row behavior is unchanged. Returns `nil` for `y` values above
-    /// the first row or below the last row's bottom edge.
-    private func hitRow(atY y: CGFloat) -> DragReorderRow? {
-        for (i, row) in flatRows.enumerated() {
-            guard let frame = geometry[row.id] else { continue }
-            let minY: CGFloat = {
-                guard i > 0,
-                      let prev = geometry[flatRows[i - 1].id],
-                      prev.maxY < frame.minY
-                else { return frame.minY }
-                return (prev.maxY + frame.minY) / 2
-            }()
-            let maxY: CGFloat = {
-                guard i + 1 < flatRows.count,
-                      let next = geometry[flatRows[i + 1].id],
-                      frame.maxY < next.minY
-                else { return frame.maxY }
-                return (frame.maxY + next.minY) / 2
-            }()
-            if y >= minY && y < maxY {
-                return row
+    /// The visible rows that can serve as drop neighbors — `flatRows` minus the
+    /// dragged row and its descendants. Descendants stay *visible* during a drag
+    /// (only the dragged row itself is hidden), so they're excluded by walking
+    /// parent links, not by visibility. Relies on `flatRows` being in DFS order:
+    /// a descendant always follows its ancestor, so one forward pass propagates
+    /// the excluded set.
+    private func referenceRows(excludingSubtreeOf draggedID: UUID) -> [DragReorderRow] {
+        var excluded: Set<UUID> = [draggedID]
+        for row in flatRows {
+            if let pid = row.parentID, excluded.contains(pid) {
+                excluded.insert(row.id)
             }
+        }
+        return flatRows.filter { !excluded.contains($0.id) }
+    }
+
+    /// Locate the gap `y` falls into, as its bracketing reference rows. Each row
+    /// is split 50/50 at its vertical midline: `y` above a row's midline puts the
+    /// gap *above* that row (it becomes `below`); below the midline puts the gap
+    /// *below* it (it becomes `above`). Returns `(nil, first)` at the list start
+    /// and `(last, nil)` at the end. The dragged row's hidden slot is just empty
+    /// space between reference rows, so a cursor there resolves to the
+    /// surrounding gap.
+    private func gapNeighbors(
+        atY y: CGFloat,
+        in refs: [DragReorderRow]
+    ) -> (above: DragReorderRow?, below: DragReorderRow?) {
+        var above: DragReorderRow?
+        for row in refs {
+            guard let frame = geometry[row.id] else { continue }
+            if y < frame.midY {
+                return (above, row)
+            }
+            above = row
+        }
+        return (above, nil)
+    }
+
+    /// Walk `row`'s ancestor chain (within `refs`) to the row at exactly
+    /// `depth`. Returns `row` itself when `row.depth == depth`, and `nil` when
+    /// `depth` is deeper than `row` (no such ancestor) or negative.
+    private func ancestorOrSelf(
+        of row: DragReorderRow,
+        atDepth depth: Int,
+        in refs: [DragReorderRow]
+    ) -> DragReorderRow? {
+        guard depth >= 0, depth <= row.depth else { return nil }
+        var current: DragReorderRow? = row
+        while let c = current {
+            if c.depth == depth { return c }
+            current = c.parentID.flatMap { pid in refs.first(where: { $0.id == pid }) }
         }
         return nil
     }
 
-    private enum Zone { case top25, middle50, bottom25 }
-
-    private func classifyZone(y: CGFloat, in frame: CGRect) -> Zone {
-        let topBand    = frame.minY + frame.height * 0.25
-        let bottomBand = frame.minY + frame.height * 0.75
-        if y < topBand    { return .top25 }
-        if y >= bottomBand { return .bottom25 }
-        return .middle50
-    }
-
-    private func resolve(zone: Zone, hit: DragReorderRow, draggedID: UUID) -> DragTarget {
-        switch zone {
-        case .middle50:
-            return finalize(target: .onto(targetID: hit.id), draggedID: draggedID)
-        case .top25:
-            guard sortMode == .personalized else { return .none }
-            return finalize(target: resolveBetweenAbove(hit), draggedID: draggedID)
-        case .bottom25:
-            guard sortMode == .personalized else { return .none }
-            return finalize(target: resolveBetweenBelow(hit), draggedID: draggedID)
-        }
-    }
-
-    /// Dragged row will sit BEFORE `hit` (drop in hit's top 25%).
-    /// beforeID = hit; afterID = previous flat row that's a sibling of hit (same parent), if any.
-    private func resolveBetweenAbove(_ hit: DragReorderRow) -> DragTarget {
-        let parent = hit.parentID
-        let previous = flatRows
-            .prefix(while: { $0.id != hit.id })
-            .reversed()
-            .first(where: { $0.parentID == parent })
-        return .between(beforeID: hit.id, afterID: previous?.id, parentID: parent)
-    }
-
-    /// Dragged row will sit AFTER `hit` (drop in hit's bottom 25%).
-    /// Three sub-cases based on the next flat row:
-    /// - next has hit as parent (hit is expanded, next is first child):
-    ///     dragged becomes first child of hit. beforeID = next, afterID = nil, parent = hit.
-    /// - next has same parent as hit: between them at hit's depth.
-    /// - depth decreases (or no next): sibling-after hit, last in its sibling group.
-    private func resolveBetweenBelow(_ hit: DragReorderRow) -> DragTarget {
-        guard let hitIndex = flatRows.firstIndex(where: { $0.id == hit.id }) else {
-            return .none
-        }
-        let nextIndex = hitIndex + 1
-        if nextIndex >= flatRows.count {
-            return .between(beforeID: nil, afterID: hit.id, parentID: hit.parentID)
-        }
-        let next = flatRows[nextIndex]
-        if next.parentID == hit.id {
-            return .between(beforeID: next.id, afterID: nil, parentID: hit.id)
-        } else if next.parentID == hit.parentID {
-            return .between(beforeID: next.id, afterID: hit.id, parentID: hit.parentID)
-        } else {
-            return .between(beforeID: nil, afterID: hit.id, parentID: hit.parentID)
-        }
-    }
-
-    /// Apply cycle-rejection on top of a resolved target.
+    /// Apply cycle-rejection on top of a resolved target. With the dragged
+    /// subtree excluded from the reference list the resolved parent can never be
+    /// inside that subtree, so this is defense-in-depth (the store re-checks).
     private func finalize(target: DragTarget, draggedID: UUID) -> DragTarget {
         switch target {
-        case .onto(let id) where isSelfOrDescendant(id, of: draggedID):
-            return .rejected
         case .between(_, _, let parentID?) where isSelfOrDescendant(parentID, of: draggedID):
             return .rejected
         default:
@@ -359,8 +343,6 @@ public final class DragController: ObservableObject {
                 "afterID": afterID.map { .string($0.uuidString) } ?? .null,
                 "parentID": parentID.map { .string($0.uuidString) } ?? .null,
             ]
-        case .onto(let targetID):
-            return ["kind": .string("onto"), "targetID": .string(targetID.uuidString)]
         case .rejected:
             return ["kind": .string("rejected")]
         case .none:

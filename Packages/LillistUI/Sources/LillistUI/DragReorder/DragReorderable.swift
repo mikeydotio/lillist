@@ -104,9 +104,11 @@ struct DragReorderGestureModifier: ViewModifier {
                 // the captured anchor.
                 let cursorY = currentCursorY(translation: drag.translation.height)
                 controller.updateCursor(translation: drag.translation.height)
+                // Horizontal translation picks the drop depth (indent/outdent).
                 let resolved = controller.resolveTarget(
                     forDraggedID: id,
-                    atY: cursorY
+                    atY: cursorY,
+                    horizontalTranslation: drag.translation.width
                 )
                 let previous = currentTarget()
                 if resolved != previous {
@@ -154,9 +156,12 @@ struct DragReorderGestureModifier: ViewModifier {
             }
             let cursorY = currentCursorY(translation: drag.translation.height)
             controller.updateCursor(translation: drag.translation.height)
+            // Axis is already committed to vertical here, so the horizontal
+            // component is free to pick the drop depth (indent/outdent).
             let resolved = controller.resolveTarget(
                 forDraggedID: id,
-                atY: cursorY
+                atY: cursorY,
+                horizontalTranslation: drag.translation.width
             )
             if resolved != currentTarget() {
                 controller.setResolvedTarget(resolved)

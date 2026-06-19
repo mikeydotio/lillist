@@ -41,11 +41,11 @@ final class DragControllerStateMachineTests: XCTestCase {
         var calls: [(UUID, DragTarget)] = []
         let c = DragController(onDrop: { dragged, t in calls.append((dragged, t)) })
         c.beginDrag(rowID: id, originalHeight: 44, cursorY: 100)
-        c.setResolvedTarget(.onto(targetID: targetID))
+        c.setResolvedTarget(.between(beforeID: targetID, afterID: nil, parentID: nil))
         c.endDrag()
         XCTAssertEqual(calls.count, 1)
         XCTAssertEqual(calls.first?.0, id)
-        XCTAssertEqual(calls.first?.1, .onto(targetID: targetID))
+        XCTAssertEqual(calls.first?.1, .between(beforeID: targetID, afterID: nil, parentID: nil))
         XCTAssertEqual(c.state, .idle)
     }
 
@@ -116,7 +116,7 @@ final class DragControllerStateMachineTests: XCTestCase {
     func test_endDrag_defaultSettleDurationZero_skipsDroppingPhase() {
         let c = DragController(onDrop: { _, _ in })
         c.beginDrag(rowID: UUID(), originalHeight: 44, cursorY: 100)
-        c.setResolvedTarget(.onto(targetID: UUID()))
+        c.setResolvedTarget(.between(beforeID: UUID(), afterID: nil, parentID: nil))
         c.endDrag() // default settleDuration: 0
         XCTAssertEqual(c.state, .idle)
     }
@@ -126,19 +126,19 @@ final class DragControllerStateMachineTests: XCTestCase {
         var calls: [(UUID, DragTarget)] = []
         let c = DragController(onDrop: { dragged, t in calls.append((dragged, t)) })
         c.beginDrag(rowID: id, originalHeight: 44, cursorY: 100)
-        c.setResolvedTarget(.onto(targetID: targetID))
+        c.setResolvedTarget(.between(beforeID: targetID, afterID: nil, parentID: nil))
         c.endDrag(settleDuration: 0.05)
 
         // Immediately after endDrag the handler must have fired exactly once
         // and the state must be .dropping carrying both the session and target.
         XCTAssertEqual(calls.count, 1)
         XCTAssertEqual(calls.first?.0, id)
-        XCTAssertEqual(calls.first?.1, .onto(targetID: targetID))
+        XCTAssertEqual(calls.first?.1, .between(beforeID: targetID, afterID: nil, parentID: nil))
         guard case .dropping(let s, let t) = c.state else {
             return XCTFail("expected .dropping, got \(c.state)")
         }
         XCTAssertEqual(s.draggedID, id)
-        XCTAssertEqual(t, .onto(targetID: targetID))
+        XCTAssertEqual(t, .between(beforeID: targetID, afterID: nil, parentID: nil))
 
         // After the settle window, the controller returns to idle.
         try? await Task.sleep(nanoseconds: 120_000_000) // 120ms > 50ms window

@@ -112,15 +112,12 @@ public enum LillistDragTokens {
     public static let rejectionColor: Color = RainbowPalette.actionOrange.deep.opacity(0.85)
     /// Thickness of the between-row divider when active.
     public static let dividerThickness: CGFloat = 2.5
-    /// Stroke thickness of the onto-row border when active.
+    /// Stroke thickness of the rejection border drawn around the phantom
+    /// when the resolved target is `.rejected` (cycle).
     public static let rowBorderThickness: CGFloat = 2.0
-    /// Corner radius of the onto-row border highlight. Matches the
-    /// Rainbow card radius (`LillistRadius.m`) so the highlight hugs
-    /// the card.
+    /// Corner radius of the phantom's border (rejection stroke + rainbow
+    /// halo). Matches the Rainbow card radius so the stroke hugs the card.
     public static let rowBorderCornerRadius: CGFloat = 12
-    /// Outset of the onto-row border from the row's bounds, so the
-    /// stroke does not visually overlap row content.
-    public static let rowBorderOutset: CGFloat = 2
     /// Scale applied to the dragged-row phantom while *lifted* — i.e.
     /// during the active `.dragging` phase. The phantom inserts via a
     /// transition that animates from the natural scale (1.0) to this
@@ -159,4 +156,16 @@ public enum LillistDragTokens {
     /// list row's leading/trailing insets in `TasksScreen` so the divider
     /// aligns with row content.
     public static let dividerHorizontalInset: CGFloat = 12
+    /// Leading indent applied per nesting level in the iOS outline
+    /// (`TaskOutlineRowView`). Also the horizontal-drag sensitivity for
+    /// depth disambiguation: dragging ~half this distance sideways shifts the
+    /// drop one level. Single source of truth for both the row layout and the
+    /// depth-aware drop indicator.
+    public static let indentPerLevel: CGFloat = 22
+    /// Per-level indent that macOS `OutlineGroup` applies to nested rows.
+    /// Unlike iOS (which renders depth *inside* a full-width row),
+    /// `OutlineGroup` shifts each row's frame, and the step is a system metric
+    /// with no public API — this approximates it so the macOS drop indicator
+    /// can render at the target depth. Tune on-device if it drifts.
+    public static let macOutlineIndentPerLevel: CGFloat = 16
 }

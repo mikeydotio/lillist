@@ -323,9 +323,11 @@ struct TasksView: View {
     @MainActor
     private func applyDrop(dragged: UUID, target: DragTarget) async {
         do {
-            switch DragDropResolver.resolve(target: target, flatRows: dragController.flatRows) {
-            case .reorder(let after, let before):
-                try await env.taskStore.reorder(id: dragged, after: after, before: before)
+            switch DragDropResolver.resolve(target: target) {
+            case .reorder(let parent, let after, let before):
+                try await env.taskStore.reorder(
+                    id: dragged, after: after, before: before, parent: .explicit(parent)
+                )
             case .reparent(let newParent):
                 try await env.taskStore.reparent(id: dragged, newParent: newParent)
             case .noop:

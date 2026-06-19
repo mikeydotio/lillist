@@ -4,41 +4,39 @@ import Foundation
 /// LillistCore-agnostic value type so the pure mapping lives in LillistUI
 /// and both app targets dispatch it to `TaskStore`.
 ///
-/// - `reorder` — `TaskStore.reorder(id:after:before:)` (the dragged ID is
-///   supplied by the dispatching app, not carried here).
-/// - `reparent` — `TaskStore.reparent(id:newParent:)`.
+/// - `reorder` — `TaskStore.reorder(id:after:before:parent:)`. `parent` is the
+///   authoritative target parent (`nil` = top level); the dispatching app wraps
+///   it in `TaskStore.ReparentTarget.explicit`. The dragged ID is supplied by
+///   the app, not carried here.
+/// - `reparent` — `TaskStore.reparent(id:newParent:)` (append to the end of the
+///   target parent's children).
 /// - `noop` — nothing to do (`.rejected` / `.none` targets).
 public enum DragMutation: Equatable, Sendable {
-    case reorder(after: UUID?, before: UUID?)
+    case reorder(parent: UUID?, after: UUID?, before: UUID?)
     case reparent(newParent: UUID?)
     case noop
 }
 
-/// Pure mapping from a resolved `DragTarget` (plus the controller's visible
-/// `flatRows`) to a `DragMutation`. Single source of truth shared by macOS
-/// `TaskListView.applyDrop` and iOS `TasksView.applyDrop`.
+/// Pure mapping from a resolved `DragTarget` to a `DragMutation`. Single source
+/// of truth shared by macOS `TaskListView.applyDrop` and iOS
+/// `TasksView.applyDrop`.
 public enum DragDropResolver {
-    /// - `.between` routes straight to a `reorder` using the contract's
-    ///   `beforeID`/`afterID`.
-    /// - `.onto` with at least one visible child of the target drops the
-    ///   dragged row as the *first* child (reorder before the first child),
-    ///   per the "Smart: where the cursor was" semantic; otherwise the
-    ///   target is collapsed or a leaf and the dragged row is appended via
-    ///   reparent.
+    /// - `.between` with at least one sibling anchor routes to a `reorder`
+    ///   carrying the authoritative `parentID` (so a de-parent to top level is
+    ///   honored, not re-inferred from the anchors).
+    /// - `.between` with **no** anchors (both `nil`) means the dragged row is the
+    ///   only/first child of `parentID` — there is no sibling to position
+    ///   against — so it routes to `reparent`, which appends to the end of the
+    ///   target parent's children. This also covers nesting under a childless or
+    ///   collapsed parent.
     /// - `.rejected` / `.none` are no-ops.
-    public static func resolve(
-        target: DragTarget,
-        flatRows: [DragReorderRow]
-    ) -> DragMutation {
+    public static func resolve(target: DragTarget) -> DragMutation {
         switch target {
-        case .between(let beforeID, let afterID, _):
-            return .reorder(after: afterID, before: beforeID)
-        case .onto(let parentID):
-            if let firstChild = flatRows.first(where: { $0.parentID == parentID }) {
-                return .reorder(after: nil, before: firstChild.id)
-            } else {
+        case .between(let beforeID, let afterID, let parentID):
+            if beforeID == nil, afterID == nil {
                 return .reparent(newParent: parentID)
             }
+            return .reorder(parent: parentID, after: afterID, before: beforeID)
         case .rejected, .none:
             return .noop
         }
