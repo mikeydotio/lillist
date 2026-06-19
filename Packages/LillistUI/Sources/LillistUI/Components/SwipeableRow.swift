@@ -1,4 +1,3 @@
-#if os(iOS)
 import SwiftUI
 
 /// One swipe action — the colored button revealed behind a row.
@@ -30,29 +29,49 @@ public struct SwipeActionSpec {
 /// A row that reveals custom swipe actions — `leading` on a right-swipe,
 /// `trailing` on a left-swipe — with full-swipe-to-trigger.
 ///
-/// Why custom and not `.swipeActions`: this app drives row reordering with a
-/// bespoke `DragController` long-press `DragGesture` laid over the row. A
-/// SwiftUI `DragGesture` on cell content claims the horizontal pan the
-/// instant the finger lands, so the UIKit-layer `.swipeActions` recognizer
-/// never fires (swipe-to-delete silently dies — the bug this replaces). By
-/// owning *both* gestures we make arbitration deterministic:
-///   • The reorder gesture requires a 0.3 s long-press first; a quick
-///     horizontal flick fails it and is read as a swipe instead.
-///   • `isReorderActive` (true once a drag is confirmed) hard-disables the
-///     swipe gesture, so a diagonal reorder can never trip an action.
+/// Cross-platform (iOS + macOS trackpad). Why custom and not `.swipeActions`:
+/// this app drives row reordering with a bespoke `DragController` `DragGesture`
+/// laid over the row. A SwiftUI `DragGesture` on cell content claims the
+/// horizontal pan the instant the pointer lands, so the UIKit-layer
+/// `.swipeActions` recognizer never fires (swipe-to-delete silently dies — the
+/// bug this replaces). By owning the swipe gesture ourselves we make
+/// arbitration deterministic:
 ///   • The swipe gesture commits to an axis on first movement and yields
 ///     vertical drags to the enclosing `List`'s scroll (it runs as a
 ///     `simultaneousGesture`, so the scroll is never starved).
+///   • `isReorderActive` (true once a drag is confirmed) hard-disables the
+///     swipe gesture, so a diagonal reorder can never trip an action.
+///   • iOS reorder requires a 0.3 s long-press first, so a quick horizontal
+///     flick fails it and is read as a swipe. macOS has no long-press gate, so
+///     the macOS reorder `DragGesture` is instead axis-gated to *vertical*
+///     motion only (see `DragReorderable`): a horizontal trackpad swipe is
+///     never claimed by reorder and this row's gesture owns it.
 ///
 /// `openRowID` coordinates "only one row open at a time": opening this row
 /// stamps its `rowID`, and any row whose id no longer matches snaps closed.
-struct SwipeableRow<Content: View>: View {
+public struct SwipeableRow<Content: View>: View {
     let rowID: UUID
     var leading: SwipeActionSpec?
     var trailing: SwipeActionSpec?
     var isReorderActive: Bool
     @Binding var openRowID: UUID?
     @ViewBuilder var content: () -> Content
+
+    public init(
+        rowID: UUID,
+        leading: SwipeActionSpec? = nil,
+        trailing: SwipeActionSpec? = nil,
+        isReorderActive: Bool,
+        openRowID: Binding<UUID?>,
+        @ViewBuilder content: @escaping () -> Content
+    ) {
+        self.rowID = rowID
+        self.leading = leading
+        self.trailing = trailing
+        self.isReorderActive = isReorderActive
+        self._openRowID = openRowID
+        self.content = content
+    }
 
     /// Resting reveal width when an action is held open.
     private let actionWidth: CGFloat = 84
@@ -69,7 +88,7 @@ struct SwipeableRow<Content: View>: View {
     @Environment(\.reduceMotionOverride) private var overrideReduceMotion
     private var reduceMotion: Bool { overrideReduceMotion ?? systemReduceMotion }
 
-    var body: some View {
+    public var body: some View {
         ZStack {
             actionBackground
             content()
@@ -221,4 +240,3 @@ struct SwipeableRow<Content: View>: View {
         }
     }
 }
-#endif

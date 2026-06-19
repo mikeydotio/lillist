@@ -148,6 +148,13 @@ public enum LillistDragTokens {
     public static let longPressDuration: TimeInterval = 0.3
     /// Max allowed finger drift during long-press before it cancels.
     public static let longPressMaxDistance: CGFloat = 4
+    /// Distance (pt) the macOS reorder `DragGesture` travels before it
+    /// commits to an axis. Only *vertical*-committed drags begin a reorder;
+    /// horizontal drags are yielded to the row's swipe gesture
+    /// (`SwipeableRow`). Sits between the reorder gesture's 4 pt
+    /// `minimumDistance` and the swipe gesture's 10 pt commit, so reorder
+    /// claims a vertical drag a touch before the swipe would react.
+    public static let macReorderAxisCommitDistance: CGFloat = 8
     /// Horizontal inset of the between-row divider capsule, matching the
     /// list row's leading/trailing insets in `TasksScreen` so the divider
     /// aligns with row content.

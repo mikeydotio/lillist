@@ -42,6 +42,15 @@ struct DragReorderGestureModifier: ViewModifier {
     @Environment(\.accessibilityReduceMotion) private var systemReduceMotion
     @Environment(\.reduceMotionOverride) private var overrideReduceMotion
 
+    #if os(macOS)
+    /// Which axis the current macOS drag committed to (`nil` = undecided).
+    /// macOS has no long-press gate, so the reorder gesture and the horizontal
+    /// swipe (`SwipeableRow`) both see a bare `DragGesture`; committing to an
+    /// axis keeps them mutually exclusive — only `.vertical` drives a reorder.
+    /// Decision logic lives in `DragAxisArbiter` (unit-tested).
+    @State private var committedAxis: DragAxisArbiter.Axis?
+    #endif
+
     func body(content: Content) -> some View {
         content
             .gesture(platformGesture)
@@ -119,6 +128,19 @@ struct DragReorderGestureModifier: ViewModifier {
             coordinateSpace: .named(DragCoordinateSpace.name)
         )
         .onChanged { drag in
+            // Axis arbitration with the horizontal swipe gesture
+            // (`SwipeableRow`): commit to an axis on first real movement and
+            // only let *vertical* drags drive a reorder. A horizontal drag is
+            // yielded to the swipe, which owns the reveal of the row actions.
+            if committedAxis == nil {
+                committedAxis = DragAxisArbiter.axis(
+                    forTranslation: drag.translation,
+                    commitDistance: LillistDragTokens.macReorderAxisCommitDistance
+                )
+                guard committedAxis != nil else { return }
+            }
+            guard committedAxis == .vertical else { return }   // horizontal → swipe owns it
+
             if case .idle = controller.state {
                 guard let frame = controller.geometry[id] else { return }
                 controller.beginDrag(
@@ -141,7 +163,13 @@ struct DragReorderGestureModifier: ViewModifier {
             }
         }
         .onEnded { _ in
-            controller.endDrag(settleDuration: settleDuration)
+            // Only settle a reorder we actually began (a vertical drag);
+            // a yielded horizontal drag never touched the controller.
+            let didReorder = committedAxis == .vertical
+            committedAxis = nil
+            if didReorder {
+                controller.endDrag(settleDuration: settleDuration)
+            }
         }
     }
     #endif

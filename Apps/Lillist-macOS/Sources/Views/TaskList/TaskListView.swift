@@ -23,6 +23,26 @@ struct TaskListView: View {
 
     @State private var reorderFailed = false
 
+    /// The row whose swipe actions are currently revealed (one at a time).
+    @State private var openSwipeRowID: UUID?
+
+    private var isTrash: Bool {
+        if case .trash = selection { return true }
+        return false
+    }
+
+    /// Leading "Mark open" swipe — the macOS reset-to-Open affordance that
+    /// replaces the old backward status cycle. Trackpad swipe right → resets
+    /// the task to `.todo` (mirrors the iOS row swipe).
+    private func markOpenSpec(for id: UUID) -> SwipeActionSpec {
+        SwipeActionSpec(
+            titleKey: "Mark open",
+            systemImage: StatusGlyph.symbol(for: .todo),
+            tint: RainbowPalette.focusBlue.base,
+            perform: { setStatus(id, to: .todo) }
+        )
+    }
+
     private var sourceKey: String {
         switch selection {
         case .pinnedTask(let id):   return "pinnedTask.\(id)"
@@ -73,26 +93,33 @@ struct TaskListView: View {
                 } else {
                     List(selection: $taskSelection) {
                         ForEach(flatResults, id: \.id) { rec in
-                            VStack(alignment: .leading, spacing: 2) {
-                                if let crumbs = breadcrumbsByID[rec.id], !crumbs.isEmpty {
-                                    BreadcrumbView(path: crumbs)
+                            SwipeableRow(
+                                rowID: rec.id,
+                                leading: isTrash ? nil : markOpenSpec(for: rec.id),
+                                isReorderActive: false,   // flat lists don't reorder
+                                openRowID: $openSwipeRowID
+                            ) {
+                                VStack(alignment: .leading, spacing: 2) {
+                                    if let crumbs = breadcrumbsByID[rec.id], !crumbs.isEmpty {
+                                        BreadcrumbView(path: crumbs)
+                                    }
+                                    TaskRowView(
+                                        task: rec,
+                                        tagNames: [],
+                                        onStatusClick: { cycle(rec.id, rec.status) },
+                                        onStatusSet: { newStatus in setStatus(rec.id, to: newStatus) }
+                                    )
+                                    .rainbowCard(
+                                        accent: StatusPalette.color(for: rec.status),
+                                        isDone: rec.status == .closed
+                                    )
                                 }
-                                TaskRowView(
-                                    task: rec,
-                                    tagNames: [],
-                                    onStatusClick: { cycle(rec.id, rec.status) },
-                                    onStatusSet: { newStatus in setStatus(rec.id, to: newStatus) }
-                                )
-                                .rainbowCard(
-                                    accent: StatusPalette.color(for: rec.status),
-                                    isDone: rec.status == .closed
-                                )
+                                // Single-click opens the unified editor (the status
+                                // cube's own Menu still consumes clicks on it). Arrow
+                                // keys move the List highlight without firing this.
+                                .contentShape(Rectangle())
+                                .onTapGesture { openTaskEditorAction(rec.id) }
                             }
-                            // Single-click opens the unified editor (the status
-                            // cube's own Menu still consumes clicks on it). Arrow
-                            // keys move the List highlight without firing this.
-                            .contentShape(Rectangle())
-                            .onTapGesture { openTaskEditorAction(rec.id) }
                             .listRowInsets(EdgeInsets(top: 3, leading: 10, bottom: 3, trailing: 10))
                             .listRowSeparator(.hidden)
                             .tag(rec.id)
@@ -109,18 +136,25 @@ struct TaskListView: View {
                 } else {
                     List(selection: $taskSelection) {
                         OutlineGroup(rootNodes, children: \.children) { node in
-                            TaskRowView(
-                                task: node.record,
-                                tagNames: [],
-                                onStatusClick: { cycle(node.id, node.record.status) },
-                                onStatusSet: { newStatus in setStatus(node.id, to: newStatus) }
-                            )
-                            .rainbowCard(
-                                accent: StatusPalette.color(for: node.record.status),
-                                isDone: node.record.status == .closed
-                            )
-                            .contentShape(Rectangle())
-                            .onTapGesture { openTaskEditorAction(node.id) }
+                            SwipeableRow(
+                                rowID: node.id,
+                                leading: markOpenSpec(for: node.id),
+                                isReorderActive: draggedID != nil,
+                                openRowID: $openSwipeRowID
+                            ) {
+                                TaskRowView(
+                                    task: node.record,
+                                    tagNames: [],
+                                    onStatusClick: { cycle(node.id, node.record.status) },
+                                    onStatusSet: { newStatus in setStatus(node.id, to: newStatus) }
+                                )
+                                .rainbowCard(
+                                    accent: StatusPalette.color(for: node.record.status),
+                                    isDone: node.record.status == .closed
+                                )
+                                .contentShape(Rectangle())
+                                .onTapGesture { openTaskEditorAction(node.id) }
+                            }
                             .listRowInsets(EdgeInsets(top: 3, leading: 10, bottom: 3, trailing: 10))
                             .listRowSeparator(.hidden)
                             .tag(node.id)

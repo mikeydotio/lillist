@@ -4,6 +4,40 @@ Append-only log of cross-cutting engineering lessons learned while building
 Lillist. Each entry captures a non-obvious gotcha — usually one that took real
 investigation to find — so future work doesn't re-learn it the hard way.
 
+## 2026-06-18 — macOS trackpad swipe coexists with reorder via axis-gating
+
+When the status cycle went one-way (forward-only; reset moved off the tap),
+macOS lost its only "send a task backward" affordance — Space used to un-start,
+and the iOS "Mark open" swipe is iOS-only. The fix gives macOS the same leading
+"Mark open" trackpad swipe on task rows.
+
+`SwipeableRow`/`SwipeActionSpec` were already pure SwiftUI (no UIKit) despite an
+`#if os(iOS)` gate, so generalizing was just un-gating + making the type
+`public`; the file moved to `Components/SwipeableRow.swift`.
+
+The hard part is gesture arbitration. On iOS the reorder is long-press gated
+(0.3 s), so a quick horizontal flick fails it and reads as a swipe. **macOS
+reorder has no long-press gate** — it's a bare `DragGesture(minimumDistance: 4)`
+(`DragReorderable`'s `#else` branch) that begins on *any* 4 pt drag, horizontal
+included. A naive swipe + reorder would both claim a horizontal pan.
+
+Resolution: the macOS reorder gesture now **commits to an axis** on first
+movement (`DragAxisArbiter`, unit-tested) and only begins a reorder for a
+`.vertical` commit; a `.horizontal` commit is yielded to the swipe (the reorder
+returns early and never touches the controller). The swipe's own axis check
+(horizontal-only) makes the pair mutually exclusive regardless of which gesture
+SwiftUI recognizes first. Ties (diagonal) favour vertical so reorder — the
+row's primary gesture — wins ambiguous drags. The commit distance (8 pt,
+`LillistDragTokens.macReorderAxisCommitDistance`) sits between reorder's 4 pt
+min and the swipe's 10 pt commit.
+
+Scope: leading "Mark open" only, and **not in Trash** (where reset/delete
+semantics differ). macOS still has no row Delete affordance — a trailing Delete
+swipe is a clean follow-up. As with iOS, the trackpad feel (which gesture wins a
+near-45° drag, rubber-band, full-swipe threshold) is **empirical and must be
+verified on a real trackpad** — the unit tests pin the decision boundary, not
+SwiftUI's runtime recognizer arbitration.
+
 ## 2026-06-17 — Custom row swipe can't share a cell with `.swipeActions`; removing default notifications
 
 **Swipe vs. the custom drag.** `.swipeActions` is a UIKit-layer `List`
