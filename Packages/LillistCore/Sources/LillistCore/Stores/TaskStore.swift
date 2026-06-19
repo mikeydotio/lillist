@@ -357,7 +357,27 @@ public final class TaskStore: @unchecked Sendable {
 
     // MARK: - Reorder
 
-    public func reorder(id: UUID, after afterID: UUID?, before beforeID: UUID?) async throws {
+    /// How `reorder` should determine the dragged row's parent.
+    ///
+    /// - `infer` — derive the parent from the anchors
+    ///   (`afterParent ?? beforeParent ?? currentParent`). This is the historic
+    ///   behavior; it cannot express "top level" distinctly from "no anchor
+    ///   information", so a de-parent-to-root resolves back to the current
+    ///   parent. Kept as the default so existing callers/tests are unaffected.
+    /// - `explicit` — the caller supplies the authoritative parent (`nil` = top
+    ///   level). The drag system resolves this from the drop target, so the
+    ///   store must honor it rather than re-infer.
+    public enum ReparentTarget: Equatable, Sendable {
+        case infer
+        case explicit(UUID?)
+    }
+
+    public func reorder(
+        id: UUID,
+        after afterID: UUID?,
+        before beforeID: UUID?,
+        parent reparent: ReparentTarget = .infer
+    ) async throws {
         // Surfaces values captured *inside* the perform block to the emit calls
         // on both the success and throwing paths. The anchor positions are
         // recorded before the out-of-order guard, so the RCA path (a degenerate
@@ -464,7 +484,18 @@ public final class TaskStore: @unchecked Sendable {
                     }
                 }
 
-                let newParent = afterParent ?? beforeParent ?? m.parent
+                // `.infer` reproduces the historic anchor-derived parent.
+                // `.explicit` is authoritative — the drag system resolved the
+                // target parent (nil = top level) and the store must not
+                // re-infer it (which would collapse "top level" back into the
+                // current parent and silently refuse a de-parent).
+                let newParent: LillistTask?
+                switch reparent {
+                case .infer:
+                    newParent = afterParent ?? beforeParent ?? m.parent
+                case .explicit(let pid):
+                    newParent = try pid.map { try fetchManagedObject(id: $0, in: context) }
+                }
 
                 if m.parent?.objectID != newParent?.objectID {
                     if Validators.wouldCreateCycle(candidate: m, newParent: newParent) {
