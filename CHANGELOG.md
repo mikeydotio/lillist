@@ -3,6 +3,16 @@
 All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [v0.8.5] - 2026-06-19
+
+### Fixed
+- single rainbow-bordered ghost, clean lift, deduped indicator, parent cue (d15f167)
+
+### Maintenance
+- bump iOS build number to 56 (4c7b0c3)
+
+_[manual]_
+
 ## [v0.8.4] - 2026-06-19
 
 ### Fixed
