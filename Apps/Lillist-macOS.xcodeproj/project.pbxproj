@@ -439,6 +439,7 @@
 				4C99504CB24BAD288959C557 /* Sources */,
 				C4B0F60AAF7CFD8B9E592281 /* Resources */,
 				237B715AD39CAC7F81045FA8 /* Frameworks */,
+				7965EA20813978505B8075F6 /* Stamp marketing version from semver VERSION */,
 			);
 			buildRules = (
 			);
@@ -529,6 +530,29 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXResourcesBuildPhase section */
+
+/* Begin PBXShellScriptBuildPhase section */
+		7965EA20813978505B8075F6 /* Stamp marketing version from semver VERSION */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+				"$(SRCROOT)/../VERSION",
+			);
+			name = "Stamp marketing version from semver VERSION";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "set -euo pipefail\nversion_file=\"${SRCROOT}/../VERSION\"\nif [ ! -f \"$version_file\" ]; then\n  echo \"warning: VERSION not found at $version_file; leaving CFBundleShortVersionString unchanged\"\n  exit 0\nfi\nmarketing=\"$(sed 's/^v//' \"$version_file\" | tr -d '[:space:]')\"\nif [ -z \"$marketing\" ]; then\n  echo \"warning: VERSION is empty; leaving CFBundleShortVersionString unchanged\"\n  exit 0\nfi\nplist=\"${TARGET_BUILD_DIR}/${INFOPLIST_PATH}\"\n/usr/libexec/PlistBuddy -c \"Set :CFBundleShortVersionString ${marketing}\" \"$plist\"\necho \"note: stamped CFBundleShortVersionString=${marketing} into ${plist}\"\n";
+		};
+/* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
 		4C99504CB24BAD288959C557 /* Sources */ = {
@@ -671,6 +695,7 @@
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				GENERATE_INFOPLIST_FILE = NO;
 				MACOSX_DEPLOYMENT_TARGET = 15.0;
+				MARKETING_VERSION = 0.8.5;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -808,6 +833,7 @@
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				GENERATE_INFOPLIST_FILE = NO;
 				MACOSX_DEPLOYMENT_TARGET = 15.0;
+				MARKETING_VERSION = 0.8.5;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;

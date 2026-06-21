@@ -3153,3 +3153,37 @@ are `liveSwapAllowed`-gated (skip under `swift test`, run in
 `Lillist-iOSAppHostedTests`). They use `.localOnly` so they need no iCloud
 account, unlike the iCloudSync swap cases. The real full-wipe-including-iCloud
 path is a manual on-device check (CloudKit zone erase needs a signed-in account).
+
+## 2026-06-20 — Stamping `CFBundleShortVersionString` from the semver `VERSION` file in a build phase
+
+The marketing version is now driven by the repo `VERSION` file (semver source of
+truth) instead of a hand-edited `MARKETING_VERSION`. A `StampMarketingVersion`
+xcodegen `targetTemplate` (one per project.yml — `Apps/Lillist-iOS/project.yml`
+covers the app + both extensions, `Apps/project.yml` covers macOS) adds a
+`postBuildScripts` phase that `PlistBuddy`-sets `CFBundleShortVersionString` on
+the built bundle from `VERSION` (leading `v` stripped). The project-level
+`MARKETING_VERSION` is now only the pre-stamp fallback / what static tooling
+(deployit) reads, kept current but no longer authoritative.
+
+Two non-obvious traps, both hit on the first build:
+
+1. **Do NOT declare the built Info.plist as the script's `outputFiles`.** It
+   reads naturally — "the script produces the patched plist" — but Xcode's own
+   `ProcessInfoPlistFile` task already declares that exact path as its output, so
+   declaring it again yields `error: Multiple commands produce '.../Info.plist'`.
+   A post-build script that patches an existing product file **in place** must
+   declare *no* output for it. Pair that with `basedOnDependencyAnalysis: false`
+   so it still runs every build (Xcode's "will run during every build" *note* is
+   expected, not a warning — `*_TREAT_WARNINGS_AS_ERRORS` is compiler-only and
+   does not fail on it).
+
+2. **`ENABLE_USER_SCRIPT_SANDBOXING: YES` only gates *reads*, not writes to the
+   build dir.** Reading `$(SRCROOT)/../../VERSION` (iOS) / `$(SRCROOT)/../VERSION`
+   (macOS) needs the file declared in `inputFiles` or the sandbox denies it.
+   Writing the patched plist under `${TARGET_BUILD_DIR}` needs nothing extra —
+   the product dir is already a writable sandbox root.
+
+App Store note: extensions must stamp too (an `.appex`'s short version must match
+its host), which is why the iOS template is applied to `ShareExtension-iOS` and
+`ShortcutsActions` as well as the app. Verified post-build: app + both
+`.appex`es read `0.8.5` (build 57).

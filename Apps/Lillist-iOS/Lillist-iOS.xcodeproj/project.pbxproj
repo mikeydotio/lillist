@@ -717,6 +717,7 @@
 				2C3E011831A8FD0F94A3295E /* Sources */,
 				05701D48017AED7A90FEB416 /* Resources */,
 				9FC65BFA90FA483009704A2A /* Frameworks */,
+				F819D343267EDE6C58CD5814 /* Stamp marketing version from semver VERSION */,
 			);
 			buildRules = (
 			);
@@ -738,6 +739,7 @@
 				486B11B03FC22F24C37A46F2 /* Resources */,
 				471BC92253435C6953644455 /* Frameworks */,
 				75D38EC838CE672CBB0C55D6 /* Embed Foundation Extensions */,
+				3711F1FE7C352FFF2FF10B16 /* Stamp marketing version from semver VERSION */,
 			);
 			buildRules = (
 			);
@@ -761,6 +763,7 @@
 				A7795C2AC9D3B93F79758D98 /* Sources */,
 				5E9556FCF498C7DB77F36DD8 /* Resources */,
 				C8C261EDEA79BA0942A68DED /* Frameworks */,
+				D800510D9861624502C9253E /* Stamp marketing version from semver VERSION */,
 			);
 			buildRules = (
 			);
@@ -867,6 +870,69 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXResourcesBuildPhase section */
+
+/* Begin PBXShellScriptBuildPhase section */
+		3711F1FE7C352FFF2FF10B16 /* Stamp marketing version from semver VERSION */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+				"$(SRCROOT)/../../VERSION",
+			);
+			name = "Stamp marketing version from semver VERSION";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "set -euo pipefail\nversion_file=\"${SRCROOT}/../../VERSION\"\nif [ ! -f \"$version_file\" ]; then\n  echo \"warning: VERSION not found at $version_file; leaving CFBundleShortVersionString unchanged\"\n  exit 0\nfi\nmarketing=\"$(sed 's/^v//' \"$version_file\" | tr -d '[:space:]')\"\nif [ -z \"$marketing\" ]; then\n  echo \"warning: VERSION is empty; leaving CFBundleShortVersionString unchanged\"\n  exit 0\nfi\nplist=\"${TARGET_BUILD_DIR}/${INFOPLIST_PATH}\"\n/usr/libexec/PlistBuddy -c \"Set :CFBundleShortVersionString ${marketing}\" \"$plist\"\necho \"note: stamped CFBundleShortVersionString=${marketing} into ${plist}\"\n";
+		};
+		D800510D9861624502C9253E /* Stamp marketing version from semver VERSION */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+				"$(SRCROOT)/../../VERSION",
+			);
+			name = "Stamp marketing version from semver VERSION";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "set -euo pipefail\nversion_file=\"${SRCROOT}/../../VERSION\"\nif [ ! -f \"$version_file\" ]; then\n  echo \"warning: VERSION not found at $version_file; leaving CFBundleShortVersionString unchanged\"\n  exit 0\nfi\nmarketing=\"$(sed 's/^v//' \"$version_file\" | tr -d '[:space:]')\"\nif [ -z \"$marketing\" ]; then\n  echo \"warning: VERSION is empty; leaving CFBundleShortVersionString unchanged\"\n  exit 0\nfi\nplist=\"${TARGET_BUILD_DIR}/${INFOPLIST_PATH}\"\n/usr/libexec/PlistBuddy -c \"Set :CFBundleShortVersionString ${marketing}\" \"$plist\"\necho \"note: stamped CFBundleShortVersionString=${marketing} into ${plist}\"\n";
+		};
+		F819D343267EDE6C58CD5814 /* Stamp marketing version from semver VERSION */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+				"$(SRCROOT)/../../VERSION",
+			);
+			name = "Stamp marketing version from semver VERSION";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "set -euo pipefail\nversion_file=\"${SRCROOT}/../../VERSION\"\nif [ ! -f \"$version_file\" ]; then\n  echo \"warning: VERSION not found at $version_file; leaving CFBundleShortVersionString unchanged\"\n  exit 0\nfi\nmarketing=\"$(sed 's/^v//' \"$version_file\" | tr -d '[:space:]')\"\nif [ -z \"$marketing\" ]; then\n  echo \"warning: VERSION is empty; leaving CFBundleShortVersionString unchanged\"\n  exit 0\nfi\nplist=\"${TARGET_BUILD_DIR}/${INFOPLIST_PATH}\"\n/usr/libexec/PlistBuddy -c \"Set :CFBundleShortVersionString ${marketing}\" \"$plist\"\necho \"note: stamped CFBundleShortVersionString=${marketing} into ${plist}\"\n";
+		};
+/* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
 		11259431FC5B91063478830C /* Sources */ = {
@@ -1182,7 +1248,7 @@
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				GENERATE_INFOPLIST_FILE = NO;
 				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
-				MARKETING_VERSION = 0.1.0;
+				MARKETING_VERSION = 0.8.5;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
@@ -1302,7 +1368,7 @@
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				GENERATE_INFOPLIST_FILE = NO;
 				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
-				MARKETING_VERSION = 0.1.0;
+				MARKETING_VERSION = 0.8.5;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
