@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [v0.8.6] - 2026-06-20
+
+### Added
+- shrink Tasks top-of-list toolbar chips ~30% (e74b497)
+
+### Maintenance
+- stamp marketing version from semver VERSION at build time (5459b9b)
+- bump iOS build number to 57 (e4f8106)
+
+_[force]_
+
 ## [v0.8.5] - 2026-06-19
 
 ### Fixed
