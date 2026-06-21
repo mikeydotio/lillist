@@ -30,21 +30,21 @@ public struct SyncStatusBadge: View {
             ZStack {
                 if case .paused = indicator {
                     Image(systemName: indicator.systemImage)
-                        .font(.system(size: LillistSpacing.s + 2, weight: .regular))
+                        .font(.system(size: LillistSpacing.xs + 3, weight: .regular))
                         .foregroundStyle(indicator.color)
                 } else {
                     Circle()
                         .fill(indicator.color)
-                        .frame(width: LillistSpacing.s + 2, height: LillistSpacing.s + 2)
+                        .frame(width: LillistSpacing.xs + 3, height: LillistSpacing.xs + 3)
                         .overlay(
                             Group {
                                 if differentiate {
                                     Image(systemName: indicator.differentiatedSystemImage)
-                                        .font(.system(size: 8, weight: .bold))
+                                        .font(.system(size: 6, weight: .bold))
                                         .foregroundStyle(.white)
                                 } else if case .inProgress = indicator {
                                     ProgressView()
-                                        .scaleEffect(0.5)
+                                        .scaleEffect(0.4)
                                 }
                             }
                         )

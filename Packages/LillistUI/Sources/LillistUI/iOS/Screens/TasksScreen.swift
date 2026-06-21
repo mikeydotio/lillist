@@ -368,6 +368,7 @@ public struct TasksScreen: View {
                 onOpenSettings()
             } label: {
                 Image(systemName: "gearshape")
+                    .compactToolbarIcon()
             }
             .accessibilityLabel(String(localized: "Settings", bundle: .module))
             .accessibilityIdentifier("TasksSettingsButton")
@@ -388,6 +389,7 @@ public struct TasksScreen: View {
                 }
             } label: {
                 Image(systemName: "arrow.up.arrow.down")
+                    .compactToolbarIcon()
             }
             .accessibilityLabel(String(localized: "Sort", bundle: .module))
             .accessibilityIdentifier("TasksSortMenu")
@@ -399,6 +401,7 @@ public struct TasksScreen: View {
                 Image(systemName: hasActiveFilter
                       ? "line.3.horizontal.decrease.circle.fill"
                       : "line.3.horizontal.decrease.circle")
+                    .compactToolbarIcon()
             }
             .accessibilityLabel(String(localized: "Filter", bundle: .module))
             .accessibilityIdentifier("TasksFilterToggle")
