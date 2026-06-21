@@ -28,13 +28,14 @@ settings:
     # project-level pbxproj settings outrank project xcconfig.
     #
     # MARKETING_VERSION mirrors the semver `VERSION` file (the Info.plist
-    # uses $(MARKETING_VERSION)). Keep it in lockstep with VERSION. A
-    # build-phase auto-stamp was attempted but a post-build script cannot
-    # write the product Info.plist under ENABLE_USER_SCRIPT_SANDBOXING at
-    # archive time (the plist lands in UninstalledProducts/, outside the
-    # script sandbox's writable roots → "Operation not permitted"). A
-    # sandbox-safe auto-sync is being researched; until then this is the
-    # single source for the built app's marketing version.
+    # uses $(MARKETING_VERSION)). It is kept in lockstep automatically by
+    # the semver pre-bump hook .semver/hooks/pre-bump/sync-marketing-version.sh,
+    # which rewrites this value and regenerates the pbxproj on every bump
+    # (folded into the chore(release) commit, before deployit archives).
+    # Don't hand-edit unless you're also moving VERSION. (A build-phase
+    # auto-stamp was rejected: a post-build script can't write the product
+    # Info.plist under ENABLE_USER_SCRIPT_SANDBOXING at archive time — see
+    # docs/engineering-notes.md 2026-06-20.)
     MARKETING_VERSION: "0.8.6"
     DEAD_CODE_STRIPPING: YES
 

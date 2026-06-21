@@ -24,9 +24,9 @@ settings:
     DEAD_CODE_STRIPPING: YES
     GENERATE_INFOPLIST_FILE: NO
     # Mirrors the semver `VERSION` file; the Info.plist uses
-    # $(MARKETING_VERSION). Keep in lockstep with VERSION (see the note in
-    # Apps/Lillist-iOS/project.yml about the sandboxed build-phase stamp
-    # that couldn't run at archive time).
+    # $(MARKETING_VERSION). Kept in lockstep automatically by the semver
+    # pre-bump hook (.semver/hooks/pre-bump/sync-marketing-version.sh) — see
+    # the note in Apps/Lillist-iOS/project.yml.
     MARKETING_VERSION: "0.8.6"
 
 packages:

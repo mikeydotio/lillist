@@ -3184,14 +3184,33 @@ output, so a second declaration yields `error: Multiple commands produce
 *read* `$(SRCROOT)/../../VERSION` under the sandbox.) So the in-place-patch idea
 is a dead end while sandboxing stays on.
 
-**Interim state:** the build phase was removed; `MARKETING_VERSION` is set
-directly in both project.yml `settings.base` (the Info.plist already uses
-`$(MARKETING_VERSION)`) and must be kept in lockstep with `VERSION`. A
-sandbox-safe way to *auto*-sync it at archive time (e.g. an Archive **pre-action**
-— which runs outside the sandbox, like the existing `bump-build-number.sh` —
-writing a generated xcconfig, or a semver post-bump hook) is being researched;
-this entry will be updated with the chosen mechanism.
+**Why an Archive pre-action is *also* wrong here (the non-obvious part).** The
+tempting fix is to mirror `bump-build-number.sh` — a scheme Archive pre-action
+(which *does* run outside the script sandbox) that writes the version into an
+xcconfig. But scheme pre-actions are **off-by-one**: the current archive uses
+the build settings resolved *before* the pre-action ran, so the write only takes
+effect on the *next* archive. That's harmless for an ever-incrementing build
+number (the file just "holds the next build's number"), but fatal for the
+marketing version, because deployit bumps `VERSION` and then *immediately*
+archives — the first archive after a bump would ship the previous version.
 
-App Store note for whatever lands: an `.appex`'s short version must match its
-host app, so the sync must cover `ShareExtension-iOS` and `ShortcutsActions`,
-not just the app.
+**The fix that shipped: sync at *bump* time, not build time.** The marketing
+version only changes when semver bumps, and deployit always bumps before it
+archives. So a semver **pre-bump** hook
+(`.semver/hooks/pre-bump/sync-marketing-version.sh`) rewrites `MARKETING_VERSION`
+in both `project.yml` `settings.base` and regenerates both pbxprojs from the
+new version. Pre-bump fires before the `chore(release)` commit, and the hook
+`git add`s the four touched files, so the sync lands in that one commit and is
+covered by the version tag. No build-time script → the sandbox is irrelevant;
+no off-by-one → the bump completes before xcodebuild resolves settings.
+`MARKETING_VERSION` stays in `project.yml` because **deployit hard-fails if it
+can't parse it there** (`_read_marketing_version` → `fail(...)`), which also
+rules out moving the value into an xcconfig. Other options considered and
+rejected: `xcodebuild archive … MARKETING_VERSION=$(cat VERSION)` (clean in raw
+CI, but deployit builds its own invocation and exposes no setting override) and
+disabling `ENABLE_USER_SCRIPT_SANDBOXING` on the stamp targets (keeps a literal
+build phase but weakens the repo-wide posture).
+
+App Store note: an `.appex`'s short version must match its host app, so
+`MARKETING_VERSION` lives at the project (not target) level and the pbxproj
+regen covers `ShareExtension-iOS` and `ShortcutsActions` along with the app.
