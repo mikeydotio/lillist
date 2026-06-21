@@ -27,49 +27,16 @@ settings:
     # out of settings.base lets the xcconfig actually take effect —
     # project-level pbxproj settings outrank project xcconfig.
     #
-    # MARKETING_VERSION here is only the pre-stamp fallback (and what static
-    # tooling like deployit reads). The authoritative value is written into
-    # the built bundle at build time by the StampMarketingVersion template
-    # below, which reads the repo `VERSION` file (semver source of truth).
-    # Kept current so the fallback is never wildly stale.
-    MARKETING_VERSION: "0.8.5"
+    # MARKETING_VERSION mirrors the semver `VERSION` file (the Info.plist
+    # uses $(MARKETING_VERSION)). Keep it in lockstep with VERSION. A
+    # build-phase auto-stamp was attempted but a post-build script cannot
+    # write the product Info.plist under ENABLE_USER_SCRIPT_SANDBOXING at
+    # archive time (the plist lands in UninstalledProducts/, outside the
+    # script sandbox's writable roots → "Operation not permitted"). A
+    # sandbox-safe auto-sync is being researched; until then this is the
+    # single source for the built app's marketing version.
+    MARKETING_VERSION: "0.8.6"
     DEAD_CODE_STRIPPING: YES
-
-# Stamps the built bundle's CFBundleShortVersionString from the repo's
-# semver `VERSION` file at build time, so the installed app's marketing
-# version always tracks semver without hand-editing MARKETING_VERSION.
-# Applied to the app AND both embedded extensions — App Store validation
-# requires an extension's short version to match its host app. Runs as a
-# post-build phase (after Process Info.plist) and patches the product's
-# own Info.plist in place. `inputFiles` declares VERSION so the script
-# sandbox (ENABLE_USER_SCRIPT_SANDBOXING) grants read access.
-targetTemplates:
-  StampMarketingVersion:
-    postBuildScripts:
-      - name: Stamp marketing version from semver VERSION
-        # Patches the product's already-processed Info.plist in place, so it
-        # must NOT declare that plist as an output (that collides with
-        # Xcode's own "Process Info.plist" task — "multiple commands
-        # produce"). No outputs + basedOnDependencyAnalysis:false means it
-        # runs every build, which is what we want (version always current).
-        basedOnDependencyAnalysis: false
-        inputFiles:
-          - $(SRCROOT)/../../VERSION
-        script: |
-          set -euo pipefail
-          version_file="${SRCROOT}/../../VERSION"
-          if [ ! -f "$version_file" ]; then
-            echo "warning: VERSION not found at $version_file; leaving CFBundleShortVersionString unchanged"
-            exit 0
-          fi
-          marketing="$(sed 's/^v//' "$version_file" | tr -d '[:space:]')"
-          if [ -z "$marketing" ]; then
-            echo "warning: VERSION is empty; leaving CFBundleShortVersionString unchanged"
-            exit 0
-          fi
-          plist="${TARGET_BUILD_DIR}/${INFOPLIST_PATH}"
-          /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString ${marketing}" "$plist"
-          echo "note: stamped CFBundleShortVersionString=${marketing} into ${plist}"
 
 packages:
   LillistCore:
@@ -90,8 +57,6 @@ targets:
     type: application
     platform: iOS
     deploymentTarget: "26.0"
-    templates:
-      - StampMarketingVersion
     sources:
       - path: Sources
       - path: Resources
@@ -127,8 +92,6 @@ targets:
     type: app-extension
     platform: iOS
     deploymentTarget: "26.0"
-    templates:
-      - StampMarketingVersion
     sources:
       - path: ../../Extensions/ShareExtension-iOS
         excludes:
@@ -158,8 +121,6 @@ targets:
     type: app-extension
     platform: iOS
     deploymentTarget: "26.0"
-    templates:
-      - StampMarketingVersion
     sources:
       - path: ../../Extensions/ShortcutsActions
         excludes:

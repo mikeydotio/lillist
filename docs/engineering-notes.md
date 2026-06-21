@@ -3154,36 +3154,44 @@ are `liveSwapAllowed`-gated (skip under `swift test`, run in
 account, unlike the iCloudSync swap cases. The real full-wipe-including-iCloud
 path is a manual on-device check (CloudKit zone erase needs a signed-in account).
 
-## 2026-06-20 — Stamping `CFBundleShortVersionString` from the semver `VERSION` file in a build phase
+## 2026-06-20 — A post-build script that patches the product `Info.plist` cannot run under the script sandbox at *archive* time
 
-The marketing version is now driven by the repo `VERSION` file (semver source of
-truth) instead of a hand-edited `MARKETING_VERSION`. A `StampMarketingVersion`
-xcodegen `targetTemplate` (one per project.yml — `Apps/Lillist-iOS/project.yml`
-covers the app + both extensions, `Apps/project.yml` covers macOS) adds a
-`postBuildScripts` phase that `PlistBuddy`-sets `CFBundleShortVersionString` on
-the built bundle from `VERSION` (leading `v` stripped). The project-level
-`MARKETING_VERSION` is now only the pre-stamp fallback / what static tooling
-(deployit) reads, kept current but no longer authoritative.
+Goal: drive `CFBundleShortVersionString` from the repo `VERSION` file (semver
+source of truth) so the built app's marketing version always tracks semver. The
+obvious implementation — a `postBuildScripts` phase that `PlistBuddy`-sets the
+key on the built bundle — **works for `xcodebuild build` but fails `xcodebuild
+archive`**, which is the path that actually matters (deploy/TestFlight).
 
-Two non-obvious traps, both hit on the first build:
+The trap is build-vs-archive output redirection crossed with
+`ENABLE_USER_SCRIPT_SANDBOXING: YES` (set repo-wide in both project.yml
+`settings.base`):
 
-1. **Do NOT declare the built Info.plist as the script's `outputFiles`.** It
-   reads naturally — "the script produces the patched plist" — but Xcode's own
-   `ProcessInfoPlistFile` task already declares that exact path as its output, so
-   declaring it again yields `error: Multiple commands produce '.../Info.plist'`.
-   A post-build script that patches an existing product file **in place** must
-   declare *no* output for it. Pair that with `basedOnDependencyAnalysis: false`
-   so it still runs every build (Xcode's "will run during every build" *note* is
-   expected, not a warning — `*_TREAT_WARNINGS_AS_ERRORS` is compiler-only and
-   does not fail on it).
+- A normal **build** puts the product at `BUILT_PRODUCTS_DIR` (==
+  `TARGET_BUILD_DIR`), which is a writable script-sandbox root — so the
+  PlistBuddy write succeeds. (Verified: a simulator build stamped `0.8.5` into
+  the app + both `.appex`es.)
+- An **archive** redirects the product to
+  `…/ArchiveIntermediates/<scheme>/IntermediateBuildFilesPath/UninstalledProducts/iphoneos/…`,
+  which is **outside** the script sandbox's writable roots. The exact failure:
+  `Set: Entry, ":CFBundleShortVersionString", Does Not Exist` followed by
+  `Error Opening Destination: …/UninstalledProducts/…/Info.plist [Operation not
+  permitted]` → `Command PhaseScriptExecution failed`.
 
-2. **`ENABLE_USER_SCRIPT_SANDBOXING: YES` only gates *reads*, not writes to the
-   build dir.** Reading `$(SRCROOT)/../../VERSION` (iOS) / `$(SRCROOT)/../VERSION`
-   (macOS) needs the file declared in `inputFiles` or the sandbox denies it.
-   Writing the patched plist under `${TARGET_BUILD_DIR}` needs nothing extra —
-   the product dir is already a writable sandbox root.
+You cannot declare the plist as the script's `outputFiles` to widen the sandbox:
+Xcode's own `ProcessInfoPlistFile` task already declares that exact path as its
+output, so a second declaration yields `error: Multiple commands produce
+'.../Info.plist'`. (Separately: `inputFiles` *is* needed for the script to
+*read* `$(SRCROOT)/../../VERSION` under the sandbox.) So the in-place-patch idea
+is a dead end while sandboxing stays on.
 
-App Store note: extensions must stamp too (an `.appex`'s short version must match
-its host), which is why the iOS template is applied to `ShareExtension-iOS` and
-`ShortcutsActions` as well as the app. Verified post-build: app + both
-`.appex`es read `0.8.5` (build 57).
+**Interim state:** the build phase was removed; `MARKETING_VERSION` is set
+directly in both project.yml `settings.base` (the Info.plist already uses
+`$(MARKETING_VERSION)`) and must be kept in lockstep with `VERSION`. A
+sandbox-safe way to *auto*-sync it at archive time (e.g. an Archive **pre-action**
+— which runs outside the sandbox, like the existing `bump-build-number.sh` —
+writing a generated xcconfig, or a semver post-bump hook) is being researched;
+this entry will be updated with the chosen mechanism.
+
+App Store note for whatever lands: an `.appex`'s short version must match its
+host app, so the sync must cover `ShareExtension-iOS` and `ShortcutsActions`,
+not just the app.

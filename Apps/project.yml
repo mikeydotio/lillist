@@ -23,46 +23,11 @@ settings:
     ENABLE_HARDENED_RUNTIME: YES
     DEAD_CODE_STRIPPING: YES
     GENERATE_INFOPLIST_FILE: NO
-    # Pre-stamp fallback only. The authoritative marketing version is
-    # written into the built bundle at build time by the
-    # StampMarketingVersion template (reads the repo `VERSION` file, the
-    # semver source of truth). Kept current so the fallback isn't stale.
-    MARKETING_VERSION: "0.8.5"
-
-# Stamps the built bundle's CFBundleShortVersionString from the repo's
-# semver `VERSION` file at build time, so the installed app's marketing
-# version always tracks semver without hand-editing MARKETING_VERSION.
-# Runs as a post-build phase (after Process Info.plist) and patches the
-# product's own Info.plist in place. `inputFiles` declares VERSION so the
-# script sandbox grants read access. NB: this spec's SRCROOT is `Apps/`,
-# so VERSION is one level up (`../VERSION`), unlike the iOS spec.
-targetTemplates:
-  StampMarketingVersion:
-    postBuildScripts:
-      - name: Stamp marketing version from semver VERSION
-        # Patches the product's already-processed Info.plist in place, so it
-        # must NOT declare that plist as an output (that collides with
-        # Xcode's own "Process Info.plist" task — "multiple commands
-        # produce"). No outputs + basedOnDependencyAnalysis:false means it
-        # runs every build, which is what we want (version always current).
-        basedOnDependencyAnalysis: false
-        inputFiles:
-          - $(SRCROOT)/../VERSION
-        script: |
-          set -euo pipefail
-          version_file="${SRCROOT}/../VERSION"
-          if [ ! -f "$version_file" ]; then
-            echo "warning: VERSION not found at $version_file; leaving CFBundleShortVersionString unchanged"
-            exit 0
-          fi
-          marketing="$(sed 's/^v//' "$version_file" | tr -d '[:space:]')"
-          if [ -z "$marketing" ]; then
-            echo "warning: VERSION is empty; leaving CFBundleShortVersionString unchanged"
-            exit 0
-          fi
-          plist="${TARGET_BUILD_DIR}/${INFOPLIST_PATH}"
-          /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString ${marketing}" "$plist"
-          echo "note: stamped CFBundleShortVersionString=${marketing} into ${plist}"
+    # Mirrors the semver `VERSION` file; the Info.plist uses
+    # $(MARKETING_VERSION). Keep in lockstep with VERSION (see the note in
+    # Apps/Lillist-iOS/project.yml about the sandboxed build-phase stamp
+    # that couldn't run at archive time).
+    MARKETING_VERSION: "0.8.6"
 
 packages:
   LillistCore:
@@ -78,8 +43,6 @@ targets:
     type: application
     platform: macOS
     deploymentTarget: "15.0"
-    templates:
-      - StampMarketingVersion
     sources:
       - path: Lillist-macOS/Sources
       - path: Lillist-macOS/Resources
