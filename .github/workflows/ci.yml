@@ -238,10 +238,25 @@ jobs:
       - name: Run LillistUI localization extraction-drift lint
         run: ./Tools/CI/check-lillistui-localization.sh
 
+  secrets-guard:
+    # Fails the run if a literal Apple Developer Team ID ever lands in a
+    # committed pbxproj/xcconfig. Two Team IDs leaked this way before the
+    # repo went public (xcodegen/Xcode mirror the resolved DEVELOPMENT_TEAM
+    # into the project file); this gate keeps the $(LOCAL_DEVELOPMENT_TEAM)
+    # indirection honest. Cheap, no toolchain needed.
+    name: Secrets guard (no literal Team ID)
+    runs-on: macos-15
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check for literal Team ID in tracked config/project files
+        run: ./Tools/CI/check-no-team-id.sh
+
   notify:
     name: Notify on failure
     runs-on: macos-15
-    needs: [spm, project-drift, ios, macos, release-archive-smoke, localization-lint]
+    needs: [spm, project-drift, ios, macos, release-archive-smoke, localization-lint, secrets-guard]
     if: failure()
     steps:
       - name: Mark the run failed
