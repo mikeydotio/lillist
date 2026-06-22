@@ -2,12 +2,14 @@
 # sync-marketing-version.sh — keep the apps' MARKETING_VERSION in lockstep
 # with the semver VERSION file.
 #
-# Runs as a semver **pre-bump** hook (the plugin invokes every executable
-# `.semver/hooks/pre-bump/*.sh` with the bump context). Pre-bump fires
-# BEFORE the `chore(release)` commit, so the edits this script makes are
-# folded into that single commit (and covered by the version tag).
-#
-#   args: <phase> <bump_type> <old_version> <new_version> <project_dir>
+# Runs as a semver **pre-bump** hook. The plugin's run-user-hooks.sh
+# invokes every executable `.semver/hooks/pre-bump/*.sh` and passes the
+# bump context via **environment variables** (NOT positional args):
+# `NEW_VERSION`, `OLD_VERSION`, `BUMP_TYPE`. It does not pass the project
+# root, so we derive it from this script's own location. Pre-bump fires
+# BEFORE the `chore(release)` commit and the bump runs `git add -A`
+# (deployit passes `--dirty-action include`), so the edits this script
+# makes are folded into that single commit and covered by the version tag.
 #
 # Why a bump hook and not a build-phase script or an Archive pre-action:
 #   - A post-build script can't write the product Info.plist under
@@ -27,11 +29,16 @@
 
 set -euo pipefail
 
-NEW_VERSION="${4:-}"
-PROJECT_DIR="${5:-}"
+# Context comes from the env (set by run-user-hooks.sh).
+NEW_VERSION="${NEW_VERSION:-}"
 
-if [ -z "$NEW_VERSION" ] || [ -z "$PROJECT_DIR" ]; then
-    echo "sync-marketing-version: missing new_version/project_dir args — skipping" >&2
+# The runner doesn't pass the project root and doesn't cd into it, so
+# derive it from this script's path: .semver/hooks/pre-bump/<this> → ../../..
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_DIR="$(cd "$SCRIPT_DIR/../../.." && pwd)"
+
+if [ -z "$NEW_VERSION" ]; then
+    echo "sync-marketing-version: NEW_VERSION not set — skipping" >&2
     exit 0
 fi
 
