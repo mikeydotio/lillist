@@ -3,6 +3,20 @@
 All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [v0.8.7] - 2026-06-21
+
+### Fixed
+- pin MARKETING_VERSION to 0.8.6; drop sandbox-incompatible stamp phase (ee4a32d)
+
+### Changed
+- restore original Tasks toolbar chip size (308a605)
+
+### Maintenance
+- auto-sync MARKETING_VERSION with semver via pre-bump hook (cd640e4)
+- bump iOS build number to 58 (1db01eb)
+
+_[force]_
+
 ## [v0.8.6] - 2026-06-20
 
 ### Added
