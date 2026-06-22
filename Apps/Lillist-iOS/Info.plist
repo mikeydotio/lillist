@@ -61,5 +61,7 @@
     </array>
     <key>ITSAppUsesNonExemptEncryption</key>
     <false/>
+    <key>LillistContactEmail</key>
+    <string>$(LILLIST_CONTACT_EMAIL)</string>
 </dict>
 </plist>

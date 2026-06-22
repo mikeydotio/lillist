@@ -10,9 +10,14 @@ struct CrashReportingSection: View {
     var body: some View {
         Section("Crash reporting") {
             Toggle("Show prompt after Lillist quits unexpectedly", isOn: $prefs.crashPromptsEnabled)
-            Text("Reports go directly to Mikey via email. No third-party telemetry.")
-                .font(.footnote)
-                .foregroundStyle(.secondary)
+            // Only advertise the email destination when a contact address is
+            // configured for this build; an unconfigured fork has nowhere to
+            // send, so the line is hidden.
+            if LillistCoreContact.hasCrashReportRecipient {
+                Text("Reports go directly to Mikey via email. No third-party telemetry.")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+            }
             if prefs.crashPromptsEnabled {
                 DisclosureGroup("View what would be sent", isExpanded: $showSample) {
                     Text(samplePreview)

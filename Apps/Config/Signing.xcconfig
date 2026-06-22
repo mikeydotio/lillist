@@ -10,6 +10,10 @@
 //
 // New contributors: see Apps/Config/Signing.local.xcconfig.example.
 
+// Public distribution defaults (contact email, Sparkle feed). Included
+// BEFORE the local override file so a per-machine `LOCAL_*` value wins.
+#include "Distribution.xcconfig"
+
 #include? "Signing.local.xcconfig"
 // BuildNumber.xcconfig is tracked in git and incremented on every
 // Archive by Tools/Deploy/bump-build-number.sh. xcconfig precedence
@@ -17,3 +21,9 @@
 #include "BuildNumber.xcconfig"
 
 DEVELOPMENT_TEAM = $(LOCAL_DEVELOPMENT_TEAM)
+
+// Resolved distribution values, fed into the Info.plists via
+// $(LILLIST_CONTACT_EMAIL) and $(SU_FEED_URL). Defaults live in
+// Distribution.xcconfig; per-machine overrides in Signing.local.xcconfig.
+LILLIST_CONTACT_EMAIL = $(LOCAL_CONTACT_EMAIL)
+SU_FEED_URL = $(LOCAL_SU_FEED_URL)

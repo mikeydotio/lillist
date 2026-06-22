@@ -238,7 +238,8 @@ final class MacOSScreenTourTests: RecordableSnapshotTestCase {
             model: model,
             buildVersion: "1.0 (42)",
             osVersion: "macOS 26.2",
-            deviceModel: "MacBookPro18,2"
+            deviceModel: "MacBookPro18,2",
+            contactRecipient: "reports@example.com"
         )
         .frame(width: 520, height: 640)
         assertScreen(

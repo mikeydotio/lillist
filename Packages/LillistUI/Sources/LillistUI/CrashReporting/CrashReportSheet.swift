@@ -11,6 +11,13 @@ public struct CrashReportSheet: View {
     public let osVersion: String
     public let deviceModel: String
 
+    /// Address crash reports are emailed to. Injected (defaulting to the
+    /// resolved `LillistCoreContact.crashReportRecipient`) so snapshot
+    /// tests render a deterministic, non-personal value and so the
+    /// unconfigured ("") state can be exercised. Empty hides the
+    /// recipient line.
+    public let contactRecipient: String
+
     @State private var showingPreview = false
     @State private var showingLogsPreview = false
     @State private var showingBreadcrumbsPreview = false
@@ -21,12 +28,14 @@ public struct CrashReportSheet: View {
         model: CrashReportViewModel,
         buildVersion: String,
         osVersion: String,
-        deviceModel: String
+        deviceModel: String,
+        contactRecipient: String = LillistCoreContact.crashReportRecipient
     ) {
         self.model = model
         self.buildVersion = buildVersion
         self.osVersion = osVersion
         self.deviceModel = deviceModel
+        self.contactRecipient = contactRecipient
     }
 
     public var body: some View {
@@ -107,15 +116,24 @@ public struct CrashReportSheet: View {
                     }
                 }
                 Section {
-                    // Embed the email as an explicit markdown link so the
-                    // address renders as a clickable mailto. SwiftUI's
-                    // automatic data-detection only links bare URLs/emails
-                    // when the LocalizedStringKey is a compile-time literal;
-                    // interpolated values are rendered as plain text, so
-                    // we spell the link out to preserve the affordance.
-                    Text("Reports go directly to Mikey ([\(LillistCoreContact.crashReportRecipient)](mailto:\(LillistCoreContact.crashReportRecipient))). No third-party telemetry.")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                    if contactRecipient.isEmpty {
+                        // No contact configured for this build (e.g. a fork
+                        // that hasn't set LILLIST_CONTACT_EMAIL). Keep the
+                        // privacy reassurance but omit the broken mailto.
+                        Text("No third-party telemetry.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    } else {
+                        // Embed the email as an explicit markdown link so the
+                        // address renders as a clickable mailto. SwiftUI's
+                        // automatic data-detection only links bare URLs/emails
+                        // when the LocalizedStringKey is a compile-time literal;
+                        // interpolated values are rendered as plain text, so
+                        // we spell the link out to preserve the affordance.
+                        Text("Reports go directly to Mikey ([\(contactRecipient)](mailto:\(contactRecipient))). No third-party telemetry.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
                 }
             }
             .toggleStyle(.rainbow)

@@ -35,7 +35,7 @@ public enum CrashReportSample {
         Build: \(env.buildVersion)
         OS: \(env.osVersion)
         Device: \(env.deviceModel)
-        Sent to: \(env.recipient)
+        Sent to: \(env.recipient.isEmpty ? "(not configured)" : env.recipient)
         Method: \(env.methodSuffix)
         """
     }

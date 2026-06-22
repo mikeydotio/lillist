@@ -49,8 +49,10 @@
     </array>
     <key>ITSAppUsesNonExemptEncryption</key>
     <false/>
+    <key>LillistContactEmail</key>
+    <string>$(LILLIST_CONTACT_EMAIL)</string>
     <key>SUFeedURL</key>
-    <string>https://updates.example.com/deployit/p/io.mikeydotio.Lillist/macos/appcast.xml</string>
+    <string>$(SU_FEED_URL)</string>
     <key>SUPublicEDKey</key>
     <string>GD8ch7WlXhDlTYHHV5fkeusEX3vj26mLGUM+ghp1j5U=</string>
     <key>SUEnableAutomaticChecks</key>

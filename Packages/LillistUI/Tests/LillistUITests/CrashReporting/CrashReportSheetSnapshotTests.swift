@@ -33,22 +33,22 @@ final class CrashReportSheetSnapshotTests: RecordableSnapshotTestCase {
     }
 
     func test_light_emptyDescription() {
-        let view = CrashReportSheet(model: makeModel(), buildVersion: "1.0 (1)", osVersion: "macOS 15", deviceModel: "Mac")
+        let view = CrashReportSheet(model: makeModel(), buildVersion: "1.0 (1)", osVersion: "macOS 15", deviceModel: "Mac", contactRecipient: "reports@example.com")
         assertSnapshot(of: host(view, colorScheme: .light), as: .image(size: CGSize(width: 480, height: 640)))
     }
 
     func test_dark_emptyDescription() {
-        let view = CrashReportSheet(model: makeModel(), buildVersion: "1.0 (1)", osVersion: "macOS 15", deviceModel: "Mac")
+        let view = CrashReportSheet(model: makeModel(), buildVersion: "1.0 (1)", osVersion: "macOS 15", deviceModel: "Mac", contactRecipient: "reports@example.com")
         assertSnapshot(of: host(view, colorScheme: .dark), as: .image(size: CGSize(width: 480, height: 640)))
     }
 
     func test_light_filledDescription() {
-        let view = CrashReportSheet(model: makeModel(description: "I was reorganizing tags."), buildVersion: "1.0 (1)", osVersion: "macOS 15", deviceModel: "Mac")
+        let view = CrashReportSheet(model: makeModel(description: "I was reorganizing tags."), buildVersion: "1.0 (1)", osVersion: "macOS 15", deviceModel: "Mac", contactRecipient: "reports@example.com")
         assertSnapshot(of: host(view, colorScheme: .light), as: .image(size: CGSize(width: 480, height: 640)))
     }
 
     func test_dark_filledDescription() {
-        let view = CrashReportSheet(model: makeModel(description: "I was reorganizing tags."), buildVersion: "1.0 (1)", osVersion: "macOS 15", deviceModel: "Mac")
+        let view = CrashReportSheet(model: makeModel(description: "I was reorganizing tags."), buildVersion: "1.0 (1)", osVersion: "macOS 15", deviceModel: "Mac", contactRecipient: "reports@example.com")
         assertSnapshot(of: host(view, colorScheme: .dark), as: .image(size: CGSize(width: 480, height: 640)))
     }
 

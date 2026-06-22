@@ -1,0 +1,29 @@
+// Distribution defaults. Committed.
+//
+// Public-facing default values for settings that would otherwise bake a
+// personal address or private infrastructure host into the repository.
+// Each is exposed through a `LOCAL_*` indirection variable (mirroring
+// `Signing.xcconfig`'s `$(LOCAL_DEVELOPMENT_TEAM)` pattern) so a
+// maintainer's gitignored `Signing.local.xcconfig` can override it for
+// their own builds without committing anything.
+//
+// `Signing.xcconfig` includes THIS file first, then `#include?`s the
+// local override file, so a value set locally wins over these defaults.
+
+// Crash-report contact address surfaced in the app + CLI. Empty by
+// default so the public build ships no personal address; the app treats
+// empty as "no contact configured" and hides the recipient affordances.
+// Maintainer override: set LOCAL_CONTACT_EMAIL in Signing.local.xcconfig.
+LOCAL_CONTACT_EMAIL =
+
+// xcconfig treats `//` as a comment delimiter even mid-value, which
+// truncates any URL at its scheme. Build the `//` from this single-slash
+// variable so no literal `//` ever appears in source. Used for URL
+// settings below and in Signing.local.xcconfig overrides.
+SLASH = /
+
+// Sparkle auto-update appcast feed (macOS only). Defaults to a GitHub
+// Releases-hosted appcast; publish a signed appcast.xml there to enable
+// end-user auto-update. Maintainer override (e.g. a privately-served
+// feed): set LOCAL_SU_FEED_URL in Signing.local.xcconfig (using $(SLASH)).
+LOCAL_SU_FEED_URL = https:$(SLASH)$(SLASH)github.com/mikeydotio/lillist/releases/latest/download/appcast.xml
