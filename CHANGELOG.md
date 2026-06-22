@@ -3,6 +3,23 @@
 All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [v0.8.8] - 2026-06-22
+
+### Fixed
+- pre-bump hook reads NEW_VERSION env + derives repo root (4af43f16)
+
+### Changed
+- resolve crash-report email + Sparkle feed from build config (e909b1d5)
+
+### Documentation
+- add MIT LICENSE, third-party attributions, and README (8d145b0e)
+
+### Maintenance
+- guard against literal Team IDs in committed project files (09c1cf49)
+- bump iOS build number to 59 (35bbe7e4)
+
+_[force]_
+
 ## [v0.8.7] - 2026-06-21
 
 ### Fixed
