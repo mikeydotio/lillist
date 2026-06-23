@@ -3245,3 +3245,51 @@ XCUITest screenshot harness, related: `Lillist-macOSUITests` needs a *signed*
 host app, so it relies on this login-keychain signing path; it runs on a
 signed Mac (developer-mode enabled for the test runner), not in CI. See
 `docs/reviews/2026-06-23-macos-visual-design-pass.md`.
+
+## 2026-06-23 — `xcodebuild -exportArchive` re-stamps the iCloud environment; the entitlements file is not enough (RCA: secondary-Mac sync partialFailure)
+
+**Symptom.** Enabling iCloud sync on a *second* Mac and choosing "Replace this
+device with iCloud data" failed with `Sync failed: The operation couldn't be
+completed. (CKErrorDomain error 2.)` — `CKError.partialFailure`. Nothing synced
+between the Mac and the (working) iPhone.
+
+**Root cause — the entitlement was right in source and wrong in the binary.**
+`Apps/Lillist-macOS/Lillist.entitlements` correctly declares
+`com.apple.developer.icloud-container-environment = Development` (the
+load-bearing override that is *supposed* to keep the Developer-ID macOS test
+build on the same Development database as the Development-signed iOS build).
+But `codesign -d --entitlements :- Lillist.app` on the **shipped** build showed
+`Production`. The reason: `xcodebuild -exportArchive` **re-stamps** that
+entitlement from the export options' `iCloudContainerEnvironment` key, and for a
+`developer-id` export the default *when the key is absent* is **Production** —
+overwriting whatever the source `.entitlements` says. deployit's bundled
+`assets/ExportOptions.macos.plist` set only `method`/`signingStyle`, so every
+`/deployit` macOS build silently exported onto Production.
+
+Production has **no deployed CloudKit schema** (the Development→Production
+cutover is deferred, and `NSPersistentCloudKitContainer` only auto-creates the
+schema in *Development*). So the only device that ever wrote successfully was the
+iOS build (Development); the Macs were all pointed at an empty, schema-less
+Production container. The first "replace local with iCloud" import against it
+failed per-record → `partialFailure`.
+
+**Two-layer lesson:**
+
+1. **The `.entitlements` value is necessary but not sufficient.** Whenever a
+   CloudKit app is distributed by *export* (Developer-ID, Ad-Hoc, App Store),
+   the final `icloud-container-environment` comes from the **ExportOptions
+   plist**, not the source entitlement. Verify the *signed binary*, never the
+   source file: `codesign -d --entitlements :- <app> | plutil -p - | grep
+   icloud-container-environment`.
+2. **Fix lives in deployit's export ladder.** Added
+   `.deployit/ExportOptions.macos.plist` (project-local; deployit prefers it
+   over its bundled default) mirroring the developer-id default plus
+   `iCloudContainerEnvironment = Development`. iOS is unaffected — its export
+   uses `method = development`, which follows the development profile onto
+   Development already. At the production cutover, flip this file to Production.
+
+**Secondary defect surfaced + fixed in the same pass.** The partialFailure was
+undiagnosable because `CloudKitErrorClassifier` had no `.partialFailure` case
+(collapsed to the opaque top-level description) and `CloudKitEventBridge` never
+logged the raw error. Both now unwrap/log `CKPartialErrorsByItemIDKey` per item.
+That logging is what let us read the per-item codes off the device.

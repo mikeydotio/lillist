@@ -326,6 +326,19 @@ be forced to Production; a dev provisioning profile only carries
   Development` — the latter is the load-bearing override that pulls the
   Developer-ID build onto Development (honored for non-App-Store
   distribution). Without it, macOS lands on Production and diverges.
+- **⚠️ The entitlements value is NOT sufficient for exported builds.**
+  `xcodebuild -exportArchive` re-stamps `icloud-container-environment` from
+  the **ExportOptions plist** `iCloudContainerEnvironment` key, and a
+  `developer-id` export defaults it to **Production** when the key is absent —
+  silently overwriting the `Development` source entitlement. `/deployit` macOS
+  builds therefore read `Production` from the signed binary unless told
+  otherwise. Fixed by `.deployit/ExportOptions.macos.plist` (project-local;
+  deployit prefers it over its bundled default), which pins
+  `iCloudContainerEnvironment = Development`. **Always verify the *signed
+  binary*, not the source file:** `codesign -d --entitlements :- <app> |
+  plutil -p - | grep icloud-container-environment`. (iOS is unaffected — its
+  `method = development` export follows the development profile onto
+  Development.) See engineering-notes 2026-06-23.
 - `NSPersistentCloudKitContainer` requires the Push entitlement
   (`aps-environment`) to establish its sync subscription — both targets
   must carry it.
@@ -346,7 +359,10 @@ that always reported "synced just now" survives only for previews/tours.)
 Console and **Deploy Schema Changes** (Development → Production); move iOS
 testing to TestFlight (Production); for the App Store build drop the
 `icloud-container-environment` override (App Store = Production
-automatically) or set it to `Production` for Developer-ID.
+automatically) or set it to `Production` for Developer-ID — and flip
+`.deployit/ExportOptions.macos.plist`'s `iCloudContainerEnvironment` to
+`Production` (the entitlements value alone won't carry through export; see
+above).
 
 ## Deploy (iOS test builds)
 
