@@ -107,7 +107,19 @@ struct LillistApp: App {
     private func loadEnvironmentIfNeeded() async {
         guard environment == nil, loadError == nil else { return }
         do {
+            if ProcessInfo.processInfo.arguments.contains("--ui-test-reset-store") {
+                await Self.uiTestResetState()
+            }
             let env = try await AppEnvironment.make()
+            // UI-test seam: install the default filters + seed demo content
+            // BEFORE the first render. `SidebarView` refreshes once via
+            // `.task { refresh() }` and does not re-query on later writes, so
+            // populating the stores after `environment = env` would leave the
+            // sidebar empty until relaunch (see the first-launch note below).
+            if ProcessInfo.processInfo.arguments.contains("--ui-test-seed-demo") {
+                try? await env.defaultsInstaller.installIfNeeded()
+                await Self.uiTestSeedDemo(env)
+            }
             environment = env
             appDelegate.environment = env
             appDelegate.bootstrap()
@@ -123,8 +135,100 @@ struct LillistApp: App {
             if let prefs = try? await env.preferencesStore.read() {
                 statusBarItemVisible = prefs.statusBarItemVisible
             }
+            // UI-test seam: present the global quick-capture panel. The real
+            // ⌃⌥Space hotkey is a CGEvent monitor XCUITest can't synthesize,
+            // so the test asks for the panel directly. The panel is created
+            // in `appDelegate.bootstrap()` above.
+            if ProcessInfo.processInfo.arguments.contains("--ui-test-show-quick-capture") {
+                appDelegate.quickCapturePanel?.toggle()
+            }
         } catch {
             loadError = "\(error)"
+        }
+    }
+
+    // MARK: - UI-test seams
+    //
+    // Mirror the iOS app's launch-argument hooks (see the iOS `LillistApp`).
+    // Each is gated on an explicit `--ui-test-*` argument that production
+    // launches never pass, so these paths are inert outside XCUITest. They
+    // let `Lillist-macOSUITests` drive the real `AppEnvironment` against a
+    // known-clean, deterministically-seeded store and capture screenshots of
+    // live (glass-rendered) surfaces — the only way to verify macOS glass,
+    // which is not offscreen-snapshottable.
+
+    /// Wipe the on-disk store + App Group defaults and pre-mark onboarding
+    /// complete in LocalOnly mode, so a UI-test run starts from a known
+    /// state without an iCloud account. Invoked only under
+    /// `--ui-test-reset-store`. Production code paths never call this.
+    private static func uiTestResetState() async {
+        let fm = FileManager.default
+        if let group = fm.containerURL(
+            forSecurityApplicationGroupIdentifier: AppEnvironment.appGroupID
+        ) {
+            try? fm.removeItem(at: group.appendingPathComponent("Lillist", isDirectory: true))
+            try? fm.removeItem(at: group.appendingPathComponent("launch.canary"))
+        }
+        if let appSupport = try? fm.url(
+            for: .applicationSupportDirectory,
+            in: .userDomainMask,
+            appropriateFor: nil,
+            create: false
+        ) {
+            try? fm.removeItem(at: appSupport.appendingPathComponent("Lillist", isDirectory: true))
+        }
+        if let groupDefaults = UserDefaults(suiteName: AppEnvironment.appGroupID) {
+            groupDefaults.removePersistentDomain(forName: AppEnvironment.appGroupID)
+            groupDefaults.synchronize()
+        }
+        // Per-machine UI state lives in UserDefaults.standard (see
+        // UIStatePersistence + RootSplitView's @SceneStorage). Clear it so a
+        // fresh run starts with no remembered sidebar selection, sort,
+        // expansion, or column visibility.
+        let standard = UserDefaults.standard
+        for key in [
+            "lillist.ui.columnVisibility",
+            "lillist.ui.sidebarSelection",
+            "lillist.ui.expandedTagIDs",
+            "lillist.ui.sortPerSource",
+            "lillist.ui.taskSelection",
+        ] {
+            standard.removeObject(forKey: key)
+        }
+        await DevicePreferencesStore(appGroupID: AppEnvironment.appGroupID)
+            .setHasCompletedOnboarding(true)
+        await SyncModeStore(appGroupID: AppEnvironment.appGroupID).setMode(.localOnly)
+        UserDefaults(suiteName: AppEnvironment.appGroupID)?.synchronize()
+    }
+
+    /// Seed deterministic demo content (tasks spanning every status, two
+    /// tags, one subtask) so screenshots aren't empty. Invoked only under
+    /// `--ui-test-seed-demo` (paired with `--ui-test-reset-store`). The
+    /// default smart filters are installed separately by
+    /// `defaultsInstaller.installIfNeeded()`.
+    private static func uiTestSeedDemo(_ env: AppEnvironment) async {
+        do {
+            let work = try await env.tagStore.findOrCreate(name: "Work", tintColor: "#2E90FA")
+            let home = try await env.tagStore.findOrCreate(name: "Home", tintColor: "#34C25A")
+
+            let roadmap = try await env.taskStore.create(title: "Draft Q3 roadmap")
+            try await env.taskStore.assignTag(taskID: roadmap, tagID: work)
+
+            let review = try await env.taskStore.create(title: "Review pull requests")
+            try await env.taskStore.assignTag(taskID: review, tagID: work)
+            try await env.taskStore.transition(id: review, to: .started)
+
+            let signoff = try await env.taskStore.create(title: "Waiting on design sign-off")
+            try await env.taskStore.transition(id: signoff, to: .blocked)
+
+            let dentist = try await env.taskStore.create(title: "Book dentist appointment")
+            try await env.taskStore.assignTag(taskID: dentist, tagID: home)
+
+            let passport = try await env.taskStore.create(title: "Renew passport")
+            _ = try await env.taskStore.create(title: "Gather supporting documents", parent: passport)
+            try await env.taskStore.transition(id: passport, to: .closed)
+        } catch {
+            // Best-effort seed; never block launch on a seeding failure.
         }
     }
 }
@@ -195,6 +299,18 @@ private struct OnboardingPresentationModifier: ViewModifier {
     }
 
     private func evaluate() async {
+        // UI-test seam: force the onboarding sheet up so it can be captured,
+        // regardless of stored completion state (the reset seam marks
+        // onboarding complete, which would otherwise suppress it).
+        if ProcessInfo.processInfo.arguments.contains("--ui-test-force-onboarding") {
+            showOnboarding = true
+            return
+        }
+        // UI-test seam: keep onboarding / iCloud-unavailable / recovery
+        // sheets down so the test sees the bare main window. Mirrors iOS.
+        if ProcessInfo.processInfo.arguments.contains("--ui-test-bypass-gates") {
+            return
+        }
         let journal = try? environment.migrationJournalStore.read()
         if let journal, journal.isInFlight {
             // Only offer recovery for a *stale* (crashed) migration. A

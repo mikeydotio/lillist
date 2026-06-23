@@ -49,5 +49,7 @@ struct InlineCreateField: View {
                 ? String(localized: "Empty")
                 : String(localized: "Not empty")
             )
+            // Stable hook for Lillist-macOSUITests' inline-create capture.
+            .accessibilityIdentifier("InlineCreateField")
     }
 }

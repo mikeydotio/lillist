@@ -56,6 +56,7 @@
 		883E82B069F58DB56B18C7C4 /* LillistUI in Frameworks */ = {isa = PBXBuildFile; productRef = FE69D0E9A4ADB1CDB38E1E3A /* LillistUI */; };
 		947D4EE0DFF95B690ABADDF4 /* RootSplitView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5FF6CA37C3301C81C8947230 /* RootSplitView.swift */; };
 		9674C4C2BAEC11A6B734FB61 /* PreferencesWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = BC4034CAF7C667207F94C76D /* PreferencesWindow.swift */; };
+		9E32C4BE2538D58BE8D8198B /* MacUITestHelpers.swift in Sources */ = {isa = PBXBuildFile; fileRef = 53F56A79C23B659817325F12 /* MacUITestHelpers.swift */; };
 		A07F1FC798E9F823475074FE /* ICloudSyncPane.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9C2910A714C814F69236C7B4 /* ICloudSyncPane.swift */; };
 		A6252DAED612CEFA721DAC35 /* PinnedSidebarIntegrationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D86C5C049217ECDE9095EF97 /* PinnedSidebarIntegrationTests.swift */; };
 		B02E809B71858F1620968554 /* UIStatePersistence.swift in Sources */ = {isa = PBXBuildFile; fileRef = 996D14F2AE9898FB76C7696C /* UIStatePersistence.swift */; };
@@ -68,6 +69,7 @@
 		BDA1E09753034DE2322D998A /* InlineCreateInteractionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6BF3D37E4FFA35138008C7ED /* InlineCreateInteractionTests.swift */; };
 		C439B581B7310C39C9F78C8B /* NotificationsPane.swift in Sources */ = {isa = PBXBuildFile; fileRef = F9E0C4B2D659722AE215A0B8 /* NotificationsPane.swift */; };
 		C6D19521CA3CF9D9C2A61033 /* TaskOutlineNode.swift in Sources */ = {isa = PBXBuildFile; fileRef = A11533C6477F2D2A981B7E22 /* TaskOutlineNode.swift */; };
+		C87131450D2D807894534D17 /* AppIntents.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = ECE3A50348E57FE59F4366B8 /* AppIntents.framework */; };
 		CA6F82635F86657E263F03BF /* HotkeyRecorder.swift in Sources */ = {isa = PBXBuildFile; fileRef = D2F709C6BFFCBE01EB7EB243 /* HotkeyRecorder.swift */; };
 		CA72CD557640E542667EC411 /* HotkeyRecorderConflictTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 180C19E87D24FC9E1EB9260D /* HotkeyRecorderConflictTests.swift */; };
 		CAC72FCE791BC811B15696DB /* InlineCreateField.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF7781804345711C5D1DFA6D /* InlineCreateField.swift */; };
@@ -84,6 +86,7 @@
 		DF65220C38BF4C4E60FAA0D0 /* EditorOpenDecision.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A53E5AF3D478A947E6F11DD /* EditorOpenDecision.swift */; };
 		E36FA06746569B45811C186D /* TaskListSortControl.swift in Sources */ = {isa = PBXBuildFile; fileRef = 38BC4169CE094018D5BEA0BD /* TaskListSortControl.swift */; };
 		E3B2DBE7E86F28A40968F08C /* QuickCapturePlacementMath.swift in Sources */ = {isa = PBXBuildFile; fileRef = 714EC7647AE061D0704C0E76 /* QuickCapturePlacementMath.swift */; };
+		E7800CD964C5DBB6849AABF4 /* ScreenshotTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 027E7F928E258B978DA55AB6 /* ScreenshotTests.swift */; };
 		E844140043C9E82E250EE2FA /* SidebarSection.swift in Sources */ = {isa = PBXBuildFile; fileRef = 895660AD2C33EBCF965A577D /* SidebarSection.swift */; };
 		EC52B77A7309EF0911822A63 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 4FD0FFC71B48B70D0F2AFB67 /* Assets.xcassets */; };
 		F46A68730B52D3C00F76D896 /* InlineCreateField.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF7781804345711C5D1DFA6D /* InlineCreateField.swift */; };
@@ -91,7 +94,18 @@
 		FB019BA50063A5268118312E /* IndexingMappers.swift in Sources */ = {isa = PBXBuildFile; fileRef = 68AC792045721B50D4F72F3D /* IndexingMappers.swift */; };
 /* End PBXBuildFile section */
 
+/* Begin PBXContainerItemProxy section */
+		B561B27A9C27E5EBD427FF0B /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 97A6421094FD20B5F4217690 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 9A5124FFDB375540D83CD302;
+			remoteInfo = "Lillist-macOS";
+		};
+/* End PBXContainerItemProxy section */
+
 /* Begin PBXFileReference section */
+		027E7F928E258B978DA55AB6 /* ScreenshotTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScreenshotTests.swift; sourceTree = "<group>"; };
 		0914C02F19D5D32DBFCB3C8E /* TrashPane.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrashPane.swift; sourceTree = "<group>"; };
 		0ABBB27058E889BD296D6C36 /* Signing.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Signing.xcconfig; sourceTree = "<group>"; };
 		180C19E87D24FC9E1EB9260D /* HotkeyRecorderConflictTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HotkeyRecorderConflictTests.swift; sourceTree = "<group>"; };
@@ -113,6 +127,7 @@
 		4939196DF6130616743D37DC /* OnboardingSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingSheet.swift; sourceTree = "<group>"; };
 		49EEF4232B4EBF1F6D0305E3 /* OpenTaskEditorAction.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OpenTaskEditorAction.swift; sourceTree = "<group>"; };
 		4FD0FFC71B48B70D0F2AFB67 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		53F56A79C23B659817325F12 /* MacUITestHelpers.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacUITestHelpers.swift; sourceTree = "<group>"; };
 		5626826E4EED7EAAEDDED61E /* CommandNotificationObserverGuardTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CommandNotificationObserverGuardTests.swift; sourceTree = "<group>"; };
 		59867850C82C90EBDA587E7A /* TodayPopoverView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TodayPopoverView.swift; sourceTree = "<group>"; };
 		5BDE58C737A0E5123FA07D0F /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
@@ -143,6 +158,7 @@
 		AA226DA3844BBFC1DFFDA0CA /* FocusedListColumn.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FocusedListColumn.swift; sourceTree = "<group>"; };
 		B2B69FCA7EA5A0AEC03AC528 /* LillistApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LillistApp.swift; sourceTree = "<group>"; };
 		B5057D483C19CA7A01409954 /* PrivacyManifestComplianceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PrivacyManifestComplianceTests.swift; sourceTree = "<group>"; };
+		B6AFF2B4CC92DD5EC125A3BE /* Lillist-macOSUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "Lillist-macOSUITests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
 		B9EFCC8DD54B786D210CB412 /* AppEnvironment.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppEnvironment.swift; sourceTree = "<group>"; };
 		BBBEE29201F8E282644A5147 /* CrashReporterHost.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CrashReporterHost.swift; sourceTree = "<group>"; };
 		BC4034CAF7C667207F94C76D /* PreferencesWindow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreferencesWindow.swift; sourceTree = "<group>"; };
@@ -170,6 +186,14 @@
 				B685FB1C17A64BBA91B50EA2 /* LillistCore in Frameworks */,
 				5368030379D37BFAD59E2576 /* LillistUI in Frameworks */,
 				41D5332FFC9A37D6874E1E44 /* AppIntents.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		1D1842880276BA7B6421E490 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				C87131450D2D807894534D17 /* AppIntents.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -218,6 +242,7 @@
 		2C3802C5B4E9E611224A01B3 /* Tests */ = {
 			isa = PBXGroup;
 			children = (
+				34E0784271DE28A7346748F5 /* UITests */,
 				3F0D9EC0691515027BF44021 /* BlockedFollowUpTests.swift */,
 				5626826E4EED7EAAEDDED61E /* CommandNotificationObserverGuardTests.swift */,
 				2E47B1527CC5287B4367B127 /* EditorOpenDecisionTests.swift */,
@@ -237,6 +262,15 @@
 				3F20871648F1DA1E64D8E59D /* UIStatePersistencePruneTests.swift */,
 			);
 			path = Tests;
+			sourceTree = "<group>";
+		};
+		34E0784271DE28A7346748F5 /* UITests */ = {
+			isa = PBXGroup;
+			children = (
+				53F56A79C23B659817325F12 /* MacUITestHelpers.swift */,
+				027E7F928E258B978DA55AB6 /* ScreenshotTests.swift */,
+			);
+			path = UITests;
 			sourceTree = "<group>";
 		};
 		37B5B7691A22F7149CDE6F7D /* Onboarding */ = {
@@ -397,6 +431,7 @@
 			children = (
 				D002EB6866402CB86776B481 /* Lillist-macOS.app */,
 				4202ADFC69D471DD8EDD09C4 /* Lillist-macOSTests.xctest */,
+				B6AFF2B4CC92DD5EC125A3BE /* Lillist-macOSUITests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -454,6 +489,25 @@
 			productReference = D002EB6866402CB86776B481 /* Lillist-macOS.app */;
 			productType = "com.apple.product-type.application";
 		};
+		E1CEF5BCCCD62BEFB0395FF8 /* Lillist-macOSUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 660B6FC8F64ED621CF1D1B82 /* Build configuration list for PBXNativeTarget "Lillist-macOSUITests" */;
+			buildPhases = (
+				C1785BFD398633FF34D1C76E /* Sources */,
+				1D1842880276BA7B6421E490 /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				7365C2F56BEC24E6EBCF9E95 /* PBXTargetDependency */,
+			);
+			name = "Lillist-macOSUITests";
+			packageProductDependencies = (
+			);
+			productName = "Lillist-macOSUITests";
+			productReference = B6AFF2B4CC92DD5EC125A3BE /* Lillist-macOSUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
 		EA7ACBEE78B233225EBF7E20 /* Lillist-macOSTests */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = 9BC8C967D895E12C9E8B5441 /* Build configuration list for PBXNativeTarget "Lillist-macOSTests" */;
@@ -487,6 +541,11 @@
 						DevelopmentTeam = "$(LOCAL_DEVELOPMENT_TEAM)";
 						ProvisioningStyle = Automatic;
 					};
+					E1CEF5BCCCD62BEFB0395FF8 = {
+						DevelopmentTeam = "$(LOCAL_DEVELOPMENT_TEAM)";
+						ProvisioningStyle = Automatic;
+						TestTargetID = 9A5124FFDB375540D83CD302;
+					};
 					EA7ACBEE78B233225EBF7E20 = {
 						DevelopmentTeam = "$(LOCAL_DEVELOPMENT_TEAM)";
 					};
@@ -513,6 +572,7 @@
 			targets = (
 				9A5124FFDB375540D83CD302 /* Lillist-macOS */,
 				EA7ACBEE78B233225EBF7E20 /* Lillist-macOSTests */,
+				E1CEF5BCCCD62BEFB0395FF8 /* Lillist-macOSUITests */,
 			);
 		};
 /* End PBXProject section */
@@ -580,6 +640,15 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		C1785BFD398633FF34D1C76E /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				9E32C4BE2538D58BE8D8198B /* MacUITestHelpers.swift in Sources */,
+				E7800CD964C5DBB6849AABF4 /* ScreenshotTests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		D705F1E2133E7D2BDE887144 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -619,7 +688,34 @@
 		};
 /* End PBXSourcesBuildPhase section */
 
+/* Begin PBXTargetDependency section */
+		7365C2F56BEC24E6EBCF9E95 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 9A5124FFDB375540D83CD302 /* Lillist-macOS */;
+			targetProxy = B561B27A9C27E5EBD427FF0B /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
 /* Begin XCBuildConfiguration section */
+		32EFC677F6CEB11C92391AAC /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 15.0;
+				PRODUCT_BUNDLE_IDENTIFIER = io.mikeydotio.Lillist.uitests;
+				SDKROOT = macosx;
+				TEST_TARGET_NAME = "Lillist-macOS";
+			};
+			name = Debug;
+		};
 		4F4BEB48675B2B79920BD03C /* Release */ = {
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = 0ABBB27058E889BD296D6C36 /* Signing.xcconfig */;
@@ -689,6 +785,7 @@
 			buildSettings = {
 				BUNDLE_LOADER = "";
 				COMBINE_HIDPI_IMAGES = YES;
+				GENERATE_INFOPLIST_FILE = YES;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
@@ -735,11 +832,31 @@
 			};
 			name = Release;
 		};
+		9B580F6A3EE5557FE5BC6DD6 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 15.0;
+				PRODUCT_BUNDLE_IDENTIFIER = io.mikeydotio.Lillist.uitests;
+				SDKROOT = macosx;
+				TEST_TARGET_NAME = "Lillist-macOS";
+			};
+			name = Release;
+		};
 		C156E1A7847CBFD7C872E5C5 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				BUNDLE_LOADER = "";
 				COMBINE_HIDPI_IMAGES = YES;
+				GENERATE_INFOPLIST_FILE = YES;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
@@ -840,6 +957,15 @@
 			buildConfigurations = (
 				6806A95C4FCF64A04B08F5FF /* Debug */,
 				751D56DC4D043F4732FC1C3A /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		660B6FC8F64ED621CF1D1B82 /* Build configuration list for PBXNativeTarget "Lillist-macOSUITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				32EFC677F6CEB11C92391AAC /* Debug */,
+				9B580F6A3EE5557FE5BC6DD6 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Debug;

@@ -159,12 +159,16 @@ jobs:
       - name: Provide a placeholder signing team
         run: cp Apps/Config/Signing.local.xcconfig.example Apps/Config/Signing.local.xcconfig
 
-      - name: Test Lillist-macOS scheme
-        # macOS test target is standalone (TEST_HOST="" in Apps/project.yml)
-        # and snapshot-free, so the no-signing recipe is correct here — there
-        # is no host .app to install/launch (see engineering-notes: the macOS
+      - name: Test Lillist-macOS scheme (standalone bundle only — no signing)
+        # Runs ONLY the standalone Lillist-macOSTests bundle (TEST_HOST="",
+        # snapshot-free), so the no-signing recipe is correct here — there is
+        # no host .app to install/launch (see engineering-notes: the macOS
         # test bundle was made standalone precisely so CODE_SIGNING_ALLOWED=NO
-        # works).
+        # works). The scheme also carries Lillist-macOSUITests, which needs a
+        # launchable signed host app and so cannot run in CI — it compiles
+        # unsigned here but is excluded from the run by -only-testing, exactly
+        # like Lillist-iOSUITests in the iOS job above. The macOS UI-test
+        # screenshot suite runs on a developer's signed Mac.
         run: |
           set -o pipefail
           which xcbeautify || brew install xcbeautify
@@ -172,6 +176,7 @@ jobs:
             -workspace Lillist.xcworkspace \
             -scheme Lillist-macOS \
             -destination 'platform=macOS' \
+            -only-testing:Lillist-macOSTests \
             CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO \
             | xcbeautify
 

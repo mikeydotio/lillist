@@ -77,7 +77,13 @@ targets:
     platform: macOS
     deploymentTarget: "15.0"
     sources:
-      - Lillist-macOS/Tests
+      - path: Lillist-macOS/Tests
+        # The XCUITest screenshot suite lives in Tests/UITests and belongs
+        # ONLY to Lillist-macOSUITests — excluded here so it isn't swept into
+        # this standalone (no-app-host) unit bundle, where XCUIApplication()
+        # would assert "No target application path specified".
+        excludes:
+          - "UITests/**"
       # Co-compile the HotkeyRecorder source so its pure `encode(...)`
       # helper is reachable from the standalone test bundle without a
       # signed app test host. Mirrors the SharePayload co-compile
@@ -145,6 +151,14 @@ targets:
         # Lillist_macOS view types.
         TEST_HOST: ""
         BUNDLE_LOADER: ""
+        # The project base sets GENERATE_INFOPLIST_FILE: NO (the app supplies
+        # its own Info.plist). A standalone test bundle has none, which is
+        # fine when CI builds it unsigned (CODE_SIGNING_ALLOWED=NO). But once
+        # the scheme also carries the signing-required Lillist-macOSUITests
+        # target, a *signed* local `build-for-testing` signs every test
+        # bundle — and code-signing needs an Info.plist. Generate one (the
+        # iOS standalone bundle already does this).
+        GENERATE_INFOPLIST_FILE: YES
     dependencies:
       - package: LillistCore
         product: LillistCore
@@ -153,15 +167,45 @@ targets:
       # See note on Lillist-macOS target re: appintentsmetadataprocessor.
       - sdk: AppIntents.framework
 
+  # UI-test target — hosts the real `Lillist-macOS` app so screenshots
+  # capture the live SwiftUI window (Liquid Glass included). This is the
+  # ONLY way to verify macOS glass: offscreen NSHostingView→image capture
+  # blanks glass (see CLAUDE.md / engineering-notes), so the macOS glass
+  # snapshot suites are XCTSkip-quarantined. Mirrors Lillist-iOSUITests.
+  # Drives the `--ui-test-*` seams in LillistApp.swift. Runs locally on a
+  # signed Mac (needs Config/Signing.xcconfig) — NOT in CI (no window
+  # server).
+  Lillist-macOSUITests:
+    type: bundle.ui-testing
+    platform: macOS
+    deploymentTarget: "15.0"
+    sources:
+      - path: Lillist-macOS/Tests/UITests
+    dependencies:
+      - target: Lillist-macOS
+      # Silences the appintentsmetadataprocessor "no AppIntents.framework"
+      # warning that runs on every target — same rationale as the app +
+      # unit-test targets above.
+      - sdk: AppIntents.framework
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: io.mikeydotio.Lillist.uitests
+        MACOSX_DEPLOYMENT_TARGET: "15.0"
+        TEST_TARGET_NAME: Lillist-macOS
+        GENERATE_INFOPLIST_FILE: YES
+        CODE_SIGN_STYLE: Automatic
+
 schemes:
   Lillist-macOS:
     build:
       targets:
         Lillist-macOS: all
         Lillist-macOSTests: [test]
+        Lillist-macOSUITests: [test]
     run:
       config: Debug
     test:
       config: Debug
       targets:
         - Lillist-macOSTests
+        - Lillist-macOSUITests

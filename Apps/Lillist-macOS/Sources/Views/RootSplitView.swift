@@ -213,6 +213,7 @@ struct RootSplitView: View {
             }
             .help("New Task (⌘N)")
             .keyboardShortcut("n", modifiers: [.command])
+            .accessibilityIdentifier("RootNewTaskButton")
 
             TaskListSortControl(field: $sortField, ascending: $sortAscending)
         }

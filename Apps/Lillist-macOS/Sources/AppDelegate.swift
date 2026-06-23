@@ -36,6 +36,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // Wiring is deferred to `bootstrap()`, called from `LillistApp.task`
         // once the async `AppEnvironment.make()` has succeeded. Doing the
         // wiring here would race the environment's availability.
+
+        // UI-test seam: pin a deterministic appearance so light/dark
+        // screenshots from `Lillist-macOSUITests` don't depend on the
+        // host Mac's system setting. Inert outside UI tests (no arg).
+        let args = ProcessInfo.processInfo.arguments
+        if args.contains("--ui-test-appearance-dark") {
+            NSApp.appearance = NSAppearance(named: .darkAqua)
+        } else if args.contains("--ui-test-appearance-light") {
+            NSApp.appearance = NSAppearance(named: .aqua)
+        }
     }
 
     /// Plan 19 Task 12: recover from `⌘W`-closes-only-window. SwiftUI's
