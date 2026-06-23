@@ -1,5 +1,6 @@
 import SwiftUI
 import AppKit
+import LillistUI
 
 /// SwiftUI view that captures a single keystroke (with modifiers) and
 /// updates its bound value with the canonical string format used by
@@ -20,7 +21,9 @@ struct HotkeyRecorder: View {
         ZStack {
             RoundedRectangle(cornerRadius: 6)
                 .strokeBorder(
-                    recording ? Color.accentColor : Color.secondary.opacity(0.3),
+                    // Active focus uses the focus-blue token (matching
+                    // InlineCreateField); idle uses the standard border token.
+                    recording ? RainbowPalette.focusBlue.base : LillistColor.borderSoft,
                     lineWidth: 1
                 )
             HStack {
@@ -200,10 +203,10 @@ private struct KeyCap: View {
             .padding(.horizontal, 6).padding(.vertical, 2)
             .background(
                 RoundedRectangle(cornerRadius: 4)
-                    .fill(Color.secondary.opacity(0.18))
+                    .fill(LillistColor.sunken)
                     .overlay(
                         RoundedRectangle(cornerRadius: 4)
-                            .stroke(Color.secondary.opacity(0.35), lineWidth: 0.5)
+                            .stroke(LillistColor.borderSoft, lineWidth: 0.5)
                     )
             )
     }

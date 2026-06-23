@@ -48,7 +48,8 @@ struct DiagnosticsPane: View {
             }
         }
         .formStyle(.grouped)
-        .fixedSize()
+        .frame(width: PreferencesMetrics.contentWidth)
+        .fixedSize() // pane self-sizes (height); window animates
         .task {
             let initial = await environment.devicePreferences.diagnosticLoggingEnabled()
             if !didHydrate { enabled = initial; didHydrate = true }

@@ -97,11 +97,12 @@ struct LillistCommands: Commands {
             }
         }
 
-        // Plan 15 Task 22: replace the default Help submenu with a
-        // single Link to the repo. TODO: swap to a real docs site URL
-        // once it exists.
+        // Plan 15 Task 22: replace the default Help submenu with a single
+        // Link to the repo. Labeled "Lillist on GitHub" rather than "Help"
+        // so the item is honest about its destination — the README is the
+        // de-facto docs during alpha; revisit if a dedicated docs site lands.
         CommandGroup(replacing: .help) {
-            Link("Lillist Help", destination: URL(string: "https://github.com/mikeydotio/Lillist")!)
+            Link("Lillist on GitHub", destination: URL(string: "https://github.com/mikeydotio/Lillist")!)
         }
     }
 }

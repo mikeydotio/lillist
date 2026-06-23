@@ -62,7 +62,8 @@ struct AdvancedPane: View {
             }
         }
         .formStyle(.grouped)
-        .fixedSize() // Plan 15 Task 26: pane self-sizes; window animates
+        .frame(width: PreferencesMetrics.contentWidth)
+        .fixedSize() // Plan 15 Task 26: pane self-sizes (height); window animates
     }
 
     private func runExport() async {

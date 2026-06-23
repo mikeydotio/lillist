@@ -24,7 +24,7 @@ struct ICloudSyncPane: View {
         }
         .formStyle(.grouped)
         .padding(LillistSpacing.l)
-        .frame(width: 520)
+        .frame(width: PreferencesMetrics.contentWidth)
         .fixedSize()
         .sheet(isPresented: $showChoiceSheet) {
             SyncMigrationChoiceSheet(
