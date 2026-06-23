@@ -3,6 +3,24 @@
 All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [v0.8.11] - 2026-06-23
+
+### Fixed
+- consistent Preferences width + chrome polish (45766c80)
+- relocate build-version footer + live sidebar refresh (8b7cd040)
+
+### Documentation
+- macOS visual design pass review + login-keychain signing (b44e1332)
+- warn this is early alpha and sync uses the Debug CloudKit env (86286508)
+
+### Testing
+- add XCUITest screenshot harness + launch-arg seams (ad4d5f08)
+
+### Maintenance
+- bump iOS build number to 61 (856911e6)
+
+_[force]_
+
 ## [v0.8.10] - 2026-06-22
 
 ### Fixed
