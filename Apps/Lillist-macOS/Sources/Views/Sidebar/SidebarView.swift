@@ -1,4 +1,5 @@
 import SwiftUI
+import CoreData
 import LillistCore
 import LillistUI
 
@@ -92,6 +93,20 @@ struct SidebarView: View {
         }
         .listStyle(.sidebar)
         .task { await refresh() }
+        // Build-version footer (moved here from the content pane — a
+        // Mac-native sidebar-bottom spot; useful during alpha).
+        .safeAreaInset(edge: .bottom) {
+            BuildVersionLabel(version: env.buildVersion)
+                .padding(.bottom, LillistSpacing.xs)
+        }
+        // Refresh on every Core Data save (the same signal AppDelegate uses
+        // for the dock badge). Without this the sidebar only ran its one-shot
+        // `.task` refresh, so freshly-installed default filters/tags (first
+        // launch) or CLI/CloudKit-driven changes wouldn't appear until
+        // relaunch. See docs/reviews/2026-06-23.
+        .onReceive(NotificationCenter.default.publisher(for: .NSManagedObjectContextDidSave)) { _ in
+            Task { await refresh() }
+        }
         .sheet(item: $renamingPinnedTask) { task in
             RenameSheet(title: "Rename Task", initialValue: task.title) { newName in
                 try? await env.taskStore.update(id: task.id) { $0.title = newName }

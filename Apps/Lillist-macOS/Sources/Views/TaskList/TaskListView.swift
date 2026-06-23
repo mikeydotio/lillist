@@ -235,7 +235,10 @@ struct TaskListView: View {
                     }
                 }
             }
-            BuildVersionLabel(version: env.buildVersion)
+            // The build-version footer moved to the sidebar bottom (a
+            // Mac-native spot) — it floated awkwardly mid-air at the bottom
+            // of the content pane on short/empty lists, and the version is
+            // also in the About panel. See docs/reviews/2026-06-23.
         }
         .overlay(alignment: .bottom) {
             if reorderFailed {
