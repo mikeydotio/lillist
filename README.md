@@ -8,6 +8,23 @@ Features include predicate-driven smart filters, recurrence, notifications, a
 journal, attachments, an iOS Share Extension, an App Intents (Shortcuts)
 extension, and an in-house, opt-in, user-mediated crash reporter.
 
+> [!WARNING]
+> **🚧 Early alpha — NOT production ready.** Lillist is under active
+> development. Expect bugs, breaking changes, incomplete features, and
+> **data loss**. Don't rely on it for anything you can't afford to lose, and
+> keep your own independent backups.
+>
+> **Even iCloud sync uses the CloudKit _Development_ (Debug) environment — not
+> Production.** Concretely:
+>
+> - Your data lives in the app's **development** CloudKit database — a sandbox
+>   that can be **reset or wiped at any time** (including by the maintainers
+>   during schema changes).
+> - Only **development-signed builds** sync together — local `xcodebuild`/Xcode
+>   Debug builds and the Developer-ID test builds distributed via `deployit`.
+>   A future App Store / TestFlight (Production) build will **not** see this
+>   data, and there is **no migration path** from Development to Production yet.
+
 ## Architecture
 
 Four layers, lower depends on nothing above it:
