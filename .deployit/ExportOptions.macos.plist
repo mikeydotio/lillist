@@ -4,24 +4,24 @@
   Project-local export options for `/deployit` macOS builds. deployit's
   ExportOptions ladder (bin/deployit-cli: DEPLOYIT_EXPORT_OPTIONS_PATH env ->
   .deployit/ExportOptions.<platform>.plist -> bundled default) picks this up
-  automatically; it mirrors deployit's bundled developer-id default and adds
-  the load-bearing iCloud-environment pin.
+  automatically; it mirrors deployit's bundled developer-id default and pins
+  the iCloud CloudKit environment EXPLICITLY.
 
-  Why this file exists (hard-won — see docs/engineering-notes.md):
+  Why this is pinned to Production (hard-won — see docs/engineering-notes.md
+  2026-06-23):
   `xcodebuild -exportArchive` RE-STAMPS the
-  `com.apple.developer.icloud-container-environment` entitlement from the
-  export options' `iCloudContainerEnvironment` key. For a developer-id export
-  the default when the key is ABSENT is Production — so the `Development`
-  value declared in Apps/Lillist-macOS/Lillist.entitlements was being silently
-  overwritten to Production at export, putting every Developer-ID test build on
-  the (schema-less, deferred) Production CloudKit database. That is a different
-  database from the Development-signed iOS test build, so nothing synced and a
-  first-time "replace this device with iCloud" import hit CKError.partialFailure.
-
-  Pinning Development here makes the Developer-ID test build share the one
-  Development database with the iOS build, matching the entitlements source.
-  At the eventual production cutover, change this to Production (App Store
-  exports are always Production regardless).
+  `com.apple.developer.icloud-container-environment` entitlement from this
+  `iCloudContainerEnvironment` key, OVERRIDING whatever the source
+  Apps/Lillist-macOS/Lillist.entitlements declares. For a `developer-id`
+  export the ONLY value Apple permits is `Production` — setting `Development`
+  fails the export with:
+      exportArchive ... key "iCloudContainerEnvironment": value "Development"
+      is not allowed
+  So a Developer-ID (distribution-signed) macOS build is *always* on the
+  Production CloudKit database. To put a macOS build on Development you must
+  `method = development`-sign it instead (registered Macs only) — do NOT
+  re-attempt a Development pin here; Apple rejects it. This explicit pin
+  exists to document that and prevent the regression.
 -->
 <plist version="1.0">
 <dict>
@@ -30,6 +30,6 @@
     <key>signingStyle</key>
     <string>automatic</string>
     <key>iCloudContainerEnvironment</key>
-    <string>Development</string>
+    <string>Production</string>
 </dict>
 </plist>

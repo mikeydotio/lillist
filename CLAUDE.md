@@ -317,31 +317,41 @@ even though both report success. (A Development-signed iOS build *cannot*
 be forced to Production; a dev provisioning profile only carries
 `aps-environment = development`.)
 
-**Current posture — both pinned to Development:**
+**Posture — cutting over to Production (IN PROGRESS, started 2026-06-23).**
+Hard constraint discovered during the secondary-Mac sync RCA: **the
+distribution channel dictates the CloudKit environment, and a Developer-ID
+macOS export is Production-ONLY.** `xcodebuild -exportArchive` re-stamps
+`com.apple.developer.icloud-container-environment` from the ExportOptions
+plist + profile, and Apple *rejects* `Development` for a `developer-id`
+profile (`exportArchive ... value "Development" is not allowed`). So a
+Developer-ID macOS build can never share the Development database with a
+Development-signed iOS build — the `Development` value previously in the
+macOS entitlements was cosmetic (always overwritten at export). We are
+therefore moving everything to Production. **Always verify the *signed
+binary*, not the source `.entitlements`:** `codesign -d --entitlements :-
+<app> | plutil -p - | grep icloud-container-environment`. See
+engineering-notes 2026-06-23.
 
-- iOS (`Apps/Lillist-iOS/Lillist.entitlements`): `aps-environment =
-  development`; `UIBackgroundModes` includes `remote-notification`.
-- macOS (`Apps/Lillist-macOS/Lillist.entitlements`): `aps-environment =
-  development` **and** `com.apple.developer.icloud-container-environment =
-  Development` — the latter is the load-bearing override that pulls the
-  Developer-ID build onto Development (honored for non-App-Store
-  distribution). Without it, macOS lands on Production and diverges.
-- **⚠️ The entitlements value is NOT sufficient for exported builds.**
-  `xcodebuild -exportArchive` re-stamps `icloud-container-environment` from
-  the **ExportOptions plist** `iCloudContainerEnvironment` key, and a
-  `developer-id` export defaults it to **Production** when the key is absent —
-  silently overwriting the `Development` source entitlement. `/deployit` macOS
-  builds therefore read `Production` from the signed binary unless told
-  otherwise. Fixed by `.deployit/ExportOptions.macos.plist` (project-local;
-  deployit prefers it over its bundled default), which pins
-  `iCloudContainerEnvironment = Development`. **Always verify the *signed
-  binary*, not the source file:** `codesign -d --entitlements :- <app> |
-  plutil -p - | grep icloud-container-environment`. (iOS is unaffected — its
-  `method = development` export follows the development profile onto
-  Development.) See engineering-notes 2026-06-23.
+- macOS (`Apps/Lillist-macOS/Lillist.entitlements` +
+  `.deployit/ExportOptions.macos.plist`): Developer-ID → **Production**,
+  pinned explicitly in the export options. Do **not** re-attempt a
+  `Development` pin — Apple rejects it for Developer-ID.
+- iOS (`Apps/Lillist-iOS/Lillist.entitlements`): the `/deployit` build is
+  **Development**-signed (Development CloudKit). It cannot be forced to
+  Production, so iOS Production testing moves to **TestFlight** (App Store
+  distribution = Production).
 - `NSPersistentCloudKitContainer` requires the Push entitlement
   (`aps-environment`) to establish its sync subscription — both targets
   must carry it.
+
+**Cutover checklist (gating order — most steps are Mikey-only):** (1)
+**Deploy Schema Changes** Development→Production in the CloudKit Console —
+effectively permanent (Production schema is additive-only and never
+auto-created), so confirm the Development schema is complete first. (2)
+**Notarize** the Developer-ID macOS build (deployit `[macos] notarize`). (3)
+Move **iOS to TestFlight** (Production). (4) **Re-seed** data into Production
+from a device's local store (current data lives in Development). macOS deploys
+will keep hitting `partialFailure` until step 1 is done.
 
 **No CloudKit Console step is needed on Development** —
 `NSPersistentCloudKitContainer` auto-creates the dev schema.
@@ -355,14 +365,12 @@ be forced to Production; a dev provisioning profile only carries
 `pauseReason` ahead of the indicator. (The old `IdleSyncIndicatorMonitor`
 that always reported "synced just now" survives only for previews/tours.)
 
-**Production cutover (deferred until shipping):** sign into the CloudKit
-Console and **Deploy Schema Changes** (Development → Production); move iOS
-testing to TestFlight (Production); for the App Store build drop the
-`icloud-container-environment` override (App Store = Production
-automatically) or set it to `Production` for Developer-ID — and flip
-`.deployit/ExportOptions.macos.plist`'s `iCloudContainerEnvironment` to
-`Production` (the entitlements value alone won't carry through export; see
-above).
+**Production cutover (IN PROGRESS — see "Posture" above for the gating
+checklist):** the macOS export side is already pinned to Production
+(`.deployit/ExportOptions.macos.plist`). Remaining: deploy the schema
+Development→Production in the CloudKit Console, notarize the macOS build,
+move iOS to TestFlight, and re-seed Production data. The App Store iOS build
+is Production automatically.
 
 ## Deploy (iOS test builds)
 

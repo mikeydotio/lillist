@@ -3273,20 +3273,42 @@ iOS build (Development); the Macs were all pointed at an empty, schema-less
 Production container. The first "replace local with iCloud" import against it
 failed per-record → `partialFailure`.
 
-**Two-layer lesson:**
+**The decisive twist: Developer-ID export is Production-ONLY.** The obvious fix —
+pin `iCloudContainerEnvironment = Development` in the export options — is
+*rejected by Apple*:
 
-1. **The `.entitlements` value is necessary but not sufficient.** Whenever a
-   CloudKit app is distributed by *export* (Developer-ID, Ad-Hoc, App Store),
-   the final `icloud-container-environment` comes from the **ExportOptions
-   plist**, not the source entitlement. Verify the *signed binary*, never the
-   source file: `codesign -d --entitlements :- <app> | plutil -p - | grep
-   icloud-container-environment`.
-2. **Fix lives in deployit's export ladder.** Added
-   `.deployit/ExportOptions.macos.plist` (project-local; deployit prefers it
-   over its bundled default) mirroring the developer-id default plus
-   `iCloudContainerEnvironment = Development`. iOS is unaffected — its export
-   uses `method = development`, which follows the development profile onto
-   Development already. At the production cutover, flip this file to Production.
+```
+error: exportArchive exportOptionsPlist error for key
+"iCloudContainerEnvironment": value "Development" is not allowed
+```
+
+A Developer-ID provisioning profile only permits the **Production** CloudKit
+environment at export. So a Developer-ID (distribution-signed) macOS build can
+**never** join the Development database, no matter what the source entitlement
+says. The `Development` value in `Apps/Lillist-macOS/Lillist.entitlements` was
+always going to be overwritten to Production — the entitlement was cosmetic.
+The only way to put a *macOS* build on Development is to `method =
+development`-sign it (registered Macs only), exactly like the iOS test build.
+
+**Lessons:**
+
+1. **Verify the signed binary, never the source `.entitlements`.** For any
+   CloudKit app distributed by *export*, the final
+   `icloud-container-environment` comes from the ExportOptions plist + the
+   profile, not the source file: `codesign -d --entitlements :- <app> |
+   plutil -p - | grep icloud-container-environment`.
+2. **Distribution channel dictates the CloudKit environment, hard.**
+   Developer-ID / App Store / TestFlight → Production (no choice).
+   `development`-signed → Development. You cannot mix: to test cross-device
+   sync, *every* device must be on the same channel-implied environment.
+
+**Resolution chosen: Production cutover.** Rather than development-sign macOS
+(registered-Macs-only, un-notarized), we keep macOS Developer-ID and move the
+whole project to Production: deploy the CloudKit schema Development→Production
+in the Console, move iOS to Production (TestFlight), re-seed, and notarize the
+Developer-ID macOS build. `.deployit/ExportOptions.macos.plist` is pinned
+explicitly to `Production` to document that Development is impossible here and
+prevent a re-attempt.
 
 **Secondary defect surfaced + fixed in the same pass.** The partialFailure was
 undiagnosable because `CloudKitErrorClassifier` had no `.partialFailure` case

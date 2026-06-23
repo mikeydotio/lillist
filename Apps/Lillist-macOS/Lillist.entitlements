@@ -20,14 +20,17 @@
     <array>
         <string>CloudKit</string>
     </array>
-    <!-- Pin the Developer-ID (distribution-signed) macOS build to the
-         Development CloudKit environment so it shares one database with the
-         Development-signed iOS build. Without this, a Developer-ID build
-         defaults to Production and the two apps mirror to separate stores.
-         Honored for non-App-Store distribution; App Store builds are always
-         Production regardless. -->
+    <!-- Developer-ID (distribution-signed) macOS builds are Production-ONLY:
+         `xcodebuild -exportArchive` re-stamps this entitlement from the
+         export options + profile, and Apple REJECTS `Development` for a
+         developer-id profile. So this value is effectively cosmetic at export
+         time (the binary always ends up Production) — the real pin lives in
+         `.deployit/ExportOptions.macos.plist`. Kept here as Production for
+         honesty. To put a macOS build on Development you must
+         `method=development`-sign it instead. See engineering-notes
+         2026-06-23 and the CloudKit section of CLAUDE.md. -->
     <key>com.apple.developer.icloud-container-environment</key>
-    <string>Development</string>
+    <string>Production</string>
     <!-- NSPersistentCloudKitContainer requires the Push Notifications
          capability to establish its CloudKit change subscription. The shared
          App ID (io.mikeydotio.Lillist) already has Push + CloudKit enabled
