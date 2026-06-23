@@ -4,32 +4,30 @@
   Project-local export options for `/deployit` macOS builds. deployit's
   ExportOptions ladder (bin/deployit-cli: DEPLOYIT_EXPORT_OPTIONS_PATH env ->
   .deployit/ExportOptions.<platform>.plist -> bundled default) picks this up
-  automatically; it mirrors deployit's bundled developer-id default and pins
-  the iCloud CloudKit environment EXPLICITLY.
+  automatically, overriding deployit's bundled `developer-id` default.
 
-  Why this is pinned to Production (hard-won — see docs/engineering-notes.md
-  2026-06-23):
-  `xcodebuild -exportArchive` RE-STAMPS the
-  `com.apple.developer.icloud-container-environment` entitlement from this
-  `iCloudContainerEnvironment` key, OVERRIDING whatever the source
-  Apps/Lillist-macOS/Lillist.entitlements declares. For a `developer-id`
-  export the ONLY value Apple permits is `Production` — setting `Development`
-  fails the export with:
-      exportArchive ... key "iCloudContainerEnvironment": value "Development"
-      is not allowed
-  So a Developer-ID (distribution-signed) macOS build is *always* on the
-  Production CloudKit database. To put a macOS build on Development you must
-  `method = development`-sign it instead (registered Macs only) — do NOT
-  re-attempt a Development pin here; Apple rejects it. This explicit pin
-  exists to document that and prevent the regression.
+  Why `development` (not developer-id) — hard-won, see engineering-notes
+  2026-06-23:
+  The CloudKit environment follows the distribution channel, and a Developer-ID
+  export is Production-ONLY (Apple rejects `iCloudContainerEnvironment =
+  Development` for a developer-id profile). Production has no deployed schema
+  (cutover deferred), so a Developer-ID macOS build can never sync with the
+  Development-signed iOS build where the test data lives. Development-signing
+  the macOS test build — exactly like iOS — puts it on the Development CloudKit
+  database and lets it run on registered Macs (the target Mac's UDID must be in
+  the team's Mac development profile; automatic signing + the
+  `-allowProvisioningUpdates` deployit passes regenerate/fetch the latest
+  profile incl. newly-registered devices).
+
+  `iCloudContainerEnvironment` is intentionally OMITTED: the development profile
+  implies Development (iOS does the same with no key). At the eventual shipping
+  cutover, switch back to `developer-id` (Production) + notarization.
 -->
 <plist version="1.0">
 <dict>
     <key>method</key>
-    <string>developer-id</string>
+    <string>development</string>
     <key>signingStyle</key>
     <string>automatic</string>
-    <key>iCloudContainerEnvironment</key>
-    <string>Production</string>
 </dict>
 </plist>

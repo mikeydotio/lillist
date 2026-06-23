@@ -3302,13 +3302,20 @@ development`-sign it (registered Macs only), exactly like the iOS test build.
    `development`-signed → Development. You cannot mix: to test cross-device
    sync, *every* device must be on the same channel-implied environment.
 
-**Resolution chosen: Production cutover.** Rather than development-sign macOS
-(registered-Macs-only, un-notarized), we keep macOS Developer-ID and move the
-whole project to Production: deploy the CloudKit schema Development→Production
-in the Console, move iOS to Production (TestFlight), re-seed, and notarize the
-Developer-ID macOS build. `.deployit/ExportOptions.macos.plist` is pinned
-explicitly to `Production` to document that Development is impossible here and
-prevent a re-attempt.
+**Resolution chosen: development-sign the macOS test build.** A Production
+cutover was considered and rejected — the Production CloudKit environment is
+too inflexible to commit to mid-development (schema deploys are permanent and
+additive-only; iOS would have to move to TestFlight; data must be re-seeded).
+Instead, `.deployit/ExportOptions.macos.plist` now uses `method = development`
+(not `developer-id`), exactly mirroring the iOS test build: the macOS app is
+Apple-Development-signed, talks to the **Development** CloudKit database (where
+the data lives), and runs on **registered Macs** (the target Mac's UDID must be
+in the team's Mac development profile — automatic signing +
+`-allowProvisioningUpdates` fetches the regenerated profile incl. newly-added
+devices). Trade-offs accepted: not notarized (Gatekeeper needs a one-time
+right-click-Open / Settings approval per Mac) and no useful GitHub release
+(deploy with `--no-release`). Developer-ID + Production + notarization is
+deferred to the eventual shipping cutover.
 
 **Secondary defect surfaced + fixed in the same pass.** The partialFailure was
 undiagnosable because `CloudKitErrorClassifier` had no `.partialFailure` case
