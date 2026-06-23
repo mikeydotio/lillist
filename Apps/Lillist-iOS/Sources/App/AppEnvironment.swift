@@ -193,9 +193,15 @@ final class AppEnvironment {
             process: .app
         )
 
-        // Plan 2 stub — once the CloudKit-backed monitor is bridged into
-        // the UI's SyncIndicatorMonitor protocol, swap this for the live one.
-        self.syncMonitor = IdleSyncIndicatorMonitor()
+        // Real CloudKit-driven sync status: bridge LillistCore's
+        // SyncStatusMonitor (fed by NSPersistentCloudKitContainer events via
+        // persistence.cloudKitEventBridge) onto the UI's SyncIndicatorMonitor.
+        // `start()` is invoked from bootstrap(). Replaces the old
+        // IdleSyncIndicatorMonitor stub that always reported "synced just now"
+        // regardless of real activity.
+        self.syncMonitor = CloudKitSyncStatusAdapter(
+            monitor: SyncStatusMonitor(bridge: persistence.cloudKitEventBridge)
+        )
 
         // Plan 9: shared breadcrumb buffer + crash reporter. Canary lives
         // in the App Group container so any extension that wants to record
@@ -402,6 +408,8 @@ final class AppEnvironment {
         startObservingSyncMode()
         installCanaryLifecycleObservers()
         startObservingPauseReason()
+        // Connect the live CloudKit sync-status stream to the UI indicator.
+        await syncMonitor.start()
         metricKitObserver.startReceiving()
     }
 

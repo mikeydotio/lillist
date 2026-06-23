@@ -279,6 +279,59 @@ team ID never lands in the pbxproj. **Never put `DEVELOPMENT_TEAM`
 into `project.yml`'s `settings: base:`** — that breaks the indirection.
 `CODE_SIGN_STYLE: Automatic` in `project.yml` is fine.
 
+## CloudKit / iCloud sync environment
+
+`NSPersistentCloudKitContainer` mirrors to one **private** CloudKit
+database in container **`iCloud.com.mikeydotio.lillist`** (single custom
+zone). Container ID + database scope are set in
+`PersistenceController.makeStoreDescription` and
+`StoreConfiguration.defaultCloudKitContainerIdentifier`. All targets
+share App Group `group.io.mikeydotio.Lillist`. iOS and macOS share the
+same bundle ID (`io.mikeydotio.Lillist`) and App ID (Push + CloudKit
+enabled on it).
+
+**The hard-won rule: CloudKit environment follows the distribution
+channel, not the build config.** Development-signed builds talk to the
+**Development** CloudKit environment; Developer-ID / App Store / TestFlight
+builds talk to **Production**. Our two test channels would otherwise split:
+the `/deployit` **iOS** build is Development-signed (Development), while the
+`/deployit` **macOS** build is Developer-ID-signed and would default to
+**Production** — two separate databases, so nothing syncs across devices
+even though both report success. (A Development-signed iOS build *cannot*
+be forced to Production; a dev provisioning profile only carries
+`aps-environment = development`.)
+
+**Current posture — both pinned to Development:**
+
+- iOS (`Apps/Lillist-iOS/Lillist.entitlements`): `aps-environment =
+  development`; `UIBackgroundModes` includes `remote-notification`.
+- macOS (`Apps/Lillist-macOS/Lillist.entitlements`): `aps-environment =
+  development` **and** `com.apple.developer.icloud-container-environment =
+  Development` — the latter is the load-bearing override that pulls the
+  Developer-ID build onto Development (honored for non-App-Store
+  distribution). Without it, macOS lands on Production and diverges.
+- `NSPersistentCloudKitContainer` requires the Push entitlement
+  (`aps-environment`) to establish its sync subscription — both targets
+  must carry it.
+
+**No CloudKit Console step is needed on Development** —
+`NSPersistentCloudKitContainer` auto-creates the dev schema.
+`CloudKitSchemaInitializer` is DEBUG-only and is *not* wired into launch.
+
+**Sync status is real, not a stub.** `CloudKitSyncStatusAdapter`
+(LillistUI `Status/`) bridges `LillistCore.SyncStatusMonitor` /
+`CloudKitEventBridge` (fed by `eventChangedNotification`) onto the UI's
+`SyncIndicatorMonitor`; both apps call `syncMonitor.start()` in
+`bootstrap()`. Account-level pauses are overlaid separately by
+`pauseReason` ahead of the indicator. (The old `IdleSyncIndicatorMonitor`
+that always reported "synced just now" survives only for previews/tours.)
+
+**Production cutover (deferred until shipping):** sign into the CloudKit
+Console and **Deploy Schema Changes** (Development → Production); move iOS
+testing to TestFlight (Production); for the App Store build drop the
+`icloud-container-environment` override (App Store = Production
+automatically) or set it to `Production` for Developer-ID.
+
 ## Deploy (iOS test builds)
 
 Deployment is handled by the **`deployit` plugin** (`/deployit`),

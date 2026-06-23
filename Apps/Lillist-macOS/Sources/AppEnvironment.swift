@@ -144,10 +144,15 @@ final class AppEnvironment {
         // *after* it's created below. Done in two passes because the
         // BreadcrumbBuffer field is declared later in this init.
 
-        // Plan 2 stub — once Plan 2 ships, swap in a CloudKitSyncStatusAdapter
-        // that bridges LillistCore.SyncStatusMonitor's statusStream to the
-        // SyncIndicatorMonitor protocol shape.
-        self.syncMonitor = IdleSyncIndicatorMonitor()
+        // Real CloudKit-driven sync status: the CloudKitSyncStatusAdapter
+        // bridges LillistCore.SyncStatusMonitor's statusStream (fed by
+        // NSPersistentCloudKitContainer events via
+        // persistence.cloudKitEventBridge) onto the SyncIndicatorMonitor
+        // protocol. `start()` is invoked from bootstrap(). Replaces the old
+        // IdleSyncIndicatorMonitor stub that always reported "synced just now".
+        self.syncMonitor = CloudKitSyncStatusAdapter(
+            monitor: SyncStatusMonitor(bridge: persistence.cloudKitEventBridge)
+        )
 
         // Plan 9: shared breadcrumb buffer + crash reporter.
         let info = Bundle.main.infoDictionary ?? [:]
@@ -318,6 +323,8 @@ final class AppEnvironment {
         startObservingAccountState()
         startObservingSyncMode()
         startObservingPauseReason()
+        // Connect the live CloudKit sync-status stream to the UI indicator.
+        await syncMonitor.start()
     }
 
     /// Plan 10: stream account-state changes off the actor into the

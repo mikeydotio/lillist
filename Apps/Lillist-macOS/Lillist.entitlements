@@ -20,5 +20,19 @@
     <array>
         <string>CloudKit</string>
     </array>
+    <!-- Pin the Developer-ID (distribution-signed) macOS build to the
+         Development CloudKit environment so it shares one database with the
+         Development-signed iOS build. Without this, a Developer-ID build
+         defaults to Production and the two apps mirror to separate stores.
+         Honored for non-App-Store distribution; App Store builds are always
+         Production regardless. -->
+    <key>com.apple.developer.icloud-container-environment</key>
+    <string>Development</string>
+    <!-- NSPersistentCloudKitContainer requires the Push Notifications
+         capability to establish its CloudKit change subscription. The shared
+         App ID (io.mikeydotio.Lillist) already has Push + CloudKit enabled
+         via the iOS target. -->
+    <key>aps-environment</key>
+    <string>development</string>
 </dict>
 </plist>
