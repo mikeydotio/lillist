@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [v0.8.14] - 2026-06-23
+
+### Fixed
+- pin macOS Developer-ID export to Development CloudKit env (0c1033bc)
+
+_[force]_
+
 ## [v0.8.13] - 2026-06-23
 
 ### Maintenance
