@@ -3214,3 +3214,34 @@ build phase but weakens the repo-wide posture).
 App Store note: an `.appex`'s short version must match its host app, so
 `MARKETING_VERSION` lives at the project (not target) level and the pbxproj
 regen covers `ShareExtension-iOS` and `ShortcutsActions` along with the app.
+
+## 2026-06-23 — Code signing uses the login keychain from every path; never add a signing keychain ahead of it
+
+**Rule.** All Lillist code signing — GUI Xcode, headless `xcodebuild` over
+SSH/mosh, and `/deployit` — uses the certificates in the **login keychain**:
+`Apple Development: Michael Ward (39D9SZ7GT8)` (Development) and
+`Developer ID Application: Michael Ward (VMY8R4T742)` (Developer-ID macOS
+distribution). The login keychain is set `no-timeout`, so it stays unlocked
+for headless SSH/mosh `xcodebuild` runs — no separate "build" keychain is
+needed. CI signs nothing (`CODE_SIGNING_ALLOWED=NO`).
+
+**Gotcha (why this is written down).** A second signing keychain placed
+*ahead* of `login.keychain-db` in the user search list
+(`security list-keychains -d user`) silently breaks **GUI Xcode** signing:
+automatic signing picks the first matching identity, hits the extra (locked)
+keychain, and prompts for a password — even though headless SSH builds keep
+"working" because that keychain happens to be unlocked in the SSH session.
+The two contexts then sign with *different* identities, which is invisible
+until Xcode prompts. Keep the search list at exactly
+`login.keychain-db` + `/Library/Keychains/System.keychain`. Verify a clean
+state with:
+
+```bash
+security list-keychains -d user            # → login.keychain-db, System.keychain
+security find-identity -v -p codesigning   # → the two Michael Ward identities
+```
+
+XCUITest screenshot harness, related: `Lillist-macOSUITests` needs a *signed*
+host app, so it relies on this login-keychain signing path; it runs on a
+signed Mac (developer-mode enabled for the test runner), not in CI. See
+`docs/reviews/2026-06-23-macos-visual-design-pass.md`.

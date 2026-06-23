@@ -279,6 +279,22 @@ team ID never lands in the pbxproj. **Never put `DEVELOPMENT_TEAM`
 into `project.yml`'s `settings: base:`** — that breaks the indirection.
 `CODE_SIGN_STYLE: Automatic` in `project.yml` is fine.
 
+**Signing identity & keychain.** The signing certificates live in the
+**login keychain** — `Apple Development: Michael Ward (39D9SZ7GT8)` for
+Development-signed builds (CloudKit Development; `/deployit` OTA test
+installs) and `Developer ID Application: Michael Ward (VMY8R4T742)` for
+the Developer-ID macOS distribution build. The login keychain is the
+**single** signing keychain used from **every** path: GUI Xcode, headless
+`xcodebuild` over SSH/mosh, and `/deployit`. It's set `no-timeout`, so it
+stays unlocked for headless SSH/mosh signing without a separate "build"
+keychain. CI signs nothing — it builds with
+`CODE_SIGNING_ALLOWED=NO`. **Do not add a second keychain ahead of
+`login.keychain-db`** in the `security list-keychains -d user` search
+list: a signing keychain placed first shadows the login identity and makes
+GUI Xcode prompt for that keychain's password (while still appearing to
+"work" over SSH if it happens to be unlocked there). The search list
+should read only `login.keychain-db` + `System.keychain`.
+
 ## CloudKit / iCloud sync environment
 
 `NSPersistentCloudKitContainer` mirrors to one **private** CloudKit
