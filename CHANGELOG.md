@@ -3,6 +3,16 @@
 All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [v0.8.12] - 2026-06-23
+
+### Fixed
+- surface CloudKit partialFailure per-item errors (0281c0ed)
+
+### Maintenance
+- bump iOS build number to 62 (8bb5936b)
+
+_[force]_
+
 ## [v0.8.11] - 2026-06-23
 
 ### Fixed

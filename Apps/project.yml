@@ -27,7 +27,7 @@ settings:
     # $(MARKETING_VERSION). Kept in lockstep automatically by the semver
     # pre-bump hook (.semver/hooks/pre-bump/sync-marketing-version.sh) — see
     # the note in Apps/Lillist-iOS/project.yml.
-    MARKETING_VERSION: "0.8.11"
+    MARKETING_VERSION: "0.8.12"
 
 packages:
   LillistCore:
