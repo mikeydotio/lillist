@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [v0.8.9] - 2026-06-22
+
+### Maintenance
+- bump iOS build number to 60 (2b10f250)
+
+_[force]_
+
 ## [v0.8.8] - 2026-06-22
 
 ### Fixed
