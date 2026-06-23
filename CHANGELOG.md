@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [v0.8.10] - 2026-06-22
+
+### Fixed
+- converge iOS/macOS on one CloudKit env + real sync status (cb0e5cd1)
+
+_[manual]_
+
 ## [v0.8.9] - 2026-06-22
 
 ### Maintenance
