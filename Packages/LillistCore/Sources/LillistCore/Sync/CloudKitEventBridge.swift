@@ -1,5 +1,7 @@
 import Foundation
 import CoreData
+import CloudKit
+import os
 
 /// Lillist's internal mirror of `NSPersistentCloudKitContainer.Event`.
 ///
@@ -117,7 +119,37 @@ public actor CloudKitEventBridge {
         @unknown default: type = .setup
         }
         let started = event.endDate == nil
-        let mapped: LillistError? = event.error.map { CloudKitErrorClassifier.classify($0) }
+        let mapped: LillistError? = event.error.map { error in
+            logRawError(error, eventType: type)
+            return CloudKitErrorClassifier.classify(error)
+        }
         return CloudKitSyncEvent(type: type, started: started, endedAt: event.endDate, error: mapped)
+    }
+
+    /// Log the raw CloudKit error before it is collapsed into the
+    /// `LillistError` taxonomy, recursing into a `.partialFailure`'s per-item
+    /// errors. Without this the actionable per-item codes are lost — the
+    /// classifier (and the UI) only ever see the opaque top-level
+    /// "(CKErrorDomain error 2.)" blob.
+    ///
+    /// Privacy: only error *codes* and the framework-generated
+    /// `localizedDescription` are logged (`.public`), never task content.
+    /// Codes are the actionable signal; descriptions are CloudKit framework
+    /// text whose embedded identifiers are CloudKit-internal record names, not
+    /// user-authored titles/notes. The crash reporter's `LogRedactor` still
+    /// scrubs any collected lines as defense-in-depth (see `LillistLog`).
+    static func logRawError(_ error: Error, eventType: CloudKitSyncEvent.EventType) {
+        let ns = error as NSError
+        LillistLog.sync.error(
+            "CloudKit \(String(describing: eventType), privacy: .public) failed: domain=\(ns.domain, privacy: .public) code=\(ns.code, privacy: .public) \(ns.localizedDescription, privacy: .public)"
+        )
+        guard let partials = ns.userInfo[CKPartialErrorsByItemIDKey] as? [AnyHashable: NSError],
+              !partials.isEmpty else { return }
+        LillistLog.sync.error("CloudKit partialFailure: \(partials.count, privacy: .public) item error(s)")
+        for itemError in partials.values {
+            LillistLog.sync.error(
+                "  partial item: domain=\(itemError.domain, privacy: .public) code=\(itemError.code, privacy: .public) \(itemError.localizedDescription, privacy: .public)"
+            )
+        }
     }
 }
