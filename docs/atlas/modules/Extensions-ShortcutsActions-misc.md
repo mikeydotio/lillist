@@ -107,7 +107,7 @@ are open-app-only stubs — they bring Lillist to the foreground and do no data 
 ## External deps
 
 - AppIntents — every intent conforms to `AppIntent`; `LillistShortcuts` is an `AppShortcutsProvider`
-- App Group `group.io.mikeydotio.Lillist` — shared store path; CloudKit container declared in `Extensions/ShortcutsActions/Lillist.entitlements`
+- App Group `group.io.mikey.lillist` — shared store path; CloudKit container declared in `Extensions/ShortcutsActions/Lillist.entitlements`
 
 ## Gotchas
 

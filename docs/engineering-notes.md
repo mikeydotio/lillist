@@ -3322,3 +3322,56 @@ undiagnosable because `CloudKitErrorClassifier` had no `.partialFailure` case
 (collapsed to the opaque top-level description) and `CloudKitEventBridge` never
 logged the raw error. Both now unwrap/log `CKPartialErrorsByItemIDKey` per item.
 That logging is what let us read the per-item codes off the device.
+
+## 2026-06-23 — Reverse-DNS namespace rename to `io.mikey.lillist`: per-pattern, not a blind sed; new IDs can't be provisioned headlessly
+
+The whole identifier namespace moved off `io.mikeydotio.*` / `com.mikeydotio.*`
+(a literal mis-read of the org string `mikeydotio`, which spells the domain
+**mikey.io** → reverses to **`io.mikey`**) onto **`io.mikey.lillist`**: bundle
+IDs, App Group `group.io.mikey.lillist`, CloudKit container
+`iCloud.io.mikey.lillist`, the BGTask/user-activity IDs, and every internal
+OSLog subsystem / UserDefaults key / notification ID / Spotlight domain (the
+old mix of `io.` and `com.` prefixes was unified to `io.mikey.lillist.*`).
+
+**A blind `s/mikeydotio/mikey/g` is wrong — four things must survive it.**
+The rename was done as four *dotted* per-pattern replacements
+(`io.mikeydotio.Lillist`, `io.mikeydotio.lillist`, `com.mikeydotio.lillist`,
+then bare `io.mikeydotio`), applied specific-before-bare. That structure
+deliberately skips:
+- **GitHub paths** — `github.com/mikeydotio/Lillist` (the macOS Help-menu link),
+  `mikeydotio/deployit-index`, `mikeydotio/agentics`. They use *slashes*
+  (`mikeydotio/…`), so the dotted patterns never match them. These are repo/org
+  references, not Apple IDs.
+- **deployit's own launchd label** `com.mikeydotio.deployit.backend` — matched by
+  neither `com.mikeydotio.lillist` nor `io.mikeydotio`. It's a different tool's
+  identifier; leave it.
+- **Two historical-typo records** of `group.com.mikeydotio.lillist` (the old CLI
+  app-group bug) in `StoreLocatorTests.swift` and `engineering-notes.md` — these
+  document a past mistake; flattening them to the new value destroys the lesson.
+  `com.mikeydotio.lillist`→`io.mikey.lillist` hit them, so they were restored by
+  hand. `engineering-notes.md` is append-only: old entries (incl. the
+  `io.mikeydotio.lillist.crash` mention) stay verbatim; this entry is the record
+  of the change.
+- The user-facing **name** stays `Lillist` (`PRODUCT_NAME`, `CFBundleDisplayName`,
+  the `Lillist.sqlite` store dir are not identifiers — don't touch them).
+
+The pbxprojs are regenerated from the two `project.yml` specs via `xcodegen`,
+not edited; `Apps/Config/Signing.local.xcconfig`'s `LOCAL_SU_FEED_URL` is
+gitignored and carries the bundle ID in its deployit-served path, so it must be
+updated by hand on each Mac.
+
+**The wall: a brand-new App ID can't be provisioned from a headless build.**
+Renaming the bundle ID/App Group/container means none of the new registered
+records exist yet. A signed `xcodebuild … -allowProvisioningUpdates` over
+SSH/mosh fails with `No Accounts: Add a new account in Accounts settings` +
+`No profiles for 'io.mikey.lillist' were found` — auto-creating an App ID +
+profile + iCloud container needs the interactive Apple-ID account that lives in
+**GUI Xcode**, which the headless toolchain can't reach. (Builds against an
+*already-provisioned* ID work headlessly because they reuse the cached profile
+with no account.) So: unsigned builds
+(`CODE_SIGNING_ALLOWED=NO`) confirm the *code* compiles; the first signed build
+of the renamed app must be run once from Xcode (or have the IDs registered in
+the portal) to mint the new records. The new CloudKit container starts **empty**
+(old data abandoned) and the renamed bundle ID installs as a *separate* app — a
+fresh install is cleanest, since the on-disk store's CloudKit mirror metadata is
+bound to the old container name.

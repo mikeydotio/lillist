@@ -201,7 +201,7 @@ The sync seam is `NSPersistentCloudKitContainer`. A sync-mode change (local-only
 - LillistUI screens are pure presentation (data and closures via `init`, no `@State`/`.task`/`AppEnvironment`). App-target wrappers own lifecycle. Evidence: `docs/atlas/modules/Packages-LillistUI-Sources-LillistUI-iOS-misc.md` Purpose; `docs/atlas/modules/Apps-Lillist-iOS-Sources-misc.md` Purpose.
 - Date math goes through `Calendar.date(byAdding:)`; `addingTimeInterval` is forbidden except the `afterCompletion` recurrence rule defined in absolute seconds. Evidence: `docs/atlas/modules/Packages-LillistCore-Sources-LillistCore-Recurrence.md` Purpose.
 - Smart filters run twin evaluators — `NSPredicateCompiler` (Core Data fetch) and `SwiftEvaluator` (in-memory) — kept in behavioral parity by a dedicated parity test suite. Evidence: `docs/atlas/modules/Packages-LillistCore-Sources-LillistCore-Rules.md` Purpose.
-- All targets share App Group `group.io.mikeydotio.Lillist`; the `Signing.xcconfig` indirection keeps the Apple Developer Team ID out of every committed file. Evidence: `docs/atlas/modules/Apps-Config.md` Purpose; `docs/atlas/modules/Extensions-ShortcutsActions-misc.md` External deps.
+- All targets share App Group `group.io.mikey.lillist`; the `Signing.xcconfig` indirection keeps the Apple Developer Team ID out of every committed file. Evidence: `docs/atlas/modules/Apps-Config.md` Purpose; `docs/atlas/modules/Extensions-ShortcutsActions-misc.md` External deps.
 - A sync-mode change is a store-level remove+re-add on one long-lived container, never a container re-instantiation. Evidence: `docs/atlas/modules/Packages-LillistCore-Sources-LillistCore-Persistence.md` Purpose.
 - Crash reporting is canary-based, opt-in, and user-mediated — no silent upload. Evidence: `docs/atlas/modules/Packages-LillistCore-Sources-LillistCore-CrashReporting.md` Purpose.
 
@@ -214,7 +214,7 @@ The sync seam is `NSPersistentCloudKitContainer`. A sync-mode change (local-only
 - Date math goes through Calendar; RecurrenceExpander is canonical, never addingTimeInterval
 - Smart filters run twin evaluators (NSPredicateCompiler + SwiftEvaluator) kept in parity
 - CLIBridge handlers are the shared verb layer for the lillist CLI and Shortcuts intents
-- All targets share App Group group.io.mikeydotio.Lillist; CLI/extensions open via GatedPersistenceResolver
+- All targets share App Group group.io.mikey.lillist; CLI/extensions open via GatedPersistenceResolver
 - Sync mode swap = store remove+re-add on one container; MigrationGate guards headless opens
 - LillistUI iOS screens are state-free presenters; app-target wrappers own @State/.task/nav
 - Rainbow Glass theme tokens live in LillistUI/Theme; color is functional, not decorative

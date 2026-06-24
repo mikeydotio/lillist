@@ -48,7 +48,7 @@ singletons. If this module vanished, nothing downstream could be constructed.
 | `AppEnvironment.make()` | func | `Apps/Lillist-iOS/Sources/App/AppEnvironment.swift:277` | Async constructor: loads Core Data in the App Group container, resolves initial `SyncMode`, builds the graph |
 | `AppEnvironment.inMemory()` | func | `Apps/Lillist-iOS/Sources/App/AppEnvironment.swift:307` | In-memory variant for tests/previews; isolated UserDefaults suite per instance |
 | `AppEnvironment.bootstrap()` | func | `Apps/Lillist-iOS/Sources/App/AppEnvironment.swift:328` | One-shot launch work: prefs migration, history catch-up, scheduler bootstrap, purge, account/pause priming, observers |
-| `AppEnvironment.appGroupID` | static let | `Apps/Lillist-iOS/Sources/App/AppEnvironment.swift:270` | `group.io.mikeydotio.Lillist`; shared by app, Share Extension, Shortcuts |
+| `AppEnvironment.appGroupID` | static let | `Apps/Lillist-iOS/Sources/App/AppEnvironment.swift:270` | `group.io.mikey.lillist`; shared by app, Share Extension, Shortcuts |
 | `LillistApp` | struct | `Apps/Lillist-iOS/Sources/App/LillistApp.swift:7` | `@main` `App`; holds env in `@State`, wires scene + commands, registers `BGTask` |
 | `CrashReporterHost` | struct | `Apps/Lillist-iOS/Sources/App/CrashReporterHost.swift:9` | Wraps root content; `.sheet(item:)`-binds crash report + mail/clipboard fallback |
 | `OnboardingPresentationModifier` | struct | `Apps/Lillist-iOS/Sources/App/LillistApp.swift:195` | One-time launch evaluation: onboarding, iCloud-unavailable, or stale-migration recovery |

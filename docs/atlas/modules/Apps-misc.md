@@ -26,7 +26,7 @@ Regenerating from this file is mandatory after moving or deleting macOS sources.
 
 | Symbol | Kind | Location | Contract |
 | --- | --- | --- | --- |
-| `Lillist-macOS` | target | `Apps/project.yml:37` | macOS `application` target; product `Lillist`, bundle id `io.mikeydotio.Lillist` |
+| `Lillist-macOS` | target | `Apps/project.yml:37` | macOS `application` target; product `Lillist`, bundle id `io.mikey.lillist` |
 | `Lillist-macOSTests` | target | `Apps/project.yml:70` | Standalone `bundle.unit-test` (no test host) exercising co-compiled pure helpers |
 | `Lillist-macOS` (scheme) | scheme | `Apps/project.yml:152` | Builds app + tests; Debug run/test config |
 

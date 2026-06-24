@@ -43,7 +43,7 @@ Group, push, background processing) the app declares.
 | `Lillist-iOSTests` | xcodegen target | `Apps/Lillist-iOS/project.yml:137` | Standalone `TEST_HOST=""` bundle — co-compiles extension sources so they unit-test without a signed host |
 | `Lillist-iOSAppHostedTests` | xcodegen target | `Apps/Lillist-iOS/project.yml:211` | App-hosted bundle (real bundle ID) so `liveSwapAllowed`-gated migration/glass tests actually run |
 | `configFiles` | xcodegen key | `Apps/Lillist-iOS/project.yml:13` | Wires Debug+Release to `../Config/Signing.xcconfig`, keeping the team ID out of the pbxproj |
-| `BGTaskSchedulerPermittedIdentifiers` | plist key | `Apps/Lillist-iOS/Info.plist:54` | Declares `io.mikeydotio.Lillist.autopurge` background task identifier |
+| `BGTaskSchedulerPermittedIdentifiers` | plist key | `Apps/Lillist-iOS/Info.plist:54` | Declares `io.mikey.lillist.autopurge` background task identifier |
 
 ## Relationships
 
@@ -67,7 +67,7 @@ LillistCore test sources (migration, persistence, CloudKit zone erase) because t
 (`Apps/Lillist-iOS/project.yml:223`). The Archive scheme runs a build-number bump
 pre-action shelling out to `Tools/Deploy/bump-build-number.sh`
 (`Apps/Lillist-iOS/project.yml:275`). All four targets share App Group
-`group.io.mikeydotio.Lillist` (`Apps/Lillist-iOS/Lillist.entitlements:13`).
+`group.io.mikey.lillist` (`Apps/Lillist-iOS/Lillist.entitlements:13`).
 Bundle identity flows from build settings: `Info.plist` interpolates
 `$(MARKETING_VERSION)`/`$(CURRENT_PROJECT_VERSION)` rather than hardcoding versions
 (`Apps/Lillist-iOS/Info.plist:19`).

@@ -40,8 +40,8 @@ either fails to launch, loses CloudKit sync, or breaks OTA updates.
 | `NSServices` | plist key | `Apps/Lillist-macOS/Info.plist:29` | Registers a system Services menu item routed to the `addToLillistAsTask` message |
 | `SUFeedURL` | plist key | `Apps/Lillist-macOS/Info.plist:53` | Sparkle appcast URL served over Tailscale for OTA macOS updates |
 | `SUPublicEDKey` | plist key | `Apps/Lillist-macOS/Info.plist:55` | EdDSA public key Sparkle verifies update signatures against |
-| `com.apple.security.application-groups` | entitlement | `Apps/Lillist-macOS/Lillist.entitlements:11` | App Group `group.io.mikeydotio.Lillist` shared with iOS app and extensions |
-| `com.apple.developer.icloud-container-identifiers` | entitlement | `Apps/Lillist-macOS/Lillist.entitlements:15` | CloudKit container `iCloud.com.mikeydotio.lillist` backing sync |
+| `com.apple.security.application-groups` | entitlement | `Apps/Lillist-macOS/Lillist.entitlements:11` | App Group `group.io.mikey.lillist` shared with iOS app and extensions |
+| `com.apple.developer.icloud-container-identifiers` | entitlement | `Apps/Lillist-macOS/Lillist.entitlements:15` | CloudKit container `iCloud.io.mikey.lillist` backing sync |
 | `com.apple.security.app-sandbox` | entitlement | `Apps/Lillist-macOS/Lillist.entitlements:5` | App Sandbox enabled; pairs with user-selected file and network-client grants |
 
 ## Relationships

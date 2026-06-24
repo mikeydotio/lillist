@@ -77,7 +77,7 @@ Module docs live at docs/atlas/modules/<id>.md — before working in an area, re
 - Date math goes through Calendar; RecurrenceExpander is canonical, never addingTimeInterval
 - Smart filters run twin evaluators (NSPredicateCompiler + SwiftEvaluator) kept in parity
 - CLIBridge handlers are the shared verb layer for the lillist CLI and Shortcuts intents
-- All targets share App Group group.io.mikeydotio.Lillist; CLI/extensions open via GatedPersistenceResolver
+- All targets share App Group group.io.mikey.lillist; CLI/extensions open via GatedPersistenceResolver
 - Sync mode swap = store remove+re-add on one container; MigrationGate guards headless opens
 - LillistUI iOS screens are state-free presenters; app-target wrappers own @State/.task/nav
 - Rainbow Glass theme tokens live in LillistUI/Theme; color is functional, not decorative
