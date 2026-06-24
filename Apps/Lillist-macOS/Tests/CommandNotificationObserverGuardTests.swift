@@ -8,22 +8,17 @@ import Foundation
 /// the void; this fails if any such name reappears unobserved.
 ///
 /// `observed` is maintained by hand from the real `.onReceive` /
-/// `addObserver` sites: RootSplitView, TaskListView, AppDelegate,
-/// LillistApp, MenuBarExtraScene. When you add a command, add its
-/// observer AND list it here — or the build fails.
+/// `addObserver` sites: MacTasksView, AppDelegate, LillistApp,
+/// MenuBarExtraScene. When you add a command, add its observer AND list
+/// it here — or the build fails. After the single-column main window
+/// adopted the shared iOS UI, the menu posts nothing (⌘N flips a
+/// binding), so `postedByCommands` is empty and this set covers only the
+/// Dock-menu / panel / reopen notifications.
 final class CommandNotificationObserverGuardTests: XCTestCase {
     private let observed: Set<Notification.Name> = [
-        .lillistNewTask,
-        .lillistNewSibling,
-        .lillistToggleStarted,
-        .lillistMarkClosed,
-        .lillistMarkBlocked,
-        .lillistFocusSidebar,
-        .lillistFocusList,
-        .lillistOpenTaskEditor,
-        .lillistToggleSidebar,
         .lillistSelectTodayFilter,
         .lillistSelectFilter,
+        .lillistTasksDidChange,
         .lillistReopenMainWindow
     ]
 

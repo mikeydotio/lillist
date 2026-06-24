@@ -93,31 +93,6 @@ extension XCTestCase {
         }
     }
 
-    /// Click a macOS sidebar row by its visible title. Sidebar rows expose
-    /// their label as a static text inside the outline; try the common
-    /// element kinds and click the first that resolves. Best-effort — a
-    /// miss leaves the current source shown (still a valid capture).
-    @MainActor
-    @discardableResult
-    func clickSidebarRow(_ app: XCUIApplication, _ title: String, timeout: TimeInterval = 4) -> Bool {
-        let candidates: [XCUIElement] = [
-            app.outlines.staticTexts[title],
-            app.tables.staticTexts[title],
-            app.cells.staticTexts[title],
-            app.staticTexts[title],
-            app.buttons[title],
-        ]
-        let deadline = Date().addingTimeInterval(timeout)
-        while Date() < deadline {
-            for element in candidates where element.exists && element.isHittable {
-                element.click()
-                return true
-            }
-            Thread.sleep(forTimeInterval: 0.2)
-        }
-        return false
-    }
-
     /// Click a Preferences tab by its label. The Settings window is a
     /// self-sizing TabView whose toolbar collapses extra tabs behind a ">>"
     /// overflow chevron once 8 panes no longer fit — so a direct hit is tried

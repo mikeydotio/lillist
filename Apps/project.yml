@@ -97,11 +97,6 @@ targets:
       - path: Lillist-macOS/Sources/Hotkey/HotkeyRecorder.swift
       - path: Lillist-macOS/Sources/Hotkey/HotkeyKeyTable.swift
       - path: Lillist-macOS/Sources/Hotkey/GlobalHotkeyMonitor.swift
-      # FocusedListColumn declares the standalone ListColumn enum + the
-      # FocusedValueKey/extension; co-compiling it lets the focus gating
-      # test reference ListColumn without pulling in RootSplitView's
-      # AppEnvironment/sidebar dependencies (Plan 13 Task 5).
-      - path: Lillist-macOS/Sources/Commands/FocusedListColumn.swift
       # macos-2: CommandNotifications declares the dependency-free
       # Notification.Name extension + the postedByCommands registry, so
       # CommandNotificationObserverGuardTests can read them without a
@@ -111,15 +106,6 @@ targets:
       # singleton rules (present / retarget / noop); co-compiled so
       # EditorOpenDecisionTests can assert them without a live NSPanel.
       - path: Lillist-macOS/Sources/Editor/EditorOpenDecision.swift
-      # InlineCreateField is exercised by the empty-tab wiring guard in
-      # InlineCreateInteractionTests (Plan 13 Task 6).
-      - path: Lillist-macOS/Sources/Views/TaskList/InlineCreateField.swift
-      # Plan 15 Task 2: ToolbarPersistenceTests exercises
-      # UIStatePersistence.taskSelection(for:) which keys on
-      # SidebarSelection. Co-compile both so the standalone bundle
-      # builds without `@testable import Lillist_macOS`.
-      - path: Lillist-macOS/Sources/Persistence/UIStatePersistence.swift
-      - path: Lillist-macOS/Sources/Views/Sidebar/SidebarSelection.swift
       # Plan 15 Task 13: QuickCapturePlacementTests exercises
       # QuickCapturePanelController.placementOrigin(...). The whole
       # class compiles via its dependencies, so we keep the pure
@@ -131,16 +117,6 @@ targets:
       # IndexingService (whose AppEnvironment dependency would pull
       # in the entire app graph).
       - path: Lillist-macOS/Sources/Indexing/IndexingMappers.swift
-      # Plan 19 Task 7: TaskListSourceTitleTests exercises
-      # SourceTitleResolver.resolve(...). The resolver is extracted
-      # from TaskListView (whose SwiftUI/AppEnvironment dependencies
-      # would pull in the entire app graph).
-      - path: Lillist-macOS/Sources/Views/TaskList/SourceTitleResolver.swift
-      # Plan 19 Task 8: KeyboardShortcutTests exercises
-      # SelectionAdvance.advance(current:ordered:direction:) — the pure
-      # index-math used to document and regression-test SwiftUI's
-      # built-in arrow-key navigation contract.
-      - path: Lillist-macOS/Sources/Views/TaskList/SelectionAdvance.swift
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: app.lillist.tests

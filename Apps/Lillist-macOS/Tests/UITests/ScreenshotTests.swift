@@ -11,6 +11,11 @@ import XCTest
 /// glass snapshot suites are XCTSkip-quarantined. A live XCUITest screenshot
 /// goes through the automation framework's window-server capture, which
 /// renders glass.
+///
+/// NOTE: the main-window tour below targets the shared iOS single-column
+/// UI (the macOS split view / sidebar was retired). macOS UITests are not
+/// run in CI — they need a signed Mac with an iCloud account and must be
+/// verified by Mikey on-device.
 final class ScreenshotTests: XCTestCase {
 
     override func setUp() {
@@ -32,48 +37,50 @@ final class ScreenshotTests: XCTestCase {
         XCTAssertTrue(app.windows.firstMatch.waitForExistence(timeout: 30),
                       "Main window never appeared")
 
-        // No source selected yet → the "Select a source" content empty state.
-        captureScreenshot(app, named: "01-select-source-\(suffix)")
+        // The single-column task list, populated from the seeded demo
+        // content. No source selection — the sidebar was retired when the
+        // window adopted the shared iOS UI; navigation is via the filter
+        // header below.
+        captureScreenshot(app, named: "01-tasks-list-\(suffix)")
 
-        // A tag source — hierarchical list mode, populated ("Work").
-        clickSidebarRow(app, "Work")
-        captureScreenshot(app, named: "02-tag-work-\(suffix)")
-
-        // A smart-filter source — flat list mode, populated. "No Tags"
-        // matches the untagged seeded tasks (no dates, so Today/This Week
-        // would be empty).
-        clickSidebarRow(app, "No Tags")
-        captureScreenshot(app, named: "03-filter-no-tags-\(suffix)")
-
-        // Another filter — "Recently Closed" shows the closed seeded task.
-        clickSidebarRow(app, "Recently Closed")
-        captureScreenshot(app, named: "04-filter-recently-closed-\(suffix)")
-
-        // Trash (empty) — the flat-list empty state.
-        clickSidebarRow(app, "Trash")
-        captureScreenshot(app, named: "05-trash-empty-\(suffix)")
-
-        // Inline create (⌘N) on a populated tag source.
-        clickSidebarRow(app, "Work")
-        app.typeKey("n", modifierFlags: .command)
-        let field = app.textFields["InlineCreateField"]
-        if field.waitForExistence(timeout: 5) {
-            field.click()
-            field.typeText("Plan offsite agenda")
+        // Expand the filter header (search well + quick-filter chips), then
+        // show the "Done" view, which surfaces the seeded closed task.
+        let filterToggle = app.buttons["TasksFilterToggle"]
+        if filterToggle.waitForExistence(timeout: 5) {
+            filterToggle.click()
+            Thread.sleep(forTimeInterval: 0.5)
+            captureScreenshot(app, named: "02-filter-header-\(suffix)")
+            let done = app.buttons["Done"]
+            if done.waitForExistence(timeout: 3), done.isHittable {
+                done.click()
+                Thread.sleep(forTimeInterval: 0.6)
+                captureScreenshot(app, named: "03-filter-done-\(suffix)")
+                done.click()              // clear the chip
+            }
+            filterToggle.click()           // collapse the header
         }
-        captureScreenshot(app, named: "06-inline-create-\(suffix)")
 
-        // Open the unified task editor on an existing row (floating panel).
-        // Double-click opens the editor (single click only selects).
-        app.typeKey(.escape, modifierFlags: [])
-        clickSidebarRow(app, "Work")
+        // Open the unified task editor on an existing row. The editor is now
+        // an in-window overlay (the docked detail column / floating NSPanel
+        // for in-app edits was replaced), so a window screenshot captures it.
+        // The row opens on a tap of its title text.
         let row = app.staticTexts["Draft Q3 roadmap"]
-        if row.waitForExistence(timeout: 8) {
-            row.doubleClick()
-            Thread.sleep(forTimeInterval: 1.5)
-            // The editor is a separate floating NSPanel not surfaced in
-            // `app.windows`; full-screen is the only reliable capture.
-            captureFullScreen(named: "07-task-editor-\(suffix)")
+        if row.waitForExistence(timeout: 8), row.isHittable {
+            row.click()
+            Thread.sleep(forTimeInterval: 1.0)
+            captureScreenshot(app, named: "04-task-editor-\(suffix)")
+            app.typeKey(.escape, modifierFlags: [])
+            Thread.sleep(forTimeInterval: 0.4)
+        }
+
+        // Open quick capture via the bottom-trailing FAB (the same in-window
+        // overlay, in new-capture mode).
+        let fab = app.buttons["TasksQuickCaptureFAB"]
+        if fab.waitForExistence(timeout: 5), fab.isHittable {
+            fab.click()
+            Thread.sleep(forTimeInterval: 1.0)
+            captureScreenshot(app, named: "05-quick-capture-\(suffix)")
+            app.typeKey(.escape, modifierFlags: [])
         }
 
         app.terminate()

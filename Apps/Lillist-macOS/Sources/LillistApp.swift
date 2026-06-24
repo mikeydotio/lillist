@@ -8,6 +8,19 @@ struct LillistApp: App {
     @State private var environment: AppEnvironment?
     @State private var loadError: String?
     @State private var statusBarItemVisible = true
+    /// Drives the in-window unified editor's new-capture trigger from both
+    /// `LillistCommands` (⌘N) and the bottom-trailing FAB.
+    @State private var isQuickCapturePresented = false
+    /// macOS main-window sort selection, persisted per-machine. Distinct
+    /// key from iOS's `lillist.ios.sort` so the platforms don't collide.
+    @AppStorage("lillist.macos.sort") private var sortRaw: String = TasksSort.personalized.rawValue
+
+    private var sortBinding: Binding<TasksSort> {
+        Binding(
+            get: { TasksSort(rawValue: sortRaw) ?? .personalized },
+            set: { sortRaw = $0.rawValue }
+        )
+    }
 
     init() {
         // Register the bundled Plus Jakarta Sans faces before the first
@@ -20,12 +33,17 @@ struct LillistApp: App {
     var body: some Scene {
         WindowGroup("Lillist", id: "main") {
             content
-                .frame(minWidth: 900, minHeight: 560)
+                // Narrow, iPhone-width default; freely resizable with a
+                // ~360 floor and no ceiling (`.contentMinSize`). The main
+                // window is now the shared iOS single-column surface.
+                .frame(minWidth: 360, idealWidth: 420, minHeight: 480, idealHeight: 720)
+                .environment(\.isQuickCapturePresentedBinding, $isQuickCapturePresented)
+                .environment(\.sortBinding, sortBinding)
                 .task { await loadEnvironmentIfNeeded() }
                 .modifier(MainWindowReopener())
         }
-        .defaultSize(width: 1180, height: 760)
-        .windowResizability(.contentSize)
+        .defaultSize(width: 420, height: 760)
+        .windowResizability(.contentMinSize)
         .commands {
             // Sparkle "Check for Updates…" in the app menu, just below
             // "About Lillist". Always available (not gated on environment).
@@ -34,8 +52,8 @@ struct LillistApp: App {
                     appDelegate.checkForUpdates()
                 }
             }
-            if let environment {
-                LillistCommands(environment: environment)
+            if environment != nil {
+                LillistCommands(isQuickCapturePresented: $isQuickCapturePresented)
             }
         }
 
@@ -86,11 +104,8 @@ struct LillistApp: App {
                 deviceModel: environment.deviceModel,
                 crashPromptsEnabled: environment.crashPromptsEnabled
             ) {
-                RootSplitView()
+                MacTasksView()
                     .environment(environment)
-                    .environment(\.openTaskEditorAction) { id in
-                        appDelegate.quickCapturePanel?.open(taskID: id)
-                    }
                     .modifier(OnboardingPresentationModifier(environment: environment))
             }
         } else if let loadError {
@@ -112,10 +127,8 @@ struct LillistApp: App {
             }
             let env = try await AppEnvironment.make()
             // UI-test seam: install the default filters + seed demo content
-            // BEFORE the first render. `SidebarView` refreshes once via
-            // `.task { refresh() }` and does not re-query on later writes, so
-            // populating the stores after `environment = env` would leave the
-            // sidebar empty until relaunch (see the first-launch note below).
+            // BEFORE the first render so the main window shows seeded rows
+            // on first paint.
             if ProcessInfo.processInfo.arguments.contains("--ui-test-seed-demo") {
                 try? await env.defaultsInstaller.installIfNeeded()
                 await Self.uiTestSeedDemo(env)
@@ -181,18 +194,11 @@ struct LillistApp: App {
             groupDefaults.removePersistentDomain(forName: AppEnvironment.appGroupID)
             groupDefaults.synchronize()
         }
-        // Per-machine UI state lives in UserDefaults.standard (see
-        // UIStatePersistence + RootSplitView's @SceneStorage). Clear it so a
-        // fresh run starts with no remembered sidebar selection, sort,
-        // expansion, or column visibility.
+        // Per-machine UI state lives in UserDefaults.standard. The
+        // single-column main window persists only the sort selection
+        // (`lillist.macos.sort`); clear it so a fresh run starts neutral.
         let standard = UserDefaults.standard
-        for key in [
-            "lillist.ui.columnVisibility",
-            "lillist.ui.sidebarSelection",
-            "lillist.ui.expandedTagIDs",
-            "lillist.ui.sortPerSource",
-            "lillist.ui.taskSelection",
-        ] {
+        for key in ["lillist.macos.sort"] {
             standard.removeObject(forKey: key)
         }
         await DevicePreferencesStore(appGroupID: AppEnvironment.appGroupID)

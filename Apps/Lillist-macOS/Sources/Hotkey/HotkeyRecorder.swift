@@ -21,8 +21,8 @@ struct HotkeyRecorder: View {
         ZStack {
             RoundedRectangle(cornerRadius: 6)
                 .strokeBorder(
-                    // Active focus uses the focus-blue token (matching
-                    // InlineCreateField); idle uses the standard border token.
+                    // Active focus uses the focus-blue token; idle uses the
+                    // standard border token.
                     recording ? RainbowPalette.focusBlue.base : LillistColor.borderSoft,
                     lineWidth: 1
                 )
