@@ -1023,7 +1023,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = io.mikeydotio.Lillist;
+				PRODUCT_BUNDLE_IDENTIFIER = io.mikey.lillist;
 				PRODUCT_NAME = Lillist;
 				SDKROOT = iphoneos;
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -1042,7 +1042,7 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = io.mikeydotio.Lillist.Shortcuts;
+				PRODUCT_BUNDLE_IDENTIFIER = io.mikey.lillist.Shortcuts;
 				SDKROOT = iphoneos;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
@@ -1060,7 +1060,7 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = io.mikeydotio.Lillist.Share;
+				PRODUCT_BUNDLE_IDENTIFIER = io.mikey.lillist.Share;
 				SDKROOT = iphoneos;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
@@ -1080,7 +1080,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = io.mikeydotio.Lillist;
+				PRODUCT_BUNDLE_IDENTIFIER = io.mikey.lillist;
 				PRODUCT_NAME = Lillist;
 				SDKROOT = iphoneos;
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -1099,7 +1099,7 @@
 					"@executable_path/Frameworks",
 					"@loader_path/Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = io.mikeydotio.Lillist.appHostedTests;
+				PRODUCT_BUNDLE_IDENTIFIER = io.mikey.lillist.appHostedTests;
 				SDKROOT = iphoneos;
 				TARGETED_DEVICE_FAMILY = "1,2";
 				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Lillist.app/Lillist";
@@ -1118,7 +1118,7 @@
 					"@executable_path/Frameworks",
 					"@loader_path/Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = io.mikeydotio.Lillist.appHostedTests;
+				PRODUCT_BUNDLE_IDENTIFIER = io.mikey.lillist.appHostedTests;
 				SDKROOT = iphoneos;
 				TARGETED_DEVICE_FAMILY = "1,2";
 				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Lillist.app/Lillist";
@@ -1208,7 +1208,7 @@
 					"@executable_path/Frameworks",
 					"@loader_path/Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = io.mikeydotio.Lillist.uitests;
+				PRODUCT_BUNDLE_IDENTIFIER = io.mikey.lillist.uitests;
 				SDKROOT = iphoneos;
 				TARGETED_DEVICE_FAMILY = "1,2";
 				TEST_TARGET_NAME = "Lillist-iOS";
@@ -1227,7 +1227,7 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = io.mikeydotio.Lillist.Share;
+				PRODUCT_BUNDLE_IDENTIFIER = io.mikey.lillist.Share;
 				SDKROOT = iphoneos;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
@@ -1245,7 +1245,7 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = io.mikeydotio.Lillist.Shortcuts;
+				PRODUCT_BUNDLE_IDENTIFIER = io.mikey.lillist.Shortcuts;
 				SDKROOT = iphoneos;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
@@ -1326,7 +1326,7 @@
 					"@executable_path/Frameworks",
 					"@loader_path/Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = io.mikeydotio.Lillist.tests;
+				PRODUCT_BUNDLE_IDENTIFIER = io.mikey.lillist.tests;
 				SDKROOT = iphoneos;
 				TARGETED_DEVICE_FAMILY = "1,2";
 				TEST_HOST = "";
@@ -1345,7 +1345,7 @@
 					"@executable_path/Frameworks",
 					"@loader_path/Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = io.mikeydotio.Lillist.uitests;
+				PRODUCT_BUNDLE_IDENTIFIER = io.mikey.lillist.uitests;
 				SDKROOT = iphoneos;
 				TARGETED_DEVICE_FAMILY = "1,2";
 				TEST_TARGET_NAME = "Lillist-iOS";
@@ -1363,7 +1363,7 @@
 					"@executable_path/Frameworks",
 					"@loader_path/Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = io.mikeydotio.Lillist.tests;
+				PRODUCT_BUNDLE_IDENTIFIER = io.mikey.lillist.tests;
 				SDKROOT = iphoneos;
 				TARGETED_DEVICE_FAMILY = "1,2";
 				TEST_HOST = "";

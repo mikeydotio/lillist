@@ -18,7 +18,7 @@ struct StoreLocatorTests {
         // — entitlements were ground truth across the codebase before
         // Plan 21, but the CLI's previous "group.com.mikeydotio.lillist"
         // value was a typo that left the CLI invisible to the apps.
-        #expect(CLIBridge.StoreLocator.appGroupIdentifier == "group.io.mikeydotio.Lillist")
+        #expect(CLIBridge.StoreLocator.appGroupIdentifier == "group.io.mikey.lillist")
     }
 
     @Test("Opening a non-existent app-group container throws storeUnavailable")

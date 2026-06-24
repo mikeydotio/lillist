@@ -4,8 +4,7 @@
    version = "1.7">
    <BuildAction
       parallelizeBuildables = "YES"
-      buildImplicitDependencies = "YES"
-      runPostActionsOnFailure = "NO">
+      buildImplicitDependencies = "YES">
       <BuildActionEntries>
          <BuildActionEntry
             buildForTesting = "YES"
@@ -16,7 +15,7 @@
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "EC14F602879EBAC8291EE6AB"
-               BuildableName = "Lillist-iOS.app"
+               BuildableName = "Lillist.app"
                BlueprintName = "Lillist-iOS"
                ReferencedContainer = "container:Lillist-iOS.xcodeproj">
             </BuildableReference>
@@ -97,17 +96,23 @@
       buildConfiguration = "Debug"
       selectedDebuggerIdentifier = "Xcode.DebuggerFoundation.Debugger.LLDB"
       selectedLauncherIdentifier = "Xcode.DebuggerFoundation.Launcher.LLDB"
-      shouldUseLaunchSchemeArgsEnv = "NO"
-      onlyGenerateCoverageForSpecifiedTargets = "NO">
+      shouldUseLaunchSchemeArgsEnv = "NO">
       <MacroExpansion>
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "EC14F602879EBAC8291EE6AB"
-            BuildableName = "Lillist-iOS.app"
+            BuildableName = "Lillist.app"
             BlueprintName = "Lillist-iOS"
             ReferencedContainer = "container:Lillist-iOS.xcodeproj">
          </BuildableReference>
       </MacroExpansion>
+      <EnvironmentVariables>
+         <EnvironmentVariable
+            key = "RECORD_SNAPSHOTS"
+            value = "$(RECORD_SNAPSHOTS)"
+            isEnabled = "YES">
+         </EnvironmentVariable>
+      </EnvironmentVariables>
       <Testables>
          <TestableReference
             skipped = "NO"
@@ -121,8 +126,7 @@
             </BuildableReference>
          </TestableReference>
          <TestableReference
-            skipped = "NO"
-            parallelizable = "NO">
+            skipped = "NO">
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "648195162A0C0DAF753BC099"
@@ -154,15 +158,6 @@
             </BuildableReference>
          </TestableReference>
       </Testables>
-      <CommandLineArguments>
-      </CommandLineArguments>
-      <EnvironmentVariables>
-         <EnvironmentVariable
-            key = "RECORD_SNAPSHOTS"
-            value = "$(RECORD_SNAPSHOTS)"
-            isEnabled = "YES">
-         </EnvironmentVariable>
-      </EnvironmentVariables>
    </TestAction>
    <LaunchAction
       buildConfiguration = "Debug"
@@ -179,13 +174,11 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "EC14F602879EBAC8291EE6AB"
-            BuildableName = "Lillist-iOS.app"
+            BuildableName = "Lillist.app"
             BlueprintName = "Lillist-iOS"
             ReferencedContainer = "container:Lillist-iOS.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
-      <CommandLineArguments>
-      </CommandLineArguments>
    </LaunchAction>
    <ProfileAction
       buildConfiguration = "Release"
@@ -198,7 +191,7 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "EC14F602879EBAC8291EE6AB"
-            BuildableName = "Lillist-iOS.app"
+            BuildableName = "Lillist.app"
             BlueprintName = "Lillist-iOS"
             ReferencedContainer = "container:Lillist-iOS.xcodeproj">
          </BuildableReference>
@@ -220,7 +213,7 @@
                   <BuildableReference
                      BuildableIdentifier = "primary"
                      BlueprintIdentifier = "EC14F602879EBAC8291EE6AB"
-                     BuildableName = "Lillist-iOS.app"
+                     BuildableName = "Lillist.app"
                      BlueprintName = "Lillist-iOS"
                      ReferencedContainer = "container:Lillist-iOS.xcodeproj">
                   </BuildableReference>

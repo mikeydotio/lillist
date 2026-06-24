@@ -43,7 +43,7 @@ final class IndexingServiceTests: XCTestCase {
             closedAt: nil, deletedAt: nil
         )
         let item = IndexingMappers.searchableItem(for: task, tagNames: [])
-        XCTAssertEqual(item.domainIdentifier, "com.mikeydotio.lillist.task")
+        XCTAssertEqual(item.domainIdentifier, "io.mikey.lillist.task")
         XCTAssertEqual(item.uniqueIdentifier, task.id.uuidString)
     }
 }

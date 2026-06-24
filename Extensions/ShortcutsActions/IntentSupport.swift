@@ -4,7 +4,7 @@ import LillistCore
 
 /// Shared helpers for App Intent `perform()` bodies.
 enum IntentSupport {
-    static let appGroupID = "group.io.mikeydotio.Lillist"
+    static let appGroupID = "group.io.mikey.lillist"
 
     /// Per-process cache so repeated intent invocations in the same
     /// extension process reuse one `PersistenceController` (and its open

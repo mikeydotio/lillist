@@ -4,7 +4,7 @@ import LillistCore
 
 /// Plan 15 Task 24: pushes Lillist tasks into the system Spotlight
 /// index. Each task becomes a `CSSearchableItem` under the
-/// `com.mikeydotio.lillist.task` domain identifier (see
+/// `io.mikey.lillist.task` domain identifier (see
 /// `IndexingMappers.domainIdentifier`), so the user can find their
 /// tasks from any Spotlight search and the system can optionally
 /// surface them in `Show More From Lillist…`.

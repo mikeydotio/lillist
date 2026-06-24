@@ -14,7 +14,7 @@ import Foundation
 /// to iCloud.
 public struct StoreConfiguration: Sendable {
     /// Production CloudKit container identifier (design Section 3).
-    public static let defaultCloudKitContainerIdentifier = "iCloud.com.mikeydotio.lillist"
+    public static let defaultCloudKitContainerIdentifier = "iCloud.io.mikey.lillist"
 
     /// The on-disk vs in-memory choice.
     public enum StoreKind: Sendable {

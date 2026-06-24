@@ -136,12 +136,12 @@ final class DiagnosticLogTests: XCTestCase {
     }
 
     func test_shared_returns_same_instance_per_process_and_resolves_a_directory() {
-        let a = DiagnosticLog.shared(process: .cli, appGroupID: "group.io.mikeydotio.Lillist", enabled: false)
-        let b = DiagnosticLog.shared(process: .cli, appGroupID: "group.io.mikeydotio.Lillist", enabled: true)
+        let a = DiagnosticLog.shared(process: .cli, appGroupID: "group.io.mikey.lillist", enabled: false)
+        let b = DiagnosticLog.shared(process: .cli, appGroupID: "group.io.mikey.lillist", enabled: true)
         XCTAssertTrue(a === b, "same process must yield the cached instance")
         // Resolution falls back to Application Support when the App Group is
         // unavailable in the test bundle — must still produce a directory URL.
-        XCTAssertNotNil(DiagnosticLog.resolveDirectory(appGroupID: "group.io.mikeydotio.Lillist"))
+        XCTAssertNotNil(DiagnosticLog.resolveDirectory(appGroupID: "group.io.mikey.lillist"))
     }
 
     private func isoDay(_ stamp: String) -> Date {

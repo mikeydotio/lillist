@@ -9,7 +9,7 @@ import XCTest
 /// callers constructed the gate inline against the real App Group container.
 final class GatedPersistenceResolverTests: XCTestCase {
 
-    private let appGroupID = "group.io.mikeydotio.Lillist.tests.gate"
+    private let appGroupID = "group.io.mikey.lillist.tests.gate"
 
     func test_idleJournal_resolvesConfigForCurrentMode() async throws {
         let journal = InMemoryMigrationJournalStore(initial: .idle)

@@ -11,7 +11,7 @@ import os
 /// crashing or silently swallowing the corruption.
 enum RecurrenceLog {
     /// Stable subsystem string, sibling to `CrashReporting.subsystemIdentifier`.
-    static let subsystem = "io.mikeydotio.lillist.recurrence"
+    static let subsystem = "io.mikey.lillist.recurrence"
 
     /// Logger for input-normalization events at the `CalendarRule` trust boundary.
     static let normalization = Logger(subsystem: subsystem, category: "normalization")

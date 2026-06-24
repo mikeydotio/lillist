@@ -75,7 +75,7 @@ struct ShareRootView: View {
             // branch lives in one tested place. If a migration is in
             // flight the resolver throws storeUnavailable and we surface
             // the message below so the user can retry.
-            let appGroupID = "group.io.mikeydotio.Lillist"
+            let appGroupID = "group.io.mikey.lillist"
             guard let resolver = GatedPersistenceResolver(appGroupID: appGroupID) else {
                 saveError = "App Group container is not available."
                 return

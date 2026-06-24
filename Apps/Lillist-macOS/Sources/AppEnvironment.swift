@@ -233,7 +233,7 @@ final class AppEnvironment {
     }
 
     /// App Group identifier shared with the iOS app, extensions, and CLI.
-    static let appGroupID = "group.io.mikeydotio.Lillist"
+    static let appGroupID = "group.io.mikey.lillist"
 
     /// Async-friendly constructor. Loads the Core Data store and wires up
     /// every store / scheduler used by the SwiftUI hierarchy.

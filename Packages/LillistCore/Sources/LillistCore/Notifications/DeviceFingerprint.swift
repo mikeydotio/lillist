@@ -7,7 +7,7 @@ import Foundation
 /// Stored in `UserDefaults` so each device's fingerprint persists across
 /// launches. NOT synced via CloudKit — that's the point.
 public enum DeviceFingerprint {
-    static let userDefaultsKey = "com.mikeydotio.lillist.deviceFingerprint"
+    static let userDefaultsKey = "io.mikey.lillist.deviceFingerprint"
 
     /// Returns the fingerprint, generating and persisting a new one on first call.
     public static func current(defaults: UserDefaults = .standard) -> String {

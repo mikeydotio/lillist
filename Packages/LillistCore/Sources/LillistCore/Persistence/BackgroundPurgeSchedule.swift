@@ -10,7 +10,7 @@ import Foundation
 /// `BackgroundTasks` API itself is iOS-only and stays in the app target).
 public enum BackgroundPurgeSchedule {
     /// Reverse-DNS task identifier registered with `BGTaskScheduler`.
-    public static let taskIdentifier = "io.mikeydotio.Lillist.autopurge"
+    public static let taskIdentifier = "io.mikey.lillist.autopurge"
 
     /// Soonest the OS may launch the task after submission (one day).
     public static let earliestBeginInterval: TimeInterval = 24 * 60 * 60

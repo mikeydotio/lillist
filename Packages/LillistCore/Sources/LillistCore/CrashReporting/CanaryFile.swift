@@ -25,7 +25,7 @@ public struct CanaryFile: Sendable {
     ///
     /// macOS: `~/Library/Application Support/Lillist/launch.canary`
     /// macOS CLI: `~/Library/Application Support/Lillist/launch-cli.canary`
-    /// iOS: app-group container `group.io.mikeydotio.Lillist/launch.canary`
+    /// iOS: app-group container `group.io.mikey.lillist/launch.canary`
     public static func defaultURL(for platform: Platform) -> URL {
         switch platform {
         case .macOSApp:
@@ -33,7 +33,7 @@ public struct CanaryFile: Sendable {
         case .macOSCLI:
             return appSupportLillist().appendingPathComponent("launch-cli.canary")
         case .iOSApp:
-            let groupID = "group.io.mikeydotio.Lillist"
+            let groupID = "group.io.mikey.lillist"
             let container = FileManager.default
                 .containerURL(forSecurityApplicationGroupIdentifier: groupID)
                 ?? FileManager.default.temporaryDirectory

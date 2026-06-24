@@ -54,11 +54,11 @@
     </array>
     <key>BGTaskSchedulerPermittedIdentifiers</key>
     <array>
-        <string>io.mikeydotio.Lillist.autopurge</string>
+        <string>io.mikey.lillist.autopurge</string>
     </array>
     <key>NSUserActivityTypes</key>
     <array>
-        <string>io.mikeydotio.Lillist.openTask</string>
+        <string>io.mikey.lillist.openTask</string>
     </array>
     <key>ITSAppUsesNonExemptEncryption</key>
     <false/>

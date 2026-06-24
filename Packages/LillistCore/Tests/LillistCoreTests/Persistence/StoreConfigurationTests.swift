@@ -7,7 +7,7 @@ struct StoreConfigurationTests {
     @Test("Default CloudKit container ID matches the design")
     func defaultContainerID() {
         let cfg = StoreConfiguration.inMemory
-        #expect(cfg.cloudKitContainerIdentifier == "iCloud.com.mikeydotio.lillist")
+        #expect(cfg.cloudKitContainerIdentifier == "iCloud.io.mikey.lillist")
     }
 
     @Test("Custom container ID is preserved")

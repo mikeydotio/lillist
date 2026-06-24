@@ -11,7 +11,7 @@ enum IndexingMappers {
     /// Canonical domain identifier — used by both `CSSearchableItem`
     /// (for grouping) and `CSSearchableIndex.delete(domainIdentifier:)`
     /// (for purging on uninstall / app reset).
-    static let domainIdentifier = "com.mikeydotio.lillist.task"
+    static let domainIdentifier = "io.mikey.lillist.task"
 
     /// Constructs the `CSSearchableItemAttributeSet` for a task. Pure
     /// function — no Core Data access, no Spotlight side effects —

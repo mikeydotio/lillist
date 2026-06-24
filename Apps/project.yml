@@ -1,6 +1,6 @@
 name: Lillist-macOS
 options:
-  bundleIdPrefix: io.mikeydotio
+  bundleIdPrefix: io.mikey
   deploymentTarget:
     macOS: "15.0"
   developmentLanguage: en
@@ -49,7 +49,7 @@ targets:
         buildPhase: resources
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: io.mikeydotio.Lillist
+        PRODUCT_BUNDLE_IDENTIFIER: io.mikey.lillist
         PRODUCT_NAME: Lillist
         MACOSX_DEPLOYMENT_TARGET: "15.0"
         CODE_SIGN_ENTITLEMENTS: Lillist-macOS/Lillist.entitlements
@@ -143,7 +143,7 @@ targets:
       - path: Lillist-macOS/Sources/Views/TaskList/SelectionAdvance.swift
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: io.mikeydotio.Lillist.tests
+        PRODUCT_BUNDLE_IDENTIFIER: io.mikey.lillist.tests
         # Standalone test bundle — no app test host, so the headless CLI
         # build works without a development signing identity. The tests
         # exercise LillistCore / LillistUI behaviors that back Plan 7's
@@ -189,7 +189,7 @@ targets:
       - sdk: AppIntents.framework
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: io.mikeydotio.Lillist.uitests
+        PRODUCT_BUNDLE_IDENTIFIER: io.mikey.lillist.uitests
         MACOSX_DEPLOYMENT_TARGET: "15.0"
         TEST_TARGET_NAME: Lillist-macOS
         GENERATE_INFOPLIST_FILE: YES

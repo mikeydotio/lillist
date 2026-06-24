@@ -4,7 +4,7 @@
 <dict>
     <key>com.apple.developer.icloud-container-identifiers</key>
     <array>
-        <string>iCloud.com.mikeydotio.lillist</string>
+        <string>iCloud.io.mikey.lillist</string>
     </array>
     <key>com.apple.developer.icloud-services</key>
     <array>
@@ -12,7 +12,7 @@
     </array>
     <key>com.apple.security.application-groups</key>
     <array>
-        <string>group.io.mikeydotio.Lillist</string>
+        <string>group.io.mikey.lillist</string>
     </array>
 </dict>
 </plist>
