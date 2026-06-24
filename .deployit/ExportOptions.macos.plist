@@ -4,30 +4,35 @@
   Project-local export options for `/deployit` macOS builds. deployit's
   ExportOptions ladder (bin/deployit-cli: DEPLOYIT_EXPORT_OPTIONS_PATH env ->
   .deployit/ExportOptions.<platform>.plist -> bundled default) picks this up
-  automatically, overriding deployit's bundled `developer-id` default.
+  automatically.
 
-  Why `development` (not developer-id) — hard-won, see engineering-notes
-  2026-06-23:
+  Why `developer-id` + Production (Production cutover, 2026-06-23):
   The CloudKit environment follows the distribution channel, and a Developer-ID
-  export is Production-ONLY (Apple rejects `iCloudContainerEnvironment =
-  Development` for a developer-id profile). Production has no deployed schema
-  (cutover deferred), so a Developer-ID macOS build can never sync with the
-  Development-signed iOS build where the test data lives. Development-signing
-  the macOS test build — exactly like iOS — puts it on the Development CloudKit
-  database and lets it run on registered Macs (the target Mac's UDID must be in
-  the team's Mac development profile; automatic signing + the
-  `-allowProvisioningUpdates` deployit passes regenerate/fetch the latest
-  profile incl. newly-registered devices).
+  export is **Production-ONLY** (Apple rejects `iCloudContainerEnvironment =
+  Development` for a developer-id profile — engineering-notes 2026-06-23). Now
+  that the CloudKit schema is deployed to Production, the macOS build is
+  Developer-ID-signed (Production CloudKit) and notarized, matching the iOS
+  Ad-Hoc build which is likewise on Production. A Developer-ID + notarized build
+  runs on **any** Mac past Gatekeeper (no per-Mac device registration), and
+  `/deployit` publishes it as a stapled GitHub release.
 
-  `iCloudContainerEnvironment` is intentionally OMITTED: the development profile
-  implies Development (iOS does the same with no key). At the eventual shipping
-  cutover, switch back to `developer-id` (Production) + notarization.
+  `iCloudContainerEnvironment = Production` is set explicitly (it is also the
+  developer-id default when the key is absent). `xcodebuild -exportArchive`
+  re-stamps the binary's `com.apple.developer.icloud-container-environment` from
+  this key — always verify the *signed binary*, not the source .entitlements:
+  `codesign -d --entitlements :- <app> | plutil -p - | grep icloud`.
+
+  Notarization is driven by deployit config.toml ([macos] notarize=true +
+  notary_profile), not this plist. Requires a `xcrun notarytool
+  store-credentials` keychain profile on this Mac.
 -->
 <plist version="1.0">
 <dict>
     <key>method</key>
-    <string>development</string>
+    <string>developer-id</string>
     <key>signingStyle</key>
     <string>automatic</string>
+    <key>iCloudContainerEnvironment</key>
+    <string>Production</string>
 </dict>
 </plist>

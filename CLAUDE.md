@@ -308,44 +308,55 @@ enabled on it).
 
 **The hard-won rule: CloudKit environment follows the distribution
 channel, not the build config.** Development-signed builds talk to the
-**Development** CloudKit environment; Developer-ID / App Store / TestFlight
-builds talk to **Production**. Our two test channels would otherwise split:
-the `/deployit` **iOS** build is Development-signed (Development), while the
-`/deployit` **macOS** build is Developer-ID-signed and would default to
-**Production** — two separate databases, so nothing syncs across devices
-even though both report success. (A Development-signed iOS build *cannot*
-be forced to Production; a dev provisioning profile only carries
-`aps-environment = development`.)
+**Development** CloudKit environment; **Ad-Hoc** / Developer-ID / App Store /
+TestFlight builds talk to **Production**. Both `/deployit` channels must agree
+on the environment or they split into two databases that never sync.
+`xcodebuild -exportArchive` **re-stamps both
+`com.apple.developer.icloud-container-environment` *and* the push entitlement
+from the export profile/options** — so the source `.entitlements` values are
+*cosmetic for exported builds* and govern only local Xcode-run builds. **Always
+verify the signed binary, never the source `.entitlements`:** `codesign -d
+--entitlements :- <app> | plutil -p - | grep -iE
+'icloud-container-environment|aps-environment'`.
 
-**Posture — both on Development; macOS test builds are development-signed
-(2026-06-23).** Hard constraint discovered during the secondary-Mac sync RCA:
-**the distribution channel dictates the CloudKit environment.** `xcodebuild
--exportArchive` re-stamps `com.apple.developer.icloud-container-environment`
-from the ExportOptions plist + profile, and Apple *rejects* `Development` for a
-`developer-id` profile (`exportArchive ... value "Development" is not
-allowed`) — so a **Developer-ID macOS build is Production-ONLY** and could
-never share the Development database with the iOS build. Rather than commit to
-the (inflexible, deferred) Production environment, the `/deployit` macOS build
-is now **`method = development`-signed**, exactly like iOS. **Always verify the
-*signed binary*, not the source `.entitlements`:** `codesign -d --entitlements
-:- <app> | plutil -p - | grep icloud-container-environment`. See
-engineering-notes 2026-06-23.
+**Posture — PRODUCTION (cutover completed 2026-06-24).** Both `/deployit`
+channels are on the **Production** CloudKit database (schema deployed
+Development→Production in the Console). **Local Xcode-run builds
+(Apple-Development-signed) stay on Development** — the source entitlements are
+unchanged; only the distribution *exports* flip to Production. Develop against
+Development, ship against Production.
 
-- macOS (`.deployit/ExportOptions.macos.plist`): `method = development`,
-  Apple-Development-signed → **Development** CloudKit. Runs on **registered
-  Macs only** (target Mac's UDID in the team's Mac development profile;
-  automatic signing + `-allowProvisioningUpdates` fetches the latest profile).
-  Not notarized → one-time Gatekeeper approval per Mac; deploy with
-  `--no-release` (a dev-signed GitHub artifact isn't useful).
-- iOS (`Apps/Lillist-iOS/Lillist.entitlements`): `/deployit` build is
-  **Development**-signed (Development CloudKit) — unchanged.
-- `NSPersistentCloudKitContainer` requires the Push entitlement
-  (`aps-environment`) to establish its sync subscription — both targets
-  must carry it.
+- **iOS** (`.deployit/ExportOptions.ios.plist`): `method = ad-hoc` →
+  Apple-Distribution-signed → **Production** CloudKit. Verified signed binary:
+  `aps-environment = production`, `icloud-container-environment = Production`
+  (main app + Share/Shortcuts extensions). Installs OTA on **registered
+  devices** (UDIDs in the "Lillist Ad Hoc Distribution" profile) — the
+  Tailscale OTA flow is unchanged. `-allowProvisioningUpdates` auto-generates
+  the ad-hoc profiles for the extensions.
+- **macOS** (`.deployit/ExportOptions.macos.plist`): `method = developer-id` +
+  **notarized** → **Production** CloudKit. Verified signed binary:
+  `icloud-container-environment = Production`, Developer-ID-Application-signed.
+  Runs on **any** Mac past Gatekeeper (notarized — no per-Mac registration);
+  `/deployit` publishes a stapled GitHub release (no `--no-release`).
+  Notarization is driven by deployit `config.toml` (`[macos] notarize = true`,
+  `notary_profile = "lillist-notary"`; one-time `xcrun notarytool
+  store-credentials "lillist-notary" --apple-id … --team-id VMY8R4T742
+  --password <app-specific>`).
+- **Known gap (pre-existing, NOT a cutover regression):** the **macOS** build
+  carries **no push entitlement** — verified absent in *both* the old
+  development export and the new developer-id export. Cause: macOS source
+  declares the iOS key `aps-environment` instead of the macOS key
+  `com.apple.developer.aps-environment`, and no macOS profile grants push.
+  CloudKit sync still works via foreground/launch fetches; only real-time push
+  is absent (iOS push is fine). Fixing it needs the source key corrected *and*
+  the Developer-ID profile regenerated with Push capability — deferred.
 
-**No CloudKit Console step is needed on Development** —
-`NSPersistentCloudKitContainer` auto-creates the dev schema.
-`CloudKitSchemaInitializer` is DEBUG-only and is *not* wired into launch.
+**The CloudKit schema is deployed to Production** (2026-06-24; permanent,
+additive-only). `NSPersistentCloudKitContainer` auto-creates schema only in
+*Development*, so any **new** record types/fields must be exercised on a
+Development build first and then re-deployed Development→Production in the
+Console before a Production build can use them. `CloudKitSchemaInitializer` is
+DEBUG-only and is *not* wired into launch.
 
 **Sync status is real, not a stub.** `CloudKitSyncStatusAdapter`
 (LillistUI `Status/`) bridges `LillistCore.SyncStatusMonitor` /
@@ -355,22 +366,23 @@ engineering-notes 2026-06-23.
 `pauseReason` ahead of the indicator. (The old `IdleSyncIndicatorMonitor`
 that always reported "synced just now" survives only for previews/tours.)
 
-**Production cutover (deferred until shipping):** keep everything on
-Development during development (macOS is development-signed; iOS is
-Development-signed — see "Posture" above). At shipping: deploy the CloudKit
-schema Development→Production in the Console (permanent, additive-only);
-switch `.deployit/ExportOptions.macos.plist` back to `developer-id` +
-notarization (Developer-ID is Production-only); move iOS to TestFlight
-(Production automatically); and re-seed Production data. macOS Developer-ID
-builds cannot use Development — do not re-attempt that pin.
+**Production cutover — DONE (2026-06-24).** Schema deployed
+Development→Production; `.deployit/ExportOptions.ios.plist` = `ad-hoc` (Apple
+Distribution), `.deployit/ExportOptions.macos.plist` = `developer-id` +
+notarized; both verified on the signed binary as `icloud-container-environment
+= Production`. Production started empty (data re-seeds on-device). Remaining for
+an eventual public ship: move iOS from Ad-Hoc to **TestFlight/App Store** (also
+Production, no device registration) and the macOS Developer-ID build is already
+shippable. macOS Developer-ID builds cannot use Development — never re-attempt
+that pin.
 
 ## Deploy (iOS test builds)
 
 Deployment is handled by the **`deployit` plugin** (`/deployit`),
 which replaced the previous in-repo `Tools/Deploy/deploy-ios.sh` on
-2026-05-23. It does the same job — archive `Lillist-iOS`, export a
-Development-signed `.ipa`, stage it under
-`$HOME/Library/Application Support/deployit/serve/`, and point you at
+2026-05-23. It does the same job — archive `Lillist-iOS`, export an
+**Ad-Hoc** (Apple-Distribution-signed) `.ipa` → **Production** CloudKit, stage
+it under `$HOME/Library/Application Support/deployit/serve/`, and point you at
 a Tailscale-served landing URL — plus it indexes every build into the
 shared `mikeydotio/deployit-index` repo so deploys are visible across
 machines. Round-trip is still ~3–5 min and the `.ipa` never leaves the
@@ -379,7 +391,7 @@ contributor's tailnet.
 **Required (per-contributor):**
 
 - `Apps/Config/Signing.local.xcconfig` populated (see *Code signing*).
-- The target iPhone's UDID is in the team's Development provisioning
+- The target iPhone's UDID is in the team's **Ad-Hoc** provisioning
   profile — i.e., the device has been used with Xcode on this team
   at least once. Development-method signing installs OTA on
   registered devices without Ad-Hoc.

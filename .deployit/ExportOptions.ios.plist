@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  Project-local export options for `/deployit` iOS builds. deployit's
+  ExportOptions ladder (DEPLOYIT_EXPORT_OPTIONS_PATH env ->
+  .deployit/ExportOptions.<platform>.plist -> bundled default) picks this up
+  automatically, overriding deployit's bundled `development` iOS default.
+
+  Why `ad-hoc` (Production cutover, 2026-06-23):
+  The CloudKit environment follows the distribution channel (engineering-notes
+  2026-06-23). A Development-signed iOS build is Development-ONLY; to put iOS on
+  the **Production** CloudKit database we distribute Ad-Hoc — an Apple
+  Distribution-signed build whose profile carries `aps-environment = production`.
+  Ad-Hoc still installs OTA on **registered devices** (UDIDs baked into the
+  "Lillist Ad Hoc Distribution" profile), so the `/deployit` Tailscale-served
+  OTA flow is unchanged. `iCloudContainerEnvironment = Production` is set
+  explicitly so `xcodebuild -exportArchive` re-stamps the binary's
+  `com.apple.developer.icloud-container-environment` to Production (verify the
+  signed binary, never the source .entitlements:
+  `codesign -d --entitlements :- <app> | plutil -p - | grep icloud`).
+
+  Requires (per-contributor): an Apple Distribution cert + an Ad-Hoc
+  provisioning profile for app.lillist (and the Share/Shortcuts extensions)
+  carrying the target device UDIDs. automatic signing + the
+  `-allowProvisioningUpdates` deployit passes regenerate/fetch these.
+-->
+<plist version="1.0">
+<dict>
+    <key>method</key>
+    <string>ad-hoc</string>
+    <key>signingStyle</key>
+    <string>automatic</string>
+    <key>iCloudContainerEnvironment</key>
+    <string>Production</string>
+    <key>thinning</key>
+    <string>&lt;none&gt;</string>
+    <key>compileBitcode</key>
+    <false/>
+    <key>stripSwiftSymbols</key>
+    <false/>
+</dict>
+</plist>

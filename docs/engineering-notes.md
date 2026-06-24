@@ -3428,3 +3428,61 @@ bytes). The schema-version gate runs *before* the reset (defense in depth even
 though the UI gates first). The live-CloudKit halves — the remote-change file
 sync and the real-iCloud-wipe restore — are **Mikey-verified on a signed Mac**,
 not CI (same posture as the live-swap tests).
+
+## 2026-06-24 — Production cutover: `-exportArchive` re-stamps the push entitlement too, macOS uses a *different* push key, and new signing keys need partition-list access
+
+The deferred Production cutover landed: schema deployed Development→Production
+in the Console; iOS `/deployit` export switched to `method = ad-hoc` (Apple
+Distribution → Production), macOS to `method = developer-id` + notarized
+(Production). Four non-obvious things surfaced, each verified on the *signed
+binary* (`codesign -d --entitlements :- <app> | plutil -p -`), never the source
+`.entitlements`:
+
+1. **`-exportArchive` re-stamps `aps-environment` *and*
+   `icloud-container-environment` — both are cosmetic in source for exported
+   builds.** The 2026-06-23 RCA established the iCloud-env re-stamp; this round
+   proved the push entitlement is re-stamped the same way. The iOS source
+   declares `aps-environment = development` and *omits* the iCloud env, yet the
+   ad-hoc-exported binary came out `aps-environment = production` +
+   `icloud-container-environment = Production` (main app **and** both
+   extensions). Consequence: **no source entitlement edits were needed for the
+   cutover.** Local Xcode-run builds (Apple-Development-signed, entitlements used
+   as-is) stay on Development; only the distribution *exports* flip to
+   Production. Develop against Development, ship against Production, one
+   unchanged entitlements file per target.
+
+2. **macOS push uses a different entitlement key than iOS —
+   `com.apple.developer.aps-environment` (prefixed) vs iOS `aps-environment`
+   (unprefixed).** Proven by this project's own profiles: the iOS ad-hoc profile
+   grants `aps-environment = production`; the macOS team profile grants
+   `com.apple.developer.aps-environment = development`. `Apps/Lillist-macOS/Lillist.entitlements`
+   declares the *iOS* key, so it is silently stripped at signing — the macOS
+   build has **never** carried a push entitlement (verified absent in *both* the
+   old `development` export and the new `developer-id` export; not a cutover
+   regression). CloudKit sync still works via foreground/launch fetches; only
+   real-time push is missing on macOS. A real fix needs the source key corrected
+   **and** the Developer-ID profile regenerated with Push capability (the
+   `Lillist Mac Developer ID Distribution` profile grants no push at all) —
+   deferred, tracked as a follow-up.
+
+3. **A freshly-imported signing identity blocks non-interactive codesign over
+   SSH with `errSecInternalComponent`.** The ad-hoc export failed re-signing the
+   Share extension even though the keychain was unlocked (`no-timeout`) and the
+   cert was present — because in the *same* build, codesign used the older Apple
+   Development key fine but the brand-new Apple Distribution key threw
+   `errSecInternalComponent`. The new key's partition list lacked codesign
+   access. Fix (one-time per identity): `security set-key-partition-list -S
+   apple-tool:,apple:,codesign: -s -k <login-keychain-password>
+   ~/Library/Keychains/login.keychain-db` (or Keychain Access → key → Get Info →
+   Access Control → "Allow all applications"). The login keychain being unlocked
+   is necessary but **not sufficient**; the per-key ACL is the other half.
+
+4. **Ad-Hoc keeps the `/deployit` OTA flow for iOS Production; extension
+   profiles are auto-generated.** Ad-Hoc (Apple-Distribution-signed,
+   `aps-environment = production`) installs OTA on registered devices via the
+   same Tailscale-served manifest as the old Development build — no TestFlight
+   needed for test distribution. `-allowProvisioningUpdates` auto-generated the
+   ad-hoc profiles for the Share/Shortcuts extensions (only the main app's
+   "Lillist Ad Hoc Distribution" profile existed beforehand). Namespace hygiene
+   matters: 17 stale `io.Mikey.Lillist` / `io.mikeydotio.Lillist` profiles were
+   removed first so automatic signing couldn't pick a wrong-bundle-id match.
