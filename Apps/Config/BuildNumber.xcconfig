@@ -2,4 +2,4 @@
 // Incremented automatically by the Lillist-iOS scheme's Archive
 // pre-action (Tools/Deploy/bump-build-number.sh). Commit after each
 // archive so the counter never regresses.
-CURRENT_PROJECT_VERSION = 63
+CURRENT_PROJECT_VERSION = 66
