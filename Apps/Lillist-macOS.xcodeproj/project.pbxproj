@@ -54,6 +54,7 @@
 		863B5709B57AA4BB35BF7DC3 /* QuickCapturePanelController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 288A06800EA1CB39081E0910 /* QuickCapturePanelController.swift */; };
 		865E2F5846746469D26E9D4B /* AppEnvironment.swift in Sources */ = {isa = PBXBuildFile; fileRef = B9EFCC8DD54B786D210CB412 /* AppEnvironment.swift */; };
 		883E82B069F58DB56B18C7C4 /* LillistUI in Frameworks */ = {isa = PBXBuildFile; productRef = FE69D0E9A4ADB1CDB38E1E3A /* LillistUI */; };
+		8FBF929C490D8BB02063FB9B /* BackupPane.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5EE3ACD6A85D46FB63ADD71C /* BackupPane.swift */; };
 		947D4EE0DFF95B690ABADDF4 /* RootSplitView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5FF6CA37C3301C81C8947230 /* RootSplitView.swift */; };
 		9674C4C2BAEC11A6B734FB61 /* PreferencesWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = BC4034CAF7C667207F94C76D /* PreferencesWindow.swift */; };
 		9E32C4BE2538D58BE8D8198B /* MacUITestHelpers.swift in Sources */ = {isa = PBXBuildFile; fileRef = 53F56A79C23B659817325F12 /* MacUITestHelpers.swift */; };
@@ -131,6 +132,7 @@
 		5626826E4EED7EAAEDDED61E /* CommandNotificationObserverGuardTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CommandNotificationObserverGuardTests.swift; sourceTree = "<group>"; };
 		59867850C82C90EBDA587E7A /* TodayPopoverView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TodayPopoverView.swift; sourceTree = "<group>"; };
 		5BDE58C737A0E5123FA07D0F /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
+		5EE3ACD6A85D46FB63ADD71C /* BackupPane.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BackupPane.swift; sourceTree = "<group>"; };
 		5FF6CA37C3301C81C8947230 /* RootSplitView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootSplitView.swift; sourceTree = "<group>"; };
 		60A609016A056EE8D91E1FE4 /* Localizable.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = Localizable.xcstrings; sourceTree = "<group>"; };
 		650BFB8219E479BC647BFD54 /* FocusedShortcutGatingPredicateTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FocusedShortcutGatingPredicateTests.swift; sourceTree = "<group>"; };
@@ -296,6 +298,7 @@
 			isa = PBXGroup;
 			children = (
 				4785BD3BA4D67F4C69F79D09 /* AdvancedPane.swift */,
+				5EE3ACD6A85D46FB63ADD71C /* BackupPane.swift */,
 				FA80085EB3BB242379E92790 /* CrashReportingPane.swift */,
 				3739BDDF75D38CE2B4F5D27B /* DiagnosticsPane.swift */,
 				40F8F1B3826FD9A436D73201 /* GeneralPane.swift */,
@@ -598,6 +601,7 @@
 				65A0C314392C2CF1F96524BA /* AdvancedPane.swift in Sources */,
 				CD807090167A2EB33A3F40BF /* AppDelegate.swift in Sources */,
 				865E2F5846746469D26E9D4B /* AppEnvironment.swift in Sources */,
+				8FBF929C490D8BB02063FB9B /* BackupPane.swift in Sources */,
 				F5B6CAD8DCB980073D0130DA /* CommandNotifications.swift in Sources */,
 				513F80DB225B3198A6B428C6 /* CrashReporterHost.swift in Sources */,
 				5680498D8BF4DFA917500D55 /* CrashReportingPane.swift in Sources */,

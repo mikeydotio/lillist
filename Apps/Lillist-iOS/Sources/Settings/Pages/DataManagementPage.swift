@@ -10,6 +10,7 @@ struct DataManagementPage: View {
     var body: some View {
         SettingsDetailScreen("Data Management") {
             TrashSection(prefs: $prefs)
+            BackupSection()
             AdvancedSection()
         }
     }

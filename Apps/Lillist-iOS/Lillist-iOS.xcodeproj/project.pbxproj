@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		0179F8F9D03E62F21287AEAC /* BackupSection.swift in Sources */ = {isa = PBXBuildFile; fileRef = 33C31BAB0ECBA49E19715870 /* BackupSection.swift */; };
 		029F0C59EAEEB8594AB9D6C4 /* TasksView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BFB4D61C57B9856EB75E365B /* TasksView.swift */; };
 		030ABB6B63120757D3857520 /* QuickCaptureFlowUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF746CFB8D7F9D5046931BBC /* QuickCaptureFlowUITests.swift */; };
 		037A2818BA4C8A5CFECE4DC4 /* TaskEntity.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60D270F4CC665B45F955D44A /* TaskEntity.swift */; };
@@ -162,6 +163,7 @@
 		3013CF9707368DFFA43E4C72 /* ShareViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShareViewController.swift; sourceTree = "<group>"; };
 		320C843DACE915B2A004882D /* LillistCommands.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LillistCommands.swift; sourceTree = "<group>"; };
 		32DFE7DBEC9D4A404CCF4A90 /* TaskEntityQuery.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TaskEntityQuery.swift; sourceTree = "<group>"; };
+		33C31BAB0ECBA49E19715870 /* BackupSection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BackupSection.swift; sourceTree = "<group>"; };
 		343B12E0AE009EE4CB0ECBE7 /* AddTaskIntent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddTaskIntent.swift; sourceTree = "<group>"; };
 		3662AC54EFB61DCAB491C63C /* ShortcutsActions.appex */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = "wrapper.app-extension"; path = ShortcutsActions.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		3A9D8DCE954B156CDEEF64C1 /* TaskDefaultsPage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TaskDefaultsPage.swift; sourceTree = "<group>"; };
@@ -576,6 +578,7 @@
 			children = (
 				ED9A4E2AFF84388E0969688B /* Pages */,
 				EAFB6125227B6A731DA61F20 /* AdvancedSection.swift */,
+				33C31BAB0ECBA49E19715870 /* BackupSection.swift */,
 				400AB5E7E52D7AC0BFF18DAE /* CrashReportingSection.swift */,
 				C81CC087D02C40A7E042F841 /* DiagnosticsSection.swift */,
 				4C6E6FFD67726D09240CC361 /* ICloudSyncSection.swift */,
@@ -949,6 +952,7 @@
 				19E41567449FAA5BE15E6B32 /* AdvancedSection.swift in Sources */,
 				046D8F27FB3D4AD0970C455F /* AppEnvironment.swift in Sources */,
 				C71AD0D12E64ADA17407A356 /* AppearancePage.swift in Sources */,
+				0179F8F9D03E62F21287AEAC /* BackupSection.swift in Sources */,
 				3440B5C7EBBC1DE929C708F1 /* CrashReporterHost.swift in Sources */,
 				A3140D5C493ECC74519DBB39 /* CrashReportingSection.swift in Sources */,
 				ACCE4C18128BA8F12B30F4FD /* DataManagementPage.swift in Sources */,
