@@ -3493,3 +3493,59 @@ binary* (`codesign -d --entitlements :- <app> | plutil -p -`), never the source
    "Lillist Ad Hoc Distribution" profile existed beforehand). Namespace hygiene
    matters: 17 stale `io.Mikey.Lillist` / `io.mikeydotio.Lillist` profiles were
    removed first so automatic signing couldn't pick a wrong-bundle-id match.
+
+## 2026-06-24 — macOS main window adopts the shared iOS single-column UI
+
+The bespoke macOS `NavigationSplitView` (sidebar + list) was retired; the macOS
+main window now renders the same iOS surface — `LillistUI.TasksScreen` — in a
+narrow, freely-resizable window, with the in-window overlay editor. macOS is now
+"the iOS app running on a Mac," diverging only for desktop-only chrome (global
+hotkey, menu-bar extra, Dock menu, Preferences scene). Four non-obvious things a
+future contributor will otherwise re-learn:
+
+1. **The `iOS/` folder is a misnomer now — several files in it compile on
+   macOS.** `TasksScreen`, `iOS/Tasks/*` (TaskTree, FlatTaskRow, TasksSort,
+   FilterChip, TaskOutlineRowView, FilterHeader), the toasts (ArchiveToast,
+   ReorderFailureToast + StatusChangeFailureToast, ToastChrome), SyncStatusBadge,
+   FloatingAddButton, TaskEditorOverlay, and QuickCaptureActionEnvironment had
+   their top-level `#if os(iOS)` gates **removed in place** (not moved — the
+   package globs its own sources, so a move buys nothing but churn + lost blame).
+   Editing any of them with an iOS-only API now breaks the **macOS** build, which
+   is warnings-as-errors. The three iOS-only modifiers that had to be
+   platform-branched were `.navigationBarTitleDisplayMode(.inline)`, the
+   `.topBarLeading`/`.topBarTrailing` toolbar placements (mapped to
+   `.navigation`/`.primaryAction` on macOS via computed `ToolbarItemPlacement`
+   helpers in `TasksScreen`), and `.textInputAutocapitalization(.never)` in
+   `FilterHeader`. Genuinely iOS-only files stay gated: `SizeClassRouter`,
+   `DiagnosticsIncludeSheet`, the legacy `QuickCaptureDialog*`,
+   `QuickCaptureDiscardToast`, and `Screens/SettingsScreen` (macOS keeps its
+   native `Settings` scene).
+
+2. **The macOS editor has a deliberate TWO-PATH split — don't collapse it.**
+   In-app opens (row tap / FAB / ⌘N) use the in-window `.taskEditorOverlay` via
+   `MacTaskEditorHost`. The system-wide global hotkey (⌃⌥Space) still uses the
+   separate `QuickCapturePanelController` **NSPanel**, because it must present
+   capture when the main window is closed or another app is frontmost — an
+   in-window overlay can't. `MacTaskEditorHost` mirrors the iOS `TaskEditorHost`
+   but swaps `PhotosPicker` for `NSOpenPanel` (lifted from the panel controller)
+   and omits the discard-undo toast (kept iOS-gated this pass).
+
+3. **Tag + saved-filter management now exists on NEITHER platform — a tracked
+   parity gap, not a relocation.** Rename / recolor / delete for tags and
+   rename / delete for saved filters lived *only* in the macOS sidebar's context
+   menus; iOS never had them. Removing the sidebar reaches parity by subtraction.
+   The fix belongs in the **shared** UI (a Settings sub-screen) so both platforms
+   gain it together — never a macOS-only Preferences pane (that would re-break
+   parity). The underlying store ops and their guards survive untouched
+   (`SidebarContextMenuTests`, `PinnedSidebarIntegrationTests` are pure
+   LillistCore), so re-exposing it is UI-only. See `HANDOFF.md`.
+
+4. **Window posture: `.contentMinSize`, not `.contentSize`.** `.contentSize`
+   locks both window edges to the content's intrinsic size (no free resize);
+   `.contentMinSize` honors the content's `minWidth` floor (~360) with no ceiling
+   — that's what makes the window narrow-by-default yet freely resizable. The
+   single command-menu fallout: the single-column `TasksScreen` exposes no
+   row-selection model, so every selection/sidebar-dependent command (New
+   Sibling, Advance Status, Mark Closed/Blocked, Open Task, Focus Sidebar/List,
+   Show Sidebar) was retired; ⌘N now just flips the quick-capture binding.
+   `CommandNotifications.postedByCommands` is consequently empty.
