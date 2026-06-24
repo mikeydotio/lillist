@@ -3460,10 +3460,17 @@ binary* (`codesign -d --entitlements :- <app> | plutil -p -`), never the source
    build has **never** carried a push entitlement (verified absent in *both* the
    old `development` export and the new `developer-id` export; not a cutover
    regression). CloudKit sync still works via foreground/launch fetches; only
-   real-time push is missing on macOS. A real fix needs the source key corrected
-   **and** the Developer-ID profile regenerated with Push capability (the
-   `Lillist Mac Developer ID Distribution` profile grants no push at all) —
-   deferred, tracked as a follow-up.
+   real-time push is missing on macOS. **Fixed same day:** correcting the key in
+   `Apps/Lillist-macOS/Lillist.entitlements` to
+   `com.apple.developer.aps-environment` (value `development`) was the *entire*
+   fix — automatic signing + `-allowProvisioningUpdates` regenerated the
+   Developer-ID profile (`Mac Team Direct…`) *with* push (the App ID already had
+   the capability from iOS), and the export re-stamped it to `production`
+   (verified on the signed binary). The manually-named
+   `Lillist Mac Developer ID Distribution` profile still grants no push, but it
+   isn't used — automatic signing is retained precisely because it re-stamps
+   `development`→`production` from one entitlements file; manual-pinning that
+   named profile would have forced a single value and broken local dev.
 
 3. **A freshly-imported signing identity blocks non-interactive codesign over
    SSH with `errSecInternalComponent`.** The ad-hoc export failed re-signing the

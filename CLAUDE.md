@@ -342,14 +342,15 @@ Development, ship against Production.
   `notary_profile = "lillist-notary"`; one-time `xcrun notarytool
   store-credentials "lillist-notary" --apple-id … --team-id VMY8R4T742
   --password <app-specific>`).
-- **Known gap (pre-existing, NOT a cutover regression):** the **macOS** build
-  carries **no push entitlement** — verified absent in *both* the old
-  development export and the new developer-id export. Cause: macOS source
-  declares the iOS key `aps-environment` instead of the macOS key
-  `com.apple.developer.aps-environment`, and no macOS profile grants push.
-  CloudKit sync still works via foreground/launch fetches; only real-time push
-  is absent (iOS push is fine). Fixing it needs the source key corrected *and*
-  the Developer-ID profile regenerated with Push capability — deferred.
+- **macOS push entitlement — FIXED (2026-06-24).** macOS uses
+  `com.apple.developer.aps-environment` (prefixed), not the iOS
+  `aps-environment`. The macOS source declared the iOS key, so it was silently
+  stripped and the build carried no push. Correcting the key in
+  `Apps/Lillist-macOS/Lillist.entitlements` (value `development`) was the whole
+  fix: automatic signing + `-allowProvisioningUpdates` regenerated the
+  Developer-ID profile *with* push (App ID already had the capability) and the
+  export re-stamps to `production`. Verified on the signed binary. No profile
+  pinning or portal action was needed — kept on automatic signing.
 
 **The CloudKit schema is deployed to Production** (2026-06-24; permanent,
 additive-only). `NSPersistentCloudKitContainer` auto-creates schema only in
