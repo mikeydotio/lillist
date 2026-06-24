@@ -1,94 +1,270 @@
 {
-  "sourceLanguage": "en",
-  "strings": {
-    "%@ deadline": {},
-    "%@ start": {},
-    "%@, %lld items": {},
-    "%@. %@": {},
-    "%lld": {},
-    "%lld items": {},
-    "%lld min before": {},
-    "1 day": {},
-    "1 day before": {},
-    "1 hour before": {},
-    "1 month (~30d)": {},
-    "1 week": {},
-    "2 hours before": {},
-    "2 weeks": {},
-    "3 days": {},
-    "Add": {},
-    "Add a note": {},
-    "Add a subtask": {},
-    "Add a tag": {},
-    "Add attachment": {},
-    "Add note": {},
-    "Add reminder": {},
-    "Add subtask": {},
-    "Add tag": {},
-    "After %lld occurrence%@": {},
-    "App version %@": {},
-    "At a set time": {},
-    "At a time": {},
-    "At the time": {},
-    "Attachments": {},
-    "Backing up your data…": {},
-    "Before deadline": {},
-    "Before start": {},
-    "Blocked": {},
-    "Cancel": {},
-    "Capture a task…  #tag ^date": {},
-    "Capture from clipboard": {},
-    "Closed": {},
-    "Continue": {},
-    "Copy of data store": {},
-    "Couldn't move that item. Please try again.": {},
-    "Couldn't update that task. Please try again.": {},
-    "Crash report": {},
-    "Create": {},
-    "Cycle status": {},
-    "Daily": {},
-    "Dates": {},
-    "Day %lld not selected": {},
-    "Day %lld selected": {},
-    "Deadline": {},
-    "Default deadline reminder": {},
-    "Default start reminder": {},
-    "Delete": {},
-    "Delete attachment": {},
-    "Delete reminder": {},
-    "Description of what you were doing": {},
-    "Diagnostic logs": {},
-    "Disable Now": {},
-    "Disable Sync": {},
-    "Disable iCloud Sync?": {},
-    "Dismiss": {},
-    "Doesn't repeat": {},
-    "Don't Send": {},
-    "Don't quit Lillist while this runs.": {},
-    "Done": {},
-    "Downloading from iCloud…": {},
-    "Due tomorrow · #project · refracting the content below": {},
-    "End by date": {},
-    "End date": {},
-    "Erase everything in iCloud and upload what's on this device. Other devices syncing this iCloud account will see this change.": {},
-    "Erase the data on this device and download what's in iCloud. Other devices stay in sync.": {},
-    "Erasing iCloud data…": {},
-    "Every": {},
-    "Every %lld days": {
-      "localizations": {
-        "en": {
-          "variations": {
-            "plural": {
-              "one": {
-                "stringUnit": {
-                  "state": "translated",
-                  "value": "Every %lld day"
+  "sourceLanguage" : "en",
+  "strings" : {
+    "%@ deadline" : {
+
+    },
+    "%@ start" : {
+
+    },
+    "%@, %lld items" : {
+
+    },
+    "%@. %@" : {
+
+    },
+    "%lld" : {
+
+    },
+    "%lld items" : {
+
+    },
+    "%lld min before" : {
+
+    },
+    "%lld tasks archived. Tap to undo." : {
+
+    },
+    "^%@" : {
+
+    },
+    "↩ save · esc cancel" : {
+
+    },
+    "1 day" : {
+
+    },
+    "1 day before" : {
+
+    },
+    "1 hour before" : {
+
+    },
+    "1 month (~30d)" : {
+
+    },
+    "1 task archived. Tap to undo." : {
+
+    },
+    "1 week" : {
+
+    },
+    "2 hours before" : {
+
+    },
+    "2 weeks" : {
+
+    },
+    "3 days" : {
+
+    },
+    "Add" : {
+
+    },
+    "Add a subtask" : {
+
+    },
+    "Add a tag" : {
+
+    },
+    "Add attachment" : {
+
+    },
+    "Add reminder" : {
+
+    },
+    "Add subtask" : {
+
+    },
+    "Add tag" : {
+
+    },
+    "After %lld occurrence%@" : {
+
+    },
+    "App version %@" : {
+
+    },
+    "At a set time" : {
+
+    },
+    "At a time" : {
+
+    },
+    "At the time" : {
+
+    },
+    "Attachments" : {
+
+    },
+    "Backing up your data…" : {
+
+    },
+    "Before deadline" : {
+
+    },
+    "Before start" : {
+
+    },
+    "Blocked" : {
+
+    },
+    "Cancel" : {
+
+    },
+    "Capture a task" : {
+
+    },
+    "Capture a task…  #tag ^date" : {
+
+    },
+    "Capture from clipboard" : {
+
+    },
+    "Clear filter" : {
+
+    },
+    "Closed" : {
+
+    },
+    "Collapse subtasks" : {
+
+    },
+    "Continue" : {
+
+    },
+    "Copy of data store" : {
+
+    },
+    "Could not load tasks" : {
+
+    },
+    "Couldn't move that item. Please try again." : {
+
+    },
+    "Couldn't update that task. Please try again." : {
+
+    },
+    "Crash report" : {
+
+    },
+    "Create" : {
+
+    },
+    "Cycle status" : {
+
+    },
+    "Daily" : {
+
+    },
+    "Dates" : {
+
+    },
+    "Day %lld not selected" : {
+
+    },
+    "Day %lld selected" : {
+
+    },
+    "Deadline" : {
+
+    },
+    "Default deadline reminder" : {
+
+    },
+    "Default start reminder" : {
+
+    },
+    "Delete" : {
+
+    },
+    "Delete attachment" : {
+
+    },
+    "Delete reminder" : {
+
+    },
+    "Description of what you were doing" : {
+
+    },
+    "Diagnostic logs" : {
+
+    },
+    "Disable iCloud Sync?" : {
+
+    },
+    "Disable Now" : {
+
+    },
+    "Disable Sync" : {
+
+    },
+    "Discarded" : {
+
+    },
+    "Dismiss" : {
+
+    },
+    "Doesn't repeat" : {
+
+    },
+    "Don't quit Lillist while this runs." : {
+
+    },
+    "Don't Send" : {
+
+    },
+    "Done" : {
+
+    },
+    "Double tap to learn why." : {
+
+    },
+    "Downloading from iCloud…" : {
+
+    },
+    "Due" : {
+
+    },
+    "due %@" : {
+
+    },
+    "Due tomorrow · #project · refracting the content below" : {
+
+    },
+    "End by date" : {
+
+    },
+    "End date" : {
+
+    },
+    "Erase everything in iCloud and upload what's on this device. Other devices syncing this iCloud account will see this change." : {
+
+    },
+    "Erase the data on this device and download what's in iCloud. Other devices stay in sync." : {
+
+    },
+    "Erasing iCloud data…" : {
+
+    },
+    "Every" : {
+
+    },
+    "Every %lld days" : {
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Every %lld day"
                 }
               },
-              "other": {
-                "stringUnit": {
-                  "state": "translated",
-                  "value": "Every %lld days"
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Every %lld days"
                 }
               }
             }
@@ -96,21 +272,21 @@
         }
       }
     },
-    "Every %lld months": {
-      "localizations": {
-        "en": {
-          "variations": {
-            "plural": {
-              "one": {
-                "stringUnit": {
-                  "state": "translated",
-                  "value": "Every %lld month"
+    "Every %lld months" : {
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Every %lld month"
                 }
               },
-              "other": {
-                "stringUnit": {
-                  "state": "translated",
-                  "value": "Every %lld months"
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Every %lld months"
                 }
               }
             }
@@ -118,21 +294,21 @@
         }
       }
     },
-    "Every %lld weeks": {
-      "localizations": {
-        "en": {
-          "variations": {
-            "plural": {
-              "one": {
-                "stringUnit": {
-                  "state": "translated",
-                  "value": "Every %lld week"
+    "Every %lld weeks" : {
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Every %lld week"
                 }
               },
-              "other": {
-                "stringUnit": {
-                  "state": "translated",
-                  "value": "Every %lld weeks"
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Every %lld weeks"
                 }
               }
             }
@@ -140,21 +316,21 @@
         }
       }
     },
-    "Every %lld years": {
-      "localizations": {
-        "en": {
-          "variations": {
-            "plural": {
-              "one": {
-                "stringUnit": {
-                  "state": "translated",
-                  "value": "Every %lld year"
+    "Every %lld years" : {
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Every %lld year"
                 }
               },
-              "other": {
-                "stringUnit": {
-                  "state": "translated",
-                  "value": "Every %lld years"
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Every %lld years"
                 }
               }
             }
@@ -162,93 +338,297 @@
         }
       }
     },
-    "Every day": {},
-    "Every month": {},
-    "Every week": {},
-    "Every year": {},
-    "Finalizing…": {},
-    "Frequency": {},
-    "Friday": {},
-    "Help me make it more reliable by sending a quick report. Totally optional.": {},
-    "Hide Journal": {},
-    "How early": {},
-    "Include time": {},
-    "Indent": {},
-    "Insert deadline %@": {},
-    "Interval": {},
-    "Interval, every N units": {},
-    "Journal": {},
-    "Last 5 min, ~50 KB; reviewable below": {},
-    "Last action breadcrumbs": {},
-    "Last successful sync: %@": {},
-    "Last synced %@": {},
-    "Lillist can't merge automatically. Choose which copy to keep.": {},
-    "Lillist couldn't finish %@ because the device is low on storage. Free up some space, then try again — your data is safe in the backup we made before the change.": {},
-    "Lillist couldn't finish %@. Restore from the backup we made before the change, or try again.": {},
-    "Lillist quit unexpectedly last time.": {},
-    "Lillist syncs your tasks via your private iCloud database. Sign into iCloud in Settings, then return here.": {},
-    "Lillist works locally on this device without iCloud. Your tasks, tags, and reminders stay here unless you turn on iCloud Sync later in Settings.": {},
-    "Limit": {},
-    "Local-only — your data stays on this device. Turn on iCloud Sync to mirror across your other Apple devices.": {},
-    "Mark open": {},
-    "Migration failed": {},
-    "Monday": {},
-    "Monthly": {},
-    "More options": {},
-    "Move down": {},
-    "Move up": {},
-    "Need both? Export your data first, then import after switching.": {},
-    "New task": {},
-    "No activity yet.": {},
-    "No internet connection": {},
-    "No internet connection.": {},
-    "No internet connection. Sync will resume automatically.": {},
-    "No third-party telemetry.": {},
-    "No titles or content, just verbs and counts": {},
-    "Not synced yet": {},
-    "Notes": {},
-    "Notifications denied.": {},
-    "Notifications enabled.": {},
-    "Notify at": {},
-    "Off — your data stays on this device": {},
-    "On days": {},
-    "On days of month": {},
-    "Open Settings": {},
-    "Opens quick capture": {},
-    "Outdent": {},
-    "Path: %@": {},
-    "Pinned": {},
-    "Prepare package": {},
-    "Preparing…": {},
-    "Preview the breadcrumbs that would be sent": {},
-    "Preview the logs that would be sent": {},
-    "Preview these": {},
-    "Quick capture": {},
-    "Recent app logs": {},
-    "Reconfiguring sync…": {},
-    "Reminder kind": {},
-    "Reminders": {},
-    "Remove tag %@": {},
-    "Removing local data…": {},
-    "Repeat": {},
-    "Repeat after": {},
-    "Repeat forever": {},
-    "Repeats": {},
-    "Repeats %lld days after completion": {
-      "localizations": {
-        "en": {
-          "variations": {
-            "plural": {
-              "one": {
-                "stringUnit": {
-                  "state": "translated",
-                  "value": "Repeats %lld day after completion"
+    "Every day" : {
+
+    },
+    "Every month" : {
+
+    },
+    "Every open task shows up here. Capture one to get started." : {
+
+    },
+    "Every week" : {
+
+    },
+    "Every year" : {
+
+    },
+    "Expand subtasks" : {
+
+    },
+    "Filter" : {
+
+    },
+    "Finalizing…" : {
+
+    },
+    "Frequency" : {
+
+    },
+    "Friday" : {
+
+    },
+    "Help me make it more reliable by sending a quick report. Totally optional." : {
+
+    },
+    "Hide Journal" : {
+
+    },
+    "How early" : {
+
+    },
+    "iCloud account changed" : {
+
+    },
+    "iCloud Drive is off" : {
+
+    },
+    "iCloud Drive is turned off for Lillist." : {
+
+    },
+    "iCloud is not signed in." : {
+
+    },
+    "iCloud is required" : {
+
+    },
+    "iCloud is restricted" : {
+
+    },
+    "iCloud is restricted on this device." : {
+
+    },
+    "iCloud isn't currently available on this device. Check Settings to see why." : {
+
+    },
+    "iCloud isn't signed in" : {
+
+    },
+    "iCloud isn't signed in on this device." : {
+
+    },
+    "iCloud Sync" : {
+
+    },
+    "iCloud Unavailable" : {
+
+    },
+    "Include time" : {
+
+    },
+    "Indent" : {
+
+    },
+    "Insert deadline %@" : {
+
+    },
+    "Interval" : {
+
+    },
+    "Interval, every N units" : {
+
+    },
+    "Journal" : {
+
+    },
+    "Last 5 min, ~50 KB; reviewable below" : {
+
+    },
+    "Last action breadcrumbs" : {
+
+    },
+    "Last successful sync: %@" : {
+
+    },
+    "Last synced %@" : {
+
+    },
+    "Lillist can't merge automatically. Choose which copy to keep." : {
+
+    },
+    "Lillist couldn't finish %@ because the device is low on storage. Free up some space, then try again — your data is safe in the backup we made before the change." : {
+
+    },
+    "Lillist couldn't finish %@. Restore from the backup we made before the change, or try again." : {
+
+    },
+    "Lillist quit unexpectedly last time." : {
+
+    },
+    "Lillist syncs your tasks via your private iCloud database. Sign into iCloud in Settings, then return here." : {
+
+    },
+    "Lillist works locally on this device without iCloud. Your tasks, tags, and reminders stay here unless you turn on iCloud Sync later in Settings." : {
+
+    },
+    "Limit" : {
+
+    },
+    "Local-only — your data stays on this device. Turn on iCloud Sync to mirror across your other Apple devices." : {
+
+    },
+    "Mark open" : {
+
+    },
+    "Migration failed" : {
+
+    },
+    "Modified" : {
+
+    },
+    "Monday" : {
+
+    },
+    "Monthly" : {
+
+    },
+    "More options" : {
+
+    },
+    "Move down" : {
+
+    },
+    "Move up" : {
+
+    },
+    "Need both? Export your data first, then import after switching." : {
+
+    },
+    "New task" : {
+
+    },
+    "No activity yet." : {
+
+    },
+    "No internet connection" : {
+
+    },
+    "No internet connection." : {
+
+    },
+    "No internet connection. Sync will resume automatically." : {
+
+    },
+    "No matching tasks" : {
+
+    },
+    "No tasks yet" : {
+
+    },
+    "No third-party telemetry." : {
+
+    },
+    "No titles or content, just verbs and counts" : {
+
+    },
+    "Not synced yet" : {
+
+    },
+    "Notes" : {
+
+    },
+    "Notifications denied." : {
+
+    },
+    "Notifications enabled." : {
+
+    },
+    "Notify at" : {
+
+    },
+    "Off — your data stays on this device" : {
+
+    },
+    "On days" : {
+
+    },
+    "On days of month" : {
+
+    },
+    "Open Settings" : {
+
+    },
+    "Opens quick capture" : {
+
+    },
+    "Outdent" : {
+
+    },
+    "Parsed deadline %@" : {
+
+    },
+    "Path: %@" : {
+
+    },
+    "Personalized" : {
+
+    },
+    "Pinned" : {
+
+    },
+    "Prepare package" : {
+
+    },
+    "Preparing…" : {
+
+    },
+    "Preview the breadcrumbs that would be sent" : {
+
+    },
+    "Preview the logs that would be sent" : {
+
+    },
+    "Preview these" : {
+
+    },
+    "Quick capture" : {
+
+    },
+    "Recent app logs" : {
+
+    },
+    "Reconfiguring sync…" : {
+
+    },
+    "Reminder kind" : {
+
+    },
+    "Reminders" : {
+
+    },
+    "Remove tag %@" : {
+
+    },
+    "Removing local data…" : {
+
+    },
+    "Repeat" : {
+
+    },
+    "Repeat after" : {
+
+    },
+    "Repeat forever" : {
+
+    },
+    "Repeats" : {
+
+    },
+    "Repeats %lld days after completion" : {
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Repeats %lld day after completion"
                 }
               },
-              "other": {
-                "stringUnit": {
-                  "state": "translated",
-                  "value": "Repeats %lld days after completion"
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Repeats %lld days after completion"
                 }
               }
             }
@@ -256,86 +636,234 @@
         }
       }
     },
-    "Repeats 1 day after completion": {},
-    "Replace": {},
-    "Replace This Device with iCloud": {},
-    "Replace This Device with iCloud?": {},
-    "Replace iCloud with This Device": {},
-    "Replace iCloud with This Device?": {},
-    "Reports go directly to Mikey ([%@](mailto:%@)). No third-party telemetry.": {},
-    "Restore from Backup": {},
-    "Return to save": {},
-    "Saturday": {},
-    "Save": {},
-    "Saved, but couldn't apply: %@": {},
-    "Saving migration state…": {},
-    "Schedule": {},
-    "Send Report": {},
-    "Show Journal": {},
-    "Spike task %lld — legibility probe": {},
-    "Start": {},
-    "Started": {},
-    "Status": {},
-    "Subtasks": {},
-    "Sunday": {},
-    "Sync First": {},
-    "Sync Now": {},
-    "Sync change interrupted": {},
-    "Sync complete": {},
-    "Sync error: %@": {},
-    "Sync is paused": {},
-    "Sync is paused.": {},
-    "Sync is paused. Check iCloud settings and your internet connection.": {},
-    "Sync one final time first? Your iCloud data will be preserved.": {},
-    "Sync paused — iCloud unavailable": {},
-    "Sync paused: %@": {},
-    "Sync settings updated": {},
-    "Synced %@": {},
-    "Syncing to iCloud": {},
-    "Syncing…": {},
-    "Tag: %@": {},
-    "Tags": {},
-    "The data store copy contains all of your task content. The package never leaves your device unless you share it.": {},
-    "This permanently replaces iCloud's data with what's on this device. Other devices syncing this iCloud account will see this change. This cannot be undone.": {},
-    "This permanently replaces this device's data with what's in iCloud. This cannot be undone.": {},
-    "Thursday": {},
-    "Title": {},
-    "To do": {},
-    "To-do": {},
-    "Try Again": {},
-    "Try again": {},
-    "Tuesday": {},
-    "Turn on iCloud Sync": {},
-    "Uploading to iCloud…": {},
-    "Variant": {},
-    "View what will be sent": {},
-    "Wednesday": {},
-    "Weekly": {},
-    "What to include": {},
-    "What were you doing?": {},
-    "What will be sent": {},
-    "When completed": {},
-    "Yearly": {},
-    "Your data is ready to go.": {},
-    "Your iCloud account changed since the last sync. Sign back into the original account, or migrate your data.": {},
-    "Your iCloud account changed.": {},
-    "Your tasks sync to your private iCloud database. Sign-out, account changes, and network outages are surfaced as a paused indicator — the app keeps working locally.": {},
-    "^%@": {},
-    "due %@": {},
-    "iCloud Drive is off": {},
-    "iCloud Drive is turned off for Lillist.": {},
-    "iCloud Sync": {},
-    "iCloud Unavailable": {},
-    "iCloud account changed": {},
-    "iCloud is not signed in.": {},
-    "iCloud is required": {},
-    "iCloud is restricted": {},
-    "iCloud is restricted on this device.": {},
-    "iCloud isn't currently available on this device. Check Settings to see why.": {},
-    "iCloud isn't signed in": {},
-    "iCloud isn't signed in on this device.": {},
-    "tagged %@": {},
-    "↩ save · esc cancel": {}
+    "Repeats 1 day after completion" : {
+
+    },
+    "Replace" : {
+
+    },
+    "Replace iCloud with This Device" : {
+
+    },
+    "Replace iCloud with This Device?" : {
+
+    },
+    "Replace This Device with iCloud" : {
+
+    },
+    "Replace This Device with iCloud?" : {
+
+    },
+    "Reports go directly to Mikey ([%@](mailto:%@)). No third-party telemetry." : {
+
+    },
+    "Restore from Backup" : {
+
+    },
+    "Restores the most recently archived tasks." : {
+
+    },
+    "Return to save" : {
+
+    },
+    "Saturday" : {
+
+    },
+    "Save" : {
+
+    },
+    "Saved, but couldn't apply: %@" : {
+
+    },
+    "Saving migration state…" : {
+
+    },
+    "Schedule" : {
+
+    },
+    "Search" : {
+
+    },
+    "Send Report" : {
+
+    },
+    "Settings" : {
+
+    },
+    "Show Journal" : {
+
+    },
+    "Sort" : {
+
+    },
+    "Spike task %lld — legibility probe" : {
+
+    },
+    "Start" : {
+
+    },
+    "Started" : {
+
+    },
+    "Status" : {
+
+    },
+    "Subtasks" : {
+
+    },
+    "Sunday" : {
+
+    },
+    "Sync change interrupted" : {
+
+    },
+    "Sync complete" : {
+
+    },
+    "Sync error: %@" : {
+
+    },
+    "Sync First" : {
+
+    },
+    "Sync idle" : {
+
+    },
+    "Sync is paused" : {
+
+    },
+    "Sync is paused." : {
+
+    },
+    "Sync is paused. Check iCloud settings and your internet connection." : {
+
+    },
+    "Sync Now" : {
+
+    },
+    "Sync one final time first? Your iCloud data will be preserved." : {
+
+    },
+    "Sync paused — iCloud unavailable" : {
+
+    },
+    "Sync paused: %@" : {
+
+    },
+    "Sync settings updated" : {
+
+    },
+    "Synced %@" : {
+
+    },
+    "Syncing" : {
+
+    },
+    "Syncing to iCloud" : {
+
+    },
+    "Syncing…" : {
+
+    },
+    "Tag: %@" : {
+
+    },
+    "tagged %@" : {
+
+    },
+    "Tags" : {
+
+    },
+    "Tasks" : {
+
+    },
+    "The data store copy contains all of your task content. The package never leaves your device unless you share it." : {
+
+    },
+    "This permanently replaces iCloud's data with what's on this device. Other devices syncing this iCloud account will see this change. This cannot be undone." : {
+
+    },
+    "This permanently replaces this device's data with what's in iCloud. This cannot be undone." : {
+
+    },
+    "This Week" : {
+
+    },
+    "Thursday" : {
+
+    },
+    "Title" : {
+
+    },
+    "To do" : {
+
+    },
+    "Today" : {
+
+    },
+    "Try again" : {
+
+    },
+    "Try Again" : {
+
+    },
+    "Try clearing the filter to see all your tasks." : {
+
+    },
+    "Tuesday" : {
+
+    },
+    "Turn on iCloud Sync" : {
+
+    },
+    "Undo" : {
+
+    },
+    "Undo discard" : {
+
+    },
+    "Uploading to iCloud…" : {
+
+    },
+    "Variant" : {
+
+    },
+    "View what will be sent" : {
+
+    },
+    "Wednesday" : {
+
+    },
+    "Weekly" : {
+
+    },
+    "What to include" : {
+
+    },
+    "What were you doing?" : {
+
+    },
+    "What will be sent" : {
+
+    },
+    "When completed" : {
+
+    },
+    "Yearly" : {
+
+    },
+    "Your data is ready to go." : {
+
+    },
+    "Your iCloud account changed since the last sync. Sign back into the original account, or migrate your data." : {
+
+    },
+    "Your iCloud account changed." : {
+
+    },
+    "Your tasks sync to your private iCloud database. Sign-out, account changes, and network outages are surfaced as a paused indicator — the app keeps working locally." : {
+
+    }
   },
-  "version": "1.0"
+  "version" : "1.0"
 }

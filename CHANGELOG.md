@@ -3,6 +3,31 @@
 All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [v0.9.0] - 2026-06-24
+
+### Added
+- cut iOS + macOS deploys over to Production CloudKit (d7ff2429)
+- add Data Management backup controls on iOS and macOS (issue #7) (b0f20ed9)
+- wire the backup subsystem into both app environments (issue #7) (1da16af7)
+- on-disk JSON backup engine with schema versioning (issue #7) (39c7ee7e)
+
+### Fixed
+- development-sign the macOS test build (stay on Development) (4766e249)
+- adopt Production cutover — Developer-ID export is Production-only (c6a440d5)
+
+### Changed
+- rename Apple identifier namespace to io.mikey.lillist (35410ce4)
+
+### Documentation
+- record local-backup engineering notes (issue #7) (f8c782af)
+- update identifier references for io.mikey.lillist rename (d9cd32fe)
+
+### Maintenance
+- bump iOS build number to 66 (8161cefb)
+- rename identifier namespace io.mikey.lillist → app.lillist (96df1a4d)
+
+_[force]_
+
 ## [v0.8.14] - 2026-06-23
 
 ### Fixed

@@ -1,55 +1,115 @@
 {
-  "sourceLanguage": "en",
-  "strings": {
-    "1 year": {},
-    "14 days": {},
-    "180 days": {},
-    "30 days": {},
-    "60 days": {},
-    "7 days": {},
-    "90 days": {},
-    "Affects all task lists in the app.": {},
-    "Applied to new tags. Existing tags keep their custom color.": {},
-    "Attachments": {},
-    "Copy the report to your clipboard to paste into any email or messaging app.": {},
-    "Couldn't move that item. Please try again.": {},
-    "Could not load Lillist": {},
-    "Defaults": {},
-    "Delete": {},
-    "Diagnostic logging": {},
-    "Diagnostics": {},
-    "Empty Trash now": {},
-    "Export now…": {},
-    "Import Data…": {},
-    "Imported %@ new tasks, updated %@, skipped %@.": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "new",
-            "value": "Imported %1$@ new tasks, updated %2$@, skipped %3$@."
+  "sourceLanguage" : "en",
+  "strings" : {
+    "1 year" : {
+
+    },
+    "7 days" : {
+
+    },
+    "14 days" : {
+
+    },
+    "30 days" : {
+
+    },
+    "60 days" : {
+
+    },
+    "90 days" : {
+
+    },
+    "180 days" : {
+
+    },
+    "Affects all task lists in the app." : {
+
+    },
+    "Applied to new tags. Existing tags keep their custom color." : {
+
+    },
+    "Backups" : {
+
+    },
+    "Copy the report to your clipboard to paste into any email or messaging app." : {
+
+    },
+    "Could not load Lillist" : {
+
+    },
+    "Empty Trash now" : {
+
+    },
+    "Every task is saved to disk as JSON as you edit, and rolled into a daily zip. Restoring replaces all current data with the backup." : {
+
+    },
+    "Export now…" : {
+
+    },
+    "Import Data…" : {
+
+    },
+    "Imported %@ new tasks, updated %@, skipped %@." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Imported %1$@ new tasks, updated %2$@, skipped %3$@."
           }
         }
       }
     },
-    "Journal": {},
-    "Lists, tags, and reminders — synced to your iCloud.": {},
-    "Mail is not configured on this device.": {},
-    "Mail unavailable on this platform.": {},
-    "No subtasks yet": {},
-    "Notes": {},
-    "On iOS, Quick Capture lives in the Shortcuts app and the share sheet. Open Shortcuts to set up a Lock Screen action for one-tap capture.": {},
-    "Pick a task from the list to see its details.": {},
-    "Prepare diagnostic package…": {},
-    "Records task changes to on-device log files for troubleshooting. Logs stay on this device and are shared only when you create and send a package.": {},
-    "Reports go directly to Mikey via email. No third-party telemetry.": {},
-    "Subtasks": {},
-    "Tag a task with #%@ to see it here.": {},
-    "Tasks in Trash will be permanently deleted.": {},
-    "Tasks in the trash are permanently deleted after this many days.": {},
-    "Tasks that match this filter will appear here.": {},
-    "Trash": {},
-    "Use the Share sheet from any app to attach a file, image, or link.": {},
-    "Welcome to Lillist": {}
+    "Lists, tags, and reminders — synced to your iCloud." : {
+
+    },
+    "Mail is not configured on this device." : {
+
+    },
+    "Mail unavailable on this platform." : {
+
+    },
+    "No backups yet. A snapshot is taken automatically each day, or tap Back up now." : {
+
+    },
+    "On iOS, Quick Capture lives in the Shortcuts app and the share sheet. Open Shortcuts to set up a Lock Screen action for one-tap capture." : {
+
+    },
+    "Prepare diagnostic package…" : {
+
+    },
+    "Records task changes to on-device log files for troubleshooting. Logs stay on this device and are shared only when you create and send a package." : {
+
+    },
+    "Reports go directly to Mikey via email. No third-party telemetry." : {
+
+    },
+    "Reset" : {
+
+    },
+    "Reset data store…" : {
+
+    },
+    "Tasks in the trash are permanently deleted after this many days." : {
+
+    },
+    "Tasks in Trash will be permanently deleted." : {
+
+    },
+    "This deletes your current tasks on this device and in iCloud — on every device signed in to this account — and replaces them with this backup. This cannot be undone." : {
+
+    },
+    "This permanently deletes every task on this device and in iCloud — on all devices signed in to this account. A local backup is kept for 30 days. This cannot be undone." : {
+
+    },
+    "Trash" : {
+
+    },
+    "Use when you suspect the local data store is corrupted. After resetting, relaunch Lillist to reload." : {
+
+    },
+    "Welcome to Lillist" : {
+
+    }
   },
-  "version": "1.0"
+  "version" : "1.0"
 }

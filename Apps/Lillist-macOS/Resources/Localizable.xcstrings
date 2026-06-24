@@ -1,11 +1,91 @@
 {
-  "sourceLanguage": "en",
-  "strings": {
-    "Couldn't move that item. Please try again.": {},
-    "Diagnostic logging": {},
-    "Diagnostics": {},
-    "Prepare diagnostic package…": {},
-    "Records task changes to on-device log files for troubleshooting. Logs stay on this Mac and are shared only when you create and save a package.": {}
+  "sourceLanguage" : "en",
+  "strings" : {
+    "—" : {
+
+    },
+    "%@" : {
+
+    },
+    "%@ days" : {
+
+    },
+    "Back up now" : {
+
+    },
+    "Change Tag Color" : {
+
+    },
+    "Couldn't load preferences: %@" : {
+
+    },
+    "Days in Trash before auto-purge" : {
+
+    },
+    "Empty Trash now" : {
+
+    },
+    "Export now…" : {
+
+    },
+    "Get started" : {
+
+    },
+    "Import Data…" : {
+
+    },
+    "Imported %@ tasks, updated %@, skipped %@." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Imported %1$@ tasks, updated %2$@, skipped %3$@."
+          }
+        }
+      }
+    },
+    "Lillist" : {
+
+    },
+    "Lists, tags, and reminders — synced to your iCloud." : {
+
+    },
+    "No backups yet. A snapshot is taken automatically each day, or click Back up now." : {
+
+    },
+    "Nothing scheduled for today." : {
+
+    },
+    "Prepare diagnostic package…" : {
+
+    },
+    "Press a key combination…" : {
+
+    },
+    "Press Record, then your key combination. Changes apply immediately." : {
+
+    },
+    "Records task changes to on-device log files for troubleshooting. Logs stay on this Mac and are shared only when you create and save a package." : {
+
+    },
+    "Reports go directly to Mikey via email. No third-party telemetry." : {
+
+    },
+    "Set up notifications" : {
+
+    },
+    "Tasks in Trash will be permanently deleted and cannot be recovered." : {
+
+    },
+    "This deletes your current tasks on this device and in iCloud — on every device signed in to this account — and replaces them with this backup. This cannot be undone." : {
+
+    },
+    "Today" : {
+
+    },
+    "Welcome to Lillist" : {
+
+    }
   },
-  "version": "1.0"
+  "version" : "1.0"
 }
