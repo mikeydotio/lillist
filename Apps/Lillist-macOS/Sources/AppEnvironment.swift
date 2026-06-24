@@ -45,6 +45,16 @@ final class AppEnvironment {
     /// Persist-6: hard-deletes trash older than the retention window.
     /// Run opportunistically at launch (`bootstrap()`). Parity with iOS.
     let autoPurgeJob: AutoPurgeJob
+    /// Issue #7: full-data reset primitive (wipe local + iCloud, rebuild empty).
+    /// macOS parity with iOS; used by the backup restore flow.
+    let dataStoreReset: DataStoreResetService
+    /// Issue #7: keeps the on-disk JSON backup package in step with the live
+    /// store (one file per task) and rolls daily snapshot zips.
+    let localBackupCoordinator: LocalBackupCoordinator
+    /// Issue #7: lists / creates / prunes the timestamped snapshot zips.
+    let backupSnapshotManager: BackupSnapshotManager
+    /// Issue #7: schema-gated destructive restore from a package or snapshot.
+    let backupRestoreService: BackupRestoreService
     /// Plan 11 Task 18: the global hotkey monitor lives on the
     /// environment (alongside the other singletons) so the Quick
     /// Capture preferences pane can call `reregister(combo:)` directly
@@ -230,6 +240,45 @@ final class AppEnvironment {
             cloudKitContainerIdentifier: ckContainerID,
             localStoreRowCount: localStoreRowCount
         )
+        // Issue #7: full-data reset primitive (parity with iOS) — the
+        // destructive half of a backup restore.
+        let resetAccountProbe: AccountStateProviding = { [accountStateMonitor] in
+            await accountStateMonitor.currentState
+        }
+        self.dataStoreReset = DataStoreResetService(
+            host: persistenceHost,
+            quarantine: quarantine,
+            zoneEraser: LiveCloudKitZoneEraser(),
+            quiesceMonitor: quiesceMonitor,
+            notificationScheduler: scheduler,
+            cloudKitContainerIdentifier: ckContainerID,
+            accountStateProvider: resetAccountProbe,
+            breadcrumbs: breadcrumbs
+        )
+
+        // Issue #7: local JSON backup subsystem, rooted alongside the store and
+        // quarantine under the App Group container.
+        let backupBase = quarantineRoot.appendingPathComponent("Backup", isDirectory: true)
+        let backupPackageDirectory = backupBase.appendingPathComponent("Package", isDirectory: true)
+        let backupSnapshotsDirectory = backupBase.appendingPathComponent("Snapshots", isDirectory: true)
+        let backupSnapshotManager = BackupSnapshotManager(
+            packageDirectory: backupPackageDirectory,
+            snapshotsDirectory: backupSnapshotsDirectory
+        )
+        self.backupSnapshotManager = backupSnapshotManager
+        self.localBackupCoordinator = LocalBackupCoordinator(
+            persistence: persistence,
+            preferences: preferencesStore,
+            store: TaskBackupStore(packageDirectory: backupPackageDirectory),
+            tokenStore: PersistentHistoryTokenStore(appGroupID: Self.appGroupID, key: PersistentHistoryTokenStore.backupKey),
+            snapshotManager: backupSnapshotManager
+        )
+        self.backupRestoreService = BackupRestoreService(
+            reset: self.dataStoreReset,
+            importer: Importer(persistence: persistence),
+            preferences: preferencesStore,
+            packageDirectory: backupPackageDirectory
+        )
     }
 
     /// App Group identifier shared with the iOS app, extensions, and CLI.
@@ -292,6 +341,10 @@ final class AppEnvironment {
         await notificationScheduler.bootstrap()
         // Persist-6: opportunistically clear expired trash at launch.
         _ = try? await autoPurgeJob.run()
+        // Issue #7: start the local backup subsystem — observe live changes,
+        // seed the package on first run, and roll a daily snapshot if due.
+        // Best-effort; a backup error must never block launch.
+        await localBackupCoordinator.bootstrapAtLaunch()
         // persist-1 / notif-7: sweep localOnly persistent history at launch so
         // it never grows unbounded. Internally gated to syncMode == .localOnly
         // (iCloudSync is a no-op); fire-and-forget — a failed prune never
