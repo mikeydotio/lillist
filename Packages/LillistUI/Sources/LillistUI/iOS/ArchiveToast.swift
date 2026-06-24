@@ -1,4 +1,4 @@
-#if os(iOS)
+// Cross-platform: shared by the iOS app and the macOS main window.
 import SwiftUI
 
 /// Transient "N tasks archived. Tap to undo." pill shown at the bottom of
@@ -73,4 +73,3 @@ public struct ArchiveToast: View {
         )
     }
 }
-#endif

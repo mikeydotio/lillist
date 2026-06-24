@@ -1,4 +1,4 @@
-#if os(iOS)
+// Cross-platform: shared by the iOS app and the macOS main window.
 import SwiftUI
 
 /// Transient bottom-anchored failure pill. Auto-dismisses after ~4
@@ -82,4 +82,3 @@ public struct StatusChangeFailureToast: View {
         )
     }
 }
-#endif

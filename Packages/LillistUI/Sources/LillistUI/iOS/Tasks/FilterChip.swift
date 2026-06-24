@@ -1,4 +1,4 @@
-#if os(iOS)
+// Cross-platform: shared by the iOS app and the macOS main window.
 import SwiftUI
 
 /// Pill-shaped toggle button used in the Tasks screen's expanding filter
@@ -46,4 +46,3 @@ public struct FilterChip: View {
         .accessibilityAddTraits(isSelected ? [.isButton, .isSelected] : .isButton)
     }
 }
-#endif

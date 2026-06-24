@@ -1,4 +1,4 @@
-#if os(iOS)
+// Cross-platform: shared by the iOS app and the macOS main window.
 import SwiftUI
 import LillistCore
 
@@ -88,7 +88,9 @@ public struct FilterHeader: View {
             .font(LillistTypography.body)
             .focused($searchFocused)
             .autocorrectionDisabled()
+            #if os(iOS)
             .textInputAutocapitalization(.never)
+            #endif
             .accessibilityIdentifier("FilterSearchField")
 
             if !searchText.isEmpty || !selectedTokens.isEmpty || !selectedSavedFilters.isEmpty {
@@ -166,4 +168,3 @@ public struct FilterHeader: View {
         }
     }
 }
-#endif

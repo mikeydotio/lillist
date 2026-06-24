@@ -1,4 +1,4 @@
-#if os(iOS)
+// Cross-platform: shared by the iOS app and the macOS main window.
 import SwiftUI
 import LillistCore
 
@@ -134,7 +134,9 @@ public struct TasksScreen: View {
             }
         }
         .navigationTitle(Text(String(localized: "Tasks", bundle: .module)))
+        #if os(iOS)
         .navigationBarTitleDisplayMode(.inline)
+        #endif
         .toolbar { toolbar }
         .safeAreaInset(edge: .top, spacing: 0) {
             if isFilterHeaderExpanded {
@@ -361,9 +363,28 @@ public struct TasksScreen: View {
 
     // MARK: - Toolbar
 
+    /// Toolbar item placements differ by platform: iOS uses the
+    /// navigation-bar leading/trailing slots; macOS has no nav bar, so we
+    /// map them onto the window toolbar's navigation / primary-action areas.
+    private var leadingPlacement: ToolbarItemPlacement {
+        #if os(iOS)
+        .topBarLeading
+        #else
+        .navigation
+        #endif
+    }
+
+    private var trailingPlacement: ToolbarItemPlacement {
+        #if os(iOS)
+        .topBarTrailing
+        #else
+        .primaryAction
+        #endif
+    }
+
     @ToolbarContentBuilder
     private var toolbar: some ToolbarContent {
-        ToolbarItem(placement: .topBarLeading) {
+        ToolbarItem(placement: leadingPlacement) {
             Button {
                 onOpenSettings()
             } label: {
@@ -372,10 +393,10 @@ public struct TasksScreen: View {
             .accessibilityLabel(String(localized: "Settings", bundle: .module))
             .accessibilityIdentifier("TasksSettingsButton")
         }
-        ToolbarItem(placement: .topBarTrailing) {
+        ToolbarItem(placement: trailingPlacement) {
             SyncStatusBadge(indicator: syncIndicator)
         }
-        ToolbarItem(placement: .topBarTrailing) {
+        ToolbarItem(placement: trailingPlacement) {
             Menu {
                 Picker(String(localized: "Sort", bundle: .module),
                        selection: $sort) {
@@ -392,7 +413,7 @@ public struct TasksScreen: View {
             .accessibilityLabel(String(localized: "Sort", bundle: .module))
             .accessibilityIdentifier("TasksSortMenu")
         }
-        ToolbarItem(placement: .topBarTrailing) {
+        ToolbarItem(placement: trailingPlacement) {
             Button {
                 isFilterHeaderExpanded.toggle()
             } label: {
@@ -405,4 +426,3 @@ public struct TasksScreen: View {
         }
     }
 }
-#endif

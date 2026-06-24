@@ -1,4 +1,4 @@
-#if os(iOS)
+// Cross-platform: shared by the iOS app and the macOS main window.
 import SwiftUI
 
 /// Persistent floating "+" used across primary iOS surfaces.
@@ -61,4 +61,3 @@ private struct SquishPressStyle: ButtonStyle {
             .animation(reduce ? nil : LillistMotion.squish(LillistMotion.fast), value: configuration.isPressed)
     }
 }
-#endif

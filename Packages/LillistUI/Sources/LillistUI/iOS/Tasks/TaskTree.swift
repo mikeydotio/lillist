@@ -1,4 +1,4 @@
-#if os(iOS)
+// Cross-platform: shared by the iOS app and the macOS main window.
 import Foundation
 import LillistCore
 
@@ -116,4 +116,3 @@ public enum TaskTree {
         }
     }
 }
-#endif

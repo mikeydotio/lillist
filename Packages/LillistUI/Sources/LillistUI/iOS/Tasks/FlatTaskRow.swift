@@ -1,4 +1,4 @@
-#if os(iOS)
+// Cross-platform: shared by the iOS app and the macOS main window.
 import Foundation
 
 /// Flat projection of a `TaskNode` tree, paired with its render depth
@@ -47,4 +47,3 @@ public enum TreeFlattener {
         return out
     }
 }
-#endif

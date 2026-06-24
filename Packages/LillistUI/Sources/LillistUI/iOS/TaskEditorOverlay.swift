@@ -1,4 +1,4 @@
-#if os(iOS)
+// Cross-platform: shared by the iOS app and the macOS main window.
 import SwiftUI
 
 public extension View {
@@ -62,4 +62,3 @@ private struct TaskEditorOverlay<EditorContent: View>: ViewModifier {
             )
     }
 }
-#endif

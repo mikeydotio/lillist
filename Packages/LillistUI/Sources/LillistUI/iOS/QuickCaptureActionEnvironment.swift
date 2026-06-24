@@ -1,4 +1,4 @@
-#if os(iOS)
+// Cross-platform: shared by the iOS app and the macOS main window.
 import SwiftUI
 
 /// Environment key for "present Quick Capture" — surfaced by the iOS
@@ -17,4 +17,3 @@ public extension EnvironmentValues {
         set { self[QuickCaptureActionKey.self] = newValue }
     }
 }
-#endif

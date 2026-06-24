@@ -1,4 +1,4 @@
-#if os(iOS)
+// Cross-platform: shared by the iOS app and the macOS main window.
 import SwiftUI
 
 extension View {
@@ -18,4 +18,3 @@ extension View {
             .glassElevation(.lift)
     }
 }
-#endif

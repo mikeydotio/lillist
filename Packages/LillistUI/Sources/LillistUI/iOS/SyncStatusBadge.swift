@@ -1,4 +1,4 @@
-#if os(iOS)
+// Cross-platform: shared by the iOS app and the macOS main window.
 import SwiftUI
 import LillistCore
 
@@ -127,4 +127,3 @@ public struct SyncStatusBadge: View {
         return f
     }()
 }
-#endif

@@ -1,4 +1,4 @@
-#if os(iOS)
+// Cross-platform: shared by the iOS app and the macOS main window.
 import Foundation
 
 /// Sort option exposed by the iOS Tasks screen's sort menu.
@@ -15,4 +15,3 @@ public enum TasksSort: String, CaseIterable, Identifiable, Sendable {
 
     public var id: String { rawValue }
 }
-#endif

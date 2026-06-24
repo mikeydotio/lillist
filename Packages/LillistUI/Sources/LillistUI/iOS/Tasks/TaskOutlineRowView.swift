@@ -1,4 +1,4 @@
-#if os(iOS)
+// Cross-platform: shared by the iOS app and the macOS main window.
 import SwiftUI
 import LillistCore
 
@@ -121,4 +121,3 @@ public struct TaskOutlineRowView<LinkContent: View>: View {
         }
     }
 }
-#endif
