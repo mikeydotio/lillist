@@ -3375,3 +3375,56 @@ the portal) to mint the new records. The new CloudKit container starts **empty**
 (old data abandoned) and the renamed bundle ID installs as a *separate* app — a
 fresh install is cleanest, since the on-disk store's CloudKit mirror metadata is
 bound to the old container name.
+
+## 2026-06-23 — Local JSON backup (issue #7): schema stamping + change hooks
+
+The local-backup subsystem (`Packages/LillistCore/Sources/LillistCore/Backup/`)
+keeps an on-disk package of one JSON file per task in step with the live store,
+rolls a daily zip snapshot, and restores from either. Three non-obvious traps:
+
+1. **Stamp the CloudKit schema version explicitly at mutation sites — never in
+   `awakeFromInsert`/`willSave`.** Issue #7 wants every task record to carry an
+   integer `schemaVersion`. The tempting DRY move is a Core Data lifecycle hook,
+   but both fire during `NSPersistentCloudKitContainer`'s *import* of a remote
+   record: re-setting the attribute there re-dirties the imported object and
+   echoes a redundant write back to CloudKit (a feedback loop). The setter
+   (`LillistTask.stampCurrentSchemaVersion()`) is therefore called *explicitly*
+   from every local write — the 12 `TaskStore` mutation methods (via the same
+   lines that bump `modifiedAt`), plus the three non-`TaskStore` creation paths
+   (`RecurrenceSpawner` spawn + deep-copy, `scheduleFollowUp`) and `Importer`.
+   Imports never run through these paths, so no echo. The attribute is additive,
+   optional, default `0` → a lightweight inferred migration; CloudKit
+   auto-creates it on Development.
+
+2. **One did-save chokepoint + one remote-change observer, projecting *inside*
+   `perform`.** `LocalBackupCoordinator` does NOT thread a hook through each
+   mutation. It observes `NSManagedObjectContextDidSave` on the `viewContext`
+   (catches all local commits, spawns, journal/attachment writes, and merged
+   background imports in one place) and `NSPersistentStoreRemoteChange` (catches
+   cross-device CloudKit imports, cloned from `RemoteChangeReconciler`). The
+   load-bearing discipline: extract only *Sendable* identifiers (`UUID`s, a
+   sidecar-dirty flag) synchronously on the posting context queue — reading
+   `id`/entity name never faults attributes — then re-fetch + DTO-project
+   (faulting attachment bytes) on a *background* context and write on the
+   `TaskBackupStore` **actor**. No managed object or history token ever crosses
+   an `await`. Remote *deletes* carry no UUID without tombstones, so the remote
+   path prunes by set-difference (live task IDs vs. package file IDs) rather than
+   trusting the history change list.
+
+3. **ZIPFoundation, because the repo's only zip was one-way.** Restoring "from a
+   .zip archive" needs *unzip*; the existing `DiagnosticPackageBuilder` zips via
+   `NSFileCoordinator(.forUploading)`, which has no inverse. Added ZIPFoundation
+   (first dependency beyond swift-argument-parser) for real `.zip` create *and*
+   extract. It resolves transitively into both app targets through the LillistCore
+   SPM package — no pbxproj edit needed (only the two new app-target *.swift files
+   needed `xcodegen generate`). Snapshot filenames are ISO-8601 with the *time*
+   colons swapped to `-` (the date hyphens stay), so they sort chronologically
+   and round-trip back to a `Date`.
+
+Restore reuses the hardened destructive primitives: `DataStoreResetService`
+(wipe local + iCloud) behind a `BackupDataResetting` seam, then
+`Importer.apply(…, assetsDirectory:)` (extended this round to reload attachment
+bytes). The schema-version gate runs *before* the reset (defense in depth even
+though the UI gates first). The live-CloudKit halves — the remote-change file
+sync and the real-iCloud-wipe restore — are **Mikey-verified on a signed Mac**,
+not CI (same posture as the live-swap tests).
