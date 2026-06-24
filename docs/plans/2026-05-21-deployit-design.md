@@ -144,7 +144,7 @@ builds.json     # append-only; newest first
       "id": "lillist-ios-20260521-153012-a7c4f9b",
       "platform": "ios",
       "project": "Lillist",
-      "bundle_id": "io.mikeydotio.Lillist",
+      "bundle_id": "app.lillist",
       "marketing_version": "0.1.0",
       "build_number": "16",
       "commit": "a7c4f9b",

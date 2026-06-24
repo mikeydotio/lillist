@@ -183,7 +183,7 @@ Singleton, CloudKit-private.
 
 ### Container topology
 
-One CloudKit container (`iCloud.io.mikey.lillist`), private database, one custom zone (`Lillist`). Custom zone for zone-wide changesets, atomic batch deletes, and future "shared" zone optionality.
+One CloudKit container (`iCloud.app.lillist`), private database, one custom zone (`Lillist`). Custom zone for zone-wide changesets, atomic batch deletes, and future "shared" zone optionality.
 
 ### Schema mirroring
 

@@ -331,7 +331,7 @@ final class AppEnvironment {
     /// App Group identifier shared between the main app, Share Extension,
     /// and Shortcuts (App Intents) extension. Matches the entitlement on
     /// every target.
-    static let appGroupID = "group.io.mikey.lillist"
+    static let appGroupID = "group.app.lillist"
 
     /// Async-friendly constructor. Loads the Core Data store inside the
     /// App Group's shared container so the Share Extension and App

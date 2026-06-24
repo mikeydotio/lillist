@@ -1,6 +1,6 @@
 name: Lillist-iOS
 options:
-  bundleIdPrefix: io.mikey
+  bundleIdPrefix: app.lillist
   deploymentTarget:
     iOS: "26.0"
   developmentLanguage: en
@@ -79,7 +79,7 @@ targets:
       - sdk: AppIntents.framework
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: io.mikey.lillist
+        PRODUCT_BUNDLE_IDENTIFIER: app.lillist
         PRODUCT_NAME: Lillist
         IPHONEOS_DEPLOYMENT_TARGET: "26.0"
         TARGETED_DEVICE_FAMILY: "1,2"
@@ -111,7 +111,7 @@ targets:
       - sdk: AppIntents.framework
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: io.mikey.lillist.Share
+        PRODUCT_BUNDLE_IDENTIFIER: app.lillist.Share
         IPHONEOS_DEPLOYMENT_TARGET: "26.0"
         TARGETED_DEVICE_FAMILY: "1,2"
         CODE_SIGN_ENTITLEMENTS: ../../Extensions/ShareExtension-iOS/Lillist.entitlements
@@ -137,7 +137,7 @@ targets:
       - sdk: AppIntents.framework
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: io.mikey.lillist.Shortcuts
+        PRODUCT_BUNDLE_IDENTIFIER: app.lillist.Shortcuts
         IPHONEOS_DEPLOYMENT_TARGET: "26.0"
         TARGETED_DEVICE_FAMILY: "1,2"
         CODE_SIGN_ENTITLEMENTS: ../../Extensions/ShortcutsActions/Lillist.entitlements
@@ -177,7 +177,7 @@ targets:
         product: LillistUI
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: io.mikey.lillist.tests
+        PRODUCT_BUNDLE_IDENTIFIER: app.lillist.tests
         IPHONEOS_DEPLOYMENT_TARGET: "26.0"
         TARGETED_DEVICE_FAMILY: "1,2"
         # Standalone test bundle — no app test host, so headless xcodebuild
@@ -204,7 +204,7 @@ targets:
       - target: Lillist-iOS
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: io.mikey.lillist.uitests
+        PRODUCT_BUNDLE_IDENTIFIER: app.lillist.uitests
         IPHONEOS_DEPLOYMENT_TARGET: "26.0"
         TARGETED_DEVICE_FAMILY: "1,2"
         TEST_TARGET_NAME: Lillist-iOS
@@ -255,7 +255,7 @@ targets:
         product: SnapshotTesting
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: io.mikey.lillist.appHostedTests
+        PRODUCT_BUNDLE_IDENTIFIER: app.lillist.appHostedTests
         IPHONEOS_DEPLOYMENT_TARGET: "26.0"
         TARGETED_DEVICE_FAMILY: "1,2"
         TEST_HOST: "$(BUILT_PRODUCTS_DIR)/Lillist.app/Lillist"

@@ -3,7 +3,7 @@ import Foundation
 /// Well-known notification request identifier for the daily morning summary
 /// (design Section 4 Layer 4). One per device.
 public enum MorningSummary {
-    public static let requestID = "io.mikey.lillist.morningSummary"
+    public static let requestID = "app.lillist.morningSummary"
     public static let categoryID = "lillist.morningSummary"
 }
 

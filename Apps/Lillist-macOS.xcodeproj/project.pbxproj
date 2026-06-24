@@ -714,7 +714,7 @@
 					"@loader_path/Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 15.0;
-				PRODUCT_BUNDLE_IDENTIFIER = io.mikey.lillist.uitests;
+				PRODUCT_BUNDLE_IDENTIFIER = app.lillist.uitests;
 				SDKROOT = macosx;
 				TEST_TARGET_NAME = "Lillist-macOS";
 			};
@@ -796,7 +796,7 @@
 					"@loader_path/../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 15.0;
-				PRODUCT_BUNDLE_IDENTIFIER = io.mikey.lillist.tests;
+				PRODUCT_BUNDLE_IDENTIFIER = app.lillist.tests;
 				SDKROOT = macosx;
 				TEST_HOST = "";
 			};
@@ -813,7 +813,7 @@
 				INFOPLIST_FILE = "Lillist-macOS/Info.plist";
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/../Frameworks";
 				MACOSX_DEPLOYMENT_TARGET = 15.0;
-				PRODUCT_BUNDLE_IDENTIFIER = io.mikey.lillist;
+				PRODUCT_BUNDLE_IDENTIFIER = app.lillist;
 				PRODUCT_NAME = Lillist;
 				SDKROOT = macosx;
 			};
@@ -830,7 +830,7 @@
 				INFOPLIST_FILE = "Lillist-macOS/Info.plist";
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/../Frameworks";
 				MACOSX_DEPLOYMENT_TARGET = 15.0;
-				PRODUCT_BUNDLE_IDENTIFIER = io.mikey.lillist;
+				PRODUCT_BUNDLE_IDENTIFIER = app.lillist;
 				PRODUCT_NAME = Lillist;
 				SDKROOT = macosx;
 			};
@@ -849,7 +849,7 @@
 					"@loader_path/Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 15.0;
-				PRODUCT_BUNDLE_IDENTIFIER = io.mikey.lillist.uitests;
+				PRODUCT_BUNDLE_IDENTIFIER = app.lillist.uitests;
 				SDKROOT = macosx;
 				TEST_TARGET_NAME = "Lillist-macOS";
 			};
@@ -867,7 +867,7 @@
 					"@loader_path/../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 15.0;
-				PRODUCT_BUNDLE_IDENTIFIER = io.mikey.lillist.tests;
+				PRODUCT_BUNDLE_IDENTIFIER = app.lillist.tests;
 				SDKROOT = macosx;
 				TEST_HOST = "";
 			};

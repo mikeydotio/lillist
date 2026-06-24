@@ -15,14 +15,14 @@ public final class PersistentHistoryTokenStore: @unchecked Sendable {
     private let key: String
 
     /// The reconciler's watermark key (the historical default).
-    public static let defaultKey = "io.mikey.lillist.persistentHistoryToken"
+    public static let defaultKey = "app.lillist.persistentHistoryToken"
     /// The diagnostics observer's watermark key. Distinct from `defaultKey` so
     /// the two history consumers never clobber each other's progress.
-    public static let diagnosticsKey = "io.mikey.lillist.diagnostics.historyToken"
+    public static let diagnosticsKey = "app.lillist.diagnostics.historyToken"
     /// The local-backup coordinator's watermark key. Distinct so the backup
     /// reconcile and the notification/diagnostics reconcilers advance
     /// independently and never clobber one another's progress.
-    public static let backupKey = "io.mikey.lillist.backup.historyToken"
+    public static let backupKey = "app.lillist.backup.historyToken"
 
     /// Backed by an explicit suite (tests) or the App Group (production).
     /// `key` selects which consumer's watermark this store reads/writes.

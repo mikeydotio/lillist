@@ -5,6 +5,6 @@ import Testing
 struct CrashReportingSmokeTests {
     @Test("Namespace exists and exposes a stable version tag")
     func namespaceExists() {
-        #expect(CrashReporting.subsystemIdentifier == "io.mikey.lillist.crash")
+        #expect(CrashReporting.subsystemIdentifier == "app.lillist.crash")
     }
 }

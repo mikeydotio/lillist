@@ -30,7 +30,7 @@ in-house crash reporter.
 - **`Extensions/`** *(top-level, not under the iOS app)* —
   `ShareExtension-iOS/` (share-sheet capture) and `ShortcutsActions/`
   (App Intents). All targets share App Group
-  `group.io.mikey.lillist`.
+  `group.app.lillist`.
 - **CLI** — `lillist-cli` target under `Packages/LillistCore`,
   `swift-argument-parser`-based; handlers thin-wrap stores.
 - **`Tools/Deploy/`** — `deploy-ios.sh` archives Lillist-iOS, exports a
@@ -298,12 +298,12 @@ should read only `login.keychain-db` + `System.keychain`.
 ## CloudKit / iCloud sync environment
 
 `NSPersistentCloudKitContainer` mirrors to one **private** CloudKit
-database in container **`iCloud.io.mikey.lillist`** (single custom
+database in container **`iCloud.app.lillist`** (single custom
 zone). Container ID + database scope are set in
 `PersistenceController.makeStoreDescription` and
 `StoreConfiguration.defaultCloudKitContainerIdentifier`. All targets
-share App Group `group.io.mikey.lillist`. iOS and macOS share the
-same bundle ID (`io.mikey.lillist`) and App ID (Push + CloudKit
+share App Group `group.app.lillist`. iOS and macOS share the
+same bundle ID (`app.lillist`) and App ID (Push + CloudKit
 enabled on it).
 
 **The hard-won rule: CloudKit environment follows the distribution

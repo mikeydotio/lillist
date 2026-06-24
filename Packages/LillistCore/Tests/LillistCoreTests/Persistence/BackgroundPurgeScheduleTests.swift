@@ -8,7 +8,7 @@ struct BackgroundPurgeScheduleTests {
     func identifierIsStable() {
         // The iOS Info.plist BGTaskSchedulerPermittedIdentifiers entry and
         // the BGProcessingTaskRequest must use exactly this string.
-        #expect(BackgroundPurgeSchedule.taskIdentifier == "io.mikey.lillist.autopurge")
+        #expect(BackgroundPurgeSchedule.taskIdentifier == "app.lillist.autopurge")
     }
 
     @Test("Earliest-begin interval is one day")

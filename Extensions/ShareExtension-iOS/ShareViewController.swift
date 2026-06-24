@@ -33,7 +33,7 @@ final class ShareViewController: UIViewController {
 
     private func cancel() {
         extensionContext?.cancelRequest(
-            withError: NSError(domain: "io.mikey.lillist.Share", code: -1)
+            withError: NSError(domain: "app.lillist.Share", code: -1)
         )
     }
 

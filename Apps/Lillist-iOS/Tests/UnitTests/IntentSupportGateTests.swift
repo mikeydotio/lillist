@@ -9,7 +9,7 @@ import LillistCore
 /// seam it uses degrades to a typed error rather than crashing.
 final class IntentSupportGateTests: XCTestCase {
     func test_usesCanonicalAppGroupID() {
-        XCTAssertEqual(IntentSupport.appGroupID, "group.io.mikey.lillist")
+        XCTAssertEqual(IntentSupport.appGroupID, "group.app.lillist")
     }
 
     func test_canonicalGroupResolvesConfigOrDegradesGracefully() async {

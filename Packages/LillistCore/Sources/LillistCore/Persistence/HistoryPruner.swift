@@ -21,7 +21,7 @@ public final class HistoryPruner: @unchecked Sendable {
     /// `UserDefaults` key under which the last pruned token is stored as
     /// `Data`. Using a reverse-DNS prefix ensures the key is collision-free
     /// across all suites used by the app and its extensions.
-    public static let tokenDefaultsKey = "io.mikey.lillist.history.prunedToken"
+    public static let tokenDefaultsKey = "app.lillist.history.prunedToken"
 
     private let persistence: PersistenceController
     private let syncMode: SyncMode

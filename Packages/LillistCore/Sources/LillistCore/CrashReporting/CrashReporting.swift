@@ -7,5 +7,5 @@ import Foundation
 public enum CrashReporting {
     /// Stable subsystem string used for OSLog and as a sanity marker
     /// in tests. Never change after release.
-    public static let subsystemIdentifier = "io.mikey.lillist.crash"
+    public static let subsystemIdentifier = "app.lillist.crash"
 }
