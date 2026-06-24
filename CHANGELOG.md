@@ -3,6 +3,22 @@
 All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [v0.10.0] - 2026-06-24
+
+### Added
+- adopt the shared iOS single-column UI for the main window (2c860e59)
+
+### Changed
+- un-gate the shared iOS Tasks screen for macOS (764482fc)
+
+### Documentation
+- log the macOS iOS-UI adoption and the tag/filter-mgmt follow-up (020b0662)
+
+### Maintenance
+- bump iOS build number to 69 (7d0d0d4e)
+
+_[manual]_
+
 ## [v0.9.1] - 2026-06-24
 
 ### Fixed
