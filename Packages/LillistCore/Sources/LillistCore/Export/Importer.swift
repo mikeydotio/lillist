@@ -13,9 +13,10 @@ import CoreData
 /// - `.recencyWins` — uses `modifiedAt` (falling back to `createdAt`)
 ///   to pick a winner per row.
 ///
-/// Attachments are not imported in this revision — the JSON+assets
-/// bundle's `assets/` folder is referenced but copy-back lands in a
-/// later patch alongside the iOS document picker affordance.
+/// When `apply` is given an `assetsDirectory`, attachments are imported too:
+/// their metadata is written and their binary blobs are loaded back from the
+/// bundle's `assets/` folder (issue #7 full-restore). Without it, attachment
+/// rows are skipped (metadata-only bundles, or the legacy folder-import path).
 public actor Importer {
     public let persistence: PersistenceController
 
@@ -93,7 +94,15 @@ public actor Importer {
     /// is only meaningful on a successful return. Per-row recovery would
     /// require a per-row save/rollback model, which this manual-merge
     /// escape hatch deliberately does not adopt.
-    public func apply(document: ExportSchema.Document, policy: ConflictPolicy) async throws -> ImportSummary {
+    /// - Parameter assetsDirectory: when non-nil, attachments in `document` are
+    ///   imported and their binary blobs are loaded from this folder (each
+    ///   `AttachmentDTO.dataPath` resolves to `<assetsDirectory>/<filename>`).
+    ///   Nil skips attachment rows entirely.
+    public func apply(
+        document: ExportSchema.Document,
+        policy: ConflictPolicy,
+        assetsDirectory: URL? = nil
+    ) async throws -> ImportSummary {
         // Forward-incompatible bundles (written by a newer Lillist) are
         // rejected up front. Equal and older versions apply; older
         // bundles are read as-is since every field added since has a
@@ -105,7 +114,7 @@ public actor Importer {
             )
         }
         let ctx = persistence.makeBackgroundContext()  // unchanged Wave-4 seam — do not revert to viewContext
-        return try await ctx.perform { [policy, self] in
+        return try await ctx.perform { [policy, assetsDirectory, self] in
             var tagsInserted = 0
             var tagsUpdated = 0
             var tagsSkipped = 0
@@ -187,6 +196,7 @@ public actor Importer {
                 row.parent = taskByID[parentID]
             }
 
+            var journalByID: [UUID: JournalEntry] = [:]
             for dto in document.journalEntries {
                 // A journal entry must belong to a task. Entries with a
                 // nil or unresolved taskID are orphans (CloudKit can
@@ -214,14 +224,43 @@ public actor Importer {
                             self.applyEntry(dto, into: existing, owner: owner)
                             entriesUpdated += 1
                         }
+                        journalByID[dto.id] = existing
                     } else {
                         let row = JournalEntry(context: ctx)
                         row.id = dto.id
                         self.applyEntry(dto, into: row, owner: owner)
                         entriesInserted += 1
+                        journalByID[dto.id] = row
                     }
                 } catch {
                     errors.append("journalEntry \(dto.id): \(error.localizedDescription)")
+                }
+            }
+
+            // Attachments — only when an assets directory is supplied (issue #7
+            // full restore). Each attachment must resolve to an owning task or
+            // journal entry; orphans are skipped. Binary blobs load from disk
+            // here, inside the background-context perform (never the main queue).
+            if let assetsDirectory {
+                for dto in document.attachments {
+                    let owningTask = dto.taskID.flatMap { taskByID[$0] }
+                    let owningEntry = dto.journalEntryID.flatMap { journalByID[$0] }
+                    guard owningTask != nil || owningEntry != nil else {
+                        errors.append("attachment \(dto.id): skipped (no resolvable owner)")
+                        continue
+                    }
+                    do {
+                        let existing = try self.fetchAttachment(id: dto.id, ctx: ctx)
+                        if existing != nil, policy == .skipExisting { continue }
+                        let row = existing ?? {
+                            let new = Attachment(context: ctx)
+                            new.id = dto.id
+                            return new
+                        }()
+                        self.applyAttachment(dto, into: row, task: owningTask, entry: owningEntry, assetsDirectory: assetsDirectory)
+                    } catch {
+                        errors.append("attachment \(dto.id): \(error.localizedDescription)")
+                    }
                 }
             }
 
@@ -288,6 +327,11 @@ public actor Importer {
         row.modifiedAt = dto.modifiedAt
         row.closedAt = dto.closedAt
         row.deletedAt = dto.deletedAt
+        // Imported rows are written with this build's field shape, so they
+        // conform to the current CloudKit schema regardless of the bundle's
+        // recorded version — stamp current rather than copying `dto.schemaVersion`
+        // (issue #7). This keeps restored data self-consistent for a later backup.
+        row.stampCurrentSchemaVersion()
         let resolved = dto.tagIDs.compactMap { tagByID[$0] }
         row.tags = NSSet(array: resolved)
     }
@@ -299,6 +343,33 @@ public actor Importer {
         row.payload = dto.payload
         row.createdAt = dto.createdAt
         row.editedAt = dto.editedAt
+    }
+
+    private nonisolated func applyAttachment(
+        _ dto: ExportSchema.AttachmentDTO,
+        into row: Attachment,
+        task: LillistTask?,
+        entry: JournalEntry?,
+        assetsDirectory: URL
+    ) {
+        row.task = task
+        row.journalEntry = entry
+        row.kindRaw = Int16(dto.kind)
+        row.filename = dto.filename
+        row.uti = dto.uti
+        row.byteSize = dto.byteSize
+        row.linkPreviewJSON = dto.linkPreviewJSON
+        row.createdAt = dto.createdAt
+        // Reload the binary blob from the bundle's assets/ folder. `dataPath` is
+        // "assets/<filename>"; resolve its tail against `assetsDirectory`. A
+        // missing/unreadable blob leaves `data` nil rather than failing the
+        // whole transaction (link previews legitimately carry no blob).
+        if let path = dto.dataPath {
+            let url = assetsDirectory.appendingPathComponent((path as NSString).lastPathComponent)
+            row.data = try? Data(contentsOf: url)
+        } else {
+            row.data = nil
+        }
     }
 
     private nonisolated func fetchTag(id: UUID, ctx: NSManagedObjectContext) throws -> Tag? {
@@ -317,6 +388,13 @@ public actor Importer {
 
     private nonisolated func fetchJournalEntry(id: UUID, ctx: NSManagedObjectContext) throws -> JournalEntry? {
         let req = NSFetchRequest<JournalEntry>(entityName: "JournalEntry")
+        req.predicate = NSPredicate(format: "id == %@", id as CVarArg)
+        req.fetchLimit = 1
+        return try ctx.fetch(req).first
+    }
+
+    private nonisolated func fetchAttachment(id: UUID, ctx: NSManagedObjectContext) throws -> Attachment? {
+        let req = NSFetchRequest<Attachment>(entityName: "Attachment")
         req.predicate = NSPredicate(format: "id == %@", id as CVarArg)
         req.fetchLimit = 1
         return try ctx.fetch(req).first

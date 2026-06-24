@@ -12,7 +12,8 @@ let package = Package(
         .executable(name: "lillist", targets: ["lillist-cli"])
     ],
     dependencies: [
-        .package(url: "https://github.com/apple/swift-argument-parser", from: "1.5.0")
+        .package(url: "https://github.com/apple/swift-argument-parser", from: "1.5.0"),
+        .package(url: "https://github.com/weichsel/ZIPFoundation", from: "0.9.0")
     ],
     targets: [
         .plugin(
@@ -21,6 +22,9 @@ let package = Package(
         ),
         .target(
             name: "LillistCore",
+            dependencies: [
+                .product(name: "ZIPFoundation", package: "ZIPFoundation")
+            ],
             resources: [
                 .process("Model/LillistModel.xcdatamodeld")
             ],

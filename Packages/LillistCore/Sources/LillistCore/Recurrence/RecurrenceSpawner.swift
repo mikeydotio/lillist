@@ -41,6 +41,7 @@ enum RecurrenceSpawner {
         spawn.isPinned = false
         spawn.createdAt = Date()
         spawn.modifiedAt = spawn.createdAt
+        spawn.stampCurrentSchemaVersion()
         spawn.parent = seed.parent
         spawn.position = seed.position + 0.5
         spawn.series = series
@@ -84,6 +85,7 @@ enum RecurrenceSpawner {
         copy.isPinned = source.isPinned
         copy.createdAt = Date()
         copy.modifiedAt = copy.createdAt
+        copy.stampCurrentSchemaVersion()
         copy.position = source.position
         copy.parent = newParent
         copy.tags = source.tags

@@ -1,0 +1,152 @@
+import Foundation
+
+/// The destructive primitive a restore needs: wipe local **and** iCloud data and
+/// rebuild an empty store. `DataStoreResetService` is the production conformer;
+/// tests inject a fake so they never touch a real CloudKit zone.
+@MainActor
+public protocol BackupDataResetting {
+    func resetAllData() async throws
+}
+
+extension DataStoreResetService: BackupDataResetting {}
+
+/// Restores all data from a backup package or snapshot zip (issue #7).
+///
+/// Restore is **destructive and schema-gated**: it only proceeds when the
+/// backup's CloudKit schema version matches this build's, then wipes local +
+/// iCloud data (`BackupDataResetting`) and replaces it with the backup's
+/// contents via the atomic `Importer`. `@MainActor` because the reset primitive
+/// is main-actor isolated (it drives a SwiftUI-facing service).
+@MainActor
+public final class BackupRestoreService {
+    private let reset: any BackupDataResetting
+    private let importer: Importer
+    private let preferences: PreferencesStore
+    private let packageDirectory: URL
+
+    public init(
+        reset: any BackupDataResetting,
+        importer: Importer,
+        preferences: PreferencesStore,
+        packageDirectory: URL
+    ) {
+        self.reset = reset
+        self.importer = importer
+        self.preferences = preferences
+        self.packageDirectory = packageDirectory
+    }
+
+    /// What to restore from: the live package, or a specific snapshot zip.
+    public enum RestoreSource: Sendable, Equatable {
+        case livePackage
+        case snapshotZip(URL)
+    }
+
+    /// A non-mutating compatibility report the UI uses to gate the restore
+    /// button before showing the destructive confirmation.
+    public struct Preflight: Sendable, Equatable {
+        public let fileCloudKitSchemaVersion: Int
+        public let currentCloudKitSchemaVersion: Int
+        public let taskCount: Int
+        public var isCompatible: Bool { fileCloudKitSchemaVersion == currentCloudKitSchemaVersion }
+
+        public init(fileCloudKitSchemaVersion: Int, currentCloudKitSchemaVersion: Int, taskCount: Int) {
+            self.fileCloudKitSchemaVersion = fileCloudKitSchemaVersion
+            self.currentCloudKitSchemaVersion = currentCloudKitSchemaVersion
+            self.taskCount = taskCount
+        }
+    }
+
+    /// Inspect a source's schema version + size **without mutating anything**.
+    public func preflight(_ source: RestoreSource) async throws -> Preflight {
+        let resolved = try resolveReader(source)
+        defer { resolved.cleanup() }
+        return try Self.preflight(reader: resolved.reader)
+    }
+
+    /// Schema-gated, destructive restore. Throws `schemaVersionMismatch` if the
+    /// backup's version differs from this build's (the UI should have gated
+    /// already — this is defense in depth). On success the store contains
+    /// exactly the backup's tasks, tags, journal entries, attachments, and the
+    /// captured preferences.
+    @discardableResult
+    public func restore(from source: RestoreSource) async throws -> Importer.ImportSummary {
+        let resolved = try resolveReader(source)
+        defer { resolved.cleanup() }
+        let reader = resolved.reader
+
+        let pre = try Self.preflight(reader: reader)
+        guard pre.isCompatible else {
+            throw LillistError.schemaVersionMismatch(
+                found: pre.fileCloudKitSchemaVersion,
+                current: pre.currentCloudKitSchemaVersion
+            )
+        }
+
+        // Wipe local + iCloud, rebuild empty.
+        try await reset.resetAllData()
+
+        // Replace with the backup's contents (atomic, all-or-nothing).
+        let document = try reader.assembleDocument()
+        let summary = try await importer.apply(
+            document: document,
+            policy: .replaceExisting,
+            assetsDirectory: reader.assetsDirectory
+        )
+        // Importer does not touch preferences — apply the captured set here.
+        try await applyPreferences(document.preferences)
+        return summary
+    }
+
+    // MARK: - Internals
+
+    private struct ResolvedReader {
+        let reader: BackupPackageReader
+        let tempDirectory: URL?
+        func cleanup() {
+            if let tempDirectory { try? FileManager.default.removeItem(at: tempDirectory) }
+        }
+    }
+
+    private func resolveReader(_ source: RestoreSource) throws -> ResolvedReader {
+        switch source {
+        case .livePackage:
+            return ResolvedReader(reader: BackupPackageReader(packageDirectory: packageDirectory), tempDirectory: nil)
+        case .snapshotZip(let zipURL):
+            let temp = FileManager.default.temporaryDirectory
+                .appendingPathComponent("lillist-restore-\(UUID().uuidString)", isDirectory: true)
+            try BackupSnapshotManager.unzip(zipURL, to: temp)
+            return ResolvedReader(reader: BackupPackageReader(packageDirectory: temp), tempDirectory: temp)
+        }
+    }
+
+    private static func preflight(reader: BackupPackageReader) throws -> Preflight {
+        let manifest = try reader.readManifest()
+        let records = try reader.readTaskRecords()
+        // Prefer the manifest; fall back to the first task record; an empty
+        // package with no manifest is treated as current-compatible.
+        let fileVersion = manifest?.cloudKitSchemaVersion
+            ?? records.first?.cloudKitSchemaVersion
+            ?? CloudKitSchema.currentVersion
+        let count = manifest?.taskCount ?? records.count
+        return Preflight(
+            fileCloudKitSchemaVersion: fileVersion,
+            currentCloudKitSchemaVersion: CloudKitSchema.currentVersion,
+            taskCount: count
+        )
+    }
+
+    private func applyPreferences(_ dto: ExportSchema.PreferencesDTO) async throws {
+        try await preferences.update { prefs in
+            prefs.defaultAllDayHour = dto.defaultAllDayHour
+            prefs.defaultAllDayMinute = dto.defaultAllDayMinute
+            prefs.morningSummaryEnabled = dto.morningSummaryEnabled
+            prefs.morningSummaryHour = dto.morningSummaryHour
+            prefs.morningSummaryMinute = dto.morningSummaryMinute
+            prefs.trashRetentionDays = dto.trashRetentionDays
+            if let sort = SortField(rawValue: dto.defaultTaskListSort) {
+                prefs.defaultTaskListSort = sort
+            }
+        }
+    }
+}

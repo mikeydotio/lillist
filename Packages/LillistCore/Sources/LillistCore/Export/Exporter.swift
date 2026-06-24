@@ -40,112 +40,39 @@ public final class Exporter: @unchecked Sendable {
         let ctx = persistence.makeBackgroundContext()
         let prefs = try await preferences.read()
 
-        // Attachment bytes are read into value types INSIDE perform; the
-        // files themselves are written to disk OUTSIDE perform so no file
-        // I/O happens while holding the Core Data context queue.
+        // Attachment bytes are read into value types INSIDE perform (via the
+        // shared `BackupRecordProjector`); the files themselves are written to
+        // disk OUTSIDE perform so no file I/O happens while holding the Core
+        // Data context queue.
         struct PendingAsset {
             let filename: String
             let bytes: Data
-            let dto: ExportSchema.AttachmentDTO
         }
 
         let (document, pendingAssets): (ExportSchema.Document, [PendingAsset]) = try await ctx.perform {
             // Tasks (including trashed — full backup)
             let taskReq = NSFetchRequest<LillistTask>(entityName: "LillistTask")
             taskReq.sortDescriptors = [NSSortDescriptor(key: "createdAt", ascending: true)]
-            let taskMOs = try ctx.fetch(taskReq)
-            let taskDTOs = taskMOs.map { m -> ExportSchema.TaskDTO in
-                let tagIDs = ((m.tags as? Set<Tag>) ?? []).compactMap(\.id).sorted(by: { $0.uuidString < $1.uuidString })
-                return ExportSchema.TaskDTO(
-                    id: m.id ?? UUID(),
-                    title: m.title ?? "",
-                    notes: m.notes ?? "",
-                    status: Int(m.statusRaw),
-                    start: m.start,
-                    startHasTime: m.startHasTime,
-                    deadline: m.deadline,
-                    deadlineHasTime: m.deadlineHasTime,
-                    position: m.position,
-                    isPinned: m.isPinned,
-                    parentID: m.parent?.id,
-                    tagIDs: tagIDs,
-                    createdAt: m.createdAt,
-                    modifiedAt: m.modifiedAt,
-                    closedAt: m.closedAt,
-                    deletedAt: m.deletedAt
-                )
-            }
+            let taskDTOs = try ctx.fetch(taskReq).map(BackupRecordProjector.taskDTO(from:))
 
             let tagReq = NSFetchRequest<Tag>(entityName: "Tag")
-            let tagDTOs = try ctx.fetch(tagReq).map { m in
-                ExportSchema.TagDTO(
-                    id: m.id ?? UUID(),
-                    name: m.name ?? "",
-                    tintColor: m.tintColor,
-                    parentID: m.parent?.id,
-                    position: m.position
-                )
-            }
+            let tagDTOs = try ctx.fetch(tagReq).map(BackupRecordProjector.tagDTO(from:))
 
             let journalReq = NSFetchRequest<JournalEntry>(entityName: "JournalEntry")
             journalReq.sortDescriptors = [NSSortDescriptor(key: "createdAt", ascending: true)]
-            let journalDTOs = try ctx.fetch(journalReq).map { m in
-                ExportSchema.JournalEntryDTO(
-                    id: m.id ?? UUID(),
-                    taskID: m.task?.id,
-                    kind: Int(m.kindRaw),
-                    body: m.body ?? "",
-                    payload: m.payload,
-                    createdAt: m.createdAt,
-                    editedAt: m.editedAt
-                )
-            }
+            let journalDTOs = try ctx.fetch(journalReq).map(BackupRecordProjector.journalEntryDTO(from:))
 
             let attReq = NSFetchRequest<Attachment>(entityName: "Attachment")
             var pending: [PendingAsset] = []
             let attDTOs = try ctx.fetch(attReq).map { m -> ExportSchema.AttachmentDTO in
-                var path: String?
-                if let data = m.data {
-                    let filename = "\(m.id?.uuidString ?? UUID().uuidString)-\(m.filename ?? "asset")"
-                    path = "assets/\(filename)"
-                    let dto = ExportSchema.AttachmentDTO(
-                        id: m.id ?? UUID(),
-                        taskID: m.task?.id,
-                        journalEntryID: m.journalEntry?.id,
-                        kind: Int(m.kindRaw),
-                        filename: m.filename ?? "",
-                        uti: m.uti ?? "",
-                        byteSize: m.byteSize,
-                        dataPath: path,
-                        linkPreviewJSON: m.linkPreviewJSON,
-                        createdAt: m.createdAt
-                    )
-                    pending.append(PendingAsset(filename: filename, bytes: data, dto: dto))
-                    return dto
+                let projected = BackupRecordProjector.attachmentDTO(from: m)
+                if let asset = projected.asset {
+                    pending.append(PendingAsset(filename: asset.filename, bytes: asset.bytes))
                 }
-                return ExportSchema.AttachmentDTO(
-                    id: m.id ?? UUID(),
-                    taskID: m.task?.id,
-                    journalEntryID: m.journalEntry?.id,
-                    kind: Int(m.kindRaw),
-                    filename: m.filename ?? "",
-                    uti: m.uti ?? "",
-                    byteSize: m.byteSize,
-                    dataPath: path,
-                    linkPreviewJSON: m.linkPreviewJSON,
-                    createdAt: m.createdAt
-                )
+                return projected.dto
             }
 
-            let prefsDTO = ExportSchema.PreferencesDTO(
-                defaultAllDayHour: prefs.defaultAllDayHour,
-                defaultAllDayMinute: prefs.defaultAllDayMinute,
-                morningSummaryEnabled: prefs.morningSummaryEnabled,
-                morningSummaryHour: prefs.morningSummaryHour,
-                morningSummaryMinute: prefs.morningSummaryMinute,
-                trashRetentionDays: prefs.trashRetentionDays,
-                defaultTaskListSort: prefs.defaultTaskListSort.rawValue
-            )
+            let prefsDTO = BackupRecordProjector.preferencesDTO(from: prefs)
 
             let doc = ExportSchema.Document(
                 version: ExportSchema.version,

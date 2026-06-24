@@ -28,6 +28,9 @@ public enum LillistError: Error, Sendable, Equatable {
     case migrationFailed(underlying: String)
     case modelUnavailable(searchedFilenames: [String])
     case unsupportedExportVersion(found: Int, supported: Int)
+    /// A backup archive's CloudKit schema version does not match this build's
+    /// current version, so it cannot be safely restored (issue #7).
+    case schemaVersionMismatch(found: Int, current: Int)
 }
 
 extension LillistError: LocalizedError {
@@ -62,6 +65,8 @@ extension LillistError: LocalizedError {
             return "Lillist data model not found in app bundle (searched: \(names.joined(separator: ", ")))"
         case .unsupportedExportVersion(let found, let supported):
             return "This export was written by a newer version of Lillist (schema \(found); this app supports up to \(supported)). Update Lillist and try again."
+        case .schemaVersionMismatch(let found, let current):
+            return "This backup was made with a different data schema (version \(found); this app uses \(current)) and can't be restored."
         }
     }
 }

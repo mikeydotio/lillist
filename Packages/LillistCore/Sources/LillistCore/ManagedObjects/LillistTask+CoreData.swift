@@ -19,6 +19,14 @@ public final class LillistTask: NSManagedObject {
     @NSManaged public var archivedAt: Date?
     @NSManaged public var deletedAt: Date?
 
+    /// Integer CloudKit schema version stamped on every local write (issue #7).
+    /// Mirrors to CloudKit and is serialized into the per-task backup file so a
+    /// restore can gate on schema compatibility. Additive optional attribute,
+    /// default `0` for records written before this field existed (or migrated
+    /// in by lightweight migration). See `CloudKitSchema` and
+    /// `stampCurrentSchemaVersion()`.
+    @NSManaged public var schemaVersion: Int16
+
     @NSManaged public var parent: LillistTask?
     @NSManaged public var children: NSSet?
     @NSManaged public var tags: NSSet?
@@ -84,5 +92,16 @@ extension LillistTask {
     public var status: Status {
         get { Status(rawValue: Int(statusRaw)) ?? .todo }
         set { statusRaw = Int16(newValue.rawValue) }
+    }
+
+    /// Stamp the current CloudKit schema version (issue #7).
+    ///
+    /// Called **explicitly** at every local create/mutation site — never from a
+    /// Core Data lifecycle hook (`awakeFromInsert`/`willSave`). A lifecycle hook
+    /// would re-dirty CloudKit-imported records during mirroring and echo a
+    /// redundant write back to CloudKit; an explicit call only fires on genuine
+    /// local writes, which legitimately push to CloudKit anyway.
+    func stampCurrentSchemaVersion() {
+        schemaVersion = Int16(CloudKitSchema.currentVersion)
     }
 }

@@ -166,6 +166,7 @@ public final class TaskStore: @unchecked Sendable {
                 task.isPinned = false
                 task.createdAt = Date()
                 task.modifiedAt = task.createdAt
+                task.stampCurrentSchemaVersion()
                 task.parent = parentTask
                 task.position = detail.assigned
                 try context.save()
@@ -225,6 +226,7 @@ public final class TaskStore: @unchecked Sendable {
                 m.deadlineHasTime = draft.deadlineHasTime
                 m.isPinned = draft.isPinned
                 m.modifiedAt = Date()
+                m.stampCurrentSchemaVersion()
                 try context.save()
             }
             // Anchor fields (start/deadline) and their time flags affect
@@ -332,6 +334,7 @@ public final class TaskStore: @unchecked Sendable {
                 let assigned = try nextPosition(forParent: newParent)
                 m.position = assigned
                 m.modifiedAt = Date()
+                m.stampCurrentSchemaVersion()
                 try context.save()
                 return (oldParentID: oldParentID, assigned: assigned)
             }
@@ -525,6 +528,7 @@ public final class TaskStore: @unchecked Sendable {
                 cap.computedPosition = computed
                 m.position = computed
                 m.modifiedAt = Date()
+                m.stampCurrentSchemaVersion()
                 try context.save()
             }
             await emitReorderDiag(id: id, afterID: afterID, beforeID: beforeID, capture: cap, threwError: false)
@@ -574,6 +578,7 @@ public final class TaskStore: @unchecked Sendable {
                 }
                 m.status = newStatus
                 m.modifiedAt = Date()
+                m.stampCurrentSchemaVersion()
                 if newStatus == .closed {
                     m.closedAt = m.modifiedAt
                 } else if oldStatus == .closed {
@@ -670,6 +675,7 @@ public final class TaskStore: @unchecked Sendable {
                     guard m.archivedAt == nil else { continue }
                     m.archivedAt = now
                     m.modifiedAt = now
+                    m.stampCurrentSchemaVersion()
                     flipped.append(id)
                 }
                 try context.save()
@@ -694,6 +700,7 @@ public final class TaskStore: @unchecked Sendable {
                     guard m.archivedAt != nil else { continue }
                     m.archivedAt = nil
                     m.modifiedAt = Date()
+                    m.stampCurrentSchemaVersion()
                 }
                 try context.save()
             }
@@ -838,6 +845,7 @@ public final class TaskStore: @unchecked Sendable {
     private func applySoftDelete(to m: LillistTask, at now: Date) {
         m.deletedAt = now
         m.modifiedAt = now
+        m.stampCurrentSchemaVersion()
         if let children = m.children as? Set<LillistTask> {
             for child in children where child.deletedAt == nil {
                 applySoftDelete(to: child, at: now)
@@ -848,6 +856,7 @@ public final class TaskStore: @unchecked Sendable {
     private func clearSoftDelete(from m: LillistTask, matchingDeletedAt: Date) {
         m.deletedAt = nil
         m.modifiedAt = Date()
+        m.stampCurrentSchemaVersion()
         if let children = m.children as? Set<LillistTask> {
             for child in children where child.deletedAt == matchingDeletedAt {
                 clearSoftDelete(from: child, matchingDeletedAt: matchingDeletedAt)
@@ -866,6 +875,7 @@ public final class TaskStore: @unchecked Sendable {
                 if existing.contains(tag) { return }
                 task.addToTags(tag)
                 task.modifiedAt = Date()
+                task.stampCurrentSchemaVersion()
                 try context.save()
             }
         } catch {
@@ -881,6 +891,7 @@ public final class TaskStore: @unchecked Sendable {
                 let tag = try fetchTag(id: tagID, in: context)
                 task.removeFromTags(tag)
                 task.modifiedAt = Date()
+                task.stampCurrentSchemaVersion()
                 try context.save()
             }
         } catch {

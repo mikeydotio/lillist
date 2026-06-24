@@ -19,6 +19,10 @@ public final class PersistentHistoryTokenStore: @unchecked Sendable {
     /// The diagnostics observer's watermark key. Distinct from `defaultKey` so
     /// the two history consumers never clobber each other's progress.
     public static let diagnosticsKey = "io.mikey.lillist.diagnostics.historyToken"
+    /// The local-backup coordinator's watermark key. Distinct so the backup
+    /// reconcile and the notification/diagnostics reconcilers advance
+    /// independently and never clobber one another's progress.
+    public static let backupKey = "io.mikey.lillist.backup.historyToken"
 
     /// Backed by an explicit suite (tests) or the App Group (production).
     /// `key` selects which consumer's watermark this store reads/writes.

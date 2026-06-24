@@ -36,6 +36,7 @@ extension TaskStore {
             followUp.isPinned = false
             followUp.createdAt = Date()
             followUp.modifiedAt = followUp.createdAt
+            followUp.stampCurrentSchemaVersion()
             followUp.parent = siblingParent
             followUp.position = try nextPosition(forParent: siblingParent)
 
