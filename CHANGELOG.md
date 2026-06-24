@@ -3,6 +3,16 @@
 All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [v0.9.1] - 2026-06-24
+
+### Fixed
+- carry CloudKit push via the correct macOS entitlement key (9b471be1)
+
+### Maintenance
+- bump iOS build number to 68 (68e14cac)
+
+_[force]_
+
 ## [v0.9.0] - 2026-06-24
 
 ### Added
