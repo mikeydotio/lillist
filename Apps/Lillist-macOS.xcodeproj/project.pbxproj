@@ -23,6 +23,7 @@
 		2AE1F90D7F261EEFA392223F /* QuickCapturePane.swift in Sources */ = {isa = PBXBuildFile; fileRef = 23D285C988F042A513BC9303 /* QuickCapturePane.swift */; };
 		2F203B07FBD275E48F0ABB96 /* Sparkle in Frameworks */ = {isa = PBXBuildFile; productRef = CF695397835B406FC45EA94B /* Sparkle */; };
 		34205E56AB7BBAC39AABE64A /* LillistCore in Frameworks */ = {isa = PBXBuildFile; productRef = D5DCD7417305E330CB4C0DC0 /* LillistCore */; };
+		41A3F0BCDABB8E588C8A1F05 /* RemindersPane.swift in Sources */ = {isa = PBXBuildFile; fileRef = F3D397212929ED75B7D59146 /* RemindersPane.swift */; };
 		41D5332FFC9A37D6874E1E44 /* AppIntents.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = ECE3A50348E57FE59F4366B8 /* AppIntents.framework */; };
 		48BCDA9D8B5C36BB2F899B5B /* SidebarContextMenuTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 365F9079CBE5A1C7C1D0158F /* SidebarContextMenuTests.swift */; };
 		513F80DB225B3198A6B428C6 /* CrashReporterHost.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBBEE29201F8E282644A5147 /* CrashReporterHost.swift */; };
@@ -136,6 +137,7 @@
 		E5425E4B83C495ACEC60F879 /* LillistCore */ = {isa = PBXFileReference; lastKnownFileType = folder; name = LillistCore; path = ../Packages/LillistCore; sourceTree = SOURCE_ROOT; };
 		ECE3A50348E57FE59F4366B8 /* AppIntents.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = AppIntents.framework; path = System/Library/Frameworks/AppIntents.framework; sourceTree = SDKROOT; };
 		ED9565C658DC6743EF09396D /* MailtoTransport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MailtoTransport.swift; sourceTree = "<group>"; };
+		F3D397212929ED75B7D59146 /* RemindersPane.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RemindersPane.swift; sourceTree = "<group>"; };
 		F9E0C4B2D659722AE215A0B8 /* NotificationsPane.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationsPane.swift; sourceTree = "<group>"; };
 		FA80085EB3BB242379E92790 /* CrashReportingPane.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CrashReportingPane.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -268,6 +270,7 @@
 				F9E0C4B2D659722AE215A0B8 /* NotificationsPane.swift */,
 				BC4034CAF7C667207F94C76D /* PreferencesWindow.swift */,
 				23D285C988F042A513BC9303 /* QuickCapturePane.swift */,
+				F3D397212929ED75B7D59146 /* RemindersPane.swift */,
 				0914C02F19D5D32DBFCB3C8E /* TrashPane.swift */,
 			);
 			path = Preferences;
@@ -554,6 +557,7 @@
 				2AE1F90D7F261EEFA392223F /* QuickCapturePane.swift in Sources */,
 				863B5709B57AA4BB35BF7DC3 /* QuickCapturePanelController.swift in Sources */,
 				E3B2DBE7E86F28A40968F08C /* QuickCapturePlacementMath.swift in Sources */,
+				41A3F0BCDABB8E588C8A1F05 /* RemindersPane.swift in Sources */,
 				F35B8D1A2A2FC0067873907F /* SceneBindings.swift in Sources */,
 				51CD698709C7470BF850D750 /* TodayPopoverView.swift in Sources */,
 				5D973F060EA0402FDC6F5088 /* TrashPane.swift in Sources */,

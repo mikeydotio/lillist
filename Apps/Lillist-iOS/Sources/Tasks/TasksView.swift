@@ -108,6 +108,10 @@ struct TasksView: View {
         .modifier(TaskEditorHost(
             newCaptureTrigger: isQuickCapturePresented,
             openTaskID: $openTaskID,
+            captureSeed: Binding(
+                get: { env.pendingQuickCaptureSeed },
+                set: { env.pendingQuickCaptureSeed = $0 }
+            ),
             stores: editorStores,
             onChanged: { await reload() }
         ))

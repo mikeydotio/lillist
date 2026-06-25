@@ -2,11 +2,12 @@ import SwiftUI
 import LillistCore
 import LillistUI
 
-/// Root of the macOS `Settings { … }` scene. Nine panes (design
+/// Root of the macOS `Settings { … }` scene. Ten panes (design
 /// Section 7): iCloud Sync, General, Notifications, Trash, Backups, Quick
-/// Capture, Crash Reporting, Diagnostics, Advanced. Each pane self-sizes its
-/// height but pins a common `PreferencesMetrics.contentWidth` so the window —
-/// and the toolbar tab row — stay put when switching panes.
+/// Capture, Tasks from Reminders, Crash Reporting, Diagnostics, Advanced. Each
+/// pane self-sizes its height but pins a common
+/// `PreferencesMetrics.contentWidth` so the window — and the toolbar tab row —
+/// stay put when switching panes.
 struct PreferencesWindow: View {
     var body: some View {
         TabView {
@@ -22,6 +23,8 @@ struct PreferencesWindow: View {
                 .tabItem { Label("Backups", systemImage: "archivebox") }
             QuickCapturePane()
                 .tabItem { Label("Quick Capture", systemImage: "keyboard") }
+            RemindersPane()
+                .tabItem { Label("Tasks from Reminders", systemImage: "tray.and.arrow.down") }
             CrashReportingPane()
                 .tabItem { Label("Crash Reporting", systemImage: "ant") }
             DiagnosticsPane()

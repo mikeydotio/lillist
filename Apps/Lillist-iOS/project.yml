@@ -164,6 +164,10 @@ targets:
       # can be exercised from the standalone iOS test bundle without
       # needing a ShortcutsActions extension test host.
       - path: ../../Extensions/ShortcutsActions/ReportCrashIntent.swift
+      # Co-compile the AddTaskInput title normalizer so AddTaskIntent's
+      # spoken-title handling can be unit-tested without a ShortcutsActions
+      # extension test host (same pattern as ReportCrashIntent above).
+      - path: ../../Extensions/ShortcutsActions/AddTaskInput.swift
       # Co-compile IntentSupport so the gate-aware persistence resolution
       # wrapper can be exercised from the standalone iOS test bundle without
       # a ShortcutsActions extension test host. The deep gate-branch coverage

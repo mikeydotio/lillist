@@ -32,6 +32,8 @@
 	<string>$(LILLIST_CONTACT_EMAIL)</string>
 	<key>NSHumanReadableCopyright</key>
 	<string>Copyright © 2026 Mikey Ward. All rights reserved.</string>
+	<key>NSRemindersFullAccessUsageDescription</key>
+	<string>Lillist imports tasks from a Reminders list you choose and removes them once captured.</string>
 	<key>NSUserActivityTypes</key>
 	<array>
 		<string>app.lillist.openTask</string>

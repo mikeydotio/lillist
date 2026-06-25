@@ -17,6 +17,11 @@ import LillistUI
 struct TaskEditorHost: ViewModifier {
     @Binding var newCaptureTrigger: Bool
     @Binding var openTaskID: UUID?
+    /// Seed text handed off by the Quick Capture App Intent (via
+    /// `AppEnvironment.pendingQuickCaptureSeed`). When non-nil, opens a new
+    /// capture pre-filled with the text; reset to `nil` once consumed. Unlike
+    /// `newCaptureTrigger` (a bare Bool), this carries the prefill.
+    @Binding var captureSeed: String?
     let stores: TaskEditorModel.Stores
     var onChanged: () async -> Void = {}
 
@@ -67,6 +72,21 @@ struct TaskEditorHost: ViewModifier {
                     openTaskID = nil
                 }
             }
+            .onChange(of: captureSeed) { _, seed in
+                consumeSeed(seed)
+            }
+            // Cold-launch case: the seed may already be set before this view
+            // appears (bootstrap consumes the handoff), so .onChange never
+            // fires — consume the initial value here too.
+            .task { consumeSeed(captureSeed) }
+    }
+
+    /// Open a pre-filled capture for a handed-off seed, then clear it so it
+    /// can't re-fire. A non-nil seed (including `""`) means "open the dialog".
+    private func consumeSeed(_ seed: String?) {
+        guard let seed else { return }
+        openNewCapture(prefill: seed)
+        captureSeed = nil
     }
 
     private func openNewCapture(prefill: String = "") {

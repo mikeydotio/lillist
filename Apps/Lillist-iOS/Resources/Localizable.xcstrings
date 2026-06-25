@@ -37,6 +37,27 @@
     "Could not load Lillist" : {
 
     },
+    "Drain now" : {
+
+    },
+    "Grant Reminders access" : {
+
+    },
+    "Import from a Reminders list" : {
+
+    },
+    "Open Settings" : {
+
+    },
+    "Reminders access is off. Turn it on in Settings ▸ Privacy & Security ▸ Reminders." : {
+
+    },
+    "Tasks from Reminders" : {
+
+    },
+    "When enabled, Lillist empties the chosen list into new tasks each time it opens — title, notes, and due date carry across, and the reminder is removed." : {
+
+    },
     "Empty Trash now" : {
 
     },

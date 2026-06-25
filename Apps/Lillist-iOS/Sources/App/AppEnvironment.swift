@@ -62,6 +62,15 @@ final class AppEnvironment {
     let preferencesStore: PreferencesStore
     let devicePreferences: DevicePreferencesStore
     let preferencesPartitionMigrator: AppPreferencesPartitionMigrator
+    /// EventKit boundary for "Tasks from Reminders": list enumeration + access
+    /// request (settings) and item fetch/delete (importer).
+    let remindersGateway: RemindersGateway
+    /// Drains the chosen Reminders list into top-level tasks on activation.
+    let remindersImporter: RemindersImporter
+    /// Seed text handed off by the Quick Capture App Intent via
+    /// ``QuickCaptureHandoff``. Observed by `TaskEditorHost` to open the
+    /// capture dialog pre-filled; reset to `nil` once consumed.
+    var pendingQuickCaptureSeed: String?
     let seriesStore: SeriesStore
     let smartFilterStore: SmartFilterStore
     let notificationSpecStore: NotificationSpecStore
@@ -326,6 +335,17 @@ final class AppEnvironment {
             preferences: preferencesStore,
             packageDirectory: backupPackageDirectory
         )
+
+        // Tasks from Reminders: EventKit gateway + drain importer. The
+        // importer reuses the same TaskStore and device prefs as the rest of
+        // the app so imported tasks are indistinguishable from hand-created ones.
+        let remindersGateway = EventKitRemindersGateway()
+        self.remindersGateway = remindersGateway
+        self.remindersImporter = RemindersImporter(
+            gateway: remindersGateway,
+            taskStore: self.taskStore,
+            devicePreferences: devicePreferences
+        )
     }
 
     /// App Group identifier shared between the main app, Share Extension,
@@ -449,6 +469,20 @@ final class AppEnvironment {
         // Connect the live CloudKit sync-status stream to the UI indicator.
         await syncMonitor.start()
         metricKitObserver.startReceiving()
+
+        // Quick Capture handoff (cold launch): an App Intent may have stashed
+        // seed text before launch completed. bootstrap() runs *after* the
+        // launch `didBecomeActive` has already fired, so consume it here; warm
+        // returns are handled by the lifecycle observer above. Instant
+        // (UserDefaults read) — `TaskEditorHost` opens the dialog once the view
+        // appears with this value already set.
+        if let seed = QuickCaptureHandoff.take(appGroupID: Self.appGroupID) {
+            self.pendingQuickCaptureSeed = seed
+        }
+        // Tasks from Reminders: drain the queue on launch. Fire-and-forget so a
+        // slow EventKit fetch never delays the first frame; no-ops fast when
+        // the feature is disabled or unauthorized.
+        Task { [remindersImporter] in await remindersImporter.drainIfNeeded() }
     }
 
     /// Persist-6: entry point for the iOS background-processing task.
@@ -482,11 +516,21 @@ final class AppEnvironment {
             forName: UIApplication.didBecomeActiveNotification,
             object: nil,
             queue: nil
-        ) { _ in
+        ) { [weak self] _ in
             Task { try? await reporter.start() }
             // Issue #7: roll a daily snapshot if the app stays foregrounded
             // across a day boundary. No-op when one isn't due.
             Task { await backup.runSnapshotIfDue() }
+            // Warm reactivation: consume any Quick Capture handoff and drain
+            // the Reminders queue. (Cold launch is handled in bootstrap(),
+            // which runs after the first didBecomeActive.)
+            Task { @MainActor [weak self] in
+                guard let self else { return }
+                if let seed = QuickCaptureHandoff.take(appGroupID: Self.appGroupID) {
+                    self.pendingQuickCaptureSeed = seed
+                }
+                await self.remindersImporter.drainIfNeeded()
+            }
         }
         NotificationCenter.default.addObserver(
             forName: UIApplication.willResignActiveNotification,

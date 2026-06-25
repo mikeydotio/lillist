@@ -36,6 +36,9 @@ struct SettingsTab: View {
                     navRow("Quick Capture", "bolt.fill", RainbowPalette.actionOrange.base) {
                         QuickCapturePage(prefs: b)
                     }
+                    navRow("Tasks from Reminders", "tray.and.arrow.down.fill", RainbowPalette.Spectrum.lime) {
+                        RemindersImportPage()
+                    }
                     navRow("Data Management", "externaldrive.fill", RainbowPalette.growthGreen.base) {
                         DataManagementPage(prefs: b)
                     }

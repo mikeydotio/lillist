@@ -1,4 +1,5 @@
 import Foundation
+import AppKit
 import CloudKit
 import Observation
 import LillistCore
@@ -34,6 +35,11 @@ final class AppEnvironment {
     let preferencesStore: PreferencesStore
     let devicePreferences: DevicePreferencesStore
     let preferencesPartitionMigrator: AppPreferencesPartitionMigrator
+    /// EventKit boundary for "Tasks from Reminders": list enumeration + access
+    /// request (Preferences pane) and item fetch/delete (importer).
+    let remindersGateway: RemindersGateway
+    /// Drains the chosen Reminders list into top-level tasks on activation.
+    let remindersImporter: RemindersImporter
     let smartFilterStore: SmartFilterStore
     let notificationSpecStore: NotificationSpecStore
     let snoozeRegistry: SnoozeRegistry
@@ -279,6 +285,15 @@ final class AppEnvironment {
             preferences: preferencesStore,
             packageDirectory: backupPackageDirectory
         )
+
+        // Tasks from Reminders: EventKit gateway + drain importer (iOS parity).
+        let remindersGateway = EventKitRemindersGateway()
+        self.remindersGateway = remindersGateway
+        self.remindersImporter = RemindersImporter(
+            gateway: remindersGateway,
+            taskStore: self.taskStore,
+            devicePreferences: devicePreferences
+        )
     }
 
     /// App Group identifier shared with the iOS app, extensions, and CLI.
@@ -378,6 +393,26 @@ final class AppEnvironment {
         startObservingPauseReason()
         // Connect the live CloudKit sync-status stream to the UI indicator.
         await syncMonitor.start()
+
+        // Tasks from Reminders: drain on launch + on every reactivation. macOS
+        // has no prior foreground-activation hook, so this observer is net-new.
+        installActivationDrain()
+        Task { [remindersImporter] in await remindersImporter.drainIfNeeded() }
+    }
+
+    /// Drain the Reminders queue whenever the app becomes active. Fire-and-
+    /// forget; the importer no-ops fast when the feature is off or unauthorized.
+    private func installActivationDrain() {
+        NotificationCenter.default.addObserver(
+            forName: NSApplication.didBecomeActiveNotification,
+            object: nil,
+            queue: nil
+        ) { [weak self] _ in
+            Task { @MainActor [weak self] in
+                guard let self else { return }
+                await self.remindersImporter.drainIfNeeded()
+            }
+        }
     }
 
     /// Plan 10: stream account-state changes off the actor into the

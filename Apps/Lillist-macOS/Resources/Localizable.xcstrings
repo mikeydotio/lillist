@@ -22,6 +22,27 @@
     "Days in Trash before auto-purge" : {
 
     },
+    "Drain now" : {
+
+    },
+    "Grant Reminders access" : {
+
+    },
+    "Import from a Reminders list" : {
+
+    },
+    "Open System Settings" : {
+
+    },
+    "Reminders access is off. Turn it on in System Settings ▸ Privacy & Security ▸ Reminders." : {
+
+    },
+    "Tasks from Reminders" : {
+
+    },
+    "When enabled, Lillist empties the chosen list into new tasks each time it becomes active — title, notes, and due date carry across, and the reminder is removed." : {
+
+    },
     "Empty Trash now" : {
 
     },

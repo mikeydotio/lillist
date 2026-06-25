@@ -30,6 +30,8 @@
 	<string>Copyright © 2026 Mikey Ward. All rights reserved.</string>
 	<key>NSPrincipalClass</key>
 	<string>NSApplication</string>
+	<key>NSRemindersFullAccessUsageDescription</key>
+	<string>Lillist imports tasks from a Reminders list you choose and removes them once captured.</string>
 	<key>NSServices</key>
 	<array>
 		<dict>
