@@ -36,7 +36,7 @@ settings:
     # auto-stamp was rejected: a post-build script can't write the product
     # Info.plist under ENABLE_USER_SCRIPT_SANDBOXING at archive time — see
     # docs/engineering-notes.md 2026-06-20.)
-    MARKETING_VERSION: "0.10.1"
+    MARKETING_VERSION: "0.11.0"
     DEAD_CODE_STRIPPING: YES
 
 packages:

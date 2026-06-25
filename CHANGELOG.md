@@ -3,6 +3,20 @@
 All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [v0.11.0] - 2026-06-25
+
+### Added
+- voice Add Task, Quick Capture seed, Tasks from Reminders (f0325e6a)
+- Reminders import engine + Quick Capture handoff (839caaae)
+
+### Documentation
+- AppIntents free-text + drain-actor reentrancy gotchas (ce62e096)
+
+### Maintenance
+- bump iOS build number to 71 (4e1fda7a)
+
+_[manual]_
+
 ## [v0.10.1] - 2026-06-24
 
 ### Added
