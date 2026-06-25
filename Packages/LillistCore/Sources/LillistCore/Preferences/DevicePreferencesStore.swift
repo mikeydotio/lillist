@@ -129,6 +129,48 @@ public actor DevicePreferencesStore {
         defaults.set(value, forKey: Self.diagnosticLoggingKey)
     }
 
+    // MARK: Tasks from Reminders (EventKit import)
+
+    private static let remindersImportEnabledKey = "lillist.devicePrefs.remindersImportEnabled"
+    /// Whether Lillist drains a chosen Reminders.app list into top-level
+    /// tasks when the app becomes active. Default `false` — strictly opt-in,
+    /// and only acts once the user has granted Reminders access from
+    /// Settings. Device-local because the selected list identifier is
+    /// device/account scoped and EventKit access is per-device.
+    public func remindersImportEnabled() -> Bool {
+        defaults.bool(forKey: Self.remindersImportEnabledKey)
+    }
+    public func setRemindersImportEnabled(_ value: Bool) {
+        defaults.set(value, forKey: Self.remindersImportEnabledKey)
+    }
+
+    private static let remindersImportListIDKey = "lillist.devicePrefs.remindersImportListID"
+    /// The `EKCalendar.calendarIdentifier` of the Reminders list to drain.
+    /// `nil` until the user picks one; the importer no-ops while unset.
+    public func remindersImportListID() -> String? {
+        defaults.string(forKey: Self.remindersImportListIDKey)
+    }
+    public func setRemindersImportListID(_ value: String?) {
+        if let value {
+            defaults.set(value, forKey: Self.remindersImportListIDKey)
+        } else {
+            defaults.removeObject(forKey: Self.remindersImportListIDKey)
+        }
+    }
+
+    private static let remindersInFlightIDsKey = "lillist.devicePrefs.remindersInFlightIDs"
+    /// External identifiers of reminders turned into a task but not yet
+    /// confirmed-deleted from Reminders. Guards the create→delete crash
+    /// window: an id seen here on a later drain is deleted *without*
+    /// re-creating a duplicate task. The importer prunes it to the list's
+    /// live ids each pass so it stays bounded.
+    public func remindersInFlightIDs() -> Set<String> {
+        Set(defaults.stringArray(forKey: Self.remindersInFlightIDsKey) ?? [])
+    }
+    public func setRemindersInFlightIDs(_ value: Set<String>) {
+        defaults.set(Array(value), forKey: Self.remindersInFlightIDsKey)
+    }
+
     // MARK: One-time migration marker
 
     private static let migrationFlagKey = "lillist.devicePrefs.cdPartitionMigrationCompleted"

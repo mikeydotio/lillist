@@ -60,6 +60,29 @@ struct DevicePreferencesStoreTests {
         #expect(await store.crashPromptsEnabled() == true)
     }
 
+    @Test("Reminders import defaults: disabled, no list, empty in-flight set")
+    func remindersImportDefaults() async {
+        let store = DevicePreferencesStore(suiteName: Self.freshSuiteName())
+        #expect(await store.remindersImportEnabled() == false)
+        #expect(await store.remindersImportListID() == nil)
+        #expect(await store.remindersInFlightIDs().isEmpty)
+    }
+
+    @Test("Reminders import settings round-trip")
+    func remindersImportRoundTrip() async {
+        let store = DevicePreferencesStore(suiteName: Self.freshSuiteName())
+        await store.setRemindersImportEnabled(true)
+        await store.setRemindersImportListID("cal-123")
+        await store.setRemindersInFlightIDs(["a", "b"])
+        #expect(await store.remindersImportEnabled() == true)
+        #expect(await store.remindersImportListID() == "cal-123")
+        #expect(await store.remindersInFlightIDs() == ["a", "b"])
+
+        // Clearing the selected list removes it.
+        await store.setRemindersImportListID(nil)
+        #expect(await store.remindersImportListID() == nil)
+    }
+
     @Test("Migration marker is sticky")
     func migrationMarker() async {
         let store = DevicePreferencesStore(suiteName: Self.freshSuiteName())
