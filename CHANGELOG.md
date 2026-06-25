@@ -3,6 +3,19 @@
 All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [v0.10.1] - 2026-06-24
+
+### Added
+- render main window at 75% scale (3726a9fd)
+
+### Changed
+- move sync indicator from main toolbar into iCloud Sync settings (e3254831)
+
+### Maintenance
+- bump iOS build number to 70 (b1c09db3)
+
+_[force]_
+
 ## [v0.10.0] - 2026-06-24
 
 ### Added
