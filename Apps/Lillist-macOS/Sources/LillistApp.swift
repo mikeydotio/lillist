@@ -2,6 +2,32 @@ import SwiftUI
 import LillistCore
 import LillistUI
 
+/// Renders the wrapped main-window content at a fixed fraction of its natural
+/// size so the macOS main window — which reuses the iOS single-column surface —
+/// reads at a comfortable Mac density rather than oversized.
+///
+/// A bare `.scaleEffect` shrinks the rendered pixels but leaves the layout
+/// footprint unchanged, so the content would draw small in one corner. Instead
+/// we lay the content out at `1 / scale` of the available window space and then
+/// scale that down by `scale`, which makes the content *reflow* denser while
+/// still filling the same window. Hit-testing maps correctly through the
+/// transform; the only cost is a slightly softer text raster at non-integral
+/// scales — accepted here in exchange for not forking the shared design tokens
+/// (`LillistSpacing`/`LillistTypography`), which iOS also consumes.
+private struct ScaledWindowContent: ViewModifier {
+    /// The render scale, e.g. `0.75` for "about 25% smaller".
+    let scale: CGFloat
+
+    func body(content: Content) -> some View {
+        GeometryReader { proxy in
+            content
+                .frame(width: proxy.size.width / scale,
+                       height: proxy.size.height / scale)
+                .scaleEffect(scale, anchor: .topLeading)
+        }
+    }
+}
+
 @main
 struct LillistApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
@@ -14,6 +40,11 @@ struct LillistApp: App {
     /// macOS main-window sort selection, persisted per-machine. Distinct
     /// key from iOS's `lillist.ios.sort` so the platforms don't collide.
     @AppStorage("lillist.macos.sort") private var sortRaw: String = TasksSort.personalized.rawValue
+
+    /// macOS main-window render scale. The shared iOS single-column surface
+    /// reads oversized on the Mac, so the main window draws at 75% (≈25%
+    /// smaller / denser). Tunable in one place; see `ScaledWindowContent`.
+    private let macUIScale: CGFloat = 0.75
 
     private var sortBinding: Binding<TasksSort> {
         Binding(
@@ -33,6 +64,11 @@ struct LillistApp: App {
     var body: some Scene {
         WindowGroup("Lillist", id: "main") {
             content
+                // Render the shared iOS single-column surface ~25% smaller on
+                // macOS (denser), keeping the same window canvas. Applied
+                // before `.frame` so the window sizing below governs the space
+                // the scaled content reflows into.
+                .modifier(ScaledWindowContent(scale: macUIScale))
                 // Narrow, iPhone-width default; freely resizable with a
                 // ~360 floor and no ceiling (`.contentMinSize`). The main
                 // window is now the shared iOS single-column surface.
