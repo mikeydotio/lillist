@@ -92,9 +92,7 @@ final class IOSScreenTourTests: RecordableSnapshotTestCase {
     func test_01_tasks_default_light() {
         let view = phoneShell(fab: true) {
             TasksScreen(
-                roots: sampleRoots(),
-                syncIndicator: .idle(lastSync: nil),
-                buildVersion: "0.1.0 (16)",
+                roots: sampleRoots(),                buildVersion: "0.1.0 (16)",
                 sort: .constant(.personalized),
                 isFilterHeaderExpanded: .constant(false),
                 searchText: .constant(""),
@@ -110,9 +108,7 @@ final class IOSScreenTourTests: RecordableSnapshotTestCase {
     func test_02_tasks_default_dark() {
         let view = phoneShell(fab: true) {
             TasksScreen(
-                roots: sampleRoots(),
-                syncIndicator: .idle(lastSync: nil),
-                buildVersion: "0.1.0 (16)",
+                roots: sampleRoots(),                buildVersion: "0.1.0 (16)",
                 sort: .constant(.personalized),
                 isFilterHeaderExpanded: .constant(false),
                 searchText: .constant(""),
@@ -128,9 +124,7 @@ final class IOSScreenTourTests: RecordableSnapshotTestCase {
     func test_03_tasks_filter_expanded_today_token_light() {
         let view = phoneShell(fab: true) {
             TasksScreen(
-                roots: sampleRoots(),
-                syncIndicator: .idle(lastSync: nil),
-                buildVersion: "0.1.0 (16)",
+                roots: sampleRoots(),                buildVersion: "0.1.0 (16)",
                 sort: .constant(.personalized),
                 isFilterHeaderExpanded: .constant(true),
                 searchText: .constant("ship"),
@@ -146,9 +140,7 @@ final class IOSScreenTourTests: RecordableSnapshotTestCase {
     func test_04_tasks_sort_due_light() {
         let view = phoneShell(fab: true) {
             TasksScreen(
-                roots: sampleRoots(),
-                syncIndicator: .idle(lastSync: nil),
-                buildVersion: "0.1.0 (16)",
+                roots: sampleRoots(),                buildVersion: "0.1.0 (16)",
                 sort: .constant(.due),
                 isFilterHeaderExpanded: .constant(false),
                 searchText: .constant(""),
@@ -170,9 +162,7 @@ final class IOSScreenTourTests: RecordableSnapshotTestCase {
         roots.append(node(task("Read DDIA ch. 6", status: .closed)))
         let view = phoneShell(fab: true) {
             TasksScreen(
-                roots: roots,
-                syncIndicator: .idle(lastSync: nil),
-                buildVersion: "0.1.0 (16)",
+                roots: roots,                buildVersion: "0.1.0 (16)",
                 sort: .constant(.personalized),
                 isFilterHeaderExpanded: .constant(false),
                 searchText: .constant(""),
@@ -194,9 +184,7 @@ final class IOSScreenTourTests: RecordableSnapshotTestCase {
     func test_12_tasks_archive_toast_light() {
         let view = phoneShell(fab: true) {
             TasksScreen(
-                roots: sampleRoots(),
-                syncIndicator: .idle(lastSync: nil),
-                buildVersion: "0.1.0 (16)",
+                roots: sampleRoots(),                buildVersion: "0.1.0 (16)",
                 sort: .constant(.personalized),
                 isFilterHeaderExpanded: .constant(false),
                 searchText: .constant(""),
@@ -247,9 +235,7 @@ final class IOSScreenTourTests: RecordableSnapshotTestCase {
 
         let view = phoneShell(fab: true) {
             TasksScreen(
-                roots: roots,
-                syncIndicator: .idle(lastSync: nil),
-                buildVersion: "0.1.0 (16)",
+                roots: roots,                buildVersion: "0.1.0 (16)",
                 sort: .constant(.personalized),
                 isFilterHeaderExpanded: .constant(false),
                 searchText: .constant(""),

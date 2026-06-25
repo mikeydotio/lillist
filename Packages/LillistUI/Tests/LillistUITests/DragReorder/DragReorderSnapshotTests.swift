@@ -55,7 +55,6 @@ final class DragReorderSnapshotTests: RecordableSnapshotTestCase {
         TasksScreen(
             roots: roots(),
             loadError: nil,
-            syncIndicator: .idle(lastSync: nil),
             buildVersion: "1.0",
             sort: .constant(.personalized),
             isFilterHeaderExpanded: .constant(false),

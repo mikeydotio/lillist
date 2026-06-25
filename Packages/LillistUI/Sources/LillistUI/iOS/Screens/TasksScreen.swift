@@ -18,7 +18,6 @@ public struct TasksScreen: View {
 
     public var roots: [TaskNode]
     public var loadError: String?
-    public var syncIndicator: SyncIndicator
     public var buildVersion: String?
 
     @Binding public var sort: TasksSort
@@ -56,7 +55,6 @@ public struct TasksScreen: View {
     public init(
         roots: [TaskNode],
         loadError: String? = nil,
-        syncIndicator: SyncIndicator = .idle(lastSync: nil),
         buildVersion: String? = nil,
         sort: Binding<TasksSort>,
         isFilterHeaderExpanded: Binding<Bool>,
@@ -82,7 +80,6 @@ public struct TasksScreen: View {
     ) {
         self.roots = roots
         self.loadError = loadError
-        self.syncIndicator = syncIndicator
         self.buildVersion = buildVersion
         self._sort = sort
         self._isFilterHeaderExpanded = isFilterHeaderExpanded
@@ -392,9 +389,6 @@ public struct TasksScreen: View {
             }
             .accessibilityLabel(String(localized: "Settings", bundle: .module))
             .accessibilityIdentifier("TasksSettingsButton")
-        }
-        ToolbarItem(placement: trailingPlacement) {
-            SyncStatusBadge(indicator: syncIndicator)
         }
         ToolbarItem(placement: trailingPlacement) {
             Menu {

@@ -62,7 +62,6 @@ struct MacTasksView: View {
         TasksScreen(
             roots: tree,
             loadError: loadError,
-            syncIndicator: env.syncMonitor.indicator,
             buildVersion: env.buildVersion,
             sort: sortBinding,
             isFilterHeaderExpanded: $isFilterHeaderExpanded,

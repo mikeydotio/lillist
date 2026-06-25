@@ -77,7 +77,11 @@ public struct ICloudSyncSettingsSection: View {
                 Button("Sync Now", action: actions.onSyncNow)
             }
         } header: {
-            Text("iCloud Sync")
+            HStack {
+                Text("iCloud Sync")
+                Spacer()
+                SyncStatusBadge(indicator: viewState.status, onPausedTap: actions.onPausedTap)
+            }
         } footer: {
             if let footer = viewState.disabledFooter {
                 VStack(alignment: .leading, spacing: 8) {
