@@ -3549,3 +3549,52 @@ future contributor will otherwise re-learn:
    Sibling, Advance Status, Mark Closed/Blocked, Open Task, Focus Sidebar/List,
    Show Sidebar) was retired; ⌘N now just flips the quick-capture binding.
    `CommandNotifications.postedByCommands` is consequently empty.
+
+## 2026-06-25 — Reminders import + Quick Capture/Add Task intents: AppIntents won't take free-text inline, and a drain actor must flip its guard before the first await
+
+Three gotchas from wiring the App Intents up and adding the EventKit
+Reminders drain (settings page + drain-on-activate, iOS + macOS).
+
+1. **`AppShortcut` phrases only accept `AppEntity`/`AppEnum` parameters
+   inline — never a `String`.** Writing `"Add \(\.$taskTitle) to
+   \(.applicationName)"` where `taskTitle: String` fails the build at
+   `appintentsmetadataprocessor` with *"Invalid parameter type. AppEntity
+   and AppEnum are the only allowed types"* — a halting metadata-export
+   error, so the extension silently becomes "not usable with AppIntents."
+   There is therefore **no way to capture a dictated free-text title inline
+   in a Siri phrase.** The supported path is a trigger-only phrase ("Add to
+   Lillist", "Lillist task") plus `@Parameter(requestValueDialog:)` on the
+   String so Siri asks "What's the task?" and collects the value
+   conversationally. Inline capture is reserved for finite/queryable types.
+   (`LillistShortcuts.swift`, `AddTaskIntent.swift`.)
+
+2. **A drain `actor` must set its re-entrancy flag synchronously, before the
+   first `await`.** `RemindersImporter.drainIfNeeded()` originally checked
+   `guard !isDraining` and then set `isDraining = true` *after* three awaits
+   (read prefs, check authorization). Because an actor releases isolation at
+   every `await`, four concurrent activations all passed the guard before any
+   set the flag → parallel drains → duplicate tasks. The stress test
+   (`RemindersImporterTests.stressNoDuplicates`, 25× of 4 concurrent drains)
+   caught it; a single-call test never would. Fix: `guard !isDraining;
+   isDraining = true; defer { … }` with **no await between the check and the
+   set**. This is the canonical "clean build ≠ correctness across actor
+   boundaries" case the house rules warn about.
+
+3. **Reminders import prefs are device-local on purpose; cross-process
+   Quick Capture handoff rides App Group UserDefaults, not
+   `NotificationCenter`.** A Reminders `calendarIdentifier` is
+   device/account scoped, so the enable flag + selected list live in
+   `DevicePreferencesStore` (App Group UserDefaults), **not** the
+   CloudKit-synced `AppPreferences` row — which also dodges a
+   Development→Production schema redeploy. Separately, the Quick Capture
+   App Intent runs in the ShortcutsActions *extension process*, so it can't
+   post a `NotificationCenter` signal to the app; it stashes seed text via
+   `QuickCaptureHandoff` (App Group UserDefaults + TTL) and the app consumes
+   it on activation — in `bootstrap()` for the cold launch (which runs
+   *after* the first `didBecomeActive`) and in the `didBecomeActive`
+   observer for warm returns. `TaskEditorHost` consumes the seed both via
+   `.onChange` and a `.task` (the value may already be set before the view
+   appears). macOS gained its first foreground-activation observer
+   (`NSApplication.didBecomeActiveNotification`) to drive the same drain;
+   the Quick Capture handoff is iOS-only (App Intents aren't embedded on
+   macOS).
