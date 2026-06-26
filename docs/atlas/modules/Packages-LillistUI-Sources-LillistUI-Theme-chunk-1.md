@@ -1,6 +1,6 @@
 ---
 module: "Packages/LillistUI/Sources/LillistUI/Theme (chunk 1)"
-summary: "Rainbow Glass design tokens — colors, hues, gradients, glass seam, button/toggle styles, status/sync/tag palettes"
+summary: "Rainbow Glass design tokens: palette, glass seam, motion, elevation, status/sync/tag coloring."
 read_when: "Touching theme colors or glass surfaces"
 sources:
   - path: "Packages/LillistUI/Sources/LillistUI/Theme/Color+Hex.swift"
@@ -33,104 +33,120 @@ sources:
     blob: ae2ada13fd769e9731c0efaabbf4ca9c3f750857
   - path: Packages/LillistUI/Sources/LillistUI/Theme/TagTint.swift
     blob: ef5e3e2cdc62a9a405f12d0f0f5b70933ef34c89
-references_modules: [Packages-LillistUI-Sources-LillistUI-Accessibility, Packages-LillistUI-Sources-LillistUI-Theme-chunk-2, Packages-LillistUI-Sources-LillistUI-Components, Packages-LillistUI-Sources-LillistUI-iOS-misc, Packages-LillistUI-Sources-LillistUI-misc, Packages-LillistCore-Sources-LillistCore-Model, Apps-Lillist-macOS-Sources-Preferences]
-generator: cartographer/1
-baseline: 1a1562b636e43ebbdc35c7939ab6989b387f50e9
-verified: true
+references_modules: [Apps-Lillist-macOS-Sources-Hotkey, Packages-LillistCore-Sources-LillistCore-CLIBridge-Handlers-chunk-2, Packages-LillistCore-Sources-LillistCore-LinkPreview, Packages-LillistUI-Sources-LillistUI-Accessibility, Packages-LillistUI-Sources-LillistUI-Recurrence, Packages-LillistUI-Sources-LillistUI-Settings]
+generator: cartographer/4
+baseline: 515f24730d21cb81ca1c9737ffeb981e9c414d3c
 ---
 
 # Module: Packages/LillistUI/Sources/LillistUI/Theme (chunk 1)
 
 ## Purpose
 
-The Rainbow Glass design-token layer: every color, hue, gradient, glass
-surface, motion curve, button/toggle style, and status/sync/tag mapping that
-both apps and the extensions consume. The unifying idea is that color is
-*functional* (tints map to meaning, never decoration) and all OS-26 Liquid
-Glass routes through one seam. If this module vanished, components would have
-no semantic palette and no availability-gated glass to render against.
+This module is the Rainbow Glass design system's token and seam layer for LillistUI: it defines every color, motion, elevation, and glass-surface primitive that components consume, and it is the single integration point for Apple's Liquid Glass material with full OS-version degradation. The whimsical rainbow palette survives here as functional glass tints (status, sync, tag) that carry semantic meaning rather than decoration. Without this module every LillistUI component would lose its visual identity, accessibility-respecting motion/contrast behavior, and the centralized #available gate that keeps macOS Sequoia on the pre-glass Material path.
 
 ## Public API
 
 | Symbol | Kind | Location | Contract |
 | --- | --- | --- | --- |
-| `Color.init?(hex:)` | init | `Packages/LillistUI/Sources/LillistUI/Theme/Color+Hex.swift:23` | Parse 6-digit (or 3-digit) hex into a raw `Color`; nil on parse fail |
-| `Color.toHex()` | func | `Packages/LillistUI/Sources/LillistUI/Theme/Color+Hex.swift:40` | Render a `Color` as `#RRGGBB`; nil if not sRGB-reducible |
-| `GlassSurface` | enum | `Packages/LillistUI/Sources/LillistUI/Theme/GlassSurface.swift:32` | The glass role taxonomy (panel/toast/control/card/statusTinted) |
-| `LillistColor` | enum | `Packages/LillistUI/Sources/LillistUI/Theme/LillistColor.swift:11` | Semantic surface/text/border colors; the only color API components reach for |
-| `LillistElevation` | enum | `Packages/LillistUI/Sources/LillistUI/Theme/LillistElevation.swift:17` | Two-layer shadow levels; `.xs` is the hard cap for repeating rows |
-| `LillistFonts` | enum | `Packages/LillistUI/Sources/LillistUI/Theme/Fonts/LillistFonts.swift:22` | Registers bundled Plus Jakarta Sans for the process |
-| `LillistMotion` | enum | `Packages/LillistUI/Sources/LillistUI/Theme/LillistMotion.swift:12` | Motion durations + `squish`/`easeOut` brand curves |
-| `RainbowButtonStyle` | struct | `Packages/LillistUI/Sources/LillistUI/Theme/RainbowButtonStyle.swift:16` | Pill button style; pick variant by function via `.rainbow(_:size:)` |
-| `RainbowGradient` | enum | `Packages/LillistUI/Sources/LillistUI/Theme/RainbowGradient.swift:8` | The reserved full-spectrum gradients (vertical/horizontal/halo) |
-| `RainbowPalette` | enum | `Packages/LillistUI/Sources/LillistUI/Theme/RainbowPalette.swift:22` | Raw hex data layer + `dynamic(...)` factory + functional hues |
-| `RainbowToggleStyle` | struct | `Packages/LillistUI/Sources/LillistUI/Theme/RainbowToggleStyle.swift:14` | Flat-track switch style; `.rainbow` token applies it |
-| `StatusGlyph` | enum | `Packages/LillistUI/Sources/LillistUI/Theme/StatusGlyph.swift:9` | SF Symbol + localized a11y label per `Status` |
-| `StatusPalette` | enum | `Packages/LillistUI/Sources/LillistUI/Theme/StatusPalette.swift:20` | `color`/`ink`/`fill` per `Status`; never use `color` as text |
-| `TagTint` | struct | `Packages/LillistUI/Sources/LillistUI/Theme/TagTint.swift:4` | Tag color value; `resolved(in:)` applies dark desaturation + contrast floor |
-| `View.glassSurface(_:in:)` | func | `Packages/LillistUI/Sources/LillistUI/Theme/GlassSurface.swift:98` | Apply a glass surface with full pre-26 degradation |
-| `View.glassGroup(spacing:)` | func | `Packages/LillistUI/Sources/LillistUI/Theme/GlassSurface.swift:108` | Group overlapping glass so it blends; no-op below OS 26 |
-| `View.glassElevation(_:)` | func | `Packages/LillistUI/Sources/LillistUI/Theme/GlassSurface.swift:122` | Yield shadow to glass on OS 26; fall back to `rainbowShadow` below |
-| `View.rainbowShadow(_:)` | func | `Packages/LillistUI/Sources/LillistUI/Theme/LillistElevation.swift:45` | Two-layer soft drop shadow at the given elevation |
-| `ShapeStyle.rainbowWell` | static var | `Packages/LillistUI/Sources/LillistUI/Theme/LillistElevation.swift:67` | Inset-well fill for sunken fields |
-| `SyncIndicator.color` (ext) | var | `Packages/LillistUI/Sources/LillistUI/Theme/SyncPalette.swift:27` | Canonical tint per sync state; recency-gated idle |
+| `ButtonStyle` | extension | `Packages/LillistUI/Sources/LillistUI/Theme/RainbowButtonStyle.swift:103` | Adds `.rainbow(_ variant:size:)` static shorthand so callers write `.buttonStyle(.rainbow(.lavender))` instead of constructing `RainbowButtonStyle` directly. |
+| `Color` | extension | `Packages/LillistUI/Sources/LillistUI/Theme/Color+Hex.swift:19` | Adds `init?(hex:)` (6- or 3-digit RGB string → Color) and `toHex()` (Color → #RRGGBB); distinct from TagTint.init?(hex:) which also applies dark-mode desaturation. |
+| `Functional` | struct | `Packages/LillistUI/Sources/LillistUI/Theme/RainbowPalette.swift:83` | One functional hue with base/soft/ink/deep axes; `base` is never a text color — use `ink` for text/glyphs; WCAG AA for (ink, soft) and (ink, card) is enforced by RainbowContrastTests. |
+| `GlassRowSpike` | struct | `Packages/LillistUI/Sources/LillistUI/Theme/GlassRowSpike.swift:27` | DEBUG-only Wave 0 spike view for evaluating full-glass vs accent-glass task row treatments; not a production component and has no callers outside its own previews. |
+| `GlassSurface` | enum | `Packages/LillistUI/Sources/LillistUI/Theme/GlassSurface.swift:32` | Discriminated union describing a glass surface's role and fallback behavior; callers pass a case to `glassSurface(_:in:)` to receive the correct OS-adaptive treatment. |
+| `LillistColor` | enum | `Packages/LillistUI/Sources/LillistUI/Theme/LillistColor.swift:11` | Catalog of semantic surface, text, and border color tokens backed by `RainbowPalette.dynamic`; the only color API components should reach for structural roles — all values are scheme-pinned by tests. |
+| `LillistElevation` | enum | `Packages/LillistUI/Sources/LillistUI/Theme/LillistElevation.swift:17` | Five elevation levels for the pre-26 two-layer drop shadow system; callers must not exceed `.xs` for repeating list-row cells. |
+| `LillistFonts` | enum | `Packages/LillistUI/Sources/LillistUI/Theme/Fonts/LillistFonts.swift:22` | Namespace for bundled Plus Jakarta Sans registration; callers use `registerIfNeeded()` and fall back to system fonts if it returns false. |
+| `LillistMotion` | enum | `Packages/LillistUI/Sources/LillistUI/Theme/LillistMotion.swift:12` | Duration constants (`fast`/`base`/`slow`) and `Animation` factories (`squish`, `easeOut`) for the Rainbow Logic motion system; all decorative animations must route through `accessibleAnimation` to respect Reduce Motion. |
+| `NSColor` | extension | `Packages/LillistUI/Sources/LillistUI/Theme/RainbowPalette.swift:158` | Convenience `init(hex:UInt32, alpha:Double)` for `NSColor`; used internally by `RainbowPalette.dynamic()` on macOS to construct appearance-resolving colors. |
+| `RainbowButtonStyle` | struct | `Packages/LillistUI/Sources/LillistUI/Theme/RainbowButtonStyle.swift:16` | Rainbow Glass pill button; variant must be chosen by function (see doc comment); applies tinted glass or gradient per variant, squish-on-press with Reduce Motion gating. |
+| `RainbowGradient` | enum | `Packages/LillistUI/Sources/LillistUI/Theme/RainbowGradient.swift:8` | Three sanctioned gradient presets (vertical/horizontal/halo) reserved for headers, heroes, and success moments; callers must not use them as ambient decoration. |
+| `RainbowPalette` | enum | `Packages/LillistUI/Sources/LillistUI/Theme/RainbowPalette.swift:22` | Color data layer: provides `dynamic(light:dark:)` factory, the six `Spectrum` stops, and five named `Functional` hues; components must not read hex values directly — go through `LillistColor` or named hues. |
+| `RainbowToggleStyle` | struct | `Packages/LillistUI/Sources/LillistUI/Theme/RainbowToggleStyle.swift:14` | Custom toggle with flat track, solid white thumb, squish animation; honors `reduceMotionOverride`/`increaseContrastOverride`; used on both platforms. |
+| `Resolved` | struct | `Packages/LillistUI/Sources/LillistUI/Theme/TagTint.swift:5` | The fully resolved (dark-mode-adjusted, contrast-floored) tag tint as HSB + opacity; `color` property produces the SwiftUI Color ready for rendering. |
+| `ShapeStyle` | extension | `Packages/LillistUI/Sources/LillistUI/Theme/LillistElevation.swift:63` | Adds `.rainbowWell` — the inset-well fill (LillistColor.sunken + two inner shadows) for search bars and text fields. |
+| `Size` | enum | `Packages/LillistUI/Sources/LillistUI/Theme/RainbowButtonStyle.swift:21` | Encodes the sm/md size tiers with their height, horizontal padding, and font; callers construct via `RainbowButtonStyle.Size.sm` or `.md`. |
+| `Spectrum` | enum | `Packages/LillistUI/Sources/LillistUI/Theme/RainbowPalette.swift:54` | Six scheme-invariant sRGB stops (purple→orange) from the app icon; used only for gradient construction and confetti — not for everyday UI color. |
+| `StatusGlyph` | enum | `Packages/LillistUI/Sources/LillistUI/Theme/StatusGlyph.swift:9` | Maps each `Status` to an SF Symbol name and a localized accessibility label; single source of truth for glyph choice across all status surfaces. |
+| `StatusPalette` | enum | `Packages/LillistUI/Sources/LillistUI/Theme/StatusPalette.swift:20` | Maps each Status to a functional hue role; single source of truth for status coloring — callers must use `ink(for:)` for text, `color(for:)` only for object fills. |
+| `SyncIndicator` | extension | `Packages/LillistUI/Sources/LillistUI/Theme/SyncPalette.swift:14` | Extends `SyncIndicator` with `color`, `systemImage`, and `differentiatedSystemImage`; single source of truth for sync state → visual representation across macOS `SyncStatusDotView` and iOS `SyncStatusBadge`. |
+| `TagTint` | struct | `Packages/LillistUI/Sources/LillistUI/Theme/TagTint.swift:4` | Stores an RGB tag tint from a hex string; `resolved(in:)` applies dark-mode desaturation and iterates brightness to meet the WCAG 4.5:1 contrast floor against the chip background. |
+| `ToggleStyle` | extension | `Packages/LillistUI/Sources/LillistUI/Theme/RainbowToggleStyle.swift:75` | Adds `.rainbow` static property enabling `.toggleStyle(.rainbow)` shorthand. |
+| `UIColor` | extension | `Packages/LillistUI/Sources/LillistUI/Theme/RainbowPalette.swift:146` | Convenience `init(hex:UInt32, alpha:Double)` for `UIColor`; used internally by `RainbowPalette.dynamic()` on iOS to construct trait-resolving colors. |
+| `Variant` | enum | `Packages/LillistUI/Sources/LillistUI/Theme/GlassRowSpike.swift:28` | Spike-internal enum for the two row treatment modes (fullGlass / accentGlass); only meaningful inside the DEBUG GlassRowSpike harness. |
+| `Variant` | enum | `Packages/LillistUI/Sources/LillistUI/Theme/RainbowButtonStyle.swift:17` | Discriminates the button's functional role; callers must pick by semantic meaning, never by aesthetics. |
+| `View` | extension | `Packages/LillistUI/Sources/LillistUI/Theme/GlassSurface.swift:90` | Adds `glassSurface(_:in:)`, `glassGroup(spacing:)`, and `glassElevation(_:)` — the only three call-sites for Liquid Glass and the Rainbow Logic shadow retirement path. |
+| `View` | extension | `Packages/LillistUI/Sources/LillistUI/Theme/LillistElevation.swift:41` | Adds `rainbowShadow(_:)` modifier; wraps content in `compositingGroup()` then applies two layered shadows from `level.layers` so the whole hierarchy casts one shadow. |
+| `accessibilityLabel` | func | `Packages/LillistUI/Sources/LillistUI/Theme/StatusGlyph.swift:19` | Returns a localized accessibility label for a Status value; strings are fetched from the LillistUI module bundle. |
+| `body` | func | `Packages/LillistUI/Sources/LillistUI/Theme/GlassSurface.swift:137` | Applies real Liquid Glass on OS 26 without branching on Reduce Transparency (the glass renderer handles it); on pre-26 falls back to `.regularMaterial` or opaque color depending on `surface.prefersSolidFallback`. |
+| `body` | func | `Packages/LillistUI/Sources/LillistUI/Theme/RainbowButtonStyle.swift:77` | Dispatches each `Variant` to the correct glass tint, gradient, or flat surface treatment; private ViewModifier used only by `RainbowButtonStyle.makeBody`. |
+| `color` | func | `Packages/LillistUI/Sources/LillistUI/Theme/StatusPalette.swift:23` | Returns the object-fill color for a status; must NOT be used as text color — that is `ink(for:)`. |
+| `dynamic` | func | `Packages/LillistUI/Sources/LillistUI/Theme/RainbowPalette.swift:29` | Returns a trait-adapting SwiftUI Color from a (light, dark) hex pair and optional alpha values; the only correct way to produce adaptive colors in this design system. |
+| `easeOut` | func | `Packages/LillistUI/Sources/LillistUI/Theme/LillistMotion.swift:26` | Returns `.timingCurve(0.22, 0.61, 0.36, 1.0, duration:)` — standard deceleration; defaults to `LillistMotion.base` duration. |
+| `faceIsUsable` | func | `Packages/LillistUI/Sources/LillistUI/Theme/Fonts/LillistFonts.swift:56` | Returns true when a PostScript font name resolves to a real font (not a fallback) in the current process; used only as a registration probe. |
+| `fill` | func | `Packages/LillistUI/Sources/LillistUI/Theme/StatusPalette.swift:47` | Returns a tinted fill at 16% opacity (30% under Increase Contrast) for status backgrounds such as capsules, badges, and the blocked cube. |
+| `glassElevation` | func | `Packages/LillistUI/Sources/LillistUI/Theme/GlassSurface.swift:122` | No-op on OS 26 (glass carries its own shadow); delegates to `rainbowShadow(_:)` on pre-26, preserving Sequoia elevation fidelity without stacking shadow on glass. |
+| `glassGroup` | func | `Packages/LillistUI/Sources/LillistUI/Theme/GlassSurface.swift:108` | Wraps siblings in `GlassEffectContainer` on OS 26 so they blend correctly; is a complete passthrough (returns `self`) on pre-26 — callers must not rely on it for layout on older OS. |
+| `glassSurface` | func | `Packages/LillistUI/Sources/LillistUI/Theme/GlassSurface.swift:98` | Primary glass entry point: applies GlassSurfaceModifier with the given surface role; default shape is Capsule per system convention. |
+| `ink` | func | `Packages/LillistUI/Sources/LillistUI/Theme/StatusPalette.swift:34` | Returns the WCAG AA-compliant text/glyph color for a status; safe on soft fills and cards in both schemes. |
+| `makeBody` | func | `Packages/LillistUI/Sources/LillistUI/Theme/RainbowButtonStyle.swift:40` | Builds the full pill button with press-scale squish and opacity; reads `reduceMotionOverride ?? accessibilityReduceMotion` to gate animation. |
+| `makeBody` | func | `Packages/LillistUI/Sources/LillistUI/Theme/RainbowToggleStyle.swift:29` | Renders the track+thumb toggle with squish animation; reads `reduceMotionOverride ?? accessibilityReduceMotion` and `increaseContrastOverride ?? accessibilityShouldIncreaseContrast` from Environment. |
+| `rainbow` | func | `Packages/LillistUI/Sources/LillistUI/Theme/RainbowButtonStyle.swift:105` | Factory shorthand on `ButtonStyle`; returns a configured `RainbowButtonStyle` — the canonical call-site is `.buttonStyle(.rainbow(.lavender))`. |
+| `rainbowShadow` | func | `Packages/LillistUI/Sources/LillistUI/Theme/LillistElevation.swift:45` | Applies a two-layer soft drop shadow at the specified elevation; uses `compositingGroup()` to prevent per-subview shadow duplication. |
+| `registerIfNeeded` | func | `Packages/LillistUI/Sources/LillistUI/Theme/Fonts/LillistFonts.swift:36` | Thread-safe one-shot registration of bundled Plus Jakarta Sans; idempotent — multiple callers are safe; returns false only on resource/sandbox failure. |
+| `resolved` | func | `Packages/LillistUI/Sources/LillistUI/Theme/TagTint.swift:37` | Returns a `Resolved` value with dark-mode saturation reduction applied and brightness clamped to pass WCAG 4.5:1 against the chip's 16%-opacity background. |
+| `squish` | func | `Packages/LillistUI/Sources/LillistUI/Theme/LillistMotion.swift:21` | Returns the signature overshoot spring animation (y > 1 control point); defaults to `LillistMotion.base` duration. |
+| `symbol` | func | `Packages/LillistUI/Sources/LillistUI/Theme/StatusGlyph.swift:10` | Returns the SF Symbol name for a Status; guaranteed non-nil for all Status cases. |
+| `toHex` | func | `Packages/LillistUI/Sources/LillistUI/Theme/Color+Hex.swift:40` | Converts a SwiftUI Color to a 6-digit sRGB hex string with `#` prefix; returns nil when the color cannot be expressed in sRGB. |
 
 ## Load-bearing internals
 
 | Symbol | Kind | Location | Why it matters |
 | --- | --- | --- | --- |
-| `RainbowPalette.dynamic` | func | `Packages/LillistUI/Sources/LillistUI/Theme/RainbowPalette.swift:29` | The (light,dark) → trait-resolving `Color` factory every color is built on |
-| `RainbowPalette.Functional` | struct | `Packages/LillistUI/Sources/LillistUI/Theme/RainbowPalette.swift:83` | `base`/`soft`/`ink`/`deep` axis; `base` is never text, `ink` is |
-| `RainbowPalette.Spectrum` | enum | `Packages/LillistUI/Sources/LillistUI/Theme/RainbowPalette.swift:54` | Six scheme-invariant spectrum stops feeding `RainbowGradient` |
-| `GlassSurfaceModifier` | struct | `Packages/LillistUI/Sources/LillistUI/Theme/GlassSurface.swift:131` | The `#available` gate + degradation logic behind `glassSurface` |
-| `TagTint.resolved(in:)` | func | `Packages/LillistUI/Sources/LillistUI/Theme/TagTint.swift:37` | Dark desaturation + 4.5:1 contrast-floor iteration for tag chips |
+| `solid` | func | `Packages/LillistUI/Sources/LillistUI/Theme/RainbowPalette.swift:66` | Sole factory for all six `Spectrum` color constants (purple, blue, cyan, green, lime, orange) at RainbowPalette.swift:55–63; every `RainbowGradient` preset, the confetti palette, and the `.rainbow` button gradient trace back here. A wrong bit-shift or channel ordering would corrupt the entire spectrum silently. |
 
 ## Relationships
 
-- `Packages-LillistUI-Sources-LillistUI-Theme-chunk-1.RainbowButtonStyle -> Packages-LillistUI-Sources-LillistUI-Theme-chunk-2.LillistTypography (reads)`
-- `Packages-LillistUI-Sources-LillistUI-Theme-chunk-1.RainbowButtonStyle -> Packages-LillistUI-Sources-LillistUI-Accessibility.reduceMotionOverride (reads)`
-- `Packages-LillistUI-Sources-LillistUI-Theme-chunk-1.GlassSurfaceModifier -> Packages-LillistUI-Sources-LillistUI-Accessibility.reduceTransparencyOverride (reads)`
-- `Packages-LillistUI-Sources-LillistUI-Theme-chunk-1.TagTint -> Packages-LillistUI-Sources-LillistUI-Accessibility.ContrastMath (calls)`
-- `Packages-LillistUI-Sources-LillistUI-Theme-chunk-1.StatusGlyph -> Packages-LillistCore-Sources-LillistCore-Model.Status (reads)`
-- `Packages-LillistUI-Sources-LillistUI-Theme-chunk-1.StatusPalette -> Packages-LillistCore-Sources-LillistCore-Model.Status (reads)`
-- `Packages-LillistUI-Sources-LillistUI-Theme-chunk-1.SyncPalette -> Packages-LillistUI-Sources-LillistUI-misc.SyncIndicator (extends)`
-- `Packages-LillistUI-Sources-LillistUI-Components.StatusIndicatorView -> Packages-LillistUI-Sources-LillistUI-Theme-chunk-1.StatusGlyph (calls)`
-- `Packages-LillistUI-Sources-LillistUI-Components.TagChipView -> Packages-LillistUI-Sources-LillistUI-Theme-chunk-1.TagTint (calls)`
-- `Packages-LillistUI-Sources-LillistUI-Components.SyncStatusDotView -> Packages-LillistUI-Sources-LillistUI-Theme-chunk-1.SyncIndicator (reads)`
-- `Packages-LillistUI-Sources-LillistUI-iOS-misc.FloatingAddButton -> Packages-LillistUI-Sources-LillistUI-Theme-chunk-1.glassSurface (calls)`
-- `Packages-LillistUI-Sources-LillistUI-iOS-misc.SyncStatusBadge -> Packages-LillistUI-Sources-LillistUI-Theme-chunk-1.SyncIndicator (reads)`
-- `Apps-Lillist-macOS-Sources-Preferences.PreferencesWindow -> Packages-LillistUI-Sources-LillistUI-Theme-chunk-1.RainbowToggleStyle (calls)`
+- `Packages-LillistUI-Sources-LillistUI-Theme-chunk-1.Color -> Packages-LillistUI-Sources-LillistUI-Recurrence.string (calls)`
+- `Packages-LillistUI-Sources-LillistUI-Theme-chunk-1.GlassSurfaceModifier -> Packages-LillistUI-Sources-LillistUI-Settings.Environment (calls)`
+- `Packages-LillistUI-Sources-LillistUI-Theme-chunk-1.RainbowToggleStyle -> Packages-LillistUI-Sources-LillistUI-Settings.Environment (calls)`
+- `Packages-LillistUI-Sources-LillistUI-Theme-chunk-1.Size -> Packages-LillistUI-Sources-LillistUI-Settings.Environment (calls)`
+- `Packages-LillistUI-Sources-LillistUI-Theme-chunk-1.accessibilityLabel -> Packages-LillistCore-Sources-LillistCore-LinkPreview.String (calls)`
+- `Packages-LillistUI-Sources-LillistUI-Theme-chunk-1.body -> Packages-LillistCore-Sources-LillistCore-CLIBridge-Handlers-chunk-2.tint (calls)`
+- `Packages-LillistUI-Sources-LillistUI-Theme-chunk-1.clampBrightnessForContrastFloor -> Packages-LillistUI-Sources-LillistUI-Accessibility.hsbToRGB (calls)`
+- `Packages-LillistUI-Sources-LillistUI-Theme-chunk-1.clampBrightnessForContrastFloor -> Packages-LillistUI-Sources-LillistUI-Accessibility.relativeLuminance (calls)`
+- `Packages-LillistUI-Sources-LillistUI-Theme-chunk-1.clampBrightnessForContrastFloor -> Packages-LillistUI-Sources-LillistUI-Accessibility.wcagRatio (calls)`
+- `Packages-LillistUI-Sources-LillistUI-Theme-chunk-1.makeBody -> Apps-Lillist-macOS-Sources-Hotkey.toggle (calls)`
+- `Packages-LillistUI-Sources-LillistUI-Theme-chunk-1.registerIfNeeded -> Apps-Lillist-macOS-Sources-Hotkey.present (calls)`
+- `Packages-LillistUI-Sources-LillistUI-Theme-chunk-1.toHex -> Packages-LillistCore-Sources-LillistCore-LinkPreview.String (calls)`
 
 ## Type notes
 
-`GlassSurface` is `Sendable, Equatable`; `RainbowButtonStyle` and
-`RainbowToggleStyle` carry value config (variant/size/onColor) and read
-accessibility overrides from the SwiftUI environment, so behavior is
-MainActor-bound at render time. `LillistFonts.registered` is a `static let`
-one-shot — thread-safe, runs at most once; `registerIfNeeded()` only reads it
-(`Packages/LillistUI/Sources/LillistUI/Theme/Fonts/LillistFonts.swift:36`).
-Colors are code-defined (not asset-catalog) so `RainbowPaletteTests` can pin
-each per scheme and one source serves both apps and both extensions. Invariant:
-a functional hue's `base` is an object-fill color and never text — text uses
-`ink` (`Packages/LillistUI/Sources/LillistUI/Theme/RainbowPalette.swift:83`);
-`StatusPalette.color` carries the same warning
-(`Packages/LillistUI/Sources/LillistUI/Theme/StatusPalette.swift:23`).
+All exported types are value types (enums and structs); no actor isolation is required at the type level. `GlassSurface` and `TagTint`/`TagTint.Resolved` are `Sendable` and `Equatable` — safe to cross actor boundaries and compare in tests (GlassSurface.swift:32, TagTint.swift:4–5).
 
-`SyncIndicator` is defined in `Packages-LillistUI-Sources-LillistUI-misc`
-(`Packages/LillistUI/Sources/LillistUI/Status/SyncStatusMonitor.swift`);
-`SyncPalette.swift` adds the `color`, `systemImage`, and
-`differentiatedSystemImage` properties via extension.
+`LillistFonts.registerIfNeeded()` is backed by `private static let registered` (LillistFonts.swift:38–52); Swift's lazy static initialization is thread-safe, so concurrent first-callers cannot double-register.
+
+`RainbowPalette.dynamic(light:dark:)` (RainbowPalette.swift:29–47) produces a SwiftUI `Color` whose appearance resolution is deferred to a platform closure (`UIColor`/`NSColor` initializer with a traits/appearance callback); the `Color` value itself is safe to store and pass around without concern for scheme state at creation time.
+
+`GlassSurfaceModifier` reads two `@Environment` keys — `\.accessibilityReduceTransparency` (system) and `\.reduceTransparencyOverride` (custom) — at SwiftUI body evaluation time on the main actor (GlassSurface.swift:132–133). The modifier is private; callers never interact with it directly.
+
+`TagTint.resolved(in:)` (TagTint.swift:37–55) is a pure computation: no stored mutable state is mutated, no async work is done. It can safely be called on any actor, including from a background `Task` preparing display data.
 
 ## External deps
 
-- SwiftUI — `Color`, `Material`, `Glass`/`glassEffect`, `ButtonStyle`/`ToggleStyle`
-- CoreText — `CTFontManagerRegisterFontURLs` for process font registration
-- UIKit / AppKit — `UIColor`/`NSColor` hex initializers and dynamic-color closures
+- AppKit — imported
+- CoreText — imported
+- LillistCore — imported
+- SwiftUI — imported
+- UIKit — imported
 
 ## Gotchas
 
-- OS-26 Liquid Glass self-handles Reduce Transparency; `GlassSurfaceModifier` deliberately does NOT branch on it on OS 26 (`Packages/LillistUI/Sources/LillistUI/Theme/GlassSurface.swift:138`).
-- `prefersSolidFallback` keeps tinted fills (FAB, status, card) solid (not translucent) on pre-26 OS (`Packages/LillistUI/Sources/LillistUI/Theme/GlassSurface.swift:53`).
-- `Color(hex:)` and `TagTint.init?(hex:)` are intentionally distinct — do not collapse them (`Packages/LillistUI/Sources/LillistUI/Theme/Color+Hex.swift:13`).
-- `GlassRowSpike` is a DEBUG-only Wave 0 spike harness, slated for deletion (`Packages/LillistUI/Sources/LillistUI/Theme/GlassRowSpike.swift:4`).
-- Repeating list rows must never exceed `.xs` elevation — a scroll-perf rule (`Packages/LillistUI/Sources/LillistUI/Theme/LillistElevation.swift:17`).
+GlassSurface.swift:141–151: On OS 26 the glass renderer self-handles Reduce Transparency; the modifier must NOT branch on `systemReduceTransparency` inside the `#available(iOS 26, macOS 26)` arm — double-handling fights the tuned system behavior. Only the pre-26 arm applies the reduce flag.
+
+GlassSurface.swift:108–113: `glassGroup(spacing:)` is a complete no-op on pre-26 OS (the `else` branch returns `self` unchanged). Do not rely on it for layout spacing on older platforms.
+
+Color+Hex.swift:9–18: `Color(hex:)` and `TagTint.init?(hex:)` both parse hex strings but are intentionally separate — `Color(hex:)` produces a raw SwiftUI Color for ColorPicker bindings; `TagTint.init?(hex:)` stores RGB for subsequent dark-mode desaturation and WCAG contrast-floor adjustment. Collapsing them would silently lose the tag tint logic.
+
+GlassRowSpike.swift:1: The entire file is `#if DEBUG`. `GlassRowSpike` is a Wave 0 perf/legibility spike, not a production view. Its fan-in count reflects loop-generated body calls, not cross-file references.
+
+LillistElevation.swift:13–15: The `.xs` level is a hard performance cap for repeating list-row cells; using `.sm` or above inside a `LazyVStack`/`LazyVGrid` is an explicit scroll-perf hazard documented in the spec.

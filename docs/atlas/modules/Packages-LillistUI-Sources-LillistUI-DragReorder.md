@@ -1,114 +1,120 @@
 ---
 module: Packages/LillistUI/Sources/LillistUI/DragReorder
-summary: "Custom drag-reorder engine for hierarchical task lists — state machine, geometry, hit-testing, and overlay rendering"
+summary: "Drag-reorder engine: gesture capture, @MainActor state machine, phantom overlay, drop-mutation resolver."
 read_when: "Touching drag-to-reorder behavior"
 sources:
+  - path: Packages/LillistUI/Sources/LillistUI/DragReorder/DragAxisArbiter.swift
+    blob: e04e4eb4ccdc6e860237f9d700c6f03c9e5902fc
   - path: Packages/LillistUI/Sources/LillistUI/DragReorder/DragController.swift
-    blob: aac3debd777545a224f31540a34abfbfbaabfa2f
+    blob: 55668511c74074eebca8da0f5884cc0a3f6d3efd
   - path: Packages/LillistUI/Sources/LillistUI/DragReorder/DragDropResolver.swift
-    blob: 8f836bc997a9af166b142f201da8f1d2ba0eb77f
+    blob: dd0b276aabd5057029cf97e22c1cb02f42f5069c
   - path: Packages/LillistUI/Sources/LillistUI/DragReorder/DragOverlay.swift
-    blob: 001bb91b34fec88226557689e8b1f32927959769
+    blob: 972b550cf68fa1005e1f0ada2f088e6273db1c80
   - path: Packages/LillistUI/Sources/LillistUI/DragReorder/DragReorderRow.swift
     blob: b598b1592af7855b780250afd2f084f35987c510
   - path: Packages/LillistUI/Sources/LillistUI/DragReorder/DragReorderable.swift
-    blob: b5c984f2aa0930702a1a3b8b4a780d94ea70dcf4
+    blob: 2e3f3101ae198d554a729a05a0685ca17a7e09f9
   - path: Packages/LillistUI/Sources/LillistUI/DragReorder/DragSession.swift
     blob: baae4992c8080524d5bef21e45d37f7e442fcfbb
   - path: Packages/LillistUI/Sources/LillistUI/DragReorder/DragSortMode.swift
     blob: 5835f4e289cf93d3cbf3fc739e31006a8783a9cd
   - path: Packages/LillistUI/Sources/LillistUI/DragReorder/DragTarget.swift
-    blob: 7d25e4ee30e826d15a158e6b92c26628c283df6b
+    blob: 6ce0c18a07823a691845961d9e3200402733eef5
   - path: Packages/LillistUI/Sources/LillistUI/DragReorder/RowGeometryReporter.swift
     blob: 039204fca9709263f21f1c51e39e17a59ee4f35e
-references_modules: [Packages-LillistCore-Sources-LillistCore-Diagnostics, Packages-LillistUI-Sources-LillistUI-Theme-chunk-1, Packages-LillistUI-Sources-LillistUI-Theme-chunk-2, Packages-LillistUI-Sources-LillistUI-Accessibility, Packages-LillistUI-Sources-LillistUI-iOS-Tasks, Apps-Lillist-iOS-Sources-misc, Apps-Lillist-macOS-Sources-Views]
-generator: cartographer/1
-baseline: 1a1562b636e43ebbdc35c7939ab6989b387f50e9
-verified: true
+references_modules: [Packages-LillistCore-Sources-LillistCore-Diagnostics, Packages-LillistCore-Sources-LillistCore-Ordering, Packages-LillistCore-Sources-LillistCore-Stores-chunk-2, Packages-LillistUI-Sources-LillistUI-Accessibility, Packages-LillistUI-Sources-LillistUI-Components-chunk-1, Packages-LillistUI-Sources-LillistUI-Recurrence, Packages-LillistUI-Sources-LillistUI-Settings, Packages-LillistUI-Sources-LillistUI-Theme-chunk-1]
+generator: cartographer/4
+baseline: 515f24730d21cb81ca1c9737ffeb981e9c414d3c
 ---
 
 # Module: Packages/LillistUI/Sources/LillistUI/DragReorder
 
 ## Purpose
 
-A bespoke drag-to-reorder system that replaces SwiftUI's `List.onMove`, built to support
-hierarchical (parent/child) reordering, reparenting, and a custom lifted-phantom animation
-the standard API cannot express. The design idea: a `@MainActor` `DragController` state
-machine (`idle → dragging → idle`) owns all drag state and pure hit-testing, while view code
-is split into thin attachable modifiers (gesture + geometry) and a single `DragOverlay`.
-Every Core Data concept is kept out — rows are reduced to `DragReorderRow` value structs and
-drops resolve to a `DragMutation`, so both apps map a release to `TaskStore` calls themselves.
+DragReorder implements the complete custom drag-to-reorder engine for task lists: gesture capture (`DragReorderable`), an `@MainActor` state machine (`DragController`), visual feedback (`DragOverlay`), row-frame collection (`RowGeometryReporter`), and drop-to-store-mutation mapping (`DragDropResolver`). The unifying idea is that all drag state flows through one observable controller so overlays, rows, and app logic each react to a single source of truth rather than coordinating across independent gesture handlers. Without this module, task lists are static and users cannot manually reorder or reparent tasks.
 
 ## Public API
 
 | Symbol | Kind | Location | Contract |
 | --- | --- | --- | --- |
-| `DragController` | class | `Packages/LillistUI/Sources/LillistUI/DragReorder/DragController.swift:30` | `@MainActor ObservableObject` driving the drag; screens populate inputs and observe `state` |
-| `DragControllerState` | enum | `Packages/LillistUI/Sources/LillistUI/DragReorder/DragController.swift:9` | Published state: `idle`/`dragging`/`dropping`; `dropping` reserved, not yet emitted |
-| `DragCoordinateSpace` | enum | `Packages/LillistUI/Sources/LillistUI/DragReorder/RowGeometryReporter.swift:17` | Holds the shared coordinate-space name `"TaskListDrag"` for list, rows, gesture |
-| `DragDropResolver` | enum | `Packages/LillistUI/Sources/LillistUI/DragReorder/DragDropResolver.swift:20` | Pure `DragTarget` + `flatRows` → `DragMutation`; single source of truth for both apps |
-| `DragMutation` | enum | `Packages/LillistUI/Sources/LillistUI/DragReorder/DragDropResolver.swift:11` | LillistCore-agnostic store intent: `reorder`/`reparent`/`noop` |
-| `DragOverlay` | struct | `Packages/LillistUI/Sources/LillistUI/DragReorder/DragOverlay.swift:18` | `.overlay` on the list; renders phantom + drop indicator from the controller |
-| `DragReorderRow` | struct | `Packages/LillistUI/Sources/LillistUI/DragReorder/DragReorderRow.swift:8` | Value row descriptor (`id`/`parentID`/`depth`) decoupling controller from app row types |
-| `DragSession` | struct | `Packages/LillistUI/Sources/LillistUI/DragReorder/DragSession.swift:15` | Snapshot of an active drag; `cursorY = initialCursorY + translation` |
-| `DragSortMode` | enum | `Packages/LillistUI/Sources/LillistUI/DragReorder/DragSortMode.swift:6` | `personalized`/`sortedByOther`; between-row drops are legal only in `personalized` |
-| `DragTarget` | enum | `Packages/LillistUI/Sources/LillistUI/DragReorder/DragTarget.swift:16` | Resolved drop intent: `between`/`onto`/`rejected`/`none` |
-| `RowFramePreferenceKey` | struct | `Packages/LillistUI/Sources/LillistUI/DragReorder/RowGeometryReporter.swift:8` | `PreferenceKey` aggregating `[UUID: CGRect]` row frames the screen feeds to the controller |
-| `dragReorderable(id:controller:)` | func | `Packages/LillistUI/Sources/LillistUI/DragReorder/DragReorderable.swift:17` | `View` ext: attaches gesture + geometry reporter to a row |
-| `dragReorderGesture(id:controller:)` | func | `Packages/LillistUI/Sources/LillistUI/DragReorder/DragReorderable.swift:29` | `View` ext: gesture only, for rows with embedded interactive controls |
-| `settlePosition(for:target:geometry:)` | func | `Packages/LillistUI/Sources/LillistUI/DragReorder/DragOverlay.swift:161` | `nonisolated static`: where the phantom lands on release; callable from tests |
+| `AnyTransition` | extension | `Packages/LillistUI/Sources/LillistUI/DragReorder/DragOverlay.swift:262` | Extension on `AnyTransition` providing `.lift`: asymmetric transition with inverse-scale insertion and identity removal, used for phantom mount/unmount animation. |
+| `Axis` | enum | `Packages/LillistUI/Sources/LillistUI/DragReorder/DragAxisArbiter.swift:12` | Two-case enum (`vertical`, `horizontal`) returned by `DragAxisArbiter.axis`; callers switch on this to decide whether a drag drives reorder or yields to the swipe gesture. |
+| `DragAxisArbiter` | enum | `Packages/LillistUI/Sources/LillistUI/DragReorder/DragAxisArbiter.swift:11` | Pure enum namespace; no instances. Sole entry point is `axis(forTranslation:commitDistance:)`. |
+| `DragController` | class | `Packages/LillistUI/Sources/LillistUI/DragReorder/DragController.swift:30` | `@MainActor` `ObservableObject` state machine for one drag session. Callers set `flatRows`, `geometry`, `sortMode`, `isFilterActive` before resolution; the registered `onDrop` handler fires exactly once per actionable (`.between`) drop. |
+| `DragControllerState` | enum | `Packages/LillistUI/Sources/LillistUI/DragReorder/DragController.swift:9` | Enum of drag phases: `.idle`, `.dragging(DragSession)`, `.dropping(DragSession, DragTarget)`. `.dropping` is reserved — `endDrag()` currently transitions directly to `.idle`. |
+| `DragCoordinateSpace` | enum | `Packages/LillistUI/Sources/LillistUI/DragReorder/RowGeometryReporter.swift:17` | Enum namespace holding `name: String = "TaskListDrag"` — the shared coordinate-space name that ties the container's `.coordinateSpace(name:)`, each row's geometry reporter, and the drag gesture into one space. |
+| `DragDropResolver` | enum | `Packages/LillistUI/Sources/LillistUI/DragReorder/DragDropResolver.swift:23` | Pure enum namespace; no instances. Sole entry point is `resolve(target:)`. Single source of truth for iOS and macOS `applyDrop` implementations. |
+| `DragMutation` | enum | `Packages/LillistUI/Sources/LillistUI/DragReorder/DragDropResolver.swift:14` | LillistCore-agnostic drop outcome: `.reorder(parent:after:before:)`, `.reparent(newParent:)`, or `.noop`. App targets dispatch the result to `TaskStore`; the dragged ID is supplied by the app, not carried here. |
+| `DragOverlay` | struct | `Packages/LillistUI/Sources/LillistUI/DragReorder/DragOverlay.swift:18` | Overlay view rendering the floating phantom and insertion indicator; observes `DragController`. `PhantomContent` is caller-supplied so the overlay is platform-agnostic. `indentLeadingX` is injectable for platform-specific indent math. |
+| `DragReorderGestureModifier` | struct | `Packages/LillistUI/Sources/LillistUI/DragReorder/DragReorderable.swift:39` | Internal `ViewModifier` wiring the platform gesture to `DragController`. iOS: long-press sequenced with drag; macOS: bare drag with axis arbitration. Callers should use the `View` extension entry points (`dragReorderable` / `dragReorderGesture`) rather than applying this modifier directly. |
+| `DragReorderRow` | struct | `Packages/LillistUI/Sources/LillistUI/DragReorder/DragReorderRow.swift:8` | Minimal platform-neutral row descriptor (`id`, `parentID`, `depth`) consumed by `DragController` for gap-finding and subtree exclusion. Decouples the controller from iOS's `FlatTaskRow` and macOS's `TaskOutlineNode`. |
+| `DragSession` | struct | `Packages/LillistUI/Sources/LillistUI/DragReorder/DragSession.swift:15` | Value-type snapshot of an active drag. `initialCursorY` is fixed at `beginDrag` and acts as the anchor for translation-based updates and the settle target on rejection; `cursorY` and `target` are mutable per-event. |
+| `DragSortMode` | enum | `Packages/LillistUI/Sources/LillistUI/DragReorder/DragSortMode.swift:6` | Two-case enum (`personalized`, `sortedByOther`). `DragController.resolveTarget` returns `.none` unless mode is `.personalized`, blocking reorder in auto-sorted contexts. |
+| `DragTarget` | enum | `Packages/LillistUI/Sources/LillistUI/DragReorder/DragTarget.swift:18` | Three-case resolved drop intent. `.between(beforeID:afterID:parentID:)` encodes the full insertion point; both anchors `nil` means first/only child (routes to `reparent`). `.rejected` is a cycle violation; `.none` is no-op. Callers pass this to `DragDropResolver.resolve` to get a `DragMutation`. |
+| `RowFramePreferenceKey` | struct | `Packages/LillistUI/Sources/LillistUI/DragReorder/RowGeometryReporter.swift:8` | SwiftUI `PreferenceKey` aggregating `[UUID: CGRect]` row frames. The screen reads it via `.onPreferenceChange` and assigns the result to `controller.geometry`. |
+| `View` | extension | `Packages/LillistUI/Sources/LillistUI/DragReorder/DragReorderable.swift:6` | Extension on `View` providing `dragReorderable(id:controller:)` (geometry + gesture) and `dragReorderGesture(id:controller:)` (gesture only). Primary attachment API for rows. |
+| `View` | extension | `Packages/LillistUI/Sources/LillistUI/DragReorder/RowGeometryReporter.swift:21` | Extension on `View` providing `reportRowGeometry(id:)`, which injects a background `GeometryReader` reporting the row's frame into `RowFramePreferenceKey` in the `DragCoordinateSpace`. |
+| `axis` | func | `Packages/LillistUI/Sources/LillistUI/DragReorder/DragAxisArbiter.swift:19` | Returns the committed axis once `max(|dx|, |dy|) >= commitDistance`, or `nil` while undecided. Ties resolve to `.vertical`. Pure function; no side effects. |
+| `beginDrag` | func | `Packages/LillistUI/Sources/LillistUI/DragReorder/DragController.swift:91` | Transitions `idle → dragging`; idempotent when already dragging. Locks `initialCursorY = cursorY` at the moment of the call, anchoring subsequent `updateCursor(translation:)` offsets. |
+| `body` | func | `Packages/LillistUI/Sources/LillistUI/DragReorder/DragOverlay.swift:292` | Applies `scaleMultiplier` via `scaleEffect(_:)` to content; cancels the phantom's permanently-applied lifted scale during the `.lift` transition's active frame. |
+| `body` | func | `Packages/LillistUI/Sources/LillistUI/DragReorder/DragReorderable.swift:54` | Attaches `platformGesture` to wrapped content. On iOS: `LongPressGesture.sequenced(before: DragGesture)`; on macOS: bare `DragGesture` with `DragAxisArbiter` arbitration. Reads `reduceMotionOverride` to collapse the settle animation when reduce-motion is active. |
+| `cancelDrag` | func | `Packages/LillistUI/Sources/LillistUI/DragReorder/DragController.swift:188` | Unconditionally transitions to `.idle` without firing the drop handler. Safe to call in any state. |
+| `dragReorderGesture` | func | `Packages/LillistUI/Sources/LillistUI/DragReorder/DragReorderable.swift:31` | Gesture-only variant: attaches `DragReorderGestureModifier` without geometry reporting. For rows whose full frame is reported separately via `.reportRowGeometry(id:)`. |
+| `dragReorderable` | func | `Packages/LillistUI/Sources/LillistUI/DragReorder/DragReorderable.swift:19` | Combines `.reportRowGeometry(id:)` + `DragReorderGestureModifier`. Primary entry point for simple rows without embedded controls that need separate gesture regions. |
+| `endDrag` | func | `Packages/LillistUI/Sources/LillistUI/DragReorder/DragController.swift:153` | Fires the drop handler for `.between` targets, then transitions to `.idle` (or `.dropping` when `settleDuration > 0`). `.rejected` / `.none` skip the handler; a dropped-but-rejected event is still emitted to the diagnostic log. |
+| `insertionIndicatorY` | func | `Packages/LillistUI/Sources/LillistUI/DragReorder/DragController.swift:274` | Returns the Y coordinate for the insertion indicator in the named coordinate space. Excludes the dragged subtree from the reference set to produce exactly one fencepost per gap, avoiding a bogus double-fencepost at the source slot. |
+| `reduce` | func | `Packages/LillistUI/Sources/LillistUI/DragReorder/RowGeometryReporter.swift:10` | Merges two `[UUID: CGRect]` preference dictionaries; later (new) values win for duplicate keys, keeping geometry current when rows re-report their frames. |
+| `reportRowGeometry` | func | `Packages/LillistUI/Sources/LillistUI/DragReorder/RowGeometryReporter.swift:26` | Injects a background `GeometryReader` that reports this view's frame in `DragCoordinateSpace` to `RowFramePreferenceKey`. Does not affect the view's visual rendering. |
+| `resolve` | func | `Packages/LillistUI/Sources/LillistUI/DragReorder/DragDropResolver.swift:33` | Maps `DragTarget` → `DragMutation`. `.between` with at least one sibling anchor → `.reorder`; `.between` with no anchors (first/only child) → `.reparent`; `.rejected` / `.none` → `.noop`. |
+| `resolveTarget` | func | `Packages/LillistUI/Sources/LillistUI/DragReorder/DragController.swift:217` | Pure resolution: selects gap by Y over reference rows (dragged subtree excluded), chooses depth by horizontal translation (Reminders-style indent/outdent). Returns `.none` when a smart filter is active or sort mode is not `.personalized`. |
+| `setOnDrop` | func | `Packages/LillistUI/Sources/LillistUI/DragReorder/DragController.swift:78` | Replaces the drop handler. Intended for SwiftUI containers that cannot capture a valid closure at `@StateObject` init time; call from `.onAppear`. |
+| `setResolvedTarget` | func | `Packages/LillistUI/Sources/LillistUI/DragReorder/DragController.swift:130` | Stores `target` onto the current `DragSession`; ignored when not in `.dragging` state. Emits a `drag.over` diagnostic event on every call. |
+| `targetPayload` | func | `Packages/LillistUI/Sources/LillistUI/DragReorder/DragController.swift:385` | Converts a `DragTarget` to a `[String: DiagValue]` payload for diagnostic logging, including `.rejected` and `.none` so cancelled drops are visible in the log. |
+| `updateCursor` | func | `Packages/LillistUI/Sources/LillistUI/DragReorder/DragController.swift:110` | Sets cursor Y to an absolute value. Intended for synthetic-geometry tests and snapshot fixtures; live gestures should use `updateCursor(translation:)` instead. |
+| `updateCursor` | func | `Packages/LillistUI/Sources/LillistUI/DragReorder/DragController.swift:122` | Sets `cursorY = initialCursorY + translation`. Preferred live-gesture update path because gesture translation is coordinate-space-invariant, avoiding the coordinate-space ambiguity in `drag.location` at the first event. |
 
 ## Load-bearing internals
 
 | Symbol | Kind | Location | Why it matters |
 | --- | --- | --- | --- |
-| `resolveTarget(forDraggedID:atY:)` | func | `Packages/LillistUI/Sources/LillistUI/DragReorder/DragController.swift:197` | Pure hit-test entry; turns a cursor Y into a `DragTarget` from current inputs |
-| `finalize(target:draggedID:)` | func | `Packages/LillistUI/Sources/LillistUI/DragReorder/DragController.swift:316` | Applies cycle-rejection (`isSelfOrDescendant`) over every resolved target |
-| `hitRow(atY:)` | func | `Packages/LillistUI/Sources/LillistUI/DragReorder/DragController.swift:233` | Row hit-test that expands each frame into half the inter-row gap so indicators stay live |
-| `endDrag(settleDuration:)` | func | `Packages/LillistUI/Sources/LillistUI/DragReorder/DragController.swift:153` | Fires the drop handler then settles; only `between`/`onto` call the handler |
-| `setOnDrop(_:)` | func | `Packages/LillistUI/Sources/LillistUI/DragReorder/DragController.swift:78` | Late-binds the drop handler from `.onAppear` (containers can't capture self at init) |
-| `DragReorderGestureModifier` | struct | `Packages/LillistUI/Sources/LillistUI/DragReorder/DragReorderable.swift:37` | Per-platform gesture; iOS long-press-then-drag, macOS plain drag; tracks via translation |
-| `reportRowGeometry(id:)` | func | `Packages/LillistUI/Sources/LillistUI/DragReorder/RowGeometryReporter.swift:26` | Emits a row's frame into `RowFramePreferenceKey` via a clear `GeometryReader` background |
+| `depth` | func | `Packages/LillistUI/Sources/LillistUI/DragReorder/DragOverlay.swift:246` | Translates a `parentID` to a numeric depth by walking `controller.flatRows` (fan-in 26, called from `betweenDivider`). Drives the horizontal indent of the insertion indicator, making the drop-depth preview visible to the user. DragOverlay.swift:246-251. |
+| `emit` | func | `Packages/LillistUI/Sources/LillistUI/DragReorder/DragController.swift:377` | Single choke point for all diagnostic emission from the drag lifecycle (fan-in 11). Guards the nil `diagnosticLog` and wraps `log.log(event)` in a non-blocking `Task`, so every call site is one line and the gesture handler is never stalled. Removing it would scatter the guard+Task pattern across `beginDrag`, `setResolvedTarget`, and `endDrag`. |
+| `finalize` | func | `Packages/LillistUI/Sources/LillistUI/DragReorder/DragController.swift:350` | Defense-in-depth cycle guard applied to every resolved target before it leaves `resolveTarget` (called on every `.between` path). Without it, a drop whose `parentID` is inside the dragged subtree could be accepted, violating the tree invariant. DragController.swift:350-357. |
+| `indicator` | func | `Packages/LillistUI/Sources/LillistUI/DragReorder/DragOverlay.swift:198` | Factory for all drop indicator views during `.dragging` (fan-in 23, called from `DragOverlay.body`). Switches on `DragTarget` to produce a `betweenDivider` or `EmptyView`; gating function for all visual drop feedback. DragOverlay.swift:198-205. |
+| `phantom` | func | `Packages/LillistUI/Sources/LillistUI/DragReorder/DragOverlay.swift:129` | Renders the floating lifted row with scale, opacity, shadow, and cursor-tracked position (fan-in 11, called from `DragOverlay.body`). The primary user-visible drag artifact; its settled position drives the perceived continuity of the drop. DragOverlay.swift:129-150. |
 
 ## Relationships
 
-- `Packages-LillistUI-Sources-LillistUI-iOS-Tasks.TasksScreen -> Packages-LillistUI-Sources-LillistUI-DragReorder.DragController (owns)` — `Packages/LillistUI/Sources/LillistUI/iOS/Screens/TasksScreen.swift`
-- `Packages-LillistUI-Sources-LillistUI-iOS-Tasks.TasksScreen -> Packages-LillistUI-Sources-LillistUI-DragReorder.DragOverlay (calls)` — `Packages/LillistUI/Sources/LillistUI/iOS/Screens/TasksScreen.swift`
-- `Apps-Lillist-iOS-Sources-misc.TasksView -> Packages-LillistUI-Sources-LillistUI-DragReorder.DragDropResolver (calls)` — `Apps/Lillist-iOS/Sources/Tasks/TasksView.swift`
-- `Apps-Lillist-macOS-Sources-Views.TaskListView -> Packages-LillistUI-Sources-LillistUI-DragReorder.DragController (owns)` — `Apps/Lillist-macOS/Sources/Views/TaskList/TaskListView.swift`
-- `Apps-Lillist-macOS-Sources-Views.TaskListView -> Packages-LillistUI-Sources-LillistUI-DragReorder.DragDropResolver (calls)` — `Apps/Lillist-macOS/Sources/Views/TaskList/TaskListView.swift`
-- `Apps-Lillist-macOS-Sources-Views.TaskListView -> Packages-LillistUI-Sources-LillistUI-DragReorder.DragReorderRow (owns)` — `Apps/Lillist-macOS/Sources/Views/TaskList/TaskListView.swift`
-- `Packages-LillistUI-Sources-LillistUI-DragReorder.DragController -> Packages-LillistCore-Sources-LillistCore-Diagnostics.DiagnosticEvent (emits)` — `Packages/LillistUI/Sources/LillistUI/DragReorder/DragController.swift:347`
-- `Packages-LillistUI-Sources-LillistUI-DragReorder.DragOverlay -> Packages-LillistUI-Sources-LillistUI-Theme-chunk-1.RainbowGradient (reads)` — `Packages/LillistUI/Sources/LillistUI/DragReorder/DragOverlay.swift:132`
-- `Packages-LillistUI-Sources-LillistUI-DragReorder.DragOverlay -> Packages-LillistUI-Sources-LillistUI-Theme-chunk-2.LillistDragTokens (reads)` — `Packages/LillistUI/Sources/LillistUI/DragReorder/DragOverlay.swift:57`
-- `Packages-LillistUI-Sources-LillistUI-DragReorder.DragReorderGestureModifier -> Packages-LillistUI-Sources-LillistUI-Theme-chunk-2.LillistDragTokens (reads)` — `Packages/LillistUI/Sources/LillistUI/DragReorder/DragReorderable.swift:56`
-- `Packages-LillistUI-Sources-LillistUI-DragReorder.DragReorderGestureModifier -> Packages-LillistUI-Sources-LillistUI-Accessibility.reduceMotionOverride (reads)` — `Packages/LillistUI/Sources/LillistUI/DragReorder/DragReorderable.swift:41`
+- `Packages-LillistUI-Sources-LillistUI-DragReorder.DragOverlay -> Packages-LillistCore-Sources-LillistCore-Ordering.position (calls)`
+- `Packages-LillistUI-Sources-LillistUI-DragReorder.DragOverlay -> Packages-LillistCore-Sources-LillistCore-Stores-chunk-2.transition (calls)`
+- `Packages-LillistUI-Sources-LillistUI-DragReorder.DragOverlay -> Packages-LillistUI-Sources-LillistUI-Accessibility.accessibleAnimation (calls)`
+- `Packages-LillistUI-Sources-LillistUI-DragReorder.DragOverlay -> Packages-LillistUI-Sources-LillistUI-Theme-chunk-1.row (calls)`
+- `Packages-LillistUI-Sources-LillistUI-DragReorder.DragReorderGestureModifier -> Packages-LillistUI-Sources-LillistUI-Settings.Environment (calls)`
+- `Packages-LillistUI-Sources-LillistUI-DragReorder.beginDrag -> Packages-LillistUI-Sources-LillistUI-Recurrence.string (calls)`
+- `Packages-LillistUI-Sources-LillistUI-DragReorder.betweenDivider -> Packages-LillistCore-Sources-LillistCore-Ordering.position (calls)`
+- `Packages-LillistUI-Sources-LillistUI-DragReorder.betweenDivider -> Packages-LillistCore-Sources-LillistCore-Stores-chunk-2.transition (calls)`
+- `Packages-LillistUI-Sources-LillistUI-DragReorder.betweenDivider -> Packages-LillistUI-Sources-LillistUI-Theme-chunk-1.fill (calls)`
+- `Packages-LillistUI-Sources-LillistUI-DragReorder.emit -> Packages-LillistCore-Sources-LillistCore-Diagnostics.DiagnosticEvent (emits)`
+- `Packages-LillistUI-Sources-LillistUI-DragReorder.endDrag -> Packages-LillistUI-Sources-LillistUI-Recurrence.string (calls)`
+- `Packages-LillistUI-Sources-LillistUI-DragReorder.phantom -> Packages-LillistCore-Sources-LillistCore-Ordering.position (calls)`
+- `Packages-LillistUI-Sources-LillistUI-DragReorder.phantom -> Packages-LillistUI-Sources-LillistUI-Components-chunk-1.rainbowCard (calls)`
+- `Packages-LillistUI-Sources-LillistUI-DragReorder.referenceRows -> Packages-LillistUI-Sources-LillistUI-Theme-chunk-1.row (calls)`
+- `Packages-LillistUI-Sources-LillistUI-DragReorder.targetPayload -> Packages-LillistUI-Sources-LillistUI-Recurrence.string (calls)`
 
 ## Type notes
 
-`DragController` is `@MainActor`; its inputs (`flatRows`, `geometry`, `sortMode`,
-`isFilterActive`, `diagnosticLog`) are plain mutable vars the screen re-syncs on every
-data/preference change, while `state` is the only `@Published` field. `resolveTarget` is a
-pure function of those inputs plus the dragged id, which is why the resolution tests can drive
-it with synthetic geometry. All DTOs (`DragReorderRow`, `DragSession`, `DragTarget`,
-`DragMutation`, `DragSortMode`) are `Sendable` value types; `DragTarget`/`DragMutation`/
-`DragSession`/`DragReorderRow` are also `Equatable`, letting the gesture coalesce unchanged
-targets (`DragReorderable.swift:101`). `initialCursorY` is captured once at `beginDrag` and is
-the fixed anchor for translation math and the rejected-drop settle position. Cycle safety is
-enforced in `finalize` via `isSelfOrDescendant`, which walks the `parentID` chain with a 1024
-iteration guard (`DragController.swift:333`). The coordinate-space mismatch between the named
-List space and the overlay's local space is corrected by a runtime `-dy` shift
-(`DragOverlay.swift:41`).
+`DragController` is `@MainActor final class ObservableObject`: all state transitions are guaranteed on the main actor; `@Published state` drives SwiftUI invalidation for overlays and rows (DragController.swift:29-34). `DragSession` is a value-type struct (`Equatable, Sendable`): each cursor move or target change replaces the whole session value inside `DragControllerState.dragging`, so SwiftUI detects changes via equality (DragSession.swift:15). `DragController.flatRows` and `.geometry` are plain `var` properties, not `@Published`: the screen sets them imperatively before calling `resolveTarget`; they do not trigger SwiftUI invalidation (DragController.swift:40-43). `DragAxisArbiter` and `DragDropResolver` are caseless `enum` namespaces with only `static func`; they hold no state and cannot be instantiated (DragAxisArbiter.swift:11, DragDropResolver.swift:23). `DragCoordinateSpace.name = "TaskListDrag"` is the string constant tying the container's `.coordinateSpace(name:)`, every row's geometry reporter, and the drag gesture into one shared space (RowGeometryReporter.swift:18). The `indentLeadingX` closure on `DragOverlay.init` is injectable so macOS and iOS can each supply their own indent-math without platform `#if` inside the overlay (DragOverlay.swift:27-43).
 
 ## External deps
 
-- SwiftUI — gestures, `PreferenceKey`, `GeometryReader`, `ViewModifier`, the overlay views
-- Combine — `ObservableObject`/`@Published` backing `DragController`
-- UIKit — iOS-only haptics (`UIImpactFeedbackGenerator`, `UISelectionFeedbackGenerator`)
-- AppKit — macOS-only `NSHapticFeedbackManager` on drag begin
+- Combine — imported
+- CoreGraphics — imported
+- Foundation — imported
+- LillistCore — imported
+- SwiftUI — imported
+- UIKit — imported
 
 ## Gotchas
 
-- Never attach `dragReorderable` over interactive controls — the long-press eats taps; use `dragReorderGesture` on the inert region instead (`Packages/LillistUI/Sources/LillistUI/DragReorder/DragReorderable.swift:11`).
-- iOS drag begin anchors on the row's `frame.midY`, not `drag.location.y`, which can arrive in an unexpected coordinate space at the first sequenced event (`Packages/LillistUI/Sources/LillistUI/DragReorder/DragReorderable.swift:82`).
-- `DragControllerState.dropping` is reserved for a future animated phase and is never emitted; `endDrag` goes straight to `idle` when `settleDuration == 0` (`Packages/LillistUI/Sources/LillistUI/DragReorder/DragController.swift:14`).
+Coordinate-space offset: `DragOverlay` lays out inside the safe area while `controller.geometry` frames are in the named coordinate space (behind safe areas); a `-dy` offset converts named→local at runtime or the phantom drifts under different insets (DragOverlay.swift:49-58). iOS first-event coordinate space: the first `.second` event of `LongPressGesture.sequenced(before:DragGesture)` may report `drag.location` in an unexpected space; `beginDrag` anchors on `frame.midY` instead (DragReorderable.swift:87-99). macOS axis arbitration: no long-press gate means `DragAxisArbiter` must commit a direction before any reorder begins; a horizontal commit yields to `SwipeableRow`; `committedAxis` resets to `nil` at `onEnded` (DragReorderable.swift:136-178). `DragControllerState.dropping` is reserved: `endDrag()` transitions directly to `.idle`; the `.dropping` case exists for a future animated-drop phase but is not currently emitted (DragController.swift:14-16). `setOnDrop` exists because SwiftUI containers cannot capture `self` in a `@StateObject` default-value closure; the real handler must be wired from `.onAppear` (DragController.swift:77-80).

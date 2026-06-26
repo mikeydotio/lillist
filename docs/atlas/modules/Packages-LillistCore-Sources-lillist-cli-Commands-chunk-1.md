@@ -1,7 +1,7 @@
 ---
 module: "Packages/LillistCore/Sources/lillist-cli/Commands (chunk 1)"
-summary: "swift-argument-parser command structs for the lillist CLI; thin shells over CLIBridge handlers"
-read_when: "lillist CLI verb structs add through pin"
+summary: "AsyncParsableCommand structs for lillist CLI verbs add–pin; parse args and delegate to CLIBridge handlers."
+read_when: "Touching CLI verb structs (add–pin)"
 sources:
   - path: Packages/LillistCore/Sources/lillist-cli/Commands/AddCommand.swift
     blob: faa8bc85ffe6ba35ce713b96b59c3d3c9fb21d85
@@ -33,78 +33,103 @@ sources:
     blob: f1a0f0806294bf1de796ededb51a2c6d2d3e5e8d
   - path: Packages/LillistCore/Sources/lillist-cli/Commands/PinCommand.swift
     blob: dca0ae768570cdd10e8c60719ed5f463a8537b4d
-references_modules: [Packages-LillistCore-Sources-LillistCore-CLIBridge-Handlers-chunk-1, Packages-LillistCore-Sources-LillistCore-CLIBridge-Handlers-chunk-2, Packages-LillistCore-Sources-LillistCore-CLIBridge-Renderers, Packages-LillistCore-Sources-LillistCore-CLIBridge-misc, Packages-LillistCore-Sources-LillistCore-Stores-chunk-2, Packages-LillistCore-Sources-LillistCore-Model, Packages-LillistCore-Sources-LillistCore-misc, Packages-LillistCore-Sources-lillist-cli-Support]
-generator: cartographer/1
-baseline: 1a1562b636e43ebbdc35c7939ab6989b387f50e9
-verified: true
+references_modules: [Packages-LillistCore-Sources-LillistCore-CLIBridge-Handlers-chunk-1, Packages-LillistCore-Sources-LillistCore-CLIBridge-Renderers, Packages-LillistCore-Sources-LillistCore-CLIBridge-misc, Packages-LillistCore-Sources-LillistCore-LinkPreview, Packages-LillistCore-Sources-LillistCore-Stores-chunk-1, Packages-LillistCore-Sources-LillistCore-Stores-chunk-2, Packages-LillistCore-Sources-lillist-cli-Support]
+generator: cartographer/4
+baseline: 515f24730d21cb81ca1c9737ffeb981e9c414d3c
 ---
 
 # Module: Packages/LillistCore/Sources/lillist-cli/Commands (chunk 1)
 
 ## Purpose
 
-Defines the `swift-argument-parser` command structs that form the `lillist` CLI verb surface. Each struct declares only its flags/arguments and a thin `run()` that opens the shared App-Group store, reads config, and delegates the real work to a `CLIBridge` handler — keeping argument parsing and presentation strictly separate from store logic. If this module vanished the CLI would lose its parseable command tree, but no business logic would move (it lives in `CLIBridge`).
+This module defines every user-facing `AsyncParsableCommand` struct for the `lillist` CLI binary — one file per verb (add, attach, count, delete, edit, eval, export, link, ls, move, note, nudge, pin) plus the `filters` and `completion` subcommand groups. Each command parses CLI arguments and options via ArgumentParser, then opens the shared app-group store through `CLIBridge.StoreLocator.openAppGroup` and delegates all domain logic to a matching `CLIBridge` handler. Without this layer there are no user-facing subcommands; without the CLIBridge handlers there is no domain logic — the two halves are deliberately separated so the same handlers can serve both CLI and App Intents.
 
 ## Public API
 
 | Symbol | Kind | Location | Contract |
 | --- | --- | --- | --- |
-| `AddCommand` | struct | `Packages/LillistCore/Sources/lillist-cli/Commands/AddCommand.swift:5` | `add` verb; creates a task, prints new UUID unless `--quiet` |
-| `AttachCommand` | struct | `Packages/LillistCore/Sources/lillist-cli/Commands/AttachCommand.swift:5` | `attach` verb; attaches files to a task, prints attachment UUIDs |
-| `CompletionCommand` | struct | `Packages/LillistCore/Sources/lillist-cli/Commands/CompletionCommand.swift:4` | `completion` verb; bash/zsh/fish subcommands print install hint |
-| `CountCommand` | struct | `Packages/LillistCore/Sources/lillist-cli/Commands/CountCommand.swift:5` | `count` verb; prints a single integer match count |
-| `DeleteCommand` | struct | `Packages/LillistCore/Sources/lillist-cli/Commands/DeleteCommand.swift:5` | `delete` verb; all-or-nothing soft-delete (Trash); stdin requires UUIDs |
-| `EditCommand` | struct | `Packages/LillistCore/Sources/lillist-cli/Commands/EditCommand.swift:5` | `edit` verb; mutates title/notes/start/deadline of one task |
-| `EvalCommand` | struct | `Packages/LillistCore/Sources/lillist-cli/Commands/EvalCommand.swift:5` | `eval` verb; runs a PredicateGroup JSON (or stdin) and renders matches |
-| `ExportCommand` | struct | `Packages/LillistCore/Sources/lillist-cli/Commands/ExportCommand.swift:5` | `export` verb; writes JSON + assets to a target directory |
-| `FiltersCommand` | struct | `Packages/LillistCore/Sources/lillist-cli/Commands/FiltersCommand.swift:5` | `filters` verb; ls/show/run/save/delete subcommands for saved filters |
-| `LinkCommand` | struct | `Packages/LillistCore/Sources/lillist-cli/Commands/LinkCommand.swift:5` | `link` verb; attaches a URL link-preview, prints attachment UUID |
-| `LsCommand` | struct | `Packages/LillistCore/Sources/lillist-cli/Commands/LsCommand.swift:5` | `ls` verb; ad-hoc/saved filter listing with sort + output-format choice |
-| `MoveCommand` | struct | `Packages/LillistCore/Sources/lillist-cli/Commands/MoveCommand.swift:5` | `move` verb; re-parents tasks (or `--root`); destructive token gate |
-| `NoteCommand` | struct | `Packages/LillistCore/Sources/lillist-cli/Commands/NoteCommand.swift:5` | `note` verb; appends a Markdown journal note, prints note UUID |
-| `NudgeCommand` | struct | `Packages/LillistCore/Sources/lillist-cli/Commands/NudgeCommand.swift:5` | `nudge` verb; schedules a nudge at a parsed date, prints UUID |
-| `PinCommand` | struct | `Packages/LillistCore/Sources/lillist-cli/Commands/PinCommand.swift:5` | `pin` verb; pins a task (no output) |
+| `AddCommand` | struct | `Packages/LillistCore/Sources/lillist-cli/Commands/AddCommand.swift:5` | CLI entry point for creating a task; callers provide title plus optional start, deadline, tags, notes, parent, status, and GlobalOptions. |
+| `AttachCommand` | struct | `Packages/LillistCore/Sources/lillist-cli/Commands/AttachCommand.swift:5` | CLI entry point for attaching files to a task; accepts a task token and one or more file-system paths as remaining arguments. |
+| `Bash` | struct | `Packages/LillistCore/Sources/lillist-cli/Commands/CompletionCommand.swift:13` | ParsableCommand subcommand that prints the instruction to run `lillist --generate-completion-script bash`; does not generate the script itself. |
+| `CompletionCommand` | struct | `Packages/LillistCore/Sources/lillist-cli/Commands/CompletionCommand.swift:4` | ParsableCommand group exposing bash, zsh, and fish subcommands for shell completion script instructions. |
+| `CountCommand` | struct | `Packages/LillistCore/Sources/lillist-cli/Commands/CountCommand.swift:5` | CLI entry point for counting matching tasks; accepts --saved filter name, --tag (repeatable), --status (repeatable), and --include-trash. |
+| `Delete` | struct | `Packages/LillistCore/Sources/lillist-cli/Commands/FiltersCommand.swift:109` | Subcommand of filters that deletes a named saved smart filter; accepts the filter name as a positional argument. |
+| `DeleteCommand` | struct | `Packages/LillistCore/Sources/lillist-cli/Commands/DeleteCommand.swift:5` | CLI entry point for soft-deleting tasks; requires UUID tokens by default; supports stdin batch input via '-' sentinel. |
+| `EditCommand` | struct | `Packages/LillistCore/Sources/lillist-cli/Commands/EditCommand.swift:5` | CLI entry point for modifying task fields; accepts a task token and optional new title, notes, start date, and deadline. |
+| `EvalCommand` | struct | `Packages/LillistCore/Sources/lillist-cli/Commands/EvalCommand.swift:5` | CLI entry point for evaluating a raw PredicateGroup JSON expression against all tasks; output format mirrors the ls command. |
+| `ExportCommand` | struct | `Packages/LillistCore/Sources/lillist-cli/Commands/ExportCommand.swift:5` | CLI entry point for full data export; accepts a target directory path (must be empty or non-existent). |
+| `FiltersCommand` | struct | `Packages/LillistCore/Sources/lillist-cli/Commands/FiltersCommand.swift:5` | AsyncParsableCommand group for smart-filter management with ls, show, run, save, and delete subcommands; default subcommand is ls. |
+| `Fish` | struct | `Packages/LillistCore/Sources/lillist-cli/Commands/CompletionCommand.swift:25` | ParsableCommand subcommand that prints the instruction to run `lillist --generate-completion-script fish`; does not generate the script itself. |
+| `LinkCommand` | struct | `Packages/LillistCore/Sources/lillist-cli/Commands/LinkCommand.swift:5` | CLI entry point for attaching a URL with link preview to a task; accepts a task token and a URL string. |
+| `Ls` | struct | `Packages/LillistCore/Sources/lillist-cli/Commands/FiltersCommand.swift:15` | Subcommand of filters that lists all saved filters with name, pin state, tint color, sort field, and sort direction. |
+| `LsCommand` | struct | `Packages/LillistCore/Sources/lillist-cli/Commands/LsCommand.swift:5` | CLI entry point for listing tasks with the richest filter surface: tags, exclude-tags, status, date ranges, attachments, pinned, saved filter, sort, and output format. |
+| `MoveCommand` | struct | `Packages/LillistCore/Sources/lillist-cli/Commands/MoveCommand.swift:5` | CLI entry point for re-parenting a task; accepts a task token and optional new-parent token or --root flag. |
+| `NoteCommand` | struct | `Packages/LillistCore/Sources/lillist-cli/Commands/NoteCommand.swift:5` | CLI entry point for appending a Markdown note to a task's journal; accepts a task token and a note body string. |
+| `NudgeCommand` | struct | `Packages/LillistCore/Sources/lillist-cli/Commands/NudgeCommand.swift:5` | CLI entry point for scheduling a nudge notification; accepts a task token and a --at time token (ISO-8601, relative DSL, or natural language). |
+| `PinCommand` | struct | `Packages/LillistCore/Sources/lillist-cli/Commands/PinCommand.swift:5` | CLI entry point for pinning a task; accepts a single task token as a positional argument. |
+| `Run` | struct | `Packages/LillistCore/Sources/lillist-cli/Commands/FiltersCommand.swift:46` | Subcommand of filters that runs a named saved filter and prints matching tasks; supports --sort override and GlobalOptions output flags. |
+| `Save` | struct | `Packages/LillistCore/Sources/lillist-cli/Commands/FiltersCommand.swift:76` | Subcommand of filters that persists current tag/status/sort flags as a named smart filter; prints the new filter UUID. |
+| `Show` | struct | `Packages/LillistCore/Sources/lillist-cli/Commands/FiltersCommand.swift:32` | Subcommand of filters that prints the raw PredicateGroup JSON for a named saved filter. |
+| `Zsh` | struct | `Packages/LillistCore/Sources/lillist-cli/Commands/CompletionCommand.swift:20` | ParsableCommand subcommand that prints the instruction to run `lillist --generate-completion-script zsh`; does not generate the script itself. |
+| `run` | func | `Packages/LillistCore/Sources/lillist-cli/Commands/AddCommand.swift:36` | Opens the app-group store, delegates to AddHandler.run with all parsed fields, prints the created task UUID unless --quiet. |
+| `run` | func | `Packages/LillistCore/Sources/lillist-cli/Commands/AttachCommand.swift:10` | Opens the app-group store, delegates to AttachHandler.run, prints each returned attachment UUID on its own line. |
+| `run` | func | `Packages/LillistCore/Sources/lillist-cli/Commands/CompletionCommand.swift:16` | Prints the literal string "Run: lillist --generate-completion-script bash" to stdout. |
+| `run` | func | `Packages/LillistCore/Sources/lillist-cli/Commands/CompletionCommand.swift:23` | Prints the literal string "Run: lillist --generate-completion-script zsh" to stdout. |
+| `run` | func | `Packages/LillistCore/Sources/lillist-cli/Commands/CompletionCommand.swift:28` | Prints the literal string "Run: lillist --generate-completion-script fish" to stdout. |
+| `run` | func | `Packages/LillistCore/Sources/lillist-cli/Commands/CountCommand.swift:12` | Opens the app-group store, builds FilterFlags from CLI args, delegates to CountHandler.run, prints the matching task count as an integer. |
+| `run` | func | `Packages/LillistCore/Sources/lillist-cli/Commands/DeleteCommand.swift:11` | Opens store, resolves all tokens atomically (aborts on first bad token), calls TaskStore.softDelete for each resolved ID. |
+| `run` | func | `Packages/LillistCore/Sources/lillist-cli/Commands/EditCommand.swift:30` | Opens store, reads config for date parsing, delegates to EditHandler.run with the token and all non-nil field updates. |
+| `run` | func | `Packages/LillistCore/Sources/lillist-cli/Commands/EvalCommand.swift:10` | Opens store, reads JSON from argument or stdin sentinel, delegates to EvalHandler.run, formats output per GlobalOptions (json/ndjson/tsv/pretty). |
+| `run` | func | `Packages/LillistCore/Sources/lillist-cli/Commands/ExportCommand.swift:9` | Expands the directory path, opens the store, delegates to ExportHandler.run, prints the resolved export path on success. |
+| `run` | func | `Packages/LillistCore/Sources/lillist-cli/Commands/FiltersCommand.swift:19` | Opens store, lists filters via FiltersHandler.list, renders each as PrettyFilterSummary and prints the colored list. |
+| `run` | func | `Packages/LillistCore/Sources/lillist-cli/Commands/FiltersCommand.swift:36` | Opens store, fetches named filter via FiltersHandler.show, JSON-encodes the predicate group with sorted-keys pretty-printing. |
+| `run` | func | `Packages/LillistCore/Sources/lillist-cli/Commands/FiltersCommand.swift:52` | Opens store, reads config for sort and calendar defaults, runs named filter via FiltersHandler.run, formats results per GlobalOptions. |
+| `run` | func | `Packages/LillistCore/Sources/lillist-cli/Commands/FiltersCommand.swift:83` | Opens store, converts FilterFlags to a PredicateGroup, saves it as a named filter via FiltersHandler.save, prints the new filter UUID. |
+| `run` | func | `Packages/LillistCore/Sources/lillist-cli/Commands/FiltersCommand.swift:113` | Opens store, deletes the named smart filter via FiltersHandler.delete; produces no output on success. |
+| `run` | func | `Packages/LillistCore/Sources/lillist-cli/Commands/LinkCommand.swift:10` | Opens store, delegates to LinkHandler.run with token and URL string, prints the created link-attachment UUID. |
+| `run` | func | `Packages/LillistCore/Sources/lillist-cli/Commands/LsCommand.swift:57` | Opens store, reads config defaults, builds FilterFlags from all CLI flags, delegates to LsHandler.run, formats output per GlobalOptions (json/ndjson/tsv/pretty). |
+| `run` | func | `Packages/LillistCore/Sources/lillist-cli/Commands/MoveCommand.swift:13` | Opens store, resolves all tokens atomically, resolves new parent or clears it with --root, calls TaskStore.reparent for each task. |
+| `run` | func | `Packages/LillistCore/Sources/lillist-cli/Commands/NoteCommand.swift:21` | Opens store, delegates to NoteHandler.run with token and body, prints the journal entry UUID unless --quiet. |
+| `run` | func | `Packages/LillistCore/Sources/lillist-cli/Commands/NudgeCommand.swift:10` | Opens store, reads config for calendar, delegates to NudgeHandler.run with task token and time token, prints the nudge UUID. |
+| `run` | func | `Packages/LillistCore/Sources/lillist-cli/Commands/PinCommand.swift:9` | Opens store, delegates to PinHandler.pin with token and persistence; produces no output on success. |
 
 ## Load-bearing internals
 
-(none — every struct is public API; all share the same delegate-to-`CLIBridge` shape)
+| Symbol | Kind | Location | Why it matters |
+| --- | --- | --- | --- |
 
 ## Relationships
 
-- `Packages-LillistCore-Sources-lillist-cli-Commands-chunk-1.AddCommand -> Packages-LillistCore-Sources-LillistCore-CLIBridge-Handlers-chunk-1.AddHandler (calls)`
-- `Packages-LillistCore-Sources-lillist-cli-Commands-chunk-1.AttachCommand -> Packages-LillistCore-Sources-LillistCore-CLIBridge-Handlers-chunk-1.AttachHandler (calls)`
-- `Packages-LillistCore-Sources-lillist-cli-Commands-chunk-1.CountCommand -> Packages-LillistCore-Sources-LillistCore-CLIBridge-Handlers-chunk-1.CountHandler (calls)`
-- `Packages-LillistCore-Sources-lillist-cli-Commands-chunk-1.EditCommand -> Packages-LillistCore-Sources-LillistCore-CLIBridge-Handlers-chunk-1.EditHandler (calls)`
-- `Packages-LillistCore-Sources-lillist-cli-Commands-chunk-1.EvalCommand -> Packages-LillistCore-Sources-LillistCore-CLIBridge-Handlers-chunk-1.EvalHandler (calls)`
-- `Packages-LillistCore-Sources-lillist-cli-Commands-chunk-1.ExportCommand -> Packages-LillistCore-Sources-LillistCore-CLIBridge-Handlers-chunk-2.ExportHandler (calls)`
-- `Packages-LillistCore-Sources-lillist-cli-Commands-chunk-1.FiltersCommand -> Packages-LillistCore-Sources-LillistCore-CLIBridge-Handlers-chunk-2.FiltersHandler (calls)`
-- `Packages-LillistCore-Sources-lillist-cli-Commands-chunk-1.LinkCommand -> Packages-LillistCore-Sources-LillistCore-CLIBridge-Handlers-chunk-2.LinkHandler (calls)`
-- `Packages-LillistCore-Sources-lillist-cli-Commands-chunk-1.LsCommand -> Packages-LillistCore-Sources-LillistCore-CLIBridge-Handlers-chunk-1.LsHandler (calls)`
-- `Packages-LillistCore-Sources-lillist-cli-Commands-chunk-1.NoteCommand -> Packages-LillistCore-Sources-LillistCore-CLIBridge-Handlers-chunk-2.NoteHandler (calls)`
-- `Packages-LillistCore-Sources-lillist-cli-Commands-chunk-1.NudgeCommand -> Packages-LillistCore-Sources-LillistCore-CLIBridge-Handlers-chunk-2.NudgeHandler (calls)`
-- `Packages-LillistCore-Sources-lillist-cli-Commands-chunk-1.PinCommand -> Packages-LillistCore-Sources-LillistCore-CLIBridge-Handlers-chunk-2.PinHandler (calls)`
-- `Packages-LillistCore-Sources-lillist-cli-Commands-chunk-1.EvalCommand -> Packages-LillistCore-Sources-LillistCore-CLIBridge-Renderers.TaskRenderer (calls)`
-- `Packages-LillistCore-Sources-lillist-cli-Commands-chunk-1.FiltersCommand -> Packages-LillistCore-Sources-LillistCore-CLIBridge-Renderers.FilterRenderer (calls)`
-- `Packages-LillistCore-Sources-lillist-cli-Commands-chunk-1.LsCommand -> Packages-LillistCore-Sources-LillistCore-CLIBridge-Renderers.TaskRenderer (calls)`
-- `Packages-LillistCore-Sources-lillist-cli-Commands-chunk-1.AddCommand -> Packages-LillistCore-Sources-LillistCore-CLIBridge-misc.Config (reads)`
-- `Packages-LillistCore-Sources-lillist-cli-Commands-chunk-1.LsCommand -> Packages-LillistCore-Sources-LillistCore-CLIBridge-misc.FilterFlags (owns)`
-- `Packages-LillistCore-Sources-lillist-cli-Commands-chunk-1.AddCommand -> Packages-LillistCore-Sources-LillistCore-CLIBridge-misc.StoreLocator (calls)`
-- `Packages-LillistCore-Sources-lillist-cli-Commands-chunk-1.DeleteCommand -> Packages-LillistCore-Sources-LillistCore-CLIBridge-misc.Resolver (calls)`
-- `Packages-LillistCore-Sources-lillist-cli-Commands-chunk-1.MoveCommand -> Packages-LillistCore-Sources-LillistCore-CLIBridge-misc.Resolver (calls)`
-- `Packages-LillistCore-Sources-lillist-cli-Commands-chunk-1.DeleteCommand -> Packages-LillistCore-Sources-LillistCore-Stores-chunk-2.TaskStore (calls)`
-- `Packages-LillistCore-Sources-lillist-cli-Commands-chunk-1.MoveCommand -> Packages-LillistCore-Sources-LillistCore-Stores-chunk-2.TaskStore (calls)`
-- `Packages-LillistCore-Sources-lillist-cli-Commands-chunk-1.LsCommand -> Packages-LillistCore-Sources-LillistCore-Model.SortField (reads)`
-- `Packages-LillistCore-Sources-lillist-cli-Commands-chunk-1.CountCommand -> Packages-LillistCore-Sources-LillistCore-misc.LillistError (emits)`
-- `Packages-LillistCore-Sources-lillist-cli-Commands-chunk-1.DeleteCommand -> Packages-LillistCore-Sources-lillist-cli-Support.BatchTokens (calls)`
-- `Packages-LillistCore-Sources-lillist-cli-Commands-chunk-1.MoveCommand -> Packages-LillistCore-Sources-lillist-cli-Support.BatchTokens (calls)`
-- `Packages-LillistCore-Sources-lillist-cli-Commands-chunk-1.EvalCommand -> Packages-LillistCore-Sources-lillist-cli-Support.StdinReader (calls)`
-- `Packages-LillistCore-Sources-lillist-cli-Commands-chunk-1.AddCommand -> Packages-LillistCore-Sources-lillist-cli-Support.GlobalOptions (owns)`
+- `Packages-LillistCore-Sources-lillist-cli-Commands-chunk-1.CountCommand -> Packages-LillistCore-Sources-LillistCore-Stores-chunk-1.tasks (calls)`
+- `Packages-LillistCore-Sources-lillist-cli-Commands-chunk-1.run -> Packages-LillistCore-Sources-LillistCore-CLIBridge-Handlers-chunk-1.pin (calls)`
+- `Packages-LillistCore-Sources-lillist-cli-Commands-chunk-1.run -> Packages-LillistCore-Sources-LillistCore-CLIBridge-Handlers-chunk-1.show (calls)`
+- `Packages-LillistCore-Sources-lillist-cli-Commands-chunk-1.run -> Packages-LillistCore-Sources-LillistCore-CLIBridge-Handlers-chunk-1.status (calls)`
+- `Packages-LillistCore-Sources-lillist-cli-Commands-chunk-1.run -> Packages-LillistCore-Sources-LillistCore-CLIBridge-Renderers.PrettyFilterSummary (calls)`
+- `Packages-LillistCore-Sources-lillist-cli-Commands-chunk-1.run -> Packages-LillistCore-Sources-LillistCore-CLIBridge-Renderers.jsonString (calls)`
+- `Packages-LillistCore-Sources-lillist-cli-Commands-chunk-1.run -> Packages-LillistCore-Sources-LillistCore-CLIBridge-misc.FilterFlags (calls)`
+- `Packages-LillistCore-Sources-lillist-cli-Commands-chunk-1.run -> Packages-LillistCore-Sources-LillistCore-CLIBridge-misc.defaultLocation (reads)`
+- `Packages-LillistCore-Sources-lillist-cli-Commands-chunk-1.run -> Packages-LillistCore-Sources-LillistCore-CLIBridge-misc.openAppGroup (reads)`
+- `Packages-LillistCore-Sources-lillist-cli-Commands-chunk-1.run -> Packages-LillistCore-Sources-LillistCore-CLIBridge-misc.resolveAll (calls)`
+- `Packages-LillistCore-Sources-lillist-cli-Commands-chunk-1.run -> Packages-LillistCore-Sources-LillistCore-CLIBridge-misc.resolvedCalendar (reads)`
+- `Packages-LillistCore-Sources-lillist-cli-Commands-chunk-1.run -> Packages-LillistCore-Sources-LillistCore-CLIBridge-misc.toPredicateGroup (calls)`
+- `Packages-LillistCore-Sources-lillist-cli-Commands-chunk-1.run -> Packages-LillistCore-Sources-LillistCore-LinkPreview.String (calls)`
+- `Packages-LillistCore-Sources-lillist-cli-Commands-chunk-1.run -> Packages-LillistCore-Sources-LillistCore-Stores-chunk-2.softDelete (writes)`
+- `Packages-LillistCore-Sources-lillist-cli-Commands-chunk-1.run -> Packages-LillistCore-Sources-lillist-cli-Support.isStdinSentinel (calls)`
+- `Packages-LillistCore-Sources-lillist-cli-Commands-chunk-1.run -> Packages-LillistCore-Sources-lillist-cli-Support.readAllLines (reads)`
+- `Packages-LillistCore-Sources-lillist-cli-Commands-chunk-1.run -> Packages-LillistCore-Sources-lillist-cli-Support.resolveColor (reads)`
+- `Packages-LillistCore-Sources-lillist-cli-Commands-chunk-1.run -> Packages-LillistCore-Sources-lillist-cli-Support.resolveInput (calls)`
+- `Packages-LillistCore-Sources-lillist-cli-Commands-chunk-1.run -> Packages-LillistCore-Sources-lillist-cli-Support.resolveOutputFormat (reads)`
 
 ## Type notes
 
-All structs conform to `AsyncParsableCommand` except `CompletionCommand` and its nested `Bash`/`Zsh`/`Fish`, which are synchronous `ParsableCommand`s (`Packages/LillistCore/Sources/lillist-cli/Commands/CompletionCommand.swift:4`). Commands own no persistent state: each `run()` opens persistence afresh via `CLIBridge.StoreLocator.openAppGroup()` and reads `CLIBridge.Config` before delegating, so there is no shared mutable state across invocations. `FiltersCommand` is the only multi-level command — it nests `Ls`/`Show`/`Run`/`Save`/`Delete` subcommands with `Ls` as default (`Packages/LillistCore/Sources/lillist-cli/Commands/FiltersCommand.swift:9`). Destructive verbs (`DeleteCommand`, `MoveCommand`) pre-resolve every token before any mutation so one bad token aborts the whole batch (`Packages/LillistCore/Sources/lillist-cli/Commands/DeleteCommand.swift:18`).
+All command types are value-type `struct`s conforming to `AsyncParsableCommand` (or `ParsableCommand` for `CompletionCommand` and its sub-structs), instantiated fresh per invocation by ArgumentParser — they hold no persistent state beyond the parsed CLI arguments. No actor isolation is declared; `run()` is `async throws` and runs on the cooperative thread pool. Each `run()` acquires a persistence handle via `CLIBridge.StoreLocator.openAppGroup()` (Packages/LillistCore/Sources/lillist-cli/Commands/AddCommand.swift:37) as its first step. Config is always loaded via `CLIBridge.Config.read(from: CLIBridge.Config.defaultLocation())` when date parsing or output defaults are needed (e.g. Packages/LillistCore/Sources/lillist-cli/Commands/LsCommand.swift:59). Destructive batch commands (delete, move) resolve all tokens before mutating, enforcing all-or-nothing semantics (Packages/LillistCore/Sources/lillist-cli/Commands/DeleteCommand.swift:18-25).
 
 ## External deps
 
-- ArgumentParser — `AsyncParsableCommand`/`ParsableCommand`, `@Argument`/`@Option`/`@Flag`/`@OptionGroup`, `CommandConfiguration`
-- Foundation — `Date`, `UUID`, `URL`, `JSONEncoder`, `NSString` tilde expansion
+- ArgumentParser — imported
+- Foundation — imported
+- LillistCore — imported
+
+## Gotchas
+
+DeleteCommand.swift:18-25 and MoveCommand.swift:15-39 implement an explicit all-or-nothing pre-flight: all tokens are resolved before any mutation executes, so a single bad token aborts the whole batch. A comment in DeleteCommand.swift:18 states this contract. CompletionCommand.swift:16-29 — the Bash/Zsh/Fish subcommands do not generate scripts themselves; they print instructions directing the user to run `lillist --generate-completion-script <shell>`, delegating actual generation to ArgumentParser's built-in flag.

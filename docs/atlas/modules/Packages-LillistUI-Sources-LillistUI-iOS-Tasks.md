@@ -1,96 +1,84 @@
 ---
 module: Packages/LillistUI/Sources/LillistUI/iOS/Tasks
-summary: "Tree-building, flat-projection, sort, and filter-UI primitives for the iOS Tasks outline screen"
-read_when: "Touching iOS task list rendering"
+summary: "Tree-building, outline row rendering, and filter/sort primitives for the iOS Tasks list."
+read_when: "Touching iOS task list or outline structure"
 sources:
   - path: Packages/LillistUI/Sources/LillistUI/iOS/Tasks/FilterChip.swift
-    blob: d9c391dbdee40c9de6196eae330ba7a2398be0c7
+    blob: 6b97950bb89954e7ae80a11f9af10607d1480cd1
   - path: Packages/LillistUI/Sources/LillistUI/iOS/Tasks/FilterHeader.swift
-    blob: b3091afc0ea60c53aedb7d03df94d83469dea1cd
+    blob: a693fc93727287ceaf85fba683bd4095d70f086b
   - path: Packages/LillistUI/Sources/LillistUI/iOS/Tasks/FlatTaskRow.swift
-    blob: 33960b025a31e092cf601d9a68fb22423cfc7933
+    blob: 39cb162736a7480bf09c2fdc9b8f78aff7a7f90c
   - path: Packages/LillistUI/Sources/LillistUI/iOS/Tasks/TaskOutlineRowView.swift
-    blob: 8cb73c03a7c176c7544269aeee5c9847f4cedd6b
+    blob: c2ed5c0834924e22c4441d965b8e7054037b47c6
   - path: Packages/LillistUI/Sources/LillistUI/iOS/Tasks/TaskTree.swift
-    blob: a3e62822968acad7c6d73eccda8e7d4e8b0f70ca
+    blob: 815f9136b2bf293dd9193a53cf6427110fa4303c
   - path: Packages/LillistUI/Sources/LillistUI/iOS/Tasks/TasksSort.swift
-    blob: ec113d2e4e3de800b679902e317ff0b6b6bb8d20
-references_modules: [Packages-LillistCore-Sources-LillistCore-Stores-chunk-2, Packages-LillistCore-Sources-LillistCore-Ordering, Packages-LillistCore-Sources-LillistCore-Model, Packages-LillistUI-Sources-LillistUI-Components, Packages-LillistUI-Sources-LillistUI-Theme-chunk-1]
-generator: cartographer/1
-baseline: 1a1562b636e43ebbdc35c7939ab6989b387f50e9
-verified: true
+    blob: c217d33cfcf21c914c125485ff29e2e548dc696b
+references_modules: [Packages-LillistCore-Sources-LillistCore-LinkPreview, Packages-LillistCore-Sources-LillistCore-Ordering, Packages-LillistUI-Sources-LillistUI-Components-chunk-1, Packages-LillistUI-Sources-LillistUI-Components-chunk-2, Packages-LillistUI-Sources-LillistUI-Settings, Packages-LillistUI-Sources-LillistUI-Theme-chunk-1]
+generator: cartographer/4
+baseline: 515f24730d21cb81ca1c9737ffeb981e9c414d3c
 ---
 
 # Module: Packages/LillistUI/Sources/LillistUI/iOS/Tasks
 
 ## Purpose
 
-The reusable, stateless building blocks of the iOS Tasks screen. It turns a flat
-`[TaskStore.TaskRecord]` list into a collapsible outline (`TaskTree` ->
-`TreeFlattener` -> rows) and supplies the expanding filter header above it. Every
-type here is pure presentation or pure data transform — all `@State`, lifecycle,
-and persistence live in the host `TasksView` (in the iOS app target), so these
-types render under frozen mock data in `IOSScreenTourTests`. The whole file set
-is wrapped in `#if os(iOS)`.
+This module is the complete rendering pipeline for the iOS task list: it transforms a flat [TaskRecord] into a sorted hierarchical tree (TaskTree/TaskNode), projects that tree into an order-stable flat sequence for outline rendering (TreeFlattener/FlatTaskRow), and provides the row view (TaskOutlineRowView) and filter header (FilterHeader/FilterChip) that turn those structures into interactive UI. It vanishes and the Tasks screen loses its tree shape, collapsible outline, and filter/sort affordances entirely.
 
 ## Public API
 
 | Symbol | Kind | Location | Contract |
 | --- | --- | --- | --- |
-| `FilterChip` | struct | `Packages/LillistUI/Sources/LillistUI/iOS/Tasks/FilterChip.swift:8` | Pill toggle button; lavender-filled when `isSelected`, raised card otherwise |
-| `FilterHeader` | struct | `Packages/LillistUI/Sources/LillistUI/iOS/Tasks/FilterHeader.swift:40` | Search field + chip row; all state via `@Binding`; host owns it |
-| `FlatTaskRow` | struct | `Packages/LillistUI/Sources/LillistUI/iOS/Tasks/FlatTaskRow.swift:6` | A `TaskNode` plus render `depth`, `parentID`, `hasChildren`; id is `node.id` |
-| `QuickFilterToken` | enum | `Packages/LillistUI/Sources/LillistUI/iOS/Tasks/FilterHeader.swift:8` | The three built-in filters (`today`/`thisWeek`/`done`); `done` is special-cased by the host |
-| `SavedFilterChipSpec` | struct | `Packages/LillistUI/Sources/LillistUI/iOS/Tasks/FilterHeader.swift:27` | Pinned saved-filter chip identity (`id` UUID + `title`) |
-| `TaskNode` | struct | `Packages/LillistUI/Sources/LillistUI/iOS/Tasks/TaskTree.swift:15` | One outline node: `record`, `tagNames`, `children`; id is `record.id` |
-| `TaskOutlineRowLabel` | struct | `Packages/LillistUI/Sources/LillistUI/iOS/Tasks/TaskOutlineRowView.swift:24` | The inert tappable text region passed to a row's `linkContent` closure |
-| `TaskOutlineRowView` | struct | `Packages/LillistUI/Sources/LillistUI/iOS/Tasks/TaskOutlineRowView.swift:37` | One outline row: chevron + status + caller-wrapped label; generic over `LinkContent` |
-| `TaskTree` | enum | `Packages/LillistUI/Sources/LillistUI/iOS/Tasks/TaskTree.swift:43` | `build(records:tagsByTask:sort:)` projects flat records into a sorted node tree |
-| `TasksSort` | enum | `Packages/LillistUI/Sources/LillistUI/iOS/Tasks/TasksSort.swift:11` | Sort options (`personalized`/`due`/`modified`); persisted as `rawValue` by the host |
-| `TreeFlattener` | enum | `Packages/LillistUI/Sources/LillistUI/iOS/Tasks/FlatTaskRow.swift:22` | `flatten(_:collapsed:)` depth-first walk emitting one `FlatTaskRow` per visible node |
+| `FilterChip` | struct | `Packages/LillistUI/Sources/LillistUI/iOS/Tasks/FilterChip.swift:8` | Pill toggle button; callers supply title, isSelected, and action; selected fills lavender/purple-ink, unselected is card-white; contrast borders scale via increaseContrastOverride environment key. |
+| `FilterHeader` | struct | `Packages/LillistUI/Sources/LillistUI/iOS/Tasks/FilterHeader.swift:40` | Pure presenter: bindings own searchText, selectedTokens, selectedSavedFilters; onClear fires when any filter is active; host must place via safeAreaInset(edge: .top) to float over the scroll list. |
+| `FlatTaskRow` | struct | `Packages/LillistUI/Sources/LillistUI/iOS/Tasks/FlatTaskRow.swift:6` | Depth-annotated flat node produced by TreeFlattener; id delegates to node.id so SwiftUI list identity is stable across re-flattens when node UUIDs are unchanged. |
+| `QuickFilterToken` | enum | `Packages/LillistUI/Sources/LillistUI/iOS/Tasks/FilterHeader.swift:8` | Three built-in filter tokens; callers must treat .done specially — it replaces the default status != closed baseline rather than AND-ing with it, per comment at FilterHeader.swift:5-7. |
+| `SavedFilterChipSpec` | struct | `Packages/LillistUI/Sources/LillistUI/iOS/Tasks/FilterHeader.swift:27` | Value-type transfer object carrying a pinned saved filter's id and title for FilterHeader to render; decouples the header from SmartFilterRecord. |
+| `TaskNode` | struct | `Packages/LillistUI/Sources/LillistUI/iOS/Tasks/TaskTree.swift:15` | Hierarchical TaskRecord projection with resolved tagNames and typed children; orphans (parent absent from input set) are promoted to root by TaskTree.build; hash is identity-based on record.id. |
+| `TaskOutlineRowLabel` | struct | `Packages/LillistUI/Sources/LillistUI/iOS/Tasks/TaskOutlineRowView.swift:25` | Inert text-region value passed into TaskOutlineRowView's linkContent closure; the only row subregion that may receive tap or drag gestures, by API contract; wraps TaskRowLabel with full-width contentShape(Rectangle()). |
+| `TaskOutlineRowView` | struct | `Packages/LillistUI/Sources/LillistUI/iOS/Tasks/TaskOutlineRowView.swift:38` | Generic outline row with disclosure chevron, StatusIndicatorView, and caller-supplied linkContent; chevron and status indicator are outside the linkContent closure so gesture conflicts are impossible by construction; isDropTargetParent shows drop-target card border. |
+| `TaskTree` | enum | `Packages/LillistUI/Sources/LillistUI/iOS/Tasks/TaskTree.swift:43` | Namespace-only enum; sole public entry point is build(records:tagsByTask:sort:); transforms a flat [TaskRecord] into a sorted [TaskNode] tree with sort applied per level. |
+| `TasksSort` | enum | `Packages/LillistUI/Sources/LillistUI/iOS/Tasks/TasksSort.swift:11` | Sort options persisted via @AppStorage("lillist.ios.sort") as rawValue; drives TaskTree.applySort per-level; .personalized uses SiblingOrder.precedes, .due/.modified sort by field with nil last. |
+| `TreeFlattener` | enum | `Packages/LillistUI/Sources/LillistUI/iOS/Tasks/FlatTaskRow.swift:22` | Namespace-only enum; sole public entry point is flatten(_:collapsed:); callers supply collapsed UUIDs to hide subtrees without removing them from the tree. |
+| `build` | func | `Packages/LillistUI/Sources/LillistUI/iOS/Tasks/TaskTree.swift:47` | Single-pass tree builder: groups children by parentID, promotes orphans to root, then applies TasksSort per level recursively; pure function, no stored state. |
+| `flatten` | func | `Packages/LillistUI/Sources/LillistUI/iOS/Tasks/FlatTaskRow.swift:26` | Depth-first walk of [TaskNode] emitting one FlatTaskRow per visible node; subtrees whose root UUID is in collapsed are skipped; output order matches render order. |
+| `hash` | func | `Packages/LillistUI/Sources/LillistUI/iOS/Tasks/TaskTree.swift:32` | Identity-based hash over record.id; required because TaskStore.TaskRecord is Equatable but not Hashable; content equality is handled by the synthesized == at TaskTree.swift:36-40. |
+| `makeNode` | func | `Packages/LillistUI/Sources/LillistUI/iOS/Tasks/TaskTree.swift:67` | Local nested function inside TaskTree.build; resolves children from childrenByParent map and recursively sorts them; not independently callable outside build. |
+| `walk` | func | `Packages/LillistUI/Sources/LillistUI/iOS/Tasks/FlatTaskRow.swift:33` | Local recursive closure captured inside flatten; not independently callable — use TreeFlattener.flatten as the entry point. |
 
 ## Load-bearing internals
 
 | Symbol | Kind | Location | Why it matters |
 | --- | --- | --- | --- |
-| `TaskTree.build` | static func | `Packages/LillistUI/Sources/LillistUI/iOS/Tasks/TaskTree.swift:47` | Sole tree constructor; orphan-promotion + per-level sort rules live here |
-| `applySort` | static func | `Packages/LillistUI/Sources/LillistUI/iOS/Tasks/TaskTree.swift:80` | Encodes the three `TasksSort` orderings incl. nil-last and UUID tie-break |
-| `TreeFlattener.flatten` | static func | `Packages/LillistUI/Sources/LillistUI/iOS/Tasks/FlatTaskRow.swift:26` | Maps the tree to the `List` row sequence, honoring the `collapsed` set |
 
 ## Relationships
 
-- `Packages-LillistUI-Sources-LillistUI-iOS-Tasks.TaskNode -> Packages-LillistCore-Sources-LillistCore-Stores-chunk-2.TaskStore (owns)`
-- `Packages-LillistUI-Sources-LillistUI-iOS-Tasks.TaskTree -> Packages-LillistCore-Sources-LillistCore-Ordering.SiblingOrder (calls)`
-- `Packages-LillistUI-Sources-LillistUI-iOS-Tasks.TaskOutlineRowView -> Packages-LillistUI-Sources-LillistUI-Components.StatusIndicatorView (calls)`
-- `Packages-LillistUI-Sources-LillistUI-iOS-Tasks.TaskOutlineRowLabel -> Packages-LillistUI-Sources-LillistUI-Components.TaskRowLabel (calls)`
-- `Packages-LillistUI-Sources-LillistUI-iOS-Tasks.TaskOutlineRowView -> Packages-LillistCore-Sources-LillistCore-Model.Status (reads)`
-- `Packages-LillistUI-Sources-LillistUI-iOS-Tasks.TaskOutlineRowView -> Packages-LillistUI-Sources-LillistUI-Theme-chunk-1.StatusPalette (calls)`
-- `Packages-LillistUI-Sources-LillistUI-iOS-Tasks.FilterChip -> Packages-LillistUI-Sources-LillistUI-Theme-chunk-1.LillistColor (reads)`
-- `Packages-LillistUI-Sources-LillistUI-iOS-Tasks.FilterHeader -> Packages-LillistUI-Sources-LillistUI-Theme-chunk-1.RainbowPalette (reads)`
+- `Packages-LillistUI-Sources-LillistUI-iOS-Tasks.FilterChip -> Packages-LillistUI-Sources-LillistUI-Settings.Environment (reads)`
+- `Packages-LillistUI-Sources-LillistUI-iOS-Tasks.FilterChip -> Packages-LillistUI-Sources-LillistUI-Theme-chunk-1.fill (calls)`
+- `Packages-LillistUI-Sources-LillistUI-iOS-Tasks.FilterHeader -> Packages-LillistCore-Sources-LillistCore-LinkPreview.String (calls)`
+- `Packages-LillistUI-Sources-LillistUI-iOS-Tasks.FilterHeader -> Packages-LillistUI-Sources-LillistUI-Theme-chunk-1.accessibilityLabel (calls)`
+- `Packages-LillistUI-Sources-LillistUI-iOS-Tasks.FilterHeader -> Packages-LillistUI-Sources-LillistUI-Theme-chunk-1.fill (calls)`
+- `Packages-LillistUI-Sources-LillistUI-iOS-Tasks.FilterHeader -> Packages-LillistUI-Sources-LillistUI-Theme-chunk-1.glassSurface (calls)`
+- `Packages-LillistUI-Sources-LillistUI-iOS-Tasks.QuickFilterToken -> Packages-LillistCore-Sources-LillistCore-LinkPreview.String (calls)`
+- `Packages-LillistUI-Sources-LillistUI-iOS-Tasks.TaskOutlineRowLabel -> Packages-LillistUI-Sources-LillistUI-Components-chunk-2.TaskRowLabel (calls)`
+- `Packages-LillistUI-Sources-LillistUI-iOS-Tasks.TaskOutlineRowView -> Packages-LillistCore-Sources-LillistCore-LinkPreview.String (calls)`
+- `Packages-LillistUI-Sources-LillistUI-iOS-Tasks.TaskOutlineRowView -> Packages-LillistUI-Sources-LillistUI-Components-chunk-1.StatusIndicatorView (calls)`
+- `Packages-LillistUI-Sources-LillistUI-iOS-Tasks.TaskOutlineRowView -> Packages-LillistUI-Sources-LillistUI-Components-chunk-1.rainbowCard (calls)`
+- `Packages-LillistUI-Sources-LillistUI-iOS-Tasks.TaskOutlineRowView -> Packages-LillistUI-Sources-LillistUI-Theme-chunk-1.accessibilityLabel (calls)`
+- `Packages-LillistUI-Sources-LillistUI-iOS-Tasks.TaskOutlineRowView -> Packages-LillistUI-Sources-LillistUI-Theme-chunk-1.color (reads)`
+- `Packages-LillistUI-Sources-LillistUI-iOS-Tasks.applySort -> Packages-LillistCore-Sources-LillistCore-Ordering.precedes (reads)`
 
 ## Type notes
 
-All public types are value types; `TaskNode`, `FlatTaskRow`, and
-`SavedFilterChipSpec` are `Sendable + Hashable`, safe to pass across actor
-boundaries and use as SwiftUI diff identity. `TaskNode.hash` is hand-written
-(`Packages/LillistUI/Sources/LillistUI/iOS/Tasks/TaskTree.swift:32`) because
-`TaskRecord` is only `Equatable`; it hashes `record.id` while `==` compares full
-content. `TaskTree.build` promotes any record whose `parentID` is absent from the
-input set to a root, so a filtered view never drops orphan-matched subtasks
-(`Packages/LillistUI/Sources/LillistUI/iOS/Tasks/TaskTree.swift:57`). `TaskOutlineRowView` deliberately constructs the chevron
-and `StatusIndicatorView` *outside* the `linkContent` closure so a row-level
-drag/navigation wrapper can never cover those controls — the closure only ever
-receives the inert `TaskOutlineRowLabel` (`Packages/LillistUI/Sources/LillistUI/iOS/Tasks/TaskOutlineRowView.swift:9`).
-`TaskOutlineRowLabel` is standalone (not nested in the generic view) to keep
-`LinkContent` inference non-circular (`Packages/LillistUI/Sources/LillistUI/iOS/Tasks/TaskOutlineRowView.swift:22`).
+All six public types are value-types (struct or enum) and Sendable — safe to pass across actor boundaries without wrapping. TaskNode.hash(into:) is hand-written to hash only record.id because TaskStore.TaskRecord is Equatable but not Hashable; the comment at TaskTree.swift:29-31 makes this explicit. TaskTree.build and TreeFlattener.flatten are pure functions with no stored state, callable from any isolation context. FilterHeader and TaskOutlineRowView are stateless presenters: all mutable state flows in via @Binding or closure parameters — no @State, no .task lifecycle (per the iOS container/presenter split). FlatTaskRow.id delegates to node.id (FlatTaskRow.swift:12) so list identity is stable across re-flattens when node UUIDs are unchanged. TasksSort is persisted via @AppStorage("lillist.ios.sort") as rawValue (TasksSort.swift:10).
 
 ## External deps
 
-- SwiftUI — view layer for `FilterChip`, `FilterHeader`, `TaskOutlineRowView`
-- Foundation — `UUID`/`Date` math in `TaskTree`/`TreeFlattener`/`FlatTaskRow`
+- Foundation — imported
+- LillistCore — imported
+- SwiftUI — imported
 
 ## Gotchas
 
-- `QuickFilterToken.done` replaces the default `status != closed` baseline rather
-  than AND-ing with it, else the result is always empty — special-cased by the
-  host `TasksView` (`Packages/LillistUI/Sources/LillistUI/iOS/Tasks/FilterHeader.swift:5`).
+TaskOutlineRowView's linkContent closure is architected to make two antipatterns unrepresentable: a Button inside the closure would starve the long-press drag gesture, and a drag gesture overlapping the status indicator would eat its taps. Both regressions shipped and are documented in comments at TaskOutlineRowView.swift:8-18 (2026-06-12 status-circle regression; 2026-06-17 Button inversion). The closure only ever receives the inert TaskOutlineRowLabel — the chevron and StatusIndicatorView are constructed outside it by design.

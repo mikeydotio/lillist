@@ -1,102 +1,108 @@
 ---
 module: "Packages/LillistCore/Sources/LillistCore/Stores (chunk 2)"
-summary: "TaskStore — the single async gateway for all LillistTask CRUD, reorder, status, soft-delete, and tag ops"
+summary: "Single async gateway for all LillistTask CRUD, status, reorder, and trash operations; returns DTO-only (TaskRecord)."
 read_when: "Touching task creation or status transitions"
 sources:
   - path: Packages/LillistCore/Sources/LillistCore/Stores/TaskStore.swift
-    blob: d6550bd426a2e84b71525b65fa4905e743804429
-references_modules: [Packages-LillistCore-Sources-LillistCore-Persistence, Packages-LillistCore-Sources-LillistCore-Ordering, Packages-LillistCore-Sources-LillistCore-Recurrence, Packages-LillistCore-Sources-LillistCore-Notifications, Packages-LillistCore-Sources-LillistCore-CrashReporting, Packages-LillistCore-Sources-LillistCore-Diagnostics, Packages-LillistCore-Sources-LillistCore-ManagedObjects, Packages-LillistCore-Sources-LillistCore-Model, Packages-LillistCore-Sources-LillistCore-misc]
-generator: cartographer/1
-baseline: 1a1562b636e43ebbdc35c7939ab6989b387f50e9
-verified: true
+    blob: 5dce5baf177ea06f694ffe7ebc4694ec6c488750
+references_modules: [Packages-LillistCore-Sources-LillistCore-Diagnostics, Packages-LillistCore-Sources-LillistCore-ManagedObjects, Packages-LillistCore-Sources-LillistCore-Ordering, Packages-LillistCore-Sources-LillistCore-Persistence, Packages-LillistCore-Sources-LillistCore-Recurrence, Packages-LillistUI-Sources-LillistUI-Recurrence]
+generator: cartographer/4
+baseline: 515f24730d21cb81ca1c9737ffeb981e9c414d3c
 ---
 
 # Module: Packages/LillistCore/Sources/LillistCore/Stores (chunk 2)
 
 ## Purpose
 
-`TaskStore` is the single async gateway for every mutation and query of the `LillistTask` Core Data graph. It exists to keep `NSManagedObject` from leaking: callers only ever see the value-type `TaskRecord` DTO. Every public method runs its work inside `context.perform`, saves-or-rolls-back atomically, then (outside the perform block) reconciles notifications and emits breadcrumb/diagnostic side-channels. The fractional-position reorder logic and its self-healing recompaction are the load-bearing heart of the file.
+TaskStore is the single async gateway for all LillistTask CRUD, status transitions, hierarchy manipulation, fractional-position reorder, tag assignment, and soft-delete/trash management. It owns the invariant that no NSManagedObject crosses the module boundary: every public API returns TaskRecord DTOs, and every mutation serializes through viewContext.perform with a rollback-on-error guarantee. If it vanished, no caller could create, read, update, reorder, or delete tasks in a type-safe or concurrency-safe way.
 
 ## Public API
 
 | Symbol | Kind | Location | Contract |
 | --- | --- | --- | --- |
-| `NewTaskPlacement` | enum | `Packages/LillistCore/Sources/LillistCore/Stores/TaskStore.swift:13` | `.top` (insert before first sibling) / `.bottom` (append after last); default `.bottom` |
-| `TaskStore` | class | `Packages/LillistCore/Sources/LillistCore/Stores/TaskStore.swift:18` | The task data gateway; `@unchecked Sendable`, one per `PersistenceController` |
-| `TaskStore.TaskRecord` | struct | `Packages/LillistCore/Sources/LillistCore/Stores/TaskStore.swift:71` | Sendable, Equatable value DTO returned by all reads; never an `NSManagedObject` |
-| `TaskStore.TaskDraft` | struct | `Packages/LillistCore/Sources/LillistCore/Stores/TaskStore.swift:130` | Mutable view handed to the `update` closure |
-| `TaskStore.notificationScheduler` | property | `Packages/LillistCore/Sources/LillistCore/Stores/TaskStore.swift:29` | Property-injected `NotificationReconciling?`; nil disables reconcile calls |
-| `TaskStore.breadcrumbs` | property | `Packages/LillistCore/Sources/LillistCore/Stores/TaskStore.swift:34` | Optional crumb sink; mutations record verb-only entries for crash diagnostics |
-| `TaskStore.diagnosticLog` | property | `Packages/LillistCore/Sources/LillistCore/Stores/TaskStore.swift:40` | Optional structured diagnostic sink |
-| `TaskStore.create(title:notes:parent:placement:)` | func | `Packages/LillistCore/Sources/LillistCore/Stores/TaskStore.swift:143` | Validates title, assigns next position (top/bottom via `NewTaskPlacement`), returns new UUID |
-| `TaskStore.fetch(id:)` | func | `Packages/LillistCore/Sources/LillistCore/Stores/TaskStore.swift:196` | Single record; throws `.notFound` if absent |
-| `TaskStore.update(id:_:)` | func | `Packages/LillistCore/Sources/LillistCore/Stores/TaskStore.swift:205` | Applies a draft mutation, validates, reconciles notifications after save |
-| `TaskStore.hardDelete(id:)` | func | `Packages/LillistCore/Sources/LillistCore/Stores/TaskStore.swift:245` | Permanently removes one task (Core Data cascade) |
-| `TaskStore.children(of:)` | func | `Packages/LillistCore/Sources/LillistCore/Stores/TaskStore.swift:262` | Non-trashed children in position/createdAt order |
-| `TaskStore.children(of:limit:offset:)` | func | `Packages/LillistCore/Sources/LillistCore/Stores/TaskStore.swift:284` | Paged children; `limit <= 0` means no limit |
-| `TaskStore.reparent(id:newParent:)` | func | `Packages/LillistCore/Sources/LillistCore/Stores/TaskStore.swift:314` | Moves a task under a new parent; rejects cycles; assigns new trailing position |
-| `TaskStore.reorder(id:after:before:)` | func | `Packages/LillistCore/Sources/LillistCore/Stores/TaskStore.swift:360` | Fractional-position reorder with degenerate-anchor healing and recompaction |
-| `TaskStore.transition(id:to:)` | func | `Packages/LillistCore/Sources/LillistCore/Stores/TaskStore.swift:533` | Changes status, logs a journal entry, spawns recurrence on close |
-| `TaskStore.archive(ids:)` | func | `Packages/LillistCore/Sources/LillistCore/Stores/TaskStore.swift:632` | Stamps `archivedAt`; returns only the IDs actually flipped |
-| `TaskStore.unarchive(ids:)` | func | `Packages/LillistCore/Sources/LillistCore/Stores/TaskStore.swift:658` | Clears `archivedAt`; idempotent |
-| `TaskStore.softDelete(id:)` | func | `Packages/LillistCore/Sources/LillistCore/Stores/TaskStore.swift:679` | Stamps `deletedAt` on the task and its non-deleted children recursively |
-| `TaskStore.restore(id:)` | func | `Packages/LillistCore/Sources/LillistCore/Stores/TaskStore.swift:698` | Clears soft-delete matching the original `deletedAt` timestamp |
-| `TaskStore.trashed()` | func | `Packages/LillistCore/Sources/LillistCore/Stores/TaskStore.swift:717` | All soft-deleted records, newest-deleted first |
-| `TaskStore.purgeAll()` | func | `Packages/LillistCore/Sources/LillistCore/Stores/TaskStore.swift:734` | Hard-deletes all trashed tasks + descendants via batch; returns count |
-| `TaskStore.assignTag(taskID:tagID:)` | func | `Packages/LillistCore/Sources/LillistCore/Stores/TaskStore.swift:829` | Idempotently adds a `Tag` to a task |
-| `TaskStore.unassignTag(taskID:tagID:)` | func | `Packages/LillistCore/Sources/LillistCore/Stores/TaskStore.swift:846` | Removes a `Tag` from a task |
-| `TaskStore.tagIDs(forTask:)` | func | `Packages/LillistCore/Sources/LillistCore/Stores/TaskStore.swift:861` | Tag UUIDs attached to a task |
-| `TaskStore.normalizeSiblingsIfDegenerate(ofParent:)` | func | `Packages/LillistCore/Sources/LillistCore/Stores/TaskStore.swift:967` | Compacts a sibling set only if positions are tied/inverted; called at load-seams |
-| `TaskStore.isCommittableTitle(_:)` | func | `Packages/LillistCore/Sources/LillistCore/Stores/TaskStore.swift:1004` | `nonisolated static`; sync-safe empty-title check; single source of truth for title validation |
+| `NewTaskPlacement` | enum | `Packages/LillistCore/Sources/LillistCore/Stores/TaskStore.swift:13` | `.top` inserts a new task before the first sibling (user capture); `.bottom` appends after the last sibling (structural creates and import paths). |
+| `ReparentTarget` | enum | `Packages/LillistCore/Sources/LillistCore/Stores/TaskStore.swift:373` | `.infer` derives the new parent from anchors (historic default); `.explicit(UUID?)` takes a caller-supplied authoritative parent, including `nil` for top-level, bypassing inference. |
+| `TaskDraft` | struct | `Packages/LillistCore/Sources/LillistCore/Stores/TaskStore.swift:130` | Mutable view of a task's editable fields passed to `update`'s closure; mutations are applied back to the managed object and saved after the block returns. |
+| `TaskRecord` | struct | `Packages/LillistCore/Sources/LillistCore/Stores/TaskStore.swift:71` | Sendable, Equatable value-type DTO carrying all fields of a LillistTask; callers outside LillistCore never receive an NSManagedObject. |
+| `TaskStore` | class | `Packages/LillistCore/Sources/LillistCore/Stores/TaskStore.swift:18` | Single async gateway for all LillistTask mutations and reads; all public methods serialize via viewContext.perform, rollback on error, and return only TaskRecord DTOs. |
+| `archive` | func | `Packages/LillistCore/Sources/LillistCore/Stores/TaskStore.swift:668` | Stamps `archivedAt = now` only on IDs that lack it; returns the subset of IDs actually flipped, enabling scoped undo in the caller. |
+| `assignTag` | func | `Packages/LillistCore/Sources/LillistCore/Stores/TaskStore.swift:869` | Associates a Tag (by tagID) with a task; idempotent — silently no-ops if the tag is already assigned. |
+| `children` | func | `Packages/LillistCore/Sources/LillistCore/Stores/TaskStore.swift:264` | Returns all non-trashed direct children of parentID sorted by position/createdAt; uses fetchBatchSize 100 to avoid materializing the full sibling set at once. |
+| `children` | func | `Packages/LillistCore/Sources/LillistCore/Stores/TaskStore.swift:286` | Paged variant: returns at most `limit` rows from `offset` in the same position/createdAt order; `limit <= 0` means no limit; offset beyond the end yields an empty array. |
+| `create` | func | `Packages/LillistCore/Sources/LillistCore/Stores/TaskStore.swift:143` | Creates a new task with a validated title and fractional position; `placement` controls head vs. tail insertion; returns the new UUID. |
+| `fetch` | func | `Packages/LillistCore/Sources/LillistCore/Stores/TaskStore.swift:197` | Returns the TaskRecord for `id` or throws `LillistError.notFound` if absent. |
+| `fetchManagedObject` | func | `Packages/LillistCore/Sources/LillistCore/Stores/TaskStore.swift:921` | Fetches the live LillistTask managed object for `id` within `ctx`; package-internal (non-private) for use by sibling stores; throws `notFound` if absent. |
+| `hardDelete` | func | `Packages/LillistCore/Sources/LillistCore/Stores/TaskStore.swift:247` | Permanently removes the task from the store with no Trash step; prefer `softDelete` for all user-initiated deletion. |
+| `nextPosition` | func | `Packages/LillistCore/Sources/LillistCore/Stores/TaskStore.swift:931` | Returns the next available fractional position for a child of `parent` (nil = top-level); must be called inside a `context.perform` block. |
+| `nextPositionDetail` | func | `Packages/LillistCore/Sources/LillistCore/Stores/TaskStore.swift:945` | Returns `(assigned, observedMax)`: the position to assign and the edge sibling position observed, so `create` can include both in its diagnostic payload for reorder-tie RCA. |
+| `normalizeSiblingsIfDegenerate` | func | `Packages/LillistCore/Sources/LillistCore/Stores/TaskStore.swift:1009` | Compacts sibling positions under `parentID` only when any adjacent pair is non-strictly-increasing; idempotent on healthy data; called at load seams before the first reorder. |
+| `purgeAll` | func | `Packages/LillistCore/Sources/LillistCore/Stores/TaskStore.swift:772` | Hard-deletes every task with `deletedAt != nil` (the full Trash); returns the count removed. Distinct from AutoPurgeJob, which enforces a retention window. |
+| `record` | func | `Packages/LillistCore/Sources/LillistCore/Stores/TaskStore.swift:1058` | Projects a LillistTask managed object to a TaskRecord DTO; package-internal (non-private), called by all read paths in the store. |
+| `reorder` | func | `Packages/LillistCore/Sources/LillistCore/Stores/TaskStore.swift:378` | Repositions a task between afterID and beforeID anchors; heals degenerate sibling positions (ties, inversions, underflows) before computing a new position; honors ReparentTarget for drag-to-reparent. |
+| `reparent` | func | `Packages/LillistCore/Sources/LillistCore/Stores/TaskStore.swift:316` | Moves `id` to a new parent (nil = top-level), appending it at the tail position of the new sibling group; rejects cycles via Validators.wouldCreateCycle. |
+| `restore` | func | `Packages/LillistCore/Sources/LillistCore/Stores/TaskStore.swift:736` | Clears `deletedAt` from a trashed task and any children whose `deletedAt` matches the parent's original timestamp, avoiding unintended restoration of separately-deleted children. |
+| `softDelete` | func | `Packages/LillistCore/Sources/LillistCore/Stores/TaskStore.swift:717` | Sets `deletedAt = now` on `id` and all descendants recursively (only those not already trashed); reconciles notifications after save. |
+| `tagIDs` | func | `Packages/LillistCore/Sources/LillistCore/Stores/TaskStore.swift:903` | Returns an unordered array of UUIDs for all tags currently assigned to `taskID`. |
+| `transition` | func | `Packages/LillistCore/Sources/LillistCore/Stores/TaskStore.swift:568` | Transitions `id` to `newStatus`, writes a journal entry, sets/clears closedAt and archivedAt as appropriate, and spawns the next recurrence instance on close. |
+| `trashed` | func | `Packages/LillistCore/Sources/LillistCore/Stores/TaskStore.swift:755` | Returns all tasks with `deletedAt != nil` sorted by deletedAt descending (most recently trashed first). |
+| `unarchive` | func | `Packages/LillistCore/Sources/LillistCore/Stores/TaskStore.swift:695` | Clears `archivedAt` on every task in `ids`; idempotent — rows already at nil are left untouched. |
+| `unassignTag` | func | `Packages/LillistCore/Sources/LillistCore/Stores/TaskStore.swift:887` | Removes the Tag-to-task association for `tagID` and `taskID`; no-op if the tag was never assigned. |
+| `update` | func | `Packages/LillistCore/Sources/LillistCore/Stores/TaskStore.swift:206` | Applies a mutation closure to a TaskDraft snapshot of `id`, validates the result, saves, and reconciles notifications for anchor-field (start/deadline) changes. |
+| `validateTitle` | func | `Packages/LillistCore/Sources/LillistCore/Stores/TaskStore.swift:1050` | Throws `LillistError.validationFailed` if `title` is empty after whitespace/newline trimming; delegates the rule to `isCommittableTitle`. |
 
 ## Load-bearing internals
 
 | Symbol | Kind | Location | Why it matters |
 | --- | --- | --- | --- |
-| `fetchManagedObject(id:in:)` | func | `Packages/LillistCore/Sources/LillistCore/Stores/TaskStore.swift:879` | Every mutation bottlenecks here; throws `.notFound` before any write |
-| `record(from:)` | func | `Packages/LillistCore/Sources/LillistCore/Stores/TaskStore.swift:1016` | The single `LillistTask`→`TaskRecord` projection enforcing the DTO boundary |
-| `childrenFetchRequest(parentID:in:)` | func | `Packages/LillistCore/Sources/LillistCore/Stores/TaskStore.swift:298` | Shared paged fetch builder; sets `fetchBatchSize` so reloads fault lazily |
-| `nextPositionDetail(forParent:placement:)` | func | `Packages/LillistCore/Sources/LillistCore/Stores/TaskStore.swift:903` | Computes next position: `edge + 1.0` for `.bottom`, `edge - 1.0` for `.top`; basis of `create`/`reparent` ordering |
-| `recompactSiblings(ofParent:)` | func | `Packages/LillistCore/Sources/LillistCore/Stores/TaskStore.swift:939` | Re-spaces siblings to integer gaps in canonical `SiblingOrder` during reorder heals |
-| `batchPurge(predicateFormat:arguments:)` | func | `Packages/LillistCore/Sources/LillistCore/Stores/TaskStore.swift:766` | Background-context batch delete behind `purgeAll`; rebuilds predicate to stay `Sendable` |
-| `applySoftDelete(to:at:)` | func | `Packages/LillistCore/Sources/LillistCore/Stores/TaskStore.swift:807` | Recursive soft-delete down the child tree |
-| `ReorderCapture` | class | `Packages/LillistCore/Sources/LillistCore/Stores/TaskStore.swift:511` | Carries anchor/computed positions out of `perform` for diagnostic emission on both success and throw paths |
+| `ReorderCapture` | class | `Packages/LillistCore/Sources/LillistCore/Stores/TaskStore.swift:546` | Mutable carrier that bridges pre-await values (anchor positions, didRecompact, computedPosition) from inside context.perform to both the success and error emitReorderDiag call sites; without it the throwing path of reorder could not emit a full diagnostic payload (TaskStore.swift:546-551). |
+| `fetchTag` | func | `Packages/LillistCore/Sources/LillistCore/Stores/TaskStore.swift:911` | The only Tag-by-UUID lookup path in the store; all tag-mutation operations (assignTag, unassignTag) funnel through it to resolve the managed object before modifying the relationship (TaskStore.swift:911-917). |
+| `recompactSiblings` | func | `Packages/LillistCore/Sources/LillistCore/Stores/TaskStore.swift:981` | Called by reorder on both the anchor-tie/inversion heal path and the underflow path to re-space siblings before position computation; without it reorder cannot recover from degenerate sibling sets and would always throw on tied positions (TaskStore.swift:981-1001). |
 
 ## Relationships
 
-- `Packages-LillistCore-Sources-LillistCore-Stores-chunk-2.TaskStore -> Packages-LillistCore-Sources-LillistCore-Persistence.PersistenceController (reads)`
-- `Packages-LillistCore-Sources-LillistCore-Stores-chunk-2.TaskStore -> Packages-LillistCore-Sources-LillistCore-ManagedObjects.LillistTask (owns)`
-- `Packages-LillistCore-Sources-LillistCore-Stores-chunk-2.TaskStore -> Packages-LillistCore-Sources-LillistCore-ManagedObjects.JournalEntry (writes)`
-- `Packages-LillistCore-Sources-LillistCore-Stores-chunk-2.TaskStore -> Packages-LillistCore-Sources-LillistCore-ManagedObjects.Tag (reads)`
-- `Packages-LillistCore-Sources-LillistCore-Stores-chunk-2.TaskStore -> Packages-LillistCore-Sources-LillistCore-Ordering.FractionalPosition (calls)`
-- `Packages-LillistCore-Sources-LillistCore-Stores-chunk-2.TaskStore -> Packages-LillistCore-Sources-LillistCore-Ordering.PositionCompactor (calls)`
-- `Packages-LillistCore-Sources-LillistCore-Stores-chunk-2.TaskStore -> Packages-LillistCore-Sources-LillistCore-Ordering.SiblingOrder (calls)`
-- `Packages-LillistCore-Sources-LillistCore-Stores-chunk-2.TaskStore -> Packages-LillistCore-Sources-LillistCore-Persistence.CascadeReaper (calls)`
-- `Packages-LillistCore-Sources-LillistCore-Stores-chunk-2.TaskStore -> Packages-LillistCore-Sources-LillistCore-Recurrence.RecurrenceSpawner (calls)`
-- `Packages-LillistCore-Sources-LillistCore-Stores-chunk-2.TaskStore -> Packages-LillistCore-Sources-LillistCore-misc.Validators (calls)`
-- `Packages-LillistCore-Sources-LillistCore-Stores-chunk-2.TaskStore -> Packages-LillistCore-Sources-LillistCore-misc.LillistError (emits)`
-- `Packages-LillistCore-Sources-LillistCore-Stores-chunk-2.TaskStore -> Packages-LillistCore-Sources-LillistCore-Model.Status (reads)`
-- `Packages-LillistCore-Sources-LillistCore-Stores-chunk-2.TaskStore -> Packages-LillistCore-Sources-LillistCore-Notifications.NotificationReconciling (calls)`
-- `Packages-LillistCore-Sources-LillistCore-Stores-chunk-2.TaskStore -> Packages-LillistCore-Sources-LillistCore-CrashReporting.BreadcrumbBuffer (writes)`
-- `Packages-LillistCore-Sources-LillistCore-Stores-chunk-2.TaskStore -> Packages-LillistCore-Sources-LillistCore-Diagnostics.DiagnosticSink (emits)`
+- `Packages-LillistCore-Sources-LillistCore-Stores-chunk-2.TaskStore -> Packages-LillistCore-Sources-LillistCore-Diagnostics.DiagnosticEvent (emits)`
+- `Packages-LillistCore-Sources-LillistCore-Stores-chunk-2.applySoftDelete -> Packages-LillistCore-Sources-LillistCore-ManagedObjects.stampCurrentSchemaVersion (calls)`
+- `Packages-LillistCore-Sources-LillistCore-Stores-chunk-2.archive -> Packages-LillistCore-Sources-LillistCore-ManagedObjects.stampCurrentSchemaVersion (calls)`
+- `Packages-LillistCore-Sources-LillistCore-Stores-chunk-2.assignTag -> Packages-LillistCore-Sources-LillistCore-ManagedObjects.stampCurrentSchemaVersion (calls)`
+- `Packages-LillistCore-Sources-LillistCore-Stores-chunk-2.batchPurge -> Packages-LillistCore-Sources-LillistCore-Persistence.batchDelete (calls)`
+- `Packages-LillistCore-Sources-LillistCore-Stores-chunk-2.batchPurge -> Packages-LillistCore-Sources-LillistCore-Persistence.makeBackgroundContext (calls)`
+- `Packages-LillistCore-Sources-LillistCore-Stores-chunk-2.batchPurge -> Packages-LillistCore-Sources-LillistCore-Persistence.objectIDs (calls)`
+- `Packages-LillistCore-Sources-LillistCore-Stores-chunk-2.clearSoftDelete -> Packages-LillistCore-Sources-LillistCore-ManagedObjects.stampCurrentSchemaVersion (calls)`
+- `Packages-LillistCore-Sources-LillistCore-Stores-chunk-2.create -> Packages-LillistCore-Sources-LillistCore-ManagedObjects.stampCurrentSchemaVersion (calls)`
+- `Packages-LillistCore-Sources-LillistCore-Stores-chunk-2.create -> Packages-LillistCore-Sources-LillistCore-Ordering.position (calls)`
+- `Packages-LillistCore-Sources-LillistCore-Stores-chunk-2.create -> Packages-LillistUI-Sources-LillistUI-Recurrence.string (calls)`
+- `Packages-LillistCore-Sources-LillistCore-Stores-chunk-2.emitReorderDiag -> Packages-LillistUI-Sources-LillistUI-Recurrence.string (calls)`
+- `Packages-LillistCore-Sources-LillistCore-Stores-chunk-2.emitTransitionDiag -> Packages-LillistUI-Sources-LillistUI-Recurrence.string (calls)`
+- `Packages-LillistCore-Sources-LillistCore-Stores-chunk-2.nextPositionDetail -> Packages-LillistCore-Sources-LillistCore-Ordering.position (calls)`
+- `Packages-LillistCore-Sources-LillistCore-Stores-chunk-2.normalizeSiblingsIfDegenerate -> Packages-LillistCore-Sources-LillistCore-Diagnostics.zip (calls)`
+- `Packages-LillistCore-Sources-LillistCore-Stores-chunk-2.normalizeSiblingsIfDegenerate -> Packages-LillistCore-Sources-LillistCore-Ordering.precedes (calls)`
+- `Packages-LillistCore-Sources-LillistCore-Stores-chunk-2.normalizeSiblingsIfDegenerate -> Packages-LillistCore-Sources-LillistCore-Ordering.recompact (calls)`
+- `Packages-LillistCore-Sources-LillistCore-Stores-chunk-2.recompactSiblings -> Packages-LillistCore-Sources-LillistCore-Diagnostics.zip (calls)`
+- `Packages-LillistCore-Sources-LillistCore-Stores-chunk-2.recompactSiblings -> Packages-LillistCore-Sources-LillistCore-Ordering.position (calls)`
+- `Packages-LillistCore-Sources-LillistCore-Stores-chunk-2.recompactSiblings -> Packages-LillistCore-Sources-LillistCore-Ordering.precedes (calls)`
+- `Packages-LillistCore-Sources-LillistCore-Stores-chunk-2.recompactSiblings -> Packages-LillistCore-Sources-LillistCore-Ordering.recompact (calls)`
+- `Packages-LillistCore-Sources-LillistCore-Stores-chunk-2.reorder -> Packages-LillistCore-Sources-LillistCore-ManagedObjects.stampCurrentSchemaVersion (calls)`
+- `Packages-LillistCore-Sources-LillistCore-Stores-chunk-2.reorder -> Packages-LillistCore-Sources-LillistCore-Ordering.anchorsAreOutOfOrder (calls)`
+- `Packages-LillistCore-Sources-LillistCore-Stores-chunk-2.reorder -> Packages-LillistCore-Sources-LillistCore-Ordering.needsCompaction (calls)`
+- `Packages-LillistCore-Sources-LillistCore-Stores-chunk-2.reorder -> Packages-LillistCore-Sources-LillistCore-Ordering.position (calls)`
+- `Packages-LillistCore-Sources-LillistCore-Stores-chunk-2.reparent -> Packages-LillistCore-Sources-LillistCore-ManagedObjects.stampCurrentSchemaVersion (calls)`
+- `Packages-LillistCore-Sources-LillistCore-Stores-chunk-2.reparent -> Packages-LillistUI-Sources-LillistUI-Recurrence.string (calls)`
+- `Packages-LillistCore-Sources-LillistCore-Stores-chunk-2.transition -> Packages-LillistCore-Sources-LillistCore-ManagedObjects.stampCurrentSchemaVersion (calls)`
+- `Packages-LillistCore-Sources-LillistCore-Stores-chunk-2.transition -> Packages-LillistCore-Sources-LillistCore-Recurrence.spawnIfNeeded (calls)`
+- `Packages-LillistCore-Sources-LillistCore-Stores-chunk-2.unarchive -> Packages-LillistCore-Sources-LillistCore-ManagedObjects.stampCurrentSchemaVersion (calls)`
+- `Packages-LillistCore-Sources-LillistCore-Stores-chunk-2.unassignTag -> Packages-LillistCore-Sources-LillistCore-ManagedObjects.stampCurrentSchemaVersion (calls)`
+- `Packages-LillistCore-Sources-LillistCore-Stores-chunk-2.update -> Packages-LillistCore-Sources-LillistCore-ManagedObjects.stampCurrentSchemaVersion (calls)`
 
 ## Type notes
 
-`TaskStore` is a `final class` marked `@unchecked Sendable`; all Core Data work is funneled through `context.perform` on the main-queue `viewContext` (`Packages/LillistCore/Sources/LillistCore/Stores/TaskStore.swift:20`). Side-channel calls (`recordCrumb`, `emitDiag`, `scheduler.reconcile`) run outside the perform block, after the `await` completes. `ReorderCapture` and `TransitionCapture` are `@unchecked Sendable` carriers written on the context queue and read only after the await — a happens-after barrier guarantees no concurrent access (`Packages/LillistCore/Sources/LillistCore/Stores/TaskStore.swift:510`).
-
-The DTO invariant — no `NSManagedObject` escapes — is enforced solely by `record(from:)`. The three injectable sinks (`notificationScheduler`, `breadcrumbs`, `diagnosticLog`) are property-injected (nil by default) to preserve the large existing `TaskStore(persistence:)` test surface without modification.
-
-`restore` only un-deletes children whose `deletedAt` matches the parent's original stamp, so an independently-trashed child stays trashed (`Packages/LillistCore/Sources/LillistCore/Stores/TaskStore.swift:817`). `NewTaskPlacement.top` inserts with `edge - 1.0` so a just-captured task appears at the head of the list without disturbing existing positions.
+TaskStore is `@unchecked Sendable` (TaskStore.swift:18); concurrency safety is manually enforced by serializing all mutations and reads inside `context.perform` with `context.rollback()` in each catch block. `notificationScheduler`, `breadcrumbs`, and `diagnosticLog` are property-injected rather than init-injected so the large body of existing `TaskStore(persistence:)` test call sites continue to compile unchanged (TaskStore.swift:24-41). ReorderCapture and TransitionCapture are `@unchecked Sendable` private classes used as mutable carriers across the `perform`/`await` boundary — safe because writes happen on the context queue and reads occur only after `await` completes (TaskStore.swift:546-551, 635-639). TaskDraft exposes no public `init` (TaskStore.swift:130-138): callers cannot construct one outside the store; only `update`'s closure receives a value. `fetchManagedObject` and `record` are non-`private` (package-internal) so sibling stores can share the lookup and projection logic without exposing it publicly (TaskStore.swift:921, 1058). `isCommittableTitle` is `nonisolated static` so SwiftUI button-disabled predicates can call it synchronously without an async round-trip (TaskStore.swift:1046).
 
 ## External deps
 
-- CoreData — `NSManagedObjectContext`, `NSFetchRequest`, `NSPredicate`, `NSBatchDeleteRequest`
-- Foundation — `UUID`, `Date`, `JSONSerialization`
-- os — `OSSignposter` intervals around the `children` fetch
+- CoreData — imported
+- Foundation — imported
+- os — imported
 
 ## Gotchas
 
-- Reorder tie-healing swaps anchor positions to honour drag intent when canonical UUID order conflicts with the caller's after/before; see `Packages/LillistCore/Sources/LillistCore/Stores/TaskStore.swift:449`.
-- After recompaction, `reorder` uses `afterTask.position + 0.5` (not the midpoint) to avoid collision with integer sibling positions; see `Packages/LillistCore/Sources/LillistCore/Stores/TaskStore.swift:462`.
-- `batchPurge` rebuilds `NSPredicate` inside the `@Sendable` background-context closure because `NSPredicate` is not `Sendable`; see `Packages/LillistCore/Sources/LillistCore/Stores/TaskStore.swift:773`.
-- `recompactSiblings` sorts via `SiblingOrder.precedes` (Swift uuid-string lexical order) not a Core Data `NSSortDescriptor` on the UUID attribute — Core Data stores UUIDs as raw bytes whose byte order diverges from `uuidString` lexicographic order; see `Packages/LillistCore/Sources/LillistCore/Stores/TaskStore.swift:948`.
+Reorder heal-then-recheck: after recompactSiblings runs, the in-memory anchor objects already reflect new positions — do NOT call context.refresh, which would overwrite unsaved changes with stale store values (TaskStore.swift:418-421). Tie-swap: when recompaction assigns positions in uuid-string order that conflicts with drag intent, the two anchor positions are explicitly swapped to honour the caller (TaskStore.swift:475-479); post-heal position uses afterTask.position + 0.5 (not a midpoint) to avoid colliding with an integer sibling that might sit at the midpoint (TaskStore.swift:484-487). applySoftDelete recurses into children but only stamps ones where deletedAt == nil (TaskStore.swift:849-853); clearSoftDelete only undeletes children whose deletedAt matches the parent's exact original timestamp, preventing accidental restoration of separately-deleted children (TaskStore.swift:860-864). batchPurge filters to roots only before passing to CascadeReaper to avoid double-deleting a parent and child (TaskStore.swift:818-821). listFetchBatchSize = 100 limits per-page faulting so large sibling sets are not fully materialized on viewContext at once (TaskStore.swift:47).

@@ -1,87 +1,45 @@
 ---
 module: "Apps/Lillist-macOS (misc)"
-summary: "macOS app bundle config — Info.plist, sandbox/iCloud entitlements, privacy manifest, app-only strings"
-read_when: "macOS bundle entitlements"
+summary: "macOS app bundle entitlements, Info.plist, privacy manifest, and macOS-only localization strings"
+read_when: "Touching macOS entitlements or capabilities"
 sources:
   - path: Apps/Lillist-macOS/Info.plist
-    blob: 77bee3c5e56ace15bb627ba59aa18edf5f4544b3
+    blob: 7023b4c9013beb7b5bdb92d6e3d3cb31bb921139
   - path: Apps/Lillist-macOS/Lillist.entitlements
-    blob: bbcb3bfbc5f58c2efb616805c4867d1b24a7d644
+    blob: ed68765a30aa6981a6ca60ab9959954bdaf7ea20
   - path: Apps/Lillist-macOS/Resources/Localizable.xcstrings
-    blob: 7487e9c9eb037dcf3d359808de8a5b58e1b4c96d
+    blob: f81ece84552c0808de5aef06b599b20cc5939e0f
   - path: Apps/Lillist-macOS/Resources/PrivacyInfo.xcprivacy
     blob: 4e7e051bbe5e2753a0a80b85ae78289d250bdce7
-references_modules: [Apps-Lillist-macOS-Sources-misc, Apps-Lillist-macOS-Sources-Preferences]
-generator: cartographer/1
-baseline: 1a1562b636e43ebbdc35c7939ab6989b387f50e9
-verified: true
+generator: cartographer/4
+baseline: 515f24730d21cb81ca1c9737ffeb981e9c414d3c
 ---
 
 # Module: Apps/Lillist-macOS (misc)
 
 ## Purpose
 
-Bundle-level configuration for the macOS app target — not Swift code. These
-property lists declare the app's identity, capability grants, App Store privacy
-manifest, and the small set of user-visible strings that exist only on macOS.
-Most build-time values are xcodegen placeholders (`$(…)`); the hand-set entries
-here are the load-bearing ones: the Services menu hook, the sandbox/iCloud/App
-Group grants, and the Sparkle auto-update feed. Misconfigure any and the app
-either fails to launch, loses CloudKit sync, or breaks OTA updates.
+This module holds the configuration artifacts that define the macOS app bundle's identity, capabilities, and privacy posture: entitlements, Info.plist, privacy manifest, and macOS-specific localization strings. The entitlements gate CloudKit sync to the shared `iCloud.app.lillist` container, App Group membership (`group.app.lillist`) used by the CLI and extensions, sandboxing, Reminders access, and push notification capability. Without these files the macOS app cannot be signed, cannot participate in CloudKit sync, and cannot receive text capture via the macOS Services menu entry declared in Info.plist.
 
 ## Public API
 
-(none — configuration files expose no callable symbols)
+| Symbol | Kind | Location | Contract |
+| --- | --- | --- | --- |
 
 ## Load-bearing internals
 
 | Symbol | Kind | Location | Why it matters |
 | --- | --- | --- | --- |
-| `NSServices` | plist key | `Apps/Lillist-macOS/Info.plist:29` | Registers a system Services menu item routed to the `addToLillistAsTask` message |
-| `SUFeedURL` | plist key | `Apps/Lillist-macOS/Info.plist:53` | Sparkle appcast URL served over Tailscale for OTA macOS updates |
-| `SUPublicEDKey` | plist key | `Apps/Lillist-macOS/Info.plist:55` | EdDSA public key Sparkle verifies update signatures against |
-| `com.apple.security.application-groups` | entitlement | `Apps/Lillist-macOS/Lillist.entitlements:11` | App Group `group.io.mikey.lillist` shared with iOS app and extensions |
-| `com.apple.developer.icloud-container-identifiers` | entitlement | `Apps/Lillist-macOS/Lillist.entitlements:15` | CloudKit container `iCloud.io.mikey.lillist` backing sync |
-| `com.apple.security.app-sandbox` | entitlement | `Apps/Lillist-macOS/Lillist.entitlements:5` | App Sandbox enabled; pairs with user-selected file and network-client grants |
 
 ## Relationships
 
-- `Apps-Lillist-macOS-misc.NSServices -> Apps-Lillist-macOS-Sources-misc.addToLillistAsTask (calls)`
-- `Apps-Lillist-macOS-Sources-Preferences.DiagnosticsPane -> Apps-Lillist-macOS-misc.Localizable.xcstrings (reads)`
-
 ## Type notes
 
-`Info.plist`'s `NSMessage` value (`addToLillistAsTask`, `Apps/Lillist-macOS/Info.plist:38`)
-is the Objective-C selector AppKit invokes when the Services menu item fires;
-it must match the `@objc func` of the same name verbatim or the menu item
-silently no-ops. `CFBundleShortVersionString` is hand-pinned to `1.0.0`
-(`Apps/Lillist-macOS/Info.plist:19`); `CFBundleVersion` here is a static placeholder
-(`Apps/Lillist-macOS/Info.plist:22`) — the deploy-time build-number bump
-targets the iOS target's xcconfig, not this plist.
-
-The entitlements form one capability set: sandbox on, user-selected files
-read-write, network client (for Sparkle + CloudKit), the shared App Group, and
-the CloudKit container with the `CloudKit` service. The App Group string must
-stay identical across all targets that share it.
-
-`Localizable.xcstrings` carries five macOS-only strings scoped to the Diagnostics
-feature (`Apps/Lillist-macOS/Resources/Localizable.xcstrings:4–9`); cross-platform
-strings live in `LillistUI`'s own xcstrings file and must be kept aligned per
-project convention.
-
-`PrivacyInfo.xcprivacy` declares no tracking and one collected data type
-(`NSPrivacyCollectedDataTypeOtherUserContent`, linked, for app functionality).
-Three accessed API categories are declared: `UserDefaults` (CA92.1),
-`FileTimestamp` (C617.1), and `DiskSpace` (85F4.1)
-(`Apps/Lillist-macOS/Resources/PrivacyInfo.xcprivacy:24–50`).
+All files are bundle resources with no Swift types. Entitlements are plist key-value pairs evaluated at signing time, not runtime (Apps/Lillist-macOS/Lillist.entitlements). The `com.apple.security.application-groups` value `group.app.lillist` must match the group used by the CLI's GatedPersistenceResolver and the Share/Shortcuts extensions — divergence would silently sever the shared container (Apps/Lillist-macOS/Lillist.entitlements:19-21). The Info.plist declares an NSServices entry (`addToLillistAsTask`) enabling macOS Services-menu text capture — it requires an AppDelegate handler with that selector name (Apps/Lillist-macOS/Info.plist:36-55). Sparkle auto-update keys (`SUEnableAutomaticChecks`, `SUFeedURL`, `SUPublicEDKey`) are present, making this macOS bundle the only Lillist target that integrates Sparkle for OTA updates (Apps/Lillist-macOS/Info.plist:56-61). The PrivacyInfo.xcprivacy declares UserDefaults (reason CA92.1), FileTimestamp (C617.1), and DiskSpace (85F4.1) API access — required by App Store review even though macOS distribution is via Developer-ID (Apps/Lillist-macOS/Resources/PrivacyInfo.xcprivacy:24-49).
 
 ## External deps
 
-- Sparkle — `SUFeedURL`/`SUPublicEDKey`/`SUEnableAutomaticChecks` drive its auto-update flow
-- CloudKit — `com.apple.developer.icloud-services` grants the sync backend
-- App Sandbox — entitlements gate filesystem and network access at runtime
 
 ## Gotchas
 
-- `ITSAppUsesNonExemptEncryption` is `false` (`Apps/Lillist-macOS/Info.plist:50`) — export-compliance declaration; flipping it triggers App Store encryption review.
-- `PrivacyInfo.xcprivacy` declares UserDefaults/FileTimestamp/DiskSpace API reasons (`Apps/Lillist-macOS/Resources/PrivacyInfo.xcprivacy:26`); adding such an API without a matching reason fails App Store submission.
+1. macOS push entitlement key is `com.apple.developer.aps-environment` (prefixed), NOT the iOS bare `aps-environment` — using the iOS key is silently stripped by the signing pipeline (Apps/Lillist-macOS/Lillist.entitlements:5). This was a live bug before the fix. 2. The `com.apple.developer.icloud-container-environment = Development` in source is cosmetic for distribution exports: `xcodebuild -exportArchive` re-stamps both the icloud-container-environment and push entitlement from the export profile, so the source value governs only local Xcode-run builds (Apps/Lillist-macOS/Lillist.entitlements:7-8). 3. `CFBundleVersion` is hardcoded to a date string ("20260517") in Info.plist rather than drawn from an xcconfig build-number variable (Apps/Lillist-macOS/Info.plist:22) — macOS build-number bumping is manual, unlike iOS where bump-build-number.sh writes to BuildNumber.xcconfig.

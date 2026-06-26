@@ -1,115 +1,65 @@
 ---
 module: "root (misc)"
-summary: "Repo-root control plane — CI matrix, workspace wiring, gitignore, semver state, CLAUDE.md conventions, and HANDOFF.md"
-read_when: "CI, workspace or repo config"
+summary: "Workspace root: CI matrix, semver hooks, deployit export options, and xcworkspace binding all four targets."
+read_when: "CI, workspace, or semver bump config"
 sources:
   - path: .claude/settings.local.json
     blob: f4307bbdd98b10593980431477406613e049a2f2
+  - path: .deployit/ExportOptions.ios.plist
+    blob: fff37ca09136c1b41eab101087997b02b4ecb3ef
+  - path: .deployit/ExportOptions.macos.plist
+    blob: 86b4aa121213a3e16fecd5dc235afaed57caeec2
+  - path: .gitattributes
+    blob: 03a22ed38fd5133362b52dcdec46c1772a2477c9
   - path: .github/workflows/ci.yml
-    blob: 07774b20f444741c99f3e94545ccebf4a3b5d4c5
-  - path: .gitignore
-    blob: 4584f1163ec50f6b64de5046a96275dbd331061f
+    blob: e97cfe992413054546e553108951cc4c0b94c67e
   - path: .semver/config.yaml
     blob: 1a63526d97642edb6dea7e2e800b860b1919231e
+  - path: .semver/hooks/pre-bump/sync-marketing-version.sh
+    blob: eb38f15b18b0dc779e1276fd479e877017e40169
   - path: CHANGELOG.md
-    blob: 4f9900f271c6a5908f7fcae12a878d9ae08bfe0f
-  - path: CLAUDE.md
-    blob: ef834043d4a074b13d2a563edae7f9d50759800b
+    blob: b109c7d2897e2d86775431df727067fbd73698a9
   - path: HANDOFF.md
-    blob: 1375345682e65162c93f4fbddfcec3a596d87e89
+    blob: c507d9e2183b882c613cf819ea95bd274f96df5d
+  - path: LICENSE
+    blob: 38fa01bc5e183db7bc03fdf42c693199b2d37d4a
   - path: Lillist.xcworkspace/contents.xcworkspacedata
     blob: 2e734ab16d5b95d519766950140eed52205e09c8
+  - path: README.md
+    blob: ab008a361236b5a15520599a92ce4f8a544a7548
+  - path: THIRD-PARTY-LICENSES.md
+    blob: 4248c37799371a584b25acb4ffd8131cc694f694
   - path: VERSION
-    blob: 60f63432822572778c3b473659da636103e7cb98
-references_modules: [Apps-Config, Tools, Packages-LillistCore-misc, Packages-LillistUI-misc, Apps-Lillist-iOS-misc, Apps-Lillist-macOS-misc]
-generator: cartographer/1
-baseline: 1a1562b636e43ebbdc35c7939ab6989b387f50e9
-verified: true
+    blob: 4b8f7b07ef17846ab57ed9d876c96ba0e17044d4
+generator: cartographer/4
+baseline: 515f24730d21cb81ca1c9737ffeb981e9c414d3c
 ---
 
 # Module: root (misc)
 
 ## Purpose
 
-The repo-root control plane: the files that wire the four sub-projects into one
-build, define what CI verifies, and encode the project's conventions. None ship
-in an app binary, but they govern how every other module is built, tested, and
-versioned. `CLAUDE.md` is the canonical narrative spec (topology, build/test
-recipes, house rules); `ci.yml` is its executable counterpart; the workspace
-file is the seam that joins the two packages and two apps into one buildable unit.
-`HANDOFF.md` carries point-in-time contributor context for active branch work.
+root-misc is the repo's integrating scaffold: the xcworkspace that binds both SPM packages and both Xcode apps into a single build graph, the CI workflow that enforces quality gates post-push, the deployit export options that pin both platforms to the Production CloudKit environment at distribution time, and the semver hook that keeps MARKETING_VERSION in lockstep with the VERSION file. Without it, there is no authoritative build-and-test matrix, no consistent CloudKit environment selection at export, and no version-number coherence across the workspace. It also carries the .gitattributes marking docs/atlas/ as linguist-generated and the .semver config governing changelog format and git tagging.
 
 ## Public API
 
-(no exported code symbols — this module is configuration and documentation)
+| Symbol | Kind | Location | Contract |
+| --- | --- | --- | --- |
 
 ## Load-bearing internals
 
 | Symbol | Kind | Location | Why it matters |
 | --- | --- | --- | --- |
-| `spm` | ci-job | `.github/workflows/ci.yml:18` | Runs `swift test` for both packages; skips host-pinned snapshot/tour suites |
-| `project-drift` | ci-job | `.github/workflows/ci.yml:65` | Fails if `xcodegen generate` output differs from the committed pbxproj |
-| `ios` | ci-job | `.github/workflows/ci.yml:94` | Builds all iOS scheme targets unsigned, runs only the standalone `Lillist-iOSTests` bundle |
-| `macos` | ci-job | `.github/workflows/ci.yml:141` | Runs the standalone macOS test bundle unsigned |
-| `release-archive-smoke` | ci-job | `.github/workflows/ci.yml:178` | Only place a Release-configuration compile is exercised |
-| `localization-lint` | ci-job | `.github/workflows/ci.yml:221` | Invokes `Tools/CI/check-lillistui-localization.sh` |
-| `Workspace` | xcworkspace | `Lillist.xcworkspace/contents.xcworkspacedata:2` | Joins both packages + both app projects into one buildable workspace |
 
 ## Relationships
 
-- `root-misc.project-drift -> Apps-Lillist-iOS-misc (calls)`
-- `root-misc.project-drift -> Apps-Lillist-macOS-misc (calls)`
-- `root-misc.spm -> Packages-LillistCore-misc (calls)`
-- `root-misc.spm -> Packages-LillistUI-misc (calls)`
-- `root-misc.localization-lint -> Tools (calls)`
-- `root-misc.ios -> Apps-Config (reads)`
-- `root-misc.Workspace -> Packages-LillistCore-misc (owns)`
-- `root-misc.Workspace -> Packages-LillistUI-misc (owns)`
-- `root-misc.Workspace -> Apps-Lillist-iOS-misc (owns)`
-- `root-misc.Workspace -> Apps-Lillist-macOS-misc (owns)`
-
 ## Type notes
 
-CI is a post-push verifier, not a merge gate (solo, direct-to-`main`), declared
-by the `on: push: branches: [main]` trigger at `.github/workflows/ci.yml:7`.
-`notify` (`.github/workflows/ci.yml:241`) fans in from all other jobs via
-`needs:` and fails loudly if any gate failed. Two test surfaces are deliberately
-excluded everywhere: host-pinned snapshot/tour suites (`--skip Snapshot --skip
-Tour` at `.github/workflows/ci.yml:63`) and the iCloud-dependent app-hosted /
-UI tests (`-only-testing:Lillist-iOSTests` at `.github/workflows/ci.yml:137`).
-The signing indirection is preserved in CI by copying
-`Signing.local.xcconfig.example` to the gitignored `Signing.local.xcconfig`
-(`.github/workflows/ci.yml:115`), matching the gitignore rule at
-`.gitignore:137`.
-
-`VERSION` (`VERSION:1`) and `CHANGELOG.md` (`CHANGELOG.md:6`) are managed by the
-`/semver` plugin per `.semver/config.yaml:1` (`tracking`/`auto_bump` on,
-`version_prefix: "v"`, `target_branch: "main"`); they must agree on the current
-version string.
-
-`HANDOFF.md` describes point-in-time branch state for active feature work; it is
-not a permanent spec. Wave completion status and any remaining manual-verification
-items for a branch live there, not in CLAUDE.md. See `HANDOFF.md:139` for current
-wave summary.
-
-`.claude/settings.local.json` carries per-repo Claude Code permission grants
-(e.g. `Bash(curl:*)`, `Bash(python3:*)`); it is local to the project and gitignored
-by default patterns but committed here for developer consistency.
+CI is a post-push verifier (not a merge gate); newer pushes to main cancel in-flight runs via the `ci-${{ github.ref }}` concurrency group (.github/workflows/ci.yml:14-15). LillistCore tests run `--parallel --num-workers 2` with a one-shot retry to absorb Core Data SIGSEGV and wall-clock flakes; snapshot/tour tests are unconditionally excluded because baselines are host-pinned (.github/workflows/ci.yml:51-52,63). App-hosted migration tests and UI tests are excluded: they require a live NSPersistentCloudKitContainer and an iCloud-signed Mac (.github/workflows/ci.yml:119-126). The xcworkspace references both SPM packages as `group:` file refs and both Xcode projects; all four entries are required for xcodebuild workspace resolution (Lillist.xcworkspace/contents.xcworkspacedata:3-6). iOS export is `ad-hoc` (Apple Distribution-signed) targeting Production CloudKit; macOS export is `developer-id` + notarization also targeting Production; `iCloudContainerEnvironment` is set explicitly in both plists so xcodebuild -exportArchive re-stamps the binary (.deployit/ExportOptions.ios.plist:30,33; .deployit/ExportOptions.macos.plist:31,33). The semver pre-bump hook fires before the chore(release) commit; it updates MARKETING_VERSION in both project.yml specs, regenerates pbxprojs via xcodegen, and git-stages them so they land in the bump commit (.semver/hooks/pre-bump/sync-marketing-version.sh:79-88).
 
 ## External deps
 
-- GitHub Actions — runs the CI matrix on `macos-15` runners, Xcode 26.3
-- xcodegen — regenerates the two app pbxproj files; CI gates on drift
-- swift / xcodebuild — package tests and app/scheme builds
-- xcbeautify, jq — CI output formatting and the localization lint's JSON parsing
 
 ## Gotchas
 
-- `LillistCore` tests run with bounded parallelism + a one-shot retry because
-  concurrent in-memory containers intermittently SIGSEGV (`.github/workflows/ci.yml:49`).
-- `--num-workers` requires `--parallel` on the Swift 6.2.4 toolchain; the bare
-  form errors (`.github/workflows/ci.yml:48`).
-- The xcworkspace `contents.xcworkspacedata` is force-tracked against the
-  Xcode-Patch ignore block via `!*.xcworkspace/contents.xcworkspacedata`
-  (`.gitignore:130`).
-- `.atlas/` runtime state is gitignored at `.gitignore:144`; never commit it.
+CI includes a `release-archive-smoke` job because deployit archives Debug; Release-only optimizer/dead-code issues are only caught here (.github/workflows/ci.yml:205-206). A `secrets-guard` job scans committed pbxproj/xcconfig for literal Apple Developer Team IDs; two leaked this way before the $(LOCAL_DEVELOPMENT_TEAM) indirection was established (.github/workflows/ci.yml:248-250). The semver pre-bump hook strips the leading 'v' before writing MARKETING_VERSION because CFBundleShortVersionString must be numeric (.semver/hooks/pre-bump/sync-marketing-version.sh:47). The hook derives project root from its own path (not CWD) and exits 1 if xcodegen is absent, since stale pbxprojs would cause a version mismatch (.semver/hooks/pre-bump/sync-marketing-version.sh:37,73-76). `--num-workers N` requires `--parallel` on this toolchain; the bare form errors, which is why CI always passes both flags (.github/workflows/ci.yml:51).

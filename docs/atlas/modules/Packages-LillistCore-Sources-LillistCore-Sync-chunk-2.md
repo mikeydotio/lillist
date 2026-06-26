@@ -1,82 +1,65 @@
 ---
 module: "Packages/LillistCore/Sources/LillistCore/Sync (chunk 2)"
-summary: "Observable CloudKit sync-state value types and the actor that aggregates events into them"
-read_when: "Touching sync-status display"
+summary: "CloudKit sync observability: SyncStatusMonitor actor, quiesce heuristic for migration gating, iCloudAccountState."
+read_when: "Touching sync-status display or quiesce gate"
 sources:
+  - path: Packages/LillistCore/Sources/LillistCore/Sync/SyncQuiesceMonitor.swift
+    blob: ad9399267df89701c33893a29e31d3be9950bcce
   - path: Packages/LillistCore/Sources/LillistCore/Sync/SyncStatus.swift
     blob: 223dfb9083d24d793ee63be7e908eb838f1951c2
   - path: Packages/LillistCore/Sources/LillistCore/Sync/SyncStatusMonitor.swift
     blob: f9bcc5757ae01fcbe270c0fb554473dab5d63c75
   - path: Packages/LillistCore/Sources/LillistCore/Sync/iCloudAccountState.swift
     blob: bb8cbfb1b0244af352900f7d1d3a575ae5b3f842
-references_modules: [Packages-LillistCore-Sources-LillistCore-Sync-chunk-1, Packages-LillistCore-Sources-LillistCore-misc, Apps-Lillist-iOS-Sources-App, Apps-Lillist-iOS-Sources-Settings, Apps-Lillist-macOS-Sources-misc, Apps-Lillist-macOS-Sources-Preferences]
-generator: cartographer/1
-baseline: 1a1562b636e43ebbdc35c7939ab6989b387f50e9
-verified: true
+generator: cartographer/4
+baseline: 515f24730d21cb81ca1c9737ffeb981e9c414d3c
 ---
 
 # Module: Packages/LillistCore/Sources/LillistCore/Sync (chunk 2)
 
 ## Purpose
 
-The read-side of the CloudKit sync stack: the Sendable value types that describe
-"how is sync doing" and "is iCloud usable," plus the actor that folds a raw
-event stream into the former. The design idea is that UI and CLI never touch
-CloudKit directly — they observe these snapshots. If this vanished, status
-indicators and account-state banners would lose their single source of truth.
+This module is the sync-status observability layer for LillistCore. It converts raw `CloudKitSyncEvent` streams (from `CloudKitEventBridge`) into three typed, consumer-ready surfaces: a live `SyncStatus` aggregate via `SyncStatusMonitor`, a quiesce heuristic for migration gating via `SyncQuiesceMonitor`, and a CKAccountStatus mapping via `iCloudAccountState`. Without this layer the UI cannot surface sync progress or errors, and migration coordinators have no signal for when the post-mode-change CloudKit flood has settled enough to flip the mode flag.
 
 ## Public API
 
 | Symbol | Kind | Location | Contract |
 | --- | --- | --- | --- |
-| `iCloudAccountState` | enum | `Packages/LillistCore/Sources/LillistCore/Sync/iCloudAccountState.swift:8` | Four-case account verdict; `.accountChanged` signals the store must be quarantined |
-| `iCloudAccountState.from(ckAccountStatus:)` | static func | `Packages/LillistCore/Sources/LillistCore/Sync/iCloudAccountState.swift:24` | Maps a `CKAccountStatus` to a verdict; the sole translation point for CloudKit account status |
-| `SyncStatus` | struct | `Packages/LillistCore/Sources/LillistCore/Sync/SyncStatus.swift:6` | Sendable snapshot of last-sync time, in-progress flag, and error; `.idle` is the zero value |
-| `SyncStatusMonitor` | actor | `Packages/LillistCore/Sources/LillistCore/Sync/SyncStatusMonitor.swift:5` | Owns the current `SyncStatus`; vends a multicast `statusStream` |
-| `SyncStatusMonitor.currentStatus` | var | `Packages/LillistCore/Sources/LillistCore/Sync/SyncStatusMonitor.swift:6` | Most-recent `SyncStatus`; `private(set)` — readable within actor isolation |
-| `SyncStatusMonitor.start()` | func | `Packages/LillistCore/Sources/LillistCore/Sync/SyncStatusMonitor.swift:25` | Idempotently begins consuming the bridge's event stream |
-| `SyncStatusMonitor.stop()` | func | `Packages/LillistCore/Sources/LillistCore/Sync/SyncStatusMonitor.swift:18` | Cancels the consumer task; lets tests halt deterministically |
-| `SyncStatusMonitor.statusStream` | computed var | `Packages/LillistCore/Sources/LillistCore/Sync/SyncStatusMonitor.swift:35` | `AsyncStream<SyncStatus>`; immediately yields the current value on subscribe |
+| `QuiesceResult` | enum | `Packages/LillistCore/Sources/LillistCore/Sync/SyncQuiesceMonitor.swift:4` | Two-case exhaustive result: `.quiesced` means quiet window observed; `.timedOut` means caller should proceed and surface "still syncing" copy. |
+| `SyncQuiesceMonitor` | actor | `Packages/LillistCore/Sources/LillistCore/Sync/SyncQuiesceMonitor.swift:28` | Actor wrapping a quiesce heuristic; callers get a `QuiesceResult` from `waitForQuiesce` and may rely on it completing within `hardTimeout` seconds. |
+| `SyncStatus` | struct | `Packages/LillistCore/Sources/LillistCore/Sync/SyncStatus.swift:6` | Sendable, Equatable value snapshot of CloudKit sync state; `idle` is the zero state; `inProgress`, `error`, and `lastSyncedAt` are independently nullable. |
+| `SyncStatusMonitor` | actor | `Packages/LillistCore/Sources/LillistCore/Sync/SyncStatusMonitor.swift:5` | Actor; callers subscribe via `statusStream` (immediate current-status yield on subscribe), drive lifecycle with `start()`/`stop()`, and read `currentStatus` for a synchronous snapshot. |
+| `from` | func | `Packages/LillistCore/Sources/LillistCore/Sync/iCloudAccountState.swift:24` | Total function: maps any `CKAccountStatus` including `@unknown default` to one of four cases; never throws, never returns nil, always degrades to `.noAccount` on uncertainty. |
+| `iCloudAccountState` | enum | `Packages/LillistCore/Sources/LillistCore/Sync/iCloudAccountState.swift:8` | Four-case Sendable/Equatable/Hashable enum; `.accountChanged` signals store quarantine (not a UI-only warning); `.restricted` covers both parental controls and temporary unavailability. |
+| `start` | func | `Packages/LillistCore/Sources/LillistCore/Sync/SyncStatusMonitor.swift:25` | Idempotent: safe to call multiple times; a second call while the consumer is running does nothing. Must be awaited before the monitor will emit status updates. |
+| `stop` | func | `Packages/LillistCore/Sources/LillistCore/Sync/SyncStatusMonitor.swift:18` | Cancels the consumer task synchronously; existing `statusStream` subscribers receive no further yields. Safe to call at any point including before `start()`. |
+| `waitForQuiesce` | func | `Packages/LillistCore/Sources/LillistCore/Sync/SyncQuiesceMonitor.swift:36` | Suspends until no import/export events arrive for `minQuietWindow` seconds (returns `.quiesced`) or `hardTimeout` elapses (returns `.timedOut`); always returns, never throws. |
 
 ## Load-bearing internals
 
 | Symbol | Kind | Location | Why it matters |
 | --- | --- | --- | --- |
-| `apply(_:)` | func | `Packages/LillistCore/Sources/LillistCore/Sync/SyncStatusMonitor.swift:58` | The state machine — folds each `CloudKitSyncEvent` into the next `SyncStatus` and fans it out to all subscribers |
-| `registerStatus(id:continuation:)` | func | `Packages/LillistCore/Sources/LillistCore/Sync/SyncStatusMonitor.swift:49` | Synchronous same-actor subscription that replays `currentStatus` so late subscribers aren't blank |
+| `apply` | func | `Packages/LillistCore/Sources/LillistCore/Sync/SyncStatusMonitor.swift:58` | Central event reducer for `SyncStatusMonitor`: every CloudKit event flows through here; it is the exclusive writer of `currentStatus` and the sole fanout point to all registered `statusContinuations`, making it the invariant guard for status consistency across all active subscribers (Packages/LillistCore/Sources/LillistCore/Sync/SyncStatusMonitor.swift:58-76). |
+| `recordEvent` | func | `Packages/LillistCore/Sources/LillistCore/Sync/SyncQuiesceMonitor.swift:67` | Sole write path to `lastEventAt` inside `SyncQuiesceMonitor`; `waitForQuiesce`'s polling loop reads this timestamp to determine quiescence, making `recordEvent` the only mechanism by which real CloudKit activity resets the quiet-window clock (Packages/LillistCore/Sources/LillistCore/Sync/SyncQuiesceMonitor.swift:67-69). |
 
 ## Relationships
 
-- `Packages-LillistCore-Sources-LillistCore-Sync-chunk-2.SyncStatusMonitor -> Packages-LillistCore-Sources-LillistCore-Sync-chunk-2.SyncStatus (owns)`
-- `Packages-LillistCore-Sources-LillistCore-Sync-chunk-2.SyncStatusMonitor -> Packages-LillistCore-Sources-LillistCore-Sync-chunk-1.CloudKitEventBridge (reads)`
-- `Packages-LillistCore-Sources-LillistCore-Sync-chunk-2.SyncStatusMonitor -> Packages-LillistCore-Sources-LillistCore-Sync-chunk-1.CloudKitSyncEvent (reads)`
-- `Packages-LillistCore-Sources-LillistCore-Sync-chunk-2.SyncStatus -> Packages-LillistCore-Sources-LillistCore-misc.LillistError (owns)`
-- `Packages-LillistCore-Sources-LillistCore-Sync-chunk-1.AccountStateMonitor -> Packages-LillistCore-Sources-LillistCore-Sync-chunk-2.iCloudAccountState (calls)`
-- `Apps-Lillist-iOS-Sources-App.AppEnvironment -> Packages-LillistCore-Sources-LillistCore-Sync-chunk-2.iCloudAccountState (owns)`
-- `Apps-Lillist-iOS-Sources-Settings.ICloudSyncSection -> Packages-LillistCore-Sources-LillistCore-Sync-chunk-2.iCloudAccountState (reads)`
-- `Apps-Lillist-macOS-Sources-misc.AppEnvironment -> Packages-LillistCore-Sources-LillistCore-Sync-chunk-2.iCloudAccountState (owns)`
-- `Apps-Lillist-macOS-Sources-Preferences.ICloudSyncPane -> Packages-LillistCore-Sources-LillistCore-Sync-chunk-2.iCloudAccountState (reads)`
-
 ## Type notes
 
-`SyncStatusMonitor` is an `actor`; `currentStatus` is `private(set)` so reads are
-actor-isolated (`Packages/LillistCore/Sources/LillistCore/Sync/SyncStatusMonitor.swift:6`).
-`statusStream` registers its continuation synchronously on the same actor and the
-`onTermination` closure hops back via `Task` to unregister
-(`Packages/LillistCore/Sources/LillistCore/Sync/SyncStatusMonitor.swift:42`). The
-consumer `Task` captures `[weak self]` so `stop()` can deterministically tear it
-down (`Packages/LillistCore/Sources/LillistCore/Sync/SyncStatusMonitor.swift:28`).
-`SyncStatus` and `iCloudAccountState` are immutable `Sendable` value types crossing
-the actor boundary freely. The `iCloudAccountState` casing intentionally matches
-Apple's `iCloud` brand spelling
-(`Packages/LillistCore/Sources/LillistCore/Sync/iCloudAccountState.swift:7`).
+- `SyncStatusMonitor` (actor): all state mutations are actor-isolated. `statusStream` is a computed property returning a new `AsyncStream<SyncStatus>` per call; each new subscriber receives the current status immediately via `registerStatus` → `continuation.yield(currentStatus)` (Packages/LillistCore/Sources/LillistCore/Sync/SyncStatusMonitor.swift:49-52). The consumer `Task` uses `[weak self]` to avoid anchoring the actor's lifetime.
+- `start()` is idempotent via `guard consumeTask == nil` (Packages/LillistCore/Sources/LillistCore/Sync/SyncStatusMonitor.swift:26), so multiple `bootstrap()` call sites across app layers cannot spawn competing consumers.
+- `SyncQuiesceMonitor` (actor): `lastEventAt` is exclusively mutated through the private `recordEvent()` method, which is awaited from the watcher `Task` inside `waitForQuiesce` (Packages/LillistCore/Sources/LillistCore/Sync/SyncQuiesceMonitor.swift:49). The watcher `Task` uses `[weak self]` to avoid extending the actor's lifetime (Packages/LillistCore/Sources/LillistCore/Sync/SyncQuiesceMonitor.swift:45).
+- `SyncStatus` (struct): value type, no identity; `idle` static constant is the zero/unknown state (Packages/LillistCore/Sources/LillistCore/Sync/SyncStatus.swift:18). `error` and `lastSyncedAt` are independently nullable and carry no ordering invariant between them.
+- `iCloudAccountState` (enum): `@unknown default` in `from(ckAccountStatus:)` maps to `.noAccount` so future CKAccountStatus cases degrade safely (Packages/LillistCore/Sources/LillistCore/Sync/iCloudAccountState.swift:36-38).
 
 ## External deps
 
-- CloudKit — `CKAccountStatus` is the input to `iCloudAccountState.from(ckAccountStatus:)`
+- CloudKit — imported
+- Foundation — imported
 
 ## Gotchas
 
-- `from(ckAccountStatus:)` maps `.couldNotDetermine` to `.noAccount` to avoid writing CloudKit data without account evidence (`Packages/LillistCore/Sources/LillistCore/Sync/iCloudAccountState.swift:32`)
-- `.temporarilyUnavailable` maps to `.restricted` so the UI shows a banner without quarantining the store (`Packages/LillistCore/Sources/LillistCore/Sync/iCloudAccountState.swift:34`)
-- `start()` is idempotent — a second call leaves the existing consumer running (`Packages/LillistCore/Sources/LillistCore/Sync/SyncStatusMonitor.swift:26`)
+- `SyncQuiesceMonitor.waitForQuiesce` uses `Date().addingTimeInterval` for its deadline — the one deliberate exception to the Calendar-only rule, because quiesce windows are defined in absolute seconds (Packages/LillistCore/Sources/LillistCore/Sync/SyncQuiesceMonitor.swift:55).
+- `NSPersistentCloudKitContainer.eventChangedNotification` never fires a terminal "all done" event (doc comment: "skeptic A4"); the quiesce heuristic is not a guarantee (Packages/LillistCore/Sources/LillistCore/Sync/SyncQuiesceMonitor.swift:18-25).
+- `CKAccountStatus.couldNotDetermine` maps to `.noAccount` (not a retry state) as a safety-first policy; callers that need retry logic must handle this case explicitly (Packages/LillistCore/Sources/LillistCore/Sync/iCloudAccountState.swift:27-29).
+- `iCloudAccountState` uses lowercase-i casing to match Apple brand spelling, intentionally violating Swift type-naming conventions (Packages/LillistCore/Sources/LillistCore/Sync/iCloudAccountState.swift:6-7).

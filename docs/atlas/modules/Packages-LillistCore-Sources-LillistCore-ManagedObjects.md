@@ -1,6 +1,6 @@
 ---
 module: Packages/LillistCore/Sources/LillistCore/ManagedObjects
-summary: "Hand-written @NSManaged subclasses — the private Core Data row types that stores read/write and DTOs are projected from"
+summary: "Hand-written @NSManaged entity subclasses; the explicit Core Data schema for all LillistCore persistent types."
 read_when: "Touching Core Data entity shape"
 sources:
   - path: "Packages/LillistCore/Sources/LillistCore/ManagedObjects/AppPreferences+CoreData.swift"
@@ -10,7 +10,7 @@ sources:
   - path: "Packages/LillistCore/Sources/LillistCore/ManagedObjects/JournalEntry+CoreData.swift"
     blob: 2f5063ad7f2bcad77405aeb1331a14e7715b07d7
   - path: "Packages/LillistCore/Sources/LillistCore/ManagedObjects/LillistTask+CoreData.swift"
-    blob: cefeac967fc046c6d5551fdb48501d970c2afb30
+    blob: e3db9666871b6e58f3bccbadaf86c0c071badabd
   - path: "Packages/LillistCore/Sources/LillistCore/ManagedObjects/NotificationSpec+CoreData.swift"
     blob: 0d3763da50f713f1f1928b03adec02d8d92b5eb5
   - path: "Packages/LillistCore/Sources/LillistCore/ManagedObjects/Series+CoreData.swift"
@@ -19,61 +19,65 @@ sources:
     blob: a742d4be2470d4706931d2cb182777f1b3f7bae2
   - path: "Packages/LillistCore/Sources/LillistCore/ManagedObjects/Tag+CoreData.swift"
     blob: 2bdf18d272d768aaeed043a1f3714df7d148a25b
-references_modules: [Packages-LillistCore-Sources-LillistCore-Model, Packages-LillistCore-Sources-LillistCore-Recurrence]
-generator: cartographer/1
-baseline: 1a1562b636e43ebbdc35c7939ab6989b387f50e9
-verified: true
+references_modules: [Packages-LillistCore-Sources-LillistCore-LinkPreview, Packages-LillistCore-Sources-LillistCore-Model]
+generator: cartographer/4
+baseline: 515f24730d21cb81ca1c9737ffeb981e9c414d3c
 ---
 
 # Module: Packages/LillistCore/Sources/LillistCore/ManagedObjects
 
 ## Purpose
 
-Hand-written `@objc(...) public final class ...: NSManagedObject` subclasses, one per Core Data entity, deliberately replacing Core Data's auto-generated codegen (a project house rule). Each file declares the entity's `@NSManaged` stored columns plus an extension exposing typed Swift accessors over raw-stored scalars (`statusRaw -> Status`, `kindRaw -> AttachmentKind`, JSON-stored `ruleJSON -> RecurrenceRule`). These classes are the runtime backing for the `.xcdatamodel` entity descriptions; without them every fetch would return an untyped `NSManagedObject` and the stores could not map rows to DTOs. They never escape `LillistCore` — stores convert them to value-type records before any caller sees them.
+This module is the explicit Core Data schema layer for all of LillistCore: eight hand-written @NSManaged subclasses declare every persistent entity (LillistTask, Tag, Series, Attachment, JournalEntry, NotificationSpec, SmartFilter, AppPreferences) with their properties and relationships. The design keeps Core Data codegen disabled and every field visible in source, so schema changes are always intentional and reviewable. If this module vanished, none of the LillistCore stores could access the object graph — it is the sole definition of what lives in the persistent container.
 
 ## Public API
 
 | Symbol | Kind | Location | Contract |
 | --- | --- | --- | --- |
-| `AppPreferences` | class | `Packages/LillistCore/Sources/LillistCore/ManagedObjects/AppPreferences+CoreData.swift:5` | Singleton-row settings entity; `defaultTaskListSort` typed over `defaultTaskListSortRaw` |
-| `Attachment` | class | `Packages/LillistCore/Sources/LillistCore/ManagedObjects/Attachment+CoreData.swift:5` | File/link blob; `kind` typed over `kindRaw`; belongs to a task or journal entry |
-| `JournalEntry` | class | `Packages/LillistCore/Sources/LillistCore/ManagedObjects/JournalEntry+CoreData.swift:5` | Note/log row on a task; `kind` typed over `kindRaw`; owns attachments |
-| `LillistTask` | class | `Packages/LillistCore/Sources/LillistCore/ManagedObjects/LillistTask+CoreData.swift:5` | Central task entity; `status` typed over `statusRaw`; hub of all relationships |
-| `NotificationSpec` | class | `Packages/LillistCore/Sources/LillistCore/ManagedObjects/NotificationSpec+CoreData.swift:5` | Per-task reminder rule; `kind` typed over `kindRaw` |
-| `Series` | class | `Packages/LillistCore/Sources/LillistCore/ManagedObjects/Series+CoreData.swift:5` | Recurrence series; `rule` decodes `ruleJSON` to `RecurrenceRule` |
-| `SmartFilter` | class | `Packages/LillistCore/Sources/LillistCore/ManagedObjects/SmartFilter+CoreData.swift:5` | Saved predicate view; `sortField` typed over `sortFieldRaw` |
-| `Tag` | class | `Packages/LillistCore/Sources/LillistCore/ManagedObjects/Tag+CoreData.swift:5` | Hierarchical label; `root`/`descendants` walk the parent/children tree |
+| `AppPreferences` | class | `Packages/LillistCore/Sources/LillistCore/ManagedObjects/AppPreferences+CoreData.swift:5` | Single-instance entity for app-wide settings: notification times, sort defaults, trash retention, Quick Capture config, crash prompts, onboarding flag. |
+| `AppPreferences` | extension | `Packages/LillistCore/Sources/LillistCore/ManagedObjects/AppPreferences+CoreData.swift:22` | Typed accessor `defaultTaskListSort: SortField` over `defaultTaskListSortRaw`; defaults to `.manualPosition` when the stored string is nil or unrecognised. |
+| `Attachment` | class | `Packages/LillistCore/Sources/LillistCore/ManagedObjects/Attachment+CoreData.swift:5` | Entity linking binary data or link-preview JSON to either a task or a journal entry; `uti`, `byteSize`, and `kindRaw` describe the payload. |
+| `Attachment` | extension | `Packages/LillistCore/Sources/LillistCore/ManagedObjects/Attachment+CoreData.swift:19` | Typed accessor `kind: AttachmentKind` over `kindRaw` (Int16); defaults to `.file` when the raw value is unrecognised. |
+| `JournalEntry` | class | `Packages/LillistCore/Sources/LillistCore/ManagedObjects/JournalEntry+CoreData.swift:5` | Entity for a task's journal timeline entry: text body, binary payload, timestamps; related to a parent LillistTask and an optional set of Attachments. |
+| `JournalEntry` | extension | `Packages/LillistCore/Sources/LillistCore/ManagedObjects/JournalEntry+CoreData.swift:17` | KVO-compliant to-many accessors `addToAttachments(_:)` / `removeFromAttachments(_:)` for the JournalEntry–Attachment relationship. |
+| `JournalEntry` | extension | `Packages/LillistCore/Sources/LillistCore/ManagedObjects/JournalEntry+CoreData.swift:25` | Typed accessor `kind: JournalEntryKind` over `kindRaw` (Int16); defaults to `.note` when the raw value is unrecognised. |
+| `LillistTask` | class | `Packages/LillistCore/Sources/LillistCore/ManagedObjects/LillistTask+CoreData.swift:5` | Central task entity: title, notes, status, date fields, position, hierarchy (parent/children), plus relationships to Tag, JournalEntry, Attachment, NotificationSpec, and Series; `schemaVersion` carries CloudKit schema compatibility. |
+| `LillistTask` | extension | `Packages/LillistCore/Sources/LillistCore/ManagedObjects/LillistTask+CoreData.swift:40` | Hand-written KVO-compliant to-many accessors for the children, tags, journalEntries, attachments, and notificationSpecs relationships on LillistTask. |
+| `LillistTask` | extension | `Packages/LillistCore/Sources/LillistCore/ManagedObjects/LillistTask+CoreData.swift:90` | Typed accessor `status: Status` over `statusRaw` (defaults `.todo`) and internal `stampCurrentSchemaVersion()` for per-write CloudKit schema versioning. |
+| `NotificationSpec` | class | `Packages/LillistCore/Sources/LillistCore/ManagedObjects/NotificationSpec+CoreData.swift:5` | Entity describing a single notification trigger for a task: kind, offset or absolute fire date, last-fired timestamp, snooze tracking, and a back-reference to its LillistTask. |
+| `NotificationSpec` | extension | `Packages/LillistCore/Sources/LillistCore/ManagedObjects/NotificationSpec+CoreData.swift:17` | Typed accessor `kind: NotificationKind` over `kindRaw` (Int16); defaults to `.defaultStart` when the raw value is unrecognised. |
+| `Series` | class | `Packages/LillistCore/Sources/LillistCore/ManagedObjects/Series+CoreData.swift:5` | Entity for a recurrence series: stores serialised RecurrenceRule as JSON, a `nextOccurrenceAfter` bookmark for the expander, and relationships to a seed task and its spawned instances. |
+| `Series` | extension | `Packages/LillistCore/Sources/LillistCore/ManagedObjects/Series+CoreData.swift:14` | KVO-compliant to-many accessors `addToInstances(_:)` / `removeFromInstances(_:)` for the Series–LillistTask (instances) relationship. |
+| `Series` | extension | `Packages/LillistCore/Sources/LillistCore/ManagedObjects/Series+CoreData.swift:28` | Typed accessor `rule: RecurrenceRule?` JSON-encodes/decodes `ruleJSON`; returns nil on missing or malformed JSON — callers must treat nil as a data-corruption signal. |
+| `SmartFilter` | class | `Packages/LillistCore/Sources/LillistCore/ManagedObjects/SmartFilter+CoreData.swift:5` | Entity for a user-defined smart filter: name, predicate group JSON, tint color, sort field, pinned flag, position, and created/modified timestamps. |
+| `SmartFilter` | extension | `Packages/LillistCore/Sources/LillistCore/ManagedObjects/SmartFilter+CoreData.swift:18` | Typed accessor `sortField: SortField` over `sortFieldRaw` (String?); defaults to `.deadline` when the stored string is nil or unrecognised. |
+| `Tag` | class | `Packages/LillistCore/Sources/LillistCore/ManagedObjects/Tag+CoreData.swift:5` | Hierarchical tag entity: name, tint color, position; self-referential parent/children for nesting, and a to-many relationship to LillistTask. |
+| `Tag` | extension | `Packages/LillistCore/Sources/LillistCore/ManagedObjects/Tag+CoreData.swift:16` | KVO-compliant to-many accessors for the Tag children (Tag) and tasks (LillistTask) relationships. |
+| `Tag` | extension | `Packages/LillistCore/Sources/LillistCore/ManagedObjects/Tag+CoreData.swift:30` | Computed traversal helpers: `root` walks the parent chain to the hierarchy root; `descendants` returns a depth-first flattened list of all descendant tags. |
+| `stampCurrentSchemaVersion` | func | `Packages/LillistCore/Sources/LillistCore/ManagedObjects/LillistTask+CoreData.swift:104` | Sets `schemaVersion` to `CloudKitSchema.currentVersion`; must be called explicitly at every local write site — never from Core Data lifecycle hooks — to avoid re-dirtying CloudKit-mirrored records. |
 
 ## Load-bearing internals
 
 | Symbol | Kind | Location | Why it matters |
 | --- | --- | --- | --- |
-| `LillistTask.status` | computed var | `Packages/LillistCore/Sources/LillistCore/ManagedObjects/LillistTask+CoreData.swift:84` | The canonical raw-to-`Status` bridge every task query funnels through |
-| `Series.rule` | computed var | `Packages/LillistCore/Sources/LillistCore/ManagedObjects/Series+CoreData.swift:31` | JSON round-trip; returns `nil` on missing/malformed data (corruption signal) |
-| `Tag.descendants` | computed var | `Packages/LillistCore/Sources/LillistCore/ManagedObjects/Tag+CoreData.swift:41` | Depth-first subtree walk powering tag-hierarchy filtering |
 
 ## Relationships
 
-- `Packages-LillistCore-Sources-LillistCore-ManagedObjects.LillistTask -> Packages-LillistCore-Sources-LillistCore-Model.Status (reads)`
-- `Packages-LillistCore-Sources-LillistCore-ManagedObjects.SmartFilter -> Packages-LillistCore-Sources-LillistCore-Model.SortField (reads)`
-- `Packages-LillistCore-Sources-LillistCore-ManagedObjects.AppPreferences -> Packages-LillistCore-Sources-LillistCore-Model.SortField (reads)`
-- `Packages-LillistCore-Sources-LillistCore-ManagedObjects.Attachment -> Packages-LillistCore-Sources-LillistCore-Model.AttachmentKind (reads)`
-- `Packages-LillistCore-Sources-LillistCore-ManagedObjects.JournalEntry -> Packages-LillistCore-Sources-LillistCore-Model.JournalEntryKind (reads)`
-- `Packages-LillistCore-Sources-LillistCore-ManagedObjects.NotificationSpec -> Packages-LillistCore-Sources-LillistCore-Model.NotificationKind (reads)`
-- `Packages-LillistCore-Sources-LillistCore-ManagedObjects.Series -> Packages-LillistCore-Sources-LillistCore-Recurrence.RecurrenceRule (reads)`
+- `Packages-LillistCore-Sources-LillistCore-ManagedObjects.Attachment -> Packages-LillistCore-Sources-LillistCore-Model.AttachmentKind (calls)`
+- `Packages-LillistCore-Sources-LillistCore-ManagedObjects.JournalEntry -> Packages-LillistCore-Sources-LillistCore-Model.JournalEntryKind (calls)`
+- `Packages-LillistCore-Sources-LillistCore-ManagedObjects.LillistTask -> Packages-LillistCore-Sources-LillistCore-Model.Status (calls)`
+- `Packages-LillistCore-Sources-LillistCore-ManagedObjects.NotificationSpec -> Packages-LillistCore-Sources-LillistCore-Model.NotificationKind (calls)`
+- `Packages-LillistCore-Sources-LillistCore-ManagedObjects.Series -> Packages-LillistCore-Sources-LillistCore-LinkPreview.String (calls)`
 
 ## Type notes
 
-All entities are `@objc(...) public final class ... : NSManagedObject`; the `@objc` name matches the `representedClassName` in the `.xcdatamodeld` contents, binding each subclass to its entity. Stored scalars use raw forms (`*Raw: Int16`, `*JSON: String?`); the extension accessors are the only sanctioned way to read typed values, and they always supply a fallback so a missing/unknown raw never crashes (`LillistTask.status` defaults to `.todo`, `Packages/LillistCore/Sources/LillistCore/ManagedObjects/LillistTask+CoreData.swift:85`). `Series.rule` is the exception that returns `nil` rather than a default, so a `nil` is a data-corruption signal, not an empty state (`Packages/LillistCore/Sources/LillistCore/ManagedObjects/Series+CoreData.swift:29`).
-
-To-many relationships are exposed as `NSSet?` plus generated `addTo*`/`removeFrom*` mutators (e.g. `Packages/LillistCore/Sources/LillistCore/ManagedObjects/LillistTask+CoreData.swift:33`). `LillistTask` is the relationship hub: `parent`/`children` (self-referential subtask tree), `tags`, `journalEntries`, `attachments`, `notificationSpecs`, and the dual `series`/`seriesAsSeed` links to `Series`. `Attachment` may belong to either a `LillistTask` or a `JournalEntry` but not both — enforced by store logic, not by schema constraint (`Packages/LillistCore/Sources/LillistCore/ManagedObjects/Attachment+CoreData.swift:15`). Instances are managed-object-context bound and not `Sendable` — they must never cross actor boundaries.
+All eight entities are `public final class X: NSManagedObject` with `@objc(Name)` for KVC runtime lookup; Core Data codegen is disabled project-wide. Enum-typed fields are stored as raw scalars (`statusRaw: Int16`, `kindRaw: Int16`, `sortFieldRaw: String?`) with typed computed accessors in companion extensions — e.g., `LillistTask.status: Status` at Packages/LillistCore/Sources/LillistCore/ManagedObjects/LillistTask+CoreData.swift:92. `LillistTask.schemaVersion` (Packages/LillistCore/Sources/LillistCore/ManagedObjects/LillistTask+CoreData.swift:28) is an additive Int16 field stamped on every local write; records written before the field existed default to 0 via lightweight migration. `Series.rule` (Packages/LillistCore/Sources/LillistCore/ManagedObjects/Series+CoreData.swift:31) JSON-encodes/decodes a `RecurrenceRule` inline; its internal JSONDecoder/Encoder makes it the only managed object with non-trivial computed logic. `Tag` is self-referential — `parent`/`children` at Packages/LillistCore/Sources/LillistCore/ManagedObjects/Tag+CoreData.swift:11-12 form a hierarchy; `root` and `descendants` in the second extension provide traversal. None of these objects may escape LillistCore; stores expose only value-type DTOs.
 
 ## External deps
 
-- CoreData — `NSManagedObject` base class, `@NSManaged` property/relationship accessors
-- Foundation — `UUID`, `Date`, `Data`, `JSONEncoder`/`JSONDecoder` for `Series.rule`
+- CoreData — imported
+- Foundation — imported
 
 ## Gotchas
 
-- `Series.rule` returns `nil` for missing or malformed JSON — callers must treat nil as a data-corruption signal, not empty state; see comment at `Packages/LillistCore/Sources/LillistCore/ManagedObjects/Series+CoreData.swift:29`.
-- `LillistTask.children` and `Tag.children` are `NSSet?` — callers must cast to `Set<LillistTask>` or `Set<Tag>` before iterating; `Tag.descendants` demonstrates the safe cast at `Packages/LillistCore/Sources/LillistCore/ManagedObjects/Tag+CoreData.swift:42`.
+stampCurrentSchemaVersion() must never be called from awakeFromInsert/willSave — the inline comment at Packages/LillistCore/Sources/LillistCore/ManagedObjects/LillistTask+CoreData.swift:98-103 explains that a lifecycle hook would re-dirty CloudKit-imported records during mirroring and echo a redundant write back; it must be called only at explicit local-write sites. Series.rule silently returns nil when ruleJSON is missing or malformed (Packages/LillistCore/Sources/LillistCore/ManagedObjects/Series+CoreData.swift:29-30); callers must treat nil as a data-corruption signal, not merely a missing value. Attachment carries two nullable parent relationships (task and journalEntry at Packages/LillistCore/Sources/LillistCore/ManagedObjects/Attachment+CoreData.swift:15-16); the model allows both nil or both non-nil — the constraint that exactly one is set is enforced by store logic, not the entity.

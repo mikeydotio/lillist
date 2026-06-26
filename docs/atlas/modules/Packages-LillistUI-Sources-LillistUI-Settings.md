@@ -1,64 +1,71 @@
 ---
 module: Packages/LillistUI/Sources/LillistUI/Settings
-summary: "Shared Settings UI helpers — iCloud sync section, sort-field labels, crash report preview, date picker utility"
-read_when: "Touching Settings/Preferences UI shared"
+summary: "Shared Settings primitives: iCloud sync section, crash-report preview, sort labels, time-picker."
+read_when: "Touching shared Settings/Preferences UI"
 sources:
   - path: Packages/LillistUI/Sources/LillistUI/Settings/CrashReportSample.swift
-    blob: 0249e4862ab49f63844aea35f80adcec4dafe388
+    blob: 566946982c5485974455f1215cb951669c357dd0
   - path: Packages/LillistUI/Sources/LillistUI/Settings/HourMinuteDate.swift
     blob: c86f0a9040a23521ff241e157fd83b0e0fcc5e1e
   - path: Packages/LillistUI/Sources/LillistUI/Settings/ICloudSyncSettingsSection.swift
-    blob: 42bb0aef222c2b60d6656a085b397148f85ebd71
+    blob: 2b3b0a8c45734528426074bc4ece98d9950f81d9
+  - path: Packages/LillistUI/Sources/LillistUI/Settings/SettingsDetailScreen.swift
+    blob: 82fc43eabbdb7fb0d28f5f9fc7758f652777bf2c
+  - path: Packages/LillistUI/Sources/LillistUI/Settings/SettingsRowIcon.swift
+    blob: fcc7f3bbc4dde451e0d4c93fb1a3fed7355bc030
   - path: "Packages/LillistUI/Sources/LillistUI/Settings/SortField+DisplayName.swift"
     blob: 1ebd38dd6f73717121b152688be85cd73fdbcf1d
-references_modules: [Packages-LillistCore-Sources-LillistCore-Model, Packages-LillistCore-Sources-LillistCore-Sync-chunk-1, Packages-LillistUI-Sources-LillistUI-misc]
-generator: cartographer/1
-baseline: 1a1562b636e43ebbdc35c7939ab6989b387f50e9
-verified: true
+references_modules: [Packages-LillistCore-Sources-LillistCore-LinkPreview, Packages-LillistUI-Sources-LillistUI-iOS-misc]
+generator: cartographer/4
+baseline: 515f24730d21cb81ca1c9737ffeb981e9c414d3c
 ---
 
 # Module: Packages/LillistUI/Sources/LillistUI/Settings
 
 ## Purpose
 
-De-duplication seam for Settings/Preferences UI that the iOS and macOS app targets both render. Each symbol here was once duplicated verbatim across both platform folders (sort-field labels, time-picker date builder, crash-report preview text, the iCloud sync section) and was lifted into LillistUI so the two surfaces cannot silently drift. `ICloudSyncSettingsSection` is the pure-presentation half of a container/presenter split — app targets own `AppEnvironment`-coupled state and inject it via `ViewState` + `Actions`. If this module vanished, every settings surface would revert to private, per-platform forks.
+Shared Settings/Preferences primitives that were previously duplicated verbatim in both app targets and lifted into LillistUI (Plan 14) to keep the two targets in parity. The module contains stateless building blocks — the iCloud sync section, crash-report preview builder, notification time-picker helper, sort-field display names, and iOS row-icon tile — each designed as pure-presentation or pure-utility with no direct `AppEnvironment` access. Without it, platform-specific copies of these pieces would drift independently and break visual and behavioral parity between iOS and macOS Settings.
 
 ## Public API
 
 | Symbol | Kind | Location | Contract |
 | --- | --- | --- | --- |
-| `CrashReportSample` | enum (namespace) | `Packages/LillistUI/Sources/LillistUI/Settings/CrashReportSample.swift:6` | Namespace for the "what would be sent" crash-report preview builder |
-| `CrashReportSample.Environment` | struct | `Packages/LillistUI/Sources/LillistUI/Settings/CrashReportSample.swift:7` | `Sendable`/`Equatable` value carrying build/OS/device/recipient/methodSuffix |
-| `CrashReportSample.preview(_:)` | static func | `Packages/LillistUI/Sources/LillistUI/Settings/CrashReportSample.swift:33` | Returns the fixed multi-line preview string; callers supply platform `methodSuffix` |
-| `HourMinuteDate` | enum (namespace) | `Packages/LillistUI/Sources/LillistUI/Settings/HourMinuteDate.swift:9` | Namespace for building a `Date` from Int hour/minute values |
-| `HourMinuteDate.date(hour:minute:calendar:)` | static func | `Packages/LillistUI/Sources/LillistUI/Settings/HourMinuteDate.swift:10` | Builds a `Date` on today with the given hour/minute; bridges `Int16` pref columns to `DatePicker` bindings |
-| `ICloudSyncSettingsSection` | struct (View) | `Packages/LillistUI/Sources/LillistUI/Settings/ICloudSyncSettingsSection.swift:13` | Pure-presenter SwiftUI `Section` for sync mode toggle; renders entirely from injected `ViewState` and `Actions` |
-| `ICloudSyncSettingsSection.ViewState` | struct | `Packages/LillistUI/Sources/LillistUI/Settings/ICloudSyncSettingsSection.swift:14` | `Equatable`/`Sendable` snapshot: `mode`, `status`, `isToggleDisabled`, `disabledFooter` |
-| `ICloudSyncSettingsSection.Actions` | struct | `Packages/LillistUI/Sources/LillistUI/Settings/ICloudSyncSettingsSection.swift:33` | Closure bundle: `onToggle`, `onSyncNow`, `onOpenSystemSettings`, `onPausedTap` |
-| `SortField.displayName` | computed var (extension) | `Packages/LillistUI/Sources/LillistUI/Settings/SortField+DisplayName.swift:9` | Human-readable label for each `SortField` case used in Preferences pickers |
+| `Actions` | struct | `Packages/LillistUI/Sources/LillistUI/Settings/ICloudSyncSettingsSection.swift:33` | Callback bag holding four escaping closures; `onPausedTap` defaults to a no-op; callers supply the other three — toggle, sync-now, and open-system-settings. |
+| `CrashReportSample` | enum | `Packages/LillistUI/Sources/LillistUI/Settings/CrashReportSample.swift:6` | Namespace enum; callers construct an `Environment` and call `preview(_:)` to obtain the multi-line crash-report preview string. |
+| `Environment` | struct | `Packages/LillistUI/Sources/LillistUI/Settings/CrashReportSample.swift:7` | `Sendable + Equatable` value holding the five fields (build version, OS, device, recipient, method suffix) required to render a crash-report preview; callers own all fields. |
+| `HourMinuteDate` | enum | `Packages/LillistUI/Sources/LillistUI/Settings/HourMinuteDate.swift:9` | Namespace enum; callers use `date(hour:minute:calendar:)` to build a `Date` whose calendar components match today for use in a `DatePicker` binding. |
+| `ICloudSyncSettingsSection` | struct | `Packages/LillistUI/Sources/LillistUI/Settings/ICloudSyncSettingsSection.swift:13` | Pure-presentation `View`; callers supply a `ViewState` snapshot and an `Actions` bag; the view holds no `@State`, `.task`, or environment reads. |
+| `SettingsDetailScreen` | struct | `Packages/LillistUI/Sources/LillistUI/Settings/SettingsDetailScreen.swift:32` | iOS-only pushed settings sub-page; wraps caller-supplied sections in a `Form` with shared settings chrome; owns no `NavigationStack` — must be pushed inside an existing one. |
+| `SettingsFormStyle` | struct | `Packages/LillistUI/Sources/LillistUI/Settings/SettingsDetailScreen.swift:10` | iOS-only `ViewModifier` applying the rainbow toggle style, hidden scroll background, and workspace fill to a Settings `Form`; used via `.settingsFormStyle()`. |
+| `SettingsRowIcon` | struct | `Packages/LillistUI/Sources/LillistUI/Settings/SettingsRowIcon.swift:15` | iOS-only 29×29 pt colored tile with a white SF Symbol; the glyph is `accessibilityHidden` because the row's text label already carries the accessible name. |
+| `SortField` | extension | `Packages/LillistUI/Sources/LillistUI/Settings/SortField+DisplayName.swift:8` | Adds `displayName: String` to `LillistCore.SortField`; returns hard-coded English labels for use in sort-order picker rows in both app targets' Preferences UI. |
+| `View` | extension | `Packages/LillistUI/Sources/LillistUI/Settings/SettingsDetailScreen.swift:19` | iOS-only extension on `View` adding the `settingsFormStyle()` convenience method; any `View` gains the method but it is meaningful only on a Settings `Form`. |
+| `ViewState` | struct | `Packages/LillistUI/Sources/LillistUI/Settings/ICloudSyncSettingsSection.swift:14` | `Equatable + Sendable` snapshot of sync UI state; callers construct from live `SyncMode` and `SyncIndicator` values; `isToggleDisabled` and `disabledFooter` default to off/nil. |
+| `body` | func | `Packages/LillistUI/Sources/LillistUI/Settings/SettingsDetailScreen.swift:11` | Applies rainbow toggle style, hidden scroll background, and `LillistColor.workspace` fill to the wrapped `Form` content; no side effects beyond view modifier composition. |
+| `date` | func | `Packages/LillistUI/Sources/LillistUI/Settings/HourMinuteDate.swift:10` | Returns a `Date` combining today's year/month/day with the given hour and minute via `Calendar.date(from:)`; DST-safe and falls back to `Date()` on failure. |
+| `preview` | func | `Packages/LillistUI/Sources/LillistUI/Settings/CrashReportSample.swift:33` | Returns a multi-line formatted string ready to display in a settings disclosure or mail draft; all five fields of `env` are interpolated verbatim. |
+| `settingsFormStyle` | func | `Packages/LillistUI/Sources/LillistUI/Settings/SettingsDetailScreen.swift:21` | Chains `SettingsFormStyle` onto any `View`; callers use it on a `Form` to apply the shared Settings chrome in one call. |
 
 ## Load-bearing internals
 
 | Symbol | Kind | Location | Why it matters |
 | --- | --- | --- | --- |
-| `ICloudSyncSettingsSection.statusLine` | private var | `Packages/LillistUI/Sources/LillistUI/Settings/ICloudSyncSettingsSection.swift:102` | Sole place `SyncIndicator` cases are translated to the caption shown under the sync toggle |
-| `ICloudSyncSettingsSection.relativeFormatter` | private static let | `Packages/LillistUI/Sources/LillistUI/Settings/ICloudSyncSettingsSection.swift:126` | Singleton `RelativeDateTimeFormatter` for last-synced timestamp; shared to avoid per-render allocation |
 
 ## Relationships
 
-- `Packages-LillistUI-Sources-LillistUI-Settings.SortField.displayName -> Packages-LillistCore-Sources-LillistCore-Model.SortField (extends)`
-- `Packages-LillistUI-Sources-LillistUI-Settings.ICloudSyncSettingsSection.ViewState -> Packages-LillistCore-Sources-LillistCore-Sync-chunk-1.SyncMode (owns)`
-- `Packages-LillistUI-Sources-LillistUI-Settings.ICloudSyncSettingsSection.ViewState -> Packages-LillistUI-Sources-LillistUI-misc.SyncIndicator (owns)`
+- `Packages-LillistUI-Sources-LillistUI-Settings.Actions -> Packages-LillistCore-Sources-LillistCore-LinkPreview.String (calls)`
+- `Packages-LillistUI-Sources-LillistUI-Settings.Actions -> Packages-LillistUI-Sources-LillistUI-iOS-misc.SyncStatusBadge (calls)`
 
 ## Type notes
 
-`ICloudSyncSettingsSection` holds no `@State` and runs no `.task` — it is the presenter half of the Plan 21 container/presenter split documented at `Packages/LillistUI/Sources/LillistUI/Settings/ICloudSyncSettingsSection.swift:7`. The owning app views (iOS `ICloudSyncSection`, macOS `ICloudSyncPane`) hold `AppEnvironment`-coupled state and pass it in, so snapshot tests render canned `ViewState`s with no live container required.
-
-`ViewState` and `CrashReportSample.Environment` are `Equatable`/`Sendable` value types and can be produced from a background actor. `Actions` carries `@escaping` closures and is not `Sendable`; it is expected to be constructed on `@MainActor`. Localized strings inside `ICloudSyncSettingsSection` resolve against `bundle: .module` (`Packages/LillistUI/Sources/LillistUI/Settings/ICloudSyncSettingsSection.swift:106`).
-
-`HourMinuteDate.date` routes its math through `Calendar.dateComponents` and `Calendar.date(from:)` — consistent with the project rule against `addingTimeInterval` for preference-driven date construction.
+`ICloudSyncSettingsSection` follows the container/presenter split: it is pure presentation fed entirely by `ViewState` and `Actions` with no `@State`, `.task`, or `AppEnvironment` reads (`Packages/LillistUI/Sources/LillistUI/Settings/ICloudSyncSettingsSection.swift:6`). `SettingsDetailScreen` and `SettingsRowIcon` are gated by `#if os(iOS)` and do not exist on macOS (`Packages/LillistUI/Sources/LillistUI/Settings/SettingsDetailScreen.swift:1`, `Packages/LillistUI/Sources/LillistUI/Settings/SettingsRowIcon.swift:1`). `CrashReportSample.Environment` is `Sendable + Equatable`, safe to pass across concurrency domains (`Packages/LillistUI/Sources/LillistUI/Settings/CrashReportSample.swift:7`). `HourMinuteDate.date` rounds through `Calendar.dateComponents` and `Calendar.date(from:)` for DST correctness — consistent with the project-wide rule against `addingTimeInterval` for calendar math (`Packages/LillistUI/Sources/LillistUI/Settings/HourMinuteDate.swift:10`).
 
 ## External deps
 
-- SwiftUI — `ICloudSyncSettingsSection` is a `View`; uses `Section`, `Toggle`, `Button`, `Text`, `VStack`, `Binding`, `Color`
-- Foundation — `RelativeDateTimeFormatter`, `Calendar`, `DateComponents`, `Date`, `String(localized:bundle:)`
+- Foundation — imported
+- LillistCore — imported
+- SwiftUI — imported
+
+## Gotchas
+
+`SettingsDetailScreen` must NOT be given its own `NavigationStack` — it is pushed inside the calling screen's existing stack; adding one breaks back-button navigation. `Packages/LillistUI/Sources/LillistUI/Settings/SettingsDetailScreen.swift:28`. `SettingsDetailScreen` and `SettingsRowIcon` are compiled only on iOS (`#if os(iOS)`) — macOS callers cannot reference these types. `Packages/LillistUI/Sources/LillistUI/Settings/SettingsDetailScreen.swift:1`, `Packages/LillistUI/Sources/LillistUI/Settings/SettingsRowIcon.swift:1`. `SortField.displayName` strings are hard-coded English and are not passed through `String(localized:)` — callers should not expect automatic localization. `Packages/LillistUI/Sources/LillistUI/Settings/SortField+DisplayName.swift:9`.

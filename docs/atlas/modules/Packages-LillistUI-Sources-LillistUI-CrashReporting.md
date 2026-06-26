@@ -1,79 +1,65 @@
 ---
 module: Packages/LillistUI/Sources/LillistUI/CrashReporting
-summary: "SwiftUI crash-report consent sheet and its observable view model over LillistCore's CrashReporter"
+summary: "SwiftUI crash-report consent UI: sheet + preview + @Observable view model bridging LillistCore.CrashReporter"
 read_when: "Touching crash-report consent UI"
 sources:
   - path: Packages/LillistUI/Sources/LillistUI/CrashReporting/CrashReportPreviewSheet.swift
     blob: 4eebb55707cfa2ee7ad6b6d0657875f5b557db97
   - path: Packages/LillistUI/Sources/LillistUI/CrashReporting/CrashReportSheet.swift
-    blob: 4fa4f36260b52e51d8ac15607cc35c2e727b31ca
+    blob: 8b3c1772a55c78692accc84a811b8b23ef51a3a3
   - path: Packages/LillistUI/Sources/LillistUI/CrashReporting/CrashReportViewModel.swift
     blob: 41a6b325226f75b650b581c4b7d4e843dd87e5a1
-references_modules: [Packages-LillistCore-Sources-LillistCore-CrashReporting, Packages-LillistCore-Sources-LillistCore-misc, Packages-LillistUI-Sources-LillistUI-Theme-chunk-1]
-generator: cartographer/1
-baseline: 1a1562b636e43ebbdc35c7939ab6989b387f50e9
-verified: true
+references_modules: [Packages-LillistCore-Sources-LillistCore-CrashReporting, Packages-LillistCore-Sources-LillistCore-LinkPreview, Packages-LillistUI-Sources-LillistUI-Settings, Packages-LillistUI-Sources-LillistUI-Theme-chunk-1]
+generator: cartographer/4
+baseline: 515f24730d21cb81ca1c9737ffeb981e9c414d3c
 ---
 
 # Module: Packages/LillistUI/Sources/LillistUI/CrashReporting
 
 ## Purpose
 
-The cross-platform UI that asks the user, on next launch after a crash, whether to send a
-report. A purely declarative `CrashReportSheet` form is driven by an `@Observable`
-`CrashReportViewModel` that owns all report assembly and the send/don't-send decision, so
-the view holds only transient SwiftUI sheet state. The honesty guarantee is the design
-core: the same `CrashReport.renderedAsPlainText()` that gets sent backs every "preview"
-button, so what the user reviews is exactly what leaves the device.
+This module is the SwiftUI consent layer for crash reporting: it presents the post-crash opt-in dialog, lets the user inspect exactly what will be sent before deciding, and routes the decision to LillistCore.CrashReporter. The three files form a single unit — view model, main sheet, preview sheet — each with no responsibility outside this flow. Without this module the app has crash detection but no user-facing decision surface, breaking the privacy-first opt-in contract described in design Section 8.
 
 ## Public API
 
 | Symbol | Kind | Location | Contract |
 | --- | --- | --- | --- |
-| `CrashReportPreviewSheet` | struct | `Packages/LillistUI/Sources/LillistUI/CrashReporting/CrashReportPreviewSheet.swift:3` | Read-only monospaced sheet showing the rendered report body passed via `init(body:)` |
-| `CrashReportSheet` | struct | `Packages/LillistUI/Sources/LillistUI/CrashReporting/CrashReportSheet.swift:4` | The consent form; binds a `CrashReportViewModel` plus host-supplied build/OS/device strings |
-| `CrashReportViewModel` | class | `Packages/LillistUI/Sources/LillistUI/CrashReporting/CrashReportViewModel.swift:9` | `@MainActor @Observable` backing model; owns include flags, preview text, and submission |
+| `CrashReportPreviewSheet` | struct | `Packages/LillistUI/Sources/LillistUI/CrashReporting/CrashReportPreviewSheet.swift:3` | Presents a read-only monospaced scrollable view of a pre-rendered crash report string; caller supplies the fully rendered string, no model or data dependency. |
+| `CrashReportSheet` | struct | `Packages/LillistUI/Sources/LillistUI/CrashReporting/CrashReportSheet.swift:4` | Full crash-report consent form; caller injects a CrashReportViewModel, host metadata (build/OS/device), and an optional contactRecipient; Send/Don't Send toolbar actions delegate to the view model and then dismiss. |
+| `CrashReportViewModel` | class | `Packages/LillistUI/Sources/LillistUI/CrashReporting/CrashReportViewModel.swift:9` | @MainActor @Observable view model; holds user input state (userDescription, includeLogs, includeBreadcrumbs, previewText, isSubmitting) and routes send/dontSend decisions to an injected CrashReporter actor. |
+| `dontSend` | func | `Packages/LillistUI/Sources/LillistUI/CrashReporting/CrashReportViewModel.swift:81` | Records the user's dismissal by forwarding .dontSend to reporter.submit; throws if the reporter call throws, so callers may use try?. |
+| `refreshPreview` | func | `Packages/LillistUI/Sources/LillistUI/CrashReporting/CrashReportViewModel.swift:57` | Re-renders self.previewText using the model's current includeLogs/includeBreadcrumbs flags and caller-supplied metadata; observers of previewText via @Observable see the update. |
+| `renderPreview` | func | `Packages/LillistUI/Sources/LillistUI/CrashReporting/CrashReportViewModel.swift:35` | Returns a plain-text preview string for arbitrary include-flag combinations without touching model state; safe to call for per-toggle previews without disturbing includeLogs/includeBreadcrumbs. |
+| `send` | func | `Packages/LillistUI/Sources/LillistUI/CrashReporting/CrashReportViewModel.swift:68` | Submits the crash report with current model flags via reporter.submit(.send,...); sets isSubmitting for the duration; throws if reporter throws; disables Send button while in-flight. |
 
 ## Load-bearing internals
 
 | Symbol | Kind | Location | Why it matters |
 | --- | --- | --- | --- |
-| `renderPreview(includeLogs:includeBreadcrumbs:buildVersion:osVersion:deviceModel:)` | func | `Packages/LillistUI/Sources/LillistUI/CrashReporting/CrashReportViewModel.swift:35` | Pure render for arbitrary flags; does not mutate the model, so per-toggle previews don't disturb state |
-| `send()` | func | `Packages/LillistUI/Sources/LillistUI/CrashReporting/CrashReportViewModel.swift:68` | Sets `isSubmitting`, then submits the report with `.send` and the current flags |
-| `dontSend()` | func | `Packages/LillistUI/Sources/LillistUI/CrashReporting/CrashReportViewModel.swift:81` | Submits a `.dontSend` decision with no description or logs |
-| `refreshPreview(buildVersion:osVersion:deviceModel:)` | func | `Packages/LillistUI/Sources/LillistUI/CrashReporting/CrashReportViewModel.swift:57` | Stores the bulk "View what will be sent" render on `previewText` |
 
 ## Relationships
 
-- `Packages-LillistUI-Sources-LillistUI-CrashReporting.CrashReportViewModel -> Packages-LillistCore-Sources-LillistCore-CrashReporting.CrashReporter (calls)`
-- `Packages-LillistUI-Sources-LillistUI-CrashReporting.CrashReportViewModel -> Packages-LillistCore-Sources-LillistCore-CrashReporting.CrashReport (calls)`
-- `Packages-LillistUI-Sources-LillistUI-CrashReporting.CrashReportViewModel -> Packages-LillistCore-Sources-LillistCore-CrashReporting.CrashCanary (owns)`
-- `Packages-LillistUI-Sources-LillistUI-CrashReporting.CrashReportSheet -> Packages-LillistUI-Sources-LillistUI-CrashReporting.CrashReportViewModel (owns)`
-- `Packages-LillistUI-Sources-LillistUI-CrashReporting.CrashReportSheet -> Packages-LillistUI-Sources-LillistUI-CrashReporting.CrashReportPreviewSheet (calls)`
-- `Packages-LillistUI-Sources-LillistUI-CrashReporting.CrashReportSheet -> Packages-LillistCore-Sources-LillistCore-misc.LillistCoreContact (reads)`
-- `Packages-LillistUI-Sources-LillistUI-CrashReporting.CrashReportSheet -> Packages-LillistUI-Sources-LillistUI-Theme-chunk-1.RainbowToggleStyle (conforms-to)`
+- `Packages-LillistUI-Sources-LillistUI-CrashReporting.CrashReportPreviewSheet -> Packages-LillistUI-Sources-LillistUI-Settings.Environment (calls)`
+- `Packages-LillistUI-Sources-LillistUI-CrashReporting.CrashReportSheet -> Packages-LillistCore-Sources-LillistCore-LinkPreview.String (calls)`
+- `Packages-LillistUI-Sources-LillistUI-CrashReporting.CrashReportSheet -> Packages-LillistUI-Sources-LillistUI-Settings.Environment (calls)`
+- `Packages-LillistUI-Sources-LillistUI-CrashReporting.CrashReportSheet -> Packages-LillistUI-Sources-LillistUI-Settings.preview (calls)`
+- `Packages-LillistUI-Sources-LillistUI-CrashReporting.CrashReportSheet -> Packages-LillistUI-Sources-LillistUI-Theme-chunk-1.accessibilityLabel (calls)`
+- `Packages-LillistUI-Sources-LillistUI-CrashReporting.dontSend -> Packages-LillistCore-Sources-LillistCore-CrashReporting.submit (calls)`
+- `Packages-LillistUI-Sources-LillistUI-CrashReporting.renderPreview -> Packages-LillistCore-Sources-LillistCore-CrashReporting.CrashReport (calls)`
+- `Packages-LillistUI-Sources-LillistUI-CrashReporting.renderPreview -> Packages-LillistCore-Sources-LillistCore-CrashReporting.renderedAsPlainText (reads)`
+- `Packages-LillistUI-Sources-LillistUI-CrashReporting.send -> Packages-LillistCore-Sources-LillistCore-CrashReporting.submit (writes)`
 
 ## Type notes
 
-`CrashReportViewModel` is `@MainActor @Observable` (`CrashReportViewModel.swift:7`); its
-`id` is `nonisolated` (`CrashReportViewModel.swift:13`) so SwiftUI's `.sheet(item:)` can
-read identity off the main actor. The comment there notes the lifecycle invariant: at most
-one model is alive per host at a time, so a fresh `UUID` per instance suffices.
-`reporter` is a `CrashReporter` actor, so `send`/`dontSend`/`renderPreview` are `async`;
-`reporter.submit` is the one awaited boundary that crosses into LillistCore
-(`CrashReportViewModel.swift:71`). The view model holds `pending` (a `CrashCanary` value
-type) and never sees a `NSManagedObject`. `CrashReportSheet` keeps build/OS/device as
-caller-supplied strings (`CrashReportSheet.swift:8-12`) because that metadata comes from
-the host process, not LillistUI. `renderPreview` deliberately reads its flag arguments, not
-`self.includeLogs`/`self.includeBreadcrumbs`, so the per-toggle "Preview these" buttons
-render an isolated slice without mutating the live model (`CrashReportViewModel.swift:30-34`).
+CrashReportViewModel is @MainActor @Observable (not ObservableObject), so CrashReportSheet uses @Bindable — not @StateObject/@ObservedObject (CrashReportViewModel.swift:7-9, CrashReportSheet.swift:6). The nonisolated id UUID satisfies Identifiable from off-actor callers (e.g. .sheet(item:)) without a MainActor hop (CrashReportViewModel.swift:13). CrashReportViewModel holds a private CrashReporter actor reference and a public CrashCanary value; both are injected at init, keeping the view model testable without a live reporter (CrashReportViewModel.swift:22-28). CrashReportSheet carries contactRecipient as a caller-injected init parameter (defaulting to LillistCoreContact.crashReportRecipient) so snapshot tests can supply a deterministic non-personal value (CrashReportSheet.swift:14-19). The three sub-sheet state booleans (showingPreview, showingLogsPreview, showingBreadcrumbsPreview) live on the view, not the view model, since they are pure navigation state (CrashReportSheet.swift:21-25).
 
 ## External deps
 
-- SwiftUI — `Form`, `NavigationStack`, `Toggle`, `@Bindable`, and `.sheet` presentation
-- Observation — `@Observable` macro backing the view model
-- LillistCore — `CrashReporter`, `CrashReport`, `CrashCanary`, `LillistCoreContact`
+- Foundation — imported
+- LillistCore — imported
+- Observation — imported
+- SwiftUI — imported
 
 ## Gotchas
 
-- The recipient email is spelled as an explicit markdown `mailto:` link, not a bare address: SwiftUI auto-links emails only in compile-time `LocalizedStringKey` literals, and the interpolated `LillistCoreContact.crashReportRecipient` would otherwise render as plain text (`Packages/LillistUI/Sources/LillistUI/CrashReporting/CrashReportSheet.swift:109-116`).
+SwiftUI Text(LocalizedStringKey) auto-link detection fires only on compile-time literals; interpolated email values render as plain text. CrashReportSheet.swift:131-133 spells the mailto link explicitly as [\(contactRecipient)](mailto:\(contactRecipient)) to preserve the clickable affordance — this pattern is also documented in CLAUDE.md's code conventions.

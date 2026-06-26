@@ -1,71 +1,51 @@
 ---
 module: "Packages/LillistUI/Sources/LillistUI/Theme (chunk 2)"
-summary: "Design tokens — spacing, radius, timing, semantic typography, drag-reorder constants, and tag tint default"
-read_when: "Touching spacing, radius or timing"
+summary: "Design tokens: spacing, radius, timing, Plus Jakarta Sans typography, and drag-reorder visual constants"
+read_when: "Touching spacing, radius, or timing tokens"
 sources:
   - path: Packages/LillistUI/Sources/LillistUI/Theme/Tokens.swift
-    blob: 4641bb3810568f46beec79e5477085395c202892
-references_modules: [Packages-LillistUI-Sources-LillistUI-Theme-chunk-1, Packages-LillistUI-Sources-LillistUI-DragReorder, Packages-LillistUI-Sources-LillistUI-iOS-misc, Apps-Lillist-iOS-Sources-Settings, Apps-Lillist-macOS-Sources-Preferences]
-generator: cartographer/1
-baseline: 1a1562b636e43ebbdc35c7939ab6989b387f50e9
-verified: true
+    blob: bb3bb6be974550ee90a1512d23f6aaf5682b65bb
+references_modules: [Packages-LillistUI-Sources-LillistUI-DragReorder, Packages-LillistUI-Sources-LillistUI-Theme-chunk-1]
+generator: cartographer/4
+baseline: 515f24730d21cb81ca1c9737ffeb981e9c414d3c
 ---
 
 # Module: Packages/LillistUI/Sources/LillistUI/Theme (chunk 2)
 
 ## Purpose
 
-The single source of truth for Lillist's shared visual constants (Plan 14): every
-spacing, corner-radius, gesture-timing, typography, drag-reorder, and shared string
-value lives in a token enum here so callsites use a named token instead of a magic
-number. Typography is *semantic* and Dynamic-Type-aware — tokens map to SwiftUI text
-styles via `relativeTo:`, so user accessibility text-size settings keep scaling chrome
-text. If these enums vanished, every UI surface would lose its consistent metrics and
-lock font sizes to fixed pixels.
+Tokens.swift is the single source of truth for all shared visual constants in LillistUI: spacing scale, corner-radius scale, gesture-timing constants, Plus Jakarta Sans typography, reusable string tokens, and drag-reorder visual parameters. It exists to prevent magic numbers from spreading across views and to enforce Rainbow Logic design-system semantics at the token level. Without it, callsites would diverge: spacing values would drift, font stacks would mix system and custom faces, and the drag system's visual tuning would scatter across multiple files.
 
 ## Public API
 
 | Symbol | Kind | Location | Contract |
 | --- | --- | --- | --- |
-| `LillistDragTokens` | enum | `Packages/LillistUI/Sources/LillistUI/Theme/Tokens.swift:104` | Namespace of drag-reorder visual constants (indicator/phantom colors, sizes, durations); callers must not hardcode any of these values |
-| `LillistRadius` | enum | `Packages/LillistUI/Sources/LillistUI/Theme/Tokens.swift:29` | Corner-radius scale (`s`/`m`/`l`/`xl`/`cube`); use with `.continuous` corner style at callsites |
-| `LillistSpacing` | enum | `Packages/LillistUI/Sources/LillistUI/Theme/Tokens.swift:16` | Spacing scale (`xs`–`xxl`) for padding, stack spacing, and frame insets; replace all raw CGFloat padding literals |
-| `LillistTiming` | enum | `Packages/LillistUI/Sources/LillistUI/Theme/Tokens.swift:43` | Gesture-timing constants; `longPress` (0.4 s) used by status indicator and FAB |
-| `LillistTokens` | enum | `Packages/LillistUI/Sources/LillistUI/Theme/Tokens.swift:94` | Shared string constants; `defaultTagTintHex` is the canonical default tag-tint colour |
-| `LillistTypography` | enum | `Packages/LillistUI/Sources/LillistUI/Theme/Tokens.swift:53` | Semantic `Font` tokens (Plus Jakarta Sans) each relative to a Dynamic Type style; never use `.system(size:)` for app chrome |
+| `LillistDragTokens` | enum | `Packages/LillistUI/Sources/LillistUI/Theme/Tokens.swift:104` | Static constants governing all drag-reorder visual behavior; read any property for pixel values, timing, and color — no instances, no side effects except indicatorColor's lazy RainbowPalette init. |
+| `LillistRadius` | enum | `Packages/LillistUI/Sources/LillistUI/Theme/Tokens.swift:29` | Static CGFloat corner-radius scale (s/m/l/xl/cube); pair with .continuous corner style; Capsule shapes use Capsule(), not these tokens. |
+| `LillistSpacing` | enum | `Packages/LillistUI/Sources/LillistUI/Theme/Tokens.swift:16` | Static CGFloat spacing scale (xs=4 through xxl=40) for padding, stack gaps, and frame insets; read-only, no side effects. |
+| `LillistTiming` | enum | `Packages/LillistUI/Sources/LillistUI/Theme/Tokens.swift:43` | Single TimeInterval constant: longPress=0.4s for StatusIndicatorView and FloatingAddButton gestures; drag-to-reorder uses LillistDragTokens.longPressDuration=0.3s instead. |
+| `LillistTokens` | enum | `Packages/LillistUI/Sources/LillistUI/Theme/Tokens.swift:94` | Static string constants shared between iOS and macOS preferences UI; currently exposes defaultTagTintHex to avoid duplication between GeneralSection and GeneralPane. |
+| `LillistTypography` | enum | `Packages/LillistUI/Sources/LillistUI/Theme/Tokens.swift:53` | Semantic Font tokens for Plus Jakarta Sans scaled to Dynamic Type styles; token access triggers font registration and falls back to the system style if registration fails — callers need not guard the result. |
 
 ## Load-bearing internals
 
 | Symbol | Kind | Location | Why it matters |
 | --- | --- | --- | --- |
-| `LillistTypography.jakarta` | func | `Packages/LillistUI/Sources/LillistUI/Theme/Tokens.swift:83` | Builds every typography token: calls `LillistFonts.registerIfNeeded()` and falls back to the system style when registration fails — all typography correctness flows through here |
 
 ## Relationships
 
-- `Packages-LillistUI-Sources-LillistUI-Theme-chunk-2.LillistTypography -> Packages-LillistUI-Sources-LillistUI-Theme-chunk-1.LillistFonts (calls)`
-- `Packages-LillistUI-Sources-LillistUI-Theme-chunk-2.LillistDragTokens -> Packages-LillistUI-Sources-LillistUI-Theme-chunk-1.RainbowPalette (reads)`
-- `Packages-LillistUI-Sources-LillistUI-DragReorder.DragOverlay -> Packages-LillistUI-Sources-LillistUI-Theme-chunk-2.LillistDragTokens (reads)`
-- `Packages-LillistUI-Sources-LillistUI-iOS-misc.FloatingAddButton -> Packages-LillistUI-Sources-LillistUI-Theme-chunk-2.LillistTiming (reads)`
-- `Apps-Lillist-iOS-Sources-Settings.GeneralSection -> Packages-LillistUI-Sources-LillistUI-Theme-chunk-2.LillistTokens (reads)`
-- `Apps-Lillist-macOS-Sources-Preferences.GeneralPane -> Packages-LillistUI-Sources-LillistUI-Theme-chunk-2.LillistTokens (reads)`
+- `Packages-LillistUI-Sources-LillistUI-Theme-chunk-2.LillistDragTokens -> Packages-LillistUI-Sources-LillistUI-DragReorder.indicator (calls)`
+- `Packages-LillistUI-Sources-LillistUI-Theme-chunk-2.jakarta -> Packages-LillistUI-Sources-LillistUI-Theme-chunk-1.registerIfNeeded (reads)`
 
 ## Type notes
 
-All public types are caseless `enum` namespaces of `public static let` constants —
-pure value tokens, no instances, no state, no isolation concerns. `LillistTypography`
-tokens are evaluated lazily as `static let`; `jakarta` calls
-`LillistFonts.registerIfNeeded()` so the first font-token access triggers face
-registration and every token degrades to its `fallback` system style if registration
-fails (`Packages/LillistUI/Sources/LillistUI/Theme/Tokens.swift:87`). `LillistDragTokens`
-colors are derived from `RainbowPalette` functional hues — `indicatorColor` is
-focus-blue, `rejectionColor` is deep action-orange (Rainbow Logic has no red),
-at `Packages/LillistUI/Sources/LillistUI/Theme/Tokens.swift:108` and `:112`.
+All six enums are caseless namespaces of static let/func members — no instances, no allocation, no actor isolation. LillistTypography's static Font properties are initialized lazily on first access via the private jakarta factory (Tokens.swift:83-90), which calls LillistFonts.registerIfNeeded() on every invocation; the underlying font registration is one-shot (static let registered in LillistFonts). LillistDragTokens.indicatorColor references RainbowPalette.focusBlue.base (Tokens.swift:108), so that palette's static init runs on first drag-reorder use. All other tokens are plain CGFloat/TimeInterval/String literals with no side effects.
 
 ## External deps
 
-- SwiftUI — `Font`, `Color`, `CGFloat`, `TimeInterval` token value types
-- Foundation — base value types underlying the token scales
+- Foundation — imported
+- SwiftUI — imported
 
 ## Gotchas
 
-- `LillistDragTokens.longPressDuration` (0.3 s at `Packages/LillistUI/Sources/LillistUI/Theme/Tokens.swift:148`) differs from `LillistTiming.longPress` (0.4 s at `Packages/LillistUI/Sources/LillistUI/Theme/Tokens.swift:44`); the drag system uses the shorter threshold to distinguish drag pickup from a status-indicator long-press — do not unify them without updating both consumers.
+Two distinct long-press durations coexist: LillistTiming.longPress=0.4s (StatusIndicatorView/FAB) and LillistDragTokens.longPressDuration=0.3s (drag pickup) — editing one does not affect the other (Tokens.swift:44, Tokens.swift:132). LillistTypography.floatingAddGlyph uses the system font (.title.weight(.semibold)), not Plus Jakarta Sans — it is the sole non-Jakarta token in LillistTypography (Tokens.swift:79). LillistDragTokens.phantomLiftedScale=1.0 makes the lift-transition inverse-scale composition effectively identity; the math is retained so reintroducing a shrink animates correctly rather than popping (Tokens.swift:113-115).

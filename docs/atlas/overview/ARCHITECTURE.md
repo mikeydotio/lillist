@@ -3,221 +3,509 @@ module: overview/ARCHITECTURE
 summary: "System architecture and cross-module relationships"
 sources:
   - path: docs/atlas/modules/Apps-Config.md
-    blob: 6da913caa7a6e3eae0fe73e87eb91658dbb082c9
+    blob: 667daf368c61159472633c19641d221103e90374
   - path: docs/atlas/modules/Apps-Lillist-iOS-Sources-App.md
-    blob: b34c5ee4d771d036fcc0b5670c3d48f0e8adb243
-  - path: docs/atlas/modules/Apps-Lillist-iOS-Sources-Settings.md
-    blob: 13ef280ecc5fe4797c3cf1612ed4e86c491ba895
+    blob: f8ae4c59d047918649edfcee00d4329576e1062a
+  - path: docs/atlas/modules/Apps-Lillist-iOS-Sources-Settings-Pages.md
+    blob: 9679fdd24750f87aa6293930b3a951a12dd3552e
+  - path: docs/atlas/modules/Apps-Lillist-iOS-Sources-Settings-misc.md
+    blob: 0897b5ff0259968a9f79e1ad118391fa1d49d20a
   - path: docs/atlas/modules/Apps-Lillist-iOS-Sources-misc.md
-    blob: 6737b6ecb3034f59ba598b74732c850c3178ffc1
+    blob: a9a6811f500af2ecf51d9fc9a84a62721e140f59
   - path: docs/atlas/modules/Apps-Lillist-iOS-misc.md
-    blob: 88a09057af3f5113f27b3ecdaaa23cbf1ad2931e
-  - path: docs/atlas/modules/Apps-Lillist-macOS-Sources-Commands.md
-    blob: 56c0b999fd9d182637ad341e1f6ad0fcb2caa4ca
+    blob: 508c855b9c66d2b82fe08484b589053a5885ac36
   - path: docs/atlas/modules/Apps-Lillist-macOS-Sources-Hotkey.md
-    blob: 78d9987f4501e7444901e418fb5920fafb32a4b3
+    blob: a1ace49c8bc6b6dfe2995bb6f0484842b1ae75cd
   - path: docs/atlas/modules/Apps-Lillist-macOS-Sources-Preferences.md
-    blob: 4b4086d4e78cbc49c404d9aedfb8132820e4dd89
-  - path: docs/atlas/modules/Apps-Lillist-macOS-Sources-Views.md
-    blob: f04f60a5f51608ac610016b98229dca5c6799b64
-  - path: docs/atlas/modules/Apps-Lillist-macOS-Sources-misc.md
-    blob: bcd0a774fbef4f9df7bcacff61c26b6698df5554
+    blob: daf0770a69528e8dbca2ae1b9b71762875010ba4
+  - path: docs/atlas/modules/Apps-Lillist-macOS-Sources-chunk-1.md
+    blob: a25a0b31c5af556b1e9c9b36e2be0907e9392be4
+  - path: docs/atlas/modules/Apps-Lillist-macOS-Sources-chunk-2.md
+    blob: 324369c91444ecd343a517aefc962ef50e19572a
   - path: docs/atlas/modules/Apps-Lillist-macOS-misc.md
-    blob: 4e561a88981dd959f8b2d6d2b2b26d2820ceab8d
+    blob: 8717684e25ea017ded7147e370f1f0ea6e00d41d
   - path: docs/atlas/modules/Apps-misc.md
-    blob: ae54f377d1055f7adbc358fd3c93b0f1e189814d
+    blob: 05c690edad20c8730c13459a5915d9a45f386a4d
   - path: docs/atlas/modules/Extensions-ShareExtension-iOS.md
-    blob: b98e997c9b5259389eca31911d3992834559fde9
+    blob: dffa9ab173f51344575d4df4a93c3d475025fc7d
   - path: docs/atlas/modules/Extensions-ShortcutsActions-Entities.md
-    blob: 3b22db719e8d62a33901e161f141003cdc1be311
+    blob: 28c4ee5026f472e2ce99920335ff6caf0f47800e
   - path: docs/atlas/modules/Extensions-ShortcutsActions-misc.md
-    blob: 7b2490d464894819f13da6d13eab289555299eb4
+    blob: 30c14c239932a90a73e91baeada607477965d2ee
+  - path: docs/atlas/modules/Packages-LillistCore-Sources-LillistCore-Backup.md
+    blob: 4fa75640cb5a8d5a4678531754af07795bfcf32e
   - path: docs/atlas/modules/Packages-LillistCore-Sources-LillistCore-CLIBridge-Handlers-chunk-1.md
-    blob: 0ea7cfcf80199ab88141fcc3e61d9e694f50ad9a
+    blob: b75290bc341689b6e633f32dd7a5c7db1c75b019
   - path: docs/atlas/modules/Packages-LillistCore-Sources-LillistCore-CLIBridge-Handlers-chunk-2.md
-    blob: b8a421fd959a761a5107148de00b02690b7901b7
+    blob: 5e0de9bf6c0efd5bfef0261f06dfde37eb2b94d5
   - path: docs/atlas/modules/Packages-LillistCore-Sources-LillistCore-CLIBridge-Renderers.md
-    blob: 23806fe9c45e851aa6e0289bd0150ff0757568aa
+    blob: 512661ebfbdde98901e8af27a73ef60a1b082573
   - path: docs/atlas/modules/Packages-LillistCore-Sources-LillistCore-CLIBridge-misc.md
-    blob: a13844d47c0fe3d6462d73b010be3b345f3b38e0
+    blob: 631f84aae35cd2d6c3f92aa88f3d023d52b355bb
   - path: docs/atlas/modules/Packages-LillistCore-Sources-LillistCore-CrashReporting.md
-    blob: 17dc1b9a061f52d8e486180a86709abc0d7d9986
+    blob: c07b6b7fd12e60a49d04a7767489f721dea62998
   - path: docs/atlas/modules/Packages-LillistCore-Sources-LillistCore-Diagnostics.md
-    blob: b36c2c2d2105e275f4290cd0c03cee7840585423
+    blob: 9fa79a048b56ac11f449df91a25c2ceea2d75699
   - path: docs/atlas/modules/Packages-LillistCore-Sources-LillistCore-Export.md
-    blob: 375b3ceec10012ce7771131dfb74b1312542be3d
+    blob: af52f7f97a48e9b5113ebacf0802c54b6af0cef1
   - path: docs/atlas/modules/Packages-LillistCore-Sources-LillistCore-LinkPreview.md
-    blob: ad75b53c382f5b1a1242b2044e7c5a02ddf3af65
+    blob: 5035e3e77c275075accb6804d562b50dbf1e6ea0
   - path: docs/atlas/modules/Packages-LillistCore-Sources-LillistCore-ManagedObjects.md
-    blob: 5f4d6398a035712855b0745d2ec8454c47353e28
+    blob: 1301d3845df8a65717d861bcc6b0c732a78272cb
   - path: docs/atlas/modules/Packages-LillistCore-Sources-LillistCore-Model.md
-    blob: fa277d0d7644828d41dbe32d51676651e295991a
+    blob: f34eae3db619a188f1614729bc613d0a845ac789
   - path: docs/atlas/modules/Packages-LillistCore-Sources-LillistCore-Notifications.md
-    blob: 2e7cf5d718aa3900c59429ebac929f4c39cec780
+    blob: a785624e5693da0228034a3ef816721d8115b722
   - path: docs/atlas/modules/Packages-LillistCore-Sources-LillistCore-Ordering.md
-    blob: c72297e46657f25235bcf8590b4b0a59155a5412
+    blob: b7e9a58ca1abddb2bcffe1bea2327f8561c443ca
   - path: docs/atlas/modules/Packages-LillistCore-Sources-LillistCore-Persistence.md
-    blob: 32b4fca0bb10a41f8dc62e7277e945b362524336
+    blob: e36497f2c5b6e4c6673896791ed0f1e243964500
   - path: docs/atlas/modules/Packages-LillistCore-Sources-LillistCore-Recurrence.md
-    blob: d485b96aa02de3cf3fd3a07c8b04160185bdb7b6
+    blob: f7ba6b39357df54710c078afc000cf20fcfd9c23
+  - path: docs/atlas/modules/Packages-LillistCore-Sources-LillistCore-Reminders.md
+    blob: e9c87496b4ebb156593707079e79a98826f758c5
   - path: docs/atlas/modules/Packages-LillistCore-Sources-LillistCore-Rules.md
-    blob: 47a27edac7e0edf19793013ce009bf4592775a4c
+    blob: 9ab25f3846d42f8d90106846f5cb6db438e51f20
   - path: docs/atlas/modules/Packages-LillistCore-Sources-LillistCore-Stores-chunk-1.md
-    blob: 516b9608f20ee8b3ac170d52149c32dc6bcd496c
+    blob: 97af74e1cb3eed6948f9d704c975d6e6fc215dc9
   - path: docs/atlas/modules/Packages-LillistCore-Sources-LillistCore-Stores-chunk-2.md
-    blob: d4111fdb2847ca8953a2a9b53ff177db69c87bbe
+    blob: 290460ede8a4d5803231caf1f329183cac850567
   - path: docs/atlas/modules/Packages-LillistCore-Sources-LillistCore-Sync-chunk-1.md
-    blob: 3e269857aea94407aa1f90139e77d829c88f2d4c
+    blob: 6f96784b30e00c05261a9759d18659a4244acb2c
   - path: docs/atlas/modules/Packages-LillistCore-Sources-LillistCore-Sync-chunk-2.md
-    blob: 4fd88edc250644ca7ee72f17fb47df4b3dc2dc64
+    blob: bafa6b35528efbf2cf614fcfe44ed95c4ed71613
   - path: docs/atlas/modules/Packages-LillistCore-Sources-LillistCore-misc.md
-    blob: a41735713cf6da63f121027e3f6d3ef57936e5fa
+    blob: 5835ee5601d2598fcae3085eaea995d64ad98084
   - path: docs/atlas/modules/Packages-LillistCore-Sources-lillist-cli-Commands-chunk-1.md
-    blob: 7e6e6b120d2e9d98035c0eef89b80d1c979be007
+    blob: ca5e752339750a98f5e436396099b6347476e3c9
   - path: docs/atlas/modules/Packages-LillistCore-Sources-lillist-cli-Commands-chunk-2.md
-    blob: a8ca832ace2aadd9014f7589711c9bb6cfe2d0a8
+    blob: 5c41d13f70203e3cc9ca8b195f1f766efe6073f5
   - path: docs/atlas/modules/Packages-LillistCore-Sources-lillist-cli-Support.md
-    blob: d6ba44a3bcce2c2b1b6713076f1a9f0dccd74694
+    blob: 0dcc239856b432f8efd2e58cbaa294501264c3c0
   - path: docs/atlas/modules/Packages-LillistCore-Sources-lillist-cli-misc.md
-    blob: 28ff20357a4c64b133fe77033aadc2e2e789f7e3
+    blob: 06446e59d1aa66e69186f9730b6bef48ec5dfb1f
   - path: docs/atlas/modules/Packages-LillistCore-misc.md
-    blob: 7a3c812a32768cbaed8e39c9ee9c003932524cc3
+    blob: 588f3391f1fb7ae80060daca5415edefe6aa6aef
   - path: docs/atlas/modules/Packages-LillistUI-Sources-LillistUI-Accessibility.md
-    blob: ab3e82202d01c9fa6e0c73f77d110808a24220c7
-  - path: docs/atlas/modules/Packages-LillistUI-Sources-LillistUI-Components.md
-    blob: c4a41e22ac6c142cc1d822e60c101d34757746b7
+    blob: 9e6348f1defc3c1b8a0a5859aa4721d5723648cd
+  - path: docs/atlas/modules/Packages-LillistUI-Sources-LillistUI-Components-chunk-1.md
+    blob: 0246c12d5e8cc631f5090c8bea88e742f8f19d4b
+  - path: docs/atlas/modules/Packages-LillistUI-Sources-LillistUI-Components-chunk-2.md
+    blob: 3005025693c3d9e69af612d524da99895b673448
   - path: docs/atlas/modules/Packages-LillistUI-Sources-LillistUI-CrashReporting.md
-    blob: cc9d4c3cda51581260dd2d7e4c41b25d2c140b90
+    blob: 904cb5cf3a6a31f029d25c57180714e5c4223836
   - path: docs/atlas/modules/Packages-LillistUI-Sources-LillistUI-DragReorder.md
-    blob: 8d71618a097beb74e6f4a6fdb0d5e5796c932c95
+    blob: 26e81ab0b4919457957bfb85a150de2f0a4a7922
   - path: docs/atlas/modules/Packages-LillistUI-Sources-LillistUI-Editor.md
-    blob: b7e1eda0e2a38efa996568b6436e03ad0e9b5df8
+    blob: c8bf0d2b7c9818c6f288f83a555259b780be97b9
   - path: docs/atlas/modules/Packages-LillistUI-Sources-LillistUI-Onboarding.md
-    blob: a426ed4a048f4a9600cad90daf75c0604f2ed886
+    blob: 2ad1a823665e68db7c51183387d1ff5edd7ad861
   - path: docs/atlas/modules/Packages-LillistUI-Sources-LillistUI-QuickCapture.md
-    blob: edbf6d25f6ee2ab727da10dcf47981ebc9abadb7
+    blob: edf336a81dfe8916e4cf37b82614d45eab05c9ac
   - path: docs/atlas/modules/Packages-LillistUI-Sources-LillistUI-Recurrence.md
-    blob: 3a7fa56f87fb3def9bd107fec35ca8ead5101d4b
+    blob: a6b11ff49ed0c2a5decda9c659b16a52b0bd5929
   - path: docs/atlas/modules/Packages-LillistUI-Sources-LillistUI-Settings.md
-    blob: 93b8420819e766ed99a0559a7f4c476ba11e0538
+    blob: f19c98bbef86e9e6398873876d59273c8818bc0e
+  - path: docs/atlas/modules/Packages-LillistUI-Sources-LillistUI-Status.md
+    blob: 13ee85982b456da78f5f40b6168f3ff21dd05043
   - path: docs/atlas/modules/Packages-LillistUI-Sources-LillistUI-Sync.md
-    blob: c06f637e25002bb29fd4fc1b51d887b9a0ed4ce5
+    blob: b36385ef11b6f9d2245adc3f048bee3d5d439630
   - path: docs/atlas/modules/Packages-LillistUI-Sources-LillistUI-Theme-chunk-1.md
-    blob: 0da94d0bbd3b7884c48aee1b6c1fdbf61d4859a8
+    blob: dbdd2ef6d80defb110cf3d4b4a9f28ba3247c744
   - path: docs/atlas/modules/Packages-LillistUI-Sources-LillistUI-Theme-chunk-2.md
-    blob: fc239372d2032e299a27a34601d3a2e59d855f75
+    blob: 95ace458c507db8b534517018c6072525868362a
   - path: docs/atlas/modules/Packages-LillistUI-Sources-LillistUI-iOS-Tasks.md
-    blob: 1c698ac54f17945ef545113380c3dbbb44633d09
+    blob: 58b45a6d4032f1e4dc81428c3fd94c0499edc750
   - path: docs/atlas/modules/Packages-LillistUI-Sources-LillistUI-iOS-misc.md
-    blob: c0afa173e09bfac8a5390245b99c6b870bc55bdc
+    blob: f0537dd3f5b046b5ac34cd344ee4b6b151e4ab4f
   - path: docs/atlas/modules/Packages-LillistUI-Sources-LillistUI-misc.md
-    blob: 551a62b0a84624728d7f67098179f31d3238306b
-  - path: docs/atlas/modules/Packages-LillistUI-misc.md
-    blob: 79ed1fdd62776dbb6c3d7ee3087e6ce7d4ee0115
+    blob: ff984258bc034a9a24c762bd71a55bd7d0584f23
   - path: docs/atlas/modules/Tools.md
-    blob: c420e0553d61b8e7524cd72890457ceba44c38bc
+    blob: 12f0da0a05abe1c8c1610b46b7601bd806de13ed
   - path: docs/atlas/modules/root-misc.md
-    blob: 161ee9b3b705e2d48811c02927709dc5d86180d3
+    blob: 4af2e83b33423ab80059ddcfb0dda30c73f313a0
 scopes:
+  - tree: .claude
+    sha: c0048318f41119751eb2c47fac6b554968263749
+  - tree: .deployit
+    sha: 3844b423350f82f7876cac0c3cab827ba467d13b
+  - tree: .github
+    sha: 92656f67986f73d0c6424d5ea383fe77faab8981
+  - tree: .semver
+    sha: 5c304c73e25e543188c0621d53e93485ab8a88c9
   - tree: Apps
-    sha: a52266f8a34eb0c141b192f0f9c674ad466fc9b1
+    sha: 76becee23e9f0845038349b19eb10cf05916a44c
   - tree: Extensions
-    sha: ff597562e13b8945b1b6ea230258f0d890b839c8
+    sha: 7cab90c6c86441df34918c362dcae31865c3f149
+  - tree: Lillist.xcworkspace
+    sha: 4ab8ae97476a5eee945c84abee40f224c3608d73
   - tree: Packages
-    sha: a2eee3f227094065fb8f60cd34558bc40167ac81
+    sha: 1b098cab65ec27a945524c2a1b5dc4716b51ed59
   - tree: Tools
-    sha: bad5b3cc8ef622898ae59320b9781f85949723b4
-generator: cartographer/1
-baseline: 8c52c45e4849ea5e0f0af3b7325eeb6e0cf3ede7
+    sha: 5587bf16d839d26dd87051c9c2ee0d382492dc74
+generator: cartographer/4
+baseline: 515f24730d21cb81ca1c9737ffeb981e9c414d3c
 ---
 
 # Architecture
 
 ## System shape
 
-Lillist is a four-layer Apple-only stack: `LillistCore` (data) → `LillistUI` (SwiftUI presentations) → iOS and macOS app targets; with the Share Extension, Shortcuts/App Intents extension, and `lillist` CLI all reusing `LillistCore` directly. The boundary between LillistCore and every consumer above it is enforced by a single rule: no `NSManagedObject` escapes the package. All public store APIs return value-type DTOs (`TaskRecord`, `TagRecord`, etc.) that are constructed inside `context.perform` blocks, saved, and surfaced as Swift structs. LillistUI knows nothing of Core Data — it operates on DTOs and calls store methods via closures or direct injection.
+Lillist is organized as a strict unidirectional dependency stack. LillistCore sits at the foundation and owns the entire data layer: eight hand-written @NSManaged entity subclasses, five primary stores (TaskStore, AttachmentStore, JournalStore, SeriesStore, SmartFilterStore), the NSPersistentCloudKitContainer lifecycle, sync-mode state machine, notification scheduling, recurrence expansion, backup, diagnostics, and the CLIBridge verb library. Every public API on LillistCore returns value-type DTOs — no NSManagedObject ever crosses the package boundary. LillistUI sits above LillistCore and provides a cross-platform SwiftUI component library whose views are pure presenters: all data arrives through init parameters and all actions leave through closures, with no @State or AppEnvironment coupling anywhere inside the package. iOS and macOS app targets sit at the top, each assembling an AppEnvironment object graph that wires LillistCore stores and services into LillistUI screens.
 
-The iOS and macOS apps are structurally parallel: each has an `@Observable AppEnvironment` that constructs every LillistCore store and scheduler once at launch, then injects it into the SwiftUI scene via `@Environment`. The macOS app has a three-column `NavigationSplitView`; the iOS app collapsed to a single `TasksView` container after a tab restructure. Both share all SwiftUI presentation components from LillistUI. The out-of-process consumers (Share Extension, App Intents, CLI) open the App-Group-shared Core Data store via `GatedPersistenceResolver`, which consults `MigrationGate` before allowing any open so a running sync-mode swap cannot be interrupted by a headless opener.
+Two parallel tracks consume LillistCore directly without going through an app target. The lillist CLI defines AsyncParsableCommand verb structs that open the App-Group-shared Core Data container via CLIBridge.StoreLocator, then delegate every domain operation to CLIBridge handler namespaces — the same handler enums that Shortcuts App Intents call from their perform() bodies. The ShareExtension-iOS and ShortcutsActions extensions open the shared store through IntentSupport.makePersistence(), which passes through MigrationGate so headless opens never race a live sync-mode swap. CLIBridge is the explicit seam that keeps business logic deduplicated across the CLI and Shortcuts surfaces.
 
-The sync seam is `NSPersistentCloudKitContainer`. A sync-mode change (local-only ↔ iCloud) is a store-level remove-and-re-add on one long-lived container orchestrated by `MigrationCoordinator` across eight phases. `MigrationJournal` persists each phase to a file so a crash mid-migration is recoverable. CloudKit event observability is exposed through `CloudKitEventBridge` → `SyncStatusMonitor` → `SyncStatus`, decoupling the UI from CloudKit's opaque notification stream.
+At the infrastructure layer, a three-level xcconfig cascade in Apps/Config decouples signing identity, build number, and distribution URLs from the committed pbxproj; two xcodegen project.yml specs generate the pbxproj files from that config. The Rainbow Glass design system lives entirely in LillistUI/Theme, providing a single #available gate for iOS/macOS 26 Liquid Glass with accessibility-respecting degradation. CI enforces pbxproj drift as a post-push gate, ensuring the generated files stay in sync with their yml sources.
 
 ## Module relationships
 
-- `Apps-Lillist-iOS-Sources-App.AppEnvironment -> Packages-LillistCore-Sources-LillistCore-Persistence.PersistenceHost (owns)`
-- `Apps-Lillist-iOS-Sources-App.AppEnvironment -> Packages-LillistCore-Sources-LillistCore-Stores-chunk-2.TaskStore (owns)`
-- `Apps-Lillist-iOS-Sources-App.AppEnvironment -> Packages-LillistCore-Sources-LillistCore-Sync-chunk-1.MigrationCoordinator (owns)`
-- `Apps-Lillist-iOS-Sources-App.AppEnvironment -> Packages-LillistCore-Sources-LillistCore-CrashReporting.CrashReporter (owns)`
-- `Apps-Lillist-iOS-Sources-misc.TasksView -> Packages-LillistUI-Sources-LillistUI-iOS-misc.TasksScreen (calls)`
-- `Apps-Lillist-iOS-Sources-misc.TasksView -> Packages-LillistCore-Sources-LillistCore-Stores-chunk-2.TaskStore (calls)`
-- `Apps-Lillist-iOS-Sources-misc.TaskEditorHost -> Packages-LillistUI-Sources-LillistUI-Editor.TaskEditorView (calls)`
-- `Apps-Lillist-iOS-Sources-Settings.ICloudSyncSection -> Packages-LillistUI-Sources-LillistUI-Sync.SyncMigrationChoiceSheet (calls)`
-- `Apps-Lillist-iOS-Sources-Settings.runMigration -> Packages-LillistCore-Sources-LillistCore-Sync-chunk-1.MigrationCoordinator (calls)`
-- `Apps-Lillist-macOS-Sources-misc.AppEnvironment -> Packages-LillistCore-Sources-LillistCore-Persistence.PersistenceController (owns)`
-- `Apps-Lillist-macOS-Sources-misc.AppEnvironment -> Packages-LillistCore-Sources-LillistCore-Stores-chunk-2.TaskStore (owns)`
-- `Apps-Lillist-macOS-Sources-misc.LillistApp -> Apps-Lillist-macOS-Sources-Views.RootSplitView (calls)`
-- `Apps-Lillist-macOS-Sources-misc.LillistApp -> Apps-Lillist-macOS-Sources-Hotkey.GlobalHotkeyMonitor (owns)`
-- `Apps-Lillist-macOS-Sources-Views.TaskListView -> Packages-LillistCore-Sources-LillistCore-Stores-chunk-2.TaskStore (calls)`
-- `Apps-Lillist-macOS-Sources-Views.SidebarView -> Packages-LillistCore-Sources-LillistCore-Stores-chunk-1.SmartFilterStore (calls)`
-- `Apps-Lillist-macOS-Sources-Hotkey.QuickCapturePanelController -> Packages-LillistUI-Sources-LillistUI-Editor.TaskEditorView (owns)`
-- `Apps-Lillist-macOS-Sources-Preferences.ICloudSyncPane -> Packages-LillistUI-Sources-LillistUI-Sync.SyncMigrationChoiceSheet (calls)`
-- `Extensions-ShareExtension-iOS.ShareRootView -> Packages-LillistCore-Sources-LillistCore-Persistence.GatedPersistenceResolver (calls)`
-- `Extensions-ShareExtension-iOS.ShareRootView -> Packages-LillistCore-Sources-LillistCore-Stores-chunk-2.TaskStore (calls)`
-- `Extensions-ShortcutsActions-misc.IntentSupport -> Packages-LillistCore-Sources-LillistCore-Persistence.GatedPersistenceResolver (calls)`
-- `Extensions-ShortcutsActions-misc.AddTaskIntent -> Packages-LillistCore-Sources-LillistCore-CLIBridge-Handlers-chunk-1.CLIBridge.AddHandler (calls)`
-- `Packages-LillistCore-Sources-LillistCore-CLIBridge-misc.StoreLocator -> Packages-LillistCore-Sources-LillistCore-Sync-chunk-1.MigrationGate (calls)`
-- `Packages-LillistCore-Sources-LillistCore-CLIBridge-Handlers-chunk-1.AddHandler -> Packages-LillistCore-Sources-LillistCore-Stores-chunk-2.TaskStore (calls)`
-- `Packages-LillistCore-Sources-LillistCore-CLIBridge-Handlers-chunk-1.LsHandler -> Packages-LillistCore-Sources-LillistCore-Rules.NSPredicateCompiler (calls)`
-- `Packages-LillistCore-Sources-LillistCore-Stores-chunk-2.TaskStore -> Packages-LillistCore-Sources-LillistCore-Persistence.PersistenceController (reads)`
-- `Packages-LillistCore-Sources-LillistCore-Stores-chunk-2.TaskStore -> Packages-LillistCore-Sources-LillistCore-Ordering.FractionalPosition (calls)`
-- `Packages-LillistCore-Sources-LillistCore-Stores-chunk-2.TaskStore -> Packages-LillistCore-Sources-LillistCore-Recurrence.RecurrenceSpawner (calls)`
-- `Packages-LillistCore-Sources-LillistCore-Stores-chunk-2.TaskStore -> Packages-LillistCore-Sources-LillistCore-Notifications.NotificationReconciling (calls)`
-- `Packages-LillistCore-Sources-LillistCore-Stores-chunk-2.TaskStore -> Packages-LillistCore-Sources-LillistCore-CrashReporting.BreadcrumbBuffer (writes)`
-- `Packages-LillistCore-Sources-LillistCore-Persistence.PersistenceController -> Packages-LillistCore-Sources-LillistCore-Sync-chunk-1.CloudKitEventBridge (owns)`
-- `Packages-LillistCore-Sources-LillistCore-Sync-chunk-1.MigrationCoordinator -> Packages-LillistCore-Sources-LillistCore-Persistence.PersistenceReconfiguring (calls)`
-- `Packages-LillistCore-Sources-LillistCore-Sync-chunk-1.GatedPersistenceResolver -> Packages-LillistCore-Sources-LillistCore-Sync-chunk-1.MigrationGate (calls)`
-- `Packages-LillistCore-Sources-LillistCore-Sync-chunk-2.SyncStatusMonitor -> Packages-LillistCore-Sources-LillistCore-Sync-chunk-1.CloudKitEventBridge (reads)`
-- `Packages-LillistCore-Sources-LillistCore-Rules.NSPredicateCompiler -> Packages-LillistCore-Sources-LillistCore-Rules.RelativeDateResolver (calls)`
-- `Packages-LillistCore-Sources-LillistCore-Rules.SwiftEvaluator -> Packages-LillistCore-Sources-LillistCore-Rules.NSPredicateCompiler (calls)`
-- `Packages-LillistUI-Sources-LillistUI-Editor.TaskEditorModel -> Packages-LillistCore-Sources-LillistCore-Stores-chunk-2.TaskStore (calls)`
-- `Packages-LillistUI-Sources-LillistUI-Editor.TaskEditorModel -> Packages-LillistUI-Sources-LillistUI-QuickCapture.QuickCaptureParser (calls)`
-- `Packages-LillistUI-Sources-LillistUI-Components.TaskRowView -> Packages-LillistCore-Sources-LillistCore-Stores-chunk-2.TaskStore.TaskRecord (reads)`
-- `Packages-LillistUI-Sources-LillistUI-Theme-chunk-1.GlassSurfaceModifier -> Packages-LillistUI-Sources-LillistUI-Accessibility.reduceTransparencyOverride (reads)`
-- `Packages-LillistCore-Sources-lillist-cli-misc.main -> Packages-LillistCore-Sources-lillist-cli-Support.CLICanaryLifecycle (calls)`
-- `Packages-LillistCore-Sources-lillist-cli-Commands-chunk-1.AddCommand -> Packages-LillistCore-Sources-LillistCore-CLIBridge-misc.StoreLocator (calls)`
+- `Apps-Lillist-iOS-Sources-App -> Apps-Lillist-iOS-Sources-misc (calls)`
+- `Apps-Lillist-iOS-Sources-App -> Packages-LillistCore-Sources-LillistCore-Backup (calls)`
+- `Apps-Lillist-iOS-Sources-App -> Packages-LillistCore-Sources-LillistCore-CrashReporting (calls)`
+- `Apps-Lillist-iOS-Sources-App -> Packages-LillistCore-Sources-LillistCore-Diagnostics (calls)`
+- `Apps-Lillist-iOS-Sources-App -> Packages-LillistCore-Sources-LillistCore-Export (calls)`
+- `Apps-Lillist-iOS-Sources-App -> Packages-LillistCore-Sources-LillistCore-LinkPreview (calls)`
+- `Apps-Lillist-iOS-Sources-App -> Packages-LillistCore-Sources-LillistCore-Notifications (calls)`
+- `Apps-Lillist-iOS-Sources-App -> Packages-LillistCore-Sources-LillistCore-Persistence (calls)`
+- `Apps-Lillist-iOS-Sources-App -> Packages-LillistCore-Sources-LillistCore-Reminders (calls)`
+- `Apps-Lillist-iOS-Sources-App -> Packages-LillistCore-Sources-LillistCore-Stores-chunk-1 (calls)`
+- `Apps-Lillist-iOS-Sources-App -> Packages-LillistCore-Sources-LillistCore-Sync-chunk-1 (calls)`
+- `Apps-Lillist-iOS-Sources-App -> Packages-LillistCore-Sources-LillistCore-Sync-chunk-2 (calls)`
+- `Apps-Lillist-iOS-Sources-App -> Packages-LillistCore-Sources-LillistCore-misc (calls)`
+- `Apps-Lillist-iOS-Sources-App -> Packages-LillistUI-Sources-LillistUI-CrashReporting (calls)`
+- `Apps-Lillist-iOS-Sources-App -> Packages-LillistUI-Sources-LillistUI-Status (calls)`
+- `Apps-Lillist-iOS-Sources-App -> Packages-LillistUI-Sources-LillistUI-Sync (calls)`
+- `Apps-Lillist-iOS-Sources-App -> Packages-LillistUI-Sources-LillistUI-Theme-chunk-1 (calls)`
+- `Apps-Lillist-iOS-Sources-App -> Packages-LillistUI-Sources-LillistUI-iOS-Tasks (calls)`
+- `Apps-Lillist-iOS-Sources-Settings-Pages -> Apps-Lillist-iOS-Sources-Settings-misc (calls)`
+- `Apps-Lillist-iOS-Sources-Settings-Pages -> Packages-LillistUI-Sources-LillistUI-Settings (calls)`
+- `Apps-Lillist-iOS-Sources-Settings-Pages -> Packages-LillistUI-Sources-LillistUI-Theme-chunk-1 (calls)`
+- `Apps-Lillist-iOS-Sources-Settings-misc -> Apps-Lillist-iOS-Sources-Settings-Pages (calls)`
+- `Apps-Lillist-iOS-Sources-Settings-misc -> Apps-Lillist-macOS-Sources-Hotkey (calls)`
+- `Apps-Lillist-iOS-Sources-Settings-misc -> Packages-LillistCore-Sources-LillistCore-Backup (calls)`
+- `Apps-Lillist-iOS-Sources-Settings-misc -> Packages-LillistCore-Sources-LillistCore-Diagnostics (calls)`
+- `Apps-Lillist-iOS-Sources-Settings-misc -> Packages-LillistCore-Sources-LillistCore-Export (calls)`
+- `Apps-Lillist-iOS-Sources-Settings-misc -> Packages-LillistCore-Sources-LillistCore-LinkPreview (calls)`
+- `Apps-Lillist-iOS-Sources-Settings-misc -> Packages-LillistCore-Sources-LillistCore-Notifications (calls)`
+- `Apps-Lillist-iOS-Sources-Settings-misc -> Packages-LillistCore-Sources-LillistCore-Reminders (calls)`
+- `Apps-Lillist-iOS-Sources-Settings-misc -> Packages-LillistCore-Sources-LillistCore-Stores-chunk-2 (calls)`
+- `Apps-Lillist-iOS-Sources-Settings-misc -> Packages-LillistCore-Sources-LillistCore-Sync-chunk-1 (calls)`
+- `Apps-Lillist-iOS-Sources-Settings-misc -> Packages-LillistCore-Sources-LillistCore-misc (calls)`
+- `Apps-Lillist-iOS-Sources-Settings-misc -> Packages-LillistUI-Sources-LillistUI-Accessibility (calls)`
+- `Apps-Lillist-iOS-Sources-Settings-misc -> Packages-LillistUI-Sources-LillistUI-Settings (calls)`
+- `Apps-Lillist-iOS-Sources-Settings-misc -> Packages-LillistUI-Sources-LillistUI-Sync (calls)`
+- `Apps-Lillist-iOS-Sources-Settings-misc -> Packages-LillistUI-Sources-LillistUI-Theme-chunk-1 (calls)`
+- `Apps-Lillist-iOS-Sources-Settings-misc -> Packages-LillistUI-Sources-LillistUI-iOS-misc (calls)`
+- `Apps-Lillist-iOS-Sources-misc -> Apps-Lillist-iOS-Sources-Settings-misc (calls)`
+- `Apps-Lillist-iOS-Sources-misc -> Apps-Lillist-macOS-Sources-Hotkey (calls)`
+- `Apps-Lillist-iOS-Sources-misc -> Packages-LillistCore-Sources-LillistCore-LinkPreview (calls)`
+- `Apps-Lillist-iOS-Sources-misc -> Packages-LillistCore-Sources-LillistCore-Notifications (calls)`
+- `Apps-Lillist-iOS-Sources-misc -> Packages-LillistCore-Sources-LillistCore-Rules (calls)`
+- `Apps-Lillist-iOS-Sources-misc -> Packages-LillistCore-Sources-LillistCore-Stores-chunk-1 (calls)`
+- `Apps-Lillist-iOS-Sources-misc -> Packages-LillistCore-Sources-LillistCore-Stores-chunk-2 (calls)`
+- `Apps-Lillist-iOS-Sources-misc -> Packages-LillistCore-Sources-LillistCore-misc (calls)`
+- `Apps-Lillist-iOS-Sources-misc -> Packages-LillistUI-Sources-LillistUI-Accessibility (calls)`
+- `Apps-Lillist-iOS-Sources-misc -> Packages-LillistUI-Sources-LillistUI-Components-chunk-1 (calls)`
+- `Apps-Lillist-iOS-Sources-misc -> Packages-LillistUI-Sources-LillistUI-DragReorder (calls)`
+- `Apps-Lillist-iOS-Sources-misc -> Packages-LillistUI-Sources-LillistUI-Editor (calls)`
+- `Apps-Lillist-iOS-Sources-misc -> Packages-LillistUI-Sources-LillistUI-Onboarding (calls)`
+- `Apps-Lillist-iOS-Sources-misc -> Packages-LillistUI-Sources-LillistUI-Recurrence (calls)`
+- `Apps-Lillist-iOS-Sources-misc -> Packages-LillistUI-Sources-LillistUI-Settings (calls)`
+- `Apps-Lillist-iOS-Sources-misc -> Packages-LillistUI-Sources-LillistUI-Status (calls)`
+- `Apps-Lillist-iOS-Sources-misc -> Packages-LillistUI-Sources-LillistUI-Theme-chunk-1 (calls)`
+- `Apps-Lillist-iOS-Sources-misc -> Packages-LillistUI-Sources-LillistUI-iOS-Tasks (calls)`
+- `Apps-Lillist-iOS-Sources-misc -> Packages-LillistUI-Sources-LillistUI-iOS-misc (calls)`
+- `Apps-Lillist-macOS-Sources-Hotkey -> Apps-Lillist-macOS-Sources-chunk-1 (calls)`
+- `Apps-Lillist-macOS-Sources-Hotkey -> Packages-LillistCore-Sources-LillistCore-LinkPreview (calls)`
+- `Apps-Lillist-macOS-Sources-Hotkey -> Packages-LillistUI-Sources-LillistUI-Accessibility (calls)`
+- `Apps-Lillist-macOS-Sources-Hotkey -> Packages-LillistUI-Sources-LillistUI-Editor (calls)`
+- `Apps-Lillist-macOS-Sources-Hotkey -> Packages-LillistUI-Sources-LillistUI-Recurrence (calls)`
+- `Apps-Lillist-macOS-Sources-Hotkey -> Packages-LillistUI-Sources-LillistUI-Theme-chunk-1 (calls)`
+- `Apps-Lillist-macOS-Sources-Preferences -> Apps-Lillist-macOS-Sources-Hotkey (calls)`
+- `Apps-Lillist-macOS-Sources-Preferences -> Packages-LillistCore-Sources-LillistCore-Backup (calls)`
+- `Apps-Lillist-macOS-Sources-Preferences -> Packages-LillistCore-Sources-LillistCore-Diagnostics (calls)`
+- `Apps-Lillist-macOS-Sources-Preferences -> Packages-LillistCore-Sources-LillistCore-Export (calls)`
+- `Apps-Lillist-macOS-Sources-Preferences -> Packages-LillistCore-Sources-LillistCore-LinkPreview (calls)`
+- `Apps-Lillist-macOS-Sources-Preferences -> Packages-LillistCore-Sources-LillistCore-Notifications (calls)`
+- `Apps-Lillist-macOS-Sources-Preferences -> Packages-LillistCore-Sources-LillistCore-Persistence (calls)`
+- `Apps-Lillist-macOS-Sources-Preferences -> Packages-LillistCore-Sources-LillistCore-Reminders (calls)`
+- `Apps-Lillist-macOS-Sources-Preferences -> Packages-LillistCore-Sources-LillistCore-Stores-chunk-2 (calls)`
+- `Apps-Lillist-macOS-Sources-Preferences -> Packages-LillistCore-Sources-LillistCore-Sync-chunk-1 (calls)`
+- `Apps-Lillist-macOS-Sources-Preferences -> Packages-LillistCore-Sources-LillistCore-misc (calls)`
+- `Apps-Lillist-macOS-Sources-Preferences -> Packages-LillistUI-Sources-LillistUI-Accessibility (calls)`
+- `Apps-Lillist-macOS-Sources-Preferences -> Packages-LillistUI-Sources-LillistUI-Settings (calls)`
+- `Apps-Lillist-macOS-Sources-Preferences -> Packages-LillistUI-Sources-LillistUI-Sync (calls)`
+- `Apps-Lillist-macOS-Sources-Preferences -> Packages-LillistUI-Sources-LillistUI-Theme-chunk-1 (calls)`
+- `Apps-Lillist-macOS-Sources-Preferences -> Packages-LillistUI-Sources-LillistUI-iOS-misc (calls)`
+- `Apps-Lillist-macOS-Sources-chunk-1 -> Apps-Lillist-macOS-Sources-Hotkey (calls)`
+- `Apps-Lillist-macOS-Sources-chunk-1 -> Apps-Lillist-macOS-Sources-Preferences (calls)`
+- `Apps-Lillist-macOS-Sources-chunk-1 -> Apps-Lillist-macOS-Sources-chunk-2 (calls)`
+- `Apps-Lillist-macOS-Sources-chunk-1 -> Packages-LillistCore-Sources-LillistCore-Backup (calls)`
+- `Apps-Lillist-macOS-Sources-chunk-1 -> Packages-LillistCore-Sources-LillistCore-CrashReporting (calls)`
+- `Apps-Lillist-macOS-Sources-chunk-1 -> Packages-LillistCore-Sources-LillistCore-Diagnostics (calls)`
+- `Apps-Lillist-macOS-Sources-chunk-1 -> Packages-LillistCore-Sources-LillistCore-Export (calls)`
+- `Apps-Lillist-macOS-Sources-chunk-1 -> Packages-LillistCore-Sources-LillistCore-LinkPreview (calls)`
+- `Apps-Lillist-macOS-Sources-chunk-1 -> Packages-LillistCore-Sources-LillistCore-Notifications (calls)`
+- `Apps-Lillist-macOS-Sources-chunk-1 -> Packages-LillistCore-Sources-LillistCore-Persistence (calls)`
+- `Apps-Lillist-macOS-Sources-chunk-1 -> Packages-LillistCore-Sources-LillistCore-Reminders (calls)`
+- `Apps-Lillist-macOS-Sources-chunk-1 -> Packages-LillistCore-Sources-LillistCore-Stores-chunk-1 (calls)`
+- `Apps-Lillist-macOS-Sources-chunk-1 -> Packages-LillistCore-Sources-LillistCore-Stores-chunk-2 (calls)`
+- `Apps-Lillist-macOS-Sources-chunk-1 -> Packages-LillistCore-Sources-LillistCore-Sync-chunk-1 (calls)`
+- `Apps-Lillist-macOS-Sources-chunk-1 -> Packages-LillistCore-Sources-LillistCore-Sync-chunk-2 (calls)`
+- `Apps-Lillist-macOS-Sources-chunk-1 -> Packages-LillistCore-Sources-LillistCore-misc (calls)`
+- `Apps-Lillist-macOS-Sources-chunk-1 -> Packages-LillistUI-Sources-LillistUI-Accessibility (calls)`
+- `Apps-Lillist-macOS-Sources-chunk-1 -> Packages-LillistUI-Sources-LillistUI-Components-chunk-1 (calls)`
+- `Apps-Lillist-macOS-Sources-chunk-1 -> Packages-LillistUI-Sources-LillistUI-CrashReporting (calls)`
+- `Apps-Lillist-macOS-Sources-chunk-1 -> Packages-LillistUI-Sources-LillistUI-Editor (calls)`
+- `Apps-Lillist-macOS-Sources-chunk-1 -> Packages-LillistUI-Sources-LillistUI-Onboarding (calls)`
+- `Apps-Lillist-macOS-Sources-chunk-1 -> Packages-LillistUI-Sources-LillistUI-Recurrence (calls)`
+- `Apps-Lillist-macOS-Sources-chunk-1 -> Packages-LillistUI-Sources-LillistUI-Settings (calls)`
+- `Apps-Lillist-macOS-Sources-chunk-1 -> Packages-LillistUI-Sources-LillistUI-Status (calls)`
+- `Apps-Lillist-macOS-Sources-chunk-1 -> Packages-LillistUI-Sources-LillistUI-Sync (calls)`
+- `Apps-Lillist-macOS-Sources-chunk-1 -> Packages-LillistUI-Sources-LillistUI-Theme-chunk-1 (calls)`
+- `Apps-Lillist-macOS-Sources-chunk-1 -> Packages-LillistUI-Sources-LillistUI-iOS-Tasks (calls)`
+- `Apps-Lillist-macOS-Sources-chunk-1 -> Packages-LillistUI-Sources-LillistUI-iOS-misc (calls)`
+- `Apps-Lillist-macOS-Sources-chunk-2 -> Apps-Lillist-macOS-Sources-chunk-1 (calls)`
+- `Apps-Lillist-macOS-Sources-chunk-2 -> Packages-LillistCore-Sources-LillistCore-Rules (calls)`
+- `Apps-Lillist-macOS-Sources-chunk-2 -> Packages-LillistCore-Sources-LillistCore-Stores-chunk-1 (calls)`
+- `Apps-Lillist-macOS-Sources-chunk-2 -> Packages-LillistCore-Sources-LillistCore-Stores-chunk-2 (calls)`
+- `Apps-Lillist-macOS-Sources-chunk-2 -> Packages-LillistUI-Sources-LillistUI-Components-chunk-1 (calls)`
+- `Apps-Lillist-macOS-Sources-chunk-2 -> Packages-LillistUI-Sources-LillistUI-Components-chunk-2 (calls)`
+- `Apps-Lillist-macOS-Sources-chunk-2 -> Packages-LillistUI-Sources-LillistUI-DragReorder (calls)`
+- `Apps-Lillist-macOS-Sources-chunk-2 -> Packages-LillistUI-Sources-LillistUI-Editor (calls)`
+- `Apps-Lillist-macOS-Sources-chunk-2 -> Packages-LillistUI-Sources-LillistUI-Recurrence (calls)`
+- `Apps-Lillist-macOS-Sources-chunk-2 -> Packages-LillistUI-Sources-LillistUI-Settings (calls)`
+- `Apps-Lillist-macOS-Sources-chunk-2 -> Packages-LillistUI-Sources-LillistUI-Status (calls)`
+- `Apps-Lillist-macOS-Sources-chunk-2 -> Packages-LillistUI-Sources-LillistUI-Theme-chunk-1 (calls)`
+- `Apps-Lillist-macOS-Sources-chunk-2 -> Packages-LillistUI-Sources-LillistUI-iOS-Tasks (calls)`
+- `Apps-Lillist-macOS-Sources-chunk-2 -> Packages-LillistUI-Sources-LillistUI-iOS-misc (calls)`
+- `Extensions-ShareExtension-iOS -> Packages-LillistCore-Sources-LillistCore-Diagnostics (calls)`
+- `Extensions-ShareExtension-iOS -> Packages-LillistCore-Sources-LillistCore-LinkPreview (calls)`
+- `Extensions-ShareExtension-iOS -> Packages-LillistCore-Sources-LillistCore-Reminders (calls)`
+- `Extensions-ShareExtension-iOS -> Packages-LillistCore-Sources-LillistCore-Stores-chunk-1 (calls)`
+- `Extensions-ShareExtension-iOS -> Packages-LillistCore-Sources-LillistCore-Sync-chunk-1 (calls)`
+- `Extensions-ShareExtension-iOS -> Packages-LillistCore-Sources-LillistCore-misc (calls)`
+- `Extensions-ShareExtension-iOS -> Packages-LillistUI-Sources-LillistUI-Theme-chunk-1 (calls)`
+- `Extensions-ShortcutsActions-Entities -> Packages-LillistCore-Sources-LillistCore-Rules (calls)`
+- `Extensions-ShortcutsActions-misc -> Packages-LillistCore-Sources-LillistCore-CrashReporting (calls)`
+- `Extensions-ShortcutsActions-misc -> Packages-LillistCore-Sources-LillistCore-Diagnostics (calls)`
+- `Extensions-ShortcutsActions-misc -> Packages-LillistCore-Sources-LillistCore-Notifications (calls)`
+- `Extensions-ShortcutsActions-misc -> Packages-LillistCore-Sources-LillistCore-Persistence (calls)`
+- `Extensions-ShortcutsActions-misc -> Packages-LillistCore-Sources-LillistCore-Sync-chunk-1 (calls)`
+- `Extensions-ShortcutsActions-misc -> Packages-LillistCore-Sources-LillistCore-misc (calls)`
+- `Extensions-ShortcutsActions-misc -> Packages-LillistUI-Sources-LillistUI-Accessibility (calls)`
+- `Extensions-ShortcutsActions-misc -> Packages-LillistUI-Sources-LillistUI-Recurrence (calls)`
+- `Packages-LillistCore-Sources-LillistCore-Backup -> Extensions-ShortcutsActions-Entities (calls)`
+- `Packages-LillistCore-Sources-LillistCore-Backup -> Packages-LillistCore-Sources-LillistCore-Diagnostics (calls)`
+- `Packages-LillistCore-Sources-LillistCore-Backup -> Packages-LillistCore-Sources-LillistCore-Export (calls)`
+- `Packages-LillistCore-Sources-LillistCore-Backup -> Packages-LillistCore-Sources-LillistCore-LinkPreview (calls)`
+- `Packages-LillistCore-Sources-LillistCore-Backup -> Packages-LillistCore-Sources-LillistCore-Persistence (calls)`
+- `Packages-LillistCore-Sources-LillistCore-Backup -> Packages-LillistUI-Sources-LillistUI-Components-chunk-1 (calls)`
+- `Packages-LillistCore-Sources-LillistCore-Backup -> Packages-LillistUI-Sources-LillistUI-Recurrence (calls)`
+- `Packages-LillistCore-Sources-LillistCore-CLIBridge-Handlers-chunk-1 -> Packages-LillistCore-Sources-LillistCore-CLIBridge-misc (calls)`
+- `Packages-LillistCore-Sources-LillistCore-CLIBridge-Handlers-chunk-1 -> Packages-LillistCore-Sources-LillistCore-Export (calls)`
+- `Packages-LillistCore-Sources-LillistCore-CLIBridge-Handlers-chunk-1 -> Packages-LillistCore-Sources-LillistCore-LinkPreview (calls)`
+- `Packages-LillistCore-Sources-LillistCore-CLIBridge-Handlers-chunk-1 -> Packages-LillistCore-Sources-LillistCore-Notifications (calls)`
+- `Packages-LillistCore-Sources-LillistCore-CLIBridge-Handlers-chunk-1 -> Packages-LillistCore-Sources-LillistCore-Rules (calls)`
+- `Packages-LillistCore-Sources-LillistCore-CLIBridge-Handlers-chunk-1 -> Packages-LillistCore-Sources-LillistCore-Stores-chunk-1 (calls)`
+- `Packages-LillistCore-Sources-LillistCore-CLIBridge-Handlers-chunk-1 -> Packages-LillistCore-Sources-LillistCore-Stores-chunk-2 (calls)`
+- `Packages-LillistCore-Sources-LillistCore-CLIBridge-Handlers-chunk-2 -> Packages-LillistCore-Sources-LillistCore-CLIBridge-Handlers-chunk-1 (calls)`
+- `Packages-LillistCore-Sources-LillistCore-CLIBridge-Handlers-chunk-2 -> Packages-LillistCore-Sources-LillistCore-CrashReporting (calls)`
+- `Packages-LillistCore-Sources-LillistCore-CLIBridge-Handlers-chunk-2 -> Packages-LillistCore-Sources-LillistCore-LinkPreview (calls)`
+- `Packages-LillistCore-Sources-LillistCore-CLIBridge-Handlers-chunk-2 -> Packages-LillistCore-Sources-LillistCore-Stores-chunk-1 (calls)`
+- `Packages-LillistCore-Sources-LillistCore-CLIBridge-Handlers-chunk-2 -> Packages-LillistCore-Sources-LillistCore-Stores-chunk-2 (calls)`
+- `Packages-LillistCore-Sources-LillistCore-CLIBridge-Renderers -> Packages-LillistCore-Sources-LillistCore-LinkPreview (calls)`
+- `Packages-LillistCore-Sources-LillistCore-CLIBridge-Renderers -> Packages-LillistUI-Sources-LillistUI-Recurrence (calls)`
+- `Packages-LillistCore-Sources-LillistCore-CLIBridge-misc -> Packages-LillistCore-Sources-LillistCore-LinkPreview (calls)`
+- `Packages-LillistCore-Sources-LillistCore-CLIBridge-misc -> Packages-LillistCore-Sources-LillistCore-Persistence (calls)`
+- `Packages-LillistCore-Sources-LillistCore-CLIBridge-misc -> Packages-LillistCore-Sources-LillistCore-Rules (calls)`
+- `Packages-LillistCore-Sources-LillistCore-CLIBridge-misc -> Packages-LillistCore-Sources-LillistCore-Sync-chunk-1 (calls)`
+- `Packages-LillistCore-Sources-LillistCore-CLIBridge-misc -> Packages-LillistUI-Sources-LillistUI-Recurrence (calls)`
+- `Packages-LillistCore-Sources-LillistCore-CrashReporting -> Packages-LillistCore-Sources-LillistCore-LinkPreview (calls)`
+- `Packages-LillistCore-Sources-LillistCore-CrashReporting -> Packages-LillistCore-Sources-LillistCore-Ordering (calls)`
+- `Packages-LillistCore-Sources-LillistCore-CrashReporting -> Packages-LillistUI-Sources-LillistUI-Recurrence (calls)`
+- `Packages-LillistCore-Sources-LillistCore-Diagnostics -> Packages-LillistCore-Sources-LillistCore-LinkPreview (calls)`
+- `Packages-LillistCore-Sources-LillistCore-Diagnostics -> Packages-LillistCore-Sources-LillistCore-Recurrence (calls)`
+- `Packages-LillistCore-Sources-LillistCore-Diagnostics -> Packages-LillistUI-Sources-LillistUI-Accessibility (calls)`
+- `Packages-LillistCore-Sources-LillistCore-Diagnostics -> Packages-LillistUI-Sources-LillistUI-Editor (calls)`
+- `Packages-LillistCore-Sources-LillistCore-Diagnostics -> Packages-LillistUI-Sources-LillistUI-Recurrence (calls)`
+- `Packages-LillistCore-Sources-LillistCore-Export -> Packages-LillistCore-Sources-LillistCore-Backup (calls)`
+- `Packages-LillistCore-Sources-LillistCore-Export -> Packages-LillistCore-Sources-LillistCore-ManagedObjects (calls)`
+- `Packages-LillistCore-Sources-LillistCore-Export -> Packages-LillistCore-Sources-LillistCore-Persistence (calls)`
+- `Packages-LillistCore-Sources-LillistCore-Export -> Packages-LillistCore-Sources-LillistCore-Stores-chunk-2 (calls)`
+- `Packages-LillistCore-Sources-LillistCore-LinkPreview -> Packages-LillistCore-Sources-LillistCore-Stores-chunk-1 (calls)`
+- `Packages-LillistCore-Sources-LillistCore-LinkPreview -> Packages-LillistUI-Sources-LillistUI-Accessibility (calls)`
+- `Packages-LillistCore-Sources-LillistCore-LinkPreview -> Packages-LillistUI-Sources-LillistUI-Recurrence (calls)`
+- `Packages-LillistCore-Sources-LillistCore-ManagedObjects -> Packages-LillistCore-Sources-LillistCore-LinkPreview (calls)`
+- `Packages-LillistCore-Sources-LillistCore-ManagedObjects -> Packages-LillistCore-Sources-LillistCore-Model (calls)`
+- `Packages-LillistCore-Sources-LillistCore-Model -> Packages-LillistCore-Sources-LillistCore-Stores-chunk-1 (calls)`
+- `Packages-LillistCore-Sources-LillistCore-Notifications -> Packages-LillistCore-Sources-LillistCore-Stores-chunk-1 (calls)`
+- `Packages-LillistCore-Sources-LillistCore-Notifications -> Packages-LillistUI-Sources-LillistUI-Components-chunk-1 (calls)`
+- `Packages-LillistCore-Sources-LillistCore-Notifications -> Packages-LillistUI-Sources-LillistUI-Recurrence (calls)`
+- `Packages-LillistCore-Sources-LillistCore-Persistence -> Apps-Lillist-macOS-Sources-Hotkey (calls)`
+- `Packages-LillistCore-Sources-LillistCore-Persistence -> Extensions-ShortcutsActions-misc (calls)`
+- `Packages-LillistCore-Sources-LillistCore-Persistence -> Packages-LillistCore-Sources-LillistCore-CLIBridge-Handlers-chunk-2 (calls)`
+- `Packages-LillistCore-Sources-LillistCore-Persistence -> Packages-LillistCore-Sources-LillistCore-LinkPreview (calls)`
+- `Packages-LillistCore-Sources-LillistCore-Persistence -> Packages-LillistCore-Sources-LillistCore-Notifications (calls)`
+- `Packages-LillistCore-Sources-LillistCore-Persistence -> Packages-LillistCore-Sources-LillistCore-Stores-chunk-1 (calls)`
+- `Packages-LillistCore-Sources-LillistCore-Persistence -> Packages-LillistCore-Sources-LillistCore-Sync-chunk-1 (calls)`
+- `Packages-LillistCore-Sources-LillistCore-Persistence -> Packages-LillistUI-Sources-LillistUI-Components-chunk-1 (calls)`
+- `Packages-LillistCore-Sources-LillistCore-Recurrence -> Packages-LillistCore-Sources-LillistCore-ManagedObjects (calls)`
+- `Packages-LillistCore-Sources-LillistCore-Reminders -> Packages-LillistCore-Sources-LillistCore-Stores-chunk-1 (calls)`
+- `Packages-LillistCore-Sources-LillistCore-Reminders -> Packages-LillistCore-Sources-LillistCore-misc (calls)`
+- `Packages-LillistCore-Sources-LillistCore-Rules -> Packages-LillistCore-Sources-LillistCore-CLIBridge-misc (calls)`
+- `Packages-LillistCore-Sources-LillistCore-Rules -> Packages-LillistCore-Sources-LillistCore-LinkPreview (calls)`
+- `Packages-LillistCore-Sources-LillistCore-Rules -> Packages-LillistUI-Sources-LillistUI-Recurrence (calls)`
+- `Packages-LillistCore-Sources-LillistCore-Stores-chunk-1 -> Packages-LillistCore-Sources-LillistCore-Diagnostics (calls)`
+- `Packages-LillistCore-Sources-LillistCore-Stores-chunk-1 -> Packages-LillistCore-Sources-LillistCore-LinkPreview (calls)`
+- `Packages-LillistCore-Sources-LillistCore-Stores-chunk-1 -> Packages-LillistCore-Sources-LillistCore-ManagedObjects (calls)`
+- `Packages-LillistCore-Sources-LillistCore-Stores-chunk-1 -> Packages-LillistCore-Sources-LillistCore-Ordering (calls)`
+- `Packages-LillistCore-Sources-LillistCore-Stores-chunk-1 -> Packages-LillistCore-Sources-LillistCore-Recurrence (calls)`
+- `Packages-LillistCore-Sources-LillistCore-Stores-chunk-1 -> Packages-LillistCore-Sources-LillistCore-Rules (calls)`
+- `Packages-LillistCore-Sources-LillistCore-Stores-chunk-1 -> Packages-LillistCore-Sources-LillistCore-Stores-chunk-2 (calls)`
+- `Packages-LillistCore-Sources-LillistCore-Stores-chunk-1 -> Packages-LillistCore-Sources-LillistCore-misc (calls)`
+- `Packages-LillistCore-Sources-LillistCore-Stores-chunk-1 -> Packages-LillistUI-Sources-LillistUI-Recurrence (calls)`
+- `Packages-LillistCore-Sources-LillistCore-Stores-chunk-2 -> Packages-LillistCore-Sources-LillistCore-Diagnostics (calls)`
+- `Packages-LillistCore-Sources-LillistCore-Stores-chunk-2 -> Packages-LillistCore-Sources-LillistCore-ManagedObjects (calls)`
+- `Packages-LillistCore-Sources-LillistCore-Stores-chunk-2 -> Packages-LillistCore-Sources-LillistCore-Ordering (calls)`
+- `Packages-LillistCore-Sources-LillistCore-Stores-chunk-2 -> Packages-LillistCore-Sources-LillistCore-Persistence (calls)`
+- `Packages-LillistCore-Sources-LillistCore-Stores-chunk-2 -> Packages-LillistCore-Sources-LillistCore-Recurrence (calls)`
+- `Packages-LillistCore-Sources-LillistCore-Stores-chunk-2 -> Packages-LillistUI-Sources-LillistUI-Recurrence (calls)`
+- `Packages-LillistCore-Sources-LillistCore-Sync-chunk-1 -> Extensions-ShareExtension-iOS (calls)`
+- `Packages-LillistCore-Sources-LillistCore-Sync-chunk-1 -> Packages-LillistCore-Sources-LillistCore-LinkPreview (calls)`
+- `Packages-LillistCore-Sources-LillistCore-Sync-chunk-1 -> Packages-LillistCore-Sources-LillistCore-Notifications (calls)`
+- `Packages-LillistCore-Sources-LillistCore-Sync-chunk-1 -> Packages-LillistCore-Sources-LillistCore-Persistence (calls)`
+- `Packages-LillistCore-Sources-LillistCore-Sync-chunk-1 -> Packages-LillistCore-Sources-LillistCore-Stores-chunk-2 (calls)`
+- `Packages-LillistCore-Sources-LillistCore-Sync-chunk-1 -> Packages-LillistCore-Sources-LillistCore-Sync-chunk-2 (calls)`
+- `Packages-LillistCore-Sources-LillistCore-Sync-chunk-1 -> Packages-LillistUI-Sources-LillistUI-Components-chunk-1 (calls)`
+- `Packages-LillistCore-Sources-LillistCore-Sync-chunk-1 -> Packages-LillistUI-Sources-LillistUI-DragReorder (calls)`
+- `Packages-LillistCore-Sources-LillistCore-Sync-chunk-1 -> Packages-LillistUI-Sources-LillistUI-Recurrence (calls)`
+- `Packages-LillistCore-Sources-LillistCore-misc -> Packages-LillistCore-Sources-LillistCore-Stores-chunk-1 (calls)`
+- `Packages-LillistCore-Sources-LillistCore-misc -> Packages-LillistUI-Sources-LillistUI-Recurrence (calls)`
+- `Packages-LillistCore-Sources-lillist-cli-Commands-chunk-1 -> Packages-LillistCore-Sources-LillistCore-CLIBridge-Handlers-chunk-1 (calls)`
+- `Packages-LillistCore-Sources-lillist-cli-Commands-chunk-1 -> Packages-LillistCore-Sources-LillistCore-CLIBridge-Renderers (calls)`
+- `Packages-LillistCore-Sources-lillist-cli-Commands-chunk-1 -> Packages-LillistCore-Sources-LillistCore-CLIBridge-misc (calls)`
+- `Packages-LillistCore-Sources-lillist-cli-Commands-chunk-1 -> Packages-LillistCore-Sources-LillistCore-LinkPreview (calls)`
+- `Packages-LillistCore-Sources-lillist-cli-Commands-chunk-1 -> Packages-LillistCore-Sources-LillistCore-Stores-chunk-1 (calls)`
+- `Packages-LillistCore-Sources-lillist-cli-Commands-chunk-1 -> Packages-LillistCore-Sources-LillistCore-Stores-chunk-2 (calls)`
+- `Packages-LillistCore-Sources-lillist-cli-Commands-chunk-1 -> Packages-LillistCore-Sources-lillist-cli-Support (calls)`
+- `Packages-LillistCore-Sources-lillist-cli-Commands-chunk-2 -> Packages-LillistCore-Sources-LillistCore-CLIBridge-Handlers-chunk-1 (calls)`
+- `Packages-LillistCore-Sources-lillist-cli-Commands-chunk-2 -> Packages-LillistCore-Sources-LillistCore-CLIBridge-Handlers-chunk-2 (calls)`
+- `Packages-LillistCore-Sources-lillist-cli-Commands-chunk-2 -> Packages-LillistCore-Sources-LillistCore-CLIBridge-Renderers (calls)`
+- `Packages-LillistCore-Sources-lillist-cli-Commands-chunk-2 -> Packages-LillistCore-Sources-LillistCore-CLIBridge-misc (calls)`
+- `Packages-LillistCore-Sources-lillist-cli-Commands-chunk-2 -> Packages-LillistCore-Sources-LillistCore-CrashReporting (calls)`
+- `Packages-LillistCore-Sources-lillist-cli-Commands-chunk-2 -> Packages-LillistCore-Sources-LillistCore-LinkPreview (calls)`
+- `Packages-LillistCore-Sources-lillist-cli-Commands-chunk-2 -> Packages-LillistCore-Sources-LillistCore-Notifications (calls)`
+- `Packages-LillistCore-Sources-lillist-cli-Commands-chunk-2 -> Packages-LillistCore-Sources-LillistCore-Stores-chunk-1 (calls)`
+- `Packages-LillistCore-Sources-lillist-cli-Commands-chunk-2 -> Packages-LillistCore-Sources-LillistCore-Stores-chunk-2 (calls)`
+- `Packages-LillistCore-Sources-lillist-cli-Commands-chunk-2 -> Packages-LillistCore-Sources-lillist-cli-Support (calls)`
+- `Packages-LillistCore-Sources-lillist-cli-Support -> Packages-LillistCore-Sources-LillistCore-CrashReporting (calls)`
+- `Packages-LillistCore-Sources-lillist-cli-Support -> Packages-LillistCore-Sources-LillistCore-LinkPreview (calls)`
+- `Packages-LillistCore-Sources-lillist-cli-Support -> Packages-LillistCore-Sources-LillistCore-Notifications (calls)`
+- `Packages-LillistCore-Sources-lillist-cli-misc -> Packages-LillistCore-Sources-lillist-cli-Support (calls)`
+- `Packages-LillistUI-Sources-LillistUI-Accessibility -> Packages-LillistUI-Sources-LillistUI-Settings (calls)`
+- `Packages-LillistUI-Sources-LillistUI-Components-chunk-1 -> Apps-Lillist-macOS-Sources-Hotkey (calls)`
+- `Packages-LillistUI-Sources-LillistUI-Components-chunk-1 -> Extensions-ShareExtension-iOS (calls)`
+- `Packages-LillistUI-Sources-LillistUI-Components-chunk-1 -> Packages-LillistCore-Sources-LillistCore-LinkPreview (calls)`
+- `Packages-LillistUI-Sources-LillistUI-Components-chunk-1 -> Packages-LillistCore-Sources-LillistCore-Notifications (calls)`
+- `Packages-LillistUI-Sources-LillistUI-Components-chunk-1 -> Packages-LillistCore-Sources-LillistCore-Stores-chunk-2 (calls)`
+- `Packages-LillistUI-Sources-LillistUI-Components-chunk-1 -> Packages-LillistCore-Sources-LillistCore-Sync-chunk-1 (calls)`
+- `Packages-LillistUI-Sources-LillistUI-Components-chunk-1 -> Packages-LillistUI-Sources-LillistUI-Accessibility (calls)`
+- `Packages-LillistUI-Sources-LillistUI-Components-chunk-1 -> Packages-LillistUI-Sources-LillistUI-Settings (calls)`
+- `Packages-LillistUI-Sources-LillistUI-Components-chunk-1 -> Packages-LillistUI-Sources-LillistUI-Theme-chunk-1 (calls)`
+- `Packages-LillistUI-Sources-LillistUI-Components-chunk-2 -> Packages-LillistCore-Sources-LillistCore-CLIBridge-misc (calls)`
+- `Packages-LillistUI-Sources-LillistUI-Components-chunk-2 -> Packages-LillistCore-Sources-LillistCore-LinkPreview (calls)`
+- `Packages-LillistUI-Sources-LillistUI-Components-chunk-2 -> Packages-LillistUI-Sources-LillistUI-Components-chunk-1 (calls)`
+- `Packages-LillistUI-Sources-LillistUI-Components-chunk-2 -> Packages-LillistUI-Sources-LillistUI-DragReorder (calls)`
+- `Packages-LillistUI-Sources-LillistUI-Components-chunk-2 -> Packages-LillistUI-Sources-LillistUI-Theme-chunk-1 (calls)`
+- `Packages-LillistUI-Sources-LillistUI-CrashReporting -> Packages-LillistCore-Sources-LillistCore-CrashReporting (calls)`
+- `Packages-LillistUI-Sources-LillistUI-CrashReporting -> Packages-LillistCore-Sources-LillistCore-LinkPreview (calls)`
+- `Packages-LillistUI-Sources-LillistUI-CrashReporting -> Packages-LillistUI-Sources-LillistUI-Settings (calls)`
+- `Packages-LillistUI-Sources-LillistUI-CrashReporting -> Packages-LillistUI-Sources-LillistUI-Theme-chunk-1 (calls)`
+- `Packages-LillistUI-Sources-LillistUI-DragReorder -> Packages-LillistCore-Sources-LillistCore-Diagnostics (calls)`
+- `Packages-LillistUI-Sources-LillistUI-DragReorder -> Packages-LillistCore-Sources-LillistCore-Ordering (calls)`
+- `Packages-LillistUI-Sources-LillistUI-DragReorder -> Packages-LillistCore-Sources-LillistCore-Stores-chunk-2 (calls)`
+- `Packages-LillistUI-Sources-LillistUI-DragReorder -> Packages-LillistUI-Sources-LillistUI-Accessibility (calls)`
+- `Packages-LillistUI-Sources-LillistUI-DragReorder -> Packages-LillistUI-Sources-LillistUI-Components-chunk-1 (calls)`
+- `Packages-LillistUI-Sources-LillistUI-DragReorder -> Packages-LillistUI-Sources-LillistUI-Recurrence (calls)`
+- `Packages-LillistUI-Sources-LillistUI-DragReorder -> Packages-LillistUI-Sources-LillistUI-Settings (calls)`
+- `Packages-LillistUI-Sources-LillistUI-DragReorder -> Packages-LillistUI-Sources-LillistUI-Theme-chunk-1 (calls)`
+- `Packages-LillistUI-Sources-LillistUI-Editor -> Apps-Lillist-macOS-Sources-Hotkey (calls)`
+- `Packages-LillistUI-Sources-LillistUI-Editor -> Packages-LillistCore-Sources-LillistCore-LinkPreview (calls)`
+- `Packages-LillistUI-Sources-LillistUI-Editor -> Packages-LillistCore-Sources-LillistCore-Notifications (calls)`
+- `Packages-LillistUI-Sources-LillistUI-Editor -> Packages-LillistCore-Sources-LillistCore-Stores-chunk-1 (calls)`
+- `Packages-LillistUI-Sources-LillistUI-Editor -> Packages-LillistCore-Sources-LillistCore-Stores-chunk-2 (calls)`
+- `Packages-LillistUI-Sources-LillistUI-Editor -> Packages-LillistCore-Sources-LillistCore-Sync-chunk-1 (calls)`
+- `Packages-LillistUI-Sources-LillistUI-Editor -> Packages-LillistUI-Sources-LillistUI-Components-chunk-1 (calls)`
+- `Packages-LillistUI-Sources-LillistUI-Editor -> Packages-LillistUI-Sources-LillistUI-Recurrence (calls)`
+- `Packages-LillistUI-Sources-LillistUI-Editor -> Packages-LillistUI-Sources-LillistUI-Settings (calls)`
+- `Packages-LillistUI-Sources-LillistUI-Editor -> Packages-LillistUI-Sources-LillistUI-Status (calls)`
+- `Packages-LillistUI-Sources-LillistUI-Editor -> Packages-LillistUI-Sources-LillistUI-Theme-chunk-1 (calls)`
+- `Packages-LillistUI-Sources-LillistUI-Onboarding -> Packages-LillistUI-Sources-LillistUI-Components-chunk-1 (calls)`
+- `Packages-LillistUI-Sources-LillistUI-Onboarding -> Packages-LillistUI-Sources-LillistUI-Theme-chunk-1 (calls)`
+- `Packages-LillistUI-Sources-LillistUI-QuickCapture -> Packages-LillistCore-Sources-LillistCore-LinkPreview (calls)`
+- `Packages-LillistUI-Sources-LillistUI-QuickCapture -> Packages-LillistUI-Sources-LillistUI-Components-chunk-1 (calls)`
+- `Packages-LillistUI-Sources-LillistUI-QuickCapture -> Packages-LillistUI-Sources-LillistUI-Theme-chunk-1 (calls)`
+- `Packages-LillistUI-Sources-LillistUI-Recurrence -> Packages-LillistCore-Sources-LillistCore-LinkPreview (calls)`
+- `Packages-LillistUI-Sources-LillistUI-Recurrence -> Packages-LillistCore-Sources-LillistCore-Recurrence (calls)`
+- `Packages-LillistUI-Sources-LillistUI-Recurrence -> Packages-LillistUI-Sources-LillistUI-Theme-chunk-1 (calls)`
+- `Packages-LillistUI-Sources-LillistUI-Settings -> Packages-LillistCore-Sources-LillistCore-LinkPreview (calls)`
+- `Packages-LillistUI-Sources-LillistUI-Settings -> Packages-LillistUI-Sources-LillistUI-iOS-misc (calls)`
+- `Packages-LillistUI-Sources-LillistUI-Status -> Packages-LillistUI-Sources-LillistUI-DragReorder (calls)`
+- `Packages-LillistUI-Sources-LillistUI-Sync -> Packages-LillistCore-Sources-LillistCore-LinkPreview (calls)`
+- `Packages-LillistUI-Sources-LillistUI-Sync -> Packages-LillistUI-Sources-LillistUI-Components-chunk-1 (calls)`
+- `Packages-LillistUI-Sources-LillistUI-Sync -> Packages-LillistUI-Sources-LillistUI-Theme-chunk-1 (calls)`
+- `Packages-LillistUI-Sources-LillistUI-Theme-chunk-1 -> Apps-Lillist-macOS-Sources-Hotkey (calls)`
+- `Packages-LillistUI-Sources-LillistUI-Theme-chunk-1 -> Packages-LillistCore-Sources-LillistCore-CLIBridge-Handlers-chunk-2 (calls)`
+- `Packages-LillistUI-Sources-LillistUI-Theme-chunk-1 -> Packages-LillistCore-Sources-LillistCore-LinkPreview (calls)`
+- `Packages-LillistUI-Sources-LillistUI-Theme-chunk-1 -> Packages-LillistUI-Sources-LillistUI-Accessibility (calls)`
+- `Packages-LillistUI-Sources-LillistUI-Theme-chunk-1 -> Packages-LillistUI-Sources-LillistUI-Recurrence (calls)`
+- `Packages-LillistUI-Sources-LillistUI-Theme-chunk-1 -> Packages-LillistUI-Sources-LillistUI-Settings (calls)`
+- `Packages-LillistUI-Sources-LillistUI-Theme-chunk-2 -> Packages-LillistUI-Sources-LillistUI-DragReorder (calls)`
+- `Packages-LillistUI-Sources-LillistUI-Theme-chunk-2 -> Packages-LillistUI-Sources-LillistUI-Theme-chunk-1 (calls)`
+- `Packages-LillistUI-Sources-LillistUI-iOS-Tasks -> Packages-LillistCore-Sources-LillistCore-LinkPreview (calls)`
+- `Packages-LillistUI-Sources-LillistUI-iOS-Tasks -> Packages-LillistCore-Sources-LillistCore-Ordering (calls)`
+- `Packages-LillistUI-Sources-LillistUI-iOS-Tasks -> Packages-LillistUI-Sources-LillistUI-Components-chunk-1 (calls)`
+- `Packages-LillistUI-Sources-LillistUI-iOS-Tasks -> Packages-LillistUI-Sources-LillistUI-Components-chunk-2 (calls)`
+- `Packages-LillistUI-Sources-LillistUI-iOS-Tasks -> Packages-LillistUI-Sources-LillistUI-Settings (calls)`
+- `Packages-LillistUI-Sources-LillistUI-iOS-Tasks -> Packages-LillistUI-Sources-LillistUI-Theme-chunk-1 (calls)`
+- `Packages-LillistUI-Sources-LillistUI-iOS-misc -> Apps-Lillist-macOS-Sources-Hotkey (calls)`
+- `Packages-LillistUI-Sources-LillistUI-iOS-misc -> Packages-LillistCore-Sources-LillistCore-CLIBridge-Handlers-chunk-2 (calls)`
+- `Packages-LillistUI-Sources-LillistUI-iOS-misc -> Packages-LillistCore-Sources-LillistCore-LinkPreview (calls)`
+- `Packages-LillistUI-Sources-LillistUI-iOS-misc -> Packages-LillistCore-Sources-LillistCore-Stores-chunk-2 (calls)`
+- `Packages-LillistUI-Sources-LillistUI-iOS-misc -> Packages-LillistUI-Sources-LillistUI-Accessibility (calls)`
+- `Packages-LillistUI-Sources-LillistUI-iOS-misc -> Packages-LillistUI-Sources-LillistUI-Components-chunk-1 (calls)`
+- `Packages-LillistUI-Sources-LillistUI-iOS-misc -> Packages-LillistUI-Sources-LillistUI-Components-chunk-2 (calls)`
+- `Packages-LillistUI-Sources-LillistUI-iOS-misc -> Packages-LillistUI-Sources-LillistUI-DragReorder (calls)`
+- `Packages-LillistUI-Sources-LillistUI-iOS-misc -> Packages-LillistUI-Sources-LillistUI-Settings (calls)`
+- `Packages-LillistUI-Sources-LillistUI-iOS-misc -> Packages-LillistUI-Sources-LillistUI-Theme-chunk-1 (calls)`
+- `Packages-LillistUI-Sources-LillistUI-iOS-misc -> Packages-LillistUI-Sources-LillistUI-iOS-Tasks (calls)`
 
 ## Data flow
 
-**Quick-capture task create (iOS):** The user taps the FAB (`FloatingAddButton` in `Packages-LillistUI-Sources-LillistUI-iOS-misc`) which signals `TaskEditorHost` (in `Apps-Lillist-iOS-Sources-misc`) to present `TaskEditorView`. As the user types, `TaskEditorModel` (`Packages-LillistUI-Sources-LillistUI-Editor`) calls `QuickCaptureParser` to tokenize the text into title/tags/date. The new task stays as an in-memory draft until `ensureLive()` is triggered; at that point `TaskEditorModel` calls `TaskStore.create` (`Packages-LillistCore-Sources-LillistCore-Stores-chunk-2`) inside `context.perform`, saves, then calls `NotificationReconciling` to schedule any reminders and writes a `BreadcrumbBuffer` entry. The mutated `TaskRecord` DTO is returned to the view layer; no managed object leaves `LillistCore`.
+Trace: user adds a task via iOS Quick Capture.
 
-**`lillist` CLI verb:** `main.swift` (`Packages-LillistCore-Sources-lillist-cli-misc`) runs `CLICanaryLifecycle` to arm crash detection, then dispatches into ArgumentParser. The matching `Command` struct (`Packages-LillistCore-Sources-lillist-cli-Commands-chunk-1` or `-chunk-2`) calls `StoreLocator` (`Packages-LillistCore-Sources-LillistCore-CLIBridge-misc`) which checks `MigrationGate` before opening the App-Group store. The command delegates to a `CLIBridge` handler (`Packages-LillistCore-Sources-LillistCore-CLIBridge-Handlers-chunk-1` or `-chunk-2`) which resolves task tokens via `Resolver`, calls the appropriate store method, and returns DTOs. A `Renderer` (`Packages-LillistCore-Sources-LillistCore-CLIBridge-Renderers`) serializes the DTOs to JSON/TSV/pretty output.
+1. User taps the FAB (LillistUI/iOS-misc: FloatingActionButton inside TasksScreen). The QuickCaptureOverlayModifier, hosted by TaskEditorHost in Apps-Lillist-iOS-Sources-misc, presents QuickCaptureDialog.
 
-**iCloud sync-mode swap:** The user toggles "iCloud Sync" in iOS Settings (`Apps-Lillist-iOS-Sources-Settings.ICloudSyncSection`) or macOS Preferences (`Apps-Lillist-macOS-Sources-Preferences.ICloudSyncPane`). Both call `MigrationCoordinator.beginEnable/beginDisable` (`Packages-LillistCore-Sources-LillistCore-Sync-chunk-1`). The coordinator writes a `MigrationJournal` entry, quiesces pending CloudKit events via `SyncQuiesceMonitor`, then calls `PersistenceReconfiguring` (`Packages-LillistCore-Sources-LillistCore-Persistence`) to remove and re-add the store with the new configuration. Each phase emits a `MigrationPhase` event consumed by `SyncMigrationProgressSheet` in the UI. Concurrent headless openers (CLI, extensions) that call `GatedPersistenceResolver` will abort with an error if the journal shows a migration in flight.
+2. As the user types "Buy milk #groceries ^tomorrow", QuickCaptureParser.parse (LillistUI/QuickCapture) splits the free-text string into a title, a #tag token, and a ^date token, updating the live preview on each keystroke.
 
-## Key invariants
+3. The user taps Add. The app-target wiring in Apps-Lillist-iOS-Sources-misc invokes TaskEditorModel.addTask() (LillistUI/Editor). TaskEditorModel holds a draft in memory and, on promotion, calls TaskStore.create(...) in LillistCore/Stores-chunk-2.
 
-- No `NSManagedObject` escapes `LillistCore`: all store public APIs return value-type `*Record` DTOs. Evidence: `docs/atlas/modules/Packages-LillistCore-Sources-LillistCore-Stores-chunk-2.md` Purpose section; `docs/atlas/modules/Packages-LillistCore-Sources-LillistCore-ManagedObjects.md` Purpose section.
-- All cross-process store access goes through `GatedPersistenceResolver`, which consults `MigrationGate` before allowing an open. Evidence: `docs/atlas/modules/Extensions-ShareExtension-iOS.md` Relationships; `docs/atlas/modules/Extensions-ShortcutsActions-misc.md` Relationships; `docs/atlas/modules/Packages-LillistCore-Sources-LillistCore-CLIBridge-misc.md` Relationships.
-- `CLIBridge` handlers are the single verb layer shared by the `lillist` CLI and the Shortcuts App Intents extension — no business logic is reimplemented in either caller. Evidence: `docs/atlas/modules/Packages-LillistCore-Sources-LillistCore-CLIBridge-Handlers-chunk-1.md` Purpose; `docs/atlas/modules/Extensions-ShortcutsActions-misc.md` Purpose.
-- LillistUI screens are pure presentation (data and closures via `init`, no `@State`/`.task`/`AppEnvironment`). App-target wrappers own lifecycle. Evidence: `docs/atlas/modules/Packages-LillistUI-Sources-LillistUI-iOS-misc.md` Purpose; `docs/atlas/modules/Apps-Lillist-iOS-Sources-misc.md` Purpose.
-- Date math goes through `Calendar.date(byAdding:)`; `addingTimeInterval` is forbidden except the `afterCompletion` recurrence rule defined in absolute seconds. Evidence: `docs/atlas/modules/Packages-LillistCore-Sources-LillistCore-Recurrence.md` Purpose.
-- Smart filters run twin evaluators — `NSPredicateCompiler` (Core Data fetch) and `SwiftEvaluator` (in-memory) — kept in behavioral parity by a dedicated parity test suite. Evidence: `docs/atlas/modules/Packages-LillistCore-Sources-LillistCore-Rules.md` Purpose.
-- All targets share App Group `group.io.mikey.lillist`; the `Signing.xcconfig` indirection keeps the Apple Developer Team ID out of every committed file. Evidence: `docs/atlas/modules/Apps-Config.md` Purpose; `docs/atlas/modules/Extensions-ShortcutsActions-misc.md` External deps.
-- A sync-mode change is a store-level remove+re-add on one long-lived container, never a container re-instantiation. Evidence: `docs/atlas/modules/Packages-LillistCore-Sources-LillistCore-Persistence.md` Purpose.
-- Crash reporting is canary-based, opt-in, and user-mediated — no silent upload. Evidence: `docs/atlas/modules/Packages-LillistCore-Sources-LillistCore-CrashReporting.md` Purpose.
+4. TaskStore serializes the write through viewContext.perform with rollback-on-error. The LillistTask entity (LillistCore/ManagedObjects) is inserted into the NSPersistentCloudKitContainer managed by LillistCore/Persistence. FractionalIndexing math from LillistCore/Ordering computes the new row's position.
+
+5. NSPersistentCloudKitContainer mirrors the new record to the private iCloud.app.lillist CloudKit container. CloudKitEventBridge (LillistCore/Sync-chunk-1) emits a sync event; SyncStatusMonitor (LillistCore/Sync-chunk-2) advances its aggregate; CloudKitSyncStatusAdapter (LillistUI/Status) converts the SyncStatus snapshot to a SyncIndicator enum case that the sync badge in TasksScreen reflects.
+
+6. NotificationScheduler.reconcile(taskID:) (LillistCore/Notifications) runs a desired-vs-pending diff and installs a UNNotification if a reminder spec was included in the new task.
+
+7. LocalBackupCoordinator (LillistCore/Backup) observes NSManagedObjectContextDidSave and appends the new task to the live incremental backup package on disk. DiagnosticHistoryObserver (LillistCore/Diagnostics) records the Core Data insertion as a structured JSONL event.
 
 <!-- atlas:index-facts -->
-- Apple-only: Swift 6, SwiftUI, Core Data over NSPersistentCloudKitContainer, CloudKit sync
-- Four layers: LillistCore (data) -> LillistUI (SwiftUI) -> iOS/macOS apps; extensions + CLI reuse core
-- No NSManagedObject escapes LillistCore — public store APIs return value DTOs (TaskRecord etc.)
-- Hand-written @NSManaged subclasses in ManagedObjects/; Core Data codegen is disabled
-- TaskStore (Stores chunk 2) is the single async gateway for all LillistTask CRUD/reorder/status
-- Date math goes through Calendar; RecurrenceExpander is canonical, never addingTimeInterval
-- Smart filters run twin evaluators (NSPredicateCompiler + SwiftEvaluator) kept in parity
-- CLIBridge handlers are the shared verb layer for the lillist CLI and Shortcuts intents
-- All targets share App Group group.io.mikey.lillist; CLI/extensions open via GatedPersistenceResolver
-- Sync mode swap = store remove+re-add on one container; MigrationGate guards headless opens
-- LillistUI iOS screens are state-free presenters; app-target wrappers own @State/.task/nav
-- Rainbow Glass theme tokens live in LillistUI/Theme; color is functional, not decorative
-- Crash reporting is canary-based, opt-in, redacted, user-mediated (no silent upload)
-- Two xcodegen project.yml specs generate the pbxprojs; CI gates on drift, runs post-push on main
+- Four layers: LillistCore -> LillistUI -> iOS/macOS apps; extensions + CLI reuse core
+- No NSManagedObject escapes LillistCore; store APIs return value DTOs (TaskRecord etc.)
+- TaskStore is the single async gateway for all LillistTask CRUD, reorder, and status
+- Date math uses Calendar; RecurrenceExpander is canonical, never addingTimeInterval
+- Smart filters: NSPredicateCompiler + SwiftEvaluator twin backends kept in parity
+- CLIBridge handlers are the shared verb layer for both lillist CLI and Shortcuts intents
+- All targets share App Group group.app.lillist; CLI/extensions gated by MigrationGate
+- LillistUI screens are state-free presenters; app wrappers own @State and navigation
 <!-- /atlas:index-facts -->

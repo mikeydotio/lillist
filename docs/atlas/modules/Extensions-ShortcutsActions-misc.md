@@ -1,116 +1,111 @@
 ---
 module: "Extensions/ShortcutsActions (misc)"
-summary: "App Intents extension exposing Lillist actions to Shortcuts, Siri, and Lock Screen widgets"
+summary: "App Intents extension: Siri/Shortcuts actions for task CRUD and quick-capture, backed by CLIBridge handlers"
 read_when: "Touching App Intents or Shortcuts actions"
 sources:
   - path: Extensions/ShortcutsActions/AddNoteIntent.swift
     blob: 5479c7b84089fb60435ccc3a69d7134c0a4003bb
   - path: Extensions/ShortcutsActions/AddNudgeIntent.swift
     blob: 9ef7abfdcea19ec80bead733408d60b241ae7661
+  - path: Extensions/ShortcutsActions/AddTaskInput.swift
+    blob: 0d52b0582d7d97cf5c26cdafe6778e6a25a2e8bc
   - path: Extensions/ShortcutsActions/AddTaskIntent.swift
-    blob: a282eecc4ca5781082558d429106ef4b965e4ec6
+    blob: 7905c08bc3612c2ba21d96712762297332c0781c
   - path: Extensions/ShortcutsActions/CompleteTaskIntent.swift
     blob: ee52ad97a2814037665355e4d61f48fefb0aebc2
   - path: Extensions/ShortcutsActions/Info.plist
-    blob: bb54fe71bb383ecfa907d8e1e62c0b2bd15fe749
+    blob: 147d6215620e1469f86611a6ddcc14eca4a7a636
   - path: Extensions/ShortcutsActions/IntentSupport.swift
-    blob: 0d89cca032cb960afe49d9e56244d5a1f43e7dca
+    blob: abb0b458501381ae340fec145f43f129ccab937a
   - path: Extensions/ShortcutsActions/Lillist.entitlements
-    blob: dc82d6a78df2d35115ff154e8888e3d7e0ef3469
+    blob: c8ba24245a40abbf2f019ee0f30fad76a2e22056
   - path: Extensions/ShortcutsActions/LillistShortcuts.swift
-    blob: 2b8bf798b2b60e4b69191a5eabd0283f4325a529
+    blob: 8fad2dc5e16fe94dbb34883fd958cbe02bbb7609
   - path: Extensions/ShortcutsActions/OpenTaskIntent.swift
     blob: a5525ff6de1796d9f8185c10e60ad343507e4c2f
   - path: Extensions/ShortcutsActions/PrivacyInfo.xcprivacy
     blob: 4e7e051bbe5e2753a0a80b85ae78289d250bdce7
   - path: Extensions/ShortcutsActions/QuickCaptureLockScreenIntent.swift
-    blob: ff2cfee19b0ce40fd1261905003b826cff34f3b4
+    blob: ccce46c0dd12ae976c269fb6eafda96b6d8fdc09
   - path: Extensions/ShortcutsActions/ReportCrashIntent.swift
     blob: b5cadb7d4c02e2e41c94ab25e6bd9d8517e006a7
   - path: Extensions/ShortcutsActions/SearchTasksIntent.swift
     blob: 33326bf5c2bdcae30181985681d13a70a9a69999
   - path: Extensions/ShortcutsActions/ToggleStatusIntent.swift
     blob: 6087eb324c84eccdf453f561995740af6c718cc4
-references_modules: [Extensions-ShortcutsActions-Entities, Packages-LillistCore-Sources-LillistCore-CLIBridge-Handlers-chunk-1, Packages-LillistCore-Sources-LillistCore-CLIBridge-Handlers-chunk-2, Packages-LillistCore-Sources-LillistCore-CrashReporting, Packages-LillistCore-Sources-LillistCore-Diagnostics, Packages-LillistCore-Sources-LillistCore-Notifications, Packages-LillistCore-Sources-LillistCore-Persistence, Packages-LillistCore-Sources-LillistCore-Stores-chunk-2, Packages-LillistCore-Sources-LillistCore-misc]
-generator: cartographer/1
-baseline: 1a1562b636e43ebbdc35c7939ab6989b387f50e9
-verified: true
+references_modules: [Packages-LillistCore-Sources-LillistCore-CrashReporting, Packages-LillistCore-Sources-LillistCore-Diagnostics, Packages-LillistCore-Sources-LillistCore-Notifications, Packages-LillistCore-Sources-LillistCore-Persistence, Packages-LillistCore-Sources-LillistCore-Sync-chunk-1, Packages-LillistCore-Sources-LillistCore-misc, Packages-LillistUI-Sources-LillistUI-Accessibility, Packages-LillistUI-Sources-LillistUI-Recurrence]
+generator: cartographer/4
+baseline: 515f24730d21cb81ca1c9737ffeb981e9c414d3c
 ---
 
 # Module: Extensions/ShortcutsActions (misc)
 
 ## Purpose
 
-The App Intents extension target (`com.apple.appintents-extension`) that publishes
-Lillist's task actions to Shortcuts, Siri, and Lock Screen widgets. Each intent is a
-thin adapter: it resolves a shared App-Group persistence stack, then delegates the
-actual mutation to a LillistCore `CLIBridge` handler or store so the extension never
-reimplements business logic. `IntentSupport` is the load-bearing seam — it owns the
-per-process `PersistenceController` cache and the migration-gated resolve so intents
-don't race a foreground sync-mode swap.
+This target is Lillist's App Intents extension — the bridge between the system's Shortcuts/Siri layer and LillistCore's data layer. It exposes intent structs for creating, completing, searching, and status-toggling tasks, adding journal notes and nudge notifications, triggering quick-capture handoff, and surfacing pending crash reports. The unifying idea is thin delegation: every `perform()` body resolves the shared persistence stack via `IntentSupport.makePersistence()` then routes through the same `CLIBridge` handlers the CLI uses, so the Shortcuts surface adds no business logic of its own. Remove this target and Lillist loses all Siri, Shortcuts, and Lock Screen widget integration.
 
 ## Public API
 
 | Symbol | Kind | Location | Contract |
 | --- | --- | --- | --- |
-| `AddNoteIntent` | struct | `Extensions/ShortcutsActions/AddNoteIntent.swift:4` | AppIntent; adds a journal entry to a task via `CLIBridge.NoteHandler` |
-| `AddNudgeIntent` | struct | `Extensions/ShortcutsActions/AddNudgeIntent.swift:5` | AppIntent; schedules a one-off nudge notification via `NotificationSpecStore` |
-| `AddTaskIntent` | struct | `Extensions/ShortcutsActions/AddTaskIntent.swift:5` | AppIntent; creates a task via `CLIBridge.AddHandler`; applies deadline via `TaskStore.update`; returns `TaskEntity` |
-| `CompleteTaskIntent` | struct | `Extensions/ShortcutsActions/CompleteTaskIntent.swift:4` | AppIntent; sets task status to `.closed` via `CLIBridge.StatusHandler` |
-| `IntentSupport` | enum | `Extensions/ShortcutsActions/IntentSupport.swift:6` | Shared seam every mutating intent funnels through for persistence and diagnostics |
-| `LillistShortcuts` | struct | `Extensions/ShortcutsActions/LillistShortcuts.swift:5` | `AppShortcutsProvider`; registers Siri phrases for Add Task, Search Tasks, Quick Capture |
-| `OpenTaskIntent` | struct | `Extensions/ShortcutsActions/OpenTaskIntent.swift:8` | AppIntent; opens Lillist foreground only; task parameter reserved for future deep-link |
-| `QuickCaptureLockScreenIntent` | struct | `Extensions/ShortcutsActions/QuickCaptureLockScreenIntent.swift:7` | AppIntent; Lock Screen entry point; opens app foreground; no in-extension capture |
-| `ReportCrashIntent` | struct | `Extensions/ShortcutsActions/ReportCrashIntent.swift:11` | Public AppIntent; checks canary file for a pending crash; opens app so `CrashReporterHost` can present the sheet; returns status string |
-| `ReportCrashIntentResolver` | enum | `Extensions/ShortcutsActions/ReportCrashIntent.swift:29` | Pure helper; `resolve(canaryURL:)` maps canary presence to a user-facing message; extracted for unit-testability |
-| `SearchTasksIntent` | struct | `Extensions/ShortcutsActions/SearchTasksIntent.swift:4` | AppIntent; runs `CLIBridge.SearchHandler`; returns `[TaskEntity]` |
-| `ToggleStatusIntent` | struct | `Extensions/ShortcutsActions/ToggleStatusIntent.swift:4` | AppIntent; sets arbitrary status via `CLIBridge.StatusHandler` with `StatusAppEnum` input |
+| `AddNoteIntent` | struct | `Extensions/ShortcutsActions/AddNoteIntent.swift:4` | AppIntent that appends a journal note to a named task; requires `TaskEntity` and `body` string parameters; delegates to `CLIBridge.NoteHandler`. |
+| `AddNudgeIntent` | struct | `Extensions/ShortcutsActions/AddNudgeIntent.swift:5` | AppIntent that schedules a one-off nudge notification on a task at a concrete `Date`; bypasses the CLI DSL parser by calling `NotificationSpecStore.add()` directly. |
+| `AddTaskInput` | enum | `Extensions/ShortcutsActions/AddTaskInput.swift:6` | Namespace for title normalization helpers; extracted from `AddTaskIntent` for unit-testability without an AppIntents test host. |
+| `AddTaskIntent` | struct | `Extensions/ShortcutsActions/AddTaskIntent.swift:5` | AppIntent that creates a task with title, optional deadline, tags, and notes; prompts via Siri if the title is blank; returns a `TaskEntity` with a confirmation dialog. |
+| `CompleteTaskIntent` | struct | `Extensions/ShortcutsActions/CompleteTaskIntent.swift:4` | AppIntent that marks a named task `closed`; requires a `TaskEntity` parameter; delegates status change to `CLIBridge.StatusHandler`. |
+| `IntentSupport` | enum | `Extensions/ShortcutsActions/IntentSupport.swift:6` | Namespace enum providing `makePersistence()`, `diagnosticLog()`, and the internal `Cache` actor; the sole shared bootstrap shim for all App Intent `perform()` bodies. |
+| `LillistShortcuts` | struct | `Extensions/ShortcutsActions/LillistShortcuts.swift:5` | `AppShortcutsProvider` manifest wiring `AddTaskIntent`, `SearchTasksIntent`, and `QuickCaptureLockScreenIntent` to Siri trigger phrases for system registration. |
+| `OpenTaskIntent` | struct | `Extensions/ShortcutsActions/OpenTaskIntent.swift:8` | AppIntent that brings Lillist to the foreground with a chosen task selected; no in-app deep-link navigation is performed yet (placeholder for future task-scroll surface). |
+| `QuickCaptureLockScreenIntent` | struct | `Extensions/ShortcutsActions/QuickCaptureLockScreenIntent.swift:9` | AppIntent for Lock Screen and Shortcuts that stashes optional pre-fill text via `QuickCaptureHandoff`, then opens the app; the app drains the handoff on activation. |
+| `ReportCrashIntent` | struct | `Extensions/ShortcutsActions/ReportCrashIntent.swift:11` | AppIntent that detects a pending crash canary and opens Lillist; actual report UI (sheet + mail composer) is deferred to the host app's `CrashReporterHost`. |
+| `ReportCrashIntentResolver` | enum | `Extensions/ShortcutsActions/ReportCrashIntent.swift:29` | Pure-Swift helper extracted from `ReportCrashIntent.perform()` for unit-testability without AppIntents infra; reads a canary URL and returns a user-facing status string. |
+| `SearchTasksIntent` | struct | `Extensions/ShortcutsActions/SearchTasksIntent.swift:4` | AppIntent that searches tasks by title or notes substring via `CLIBridge.SearchHandler` and returns a `[TaskEntity]` array to Shortcuts. |
+| `ToggleStatusIntent` | struct | `Extensions/ShortcutsActions/ToggleStatusIntent.swift:4` | AppIntent that sets a task's status to any `StatusAppEnum` value via `CLIBridge.StatusHandler`; accepts both task and status as parameters. |
+| `controller` | func | `Extensions/ShortcutsActions/IntentSupport.swift:27` | Returns a cached `PersistenceController` for the given `StoreConfiguration`, coalescing concurrent cold builds via `inFlight` Task to prevent duplicate CloudKit containers. |
+| `diagnosticLog` | func | `Extensions/ShortcutsActions/IntentSupport.swift:89` | Returns a `DiagnosticLog` scoped to `.appIntents`, honoring the shared device toggle; reads `DevicePreferencesStore.diagnosticLoggingEnabled()` on every call. |
+| `makePersistence` | func | `Extensions/ShortcutsActions/IntentSupport.swift:75` | Resolves the App-Group persistence stack via `GatedPersistenceResolver`; throws `LillistError.storeUnavailable` if App Group is absent or a sync-mode migration is in flight. |
+| `normalizedTitle` | func | `Extensions/ShortcutsActions/AddTaskInput.swift:9` | Trims whitespace from `raw`; returns `nil` when blank or nil, signaling the intent to re-request the value from the user via Siri. |
+| `perform` | func | `Extensions/ShortcutsActions/AddNoteIntent.swift:18` | Resolves persistence via `IntentSupport.makePersistence()`, calls `CLIBridge.NoteHandler.run`, returns `.result()`; throws on store or note errors. |
+| `perform` | func | `Extensions/ShortcutsActions/AddNudgeIntent.swift:17` | Constructs `NotificationSpecStore` from the resolved persistence stack and calls `.add(taskID:kind:.nudge:offsetMinutes:nil:fireDate:)`; throws if store is unavailable. |
+| `perform` | func | `Extensions/ShortcutsActions/AddTaskIntent.swift:29` | Guards blank title with `needsValueError`; creates via `CLIBridge.AddHandler`, applies deadline via `TaskStore.update`, fetches and returns entity + dialog; throws on store errors. |
+| `perform` | func | `Extensions/ShortcutsActions/CompleteTaskIntent.swift:15` | Calls `CLIBridge.StatusHandler.run(token:to:.closed:note:nil:persistence:)`; returns `.result()` on success; throws on store errors. |
+| `perform` | func | `Extensions/ShortcutsActions/OpenTaskIntent.swift:20` | Returns `.result()` immediately; foreground transition is provided entirely by `openAppWhenRun = true`; no persistence calls. |
+| `perform` | func | `Extensions/ShortcutsActions/QuickCaptureLockScreenIntent.swift:23` | Calls `QuickCaptureHandoff.stash(text ?? "", appGroupID:)` to write pre-fill text to App Group storage; returns `.result()`; side-effect only. |
+| `perform` | func | `Extensions/ShortcutsActions/ReportCrashIntent.swift:20` | Reads `CanaryFile.defaultURL(for: .iOSApp)` and delegates to `ReportCrashIntentResolver.resolve`; returns a status string; `openAppWhenRun = true` brings Lillist to foreground. |
+| `perform` | func | `Extensions/ShortcutsActions/SearchTasksIntent.swift:15` | Calls `CLIBridge.SearchHandler.run(query:scopeToken:nil:persistence:)` and maps each result record to a `TaskEntity`; throws on store errors. |
+| `perform` | func | `Extensions/ShortcutsActions/ToggleStatusIntent.swift:16` | Calls `CLIBridge.StatusHandler.run(token:to:status.coreStatus:note:nil:persistence:)`; returns `.result()` on success; throws on store errors. |
+| `resolve` | func | `Extensions/ShortcutsActions/ReportCrashIntent.swift:30` | Constructs `CanaryFile(url:)` and calls `readIfPresent()`; returns "No pending crash" when nil, otherwise "Open Lillist to complete the crash report." |
 
 ## Load-bearing internals
 
 | Symbol | Kind | Location | Why it matters |
 | --- | --- | --- | --- |
-| `makePersistence` | func | `Extensions/ShortcutsActions/IntentSupport.swift:75` | Migration-gated App-Group stack resolve; throws `storeUnavailable` mid sync-mode swap so Shortcuts shows a retry message |
-| `IntentSupport.Cache` | actor | `Extensions/ShortcutsActions/IntentSupport.swift:19` | Per-process `PersistenceController` cache keyed on `SyncMode`; coalesces concurrent cold builds via `inFlight` Task to prevent duplicate CloudKit subscriptions |
-| `diagnosticLog` | func | `Extensions/ShortcutsActions/IntentSupport.swift:89` | Returns process-scoped `DiagnosticLog` for `.appIntents`, gated on the shared device toggle |
 
 ## Relationships
 
-- `Extensions-ShortcutsActions-misc.IntentSupport -> Packages-LillistCore-Sources-LillistCore-Persistence.GatedPersistenceResolver (calls)` — `Extensions/ShortcutsActions/IntentSupport.swift:76`
-- `Extensions-ShortcutsActions-misc.IntentSupport -> Packages-LillistCore-Sources-LillistCore-Persistence.PersistenceController (owns)` — `Extensions/ShortcutsActions/IntentSupport.swift:46`
-- `Extensions-ShortcutsActions-misc.IntentSupport -> Packages-LillistCore-Sources-LillistCore-Diagnostics.DiagnosticLog (calls)` — `Extensions/ShortcutsActions/IntentSupport.swift:90`
-- `Extensions-ShortcutsActions-misc.IntentSupport -> Packages-LillistCore-Sources-LillistCore-misc.DevicePreferencesStore (reads)` — `Extensions/ShortcutsActions/IntentSupport.swift:93`
-- `Extensions-ShortcutsActions-misc.AddTaskIntent -> Packages-LillistCore-Sources-LillistCore-CLIBridge-Handlers-chunk-1.CLIBridge.AddHandler (calls)` — `Extensions/ShortcutsActions/AddTaskIntent.swift:26`
-- `Extensions-ShortcutsActions-misc.CompleteTaskIntent -> Packages-LillistCore-Sources-LillistCore-CLIBridge-Handlers-chunk-2.CLIBridge.StatusHandler (calls)` — `Extensions/ShortcutsActions/CompleteTaskIntent.swift:17`
-- `Extensions-ShortcutsActions-misc.ToggleStatusIntent -> Packages-LillistCore-Sources-LillistCore-CLIBridge-Handlers-chunk-2.CLIBridge.StatusHandler (calls)` — `Extensions/ShortcutsActions/ToggleStatusIntent.swift:18`
-- `Extensions-ShortcutsActions-misc.AddNoteIntent -> Packages-LillistCore-Sources-LillistCore-CLIBridge-Handlers-chunk-1.CLIBridge.NoteHandler (calls)` — `Extensions/ShortcutsActions/AddNoteIntent.swift:20`
-- `Extensions-ShortcutsActions-misc.SearchTasksIntent -> Packages-LillistCore-Sources-LillistCore-CLIBridge-Handlers-chunk-2.CLIBridge.SearchHandler (calls)` — `Extensions/ShortcutsActions/SearchTasksIntent.swift:17`
-- `Extensions-ShortcutsActions-misc.AddTaskIntent -> Packages-LillistCore-Sources-LillistCore-Stores-chunk-2.TaskStore (calls)` — `Extensions/ShortcutsActions/AddTaskIntent.swift:40`
-- `Extensions-ShortcutsActions-misc.AddNudgeIntent -> Packages-LillistCore-Sources-LillistCore-Notifications.NotificationSpecStore (calls)` — `Extensions/ShortcutsActions/AddNudgeIntent.swift:23`
-- `Extensions-ShortcutsActions-misc.ReportCrashIntent -> Packages-LillistCore-Sources-LillistCore-CrashReporting.CanaryFile (reads)` — `Extensions/ShortcutsActions/ReportCrashIntent.swift:21`
-- `Extensions-ShortcutsActions-misc.AddTaskIntent -> Extensions-ShortcutsActions-Entities.TaskEntity (owns)` — `Extensions/ShortcutsActions/AddTaskIntent.swift:47`
-- `Extensions-ShortcutsActions-misc.ToggleStatusIntent -> Extensions-ShortcutsActions-Entities.StatusAppEnum (reads)` — `Extensions/ShortcutsActions/ToggleStatusIntent.swift:9`
+- `Extensions-ShortcutsActions-misc.AddTaskIntent -> Packages-LillistUI-Sources-LillistUI-Accessibility.value (calls)`
+- `Extensions-ShortcutsActions-misc.controller -> Packages-LillistCore-Sources-LillistCore-Persistence.PersistenceController (owns)`
+- `Extensions-ShortcutsActions-misc.diagnosticLog -> Packages-LillistCore-Sources-LillistCore-Diagnostics.shared (reads)`
+- `Extensions-ShortcutsActions-misc.diagnosticLog -> Packages-LillistCore-Sources-LillistCore-misc.DevicePreferencesStore (reads)`
+- `Extensions-ShortcutsActions-misc.diagnosticLog -> Packages-LillistCore-Sources-LillistCore-misc.diagnosticLoggingEnabled (reads)`
+- `Extensions-ShortcutsActions-misc.makePersistence -> Packages-LillistCore-Sources-LillistCore-Sync-chunk-1.GatedPersistenceResolver (calls)`
+- `Extensions-ShortcutsActions-misc.perform -> Packages-LillistCore-Sources-LillistCore-CrashReporting.defaultURL (reads)`
+- `Extensions-ShortcutsActions-misc.perform -> Packages-LillistCore-Sources-LillistCore-Notifications.NotificationSpecStore (writes)`
+- `Extensions-ShortcutsActions-misc.perform -> Packages-LillistCore-Sources-LillistCore-misc.stash (writes)`
+- `Extensions-ShortcutsActions-misc.perform -> Packages-LillistUI-Sources-LillistUI-Recurrence.string (calls)`
+- `Extensions-ShortcutsActions-misc.resolve -> Packages-LillistCore-Sources-LillistCore-CrashReporting.CanaryFile (calls)`
+- `Extensions-ShortcutsActions-misc.resolve -> Packages-LillistCore-Sources-LillistCore-CrashReporting.readIfPresent (reads)`
 
 ## Type notes
 
-`IntentSupport.Cache` is an actor caching one `PersistenceController` per process keyed on
-`SyncMode` (`Extensions/ShortcutsActions/IntentSupport.swift:21`). Because building a
-controller suspends across `loadPersistentStores`, an `inFlight` Task is registered
-synchronously before the first await so concurrent cold callers join one build instead of
-standing up duplicate CloudKit subscriptions (`Extensions/ShortcutsActions/IntentSupport.swift:25`).
-Intent-authored writes are stamped with `PersistenceController.appIntentsTransactionAuthor`
-so the host app's history observer attributes them correctly (`Extensions/ShortcutsActions/IntentSupport.swift:46`).
-All `perform()` bodies are `@MainActor`. `OpenTaskIntent` and `QuickCaptureLockScreenIntent`
-are open-app-only stubs — they bring Lillist to the foreground and do no data work
-(`Extensions/ShortcutsActions/OpenTaskIntent.swift:20`, `Extensions/ShortcutsActions/QuickCaptureLockScreenIntent.swift:15`).
+`IntentSupport` is a namespace `enum` (never instantiated) that provides two public factory functions and houses the internal `Cache` actor; it is the single shared bootstrap shim all intent `perform()` bodies call (IntentSupport.swift:6). `Cache` is a `private actor` with a `static let shared` singleton keyed on `SyncMode`; it coalesces concurrent cold builds via an `inFlight` Task to prevent duplicate `NSPersistentCloudKitContainer` instances in the same extension process (IntentSupport.swift:19-61). All `perform()` methods carry `@MainActor` isolation — required by AppIntents even though actual work is async; this is enforced across every intent file (e.g. AddNoteIntent.swift:17, AddTaskIntent.swift:28). `AddTaskInput` and `ReportCrashIntentResolver` are pure-Swift value-type helpers extracted from their parent intents solely for unit-testability without an AppIntents test host (AddTaskInput.swift:3-5, ReportCrashIntent.swift:26-28). `IntentSupport.appGroupID` (`"group.app.lillist"`) is the single App Group constant shared by all intents; it is declared once and referenced everywhere (IntentSupport.swift:7).
 
 ## External deps
 
-- AppIntents — every intent conforms to `AppIntent`; `LillistShortcuts` is an `AppShortcutsProvider`
-- App Group `group.io.mikey.lillist` — shared store path; CloudKit container declared in `Extensions/ShortcutsActions/Lillist.entitlements`
+- AppIntents — imported
+- Foundation — imported
+- LillistCore — imported
 
 ## Gotchas
 
-- `AddNudgeIntent` bypasses `NudgeHandler`'s date-DSL parser and writes the concrete `Date` straight to `NotificationSpecStore` because the intent receives a real `Date`, not a DSL token (`Extensions/ShortcutsActions/AddNudgeIntent.swift:19`).
-- `AddTaskIntent.perform()` applies `deadline` in a second `TaskStore.update` call after `CLIBridge.AddHandler` returns because `AddHandler`'s `deadlineToken` parameter is a DSL string (`Extensions/ShortcutsActions/AddTaskIntent.swift:39`).
-- `makePersistence` consults `GatedPersistenceResolver` (and thus `MigrationGate`) on every call — not cached — so a sync-mode migration in flight always yields a clean retry error (`Extensions/ShortcutsActions/IntentSupport.swift:76`).
+AppIntents prohibits free-text `String` parameters inline in spoken phrases — spoken task titles must be collected via `requestValueDialog`, not embedded in the phrase (LillistShortcuts.swift:12-16). `Cache` actor uses an `inFlight` Task to coalesce concurrent cold builds: without it, two callers entering while the container is still loading would both stand up a CloudKit mirroring subscription (IntentSupport.swift:38-43). `AddNudgeIntent.perform()` bypasses `NudgeHandler`'s DSL parser and calls `NotificationSpecStore.add()` directly because the intent receives a concrete `Date`, not a DSL token (AddNudgeIntent.swift:19-21).

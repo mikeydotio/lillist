@@ -1,75 +1,45 @@
 ---
 module: "Packages/LillistCore (misc)"
-summary: "SwiftPM manifest, Core Data model-compile build plugin, and package README for LillistCore"
-read_when: "Touching Package.swift"
+summary: "SwiftPM build plugin that compiles `.xcdatamodeld` to `.momd` so LillistCore entity loading works outside Xcode."
+read_when: "Touching Package.swift or model compilation"
 sources:
-  - path: Packages/LillistCore/Package.swift
-    blob: 2114f2075b73500bfe780910899b44aa96568927
   - path: Packages/LillistCore/Plugins/CompileCoreDataModel/CompileCoreDataModel.swift
     blob: 27b2698783db0258c1ee5297e7219c6b00dfe679
   - path: Packages/LillistCore/README.md
     blob: 3bc2ec5edf6b7b0d049d0dad1562702390d489a1
-references_modules: [Packages-LillistCore-Sources-LillistCore-Persistence]
-generator: cartographer/1
-baseline: 1a1562b636e43ebbdc35c7939ab6989b387f50e9
-verified: true
+generator: cartographer/4
+baseline: 515f24730d21cb81ca1c9737ffeb981e9c414d3c
 ---
 
 # Module: Packages/LillistCore (misc)
 
 ## Purpose
 
-The package-level scaffolding for LillistCore: the SwiftPM manifest that declares
-the library + `lillist` CLI targets and their build settings, and the build-tool
-plugin that closes SwiftPM's gap around Core Data. SwiftPM never invokes `momc`
-on `.xcdatamodeld` resources, so `CompileCoreDataModel` shells out to `xcrun momc`
-at build time; without it the package would ship no compiled model and the
-persistence layer would fail to load `NSEntityDescription`s at runtime.
+This module is the SwiftPM build infrastructure for LillistCore: a `BuildToolPlugin` that closes the gap between SwiftPM and Core Data's `momc` compiler so that `swift build` and `swift test` produce a loadable `.momd` bundle without Xcode. It also holds the package README documenting LillistCore's public contract and history. Without this plugin, entity instantiation via `Bundle.module` would fail at runtime in any non-Xcode build.
 
 ## Public API
 
 | Symbol | Kind | Location | Contract |
 | --- | --- | --- | --- |
-| `CompileCoreDataModel` | struct | `Packages/LillistCore/Plugins/CompileCoreDataModel/CompileCoreDataModel.swift:12` | `@main` BuildToolPlugin; emits a `momc` command per `.xcdatamodeld` on the target |
-| `createBuildCommands(context:target:)` | func | `Packages/LillistCore/Plugins/CompileCoreDataModel/CompileCoreDataModel.swift:13` | BuildToolPlugin entry; maps each model dir to an `xcrun momc` build command |
+| `CompileCoreDataModel` | struct | `Packages/LillistCore/Plugins/CompileCoreDataModel/CompileCoreDataModel.swift:12` | `BuildToolPlugin` entry point; returns one `.buildCommand` per `.xcdatamodeld` in the target, compiling each to `<name>.spm.momd` in the plugin work directory. |
+| `createBuildCommands` | func | `Packages/LillistCore/Plugins/CompileCoreDataModel/CompileCoreDataModel.swift:13` | Returns `[Command]` with one `xcrun momc` command per `.xcdatamodeld` source file; output is `<name>.spm.momd` in `pluginWorkDirectoryURL`; inner `contents` files are declared as inputs for fine-grained cache invalidation. |
 
 ## Load-bearing internals
 
 | Symbol | Kind | Location | Why it matters |
 | --- | --- | --- | --- |
-| `modelInputFiles(in:)` | func | `Packages/LillistCore/Plugins/CompileCoreDataModel/CompileCoreDataModel.swift:70` | Declares each inner `*.xcdatamodel/contents` as an llbuild input so a model edit invalidates `momc` |
 
 ## Relationships
 
-- `Packages-LillistCore-misc.CompileCoreDataModel -> Packages-LillistCore-Sources-LillistCore-Persistence (writes)` — produces the `<name>.spm.momd` bundle that the persistence layer loads as a fallback when `<name>.momd` is absent (`Packages/LillistCore/Plugins/CompileCoreDataModel/CompileCoreDataModel.swift:32`)
-
 ## Type notes
 
-`CompileCoreDataModel` is a compile-time SwiftPM plugin, not runtime code; it runs
-in the build process, never linked into the app or CLI. `createBuildCommands` only
-acts on a target it can cast to `SourceModuleTarget`
-(`Packages/LillistCore/Plugins/CompileCoreDataModel/CompileCoreDataModel.swift:14`),
-returning `[]` otherwise. The output filename is deliberately `<name>.spm.momd`,
-not `<name>.momd`, to avoid colliding with Xcode's built-in `DataModelCompile`
-rule in a workspace build
-(`Packages/LillistCore/Plugins/CompileCoreDataModel/CompileCoreDataModel.swift:28`).
-`modelInputFiles(in:)` returns an empty array on enumeration failure so the build
-degrades to directory-only behaviour rather than crashing the plugin
-(`Packages/LillistCore/Plugins/CompileCoreDataModel/CompileCoreDataModel.swift:76`).
-
-The manifest pins the `LillistCore` source target to StrictConcurrency and treats
-all warnings as errors (`Packages/LillistCore/Package.swift:27`); the two products
-are the `LillistCore` library and the `lillist` executable
-(`Packages/LillistCore/Package.swift:10`).
+`CompileCoreDataModel` conforms to `BuildToolPlugin` (PackagePlugin) and is marked `@main`, running as a sandbox-isolated SwiftPM subprocess during build graph evaluation — not in the app process (Packages/LillistCore/Plugins/CompileCoreDataModel/CompileCoreDataModel.swift:11-12). `createBuildCommands` is `async throws` per protocol contract but its body is fully synchronous; the async context is inherited from the protocol, not required by the implementation (Packages/LillistCore/Plugins/CompileCoreDataModel/CompileCoreDataModel.swift:13). Output paths use `context.pluginWorkDirectoryURL`, so compiled `.momd` bundles are ephemeral and regenerated on clean builds (Packages/LillistCore/Plugins/CompileCoreDataModel/CompileCoreDataModel.swift:32). `modelInputFiles` degrades gracefully on enumeration failure, returning `[]` rather than throwing, so the build falls back to directory-mtime-only invalidation without crashing the plugin (Packages/LillistCore/Plugins/CompileCoreDataModel/CompileCoreDataModel.swift:76-77).
 
 ## External deps
 
-- `PackagePlugin` — SwiftPM build-tool plugin API (`BuildToolPlugin`, `Command`, `PluginContext`)
-- `swift-argument-parser` — `ArgumentParser` product, dependency of the `lillist-cli` target
-- `xcrun` / `momc` — Xcode's Core Data model compiler, invoked as the plugin's build command
+- Foundation — imported
+- PackagePlugin — imported
 
 ## Gotchas
 
-- The `.xcdatamodeld` mtime does NOT change when inner `contents` is edited, so the plugin declares each `*.xcdatamodel/contents` as an input or `momc` reuses a stale `.momd` (`Packages/LillistCore/Plugins/CompileCoreDataModel/CompileCoreDataModel.swift:34`).
-- The top-level `.xccurrentversion` pointer is deliberately NOT declared as an input — llbuild will not re-run `momc` on its mtime change from a plugin (`Packages/LillistCore/Plugins/CompileCoreDataModel/CompileCoreDataModel.swift:63`).
-- Model entities use `codeGenerationType="manual/none"`; subclasses are hand-written under `Sources/LillistCore/ManagedObjects/`, so opening the model in Xcode must not regenerate them (`Packages/LillistCore/README.md:26`).
+Output is named `<name>.spm.momd` (not `<name>.momd`) to avoid a "Multiple commands produce" collision with Xcode's built-in `DataModelCompile` rule when the package is embedded in a workspace; callers must check both names (Packages/LillistCore/Plugins/CompileCoreDataModel/CompileCoreDataModel.swift:28-32). `.xcdatamodeld` directory mtime does NOT update when the inner `*.xcdatamodel/contents` file is edited, so the plugin explicitly enumerates inner `contents` files as `inputFiles` to force `momc` to re-run on real model edits (Packages/LillistCore/Plugins/CompileCoreDataModel/CompileCoreDataModel.swift:36-43). `.xccurrentversion` is deliberately excluded from tracked inputs — empirically, neither enumerating it (a dotfile) nor declaring it by path makes llbuild re-run `momc` on its mtime change from a SwiftPM build-tool plugin (Packages/LillistCore/Plugins/CompileCoreDataModel/CompileCoreDataModel.swift:63-69).

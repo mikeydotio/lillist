@@ -1,7 +1,7 @@
 ---
 module: Packages/LillistCore/Sources/LillistCore/Diagnostics
-summary: "On-disk JSONL diagnostic event log, history-derived attribution, and export-package builder"
-read_when: "Touching diagnostic logging"
+summary: "Opt-in JSONL event logger, Core Data history bridge, and zip-package exporter for in-app diagnostics"
+read_when: "Touching diagnostics or history observation"
 sources:
   - path: Packages/LillistCore/Sources/LillistCore/Diagnostics/DiagnosticDefaults.swift
     blob: e3f22151361ded3a01d1bcc2601f0a62ed095d8f
@@ -15,90 +15,95 @@ sources:
     blob: 898d056563376af5cf9bfc705a624d3dd859af5f
   - path: Packages/LillistCore/Sources/LillistCore/Diagnostics/DiagnosticSink.swift
     blob: e2584a0372a51010539bd69615fad14ed4e1d39a
-references_modules: [Packages-LillistCore-Sources-LillistCore-Persistence]
-generator: cartographer/1
-baseline: 1a1562b636e43ebbdc35c7939ab6989b387f50e9
-verified: true
+references_modules: [Packages-LillistCore-Sources-LillistCore-LinkPreview, Packages-LillistCore-Sources-LillistCore-Recurrence, Packages-LillistUI-Sources-LillistUI-Accessibility, Packages-LillistUI-Sources-LillistUI-Editor, Packages-LillistUI-Sources-LillistUI-Recurrence]
+generator: cartographer/4
+baseline: 515f24730d21cb81ca1c9737ffeb981e9c414d3c
 ---
 
 # Module: Packages/LillistCore/Sources/LillistCore/Diagnostics
 
 ## Purpose
 
-A fire-and-forget diagnostics subsystem: emitters (stores, drag gestures, a
-history observer) hand `DiagnosticEvent`s to a `DiagnosticSink`, the production
-sink (`DiagnosticLog`) appends them as one-line JSON to per-process-per-day
-JSONL files, and `DiagnosticPackageBuilder` later zips those logs plus a SQLite
-store snapshot into a shareable RCA package. The design idea is *non-intrusive
-attribution*: logging never throws, blocks, or affects a caller, yet the
-history observer can reconstruct who wrote what (e.g. a reorder tie) after the
-fact. If it vanished, the app loses its only persistent field-debugging trail.
+Provides the complete opt-in, append-only diagnostic logging pipeline: a structured event model (DiagnosticEvent + DiagValue), a per-process JSONL actor writer (DiagnosticLog), a Core Data persistent-history bridge that turns store mutations into structured events (DiagnosticHistoryObserver), and a zip-package assembler that merges logs and snapshots the SQLite store for export (DiagnosticPackageBuilder). The module's unifying idea is fire-and-forget observability — I/O failures are counted, never propagated, so logging can never affect any user-facing operation. Without it there is no persistent structured trace of what the app did to its data, leaving crash reports and sync anomalies diagnosable only by heuristics.
 
 ## Public API
 
 | Symbol | Kind | Location | Contract |
 | --- | --- | --- | --- |
-| `DiagCategory` | enum | `Packages/LillistCore/Sources/LillistCore/Diagnostics/DiagnosticEvent.swift:10` | Coarse triage class: `data`/`ui`/`lifecycle` |
-| `DiagnosticDefaults` | enum | `Packages/LillistCore/Sources/LillistCore/Diagnostics/DiagnosticDefaults.swift:10` | `enabledByDefault` — on in Debug, off in Release |
-| `DiagnosticEvent` | struct | `Packages/LillistCore/Sources/LillistCore/Diagnostics/DiagnosticEvent.swift:50` | Codable value DTO; `encodeJSONLine`/`decodeJSONLine(s)` are the wire format |
-| `DiagnosticHistoryObserver` | class | `Packages/LillistCore/Sources/LillistCore/Diagnostics/DiagnosticHistoryObserver.swift:20` | Observes persistent-history, emits `<entity>.<op>` events to a sink |
-| `DiagnosticLog` | actor | `Packages/LillistCore/Sources/LillistCore/Diagnostics/DiagnosticLog.swift:12` | Per-process singleton JSONL writer; `log` never throws |
-| `DiagnosticPackageBuilder` | struct | `Packages/LillistCore/Sources/LillistCore/Diagnostics/DiagnosticPackageBuilder.swift:10` | Stages + zips logs and a store snapshot into an export `.zip` |
-| `DiagnosticSink` | protocol | `Packages/LillistCore/Sources/LillistCore/Diagnostics/DiagnosticSink.swift:7` | `func log(_:) async` — the seam emitters depend on, not the actor |
-| `DiagProcess` | enum | `Packages/LillistCore/Sources/LillistCore/Diagnostics/DiagnosticEvent.swift:5` | Authoring process; also names the JSONL file |
-| `DiagValue` | enum | `Packages/LillistCore/Sources/LillistCore/Diagnostics/DiagnosticEvent.swift:20` | Typed payload leaf; integral doubles normalize to `.int` |
+| `BuildError` | enum | `Packages/LillistCore/Sources/LillistCore/Diagnostics/DiagnosticPackageBuilder.swift:41` | Sealed error cases for build failures; snapshotFailed carries the SQLite error message; zipProducedNothing signals coordinator produced nothing. |
+| `DiagCategory` | enum | `Packages/LillistCore/Sources/LillistCore/Diagnostics/DiagnosticEvent.swift:10` | Three-case coarse triage tag (data/ui/lifecycle); raw String values are stable across JSONL files. |
+| `DiagProcess` | enum | `Packages/LillistCore/Sources/LillistCore/Diagnostics/DiagnosticEvent.swift:5` | Identifies the writing process and names the per-day JSONL file; raw String values must remain stable. |
+| `DiagValue` | enum | `Packages/LillistCore/Sources/LillistCore/Diagnostics/DiagnosticEvent.swift:20` | Typed payload leaf; callers rely on the intentional int/double normalization: integral doubles encode as JSON integers and decode as .int. |
+| `DiagnosticDefaults` | enum | `Packages/LillistCore/Sources/LillistCore/Diagnostics/DiagnosticDefaults.swift:10` | Compile-time constant: true in DEBUG builds, false in Release; the user-facing preference always overrides this default. |
+| `DiagnosticEvent` | struct | `Packages/LillistCore/Sources/LillistCore/Diagnostics/DiagnosticEvent.swift:50` | Immutable JSONL record; Codable + Equatable; encodeJSONLine/decodeJSONLine round-trips as exactly one physical line. |
+| `DiagnosticHistoryObserver` | class | `Packages/LillistCore/Sources/LillistCore/Diagnostics/DiagnosticHistoryObserver.swift:20` | Observes NSPersistentStoreRemoteChange and emits structured events to a DiagnosticSink; start/stop lifecycle; processPendingHistory is reentrancy-safe. |
+| `DiagnosticLog` | actor | `Packages/LillistCore/Sources/LillistCore/Diagnostics/DiagnosticLog.swift:12` | Append-only actor; log() is fire-and-forget and never throws into callers; I/O failures increment dropped only. |
+| `DiagnosticLog` | extension | `Packages/LillistCore/Sources/LillistCore/Diagnostics/DiagnosticSink.swift:11` | Conformance declaration only; the async log(_ event:) implementation is on the DiagnosticLog actor. |
+| `DiagnosticPackageBuilder` | struct | `Packages/LillistCore/Sources/LillistCore/Diagnostics/DiagnosticPackageBuilder.swift:10` | Value-typed, Sendable export builder; each stage/build call is stateless — construct a new instance per export request. |
+| `DiagnosticSink` | protocol | `Packages/LillistCore/Sources/LillistCore/Diagnostics/DiagnosticSink.swift:7` | Single async requirement log(_ event:); Sendable; production conformer is DiagnosticLog; tests inject an in-memory spy. |
+| `HistoryChange` | struct | `Packages/LillistCore/Sources/LillistCore/Diagnostics/DiagnosticHistoryObserver.swift:23` | Sendable value snapshot of one persistent-history change; fully resolved against the live context inside ctx.perform before crossing async boundaries. |
+| `Metadata` | struct | `Packages/LillistCore/Sources/LillistCore/Diagnostics/DiagnosticPackageBuilder.swift:21` | Codable manifest header; files and notes are mutable and filled during staging; callers may read them after stage() returns. |
+| `Options` | struct | `Packages/LillistCore/Sources/LillistCore/Diagnostics/DiagnosticPackageBuilder.swift:11` | Two Boolean flags controlling what stage() includes; callers set includeLogs/includeStore independently. |
+| `build` | func | `Packages/LillistCore/Sources/LillistCore/Diagnostics/DiagnosticPackageBuilder.swift:149` | Async; stages, zips, and cleans up the staging dir; returns a temp URL the caller must move before it expires. |
+| `decodeJSONLine` | func | `Packages/LillistCore/Sources/LillistCore/Diagnostics/DiagnosticEvent.swift:87` | Throws on malformed input; a torn write corrupts at most one line; succeeds only for a complete, valid JSON object. |
+| `decodeJSONLines` | func | `Packages/LillistCore/Sources/LillistCore/Diagnostics/DiagnosticEvent.swift:91` | Splits blob by newline and decodes each line; corrupt lines propagate as throws (caller gets an array or an error, never a partial result). |
+| `diagnosticsDirectory` | func | `Packages/LillistCore/Sources/LillistCore/Diagnostics/DiagnosticLog.swift:66` | Returns the URL the log writes to; nil means logging is a no-op; DiagnosticPackageBuilder uses this to locate JSONL files. |
+| `droppedCount` | func | `Packages/LillistCore/Sources/LillistCore/Diagnostics/DiagnosticLog.swift:62` | Returns the count of events silently discarded due to I/O failure since construction; useful for diagnosing whether logging is functional. |
+| `encode` | func | `Packages/LillistCore/Sources/LillistCore/Diagnostics/DiagnosticEvent.swift:32` | Custom encode for DiagValue; integral doubles encode as JSON integers — this normalization is by design and must not be changed. |
+| `encodeJSONLine` | func | `Packages/LillistCore/Sources/LillistCore/Diagnostics/DiagnosticEvent.swift:82` | Returns compact JSON + a literal newline; the trailing newline is the JSONL contract — callers may append the string directly to a file. |
+| `finishOrRerun` | func | `Packages/LillistCore/Sources/LillistCore/Diagnostics/DiagnosticHistoryObserver.swift:75` | Actor method on DrainGate; returns true if the owning drainer should sweep again (a request arrived mid-drain), false to stop. |
+| `log` | func | `Packages/LillistCore/Sources/LillistCore/Diagnostics/DiagnosticLog.swift:70` | Fire-and-forget append; overwrites the emitter's process and seq placeholders with the authoritative values from the log actor. |
+| `log` | func | `Packages/LillistCore/Sources/LillistCore/Diagnostics/DiagnosticLog.swift:143` | Get-or-create from the per-process SharedRegistry; synchronous; the same DiagProcess always returns the same actor instance. |
+| `log` | func | `Packages/LillistCore/Sources/LillistCore/Diagnostics/DiagnosticSink.swift:8` | Async protocol requirement; callers must await; the DiagnosticLog implementation is synchronous (actor isolation, no real suspension). |
+| `manifestEncoder` | func | `Packages/LillistCore/Sources/LillistCore/Diagnostics/DiagnosticPackageBuilder.swift:176` | Returns a pretty-printed, sorted-keys, ISO-8601 JSONEncoder for human-readable manifests; stable output format. |
+| `mergeEvents` | func | `Packages/LillistCore/Sources/LillistCore/Diagnostics/DiagnosticPackageBuilder.swift:163` | Line-by-line decode; a corrupt or torn line is silently skipped (raw files are preserved); returns at/seq-sorted merged timeline. |
+| `processPendingHistory` | func | `Packages/LillistCore/Sources/LillistCore/Diagnostics/DiagnosticHistoryObserver.swift:131` | Reentrancy-safe drain: only one pass runs at a time; concurrent calls coalesce into a single follow-up pass, so no change is double-emitted or missed. |
+| `pruneOldFiles` | func | `Packages/LillistCore/Sources/LillistCore/Diagnostics/DiagnosticLog.swift:121` | Deletes diag-*.jsonl files whose UTC day stamp is older than days before now; safe to call multiple times; also run automatically on first log call. |
+| `resolveDirectory` | func | `Packages/LillistCore/Sources/LillistCore/Diagnostics/DiagnosticLog.swift:50` | Returns the App-Group Lillist/Diagnostics URL, falling back to Application Support, then nil; used at construction to seed the directory. |
+| `setEnabled` | func | `Packages/LillistCore/Sources/LillistCore/Diagnostics/DiagnosticLog.swift:61` | Mutates the enabled flag on the actor; subsequent log() calls reflect the new value; call after reading DevicePreferencesStore. |
+| `shared` | func | `Packages/LillistCore/Sources/LillistCore/Diagnostics/DiagnosticLog.swift:44` | Per-process singleton; synchronous; idempotent — the same DiagProcess key always returns the same actor; first caller's enabled seeds it. |
+| `snapshotStore` | func | `Packages/LillistCore/Sources/LillistCore/Diagnostics/DiagnosticPackageBuilder.swift:131` | Opens the live store read-only and runs VACUUM INTO; dest must not already exist; SQLite errors throw BuildError.snapshotFailed. |
+| `stage` | func | `Packages/LillistCore/Sources/LillistCore/Diagnostics/DiagnosticPackageBuilder.swift:64` | Builds a staging directory and returns it; caller owns cleanup of its parent; cleans up automatically on thrown error. |
+| `start` | func | `Packages/LillistCore/Sources/LillistCore/Diagnostics/DiagnosticHistoryObserver.swift:102` | Idempotent (guards on observer == nil); registers the NSPersistentStoreRemoteChange observer; call once at bootstrap. |
+| `stop` | func | `Packages/LillistCore/Sources/LillistCore/Diagnostics/DiagnosticHistoryObserver.swift:114` | Removes the NSPersistentStoreRemoteChange observer; safe to call multiple times; also called by deinit. |
+| `tryAcquire` | func | `Packages/LillistCore/Sources/LillistCore/Diagnostics/DiagnosticHistoryObserver.swift:69` | Actor method on DrainGate; returns true if this caller becomes the single owning drainer, false if a drain is already in flight. |
+| `utcDayStamp` | func | `Packages/LillistCore/Sources/LillistCore/Diagnostics/DiagnosticLog.swift:152` | Returns UTC yyyy-MM-dd string; must remain UTC for cross-device log merges; lexical order equals chronological order. |
+| `zip` | func | `Packages/LillistCore/Sources/LillistCore/Diagnostics/DiagnosticPackageBuilder.swift:186` | Uses NSFileCoordinator(.forUploading) to produce a zip; copies it to a stable temp URL before the accessor block returns; caller owns the returned URL. |
 
 ## Load-bearing internals
 
 | Symbol | Kind | Location | Why it matters |
 | --- | --- | --- | --- |
-| `shared` | func | `Packages/LillistCore/Sources/LillistCore/Diagnostics/DiagnosticLog.swift:44` | Synchronous per-process factory; entry point every host calls |
-| `setEnabled` | func | `Packages/LillistCore/Sources/LillistCore/Diagnostics/DiagnosticLog.swift:61` | Mutates the cached `enabled` Bool so `log` skips an `await` on the hot path |
-| `diagnosticsDirectory` | func | `Packages/LillistCore/Sources/LillistCore/Diagnostics/DiagnosticLog.swift:66` | Single source of the on-disk path shared by writer and exporter |
-| `processPendingHistory` | func | `Packages/LillistCore/Sources/LillistCore/Diagnostics/DiagnosticHistoryObserver.swift:131` | Reentrancy-safe drain; coalesces overlapping notifications, no double-emit |
-| `makeEvents` | func | `Packages/LillistCore/Sources/LillistCore/Diagnostics/DiagnosticHistoryObserver.swift:239` | Pure `nonisolated static` event builder; testable without a context |
-| `Metadata` | struct | `Packages/LillistCore/Sources/LillistCore/Diagnostics/DiagnosticPackageBuilder.swift:21` | `manifest.json` shape: build/OS/device + file inventory + notes |
-| `mergeEvents` | func | `Packages/LillistCore/Sources/LillistCore/Diagnostics/DiagnosticPackageBuilder.swift:163` | Per-line-resilient merge of all files into one `at`/`seq` timeline |
+| `flatten` | func | `Packages/LillistCore/Sources/LillistCore/Diagnostics/DiagnosticHistoryObserver.swift:184` | Guards against Obj-C KVC exceptions by checking attributesByName before calling value(forKey:); handles delete-tombstone nil-UUID gap; captures create-time position for LillistTask inserts even when updatedProperties is nil — all three invariants must hold for the diagnostic history to be correct and crash-free. |
+| `makeDecoder` | func | `Packages/LillistCore/Sources/LillistCore/Diagnostics/DiagnosticEvent.swift:74` | Guards ISO-8601 date decoding strategy for all DiagnosticEvent round-trips; silently changing it would corrupt dates in every decoded log file while encode continued producing ISO-8601 strings. |
 
 ## Relationships
 
-- `Packages-LillistCore-Sources-LillistCore-Diagnostics.DiagnosticLog -> Packages-LillistCore-Sources-LillistCore-Diagnostics.DiagnosticSink (conforms-to)`
-- `Packages-LillistCore-Sources-LillistCore-Diagnostics.DiagnosticHistoryObserver -> Packages-LillistCore-Sources-LillistCore-Diagnostics.DiagnosticSink (calls)`
-- `Packages-LillistCore-Sources-LillistCore-Diagnostics.DiagnosticHistoryObserver -> Packages-LillistCore-Sources-LillistCore-Persistence.PersistenceController (reads)`
-- `Packages-LillistCore-Sources-LillistCore-Diagnostics.DiagnosticHistoryObserver -> Packages-LillistCore-Sources-LillistCore-Persistence.PersistentHistoryTokenStore (reads)`
+- `Packages-LillistCore-Sources-LillistCore-Diagnostics.DiagValue -> Packages-LillistUI-Sources-LillistUI-Recurrence.string (calls)`
+- `Packages-LillistCore-Sources-LillistCore-Diagnostics.decodeJSONLines -> Packages-LillistCore-Sources-LillistCore-LinkPreview.String (calls)`
+- `Packages-LillistCore-Sources-LillistCore-Diagnostics.encode -> Packages-LillistUI-Sources-LillistUI-Accessibility.value (calls)`
+- `Packages-LillistCore-Sources-LillistCore-Diagnostics.encode -> Packages-LillistUI-Sources-LillistUI-Recurrence.string (calls)`
+- `Packages-LillistCore-Sources-LillistCore-Diagnostics.encodeJSONLine -> Packages-LillistCore-Sources-LillistCore-LinkPreview.String (calls)`
+- `Packages-LillistCore-Sources-LillistCore-Diagnostics.flatten -> Packages-LillistUI-Sources-LillistUI-Accessibility.value (calls)`
+- `Packages-LillistCore-Sources-LillistCore-Diagnostics.makeDecoder -> Packages-LillistUI-Sources-LillistUI-Accessibility.value (calls)`
+- `Packages-LillistCore-Sources-LillistCore-Diagnostics.mergeEvents -> Packages-LillistCore-Sources-LillistCore-LinkPreview.String (calls)`
+- `Packages-LillistCore-Sources-LillistCore-Diagnostics.opName -> Packages-LillistUI-Sources-LillistUI-Recurrence.string (calls)`
+- `Packages-LillistCore-Sources-LillistCore-Diagnostics.processPendingHistory -> Packages-LillistCore-Sources-LillistCore-Recurrence.advance (calls)`
+- `Packages-LillistCore-Sources-LillistCore-Diagnostics.reserveSeqs -> Packages-LillistUI-Sources-LillistUI-Accessibility.value (calls)`
+- `Packages-LillistCore-Sources-LillistCore-Diagnostics.snapshotStore -> Packages-LillistCore-Sources-LillistCore-LinkPreview.String (calls)`
+- `Packages-LillistCore-Sources-LillistCore-Diagnostics.stage -> Packages-LillistUI-Sources-LillistUI-Editor.note (calls)`
+- `Packages-LillistCore-Sources-LillistCore-Diagnostics.utcDayStamp -> Packages-LillistUI-Sources-LillistUI-Recurrence.string (calls)`
 
 ## Type notes
 
-`DiagnosticLog` is an actor; its `enabled` flag is a cached `Bool` set at
-construction and mutated only via `setEnabled`, so `log` never awaits
-`DevicePreferencesStore` (`Packages/LillistCore/Sources/LillistCore/Diagnostics/DiagnosticLog.swift:12`). The actor owns the
-authoritative `process` and the per-file monotonic `seq`; emitters pass
-placeholder values that `log` overwrites (`Packages/LillistCore/Sources/LillistCore/Diagnostics/DiagnosticLog.swift:70`). `shared`
-is backed by a lock-guarded `SharedRegistry` (not an actor) precisely because
-the factory is synchronous (`Packages/LillistCore/Sources/LillistCore/Diagnostics/DiagnosticLog.swift:139`).
-
-`DiagnosticHistoryObserver` is `@unchecked Sendable`: the observer token is
-touched on the main actor, the token store is thread-safe, and `seq` is
-lock-guarded (`Packages/LillistCore/Sources/LillistCore/Diagnostics/DiagnosticHistoryObserver.swift:20`). Its `DrainGate` actor
-enforces a single in-flight drain so the split watermark read-modify-write
-(read inside `perform`, advance after the emit loop) never double-emits
-(`Packages/LillistCore/Sources/LillistCore/Diagnostics/DiagnosticHistoryObserver.swift:64`). It uses its own watermark key,
-`PersistentHistoryTokenStore.diagnosticsKey`, to avoid clobbering the
-reconciler (`Packages/LillistCore/Sources/LillistCore/Diagnostics/DiagnosticHistoryObserver.swift:84`).
-
-`DiagnosticEvent` guarantees exactly one physical line per event because
-`JSONEncoder` escapes embedded newlines (`Packages/LillistCore/Sources/LillistCore/Diagnostics/DiagnosticEvent.swift:80`). A store
-snapshot failure degrades the package to logs-only with a manifest note rather
-than aborting (`Packages/LillistCore/Sources/LillistCore/Diagnostics/DiagnosticPackageBuilder.swift:99`).
+DiagnosticLog is a public actor (DiagnosticLog.swift:12); its shared factory is synchronous via a lock-protected SharedRegistry class (DiagnosticLog.swift:139–150) because callers cannot await at call sites. The enabled flag is a cached Bool mutated by setEnabled (DiagnosticLog.swift:61) so log() never suspends on DevicePreferencesStore. DiagnosticHistoryObserver is @unchecked Sendable (DiagnosticHistoryObserver.swift:20): the NSObjectProtocol observer token is main-actor-touched only in start/stop, DrainGate (a nested private actor) guards the drain-coalesce state, and seqLock (NSLock) guards the UInt64 sequence counter (DiagnosticHistoryObserver.swift:49–60). DiagnosticSink is the injectable protocol (DiagnosticSink.swift:7); DiagnosticLog conforms in production (DiagnosticSink.swift:11); tests inject an in-memory spy, keeping observers and stores off disk. DiagnosticPackageBuilder is a Sendable struct (DiagnosticPackageBuilder.swift:10), deliberately value-typed so each export request gets a fresh instance with no lifecycle coupling.
 
 ## External deps
 
-- Foundation — `FileManager`, `FileHandle`, `JSONEncoder/Decoder`, `NSFileCoordinator`
-- CoreData — `NSPersistentHistoryChangeRequest`, remote-change notification, history transactions
-- SQLite3 — `VACUUM INTO` produces a consistent read-only store snapshot
+- CoreData — imported
+- Foundation — imported
+- SQLite3 — imported
 
 ## Gotchas
 
-- Delete events resolve a nil `objectUUID`: `id` is not flagged `preserveValueInHistoryOnDeletion`, so tombstones lack it (`Packages/LillistCore/Sources/LillistCore/Diagnostics/DiagnosticHistoryObserver.swift:194`).
-- `flatten` reads `id`/`position` via `attributesByName` guards because `value(forKey:)` on an undeclared key raises an uncatchable Obj-C exception (`Packages/LillistCore/Sources/LillistCore/Diagnostics/DiagnosticHistoryObserver.swift:180`).
-- Retention prune relies on lexical comparison of zero-padded `yyyy-MM-dd` stamps and assumes process names contain no `-` (`Packages/LillistCore/Sources/LillistCore/Diagnostics/DiagnosticLog.swift:127`).
+DrainGate is a private actor nested inside DiagnosticHistoryObserver (DiagnosticHistoryObserver.swift:64) specifically because NSLock.lock() is unavailable across async suspension points — the coalesce pattern needs an actor to be safe under Swift 6 strict concurrency (DiagnosticHistoryObserver.swift:52–59). DiagnosticLog.shared is synchronous (can't await), so its per-process registry cannot be an actor; instead a lock-protected SharedRegistry class guards it under @unchecked Sendable (DiagnosticLog.swift:139–150). DiagValue intentionally normalizes integral doubles to .int on decode: a JSON number like 2.0 encodes as 2 and decodes as .int(2) — by design, not a bug (DiagnosticEvent.swift:15–19). Delete tombstones in persistent history do not carry the id attribute unless preserveValueInHistoryOnDeletion is set; delete events currently resolve nil objectUUID and are attributed by entity+author only — deferred model change, noted in code (DiagnosticHistoryObserver.swift:196–202). NSFileCoordinator(.forUploading) hands zip to a transient URL that is reclaimed after the accessor block; the builder copies it to a stable temp URL before the block returns (DiagnosticPackageBuilder.swift:194–200).

@@ -1,7 +1,7 @@
 ---
 module: Extensions/ShortcutsActions/Entities
-summary: "AppEntity + EntityQuery surface exposing tasks to Shortcuts, Spotlight, and Lock Screen"
-read_when: "Shortcuts task entity"
+summary: "App Intents entity layer: TaskEntity, StatusAppEnum, and EntityQuery bridge LillistCore DTOs to Shortcuts/Spotlight"
+read_when: "Touching Shortcuts task entity or query"
 sources:
   - path: Extensions/ShortcutsActions/Entities/StatusAppEnum.swift
     blob: 9014b1f271976eceb9cca9e9307258a7d4dcac9d
@@ -9,72 +9,48 @@ sources:
     blob: 61233f71d3aa63d6858122a3e92651961a03c853
   - path: Extensions/ShortcutsActions/Entities/TaskEntityQuery.swift
     blob: 1187dea2d080b75705127c87e392ee2c50ad0503
-references_modules: [Extensions-ShortcutsActions-misc, Packages-LillistCore-Sources-LillistCore-Stores-chunk-1, Packages-LillistCore-Sources-LillistCore-Stores-chunk-2, Packages-LillistCore-Sources-LillistCore-Model, Packages-LillistCore-Sources-LillistCore-Rules]
-generator: cartographer/1
-baseline: 1a1562b636e43ebbdc35c7939ab6989b387f50e9
-verified: true
+references_modules: [Packages-LillistCore-Sources-LillistCore-Rules]
+generator: cartographer/4
+baseline: 515f24730d21cb81ca1c9737ffeb981e9c414d3c
 ---
 
 # Module: Extensions/ShortcutsActions/Entities
 
 ## Purpose
 
-The AppIntents data surface for the Shortcuts extension: it adapts LillistCore's
-value-type task records into `AppEntity`/`AppEnum` types the system can show in
-Shortcuts, Spotlight, and the Lock Screen. The design idea is a one-way DTO
-boundary — `TaskEntity` is constructed from `TaskStore.TaskRecord` so no
-`NSManagedObject` crosses into AppIntents land. Remove this module and every
-intent loses its typed task parameter and the system loses its task suggestions.
+This module is the App Intents entity layer: it exposes LillistCore tasks to Shortcuts, Spotlight, and Lock Screen by wrapping internal DTO types (TaskStore.TaskRecord, Status) as AppEntity and AppEnum conformances the framework can serialize, display, and resolve. TaskEntityQuery bridges the two worlds at query time, using IntentSupport.makePersistence() to acquire a MigrationGate-gated, syncMode-aware store before any lookup. Without this module, no Shortcuts action could reference or suggest Lillist tasks by name.
 
 ## Public API
 
-These types are referenced across the sibling intent files, but all are
-default (module-internal) access — the App Intents extension is a single
-compilation unit, so "public surface" here means the entity types intents reach
-for.
-
 | Symbol | Kind | Location | Contract |
 | --- | --- | --- | --- |
-| `StatusAppEnum` | enum | `Extensions/ShortcutsActions/Entities/StatusAppEnum.swift:4` | `AppEnum` mirror of `Status`; round-trips via `coreStatus` and `init(_:)` |
-| `TaskEntity` | struct | `Extensions/ShortcutsActions/Entities/TaskEntity.swift:9` | `AppEntity` for a task; built from `TaskStore.TaskRecord` via `init(_:)` |
-| `TaskEntityQuery` | struct | `Extensions/ShortcutsActions/Entities/TaskEntityQuery.swift:14` | `EntityQuery` resolving `TaskEntity` by id and supplying suggestions |
+| `StatusAppEnum` | enum | `Extensions/ShortcutsActions/Entities/StatusAppEnum.swift:4` | Bidirectional AppEnum bridge: callers get four Shortcuts-displayable status cases and convert to LillistCore.Status via `coreStatus`, or wrap a Status via init(_:). |
+| `TaskEntity` | struct | `Extensions/ShortcutsActions/Entities/TaskEntity.swift:9` | Immutable AppEntity snapshot of a task; callers may bind id, title, status, and deadline as Shortcuts parameters and round-trip through TaskEntityQuery. |
+| `TaskEntity` | extension | `Extensions/ShortcutsActions/Entities/TaskEntity.swift:34` | Convenience init from TaskStore.TaskRecord; constructs a TaskEntity without manual field mapping, guaranteed non-failable for any valid record. |
+| `TaskEntityQuery` | struct | `Extensions/ShortcutsActions/Entities/TaskEntityQuery.swift:14` | EntityQuery conformance point; acquires a gated persistence store per call via IntentSupport.makePersistence() — no shared state is retained between invocations. |
+| `entities` | func | `Extensions/ShortcutsActions/Entities/TaskEntityQuery.swift:15` | Resolves task UUIDs to TaskEntity values; missing IDs are silently skipped; throws LillistError.storeUnavailable if MigrationGate aborts store acquisition. |
+| `suggestedEntities` | func | `Extensions/ShortcutsActions/Entities/TaskEntityQuery.swift:27` | Returns up to 20 non-trashed, non-closed tasks sorted by most-recently-modified for Shortcuts dynamic entity suggestions. |
 
 ## Load-bearing internals
 
 | Symbol | Kind | Location | Why it matters |
 | --- | --- | --- | --- |
-| `TaskEntity.init(_:)` | init | `Extensions/ShortcutsActions/Entities/TaskEntity.swift:35` | The DTO seam: converts `TaskStore.TaskRecord` into the entity |
-| `StatusAppEnum.coreStatus` | property | `Extensions/ShortcutsActions/Entities/StatusAppEnum.swift:18` | Maps the AppEnum back to LillistCore `Status` for intent writes |
-| `entities(for:)` | func | `Extensions/ShortcutsActions/Entities/TaskEntityQuery.swift:15` | Resolves ids to entities; opens a gated store and best-effort fetches |
-| `suggestedEntities()` | func | `Extensions/ShortcutsActions/Entities/TaskEntityQuery.swift:27` | Builds the recent-task suggestion list via a predicate evaluation |
 
 ## Relationships
 
-- `Extensions-ShortcutsActions-Entities.TaskEntityQuery -> Extensions-ShortcutsActions-misc.IntentSupport (calls)`
-- `Extensions-ShortcutsActions-Entities.TaskEntityQuery -> Packages-LillistCore-Sources-LillistCore-Stores-chunk-2.TaskStore (calls)`
-- `Extensions-ShortcutsActions-Entities.TaskEntityQuery -> Packages-LillistCore-Sources-LillistCore-Stores-chunk-1.SmartFilterStore (calls)`
-- `Extensions-ShortcutsActions-Entities.TaskEntity -> Packages-LillistCore-Sources-LillistCore-Stores-chunk-2.TaskStore (reads)`
-- `Extensions-ShortcutsActions-Entities.StatusAppEnum -> Packages-LillistCore-Sources-LillistCore-Model.Status (reads)`
-- `Extensions-ShortcutsActions-Entities.TaskEntityQuery -> Packages-LillistCore-Sources-LillistCore-Rules.PredicateGroup (calls)`
-- `Extensions-ShortcutsActions-Entities.TaskEntityQuery -> Packages-LillistCore-Sources-LillistCore-Rules.Leaf (calls)`
+- `Extensions-ShortcutsActions-Entities.suggestedEntities -> Packages-LillistCore-Sources-LillistCore-Rules.Leaf (calls)`
+- `Extensions-ShortcutsActions-Entities.suggestedEntities -> Packages-LillistCore-Sources-LillistCore-Rules.PredicateGroup (calls)`
 
 ## Type notes
 
-`TaskEntity` is value-typed (`struct`) and `Identifiable` on `UUID`
-(`Extensions/ShortcutsActions/Entities/TaskEntity.swift:9-10`); its
-`@Property` fields are what Shortcuts shows. `defaultQuery` wires the entity to
-`TaskEntityQuery` (`Extensions/ShortcutsActions/Entities/TaskEntity.swift:24`).
-`StatusAppEnum` conforms to `AppEnum` and is isomorphic to the concrete
-LillistCore `Status` enum; the two are kept in lockstep by `init(_:)` and
-`coreStatus`, so adding a status requires editing both ends of the switch
-(`Extensions/ShortcutsActions/Entities/StatusAppEnum.swift:18-34`).
-Both query methods are `async throws`: persistence is acquired through the
-shared gated factory, and `entities(for:)` swallows per-id fetch failures
-(`try?`) so one missing task does not abort the batch
-(`Extensions/ShortcutsActions/Entities/TaskEntityQuery.swift:20`), while a gate
-abort propagates `LillistError.storeUnavailable` out of either method.
+All three types are value types (struct/enum) with no actor isolation — AppIntents invokes them off-main on the cooperative thread pool. TaskEntity.swift:9-32: @Property macros on title, status, and deadline expose those fields as Shortcuts-parameterizable; the bare id field satisfies Identifiable with a UUID. StatusAppEnum.swift:18-25: `coreStatus` converts to LillistCore.Status; StatusAppEnum.swift:27-34: init(_ status: Status) makes the mapping symmetric and exhaustive at compile time. TaskEntityQuery.swift:15-26: persistence is acquired per call with no shared mutable state, keeping query invocations independently threadsafe.
 
 ## External deps
 
-- AppIntents — `AppEntity`, `AppEnum`, `EntityQuery`, `@Property`, `DisplayRepresentation`
-- Foundation — `UUID`, `Date` field types on `TaskEntity`
+- AppIntents — imported
+- Foundation — imported
+- LillistCore — imported
+
+## Gotchas
+
+Extensions/ShortcutsActions/Entities/TaskEntityQuery.swift:6-13 documents that when MigrationGate aborts, IntentSupport.makePersistence() throws LillistError.storeUnavailable; this propagates through both `entities` and `suggestedEntities` so Shortcuts surfaces a retry message rather than operating on a half-swapped store. The suggested-entities filter is hardcoded inline (TaskEntityQuery.swift:30-35) and not backed by a user SmartFilter — changing the suggestion heuristic requires a code change.

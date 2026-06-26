@@ -1,76 +1,47 @@
 ---
 module: Apps/Config
-summary: "Shared xcconfig scaffold keeping the signing team ID out of git and tracking the iOS build counter"
+summary: "xcconfig scaffolding: signing team indirection, monotonic build counter, per-machine defaults."
 read_when: "Code signing & build number"
 sources:
   - path: Apps/Config/BuildNumber.xcconfig
-    blob: 1c0b70d2d4f35833acf311f62a7ed42217eb025d
-  - path: Apps/Config/Signing.xcconfig
-    blob: 91c22af2ba9d10704a892e78b54461d6bc12d1cf
+    blob: 83e96cd98364e0818128d87a7b6e17357c0dc666
+  - path: Apps/Config/Distribution.xcconfig
+    blob: 84460655dcfbf0b4e127022a8ede527f6f95e614
   - path: Apps/Config/Signing.local.xcconfig.example
-    blob: 2c771256d16c8c8d3f09dcba171065b72979afe2
-references_modules: [Apps-misc, Apps-Lillist-iOS-misc, Tools]
-generator: cartographer/1
-baseline: 1a1562b636e43ebbdc35c7939ab6989b387f50e9
-verified: true
+    blob: e1772886c706e371c5d3ac58cfe37bd6ab036193
+  - path: Apps/Config/Signing.xcconfig
+    blob: eaa9a2c9e55ed70c13d4f41953dc427da4dea455
+generator: cartographer/4
+baseline: 515f24730d21cb81ca1c9737ffeb981e9c414d3c
 ---
 
 # Module: Apps/Config
 
 ## Purpose
 
-Build-configuration scaffold shared by both app targets. Its central design idea
-is an `$()`-indirection that keeps the Apple Developer Team ID out of every
-committed file: a gitignored `Signing.local.xcconfig` supplies the real team ID,
-while the committed `Signing.xcconfig` references only the placeholder. It also
-holds the single source of truth for the monotonic iOS build counter. Without
-this layer, either the team ID would leak into the tracked pbxproj or the build
-number would lose its cross-machine continuity.
+This module holds the xcconfig scaffolding that decouples build identity — signing team, build number, crash-report contact, Sparkle feed URL — from the committed pbxproj. A three-layer include cascade (public defaults in Distribution.xcconfig, optional gitignored per-machine overrides via Signing.local.xcconfig, monotonic counter in BuildNumber.xcconfig, assembled by Signing.xcconfig) keeps private and per-contributor values out of version control while still enabling fully signed local and export builds. If this module vanished, every contributor's Team ID and private infrastructure URLs would either bake into the pbxproj or signing would silently break.
 
 ## Public API
 
-xcconfig files expose build settings, not code symbols. The externally-consumed
-settings are:
-
 | Symbol | Kind | Location | Contract |
 | --- | --- | --- | --- |
-| `CURRENT_PROJECT_VERSION` | build-setting | `Apps/Config/BuildNumber.xcconfig:5` | iOS build number; xcconfig precedence overrides project.yml settings.base |
-| `DEVELOPMENT_TEAM` | build-setting | `Apps/Config/Signing.xcconfig:19` | Code-signing team, resolved from `$(LOCAL_DEVELOPMENT_TEAM)` at build time |
-| `LOCAL_DEVELOPMENT_TEAM` | build-setting | `Apps/Config/Signing.local.xcconfig.example:13` | Local-only 10-char team ID; the gitignored override fills this in |
 
 ## Load-bearing internals
 
 | Symbol | Kind | Location | Why it matters |
 | --- | --- | --- | --- |
-| `#include? "Signing.local.xcconfig"` | xcconfig-include | `Apps/Config/Signing.xcconfig:13` | Optional include lets the team ID stay gitignored without breaking builds |
-| `#include "BuildNumber.xcconfig"` | xcconfig-include | `Apps/Config/Signing.xcconfig:17` | Folds the tracked build counter into the signing config both targets load |
 
 ## Relationships
 
-- `Apps-misc.project.yml -> Apps-Config.Signing.xcconfig (reads)` — `Apps/project.yml:14-15` sets `configFiles` for both Debug and Release
-- `Apps-Lillist-iOS-misc.project.yml -> Apps-Config.Signing.xcconfig (reads)` — `Apps/Lillist-iOS/project.yml:14-15` sets `configFiles` for both Debug and Release
-- `Apps-Config.Signing.xcconfig -> Apps-Config.BuildNumber.xcconfig (reads)` — `Apps/Config/Signing.xcconfig:17` hard-includes BuildNumber
-- `Tools.bump-build-number.sh -> Apps-Config.BuildNumber.xcconfig (writes)` — Archive pre-action at `Apps/Lillist-iOS/project.yml:271` invokes bump script
-
 ## Type notes
 
-`Signing.xcconfig` is the entry point both app projects load via `configFiles`
-for Debug and Release (`Apps/project.yml:14`, `Apps/Lillist-iOS/project.yml:14`).
-It chains two includes: the optional `Signing.local.xcconfig` (absent in a fresh
-checkout) and the mandatory `BuildNumber.xcconfig`. The `$(LOCAL_DEVELOPMENT_TEAM)`
-indirection is literal to xcodegen — only the placeholder string lands in the
-generated pbxproj — and is expanded by Xcode at build time
-(`Apps/Config/Signing.xcconfig:3`). `BuildNumber.xcconfig` is tracked in git and
-mutated only by the deploy script's Archive pre-action; committing after each
-archive keeps the counter monotonic (`Apps/Config/BuildNumber.xcconfig:1`).
-`Signing.local.xcconfig.example` is a copy-and-fill template, never consumed by a
-build (`Apps/Config/Signing.local.xcconfig.example:4`).
+No Swift types. Four xcconfig files with defined ownership: `Signing.xcconfig` is the root compositor — it `#include`s `Distribution.xcconfig` first (public committed defaults), then `#include?`s `Signing.local.xcconfig` (gitignored per-machine file; templated by the committed `.example`), then `#include`s `BuildNumber.xcconfig` (Apps/Config/Signing.xcconfig:15–21). In xcconfig, a later assignment for the same key overrides an earlier one, so per-machine `LOCAL_*` values in the local file win over the Distribution defaults. `DEVELOPMENT_TEAM = $(LOCAL_DEVELOPMENT_TEAM)` (Apps/Config/Signing.xcconfig:23) and `LILLIST_CONTACT_EMAIL = $(LOCAL_CONTACT_EMAIL)` / `SU_FEED_URL = $(LOCAL_SU_FEED_URL)` (Apps/Config/Signing.xcconfig:28–29) are the resolved names consumed by project.yml and Info.plists. `BuildNumber.xcconfig` is the single git-tracked source of truth for `CURRENT_PROJECT_VERSION` (Apps/Config/BuildNumber.xcconfig:5), incremented by `Tools/Deploy/bump-build-number.sh` as the Lillist-iOS Archive pre-action; committing it after each archive keeps the counter monotonic across machines.
 
 ## External deps
 
-- xcconfig — Xcode build-configuration format; `#include` / `#include?` and `$()` variable expansion
+- BuildNumber.xcconfig — imported
+- Distribution.xcconfig — imported
 
 ## Gotchas
 
-- `CURRENT_PROJECT_VERSION` holds the NEXT build's number before an archive — the deployed build ships the pre-bump value; report the number from deployit's output, not this file (`Apps/Config/BuildNumber.xcconfig:1-5`)
-- `Signing.local.xcconfig` is gitignored; omitting it does not break CI (optional include) but no signed build succeeds until a contributor fills in their Team ID (`Apps/Config/Signing.xcconfig:13`, `Apps/Config/Signing.local.xcconfig.example:4-11`)
+xcconfig treats `//` as a comment delimiter even mid-value, which would truncate any URL at its scheme separator. `Distribution.xcconfig` works around this with `SLASH = /` (Apps/Config/Distribution.xcconfig:23) so URL values are composed as `https:$(SLASH)$(SLASH)...` — any new URL setting must follow this pattern or the value is silently truncated. xcodegen reads the xcconfig at generation time and writes only the literal string `$(LOCAL_DEVELOPMENT_TEAM)` into `TargetAttributes.DevelopmentTeam` in the pbxproj (Apps/Config/Signing.xcconfig:8–9), not the expanded team ID — re-running `xcodegen generate` is safe and never leaks the team ID into version control.

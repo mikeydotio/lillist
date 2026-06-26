@@ -1,7 +1,7 @@
 ---
 module: "Packages/LillistCore/Sources/LillistCore/CLIBridge/Handlers (chunk 1)"
-summary: "Stateless CLIBridge command handlers translating tokenized intents into store mutations and DTO reads"
-read_when: "Touching CLI or App Intents verbs for"
+summary: "CLIBridge handlers (Add–Purge): caseless-enum namespaces that resolve tokens and dispatch to stores."
+read_when: "Touching CLI / App Intents verbs (add–pin)"
 sources:
   - path: Packages/LillistCore/Sources/LillistCore/CLIBridge/Handlers/AddHandler.swift
     blob: 5436b7d736e7667127026b4a74916bbc699663c5
@@ -33,103 +33,115 @@ sources:
     blob: 845931cf4fbe1add526c17176e2825d59c79e774
   - path: Packages/LillistCore/Sources/LillistCore/CLIBridge/Handlers/PurgeHandler.swift
     blob: 946f138edf9a34b1ea75996454db62a4d885993c
-references_modules: [Packages-LillistCore-Sources-LillistCore-CLIBridge-misc, Packages-LillistCore-Sources-LillistCore-Stores-chunk-1, Packages-LillistCore-Sources-LillistCore-Stores-chunk-2, Packages-LillistCore-Sources-LillistCore-Notifications, Packages-LillistCore-Sources-LillistCore-Rules, Packages-LillistCore-Sources-LillistCore-Model, Packages-LillistCore-Sources-LillistCore-ManagedObjects, Packages-LillistCore-Sources-LillistCore-LinkPreview, Packages-LillistCore-Sources-LillistCore-Export, Packages-LillistCore-Sources-LillistCore-Persistence, Packages-LillistCore-Sources-LillistCore-Diagnostics, Packages-LillistCore-Sources-LillistCore-misc]
-generator: cartographer/1
-baseline: 1a1562b636e43ebbdc35c7939ab6989b387f50e9
-verified: true
+references_modules: [Packages-LillistCore-Sources-LillistCore-CLIBridge-misc, Packages-LillistCore-Sources-LillistCore-Export, Packages-LillistCore-Sources-LillistCore-LinkPreview, Packages-LillistCore-Sources-LillistCore-Notifications, Packages-LillistCore-Sources-LillistCore-Rules, Packages-LillistCore-Sources-LillistCore-Stores-chunk-1, Packages-LillistCore-Sources-LillistCore-Stores-chunk-2]
+generator: cartographer/4
+baseline: 515f24730d21cb81ca1c9737ffeb981e9c414d3c
 ---
 
 # Module: Packages/LillistCore/Sources/LillistCore/CLIBridge/Handlers (chunk 1)
 
 ## Purpose
 
-The verb layer of the CLI/App-Intent surface: one stateless `enum` per command,
-each a `CLIBridge` extension with `static func run`. Handlers translate string
-tokens (task references, dates, statuses) into `Resolver`/`DateParsing` lookups,
-drive the appropriate store, and return value-type DTOs or UUIDs — never Core
-Data objects. They are the single point where out-of-process callers (the
-`lillist` CLI and the Shortcuts App-Intents extension) reach `LillistCore`, so
-the same parsing and resolution rules converge regardless of entry point. If
-this layer vanished, both the CLI and Shortcuts would lose every task verb.
+This chunk houses the static verb implementations for the first half of the CLIBridge alphabet (Add through Purge), serving both the lillist CLI and Shortcuts App Intents. Each handler is a caseless namespace enum with no stored state: it resolves a task token, delegates to the appropriate LillistCore store, and returns a DTO or throws. Without this layer, CLI commands and App Intents would need to directly orchestrate token resolution, store instantiation, and date parsing themselves, duplicating logic that the two consumers share.
 
 ## Public API
 
 | Symbol | Kind | Location | Contract |
 | --- | --- | --- | --- |
-| `AddHandler` | enum | `Packages/LillistCore/Sources/LillistCore/CLIBridge/Handlers/AddHandler.swift:4` | `run` creates a task (tags/dates/status/parent) with `placement: .top`; returns the new UUID |
-| `AddHandler.status` | func | `Packages/LillistCore/Sources/LillistCore/CLIBridge/Handlers/AddHandler.swift:77` | Maps a status token to `Status?`; nil for unknown tokens |
-| `AttachHandler` | enum | `Packages/LillistCore/Sources/LillistCore/CLIBridge/Handlers/AttachHandler.swift:4` | `run` attaches files to a resolved task; returns attachment UUIDs |
-| `CountHandler` | enum | `Packages/LillistCore/Sources/LillistCore/CLIBridge/Handlers/CountHandler.swift:4` | `run` returns the count of records matching flags/saved filter |
-| `DeleteHandler` | enum | `Packages/LillistCore/Sources/LillistCore/CLIBridge/Handlers/DeleteHandler.swift:4` | `run` soft-deletes the resolved task (recoverable trash) |
-| `EditHandler` | enum | `Packages/LillistCore/Sources/LillistCore/CLIBridge/Handlers/EditHandler.swift:4` | `run` patches title/notes/start/deadline on a resolved task |
-| `EvalHandler` | enum | `Packages/LillistCore/Sources/LillistCore/CLIBridge/Handlers/EvalHandler.swift:5` | `run` evaluates ad-hoc predicate JSON; returns matching `TaskRecord`s |
-| `ExportHandler` | enum | `Packages/LillistCore/Sources/LillistCore/CLIBridge/Handlers/ExportHandler.swift:4` | `run` writes a full export to a directory via `Exporter` |
-| `FiltersHandler` | enum | `Packages/LillistCore/Sources/LillistCore/CLIBridge/Handlers/FiltersHandler.swift:4` | `list`/`show`/`run`/`save`/`delete` over saved smart filters |
-| `LinkHandler` | enum | `Packages/LillistCore/Sources/LillistCore/CLIBridge/Handlers/LinkHandler.swift:4` | `run` validates a URL, creates a link attachment, best-effort unfurls |
-| `LsHandler` | enum | `Packages/LillistCore/Sources/LillistCore/CLIBridge/Handlers/LsHandler.swift:5` | `run` returns sorted `TaskRecord`s for flags/saved filter |
-| `LsHandler.fetchAllNonTrashedRecords` | func | `Packages/LillistCore/Sources/LillistCore/CLIBridge/Handlers/LsHandler.swift:38` | Returns all (optionally trashed) records; reused by other handlers |
-| `MoveHandler` | enum | `Packages/LillistCore/Sources/LillistCore/CLIBridge/Handlers/MoveHandler.swift:4` | `run` reparents a task to another task or to root (`--root`) |
-| `NoteHandler` | enum | `Packages/LillistCore/Sources/LillistCore/CLIBridge/Handlers/NoteHandler.swift:4` | `run` appends a journal note; rejects empty bodies; returns note UUID |
-| `NudgeHandler` | enum | `Packages/LillistCore/Sources/LillistCore/CLIBridge/Handlers/NudgeHandler.swift:4` | `run` persists a nudge `NotificationSpec`; does not schedule it |
-| `PinHandler` | enum | `Packages/LillistCore/Sources/LillistCore/CLIBridge/Handlers/PinHandler.swift:4` | `pin`/`unpin` set the resolved task's pinned flag |
-| `PurgeHandler` | enum | `Packages/LillistCore/Sources/LillistCore/CLIBridge/Handlers/PurgeHandler.swift:4` | `run` hard-deletes the resolved task (irreversible) |
+| `AddHandler` | enum | `Packages/LillistCore/Sources/LillistCore/CLIBridge/Handlers/AddHandler.swift:4` | Caseless namespace for task creation; exposes run, status, and firstTagWithName as static async helpers. |
+| `AttachHandler` | enum | `Packages/LillistCore/Sources/LillistCore/CLIBridge/Handlers/AttachHandler.swift:4` | Caseless namespace for file attachment; validates file existence on disk before writing any attachment row. |
+| `CLIBridge` | extension | `Packages/LillistCore/Sources/LillistCore/CLIBridge/Handlers/AddHandler.swift:3` | Extension grouping AddHandler into the CLIBridge namespace; no contract independent of the nested enum. |
+| `CLIBridge` | extension | `Packages/LillistCore/Sources/LillistCore/CLIBridge/Handlers/AttachHandler.swift:3` | Extension grouping AttachHandler into the CLIBridge namespace; no contract independent of the nested enum. |
+| `CLIBridge` | extension | `Packages/LillistCore/Sources/LillistCore/CLIBridge/Handlers/CountHandler.swift:3` | Extension grouping CountHandler into the CLIBridge namespace; no contract independent of the nested enum. |
+| `CLIBridge` | extension | `Packages/LillistCore/Sources/LillistCore/CLIBridge/Handlers/DeleteHandler.swift:3` | Extension grouping DeleteHandler into the CLIBridge namespace; no contract independent of the nested enum. |
+| `CLIBridge` | extension | `Packages/LillistCore/Sources/LillistCore/CLIBridge/Handlers/EditHandler.swift:3` | Extension grouping EditHandler into the CLIBridge namespace; no contract independent of the nested enum. |
+| `CLIBridge` | extension | `Packages/LillistCore/Sources/LillistCore/CLIBridge/Handlers/EvalHandler.swift:4` | Extension grouping EvalHandler into the CLIBridge namespace; no contract independent of the nested enum. |
+| `CLIBridge` | extension | `Packages/LillistCore/Sources/LillistCore/CLIBridge/Handlers/ExportHandler.swift:3` | Extension grouping ExportHandler into the CLIBridge namespace; no contract independent of the nested enum. |
+| `CLIBridge` | extension | `Packages/LillistCore/Sources/LillistCore/CLIBridge/Handlers/FiltersHandler.swift:3` | Extension grouping FiltersHandler into the CLIBridge namespace; no contract independent of the nested enum. |
+| `CLIBridge` | extension | `Packages/LillistCore/Sources/LillistCore/CLIBridge/Handlers/LinkHandler.swift:3` | Extension grouping LinkHandler into the CLIBridge namespace; no contract independent of the nested enum. |
+| `CLIBridge` | extension | `Packages/LillistCore/Sources/LillistCore/CLIBridge/Handlers/LsHandler.swift:4` | Extension grouping LsHandler into the CLIBridge namespace; no contract independent of the nested enum. |
+| `CLIBridge` | extension | `Packages/LillistCore/Sources/LillistCore/CLIBridge/Handlers/MoveHandler.swift:3` | Extension grouping MoveHandler into the CLIBridge namespace; no contract independent of the nested enum. |
+| `CLIBridge` | extension | `Packages/LillistCore/Sources/LillistCore/CLIBridge/Handlers/NoteHandler.swift:3` | Extension grouping NoteHandler into the CLIBridge namespace; no contract independent of the nested enum. |
+| `CLIBridge` | extension | `Packages/LillistCore/Sources/LillistCore/CLIBridge/Handlers/NudgeHandler.swift:3` | Extension grouping NudgeHandler into the CLIBridge namespace; no contract independent of the nested enum. |
+| `CLIBridge` | extension | `Packages/LillistCore/Sources/LillistCore/CLIBridge/Handlers/PinHandler.swift:3` | Extension grouping PinHandler into the CLIBridge namespace; no contract independent of the nested enum. |
+| `CLIBridge` | extension | `Packages/LillistCore/Sources/LillistCore/CLIBridge/Handlers/PurgeHandler.swift:3` | Extension grouping PurgeHandler into the CLIBridge namespace; no contract independent of the nested enum. |
+| `CountHandler` | enum | `Packages/LillistCore/Sources/LillistCore/CLIBridge/Handlers/CountHandler.swift:4` | Thin wrapper over LsHandler.run; returns matching record count without materializing record fields beyond what LsHandler returns. |
+| `DeleteHandler` | enum | `Packages/LillistCore/Sources/LillistCore/CLIBridge/Handlers/DeleteHandler.swift:4` | Caseless namespace for soft-deleting tasks; requires destructive token resolution before store call. |
+| `EditHandler` | enum | `Packages/LillistCore/Sources/LillistCore/CLIBridge/Handlers/EditHandler.swift:4` | Caseless namespace for partial task field updates (title, notes, start, deadline); all fields optional. |
+| `EvalHandler` | enum | `Packages/LillistCore/Sources/LillistCore/CLIBridge/Handlers/EvalHandler.swift:5` | Caseless namespace for evaluating a raw JSON PredicateGroup directly against the live Core Data view context. |
+| `ExportHandler` | enum | `Packages/LillistCore/Sources/LillistCore/CLIBridge/Handlers/ExportHandler.swift:4` | Caseless namespace for backup export; ensures the output directory exists before delegating to Exporter. |
+| `FiltersHandler` | enum | `Packages/LillistCore/Sources/LillistCore/CLIBridge/Handlers/FiltersHandler.swift:4` | CRUD namespace for SmartFilter records; wraps SmartFilterStore for list/show/save/delete and LsHandler for execution. |
+| `LinkHandler` | enum | `Packages/LillistCore/Sources/LillistCore/CLIBridge/Handlers/LinkHandler.swift:4` | Caseless namespace for link-preview attachment creation with SSRF guard (URLPreviewPolicy) and best-effort unfurl. |
+| `LsHandler` | enum | `Packages/LillistCore/Sources/LillistCore/CLIBridge/Handlers/LsHandler.swift:5` | Core listing engine: resolves predicates from flags or saved filters, fetches managed objects, projects to TaskRecord DTOs, sorts. |
+| `MoveHandler` | enum | `Packages/LillistCore/Sources/LillistCore/CLIBridge/Handlers/MoveHandler.swift:4` | Caseless namespace for reparenting tasks; requires destructive token resolution on both child and parent tokens. |
+| `NoteHandler` | enum | `Packages/LillistCore/Sources/LillistCore/CLIBridge/Handlers/NoteHandler.swift:4` | Caseless namespace for appending journal notes to tasks; validates body is non-empty before store call. |
+| `NudgeHandler` | enum | `Packages/LillistCore/Sources/LillistCore/CLIBridge/Handlers/NudgeHandler.swift:4` | Caseless namespace for persisting nudge NotificationSpecs; deliberately does not schedule UNNotificationRequests. |
+| `PinHandler` | enum | `Packages/LillistCore/Sources/LillistCore/CLIBridge/Handlers/PinHandler.swift:4` | Caseless namespace exposing pin and unpin as public entry points; both delegate to setPinned. |
+| `PurgeHandler` | enum | `Packages/LillistCore/Sources/LillistCore/CLIBridge/Handlers/PurgeHandler.swift:4` | Caseless namespace for permanent task removal; requires destructive token resolution before hard-deleting. |
+| `delete` | func | `Packages/LillistCore/Sources/LillistCore/CLIBridge/Handlers/FiltersHandler.swift:45` | Removes a saved smart filter by name via SmartFilterStore.delete; throws if the filter does not exist. |
+| `fetchAllNonTrashedRecords` | func | `Packages/LillistCore/Sources/LillistCore/CLIBridge/Handlers/LsHandler.swift:38` | Direct fetch bypassing FilterFlags and predicate compilation; optionally includes trashed records; reused by EvalHandler. |
+| `firstTagWithName` | func | `Packages/LillistCore/Sources/LillistCore/CLIBridge/Handlers/AddHandler.swift:91` | Searches the tag tree case/whitespace-insensitively for an existing tag; returns its UUID or nil; never creates tags. |
+| `list` | func | `Packages/LillistCore/Sources/LillistCore/CLIBridge/Handlers/FiltersHandler.swift:5` | Returns all saved SmartFilterRecords from SmartFilterStore; callers receive an empty array when none exist. |
+| `pin` | func | `Packages/LillistCore/Sources/LillistCore/CLIBridge/Handlers/PinHandler.swift:5` | Sets isPinned=true on the resolved task by delegating to setPinned; throws on unknown token. |
+| `record` | func | `Packages/LillistCore/Sources/LillistCore/CLIBridge/Handlers/LsHandler.swift:52` | Projects a LillistTask managed object to a TaskStore.TaskRecord DTO; must be called inside ctx.perform to satisfy Sendable rules. |
+| `run` | func | `Packages/LillistCore/Sources/LillistCore/CLIBridge/Handlers/AddHandler.swift:7` | Creates a task with optional dates, tags, parent, and status; returns the new UUID; throws on invalid tokens or unknown status. |
+| `run` | func | `Packages/LillistCore/Sources/LillistCore/CLIBridge/Handlers/AttachHandler.swift:6` | Resolves token, validates each path exists on disk, writes a file attachment row per path; returns array of attachment UUIDs. |
+| `run` | func | `Packages/LillistCore/Sources/LillistCore/CLIBridge/Handlers/CountHandler.swift:5` | Returns count of tasks matching the given filter flags by delegating list logic entirely to LsHandler.run. |
+| `run` | func | `Packages/LillistCore/Sources/LillistCore/CLIBridge/Handlers/DeleteHandler.swift:5` | Moves a task to trash via TaskStore.softDelete after destructive token resolution; throws on unknown token. |
+| `run` | func | `Packages/LillistCore/Sources/LillistCore/CLIBridge/Handlers/EditHandler.swift:5` | Applies non-nil field updates (title, notes, start, deadline) to an existing task; parses date tokens; throws on bad token or parse failure. |
+| `run` | func | `Packages/LillistCore/Sources/LillistCore/CLIBridge/Handlers/EvalHandler.swift:6` | Decodes JSON to PredicateGroup, compiles to NSPredicate inside ctx.perform (Sendable boundary), returns matching TaskRecords. |
+| `run` | func | `Packages/LillistCore/Sources/LillistCore/CLIBridge/Handlers/ExportHandler.swift:5` | Creates the destination directory if needed and drives Exporter.export to write backup files; throws on I/O or store errors. |
+| `run` | func | `Packages/LillistCore/Sources/LillistCore/CLIBridge/Handlers/FiltersHandler.swift:13` | Executes a named saved filter by delegating to LsHandler.run with empty FilterFlags; returns sorted TaskRecords. |
+| `run` | func | `Packages/LillistCore/Sources/LillistCore/CLIBridge/Handlers/LinkHandler.swift:6` | Validates URL scheme and policy, creates a link-preview attachment row, best-effort unfurls metadata; returns attachment UUID. |
+| `run` | func | `Packages/LillistCore/Sources/LillistCore/CLIBridge/Handlers/LsHandler.swift:7` | Builds predicate from flags or saved filter, fetches inside ctx.perform, returns sorted TaskRecord array; primary CLI read path. |
+| `run` | func | `Packages/LillistCore/Sources/LillistCore/CLIBridge/Handlers/MoveHandler.swift:5` | Reparents a task to a new parent token or root; destructive resolution on both sides; throws if neither parent nor --root is given. |
+| `run` | func | `Packages/LillistCore/Sources/LillistCore/CLIBridge/Handlers/NoteHandler.swift:6` | Validates non-empty body, resolves token, appends note via JournalStore.appendNote; returns new journal entry UUID. |
+| `run` | func | `Packages/LillistCore/Sources/LillistCore/CLIBridge/Handlers/NudgeHandler.swift:13` | Parses date token, persists a nudge NotificationSpec via NotificationSpecStore; the running app schedules it later. |
+| `run` | func | `Packages/LillistCore/Sources/LillistCore/CLIBridge/Handlers/PurgeHandler.swift:5` | Permanently deletes a task via TaskStore.hardDelete after destructive token resolution; operation is irreversible. |
+| `save` | func | `Packages/LillistCore/Sources/LillistCore/CLIBridge/Handlers/FiltersHandler.swift:31` | Creates a named SmartFilter with the given PredicateGroup and sort field, always ascending; returns the new UUID. |
+| `setPinned` | func | `Packages/LillistCore/Sources/LillistCore/CLIBridge/Handlers/PinHandler.swift:11` | Shared implementation for pin/unpin: resolves token with readOnly scope and updates isPinned via TaskStore.update. |
+| `show` | func | `Packages/LillistCore/Sources/LillistCore/CLIBridge/Handlers/FiltersHandler.swift:9` | Fetches a single SmartFilterRecord by name; throws if the filter is not found. |
+| `sort` | func | `Packages/LillistCore/Sources/LillistCore/CLIBridge/Handlers/LsHandler.swift:73` | Pure stable sort of a TaskRecord array by SortField; no store access; nil dates sort to distant future/past per field semantics. |
+| `status` | func | `Packages/LillistCore/Sources/LillistCore/CLIBridge/Handlers/AddHandler.swift:77` | Maps a string token (todo/started/blocked/closed, case-insensitive) to Status; returns nil for unrecognized tokens; never throws. |
+| `unpin` | func | `Packages/LillistCore/Sources/LillistCore/CLIBridge/Handlers/PinHandler.swift:8` | Sets isPinned=false on the resolved task by delegating to setPinned; throws on unknown token. |
 
 ## Load-bearing internals
 
 | Symbol | Kind | Location | Why it matters |
 | --- | --- | --- | --- |
-| `LsHandler.record` | func | `Packages/LillistCore/Sources/LillistCore/CLIBridge/Handlers/LsHandler.swift:52` | Single map from `LillistTask` MO to `TaskRecord` DTO; reused by `EvalHandler` |
-| `LsHandler.sort` | func | `Packages/LillistCore/Sources/LillistCore/CLIBridge/Handlers/LsHandler.swift:73` | Centralizes `SortField` ordering for every list/filter read |
-| `AddHandler.firstTagWithName` | func | `Packages/LillistCore/Sources/LillistCore/CLIBridge/Handlers/AddHandler.swift:91` | Case/whitespace-insensitive tag tree walk so CLI and Quick Capture share a tag |
-| `PinHandler.setPinned` | func | `Packages/LillistCore/Sources/LillistCore/CLIBridge/Handlers/PinHandler.swift:11` | Shared resolve+update body behind `pin`/`unpin` |
 
 ## Relationships
 
-- `Packages-LillistCore-Sources-LillistCore-CLIBridge-Handlers-chunk-1.AddHandler -> Packages-LillistCore-Sources-LillistCore-CLIBridge-misc.CLIBridge (extends)`
-- `Packages-LillistCore-Sources-LillistCore-CLIBridge-Handlers-chunk-1.AddHandler -> Packages-LillistCore-Sources-LillistCore-CLIBridge-misc.Resolver (calls)`
-- `Packages-LillistCore-Sources-LillistCore-CLIBridge-Handlers-chunk-1.AddHandler -> Packages-LillistCore-Sources-LillistCore-CLIBridge-misc.DateParsing (calls)`
-- `Packages-LillistCore-Sources-LillistCore-CLIBridge-Handlers-chunk-1.AddHandler -> Packages-LillistCore-Sources-LillistCore-Stores-chunk-2.TaskStore (calls)`
-- `Packages-LillistCore-Sources-LillistCore-CLIBridge-Handlers-chunk-1.AddHandler -> Packages-LillistCore-Sources-LillistCore-Stores-chunk-1.TagStore (calls)`
-- `Packages-LillistCore-Sources-LillistCore-CLIBridge-Handlers-chunk-1.AddHandler -> Packages-LillistCore-Sources-LillistCore-Diagnostics.DiagnosticSink (writes)`
-- `Packages-LillistCore-Sources-LillistCore-CLIBridge-Handlers-chunk-1.AttachHandler -> Packages-LillistCore-Sources-LillistCore-Stores-chunk-1.AttachmentStore (calls)`
-- `Packages-LillistCore-Sources-LillistCore-CLIBridge-Handlers-chunk-1.CountHandler -> Packages-LillistCore-Sources-LillistCore-CLIBridge-Handlers-chunk-1.LsHandler (calls)`
-- `Packages-LillistCore-Sources-LillistCore-CLIBridge-Handlers-chunk-1.EvalHandler -> Packages-LillistCore-Sources-LillistCore-CLIBridge-Handlers-chunk-1.LsHandler (calls)`
-- `Packages-LillistCore-Sources-LillistCore-CLIBridge-Handlers-chunk-1.FiltersHandler -> Packages-LillistCore-Sources-LillistCore-CLIBridge-Handlers-chunk-1.LsHandler (calls)`
-- `Packages-LillistCore-Sources-LillistCore-CLIBridge-Handlers-chunk-1.LsHandler -> Packages-LillistCore-Sources-LillistCore-Rules.NSPredicateCompiler (calls)`
-- `Packages-LillistCore-Sources-LillistCore-CLIBridge-Handlers-chunk-1.LsHandler -> Packages-LillistCore-Sources-LillistCore-Rules.PredicateGroup (reads)`
-- `Packages-LillistCore-Sources-LillistCore-CLIBridge-Handlers-chunk-1.LsHandler -> Packages-LillistCore-Sources-LillistCore-Stores-chunk-1.SmartFilterStore (calls)`
-- `Packages-LillistCore-Sources-LillistCore-CLIBridge-Handlers-chunk-1.LsHandler -> Packages-LillistCore-Sources-LillistCore-ManagedObjects.LillistTask (reads)`
-- `Packages-LillistCore-Sources-LillistCore-CLIBridge-Handlers-chunk-1.LsHandler -> Packages-LillistCore-Sources-LillistCore-Stores-chunk-2.TaskStore (reads)`
-- `Packages-LillistCore-Sources-LillistCore-CLIBridge-Handlers-chunk-1.LsHandler -> Packages-LillistCore-Sources-LillistCore-Model.SortField (reads)`
-- `Packages-LillistCore-Sources-LillistCore-CLIBridge-Handlers-chunk-1.LinkHandler -> Packages-LillistCore-Sources-LillistCore-LinkPreview.URLPreviewPolicy (calls)`
-- `Packages-LillistCore-Sources-LillistCore-CLIBridge-Handlers-chunk-1.LinkHandler -> Packages-LillistCore-Sources-LillistCore-LinkPreview.LinkPreviewUnfurler (calls)`
-- `Packages-LillistCore-Sources-LillistCore-CLIBridge-Handlers-chunk-1.NoteHandler -> Packages-LillistCore-Sources-LillistCore-Stores-chunk-1.JournalStore (calls)`
-- `Packages-LillistCore-Sources-LillistCore-CLIBridge-Handlers-chunk-1.NudgeHandler -> Packages-LillistCore-Sources-LillistCore-Notifications.NotificationSpecStore (writes)`
-- `Packages-LillistCore-Sources-LillistCore-CLIBridge-Handlers-chunk-1.ExportHandler -> Packages-LillistCore-Sources-LillistCore-Export.Exporter (calls)`
-- `Packages-LillistCore-Sources-LillistCore-CLIBridge-Handlers-chunk-1.ExportHandler -> Packages-LillistCore-Sources-LillistCore-Stores-chunk-1.PreferencesStore (calls)`
-- `Packages-LillistCore-Sources-LillistCore-CLIBridge-Handlers-chunk-1.AddHandler -> Packages-LillistCore-Sources-LillistCore-Persistence.PersistenceController (reads)`
-- `Packages-LillistCore-Sources-LillistCore-CLIBridge-Handlers-chunk-1.AddHandler -> Packages-LillistCore-Sources-LillistCore-misc.LillistError (emits)`
+- `Packages-LillistCore-Sources-LillistCore-CLIBridge-Handlers-chunk-1.record -> Packages-LillistCore-Sources-LillistCore-Stores-chunk-2.TaskRecord (calls)`
+- `Packages-LillistCore-Sources-LillistCore-CLIBridge-Handlers-chunk-1.run -> Packages-LillistCore-Sources-LillistCore-CLIBridge-misc.FilterFlags (calls)`
+- `Packages-LillistCore-Sources-LillistCore-CLIBridge-Handlers-chunk-1.run -> Packages-LillistCore-Sources-LillistCore-CLIBridge-misc.toPredicateGroup (reads)`
+- `Packages-LillistCore-Sources-LillistCore-CLIBridge-Handlers-chunk-1.run -> Packages-LillistCore-Sources-LillistCore-Export.Exporter (calls)`
+- `Packages-LillistCore-Sources-LillistCore-CLIBridge-Handlers-chunk-1.run -> Packages-LillistCore-Sources-LillistCore-Export.export (writes)`
+- `Packages-LillistCore-Sources-LillistCore-CLIBridge-Handlers-chunk-1.run -> Packages-LillistCore-Sources-LillistCore-LinkPreview.LinkPreviewUnfurler (calls)`
+- `Packages-LillistCore-Sources-LillistCore-CLIBridge-Handlers-chunk-1.run -> Packages-LillistCore-Sources-LillistCore-LinkPreview.URLSessionLinkPreviewFetcher (calls)`
+- `Packages-LillistCore-Sources-LillistCore-CLIBridge-Handlers-chunk-1.run -> Packages-LillistCore-Sources-LillistCore-LinkPreview.isAllowed (reads)`
+- `Packages-LillistCore-Sources-LillistCore-CLIBridge-Handlers-chunk-1.run -> Packages-LillistCore-Sources-LillistCore-LinkPreview.unfurl (writes)`
+- `Packages-LillistCore-Sources-LillistCore-CLIBridge-Handlers-chunk-1.run -> Packages-LillistCore-Sources-LillistCore-Notifications.NotificationSpecStore (calls)`
+- `Packages-LillistCore-Sources-LillistCore-CLIBridge-Handlers-chunk-1.run -> Packages-LillistCore-Sources-LillistCore-Rules.compile (reads)`
+- `Packages-LillistCore-Sources-LillistCore-CLIBridge-Handlers-chunk-1.run -> Packages-LillistCore-Sources-LillistCore-Stores-chunk-1.AttachmentStore (calls)`
+- `Packages-LillistCore-Sources-LillistCore-CLIBridge-Handlers-chunk-1.run -> Packages-LillistCore-Sources-LillistCore-Stores-chunk-1.JournalStore (calls)`
+- `Packages-LillistCore-Sources-LillistCore-CLIBridge-Handlers-chunk-1.run -> Packages-LillistCore-Sources-LillistCore-Stores-chunk-1.addFile (writes)`
+- `Packages-LillistCore-Sources-LillistCore-CLIBridge-Handlers-chunk-1.run -> Packages-LillistCore-Sources-LillistCore-Stores-chunk-1.addLinkPreview (writes)`
+- `Packages-LillistCore-Sources-LillistCore-CLIBridge-Handlers-chunk-1.run -> Packages-LillistCore-Sources-LillistCore-Stores-chunk-1.appendNote (writes)`
+- `Packages-LillistCore-Sources-LillistCore-CLIBridge-Handlers-chunk-1.run -> Packages-LillistCore-Sources-LillistCore-Stores-chunk-2.assignTag (writes)`
+- `Packages-LillistCore-Sources-LillistCore-CLIBridge-Handlers-chunk-1.run -> Packages-LillistCore-Sources-LillistCore-Stores-chunk-2.hardDelete (writes)`
+- `Packages-LillistCore-Sources-LillistCore-CLIBridge-Handlers-chunk-1.run -> Packages-LillistCore-Sources-LillistCore-Stores-chunk-2.softDelete (writes)`
+- `Packages-LillistCore-Sources-LillistCore-CLIBridge-Handlers-chunk-1.run -> Packages-LillistCore-Sources-LillistCore-Stores-chunk-2.transition (writes)`
 
 ## Type notes
 
-Every handler is a caseless `public enum` extending `CLIBridge` with only
-`static` members — they hold no state and are never instantiated; the caller
-supplies a `PersistenceController` (and, where time matters, `now`/`calendar`)
-per call. Stores are constructed fresh inside each `run`, so handlers own no
-lifecycle. `EvalHandler` and `LsHandler` build the `NSPredicate` *inside*
-`context.perform` because `NSPredicate` is not `Sendable` and cannot cross into
-the closure; `PredicateGroup` is `Sendable` and is captured instead
-(`Packages/LillistCore/Sources/LillistCore/CLIBridge/Handlers/LsHandler.swift:24`).
-`NudgeHandler` deliberately persists a spec without owning a scheduler — a
-short-lived offline process never schedules notifications; the running app
-reconciles later (`Packages/LillistCore/Sources/LillistCore/CLIBridge/Handlers/NudgeHandler.swift:7`).
+All handlers are `public enum` with no cases — instantiation is impossible; every method is `static async throws` (AddHandler.swift:4, LsHandler.swift:5). Each handler receives `PersistenceController` and constructs its own store instances per call — store init is lightweight (just holds a reference). AddHandler.run accepts an optional `DiagnosticSink?` (default nil) for App Intents callers that need task.create diagnostics; CLI callers pass nil and are unaffected (AddHandler.swift:16-24). EvalHandler.run and LsHandler.run build NSPredicate inside `ctx.perform` to satisfy strict concurrency — NSPredicate is not Sendable and may not be captured from the outer async scope (EvalHandler.swift:22-23, LsHandler.swift:24-26). Token resolution uses `destructiveness: .destructive` for DeleteHandler, PurgeHandler, and MoveHandler (DeleteHandler.swift:8, PurgeHandler.swift:8, MoveHandler.swift:14) and `.readOnly` for all other verbs, matching the store's soft-delete safety model.
 
 ## External deps
 
-- Foundation — `URL`, `Data`, `FileManager`, `JSONDecoder`, `Calendar`, `Date`
-- CoreData — `NSFetchRequest`/`NSPredicate` for the `LsHandler`/`EvalHandler` fetches
+- CoreData — imported
+- Foundation — imported
 
 ## Gotchas
 
-- `AddHandler.firstTagWithName` matches `TagStore.findOrCreate` (case/whitespace-insensitive) so Quick Capture, CLI, and App-Intent paths converge on one tag (`Packages/LillistCore/Sources/LillistCore/CLIBridge/Handlers/AddHandler.swift:87`).
-- `LinkHandler` enforces the SSRF ingest guard before any attachment row is created — non-http(s)/private/loopback hosts are rejected (`Packages/LillistCore/Sources/LillistCore/CLIBridge/Handlers/LinkHandler.swift:15`).
+NudgeHandler.run only persists a NotificationSpec — it intentionally does NOT schedule a UNNotificationRequest; the running app reconciles specs on its next launch or event-bridge fire. Wiring a scheduler in the short-lived CLI process would be wrong (NudgeHandler.swift:6-11). LinkHandler.run unfurls best-effort: failure leaves the attachment row with only the URL, so callers must not assume rich preview metadata is present after run returns (LinkHandler.swift:39-40). EvalHandler.run and LsHandler.run build NSPredicate inside ctx.perform because NSPredicate is not Sendable and cannot be captured across the closure boundary under strict concurrency (EvalHandler.swift:22-23, LsHandler.swift:24-26).

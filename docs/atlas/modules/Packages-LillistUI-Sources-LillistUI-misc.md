@@ -1,84 +1,43 @@
 ---
 module: "Packages/LillistUI/Sources/LillistUI (misc)"
-summary: "LillistUI package root — landing namespace, status-cycle state machine, and UI-facing sync indicator protocol"
-read_when: "LillistUI status seam"
+summary: "LillistUI package root: namespace enum, version constant, Plus Jakarta Sans font, and string catalog"
+read_when: "Orienting in LillistUI or string catalog"
 sources:
   - path: Packages/LillistUI/Sources/LillistUI/LillistUI.swift
     blob: 6c093e3ce4c0bfbbd190533a80b07af79b36b648
   - path: Packages/LillistUI/Sources/LillistUI/Resources/Fonts/OFL.txt
     blob: ea69b0ca12a02556c436680ea0a159efb7a748fa
   - path: Packages/LillistUI/Sources/LillistUI/Resources/Localizable.xcstrings
-    blob: 857508cf8735ef743c4e6b32dc4bddeab083123b
-  - path: Packages/LillistUI/Sources/LillistUI/Status/StatusCycler.swift
-    blob: 83cae2f8fa475b9e58f9b7cd0893ceea380ac5c9
-  - path: Packages/LillistUI/Sources/LillistUI/Status/SyncStatusMonitor.swift
-    blob: 86767bf3ab935f3c12fd21b488de7a4bccfb2377
-references_modules: [Packages-LillistCore-Sources-LillistCore-Model, Packages-LillistCore-Sources-LillistCore-Sync-chunk-1, Packages-LillistUI-Sources-LillistUI-Components, Apps-Lillist-iOS-Sources-App, Apps-Lillist-macOS-Sources-Views]
-generator: cartographer/1
-baseline: 1a1562b636e43ebbdc35c7939ab6989b387f50e9
-verified: true
+    blob: d7b35f26dc403be5420be94e8120bc99a95087f6
+generator: cartographer/4
+baseline: 515f24730d21cb81ca1c9737ffeb981e9c414d3c
 ---
 
 # Module: Packages/LillistUI/Sources/LillistUI (misc)
 
 ## Purpose
 
-The catch-all root of the cross-platform LillistUI library: the `LillistUI`
-namespace enum (a documentation landing page plus the package SemVer), the
-bundled Plus Jakarta Sans font license, the shared string catalog, and the
-`Status/` seam. The `Status/` files hold two small but load-bearing contracts —
-the pure status-transition state machine both app shells call on a tap, and the
-UI-facing sync-indicator protocol that decouples LillistUI from LillistCore's
-concrete CloudKit sync actor.
+The LillistUI package root: defines the `LillistUI` namespace enum with a `version` constant that serves as the library's versioned identity, bundles the Plus Jakarta Sans typeface under the SIL OFL, and owns the shared `Localizable.xcstrings` catalog that all user-visible strings in the library key into. The doc comment on `LillistUI` (Packages/LillistUI/Sources/LillistUI/LillistUI.swift:3–41) enumerates every sub-module — Components, Theme, Accessibility, Recurrence, QuickCapture, Status, iOS — making it the primary orientation surface for the library. Without it the package has no single versioned identity, no localization anchor, and no discoverable sub-module index.
 
 ## Public API
 
 | Symbol | Kind | Location | Contract |
 | --- | --- | --- | --- |
-| `IdleSyncIndicatorMonitor` | class | `Packages/LillistUI/Sources/LillistUI/Status/SyncStatusMonitor.swift:35` | `@MainActor @Observable` stub conforming to `SyncIndicatorMonitor`; always reports `.idle` |
-| `LillistUI` | enum | `Packages/LillistUI/Sources/LillistUI/LillistUI.swift:42` | Library namespace + landing doc; `version` static holds package SemVer |
-| `StatusCycler` | enum | `Packages/LillistUI/Sources/LillistUI/Status/StatusCycler.swift:9` | Pure status-transition state machine for tap/space gestures (design Section 7) |
-| `SyncIndicator` | enum | `Packages/LillistUI/Sources/LillistUI/Status/SyncStatusMonitor.swift:7` | `Sendable` value model of sync state: `idle`/`inProgress`/`error`/`paused` |
-| `SyncIndicatorMonitor` | protocol | `Packages/LillistUI/Sources/LillistUI/Status/SyncStatusMonitor.swift:26` | `@MainActor` UI read source: `indicator` property + `retry()` |
-| `nextOnClick(from:)` | func | `Packages/LillistUI/Sources/LillistUI/Status/StatusCycler.swift:10` | Cycles todo→started→closed→todo; `.blocked` is unreachable by click |
-| `nextOnSpace(from:)` | func | `Packages/LillistUI/Sources/LillistUI/Status/StatusCycler.swift:19` | Toggles to/from `.started` from any state |
-| `version` | static let | `Packages/LillistUI/Sources/LillistUI/LillistUI.swift:45` | LillistUI SemVer string; bump on public-API changes |
+| `LillistUI` | enum | `Packages/LillistUI/Sources/LillistUI/LillistUI.swift:42` | Caseless namespace; callers may read `LillistUI.version` for the library SemVer string; never instantiate — no cases, no mutable state. |
 
 ## Load-bearing internals
 
-(none — the module's symbols are all public surface)
+| Symbol | Kind | Location | Why it matters |
+| --- | --- | --- | --- |
 
 ## Relationships
 
-- `Packages-LillistUI-Sources-LillistUI-misc.StatusCycler -> Packages-LillistCore-Sources-LillistCore-Model.Status (reads)`
-- `Packages-LillistUI-Sources-LillistUI-misc.SyncIndicator -> Packages-LillistCore-Sources-LillistCore-Sync-chunk-1.PauseReason (owns)`
-- `Apps-Lillist-macOS-Sources-Views.TaskListView -> Packages-LillistUI-Sources-LillistUI-misc.StatusCycler (calls)`
-- `Packages-LillistUI-Sources-LillistUI-Components.SyncStatusDotView -> Packages-LillistUI-Sources-LillistUI-misc.SyncIndicator (reads)`
-- `Apps-Lillist-iOS-Sources-App.AppEnvironment -> Packages-LillistUI-Sources-LillistUI-misc.IdleSyncIndicatorMonitor (owns)`
-
 ## Type notes
 
-`StatusCycler` and `LillistUI` are caseless enums used purely as namespaces; all
-their members are `static`, so they hold no state and need no instance.
-`StatusCycler.nextOnClick`/`nextOnSpace` are pure functions of the input
-`Status` — the same input always yields the same output, which is what lets both
-app shells share one cycle contract.
-
-`SyncIndicatorMonitor` is deliberately named differently from
-`LillistCore.SyncStatusMonitor` (the concrete CloudKit actor) to avoid a name
-collision; this UI protocol is the seam a future `CloudKitSyncStatusAdapter`
-bridges into (`Packages/LillistUI/Sources/LillistUI/Status/SyncStatusMonitor.swift:18`).
-`SyncIndicatorMonitor` and `IdleSyncIndicatorMonitor` are both `@MainActor`;
-`IdleSyncIndicatorMonitor` is `@Observable`, so SwiftUI views observing its
-`indicator` re-render on change. `IdleSyncIndicatorMonitor.retry()` is a no-op
-until the live monitor is bridged in.
-
-`Localizable.xcstrings` is the LillistUI string catalog (resource, no symbol
-callers) and must stay aligned with the iOS and macOS app catalogs per the
-project's cross-platform-string rule.
+`LillistUI` (Packages/LillistUI/Sources/LillistUI/LillistUI.swift:42) is a caseless `public enum` used as a non-instantiable namespace — no actor isolation, no mutable state. It carries one constant `public static let version = "0.1.0"` (line 45), a hardcoded string not wired to the repo's VERSION file. `Localizable.xcstrings` is the xcstrings-format string catalog for all user-visible strings in LillistUI; per project convention it must stay aligned with the iOS-app and macOS-app catalogs. `Resources/Fonts/OFL.txt` records the SIL Open Font License for the bundled Plus Jakarta Sans typeface.
 
 ## External deps
 
-- Foundation — `Date` in `SyncIndicator` timestamps
-- Observation — `@Observable` macro on `IdleSyncIndicatorMonitor`
-- Plus Jakarta Sans — bundled font; `OFL.txt` is its SIL Open Font License
+- Foundation — imported
+- source — imported
+- the — imported

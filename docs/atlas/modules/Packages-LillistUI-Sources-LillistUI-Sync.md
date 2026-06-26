@@ -1,6 +1,6 @@
 ---
 module: Packages/LillistUI/Sources/LillistUI/Sync
-summary: "Pure-presentation SwiftUI sheets and dialogs for the iCloud sync-mode change and pause-explainer flows"
+summary: "Pure-presenter modal sheets and dialogs for all iCloud sync management flows."
 read_when: "Touching iCloud sync mode UI"
 sources:
   - path: Packages/LillistUI/Sources/LillistUI/Sync/PauseExplainerDialog.swift
@@ -15,62 +15,58 @@ sources:
     blob: 700e0f1f0739980cf8ee8c6c295b8f65f0f65539
   - path: Packages/LillistUI/Sources/LillistUI/Sync/SyncMigrationRecoverySheet.swift
     blob: 94595d3885ceeeba0cb2be0b21c30a828e862b8d
-references_modules: [Packages-LillistCore-Sources-LillistCore-Sync-chunk-1, Packages-LillistCore-Sources-LillistCore-Sync-chunk-2, Packages-LillistUI-Sources-LillistUI-Theme-chunk-1, Packages-LillistUI-Sources-LillistUI-Theme-chunk-2]
-generator: cartographer/1
-baseline: 1a1562b636e43ebbdc35c7939ab6989b387f50e9
-verified: true
+references_modules: [Packages-LillistCore-Sources-LillistCore-LinkPreview, Packages-LillistUI-Sources-LillistUI-Components-chunk-1, Packages-LillistUI-Sources-LillistUI-Theme-chunk-1]
+generator: cartographer/4
+baseline: 515f24730d21cb81ca1c9737ffeb981e9c414d3c
 ---
 
 # Module: Packages/LillistUI/Sources/LillistUI/Sync
 
 ## Purpose
 
-The cross-platform SwiftUI surface for the iCloud sync-mode change lifecycle (Plan 21): explaining why sync paused, choosing a destructive migration direction, confirming it, watching it run, and recovering from a crashed migration. Every view here is *pure presentation* — data comes in via `init`, actions go out via closures; no `@State`, `.task`, or environment coupling. That split lets the iOS Settings section and macOS Preferences pane own all lifecycle/`AppEnvironment` wiring while these views stay snapshot-testable with frozen inputs.
+Provides the complete set of modal UI surfaces that gate or describe every iCloud sync mode transition: a pause explainer dialog, a disable-sync confirmation sheet, the three-step enable-sync migration sequence (choice → confirmation → progress), and a crash-recovery sheet for interrupted migrations. All views are pure presenters — no @State, no .task, no env coupling — so the host owns the state machine and these views just render phases and surface closures. Without this module, the app would have no user-facing story for sync failures, destructive migrations, or mid-migration crashes.
 
 ## Public API
 
 | Symbol | Kind | Location | Contract |
 | --- | --- | --- | --- |
-| `PauseExplainerDialog` | struct | `Packages/LillistUI/Sources/LillistUI/Sync/PauseExplainerDialog.swift:17` | Dialog for a `PauseReason`; `onDisableSync` surfaced only for `.accountChanged` |
-| `SyncDisableConfirmationSheet` | struct | `Packages/LillistUI/Sources/LillistUI/Sync/SyncDisableConfirmationSheet.swift:6` | Sync-off confirmation: sync-one-more-time vs disconnect-now vs cancel |
-| `SyncMigrationChoiceSheet` | struct | `Packages/LillistUI/Sources/LillistUI/Sync/SyncMigrationChoiceSheet.swift:9` | Enable-from-LocalOnly chooser: replace-iCloud vs replace-local vs cancel |
-| `SyncMigrationConfirmationDialog` | struct | `Packages/LillistUI/Sources/LillistUI/Sync/SyncMigrationConfirmationDialog.swift:7` | Second-tap destructive confirm; copy keyed off `Direction`; also exposes `title`/`message` for native `.confirmationDialog` |
-| `SyncMigrationConfirmationDialog.Direction` | enum | `Packages/LillistUI/Sources/LillistUI/Sync/SyncMigrationConfirmationDialog.swift:8` | `.replaceICloud` / `.replaceLocal`; `Sendable`, carried by hosts as pending state |
-| `SyncMigrationProgressSheet` | struct | `Packages/LillistUI/Sources/LillistUI/Sync/SyncMigrationProgressSheet.swift:11` | Renders a single `MigrationPhase`; `onDismissAfterCompletion` only wired on `.completed` |
-| `SyncMigrationRecoverySheet` | struct | `Packages/LillistUI/Sources/LillistUI/Sync/SyncMigrationRecoverySheet.swift:8` | Crash-recovery sheet from a non-idle `MigrationJournal`: restore-backup vs retry |
-| `SyncMigrationRecoverySheet.detailText(for:)` | static func | `Packages/LillistUI/Sources/LillistUI/Sync/SyncMigrationRecoverySheet.swift:67` | `public nonisolated` pure narrative; adds a low-disk-space hint when the journal reason names `insufficientDiskSpace` |
+| `Direction` | enum | `Packages/LillistUI/Sources/LillistUI/Sync/SyncMigrationConfirmationDialog.swift:8` | `Sendable` enum with two cases tagging the destructive sync direction; drives `title`/`message` copy on the parent confirmation dialog. |
+| `PauseExplainerDialog` | struct | `Packages/LillistUI/Sources/LillistUI/Sync/PauseExplainerDialog.swift:17` | Renders per-PauseReason sync-pause explanation; "Disable Sync" option appears only for `.accountChanged`; `onDisableSync` defaults to `{}`. |
+| `RainbowProgressBar` | struct | `Packages/LillistUI/Sources/LillistUI/Sync/SyncMigrationProgressSheet.swift:109` | Inset spectrum progress bar; clamps `value` to [0,1]; uses `.accessibilityRepresentation` to expose a native ProgressView for VoiceOver. |
+| `SyncDisableConfirmationSheet` | struct | `Packages/LillistUI/Sources/LillistUI/Sync/SyncDisableConfirmationSheet.swift:6` | Confirmation sheet for disabling iCloud Sync; presents sync-first vs disable-now paths; callers wire three closures, no state owned. |
+| `SyncMigrationChoiceSheet` | struct | `Packages/LillistUI/Sources/LillistUI/Sync/SyncMigrationChoiceSheet.swift:9` | Full-screen choice sheet for enabling sync from LocalOnly; surfaces two destructive options plus Cancel; no state owned. |
+| `SyncMigrationConfirmationDialog` | struct | `Packages/LillistUI/Sources/LillistUI/Sync/SyncMigrationConfirmationDialog.swift:7` | Second-tap confirmation dialog; `title` and `message` are `public var String` so hosts can extract them for `.confirmationDialog` without rendering the view. |
+| `SyncMigrationProgressSheet` | struct | `Packages/LillistUI/Sources/LillistUI/Sync/SyncMigrationProgressSheet.swift:11` | Full-screen migration progress renderer; driven by `MigrationPhase`; Done button visible only on `.completed`; progress bar shown only for phases carrying a Double. |
+| `SyncMigrationRecoverySheet` | struct | `Packages/LillistUI/Sources/LillistUI/Sync/SyncMigrationRecoverySheet.swift:8` | Launch-time recovery sheet for interrupted migrations; `detailText(for:)` is `public nonisolated static` for testability; adds disk-space hint when `failureReason` contains "insufficientDiskSpace". |
 
 ## Load-bearing internals
 
 | Symbol | Kind | Location | Why it matters |
 | --- | --- | --- | --- |
-| `RainbowProgressBar` | struct | `Packages/LillistUI/Sources/LillistUI/Sync/SyncMigrationProgressSheet.swift:109` | The only sync-specific component; sunken track + spectrum fill, clamps value to 0...1, wraps a hidden `ProgressView` for accessibility |
-| `destructiveOption(action:title:detail:)` | func | `Packages/LillistUI/Sources/LillistUI/Sync/SyncMigrationChoiceSheet.swift:68` | Renders each erase-choice as an action-orange Rainbow card; gravity reads from color, not a red wash |
 
 ## Relationships
 
-- `Packages-LillistUI-Sources-LillistUI-Sync.PauseExplainerDialog -> Packages-LillistCore-Sources-LillistCore-Sync-chunk-2.PauseReason (reads)`
-- `Packages-LillistUI-Sources-LillistUI-Sync.SyncMigrationProgressSheet -> Packages-LillistCore-Sources-LillistCore-Sync-chunk-1.MigrationPhase (reads)`
-- `Packages-LillistUI-Sources-LillistUI-Sync.SyncMigrationRecoverySheet -> Packages-LillistCore-Sources-LillistCore-Sync-chunk-1.MigrationJournal (reads)`
-- `Packages-LillistUI-Sources-LillistUI-Sync.SyncMigrationRecoverySheet -> Packages-LillistCore-Sources-LillistCore-Sync-chunk-1.ModeTransitionOp (reads)`
-- `Packages-LillistUI-Sources-LillistUI-Sync.SyncMigrationChoiceSheet -> Packages-LillistUI-Sources-LillistUI-Theme-chunk-1.RainbowPalette (reads)`
-- `Packages-LillistUI-Sources-LillistUI-Sync.SyncMigrationProgressSheet -> Packages-LillistUI-Sources-LillistUI-Theme-chunk-1.RainbowGradient (reads)`
-- `Packages-LillistUI-Sources-LillistUI-Sync.SyncMigrationChoiceSheet -> Packages-LillistUI-Sources-LillistUI-Theme-chunk-2.LillistTypography (reads)`
-- `Packages-LillistUI-Sources-LillistUI-Sync.SyncMigrationConfirmationDialog -> Packages-LillistUI-Sources-LillistUI-Theme-chunk-2.LillistTypography (reads)`
+- `Packages-LillistUI-Sources-LillistUI-Sync.Direction -> Packages-LillistCore-Sources-LillistCore-LinkPreview.String (calls)`
+- `Packages-LillistUI-Sources-LillistUI-Sync.Direction -> Packages-LillistUI-Sources-LillistUI-Theme-chunk-1.rainbow (calls)`
+- `Packages-LillistUI-Sources-LillistUI-Sync.PauseExplainerDialog -> Packages-LillistCore-Sources-LillistCore-LinkPreview.String (calls)`
+- `Packages-LillistUI-Sources-LillistUI-Sync.RainbowProgressBar -> Packages-LillistUI-Sources-LillistUI-Theme-chunk-1.fill (calls)`
+- `Packages-LillistUI-Sources-LillistUI-Sync.SyncMigrationChoiceSheet -> Packages-LillistUI-Sources-LillistUI-Theme-chunk-1.rainbow (calls)`
+- `Packages-LillistUI-Sources-LillistUI-Sync.SyncMigrationProgressSheet -> Packages-LillistCore-Sources-LillistCore-LinkPreview.String (calls)`
+- `Packages-LillistUI-Sources-LillistUI-Sync.SyncMigrationProgressSheet -> Packages-LillistUI-Sources-LillistUI-Theme-chunk-1.rainbow (calls)`
+- `Packages-LillistUI-Sources-LillistUI-Sync.SyncMigrationRecoverySheet -> Packages-LillistCore-Sources-LillistCore-LinkPreview.String (calls)`
+- `Packages-LillistUI-Sources-LillistUI-Sync.SyncMigrationRecoverySheet -> Packages-LillistUI-Sources-LillistUI-Theme-chunk-1.rainbow (calls)`
+- `Packages-LillistUI-Sources-LillistUI-Sync.body -> Packages-LillistCore-Sources-LillistCore-LinkPreview.String (calls)`
+- `Packages-LillistUI-Sources-LillistUI-Sync.destructiveOption -> Packages-LillistUI-Sources-LillistUI-Components-chunk-1.rainbowCard (calls)`
 
 ## Type notes
 
-All six views are value-type SwiftUI `View`s with no stored state beyond their `init` inputs; hosts own presentation (`.sheet` / `.fullScreenCover`) and lifecycle. The `MigrationPhase` consumed by `SyncMigrationProgressSheet` is sourced from `MigrationCoordinator.progressStream` (an `AsyncStream`) by the host, not subscribed to here — this view re-renders per emitted phase. `SyncMigrationRecoverySheet.detailText(for:)` and `operationDescription(_:)` are `nonisolated static` so XCTest can exercise the copy logic off the `MainActor`. User-visible copy is localized via `String(localized:bundle:.module)` and must stay verbatim-aligned across iOS/macOS (snapshot-guarded).
-
-`SyncMigrationConfirmationDialog` exposes `title` and `message` as `public var String` computed properties so a host can bind them into SwiftUI's native `.confirmationDialog` modifier; the `body` is an alternate full-panel rendering path — both are valid presentation routes for the same `Direction` value.
+All six views are pure presenters: no @State, no .task, no environment reads. Callers supply all data and closures at init time, enabling IOSScreenTourTests to render them with frozen mock data. Views are implicitly @MainActor as SwiftUI Views; SyncMigrationRecoverySheet.detailText(for:) is explicitly `nonisolated static` to remain callable from test and background contexts without a main-actor hop (Packages/LillistUI/Sources/LillistUI/Sync/SyncMigrationRecoverySheet.swift:67). SyncMigrationProgressSheet binds to `MigrationPhase` from LillistCore and `MigrationJournal`/`ModeTransitionOp` are consumed by SyncMigrationRecoverySheet — both are value types, so the views hold no managed-object references. RainbowProgressBar is internal (no `public` modifier despite the assignment listing it as public) and is only instantiated from SyncMigrationProgressSheet.body (Packages/LillistUI/Sources/LillistUI/Sync/SyncMigrationProgressSheet.swift:54).
 
 ## External deps
 
-- SwiftUI — every view; `GeometryReader`, `Capsule`, `ProgressView`, `accessibilityRepresentation`
-- LillistCore — `PauseReason`, `MigrationPhase`, `MigrationJournal`, `ModeTransitionOp` value types (imported by the phase/journal/pause views)
+- LillistCore — imported
+- SwiftUI — imported
 
 ## Gotchas
 
-- `PauseExplainerDialog` only shows the "Disable Sync" button when `reason == .accountChanged`; all other reasons omit it (`Packages/LillistUI/Sources/LillistUI/Sync/PauseExplainerDialog.swift:57`).
-- `SyncMigrationProgressSheet` shows `RainbowProgressBar` only for `.erasingICloud`, `.uploading`, and `.downloading` — the only phases carrying an associated `Double` progress value (`Packages/LillistUI/Sources/LillistUI/Sync/SyncMigrationProgressSheet.swift:95`).
-- The `.completed` phase is a sanctioned rainbow moment (full-gradient checkmark + `.rainbow(.green)` Done button); no other phase in this module uses the full gradient (`Packages/LillistUI/Sources/LillistUI/Sync/SyncMigrationProgressSheet.swift:26`).
+SyncMigrationConfirmationDialog exposes `title` and `message` as `public var String` (not inside body) so hosts can pass them directly to `.confirmationDialog` title/message params without embedding the view — Packages/LillistUI/Sources/LillistUI/Sync/SyncMigrationConfirmationDialog.swift:23-37. SyncMigrationRecoverySheet.detailText(for:) is `public nonisolated static` so tests and non-main-actor callers can invoke it without a main-actor dispatch hop — Packages/LillistUI/Sources/LillistUI/Sync/SyncMigrationRecoverySheet.swift:67. PauseExplainerDialog's "Disable Sync" button only renders for `.accountChanged`; the `onDisableSync` closure defaults to `{}` so hosts that never encounter that reason can omit it safely — Packages/LillistUI/Sources/LillistUI/Sync/PauseExplainerDialog.swift:26,57.

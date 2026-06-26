@@ -1,7 +1,7 @@
 ---
 module: Packages/LillistUI/Sources/LillistUI/QuickCapture
-summary: "Inline text parser and date-suggestion chips for `#tag ^date` Quick Capture entry"
-read_when: "Touching Quick Capture input"
+summary: "#tag/^date parser + macOS NSPanel view for single-field fast task capture"
+read_when: "Touching Quick Capture or #tag/^date parser"
 sources:
   - path: Packages/LillistUI/Sources/LillistUI/QuickCapture/QuickCaptureDateSuggestions.swift
     blob: 7cf0c3990da9d39095ebc898d37ae926931afcfc
@@ -9,76 +9,51 @@ sources:
     blob: 68c8306a5b319e84ca27198e96b7078aa75fd5be
   - path: Packages/LillistUI/Sources/LillistUI/QuickCapture/QuickCaptureView.swift
     blob: 52746892ca8e7bf4b3184010c1a64b2d45c29f3a
-references_modules: [Packages-LillistUI-Sources-LillistUI-Components, Packages-LillistUI-Sources-LillistUI-Theme-chunk-1, Packages-LillistUI-Sources-LillistUI-Theme-chunk-2]
-generator: cartographer/1
-baseline: 1a1562b636e43ebbdc35c7939ab6989b387f50e9
-verified: true
+references_modules: [Packages-LillistCore-Sources-LillistCore-LinkPreview, Packages-LillistUI-Sources-LillistUI-Components-chunk-1, Packages-LillistUI-Sources-LillistUI-Theme-chunk-1]
+generator: cartographer/4
+baseline: 515f24730d21cb81ca1c9737ffeb981e9c414d3c
 ---
 
 # Module: Packages/LillistUI/Sources/LillistUI/QuickCapture
 
 ## Purpose
 
-The shared Quick Capture primitives behind both platforms' fast task entry.
-`QuickCaptureParser` is the single tokenizer for the `#tag` / `^date` mini-syntax
-(design Section 7), so the macOS hotkey flow, the iOS dialog, and their hosts all derive
-title/tags/dateToken the same way. `QuickCaptureDateSuggestions` is the canonical
-date-token chip list. `QuickCaptureView` is a pure-SwiftUI field + chip panel that is
-no longer hosted by the macOS hotkey panel (which now hosts `TaskEditorView` from the
-Editor module); it is effectively test-only / superseded for production use. If this
-module vanished, both capture surfaces would diverge on how raw text becomes a task.
+Quick Capture is the lightweight task-input subsystem: a stateless parser that splits free-text into a title, zero-or-more `#tag` tokens, and an optional `^date` token, plus a pure-SwiftUI panel view that surfaces the parse result live as the user types. The parser (`QuickCaptureParser.parse`) is the authoritative decoder of Lillist's `#tag ^date` mini-syntax and is called from the macOS hotkey panel, App Intents, and the CLI alike. Removing this module would break all fast-add entry points across the system.
 
 ## Public API
 
 | Symbol | Kind | Location | Contract |
 | --- | --- | --- | --- |
-| `QuickCaptureDateSuggestions` | enum | `Packages/LillistUI/Sources/LillistUI/QuickCapture/QuickCaptureDateSuggestions.swift:23` | Namespace for the canonical date-token list; single source of truth for chip tokens |
-| `QuickCaptureDateSuggestions.default` | static let | `Packages/LillistUI/Sources/LillistUI/QuickCapture/QuickCaptureDateSuggestions.swift:24` | Ordered English date tokens (`today`, `tomorrow`, `+3d`, `+1w`) callers render as `^token` chips |
-| `QuickCaptureParser` | enum | `Packages/LillistUI/Sources/LillistUI/QuickCapture/QuickCaptureParser.swift:5` | Stateless namespace for the capture-text tokenizer |
-| `QuickCaptureParser.Result` | struct | `Packages/LillistUI/Sources/LillistUI/QuickCapture/QuickCaptureParser.swift:6` | Value-type DTO: `title`, `tags`, optional `dateToken`; `Equatable`, `Sendable`, explicit public init |
-| `QuickCaptureParser.parse(_:)` | static func | `Packages/LillistUI/Sources/LillistUI/QuickCapture/QuickCaptureParser.swift:18` | Splits on spaces; `#x`→tag, `^x`→dateToken (last wins), rest→title; never throws |
-| `QuickCaptureView` | struct | `Packages/LillistUI/Sources/LillistUI/QuickCapture/QuickCaptureView.swift:5` | Pure-SwiftUI field + chip panel (test-only / superseded); `text` binding, `onSubmit(Result)`, `onCancel`; parses inline on each render |
+| `QuickCaptureDateSuggestions` | enum | `Packages/LillistUI/Sources/LillistUI/QuickCapture/QuickCaptureDateSuggestions.swift:23` | Provides the canonical list of `^date` chip tokens; every entry must round-trip through `LillistCore.RelativeDate.parse` or it produces an unresolvable chip. |
+| `QuickCaptureParser` | enum | `Packages/LillistUI/Sources/LillistUI/QuickCapture/QuickCaptureParser.swift:5` | Stateless namespace; cannot be instantiated; exposes only `parse` and the `Result` type; no side effects. |
+| `QuickCaptureView` | struct | `Packages/LillistUI/Sources/LillistUI/QuickCapture/QuickCaptureView.swift:5` | Pure-presenter SwiftUI view; caller owns the `@Binding` text state; `onSubmit` delivers the parsed Result; `onCancel` handles dismissal; no @State or side effects inside. |
+| `Result` | struct | `Packages/LillistUI/Sources/LillistUI/QuickCapture/QuickCaptureParser.swift:6` | Equatable, Sendable value type; callers may compare instances and pass across actor boundaries without bridging. |
+| `parse` | func | `Packages/LillistUI/Sources/LillistUI/QuickCapture/QuickCaptureParser.swift:18` | Always returns a Result; never throws or returns nil; `#word` → tag, `^word` → dateToken (last occurrence wins), remaining words joined as title. |
 
 ## Load-bearing internals
 
-(none — the module is entirely public surface.)
+| Symbol | Kind | Location | Why it matters |
+| --- | --- | --- | --- |
 
 ## Relationships
 
-- `Packages-LillistUI-Sources-LillistUI-QuickCapture.QuickCaptureView -> Packages-LillistUI-Sources-LillistUI-QuickCapture.QuickCaptureParser.parse (calls)`
-- `Packages-LillistUI-Sources-LillistUI-QuickCapture.QuickCaptureView -> Packages-LillistUI-Sources-LillistUI-QuickCapture.QuickCaptureDateSuggestions (reads)`
-- `Packages-LillistUI-Sources-LillistUI-QuickCapture.QuickCaptureView -> Packages-LillistUI-Sources-LillistUI-Components.TagChipView (calls)`
-- `Packages-LillistUI-Sources-LillistUI-QuickCapture.QuickCaptureView -> Packages-LillistUI-Sources-LillistUI-Theme-chunk-1.LillistColor (reads)`
+- `Packages-LillistUI-Sources-LillistUI-QuickCapture.QuickCaptureView -> Packages-LillistCore-Sources-LillistCore-LinkPreview.String (calls)`
+- `Packages-LillistUI-Sources-LillistUI-QuickCapture.QuickCaptureView -> Packages-LillistUI-Sources-LillistUI-Components-chunk-1.TagChipView (calls)`
+- `Packages-LillistUI-Sources-LillistUI-QuickCapture.QuickCaptureView -> Packages-LillistUI-Sources-LillistUI-Theme-chunk-1.accessibilityLabel (calls)`
+- `Packages-LillistUI-Sources-LillistUI-QuickCapture.QuickCaptureView -> Packages-LillistUI-Sources-LillistUI-Theme-chunk-1.fill (calls)`
 - `Packages-LillistUI-Sources-LillistUI-QuickCapture.QuickCaptureView -> Packages-LillistUI-Sources-LillistUI-Theme-chunk-1.glassSurface (calls)`
-- `Packages-LillistUI-Sources-LillistUI-QuickCapture.QuickCaptureView -> Packages-LillistUI-Sources-LillistUI-Theme-chunk-2.LillistTypography (reads)`
-- `Packages-LillistUI-Sources-LillistUI-QuickCapture.QuickCaptureView -> Packages-LillistUI-Sources-LillistUI-Theme-chunk-2.LillistSpacing (reads)`
+- `Packages-LillistUI-Sources-LillistUI-QuickCapture.QuickCaptureView -> Packages-LillistUI-Sources-LillistUI-Theme-chunk-1.rainbow (calls)`
+- `Packages-LillistUI-Sources-LillistUI-QuickCapture.parse -> Packages-LillistCore-Sources-LillistCore-LinkPreview.String (calls)`
 
 ## Type notes
 
-`QuickCaptureParser` and `QuickCaptureDateSuggestions` are caseless enums used as
-stateless namespaces — no instances, no ownership. `Result` is a pure value DTO
-(`Equatable`, `Sendable`) with a hand-written public init so callers outside the
-module can construct it; it carries no Core Data type. `QuickCaptureView` recomputes
-`QuickCaptureParser.parse(text)` on every `body` render
-(`Packages/LillistUI/Sources/LillistUI/QuickCapture/QuickCaptureView.swift:21`) rather
-than caching — the parse is cheap and keeps the chip/preview row in lockstep with the
-field. The view is pure SwiftUI; it is no longer hosted by the macOS hotkey panel (which
-now hosts `TaskEditorView`), so its production use is effectively test-only. Parsing
-produces only a `dateToken` string — actual date resolution is the host/CLI layer's job.
+`QuickCaptureParser` is a caseless enum used as a namespace — it cannot be instantiated (`Packages/LillistUI/Sources/LillistUI/QuickCapture/QuickCaptureParser.swift:5`). `QuickCaptureParser.Result` is `Equatable` and `Sendable`, so parse results may be compared and safely crossed into non-MainActor contexts (`Packages/LillistUI/Sources/LillistUI/QuickCapture/QuickCaptureParser.swift:6`). `QuickCaptureView` is `@MainActor`-isolated via its `View` conformance; it holds a `@Binding` whose state is owned by the caller (the macOS app target's panel controller), not the view itself (`Packages/LillistUI/Sources/LillistUI/QuickCapture/QuickCaptureView.swift:5-8`). `QuickCaptureDateSuggestions` is also a caseless enum namespace; the `default` array is the sole source of truth for chip tokens on both platforms (`Packages/LillistUI/Sources/LillistUI/QuickCapture/QuickCaptureDateSuggestions.swift:23-29`).
 
 ## External deps
 
-- SwiftUI — `QuickCaptureView` is a `View`; the parser/suggestions use only Foundation.
+- Foundation — imported
+- SwiftUI — imported
 
 ## Gotchas
 
-- Every token in `QuickCaptureDateSuggestions.default` must round-trip through
-  `LillistCore.RelativeDate.parse(_:)`; adding a token here without extending the
-  parser yields a tappable chip the resolver can't resolve
-  (`Packages/LillistUI/Sources/LillistUI/QuickCapture/QuickCaptureDateSuggestions.swift:12`).
-- The iOS surface no longer renders the suggestion chip row (Plan 22 dialog redesign);
-  the list is kept only as the source of truth for a future iOS resurrection
-  (`Packages/LillistUI/Sources/LillistUI/QuickCapture/QuickCaptureDateSuggestions.swift:6`).
-- Tokens stay English at the data layer even though chip labels may localize their
-  display; label and parser token are presently the same string
-  (`Packages/LillistUI/Sources/LillistUI/QuickCapture/QuickCaptureDateSuggestions.swift:17`).
+iOS dropped the date-suggestion chip row in Plan 22; `QuickCaptureDateSuggestions.default` survives as the sole source of truth for macOS chip rendering and for any future iOS revival — adding a token there without extending `LillistCore.RelativeDate.parse` produces a tappable chip the parser cannot resolve (`Packages/LillistUI/Sources/LillistUI/QuickCapture/QuickCaptureDateSuggestions.swift:15`). The `.glassSurface(.panel, ...)` call requires the hosting NSPanel to be non-opaque; that responsibility is noted in a comment pointing to `QuickCapturePanelController` (`Packages/LillistUI/Sources/LillistUI/QuickCapture/QuickCaptureView.swift:86-88`).
