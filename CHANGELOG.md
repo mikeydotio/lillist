@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [v0.11.1] - 2026-06-25
+
+### Fixed
+- swipe reveals Delete instead of auto-deleting task rows (1cea6164)
+
+### Maintenance
+- sync LillistUI Package.resolved (ZIPFoundation pin) (5b103bb1)
+- bump iOS build number to 72 (5468ccbb)
+
+_[force]_
+
 ## [v0.11.0] - 2026-06-25
 
 ### Added
