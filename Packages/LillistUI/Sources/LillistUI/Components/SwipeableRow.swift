@@ -9,6 +9,12 @@ public struct SwipeActionSpec {
     public var systemImage: String
     public var tint: Color
     public var isDestructive: Bool
+    /// When `false`, a full-swipe or fast fling only *reveals* this action's
+    /// button (held open) — committing it requires an explicit tap. Defaults to
+    /// `true` (classic swipe-to-trigger). Set `false` to guard easy-to-misfire
+    /// actions like Delete. Independent of `isDestructive`, which governs only
+    /// the action's role/styling.
+    public var allowsFullSwipe: Bool
     public var perform: () -> Void
 
     public init(
@@ -16,12 +22,14 @@ public struct SwipeActionSpec {
         systemImage: String,
         tint: Color,
         isDestructive: Bool = false,
+        allowsFullSwipe: Bool = true,
         perform: @escaping () -> Void
     ) {
         self.titleKey = titleKey
         self.systemImage = systemImage
         self.tint = tint
         self.isDestructive = isDestructive
+        self.allowsFullSwipe = allowsFullSwipe
         self.perform = perform
     }
 }
@@ -196,25 +204,30 @@ public struct SwipeableRow<Content: View>: View {
     }
 
     private func settle(predictedTranslation: CGFloat) {
-        // Full-swipe: a strong fling or a long pull commits the action.
-        if offset <= -fullSwipeThreshold || predictedTranslation <= -fullSwipeThreshold * 1.4,
-           let trailing {
-            perform(trailing)
-            return
-        }
-        if offset >= fullSwipeThreshold || predictedTranslation >= fullSwipeThreshold * 1.4,
-           let leading {
-            perform(leading)
-            return
-        }
-        // Otherwise snap open (held) or closed.
-        if offset <= -actionWidth / 2, trailing != nil {
+        // Decision (commit/open/close) lives in the pure `SwipeSettleArbiter`;
+        // this method only performs the resulting side effects.
+        let outcome = SwipeSettleArbiter.outcome(
+            offset: offset,
+            predictedTranslation: predictedTranslation,
+            actionWidth: actionWidth,
+            fullSwipeThreshold: fullSwipeThreshold,
+            hasLeading: leading != nil,
+            leadingAllowsFullSwipe: leading?.allowsFullSwipe ?? false,
+            hasTrailing: trailing != nil,
+            trailingAllowsFullSwipe: trailing?.allowsFullSwipe ?? false
+        )
+        switch outcome {
+        case .commitTrailing:
+            if let trailing { perform(trailing) }
+        case .commitLeading:
+            if let leading { perform(leading) }
+        case .openTrailing:
             snap(to: -actionWidth)
             openRowID = rowID
-        } else if offset >= actionWidth / 2, leading != nil {
+        case .openLeading:
             snap(to: actionWidth)
             openRowID = rowID
-        } else {
+        case .close:
             close()
         }
     }

@@ -240,6 +240,9 @@ public struct TasksScreen: View {
                         systemImage: "trash",
                         tint: RainbowPalette.actionOrange.base,
                         isDestructive: true,
+                        // Reveal the Delete button on swipe; require an explicit
+                        // tap to delete (no accidental full-swipe deletion).
+                        allowsFullSwipe: false,
                         perform: { onDelete(row.node.record) }
                     ),
                     isReorderActive: draggedID != nil,
