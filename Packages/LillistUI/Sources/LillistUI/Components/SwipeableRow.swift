@@ -100,19 +100,25 @@ public struct SwipeableRow<Content: View>: View {
         ZStack {
             actionBackground
             content()
-                // No opaque backing needed: the content slides *away* from the
-                // revealed action (opposite edge), so they never overlap, and
-                // adding a fill would change the row's resting render.
-                .offset(x: offset)
                 .overlay {
                     // While open, intercept taps to close instead of letting
-                    // the inner row tap open the editor.
+                    // the inner row tap open the editor. The overlay must sit
+                    // *inside* the `.offset` below so it rides the same shift as
+                    // the content: `.offset` moves rendering + hit region but
+                    // not the layout frame, so an overlay applied *after* offset
+                    // would blanket the row's full width — including the
+                    // revealed action strip — and eat taps meant for the action
+                    // Button (it lives in the `actionBackground` layer beneath).
                     if offset != 0 {
                         Color.clear
                             .contentShape(Rectangle())
                             .onTapGesture { close() }
                     }
                 }
+                // No opaque backing needed: the content slides *away* from the
+                // revealed action (opposite edge), so they never overlap, and
+                // adding a fill would change the row's resting render.
+                .offset(x: offset)
                 .simultaneousGesture(swipeGesture)
         }
         .onChange(of: openRowID) { _, newValue in
