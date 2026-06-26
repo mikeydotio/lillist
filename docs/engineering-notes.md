@@ -3598,3 +3598,47 @@ Reminders drain (settings page + drain-on-activate, iOS + macOS).
    (`NSApplication.didBecomeActiveNotification`) to drive the same drain;
    the Quick Capture handoff is iOS-only (App Intents aren't embedded on
    macOS).
+
+## 2026-06-26 — `.overlay` applied *after* `.offset` blankets the full hit region, not the shifted one
+
+`SwipeableRow` reveals its actions by `.offset(x:)`-shifting the row content
+sideways over an `actionBackground` layer that holds the action `Button`s. A
+transparent "tap anywhere on an open row to close it" catcher was layered on as
+`content().offset(x: offset).overlay { Color.clear.contentShape(Rectangle())
+.onTapGesture { close() } }`. Tapping the *revealed* Delete button did nothing —
+the row just closed.
+
+**The rule:** `.offset` is a post-layout geometric transform — it moves a view's
+rendering **and its hit-testing region**, but **not** the layout frame it reports
+upward. A `.overlay` attached *after* `.offset` is sized/placed by that
+unshifted layout frame, so the catcher spanned the row's **full width** —
+including the trailing strip where the offset had revealed the Delete `Button`
+(which lives in the `ZStack` layer *beneath* content). The clear catcher was the
+topmost interactive layer there, so the tap resolved to `close()`, never the
+button. Fix: apply the overlay **inside** the offset
+(`content().overlay { … }.offset(x: offset)`) so the catcher rides the same
+shift as the content and the revealed action strip stays uncovered. It still
+blankets all *visible* content, so a row-body tap still closes. No visual change
+(the catcher is `Color.clear`).
+
+Two meta-lessons:
+
+1. **Same family as `status-tap-primaryaction-dead` (2026-06-12): a transparent
+   gesture/overlay layer eats taps while every unit, arbiter, and snapshot test
+   stays green** — none exercise real hit-testing. The bug was *latent the whole
+   time*; it only surfaced when the full-swipe-to-delete shortcut was disabled
+   (v0.11.1) and tap-to-delete became the only path. The guard is an end-to-end
+   XCUITest that performs the actual swipe→reveal→tap→store chain
+   (`Lillist-iOSUITests/SwipeDeleteUITests`, on the localOnly `--ui-test-*`
+   harness). Verified red on the pre-fix body, green after — the only test shape
+   that can catch a hit-testing regression.
+
+2. **XCUITest swipe-then-tap mechanics:** drive the reveal with a *coordinate*
+   `press(forDuration:thenDragTo:)`, not `swipeLeft()` — a velocity flick's
+   settle offset is non-deterministic. Hold **< 0.3 s** so the drag-reorder
+   long-press never arms, and start on the trailing side (`dx: 0.9`) so the
+   swipe (not the leading status control) claims the gesture. The action button
+   is always in the tree (0-width + `.disabled(revealed < 2)` when closed), so
+   the meaningful assertion is on deletion (cell disappears — `onDelete`
+   soft-deletes then `reload()`s the trashed-excluding list), not on the button's
+   mere existence.
