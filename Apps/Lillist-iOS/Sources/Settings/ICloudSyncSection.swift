@@ -10,30 +10,18 @@ import UIKit
 struct ICloudSyncSection: View {
     @Environment(AppEnvironment.self) private var environment
 
-    @State private var showChoiceSheet = false
+    /// One presentation slot for every sync modal — see `SyncSheetRoute` for why
+    /// a single `.sheet(item:)` replaces the previous stack of covers + sheets.
+    @State private var route: SyncSheetRoute?
     @State private var pendingDirection: SyncMigrationConfirmationDialog.Direction?
-    @State private var showDisableSheet = false
-    @State private var showPauseExplainer = false
-    @State private var activePhase: MigrationPhase?
 
     var body: some View {
         ICloudSyncSettingsSection(
             viewState: viewState,
             actions: actions
         )
-        .fullScreenCover(isPresented: $showChoiceSheet) {
-            SyncMigrationChoiceSheet(
-                onReplaceICloud: {
-                    showChoiceSheet = false
-                    pendingDirection = .replaceICloud
-                },
-                onReplaceLocal: {
-                    showChoiceSheet = false
-                    pendingDirection = .replaceLocal
-                },
-                onCancel: { showChoiceSheet = false }
-            )
-        }
+        // The confirmation dialog is a distinct presentation kind and coexists
+        // safely with one sheet; the choice → confirm handoff is unchanged.
         .confirmationDialog(
             confirmationTitle,
             isPresented: confirmationBinding,
@@ -49,38 +37,43 @@ struct ICloudSyncSection: View {
             },
             message: { Text(confirmationMessage) }
         )
-        .fullScreenCover(item: progressBinding) { phase in
-            SyncMigrationProgressSheet(
-                phase: phase,
-                onDismissAfterCompletion: { activePhase = nil }
-            )
-            .interactiveDismissDisabled(true)
-        }
-        .sheet(isPresented: $showDisableSheet) {
-            SyncDisableConfirmationSheet(
-                onSyncFirst: {
-                    showDisableSheet = false
-                    triggerDisable(strategy: .syncFirst)
-                },
-                onDisableNow: {
-                    showDisableSheet = false
-                    triggerDisable(strategy: .now)
-                },
-                onCancel: { showDisableSheet = false }
-            )
-            .presentationDetents([.medium])
-        }
-        .sheet(isPresented: $showPauseExplainer) {
-            PauseExplainerDialog(
-                reason: environment.pauseReason ?? .unknown,
-                onOpenSettings: openSystemSettings,
-                onDisableSync: {
-                    showPauseExplainer = false
-                    showDisableSheet = true
-                },
-                onDismiss: { showPauseExplainer = false }
-            )
-            .presentationDetents([.medium])
+        .sheet(item: $route) { sheet in
+            switch sheet {
+            case .choice:
+                // Formerly a fullScreenCover; a `.large` detent keeps the
+                // near-full-screen feel through one robust presentation slot.
+                SyncMigrationChoiceSheet(
+                    onReplaceICloud: { route = nil; pendingDirection = .replaceICloud },
+                    onReplaceLocal: { route = nil; pendingDirection = .replaceLocal },
+                    onCancel: { route = nil }
+                )
+                .presentationDetents([.large])
+            case .disable:
+                SyncDisableConfirmationSheet(
+                    // `triggerDisable` → `runMigration` swaps `route` straight to
+                    // `.progress`, so the dismiss-one-present-another conflict
+                    // that used to nuke Settings can't happen.
+                    onSyncFirst: { triggerDisable(strategy: .syncFirst) },
+                    onDisableNow: { triggerDisable(strategy: .now) },
+                    onCancel: { route = nil }
+                )
+                .presentationDetents([.medium])
+            case .pauseExplainer:
+                PauseExplainerDialog(
+                    reason: environment.pauseReason ?? .unknown,
+                    onOpenSettings: openSystemSettings,
+                    onDisableSync: { route = .disable },
+                    onDismiss: { route = nil }
+                )
+                .presentationDetents([.medium])
+            case .progress(let phase):
+                SyncMigrationProgressSheet(
+                    phase: phase,
+                    onDismissAfterCompletion: { route = nil }
+                )
+                .presentationDetents([.large])
+                .interactiveDismissDisabled(true)
+            }
         }
     }
 
@@ -111,16 +104,12 @@ struct ICloudSyncSection: View {
             onToggle: handleToggle,
             onSyncNow: { Task { await environment.syncMonitor.retry() } },
             onOpenSystemSettings: openSystemSettings,
-            onPausedTap: { showPauseExplainer = true }
+            onPausedTap: { route = .pauseExplainer }
         )
     }
 
     private func handleToggle(_ on: Bool) {
-        if on {
-            showChoiceSheet = true
-        } else {
-            showDisableSheet = true
-        }
+        route = .afterToggle(on: on)
     }
 
     private func openSystemSettings() {
@@ -141,10 +130,6 @@ struct ICloudSyncSection: View {
             get: { pendingDirection != nil },
             set: { if !$0 { pendingDirection = nil } }
         )
-    }
-
-    private var progressBinding: Binding<MigrationPhase?> {
-        Binding(get: { activePhase }, set: { activePhase = $0 })
     }
 
     private var confirmationTitle: String {
@@ -192,33 +177,15 @@ struct ICloudSyncSection: View {
         let coordinator = environment.migrationCoordinator
         let phaseTask = Task { @MainActor [coordinator] in
             for await phase in coordinator.progressStream {
-                activePhase = phase
+                route = .progress(phase)
             }
         }
         defer { phaseTask.cancel() }
-        activePhase = .preparing
+        route = .progress(.preparing)
         do {
             try await kickoff(coordinator, storeURL)
         } catch {
-            activePhase = .failed(reason: "\(error)")
-        }
-    }
-}
-
-extension MigrationPhase: @retroactive Identifiable {
-    public var id: String {
-        switch self {
-        case .preparing: return "preparing"
-        case .backingUp: return "backingUp"
-        case .markingJournal: return "markingJournal"
-        case .erasingICloud: return "erasingICloud"
-        case .removingLocalStore: return "removingLocalStore"
-        case .reconfiguringStore: return "reconfiguringStore"
-        case .uploading: return "uploading"
-        case .downloading: return "downloading"
-        case .finalizing: return "finalizing"
-        case .completed: return "completed"
-        case .failed: return "failed"
+            route = .progress(.failed(reason: "\(error)"))
         }
     }
 }
