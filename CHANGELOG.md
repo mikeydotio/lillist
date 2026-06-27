@@ -3,6 +3,19 @@
 All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [v0.11.5] - 2026-06-27
+
+### Fixed
+- host settings sub-page modals on the Form container, not the Section (24c3aea5)
+
+### Documentation
+- real cause of the Settings-sheet nuke (sheet on a Section) (cb283d4d)
+
+### Maintenance
+- bump iOS build number to 76 (8208101d)
+
+_[force]_
+
 ## [v0.11.4] - 2026-06-27
 
 ### Documentation
