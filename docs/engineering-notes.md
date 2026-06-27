@@ -4,6 +4,41 @@ Append-only log of cross-cutting engineering lessons learned while building
 Lillist. Each entry captures a non-obvious gotcha — usually one that took real
 investigation to find — so future work doesn't re-learn it the hard way.
 
+## 2026-06-27 — "CKErrorDomain error 2" was a latched transient, not a schema problem
+
+A persistent red "CKErrorDomain error 2" sync badge on both platforms looked like
+a Production-schema mismatch after the 2026-06-24 cutover. A real diagnostic
+package (the `unified-log.txt` + file logs the Part 3 work added) proved otherwise:
+
+- The file logs showed records of **every** type importing successfully
+  (`author: NSCloudKitMirroringDelegate.import` for `LillistTask` / `SmartFilter`
+  / `JournalEntry` / `AppPreferences`, across days) — so the Production schema is
+  fine; **no Console re-deploy was needed.**
+- The unified log showed exactly **one** export failure — a `partialFailure`
+  (code 2) with **no `CKPartialErrorsByItemIDKey`** — that did not recur, while
+  the account was healthy (disable/enable migrations completed).
+
+So the error was a one-off transient export conflict, but `SyncStatusMonitor.apply`
+latched it: it set `currentStatus.error` on *any* failed export and only cleared
+it on a later *successful* one — pinning the red badge permanently.
+
+Two lessons + the fix:
+1. A `CKError.partialFailure` (code 2) with no per-item dict is the mirror's
+   ordinary "a record conflicted, reconciling" signal — **transient**, not a hard
+   error. Structural problems surface as structural per-item codes or non-partial
+   top-level codes (quota / auth / `serverRejectedRequest` / `invalidArguments`).
+2. A failed export must **not** permanently latch the indicator.
+
+Fix: `CloudKitErrorClassifier.severity(of:)` (recoverable unless a per-item code
+is structural; a bare partialFailure is recoverable) → carried on
+`CloudKitSyncEvent.recoverable` → `SyncStatusMonitor` leaves `error` nil for
+recoverable failures (keeping the prior `lastSyncedAt`); only structural failures
+go red. `classify()` is unchanged (its summary string is still used). And
+`logRawError` now dumps the full CKError `userInfo` (`NSUnderlyingError`,
+`CKErrorRetryAfterKey`, key names) when there's no per-item dict — the package
+showed a bare partialFailure carried no actionable detail, so a *future*
+structural error is now diagnosable.
+
 ## 2026-06-27 — The real cause of the "Settings sheet nuke": a `.sheet` on a `Section`
 
 The 2026-06-26 entry below blamed the Settings-sheet teardown on *multiple
