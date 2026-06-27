@@ -3,6 +3,16 @@
 All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [v0.11.4] - 2026-06-27
+
+### Documentation
+- update (16 docs, 93 cells re-judged) (4ea2b6f2)
+
+### Maintenance
+- bump iOS build number to 75 (8e926f08)
+
+_[force]_
+
 ## [v0.11.3] - 2026-06-26
 
 ### Added
