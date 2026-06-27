@@ -46,22 +46,31 @@ public struct DiagnosticPackageBuilder: Sendable {
     let diagnosticsDir: URL?
     let storeURL: URL?
     let metadata: Metadata
+    /// Source for the process's recent unified-log (`os_log`) lines, captured
+    /// into `unified-log.txt`. This is how CloudKit sync errors — which are
+    /// logged to `LillistLog` (subsystem `CrashReporting.subsystemIdentifier`)
+    /// but never to the file-based `DiagnosticLog` — reach the package. A `nil`
+    /// fetcher or a failed/empty fetch simply omits the file. Injectable so
+    /// tests can supply a fake instead of touching `OSLogStore`.
+    let logFetcher: LogFetching?
 
     /// - Parameters:
     ///   - diagnosticsDir: App-Group `…/Lillist/Diagnostics` (nil → no logs).
     ///   - storeURL: the live store URL (nil for in-memory; store-include no-ops).
     ///   - metadata: build/OS/device + toggle state for the manifest.
-    public init(diagnosticsDir: URL?, storeURL: URL?, metadata: Metadata) {
+    ///   - logFetcher: unified-log source (defaults to the live `OSLogFetcher`).
+    public init(diagnosticsDir: URL?, storeURL: URL?, metadata: Metadata, logFetcher: LogFetching? = OSLogFetcher()) {
         self.diagnosticsDir = diagnosticsDir
         self.storeURL = storeURL
         self.metadata = metadata
+        self.logFetcher = logFetcher
     }
 
     /// Build the staging directory (no zip). Returns the staged
     /// `Lillist-Diagnostics` folder; the caller owns cleanup of its parent.
     /// Exposed so tests can inspect the manifest, merged events, and raw logs
     /// without unzipping (the `.forUploading` zip is one-way).
-    public func stage(options: Options) throws -> URL {
+    public func stage(options: Options, unifiedLog: [String] = []) throws -> URL {
         let fm = FileManager.default
         let work = fm.temporaryDirectory.appendingPathComponent("DiagPackage-\(UUID().uuidString)", isDirectory: true)
         let stageDir = work.appendingPathComponent("Lillist-Diagnostics", isDirectory: true)
@@ -91,6 +100,16 @@ public struct DiagnosticPackageBuilder: Sendable {
             let mergedText = merged.compactMap { try? DiagnosticEvent.encodeJSONLine($0) }.joined()
             try Data(mergedText.utf8).write(to: stageDir.appendingPathComponent("events.jsonl"))
             inventory.append("events.jsonl")
+        }
+
+        if options.includeLogs, !unifiedLog.isEmpty {
+            // Recent unified-log (`os_log`) lines — the only place CloudKit sync
+            // errors surface, since `LillistLog` writes them to the unified log
+            // and not to the file-based `DiagnosticLog` above. Already redacted
+            // by the caller (`build`).
+            let text = unifiedLog.joined(separator: "\n") + "\n"
+            try Data(text.utf8).write(to: stageDir.appendingPathComponent("unified-log.txt"))
+            inventory.append("unified-log.txt")
         }
 
         var notes: [String] = []
@@ -148,9 +167,26 @@ public struct DiagnosticPackageBuilder: Sendable {
     /// Stage, zip, and return a temp `.zip` URL. Cleans up the staging directory.
     public func build(options: Options) async throws -> URL {
         let fm = FileManager.default
-        let stageDir = try stage(options: options)
+        let unifiedLog = options.includeLogs ? await fetchUnifiedLog() : []
+        let stageDir = try stage(options: options, unifiedLog: unifiedLog)
         defer { try? fm.removeItem(at: stageDir.deletingLastPathComponent()) }
         return try Self.zip(directory: stageDir)
+    }
+
+    /// Fetch + redact the process's recent unified-log lines for the app's
+    /// subsystem. Best-effort: a missing fetcher or an `OSLogStore` failure
+    /// (e.g. sandboxed tests, no entitlement) yields no lines rather than
+    /// aborting the whole package. `OSLogStore(scope: .currentProcessIdentifier)`
+    /// is bounded by this process's launch, so the window is a generous upper
+    /// bound, not a guarantee of two hours of history.
+    private func fetchUnifiedLog() async -> [String] {
+        guard let logFetcher else { return [] }
+        let since = Date(timeIntervalSinceNow: -7200)
+        let raw = (try? await logFetcher.fetchRecentLines(
+            since: since,
+            subsystem: CrashReporting.subsystemIdentifier
+        )) ?? []
+        return raw.map(LogRedactor.redact)
     }
 
     /// Decode every `diag-*.jsonl` file and return all events sorted by `at`

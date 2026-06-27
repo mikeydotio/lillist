@@ -39,6 +39,73 @@ final class DiagnosticPackageBuilderTests: XCTestCase {
         XCTAssertGreaterThan(size, 0)
     }
 
+    // MARK: - Unified-log capture (the path CloudKit error codes travel)
+
+    func test_stage_writes_unifiedLog_and_listsItInManifest() throws {
+        let dir = try seedDiagnosticsDir()
+        let builder = DiagnosticPackageBuilder(diagnosticsDir: dir, storeURL: nil, metadata: sampleMetadata())
+        let lines = ["10:00 CloudKit export failed: code=2", "10:00   partial item: code=15"]
+        let stage = try builder.stage(options: .init(includeLogs: true, includeStore: false), unifiedLog: lines)
+        defer { try? FileManager.default.removeItem(at: stage.deletingLastPathComponent()) }
+
+        let logURL = stage.appendingPathComponent("unified-log.txt")
+        XCTAssertTrue(FileManager.default.fileExists(atPath: logURL.path))
+        let body = try String(contentsOf: logURL, encoding: .utf8)
+        XCTAssertTrue(body.contains("CloudKit export failed: code=2"))
+        XCTAssertTrue(body.contains("partial item: code=15"))
+
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        let meta = try decoder.decode(
+            DiagnosticPackageBuilder.Metadata.self,
+            from: Data(contentsOf: stage.appendingPathComponent("manifest.json"))
+        )
+        XCTAssertTrue(meta.files.contains("unified-log.txt"))
+    }
+
+    func test_stage_omitsUnifiedLog_whenLogsExcluded() throws {
+        let dir = try seedDiagnosticsDir()
+        let builder = DiagnosticPackageBuilder(diagnosticsDir: dir, storeURL: nil, metadata: sampleMetadata())
+        let stage = try builder.stage(options: .init(includeLogs: false, includeStore: true), unifiedLog: ["ignored"])
+        defer { try? FileManager.default.removeItem(at: stage.deletingLastPathComponent()) }
+        XCTAssertFalse(FileManager.default.fileExists(atPath: stage.appendingPathComponent("unified-log.txt").path))
+    }
+
+    func test_stage_omitsUnifiedLog_whenEmpty() throws {
+        let dir = try seedDiagnosticsDir()
+        let builder = DiagnosticPackageBuilder(diagnosticsDir: dir, storeURL: nil, metadata: sampleMetadata())
+        let stage = try builder.stage(options: .init(includeLogs: true, includeStore: false), unifiedLog: [])
+        defer { try? FileManager.default.removeItem(at: stage.deletingLastPathComponent()) }
+        XCTAssertFalse(FileManager.default.fileExists(atPath: stage.appendingPathComponent("unified-log.txt").path))
+    }
+
+    func test_build_consultsInjectedLogFetcher() async throws {
+        // End-to-end: build() must fetch via the injected LogFetching (the seam
+        // that lets a fake stand in for OSLogStore). Content writing is pinned by
+        // the stage tests above; redaction by LogRedactorTests.
+        let dir = try seedDiagnosticsDir()
+        let fetcher = FakeLogFetcher(lines: ["10:00 CloudKit export failed: code=2"])
+        let builder = DiagnosticPackageBuilder(diagnosticsDir: dir, storeURL: nil, metadata: sampleMetadata(), logFetcher: fetcher)
+        let zip = try await builder.build(options: .init(includeLogs: true, includeStore: false))
+        defer { try? FileManager.default.removeItem(at: zip) }
+        XCTAssertEqual(zip.pathExtension, "zip")
+        let called = await fetcher.wasCalled
+        XCTAssertTrue(called, "build() must consult the injected log fetcher")
+    }
+
+    /// Stands in for `OSLogFetcher` so tests never touch the permission-gated
+    /// `OSLogStore`. An actor records consultation so the wiring can be asserted
+    /// without a lock in the async path.
+    private actor FakeLogFetcher: LogFetching {
+        let lines: [String]
+        private(set) var wasCalled = false
+        init(lines: [String]) { self.lines = lines }
+        func fetchRecentLines(since: Date, subsystem: String) async throws -> [String] {
+            wasCalled = true
+            return lines
+        }
+    }
+
     func test_stage_writes_manifest_merged_events_and_raw_logs() throws {
         let dir = try seedDiagnosticsDir()
         let builder = DiagnosticPackageBuilder(diagnosticsDir: dir, storeURL: nil, metadata: sampleMetadata())
