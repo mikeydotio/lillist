@@ -250,7 +250,7 @@ public struct TasksScreen: View {
                 ) {
                     outlineRow(row)
                 }
-                .listRowInsets(EdgeInsets(top: 3, leading: 12, bottom: 3, trailing: 12))
+                .listRowInsets(EdgeInsets(top: 3, leading: 6, bottom: 3, trailing: 12))
                 .listRowSeparator(.hidden)
                 .listRowBackground(Color.clear)
                 .opacity(row.node.record.id == draggedID ? 0 : 1)
@@ -307,7 +307,10 @@ public struct TasksScreen: View {
                 isDone: row.node.record.status == .closed,
                 border: .rainbow
             )
-            .padding(.horizontal, 12)
+            // Match the row's leading inset (6) so the lifted ghost stays
+            // anchored to the live row's leading edge; trailing keeps 12.
+            .padding(.leading, 6)
+            .padding(.trailing, 12)
         }
     }
 

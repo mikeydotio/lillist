@@ -81,10 +81,19 @@ public struct SwipeableRow<Content: View>: View {
         self.content = content
     }
 
-    /// Resting reveal width when an action is held open.
+    /// Width of a revealed action card.
     private let actionWidth: CGFloat = 84
     /// Past this displacement, releasing commits the action outright.
     private let fullSwipeThreshold: CGFloat = 170
+    /// Horizontal gap between the row edge and a revealed action card. Equals
+    /// the inter-row vertical gap (3pt top + 3pt bottom `listRowInsets` in
+    /// TasksScreen), so the revealed card is inset from the row by the same
+    /// amount on every side.
+    private let actionGap: CGFloat = 6
+    /// Resting offset when a side is held open: the content slides this far to
+    /// fully reveal an `actionWidth` card with `actionGap` of clearance behind
+    /// the row's edge.
+    private var revealDistance: CGFloat { actionWidth + actionGap }
 
     @State private var offset: CGFloat = 0
     @State private var dragStartOffset: CGFloat = 0
@@ -131,24 +140,41 @@ public struct SwipeableRow<Content: View>: View {
 
     // MARK: - Background reveal
 
+    /// The revealed action layer sits *behind* the content. Each action is a
+    /// fixed-width card parked off its row edge at rest and slid into view by an
+    /// offset locked to the drag, so it appears to emerge from behind the row's
+    /// edge (keeping `actionGap` of clearance) rather than growing out of the
+    /// screen edge.
     private var actionBackground: some View {
-        HStack(spacing: 0) {
+        ZStack {
             if let leading {
-                actionButton(leading, revealed: max(0, offset), alignment: .leading)
+                actionCard(leading, active: offset >= 2)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+                    // Parked off the leading edge at rest (offset 0); flush, with
+                    // `actionGap` behind the row edge, at offset == revealDistance.
+                    .offset(x: min(0, offset - revealDistance))
             }
-            Spacer(minLength: 0)
             if let trailing {
-                actionButton(trailing, revealed: max(0, -offset), alignment: .trailing)
+                actionCard(trailing, active: offset <= -2)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .trailing)
+                    // Parked off the trailing edge at rest; flush at
+                    // offset == -revealDistance.
+                    .offset(x: max(0, offset + revealDistance))
             }
         }
+        // Clip parked / over-travelled cards to the row's content frame so a
+        // closed row never shows a sliver of an action card in the list-row
+        // inset, and the revealed card reads as sliding out from behind the
+        // row's edge.
+        .clipped()
     }
 
     @ViewBuilder
-    private func actionButton(_ spec: SwipeActionSpec, revealed: CGFloat, alignment: Alignment) -> some View {
+    private func actionCard(_ spec: SwipeActionSpec, active: Bool) -> some View {
         Button {
             perform(spec)
         } label: {
-            ZStack(alignment: alignment) {
+            ZStack {
                 spec.tint
                 Label {
                     Text(spec.titleKey, bundle: .module)
@@ -159,15 +185,16 @@ public struct SwipeableRow<Content: View>: View {
                 }
                 .labelStyle(.iconOnly)
                 .foregroundStyle(.white)
-                .frame(width: actionWidth)
-                .frame(maxHeight: .infinity)
             }
-            .frame(width: revealed)
-            .clipped()
+            .frame(width: actionWidth)
+            .frame(maxHeight: .infinity)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .disabled(revealed < 2)
+        // Enabled only once the card has begun to reveal — reproduces the old
+        // `revealed < 2` gate so the parked (off-edge) card never captures a
+        // phantom tap or VoiceOver focus while the row is closed.
+        .disabled(!active)
         .accessibilityLabel(Text(spec.titleKey, bundle: .module))
         .clipShape(RoundedRectangle(cornerRadius: LillistRadius.m, style: .continuous))
     }
@@ -201,10 +228,10 @@ public struct SwipeableRow<Content: View>: View {
     private func resist(_ x: CGFloat) -> CGFloat {
         if x > 0 {
             guard leading != nil else { return x * 0.05 }
-            return x <= actionWidth ? x : actionWidth + (x - actionWidth) * 0.3
+            return x <= revealDistance ? x : revealDistance + (x - revealDistance) * 0.3
         } else if x < 0 {
             guard trailing != nil else { return x * 0.05 }
-            return x >= -actionWidth ? x : -actionWidth + (x + actionWidth) * 0.3
+            return x >= -revealDistance ? x : -revealDistance + (x + revealDistance) * 0.3
         }
         return 0
     }
@@ -215,7 +242,9 @@ public struct SwipeableRow<Content: View>: View {
         let outcome = SwipeSettleArbiter.outcome(
             offset: offset,
             predictedTranslation: predictedTranslation,
-            actionWidth: actionWidth,
+            // The resting reveal is the card plus its gap; the arbiter's
+            // "open past half" threshold keys off this distance.
+            actionWidth: revealDistance,
             fullSwipeThreshold: fullSwipeThreshold,
             hasLeading: leading != nil,
             leadingAllowsFullSwipe: leading?.allowsFullSwipe ?? false,
@@ -228,10 +257,10 @@ public struct SwipeableRow<Content: View>: View {
         case .commitLeading:
             if let leading { perform(leading) }
         case .openTrailing:
-            snap(to: -actionWidth)
+            snap(to: -revealDistance)
             openRowID = rowID
         case .openLeading:
-            snap(to: actionWidth)
+            snap(to: revealDistance)
             openRowID = rowID
         case .close:
             close()
