@@ -26,11 +26,11 @@ final class SettingsSheetPresentationUITests: XCTestCase {
         debugRow.tap()
 
         // Trigger the include sheet.
-        let prepare = app.buttons
-            .matching(NSPredicate(format: "label CONTAINS[c] %@", "Prepare diagnostic package"))
+        let exportButton = app.buttons
+            .matching(NSPredicate(format: "label CONTAINS[c] %@", "Export Diagnostic Package"))
             .firstMatch
-        XCTAssertTrue(prepare.waitForExistence(timeout: 5), "Prepare diagnostic package button missing")
-        prepare.tap()
+        XCTAssertTrue(exportButton.waitForExistence(timeout: 5), "Export Diagnostic Package button missing")
+        exportButton.tap()
 
         // Give the (buggy) flash-then-dismiss a beat to settle, then assert the
         // teardown did NOT happen. When the bug fires, the whole Settings sheet

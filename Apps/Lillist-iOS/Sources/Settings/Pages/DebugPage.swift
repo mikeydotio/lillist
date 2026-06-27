@@ -1,5 +1,4 @@
 import SwiftUI
-import UniformTypeIdentifiers
 import LillistCore
 import LillistUI
 
@@ -7,8 +6,8 @@ import LillistUI
 /// diagnostic logging, plus the destructive full data-store reset used
 /// when the local store is suspected corrupt.
 ///
-/// The diagnostics export modals (`.sheet` + `.fileExporter`) are hosted **here**
-/// on the `SettingsDetailScreen` container, not inside `DiagnosticsSection`'s
+/// The diagnostics modals are hosted **here** on the `SettingsDetailScreen`
+/// container through one `.sheet(item:)`, not inside `DiagnosticsSection`'s
 /// `Section`: a `.sheet` attached to Form-row content inside this pushed
 /// nav-destination-in-a-sheet present-then-dismisses and nukes the whole
 /// Settings sheet (see `DiagnosticsExportModel`).
@@ -23,28 +22,22 @@ struct DebugPage: View {
             DiagnosticsSection(model: diagnostics)
             ResetDataStoreSection()
         }
-        .sheet(isPresented: $diagnostics.showInclude, onDismiss: {
-            // Build + present the exporter only AFTER the include sheet has fully
-            // dismissed, so the two presentations never conflict.
-            diagnostics.includeSheetDismissed(environment)
-        }) {
-            DiagnosticsIncludeSheet(
-                includeLogs: $diagnostics.includeLogs,
-                includeStore: $diagnostics.includeStore,
-                onCreate: { diagnostics.requestCreate() },
-                onCancel: { diagnostics.showInclude = false }
-            )
-        }
-        .fileExporter(
-            isPresented: $diagnostics.showExporter,
-            document: diagnostics.exportDocument,
-            contentType: .zip,
-            defaultFilename: "Lillist-Diagnostics"
-        ) { result in
-            if case .failure(let error) = result {
-                diagnostics.lastError = "Export failed: \(error.localizedDescription)"
+        .sheet(item: $diagnostics.sheet, onDismiss: {
+            // After the include sheet dismisses, build + present the share sheet;
+            // after the share sheet dismisses, clean up the temp package.
+            diagnostics.sheetDismissed(environment)
+        }) { sheet in
+            switch sheet {
+            case .include:
+                DiagnosticsIncludeSheet(
+                    includeLogs: $diagnostics.includeLogs,
+                    includeStore: $diagnostics.includeStore,
+                    onCreate: { diagnostics.requestExport() },
+                    onCancel: { diagnostics.sheet = nil }
+                )
+            case .share(let url):
+                ShareSheet(activityItems: [url])
             }
-            diagnostics.exportDocument = nil
         }
     }
 }

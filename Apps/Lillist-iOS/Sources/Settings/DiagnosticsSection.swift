@@ -1,30 +1,46 @@
 import SwiftUI
-import UniformTypeIdentifiers
+import UIKit
 import LillistCore
 import LillistUI
 
+/// Which diagnostics modal is showing. Both are hosted by the **page**
+/// (`DebugPage`) on the `SettingsDetailScreen` container via one `.sheet(item:)`
+/// — never on a `Section` (a sheet on Form-row content inside this pushed
+/// nav-destination-in-a-sheet tears the whole Settings sheet down; see
+/// `docs/engineering-notes.md`).
+enum DiagnosticsSheet: Identifiable {
+    /// Pick what to include in the package.
+    case include
+    /// The built package — presented as the system share sheet so the user
+    /// decides what to do with it (AirDrop, Mail, Save to Files, …).
+    case share(URL)
+
+    var id: String {
+        switch self {
+        case .include: return "include"
+        case .share: return "share"
+        }
+    }
+}
+
 /// Owns the Diagnostics export state + pipeline. Lifted out of
-/// `DiagnosticsSection` so the include `.sheet` and `.fileExporter` can be
-/// hosted by the **page** (`DebugPage`) on the `SettingsDetailScreen` container
-/// rather than on a `Section`. A `.sheet` attached to `Section`/Form-row content
-/// inside a pushed `NavigationStack` destination (itself inside the Settings
-/// `.sheet`) presents-then-immediately-dismisses and tears the whole Settings
-/// sheet down with it — see `docs/engineering-notes.md`. Hosting the
-/// presentation on the stable Form container is the fix.
+/// `DiagnosticsSection` so the modals can be hosted by the page on the
+/// `SettingsDetailScreen` container rather than on a `Section`.
 @MainActor
 @Observable
 final class DiagnosticsExportModel {
     var enabled = false
-    var showInclude = false
     var includeLogs = true
     var includeStore = true
     var isPreparing = false
-    var exportDocument: DiagnosticZipDocument?
-    var showExporter = false
+    var sheet: DiagnosticsSheet?
     var lastError: String?
 
     private var didHydrate = false
     private var wantsExport = false
+    /// The on-disk package currently being shared; deleted when the share sheet
+    /// closes so temp packages don't accumulate.
+    private var sharedURL: URL?
 
     /// One-shot hydration: if the user already toggled while this read was in
     /// flight, `didHydrate` is already true and the stale read is dropped.
@@ -42,16 +58,23 @@ final class DiagnosticsExportModel {
         }
     }
 
-    /// Tapped "Create" in the include sheet: remember the intent and dismiss the
-    /// sheet; the actual build runs in `includeSheetDismissed` so the exporter
-    /// only presents after the include sheet has fully gone.
-    func requestCreate() { wantsExport = true; showInclude = false }
+    /// Tapped "Create" in the include sheet: remember the intent and dismiss it;
+    /// the package is built in `sheetDismissed` so the share sheet only presents
+    /// after the include sheet has fully gone (one `.sheet` slot, no conflict).
+    func requestExport() { wantsExport = true; sheet = nil }
 
-    func includeSheetDismissed(_ env: AppEnvironment) {
-        if wantsExport { wantsExport = false; Task { await prepare(env) } }
+    func sheetDismissed(_ env: AppEnvironment) {
+        if wantsExport {
+            wantsExport = false
+            Task { await buildAndShare(env) }
+        } else if let url = sharedURL {
+            // The share sheet was dismissed — clean up the temp package.
+            try? FileManager.default.removeItem(at: url)
+            sharedURL = nil
+        }
     }
 
-    private func prepare(_ env: AppEnvironment) async {
+    private func buildAndShare(_ env: AppEnvironment) async {
         isPreparing = true
         lastError = nil
         defer { isPreparing = false }
@@ -68,25 +91,39 @@ final class DiagnosticsExportModel {
             metadata: metadata
         )
         do {
+            // Keep the zip on disk and hand its URL to the share sheet; cleaned
+            // up in `sheetDismissed` once the user is done with it.
             let zipURL = try await builder.build(options: .init(includeLogs: includeLogs, includeStore: includeStore))
-            exportDocument = try DiagnosticZipDocument(url: zipURL)
-            try? FileManager.default.removeItem(at: zipURL)   // the document holds the bytes now
-            showExporter = true
+            sharedURL = zipURL
+            sheet = .share(zipURL)
         } catch {
             lastError = "Couldn't build diagnostic package: \(error.localizedDescription)"
         }
     }
 }
 
+/// Presents the system share sheet for the built diagnostic package. Mirrors the
+/// `MailComposerView` representable pattern; hosting `UIActivityViewController` as
+/// `.sheet` content (rather than presenting it ourselves) keeps it inside the one
+/// container-hosted presentation slot.
+struct ShareSheet: UIViewControllerRepresentable {
+    let activityItems: [Any]
+
+    func makeUIViewController(context: Context) -> UIActivityViewController {
+        UIActivityViewController(activityItems: activityItems, applicationActivities: nil)
+    }
+
+    func updateUIViewController(_ controller: UIActivityViewController, context: Context) {}
+}
+
 /// Settings → Diagnostics. Toggles file-based diagnostic logging (device-local,
-/// via `DevicePreferencesStore`) and triggers an export package. The toggle is a
+/// via `DevicePreferencesStore`) and exports a package. The toggle is a
 /// write-through `Binding`: `.task` hydrates `enabled` directly (no write), while
 /// only a user tap routes through `set` to persist — so hydration never echoes
 /// back as a spurious write.
 ///
-/// The include `.sheet` + `.fileExporter` are hosted by `DebugPage` on the
-/// `SettingsDetailScreen` container (not here on the `Section`) — see
-/// `DiagnosticsExportModel`. This section only renders the rows + drives the model.
+/// The modals are hosted by `DebugPage` on the `SettingsDetailScreen` container
+/// (see `DiagnosticsExportModel`); this section only renders the rows.
 struct DiagnosticsSection: View {
     @Environment(AppEnvironment.self) private var environment
     @Bindable var model: DiagnosticsExportModel
@@ -98,12 +135,12 @@ struct DiagnosticsSection: View {
                 .font(.footnote)
                 .foregroundStyle(.secondary)
             Button {
-                model.showInclude = true
+                model.sheet = .include
             } label: {
                 if model.isPreparing {
                     ProgressView()
                 } else {
-                    Text("Prepare diagnostic package…")
+                    Text("Export Diagnostic Package")
                 }
             }
             .disabled(model.isPreparing)
