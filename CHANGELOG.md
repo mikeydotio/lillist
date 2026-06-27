@@ -3,6 +3,26 @@
 All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [v0.11.3] - 2026-06-26
+
+### Added
+- capture unified log in the diagnostic package (bb54a619)
+
+### Fixed
+- stop stacked presentations from dismissing the parent (549f9ad8)
+- drive iCloud-sync modals through one sheet route (390c33c6)
+- reveal swipe actions from behind the row with a gap (90528a50)
+
+### Documentation
+- one presentation modifier per view; swipe-reveal card model (864e36af)
+- full codebase map regenerate (61 modules, cartographer/4) (9f96532e)
+- overlay-after-offset blankets the full hit region (515f2473)
+
+### Maintenance
+- bump iOS build number to 74 (7d5394ad)
+
+_[manual]_
+
 ## [v0.11.2] - 2026-06-26
 
 ### Fixed
