@@ -12,9 +12,9 @@ sources:
   - path: Apps/Lillist-iOS/Resources/PrivacyInfo.xcprivacy
     blob: 4e7e051bbe5e2753a0a80b85ae78289d250bdce7
   - path: Apps/Lillist-iOS/project.yml
-    blob: 4ba5b1018afe18aae159289125980f85e7c073c7
+    blob: d87ab49afa0905417a3d7230874f316f9e2d93b7
 generator: cartographer/4
-baseline: 515f24730d21cb81ca1c9737ffeb981e9c414d3c
+baseline: 8e926f08fd5269de164d25b42880893a604a9d5c
 ---
 
 # Module: Apps/Lillist-iOS (misc)

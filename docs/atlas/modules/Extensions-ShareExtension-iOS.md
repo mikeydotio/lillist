@@ -19,7 +19,7 @@ sources:
     blob: 712caf797a5dacd46b7a90f3827a5951e8bd98e4
 references_modules: [Packages-LillistCore-Sources-LillistCore-Diagnostics, Packages-LillistCore-Sources-LillistCore-LinkPreview, Packages-LillistCore-Sources-LillistCore-Reminders, Packages-LillistCore-Sources-LillistCore-Stores-chunk-1, Packages-LillistCore-Sources-LillistCore-Sync-chunk-1, Packages-LillistCore-Sources-LillistCore-misc, Packages-LillistUI-Sources-LillistUI-Theme-chunk-1]
 generator: cartographer/4
-baseline: 515f24730d21cb81ca1c9737ffeb981e9c414d3c
+baseline: 8e926f08fd5269de164d25b42880893a604a9d5c
 ---
 
 # Module: Extensions/ShareExtension-iOS
@@ -47,6 +47,7 @@ The Share Extension is Lillist's iOS share-sheet capture surface: it receives UR
 
 | Symbol | Kind | Location | Why it matters |
 | --- | --- | --- | --- |
+| `Source` | enum | `Extensions/ShareExtension-iOS/SharePayload.swift:41` | Private DI seam inside SharePayload that separates the production construction path (`.providers`, capturing `NSItemProvider` instances from a live `NSExtensionContext`) from the test-injection path (`.items`, accepting already-resolved `Item` values). `resolveItems()` dispatches on `source` so both public `init` variants — `init(extensionContext:)` and `init(items:)` — feed the same `decode()` pipeline without duplication. Removing it would force either two divergent decode paths or a redesigned abstraction. Documented at Extensions/ShareExtension-iOS/SharePayload.swift:41–44. |
 | `cancel` | func | `Extensions/ShareExtension-iOS/ShareViewController.swift:34` | Routes the cancel action through NSExtensionContext.cancelRequest so the system properly dismisses the extension; without it the extension would hang open after the user taps Cancel (Extensions/ShareExtension-iOS/ShareViewController.swift:34-38). |
 | `complete` | func | `Extensions/ShareExtension-iOS/ShareViewController.swift:40` | Routes successful save through NSExtensionContext.completeRequest; required for the system to dismiss the extension after a task is saved (Extensions/ShareExtension-iOS/ShareViewController.swift:40-43). |
 | `load` | func | `Extensions/ShareExtension-iOS/ShareRootView.swift:61` | Drives the async payload decode that pre-fills the form fields at sheet presentation; without it the form always shows empty fields regardless of what was shared (Extensions/ShareExtension-iOS/ShareRootView.swift:61-66). |

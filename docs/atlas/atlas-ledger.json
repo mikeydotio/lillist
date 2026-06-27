@@ -1,12 +1,12 @@
 {
-  "baseline": "515f24730d21cb81ca1c9737ffeb981e9c414d3c",
+  "baseline": "8e926f08fd5269de164d25b42880893a604a9d5c",
   "docs": {
     "modules/Apps-Config.md": {
       "generator": "cartographer/4",
       "module": "Apps/Config",
       "references_modules": [],
       "sources": {
-        "Apps/Config/BuildNumber.xcconfig": "83e96cd98364e0818128d87a7b6e17357c0dc666",
+        "Apps/Config/BuildNumber.xcconfig": "15e7bb4368c064d87ae67cb4bd8d4767064a3f2e",
         "Apps/Config/Distribution.xcconfig": "84460655dcfbf0b4e127022a8ede527f6f95e614",
         "Apps/Config/Signing.local.xcconfig.example": "e1772886c706e371c5d3ac58cfe37bd6ab036193",
         "Apps/Config/Signing.xcconfig": "eaa9a2c9e55ed70c13d4f41953dc427da4dea455"
@@ -39,8 +39,8 @@
       ],
       "sources": {
         "Apps/Lillist-iOS/Sources/App/AppEnvironment.swift": "8d07dbbaa6d82dd80c5d263b81526635e89b64bc",
-        "Apps/Lillist-iOS/Sources/App/CrashReporterHost.swift": "10e38c4524e8eb68e95e9d0cfae0be658b1ee067",
-        "Apps/Lillist-iOS/Sources/App/LillistApp.swift": "d18ba5f75b127be1501a9780023a8856ddcf8013",
+        "Apps/Lillist-iOS/Sources/App/CrashReporterHost.swift": "18a647c008f3c042a21ac4d872571d29513ef0f8",
+        "Apps/Lillist-iOS/Sources/App/LillistApp.swift": "3a876dc1d85de09764cf9cbb33916d48ff2c2d0e",
         "Apps/Lillist-iOS/Sources/App/MailComposerTransport.swift": "af54dda7da2700518a16e86aebb5d4735e0bcc16",
         "Apps/Lillist-iOS/Sources/App/MailComposerView.swift": "7888c20651cafd6509b97b2de2c4eabde8305685",
         "Apps/Lillist-iOS/Sources/App/MetricKitObserver.swift": "198daf20635d64ed69d25a5b805147d26a4d653f"
@@ -94,8 +94,8 @@
         "Apps/Lillist-iOS/Sources/Settings/AdvancedSection.swift": "16cfb82d01a4ffc73a1cef2fd36960e58c4d2829",
         "Apps/Lillist-iOS/Sources/Settings/BackupSection.swift": "9de8c3e16a4da35983fd6914496d67258e9c1ce1",
         "Apps/Lillist-iOS/Sources/Settings/CrashReportingSection.swift": "0a6c119b7f6e45aa2db51acd27b2176627b1b308",
-        "Apps/Lillist-iOS/Sources/Settings/DiagnosticsSection.swift": "afeafdf9990d22c3fa4c758946a3ccd56529c834",
-        "Apps/Lillist-iOS/Sources/Settings/ICloudSyncSection.swift": "323be3ad575e487b01656468b1d7b0c348725e60",
+        "Apps/Lillist-iOS/Sources/Settings/DiagnosticsSection.swift": "b8a919d014172b63b83d988066bcb0ce43cbbd63",
+        "Apps/Lillist-iOS/Sources/Settings/ICloudSyncSection.swift": "51dd2c4bfbdf31e1d77289a65f3bb08c4e7e6cb9",
         "Apps/Lillist-iOS/Sources/Settings/NotificationsSection.swift": "254a5ffeb365bd10ddca648b74241275df310079",
         "Apps/Lillist-iOS/Sources/Settings/QuickCaptureSection.swift": "bf450601d8c0b95a98aee0f0ea499f2eeffeca61",
         "Apps/Lillist-iOS/Sources/Settings/RemindersImportSection.swift": "d0376ca5e47433b56769bde02fb1fbe81a6e5e0a",
@@ -103,7 +103,7 @@
         "Apps/Lillist-iOS/Sources/Settings/SettingsTab.swift": "62e7e6734a310a6b9dbf54eb20b3df3081356761",
         "Apps/Lillist-iOS/Sources/Settings/TrashSection.swift": "047a2d56222b6c4b659d138012e3afa69d484205"
       },
-      "summary": "iOS Settings landing view and env-coupled sections: sync, notifications, trash, backup, diagnostics.",
+      "summary": "iOS Settings section controllers: AppEnvironment-coupled wrappers wiring store state into LillistUI Settings presenters.",
       "verified": null
     },
     "modules/Apps-Lillist-iOS-Sources-misc.md": {
@@ -150,7 +150,7 @@
         "Apps/Lillist-iOS/Lillist.entitlements": "c898a3df7c5036e8dc9dcdfa5fd52659bbd82107",
         "Apps/Lillist-iOS/Resources/Localizable.xcstrings": "1bf0907c6002198ad7b3c8aaeb6bb650f86f4642",
         "Apps/Lillist-iOS/Resources/PrivacyInfo.xcprivacy": "4e7e051bbe5e2753a0a80b85ae78289d250bdce7",
-        "Apps/Lillist-iOS/project.yml": "4ba5b1018afe18aae159289125980f85e7c073c7"
+        "Apps/Lillist-iOS/project.yml": "d87ab49afa0905417a3d7230874f316f9e2d93b7"
       },
       "summary": "iOS app target config: xcodegen spec, Info.plist, entitlements, localization, and privacy manifest.",
       "verified": null
@@ -201,16 +201,16 @@
         "Apps/Lillist-macOS/Sources/Preferences/AdvancedPane.swift": "c80427aeb751264a50474d48ec49951470f14a62",
         "Apps/Lillist-macOS/Sources/Preferences/BackupPane.swift": "468fff3906d91a155daa2e7ba7bae1b0a7dba87b",
         "Apps/Lillist-macOS/Sources/Preferences/CrashReportingPane.swift": "62d0e20e27ca7212a417fc3aa596c3d348d5bf0d",
-        "Apps/Lillist-macOS/Sources/Preferences/DiagnosticsPane.swift": "9ae9eb8dc181b33733a820c3f817a7dee5737681",
+        "Apps/Lillist-macOS/Sources/Preferences/DiagnosticsPane.swift": "77810f50a18c3a1191651014a86138727a72c3ca",
         "Apps/Lillist-macOS/Sources/Preferences/GeneralPane.swift": "b9d931ffa5f633ab2a7ba7748f5f6e2badbc0a82",
-        "Apps/Lillist-macOS/Sources/Preferences/ICloudSyncPane.swift": "7b7c9445b92d27973450b90dd564fb21919afa7f",
+        "Apps/Lillist-macOS/Sources/Preferences/ICloudSyncPane.swift": "8a4b37de0cb8e797657856b68e9f3ea9950964fa",
         "Apps/Lillist-macOS/Sources/Preferences/NotificationsPane.swift": "1a0dae89d0c41480471cd077769249173b61f621",
         "Apps/Lillist-macOS/Sources/Preferences/PreferencesWindow.swift": "f825832e950dbfe9caee0f3679d7d320b797c55a",
         "Apps/Lillist-macOS/Sources/Preferences/QuickCapturePane.swift": "17ce4db03aa689ea8b3ad4e59f313693b2342451",
         "Apps/Lillist-macOS/Sources/Preferences/RemindersPane.swift": "b8907b2a8dadea8406239c6b0c15b9e2f0b972f2",
         "Apps/Lillist-macOS/Sources/Preferences/TrashPane.swift": "11ac9a27d3d735c3cf5075b01b7dc2957a3985f2"
       },
-      "summary": "macOS Settings window: env-coupled SwiftUI panes for sync, notifications, backup, hotkey, and Reminders import.",
+      "summary": "macOS Settings window: ten tabbed panes wiring user preferences back to LillistCore's store layer.",
       "verified": null
     },
     "modules/Apps-Lillist-macOS-Sources-chunk-1.md": {
@@ -257,7 +257,7 @@
         "Apps/Lillist-macOS/Sources/Editor/MacTaskEditorHost.swift": "5cc30f86a9c6a89cb48c3ab14689905fc370ea3b",
         "Apps/Lillist-macOS/Sources/Indexing/IndexingMappers.swift": "8c68ace7364c0e1eb64600e2c237bb2f984f4c17",
         "Apps/Lillist-macOS/Sources/Indexing/IndexingService.swift": "c00e14675bbccb261ed0a76c199264a7e474303a",
-        "Apps/Lillist-macOS/Sources/LillistApp.swift": "070746db65976469233a27120402553415c6322c",
+        "Apps/Lillist-macOS/Sources/LillistApp.swift": "a69509a46bc2ccccbdb0ac712529f58567bc630e",
         "Apps/Lillist-macOS/Sources/MailtoTransport.swift": "62d6df19a2ee52c3dfa72c411577dd2e4dd94d22",
         "Apps/Lillist-macOS/Sources/MenuBar/MenuBarExtraScene.swift": "02305835ca157cd328fca49ebd3ce7147f10c615",
         "Apps/Lillist-macOS/Sources/Onboarding/OnboardingSheet.swift": "e252864f910909a073621b494fddf7d062eade3f",
@@ -310,7 +310,7 @@
       "module": "Apps (misc)",
       "references_modules": [],
       "sources": {
-        "Apps/project.yml": "dae6b450c49f20608e9d890b6ac725c563af6cb2"
+        "Apps/project.yml": "983aae37c65f76c863ed162b82b7d5db46d43a62"
       },
       "summary": "xcodegen spec generating the Lillist-macOS Xcode project (app + unit-test + UI-test targets)",
       "verified": null
@@ -531,6 +531,7 @@
       "generator": "cartographer/4",
       "module": "Packages/LillistCore/Sources/LillistCore/Diagnostics",
       "references_modules": [
+        "Packages-LillistCore-Sources-LillistCore-CrashReporting",
         "Packages-LillistCore-Sources-LillistCore-LinkPreview",
         "Packages-LillistCore-Sources-LillistCore-Recurrence",
         "Packages-LillistUI-Sources-LillistUI-Accessibility",
@@ -542,7 +543,7 @@
         "Packages/LillistCore/Sources/LillistCore/Diagnostics/DiagnosticEvent.swift": "4b41a93037c2cd610c2b5be293eaaab663cdef1e",
         "Packages/LillistCore/Sources/LillistCore/Diagnostics/DiagnosticHistoryObserver.swift": "b9e07971ffd2c766b0df00813d441ad9e83e56d8",
         "Packages/LillistCore/Sources/LillistCore/Diagnostics/DiagnosticLog.swift": "0ac37c8392163db4b229f840218f263f1f5585bf",
-        "Packages/LillistCore/Sources/LillistCore/Diagnostics/DiagnosticPackageBuilder.swift": "898d056563376af5cf9bfc705a624d3dd859af5f",
+        "Packages/LillistCore/Sources/LillistCore/Diagnostics/DiagnosticPackageBuilder.swift": "772bff36cf58e6287890ac6c06167120e774264f",
         "Packages/LillistCore/Sources/LillistCore/Diagnostics/DiagnosticSink.swift": "e2584a0372a51010539bd69615fad14ed4e1d39a"
       },
       "summary": "Opt-in JSONL event logger, Core Data history bridge, and zip-package exporter for in-app diagnostics",
@@ -1010,7 +1011,7 @@
         "Packages/LillistUI/Sources/LillistUI/Components/StatusCubeView.swift": "3803a29e4efcfef948ff89b2d259ce78fe182f7b",
         "Packages/LillistUI/Sources/LillistUI/Components/StatusIndicatorView.swift": "e5dbfb00dc8bf90717b46f21432a78c956139c58",
         "Packages/LillistUI/Sources/LillistUI/Components/SwipeSettleArbiter.swift": "cf59ef5568e46e40829aefc608d36daea124a53f",
-        "Packages/LillistUI/Sources/LillistUI/Components/SwipeableRow.swift": "78107c41ed9975786c1782331d6aeb6ceaba1018",
+        "Packages/LillistUI/Sources/LillistUI/Components/SwipeableRow.swift": "50dff04de22eb32e3da4feeba199b7c9ca08958e",
         "Packages/LillistUI/Sources/LillistUI/Components/SyncStatusDotView.swift": "dbc3a9bc1d13fef3c9ed1eefc6e7871c9291bf27",
         "Packages/LillistUI/Sources/LillistUI/Components/TagChipView.swift": "fe7f32f66f4aff83ad028f9d2626f63ced2e4fe0"
       },
@@ -1044,7 +1045,7 @@
       ],
       "sources": {
         "Packages/LillistUI/Sources/LillistUI/CrashReporting/CrashReportPreviewSheet.swift": "4eebb55707cfa2ee7ad6b6d0657875f5b557db97",
-        "Packages/LillistUI/Sources/LillistUI/CrashReporting/CrashReportSheet.swift": "8b3c1772a55c78692accc84a811b8b23ef51a3a3",
+        "Packages/LillistUI/Sources/LillistUI/CrashReporting/CrashReportSheet.swift": "cbc6a53679fcec49b0f68ec5be0024cd85e01c7f",
         "Packages/LillistUI/Sources/LillistUI/CrashReporting/CrashReportViewModel.swift": "41a6b325226f75b650b581c4b7d4e843dd87e5a1"
       },
       "summary": "SwiftUI crash-report consent UI: sheet + preview + @Observable view model bridging LillistCore.CrashReporter",
@@ -1199,9 +1200,10 @@
         "Packages/LillistUI/Sources/LillistUI/Sync/SyncMigrationChoiceSheet.swift": "3119ede020bb8360759bc671375e9c4c1a1c0b4c",
         "Packages/LillistUI/Sources/LillistUI/Sync/SyncMigrationConfirmationDialog.swift": "cec35a30c637384550600a236608f9c5da0c3ae9",
         "Packages/LillistUI/Sources/LillistUI/Sync/SyncMigrationProgressSheet.swift": "700e0f1f0739980cf8ee8c6c295b8f65f0f65539",
-        "Packages/LillistUI/Sources/LillistUI/Sync/SyncMigrationRecoverySheet.swift": "94595d3885ceeeba0cb2be0b21c30a828e862b8d"
+        "Packages/LillistUI/Sources/LillistUI/Sync/SyncMigrationRecoverySheet.swift": "94595d3885ceeeba0cb2be0b21c30a828e862b8d",
+        "Packages/LillistUI/Sources/LillistUI/Sync/SyncSheetRoute.swift": "1cadc05f00c4d440a2b7ff204152a0b3ca0ac2fd"
       },
-      "summary": "Pure-presenter modal sheets and dialogs for all iCloud sync management flows.",
+      "summary": "Pure-presentation sync-modal surfaces (pause, disable, migration, recovery) unified under SyncSheetRoute.",
       "verified": null
     },
     "modules/Packages-LillistUI-Sources-LillistUI-Theme-chunk-1.md": {
@@ -1296,7 +1298,7 @@
         "Packages/LillistUI/Sources/LillistUI/iOS/QuickCaptureDiscardToast.swift": "2ed1f32bbe49a090527a60702ca5327d5388df1a",
         "Packages/LillistUI/Sources/LillistUI/iOS/ReorderFailureToast.swift": "06a658dd99a504d7070da3d86adc5df1cb4fb9e7",
         "Packages/LillistUI/Sources/LillistUI/iOS/Screens/SettingsScreen.swift": "e978d8960e17217951e68ad6c3526c339406e4a9",
-        "Packages/LillistUI/Sources/LillistUI/iOS/Screens/TasksScreen.swift": "915e7dd5f2f988169ccbd72d0161855be02bd9cd",
+        "Packages/LillistUI/Sources/LillistUI/iOS/Screens/TasksScreen.swift": "b8185dc1c3547caee9063abdea5ccd84c6adb0c5",
         "Packages/LillistUI/Sources/LillistUI/iOS/SizeClassRouter.swift": "1bf4ae6409a26c607411ef5490b451172f3d99c4",
         "Packages/LillistUI/Sources/LillistUI/iOS/SyncStatusBadge.swift": "7554432d2a5789cff05e0782273f9e4bd3a22bc7",
         "Packages/LillistUI/Sources/LillistUI/iOS/TaskEditorOverlay.swift": "338e254d1fe3a62733a107b80dfbcde8b38d491d",
@@ -1342,13 +1344,13 @@
         ".github/workflows/ci.yml": "e97cfe992413054546e553108951cc4c0b94c67e",
         ".semver/config.yaml": "1a63526d97642edb6dea7e2e800b860b1919231e",
         ".semver/hooks/pre-bump/sync-marketing-version.sh": "eb38f15b18b0dc779e1276fd479e877017e40169",
-        "CHANGELOG.md": "b109c7d2897e2d86775431df727067fbd73698a9",
+        "CHANGELOG.md": "759a7b1b5b4f303ce597e9cf59f978bc43d9d4f6",
         "HANDOFF.md": "c507d9e2183b882c613cf819ea95bd274f96df5d",
         "LICENSE": "38fa01bc5e183db7bc03fdf42c693199b2d37d4a",
         "Lillist.xcworkspace/contents.xcworkspacedata": "2e734ab16d5b95d519766950140eed52205e09c8",
         "README.md": "ab008a361236b5a15520599a92ce4f8a544a7548",
         "THIRD-PARTY-LICENSES.md": "4248c37799371a584b25acb4ffd8131cc694f694",
-        "VERSION": "4b8f7b07ef17846ab57ed9d876c96ba0e17044d4"
+        "VERSION": "8a2b9627ad11a09c76ba73ccf51879f9ca9ad8eb"
       },
       "summary": "Workspace root: CI matrix, semver hooks, deployit export options, and xcworkspace binding all four targets.",
       "verified": null
@@ -1358,19 +1360,19 @@
       "module": "overview/ARCHITECTURE",
       "references_modules": [],
       "sources": {
-        "docs/atlas/modules/Apps-Config.md": "667daf368c61159472633c19641d221103e90374",
-        "docs/atlas/modules/Apps-Lillist-iOS-Sources-App.md": "f8ae4c59d047918649edfcee00d4329576e1062a",
+        "docs/atlas/modules/Apps-Config.md": "bab9286727342e0bd3e0de21da8469984f402a97",
+        "docs/atlas/modules/Apps-Lillist-iOS-Sources-App.md": "9aa6cf81686eee815fdc039571a930751abad267",
         "docs/atlas/modules/Apps-Lillist-iOS-Sources-Settings-Pages.md": "9679fdd24750f87aa6293930b3a951a12dd3552e",
-        "docs/atlas/modules/Apps-Lillist-iOS-Sources-Settings-misc.md": "0897b5ff0259968a9f79e1ad118391fa1d49d20a",
+        "docs/atlas/modules/Apps-Lillist-iOS-Sources-Settings-misc.md": "88f9067fa80b8a9df7c4f34f195703216d3fcced",
         "docs/atlas/modules/Apps-Lillist-iOS-Sources-misc.md": "a9a6811f500af2ecf51d9fc9a84a62721e140f59",
-        "docs/atlas/modules/Apps-Lillist-iOS-misc.md": "508c855b9c66d2b82fe08484b589053a5885ac36",
+        "docs/atlas/modules/Apps-Lillist-iOS-misc.md": "59cf6cebed2c8f5ea23228ee11c76441116ee581",
         "docs/atlas/modules/Apps-Lillist-macOS-Sources-Hotkey.md": "a1ace49c8bc6b6dfe2995bb6f0484842b1ae75cd",
-        "docs/atlas/modules/Apps-Lillist-macOS-Sources-Preferences.md": "daf0770a69528e8dbca2ae1b9b71762875010ba4",
-        "docs/atlas/modules/Apps-Lillist-macOS-Sources-chunk-1.md": "a25a0b31c5af556b1e9c9b36e2be0907e9392be4",
+        "docs/atlas/modules/Apps-Lillist-macOS-Sources-Preferences.md": "3cdfe6a92d231193c01828d2130abadac6f2227c",
+        "docs/atlas/modules/Apps-Lillist-macOS-Sources-chunk-1.md": "45004817fee3220224b06b252c0ea4c9db9fdf73",
         "docs/atlas/modules/Apps-Lillist-macOS-Sources-chunk-2.md": "324369c91444ecd343a517aefc962ef50e19572a",
         "docs/atlas/modules/Apps-Lillist-macOS-misc.md": "8717684e25ea017ded7147e370f1f0ea6e00d41d",
-        "docs/atlas/modules/Apps-misc.md": "05c690edad20c8730c13459a5915d9a45f386a4d",
-        "docs/atlas/modules/Extensions-ShareExtension-iOS.md": "dffa9ab173f51344575d4df4a93c3d475025fc7d",
+        "docs/atlas/modules/Apps-misc.md": "22eae4410762be64ad72f83442bb60b6ac2638c6",
+        "docs/atlas/modules/Extensions-ShareExtension-iOS.md": "64158530867522bc41ba715620828fc270974d96",
         "docs/atlas/modules/Extensions-ShortcutsActions-Entities.md": "28c4ee5026f472e2ce99920335ff6caf0f47800e",
         "docs/atlas/modules/Extensions-ShortcutsActions-misc.md": "30c14c239932a90a73e91baeada607477965d2ee",
         "docs/atlas/modules/Packages-LillistCore-Sources-LillistCore-Backup.md": "4fa75640cb5a8d5a4678531754af07795bfcf32e",
@@ -1379,9 +1381,9 @@
         "docs/atlas/modules/Packages-LillistCore-Sources-LillistCore-CLIBridge-Renderers.md": "512661ebfbdde98901e8af27a73ef60a1b082573",
         "docs/atlas/modules/Packages-LillistCore-Sources-LillistCore-CLIBridge-misc.md": "631f84aae35cd2d6c3f92aa88f3d023d52b355bb",
         "docs/atlas/modules/Packages-LillistCore-Sources-LillistCore-CrashReporting.md": "c07b6b7fd12e60a49d04a7767489f721dea62998",
-        "docs/atlas/modules/Packages-LillistCore-Sources-LillistCore-Diagnostics.md": "9fa79a048b56ac11f449df91a25c2ceea2d75699",
+        "docs/atlas/modules/Packages-LillistCore-Sources-LillistCore-Diagnostics.md": "400ea5ecf2cdfd1f92160c2e4850364ef9a7a131",
         "docs/atlas/modules/Packages-LillistCore-Sources-LillistCore-Export.md": "af52f7f97a48e9b5113ebacf0802c54b6af0cef1",
-        "docs/atlas/modules/Packages-LillistCore-Sources-LillistCore-LinkPreview.md": "5035e3e77c275075accb6804d562b50dbf1e6ea0",
+        "docs/atlas/modules/Packages-LillistCore-Sources-LillistCore-LinkPreview.md": "25f4178c8871397dda70eff0a8bf230caf432426",
         "docs/atlas/modules/Packages-LillistCore-Sources-LillistCore-ManagedObjects.md": "1301d3845df8a65717d861bcc6b0c732a78272cb",
         "docs/atlas/modules/Packages-LillistCore-Sources-LillistCore-Model.md": "f34eae3db619a188f1614729bc613d0a845ac789",
         "docs/atlas/modules/Packages-LillistCore-Sources-LillistCore-Notifications.md": "a785624e5693da0228034a3ef816721d8115b722",
@@ -1401,9 +1403,9 @@
         "docs/atlas/modules/Packages-LillistCore-Sources-lillist-cli-misc.md": "06446e59d1aa66e69186f9730b6bef48ec5dfb1f",
         "docs/atlas/modules/Packages-LillistCore-misc.md": "588f3391f1fb7ae80060daca5415edefe6aa6aef",
         "docs/atlas/modules/Packages-LillistUI-Sources-LillistUI-Accessibility.md": "9e6348f1defc3c1b8a0a5859aa4721d5723648cd",
-        "docs/atlas/modules/Packages-LillistUI-Sources-LillistUI-Components-chunk-1.md": "0246c12d5e8cc631f5090c8bea88e742f8f19d4b",
+        "docs/atlas/modules/Packages-LillistUI-Sources-LillistUI-Components-chunk-1.md": "5dc4d4c3ba4cb9742b4707f0928e641ceffe98ac",
         "docs/atlas/modules/Packages-LillistUI-Sources-LillistUI-Components-chunk-2.md": "3005025693c3d9e69af612d524da99895b673448",
-        "docs/atlas/modules/Packages-LillistUI-Sources-LillistUI-CrashReporting.md": "904cb5cf3a6a31f029d25c57180714e5c4223836",
+        "docs/atlas/modules/Packages-LillistUI-Sources-LillistUI-CrashReporting.md": "7314f89c765aab151cd52c1696e5d8af4edf7b31",
         "docs/atlas/modules/Packages-LillistUI-Sources-LillistUI-DragReorder.md": "26e81ab0b4919457957bfb85a150de2f0a4a7922",
         "docs/atlas/modules/Packages-LillistUI-Sources-LillistUI-Editor.md": "c8bf0d2b7c9818c6f288f83a555259b780be97b9",
         "docs/atlas/modules/Packages-LillistUI-Sources-LillistUI-Onboarding.md": "2ad1a823665e68db7c51183387d1ff5edd7ad861",
@@ -1411,14 +1413,14 @@
         "docs/atlas/modules/Packages-LillistUI-Sources-LillistUI-Recurrence.md": "a6b11ff49ed0c2a5decda9c659b16a52b0bd5929",
         "docs/atlas/modules/Packages-LillistUI-Sources-LillistUI-Settings.md": "f19c98bbef86e9e6398873876d59273c8818bc0e",
         "docs/atlas/modules/Packages-LillistUI-Sources-LillistUI-Status.md": "13ee85982b456da78f5f40b6168f3ff21dd05043",
-        "docs/atlas/modules/Packages-LillistUI-Sources-LillistUI-Sync.md": "b36385ef11b6f9d2245adc3f048bee3d5d439630",
+        "docs/atlas/modules/Packages-LillistUI-Sources-LillistUI-Sync.md": "8bcc6fab955d840f7f95bf67d5c62bea2babf36d",
         "docs/atlas/modules/Packages-LillistUI-Sources-LillistUI-Theme-chunk-1.md": "dbdd2ef6d80defb110cf3d4b4a9f28ba3247c744",
         "docs/atlas/modules/Packages-LillistUI-Sources-LillistUI-Theme-chunk-2.md": "95ace458c507db8b534517018c6072525868362a",
         "docs/atlas/modules/Packages-LillistUI-Sources-LillistUI-iOS-Tasks.md": "58b45a6d4032f1e4dc81428c3fd94c0499edc750",
-        "docs/atlas/modules/Packages-LillistUI-Sources-LillistUI-iOS-misc.md": "f0537dd3f5b046b5ac34cd344ee4b6b151e4ab4f",
+        "docs/atlas/modules/Packages-LillistUI-Sources-LillistUI-iOS-misc.md": "b596496055fd764bac016c2c5e88306c3adcab33",
         "docs/atlas/modules/Packages-LillistUI-Sources-LillistUI-misc.md": "ff984258bc034a9a24c762bd71a55bd7d0584f23",
         "docs/atlas/modules/Tools.md": "12f0da0a05abe1c8c1610b46b7601bd806de13ed",
-        "docs/atlas/modules/root-misc.md": "4af2e83b33423ab80059ddcfb0dda30c73f313a0"
+        "docs/atlas/modules/root-misc.md": "5bf0d5a3030ecc3747e8d3b579b4c09418935fee"
       },
       "summary": "System architecture and cross-module relationships",
       "verified": null
@@ -1437,6 +1439,7 @@
       "edge.semantic/01dd6512d953c0abbc12c767",
       "edge.semantic/02fe83fbf3ef263bdd40c1c9",
       "edge.semantic/06454fd13bfba515018ff1d5",
+      "edge.semantic/0a5ad26d4b495ed856a5fb86",
       "edge.semantic/0c88c1c053671d202fa4e9e2",
       "edge.semantic/0f103a05856d757e0ffc17a4",
       "edge.semantic/0f5364dcdd1a296d03585bf4",
@@ -1446,7 +1449,6 @@
       "edge.semantic/15adbc245de0ebc06d50e49d",
       "edge.semantic/1a1363bb9f4bbb212320fe54",
       "edge.semantic/1bd379ebe799f2bc9db8a63b",
-      "edge.semantic/1df842063d00b69a3f723517",
       "edge.semantic/1eae75e851a84e2131393acf",
       "edge.semantic/22e4bdc2315d95bcbd607d6c",
       "edge.semantic/235ff78a35fb06d1309268c9",
@@ -1454,20 +1456,19 @@
       "edge.semantic/289ee3397dc6f53eee8da7d8",
       "edge.semantic/29043e18f0cbebedc12a672e",
       "edge.semantic/2b3f4b13ce3cf335a5e576d3",
-      "edge.semantic/2e4919b68708f6ef4df9fa88",
+      "edge.semantic/302ed12d6055ae08ad825d2d",
       "edge.semantic/3186e044f0f47420e5e4bc0d",
       "edge.semantic/3462727300742affa9e10f28",
       "edge.semantic/35168c7c1e11488d76ddf55c",
+      "edge.semantic/37dc5bf161aec6f566b80d2f",
       "edge.semantic/38cb7477c098a92b22f65b3a",
       "edge.semantic/3b5413fd2d6a2328278e587f",
       "edge.semantic/3ebcd6b9b312738e15adf461",
       "edge.semantic/3f1c998c991ef21c41c9abfc",
       "edge.semantic/40de12903f5a9ec0e0f182f6",
-      "edge.semantic/4a8b6cae894681fe64ec07d3",
+      "edge.semantic/46555a40bed6c9b95fcaad51",
       "edge.semantic/4ade34917f1f4d69e7a8b755",
-      "edge.semantic/4bf4a4c9caffc27ba656f270",
       "edge.semantic/4ea50c857f9f8eb91c11beb6",
-      "edge.semantic/4f84a0a5b275aeb3c92fea76",
       "edge.semantic/5080bdcc9c640078fc62544b",
       "edge.semantic/51d14be8e08342d41c42320c",
       "edge.semantic/592dbe1c543a5d42b0781977",
@@ -1486,16 +1487,14 @@
       "edge.semantic/6bf559b74c88fb691b97d098",
       "edge.semantic/6dba77495f91c41036185ed4",
       "edge.semantic/7337da2cc23e9bd2f4663af6",
-      "edge.semantic/750d65bf3d72092063d991ad",
       "edge.semantic/797f477a58d494e0e89f0b9f",
       "edge.semantic/7a02f58ae3b101bf97333446",
-      "edge.semantic/7ba823c22ae931f1e0f39426",
       "edge.semantic/7e277239a3d835f359946107",
       "edge.semantic/7e6174a3b4a8d58617aabfa0",
-      "edge.semantic/814d04b85343d9297634e85c",
       "edge.semantic/825736b96f427856e4e6c800",
+      "edge.semantic/8b4eed07bcd2c03b01729a17",
       "edge.semantic/8d37c1407c183b97482c8059",
-      "edge.semantic/8f9afd849545852de7143baf",
+      "edge.semantic/8dfe2efc4bd0af981f5c5fb2",
       "edge.semantic/91c80315c9573648feddafda",
       "edge.semantic/944f54a230fbd97ec6fd1d02",
       "edge.semantic/959e618f644db36ed936f5d3",
@@ -1504,6 +1503,7 @@
       "edge.semantic/a44cf23c44f01f5020f26ebd",
       "edge.semantic/a477a8a8dc1b91ff7114017d",
       "edge.semantic/a5b11b74a281d91f4f7b3042",
+      "edge.semantic/a89d11849366e59011445b3c",
       "edge.semantic/acd5fa8a3ecfac756da8100d",
       "edge.semantic/b108d7ea7c2f121be09fada7",
       "edge.semantic/b38eef434e49405c134152b7",
@@ -1512,19 +1512,21 @@
       "edge.semantic/c0d5e57a082408c31c00612e",
       "edge.semantic/c4392f0514aca32930c5c011",
       "edge.semantic/c6ff78bb64cc164537102971",
+      "edge.semantic/cf97c400fc63e620638df5f3",
       "edge.semantic/d11e92e408734f1d932ad4a9",
       "edge.semantic/d5552440d27c14a7cc0bc3ac",
+      "edge.semantic/dc04910b0862f6990ba7a3b9",
       "edge.semantic/dcaf2996bea4d9b733432c8b",
       "edge.semantic/e13766f9f2001128b73357e0",
       "edge.semantic/e5ab91dc12812a30086b3bf7",
       "edge.semantic/e652bfb91069c9f6ebd30d91",
       "edge.semantic/e65c6589ea358c31a6ed8b84",
       "edge.semantic/e815d2a7cd66ffd4c065e1f0",
-      "edge.semantic/ec044e91be203db19f48e9fc",
       "edge.semantic/ec6fa0eed14582460c7912c8",
       "edge.semantic/edd3d9c1ac65be702999d7ef",
       "edge.semantic/f0ad9589b8e2d84585a199e7",
       "edge.semantic/f4c051f98b78fd49582e49c1",
+      "edge.semantic/f51946c72db97e0689d11ff8",
       "edge.semantic/f6eb5853168cc2f3d7a52610",
       "edge.semantic/fb281510565cdd74db183d28",
       "module.gotchas/be1371ecb37d0d52ccdc48e4",
@@ -1564,7 +1566,8 @@
       "symbol.load_bearing/81ab8b3b5cd262a3ef89e52e",
       "symbol.load_bearing/833081e0f148bac625ecc71a",
       "symbol.load_bearing/868d7e8107bb35f1868fc97d",
-      "symbol.load_bearing/ac1585b9ba7fe2841cc906cd"
+      "symbol.load_bearing/ac1585b9ba7fe2841cc906cd",
+      "symbol.load_bearing/eab363c0aaeb33a9e6685e21"
     ],
     "docs/atlas/modules/Apps-Lillist-iOS-Sources-Settings-Pages.md": [
       "edge.semantic/0d193b002114cf531a76876c",
@@ -1605,46 +1608,50 @@
       "edge.semantic/0288be35e1f91b50bbb5d319",
       "edge.semantic/1215c76ac6b4de9330e00fb3",
       "edge.semantic/127cc56fd4817173c19b351e",
+      "edge.semantic/23b7ff6bd2e73642f4594463",
+      "edge.semantic/2546de5cf6668e497f34c1f0",
       "edge.semantic/258e281ea63390b55fb48666",
-      "edge.semantic/2bce5a5ffff4d81f61be8180",
-      "edge.semantic/3413c7f2771620ec0c22d5d2",
+      "edge.semantic/2844d019b5d5d6d9323c98ba",
+      "edge.semantic/322d8692e6fe0d913e8f211c",
+      "edge.semantic/335e03325f912d5e59ccae11",
       "edge.semantic/386d0141c4a37c0afb1cae6f",
       "edge.semantic/3d1c8ff3b975903ccfd6c56a",
       "edge.semantic/3f82b9bef5f30951e79c07ce",
       "edge.semantic/3f9993907fcec9a7f504287e",
       "edge.semantic/40fb73a63ec937da2979e967",
       "edge.semantic/4133761e45a61ec16edb6a30",
-      "edge.semantic/48e2778ba1307a00cd6cb2b4",
+      "edge.semantic/43c643a16ae8b2fae3a66f78",
       "edge.semantic/4b443a5e8d46f966b6461b22",
       "edge.semantic/4b9712010cfa5de4b67ce4b7",
+      "edge.semantic/4c323e65a7e7e12a8946fadd",
       "edge.semantic/4df1e4c42fe61018d3733495",
       "edge.semantic/4f60a6c710ba7ad52171235a",
       "edge.semantic/5140f7b124eb81f01549056c",
       "edge.semantic/52e7924b0d7358d03af9d43d",
-      "edge.semantic/5400676e08c47345060e213f",
-      "edge.semantic/5fec091db98d087d5d05e9b7",
+      "edge.semantic/5fcb3970b0432ed7c6d7d138",
       "edge.semantic/608e34af08490f3567c1b2d9",
       "edge.semantic/66d73fe32460f0acc5a999af",
       "edge.semantic/695caee3e26c493f282fbb2c",
       "edge.semantic/6ac5b294a3b16255e7977db7",
       "edge.semantic/6b3c4edb6eafe9622b9c4d61",
       "edge.semantic/6dec76b71830387dabdcaef9",
-      "edge.semantic/75f8fcec7218552a0d55570e",
+      "edge.semantic/74ec645401fbe805bbf318a4",
       "edge.semantic/775a8b22a0017dab22e59869",
       "edge.semantic/7bb2906853495934f832535c",
       "edge.semantic/854eb3fcb5c2bfe4da2b3b54",
       "edge.semantic/9112de96f309dd170936bbd5",
       "edge.semantic/94faa338f80385c40a6a5093",
       "edge.semantic/9554797287fceb23268412a5",
-      "edge.semantic/991dfa8c11ccd2907c29dd05",
+      "edge.semantic/9b99a6d54c7faba9c66e7641",
+      "edge.semantic/9d1a0f26e286e60fe159cc7c",
       "edge.semantic/9e5babffec6a59db49a977ab",
       "edge.semantic/9f2db12ace73f034a469bc28",
       "edge.semantic/9f7f3d6bd9e8a63ebb4ff3bd",
-      "edge.semantic/a0315fffd8aaab9720d691c2",
       "edge.semantic/a10f545bb7308a47a50b733c",
       "edge.semantic/adcbcd58655cc3ab1af0a844",
       "edge.semantic/b0bc8a508fb3d81241ee5b22",
       "edge.semantic/b3e6794fb84d40ecc0da3fed",
+      "edge.semantic/b53fdca1938f9c61b1668ba0",
       "edge.semantic/b5c18c6ba9bda4542463b983",
       "edge.semantic/b7ee21e2932c2027f2e161ff",
       "edge.semantic/c045dbff8339e393043e25e4",
@@ -1653,31 +1660,27 @@
       "edge.semantic/c388bc95caaedfec140bbf25",
       "edge.semantic/c62368b648bd175a9e3622d5",
       "edge.semantic/cc314cb32f5f05984af4ae75",
+      "edge.semantic/d05a01d61532087019fe7d7f",
       "edge.semantic/d26b14b6f7cdbda8400b4952",
       "edge.semantic/d6732ec9205c082b62327a73",
       "edge.semantic/da559d0a7a79f3bea5bbc00e",
       "edge.semantic/e6fb44ac0a5eec9f0d2d4d1e",
-      "edge.semantic/e714c7eff93801b9f5cb0f2c",
-      "edge.semantic/e7af9cce8e25e5c305913db5",
       "edge.semantic/e81294e8b3a597d726c6c91e",
       "edge.semantic/e8aac2e6f015a9039f3aa83d",
       "edge.semantic/e908833d490b5e76d51b0257",
       "edge.semantic/e9e076c700cc8be515256da6",
       "edge.semantic/ec70b315ef59e24af635c727",
-      "edge.semantic/f3a40f5f47b57fbca96a8888",
       "edge.semantic/f546e4da6f120e8e87448fc5",
-      "edge.semantic/f7b593dd1533873ab62be383",
       "edge.semantic/fa496a60bd15fd123a2d61ff",
-      "module.gotchas/96e56b1eb57a4ba17d084ab3",
-      "module.purpose/30b39f665c22c2c1b8f54748",
-      "module.read_when/473591eea7dc05423414020b",
-      "module.summary/01ba4aaf2abe6183c92b6ddf",
-      "module.type_notes/58b32147f6bcfc5663af5706",
+      "module.gotchas/502ea9b5f6ddbb1eb66b099f",
+      "module.purpose/f663f865e23d95439988d141",
+      "module.read_when/2107a9fa4110ff95135ee6be",
+      "module.summary/9c5dcbf36ba09ab4ba082ae3",
+      "module.type_notes/50c914522ae7da33dcbe7a39",
       "symbol.contract/22e8efd85417c33cb6ed1e34",
       "symbol.contract/240ada1850eac558d8928262",
       "symbol.contract/2e5186572444f2fed33ab08d",
       "symbol.contract/4ef568e95ae6def174d323d7",
-      "symbol.contract/6bfb6957ee16de1a0f2ea1d5",
       "symbol.contract/6cdc13553d80cc2947bc91ce",
       "symbol.contract/95e719c8d724b8d617548aee",
       "symbol.contract/98c34a59c95d5c93929f1cb8",
@@ -1823,43 +1826,42 @@
       "symbol.load_bearing/a3b2ed3fda198aaf7fb3fc42"
     ],
     "docs/atlas/modules/Apps-Lillist-macOS-Sources-Preferences.md": [
-      "edge.semantic/053f16e1abb75373a6d5d04e",
       "edge.semantic/070bdd5d1773510e62aa78c3",
       "edge.semantic/0c2c9cb611c2f7e392c8296c",
       "edge.semantic/0cad5d87b414e1c9b02b257b",
-      "edge.semantic/12c98b55e38061c1038bf4d6",
       "edge.semantic/1584063e2bfb519983526cc0",
       "edge.semantic/1b3d2deea060c06a04fe2034",
+      "edge.semantic/1e6fe032584994141e1f6ae4",
       "edge.semantic/1f6ee6cc3eb2624e18bb86ec",
       "edge.semantic/20d6f8024fb8c0631ca4909a",
       "edge.semantic/24f6d4e70d6bdfe8c8eadd10",
       "edge.semantic/291b7d919e5d1d9c56729b9a",
-      "edge.semantic/2cc50f0b8c172e3c33b5bee1",
       "edge.semantic/2e6c42439585bec9dee656b7",
       "edge.semantic/321991ad27e348f273bf2d22",
+      "edge.semantic/3a40c8dd8bb55fba88798c05",
+      "edge.semantic/3b742d0ab1668dcf5546c612",
       "edge.semantic/441b8193672ab0ee23dd3b20",
       "edge.semantic/486fde31ff45db2d2462d954",
-      "edge.semantic/4aaddfc19eeaf6a3dcdafd73",
-      "edge.semantic/4d806f9c06d900cdf3b12f1e",
       "edge.semantic/56a0c84c2e161ab73c22dfef",
       "edge.semantic/5c5c27d92e368fd7e920b3ef",
-      "edge.semantic/612c1f1527d3fd170e203525",
+      "edge.semantic/5d2dc842e553d6db0f852967",
       "edge.semantic/6685d8f5cc551c82968e7574",
       "edge.semantic/677499b9c9b4aff4a20e54bc",
-      "edge.semantic/76f0e6b7301a37b331997e3a",
-      "edge.semantic/77397a57f83931843244e42c",
+      "edge.semantic/6a2aac9349548737001f1158",
       "edge.semantic/7bb2906853495934f832535c",
       "edge.semantic/7e0a4e39bcdb60a0de672c3f",
       "edge.semantic/854eb3fcb5c2bfe4da2b3b54",
+      "edge.semantic/859b8c8039e1c9803534bcf9",
       "edge.semantic/8ba18e4e0c30a878f449feaf",
       "edge.semantic/8dca929c4c1eebaa2b50cfe5",
       "edge.semantic/90acc5b25821c278a793d3be",
+      "edge.semantic/9159a709c42acccc63804527",
       "edge.semantic/9429bd7f8306ed66dc79575b",
-      "edge.semantic/9cb2580106196e47bef9db3a",
+      "edge.semantic/9d1a0f26e286e60fe159cc7c",
       "edge.semantic/9e5babffec6a59db49a977ab",
-      "edge.semantic/a274c801618fb550d4ef0c63",
       "edge.semantic/b0bc8a508fb3d81241ee5b22",
       "edge.semantic/b29ee3e947ac95df190269ec",
+      "edge.semantic/b538de015d6265a8582baafc",
       "edge.semantic/be13cf8739479c31c9e31228",
       "edge.semantic/c14cc2af2a2a0a79b1a3a98d",
       "edge.semantic/c2b69d4a7a5e6b1b9d4782a9",
@@ -1868,22 +1870,24 @@
       "edge.semantic/c770af0ddbc5b5a04780b06e",
       "edge.semantic/cbe22e8b80f2a317c7debabd",
       "edge.semantic/d25e9aebdc8652c763552a59",
-      "edge.semantic/d9084170f44fc04c1d70bd1a",
+      "edge.semantic/dbdfde6ed7ea146865ad4918",
       "edge.semantic/dcbc2abde3885ef9eb47bf2b",
+      "edge.semantic/e5d69e5270a9f8b5e334a3ef",
       "edge.semantic/e90c06978ff1b16e747f8488",
       "edge.semantic/e97d580d602829ce441d9cf7",
-      "edge.semantic/f4f4eca813f79c2eb9751dda",
+      "edge.semantic/edfddd5273114f594dea7aa3",
+      "edge.semantic/efc728e6a77e85a4ff0a4483",
       "edge.semantic/f780d4df588b1e4e06da8474",
       "edge.semantic/f90d69e4322d0f8790cd948b",
       "edge.semantic/f924bf8131bbdc2ef9471038",
       "edge.semantic/fe82601d4007b9fbac527342",
       "edge.semantic/fee1428218232a121e920740",
       "edge.semantic/ff555b60fd7d8d03422bc1d4",
-      "module.gotchas/3dd6666353cdd90bd4a232b4",
-      "module.purpose/15b171ad81c94781b1ffc348",
-      "module.read_when/844e9fc88a1bc959de5082e2",
-      "module.summary/f639789bb8b5be44001bdb6a",
-      "module.type_notes/db0fc365158bb6398e2052ce",
+      "module.gotchas/de6c6007c3fc2b7e68c419b6",
+      "module.purpose/a96180b32548287e9cc26e94",
+      "module.read_when/01e9bcb18362aecc465f6293",
+      "module.summary/dc9d721ebbd6b38f604f6850",
+      "module.type_notes/fbe76dfff1f2047d3115477c",
       "symbol.contract/1a09fe2ec8857cd02aab0865",
       "symbol.contract/467beb5f6606ff9c6f7334c8",
       "symbol.contract/48a1069cf9f57656277c4d66",
@@ -1896,7 +1900,6 @@
       "symbol.contract/a6f98220858fb3957b41428c",
       "symbol.contract/b8e556d5c87d55a2e36d68d6",
       "symbol.contract/e6f0ae687e14220dfdfde3a8",
-      "symbol.contract/ef9db34db26a13bc23eaa291",
       "symbol.load_bearing/083c4b04294cb0a4ec2b7b86",
       "symbol.load_bearing/1d352c3c483637b7d9cba4e0",
       "symbol.load_bearing/2aa079cf9651ef108cbd7037",
@@ -1928,7 +1931,6 @@
     "docs/atlas/modules/Apps-Lillist-macOS-Sources-chunk-1.md": [
       "edge.semantic/000f76f1adc891fb3a9f54a6",
       "edge.semantic/001ac8a8db01141c35d28bff",
-      "edge.semantic/017dc1da3e1c252cf63af8ff",
       "edge.semantic/059cf52f2bea43e3f9c63f12",
       "edge.semantic/059e2a5860a6fa77f25e74ac",
       "edge.semantic/08fa1b74ae4e5ebcbfe27d14",
@@ -1945,6 +1947,7 @@
       "edge.semantic/193ecb5e16a9c7cbbc158f98",
       "edge.semantic/1adb4c64b14c21e66e5f6349",
       "edge.semantic/1dd218ea1c90c20f9dc3cb89",
+      "edge.semantic/21712b3cf02daa0002729584",
       "edge.semantic/21b37ac14f6a2d21a5e1b889",
       "edge.semantic/21e98defac839dfe1077817e",
       "edge.semantic/26f77d53d41a5ab2853638df",
@@ -1959,7 +1962,6 @@
       "edge.semantic/337b2cbb8a2df0f60db48142",
       "edge.semantic/3600730193f2d12b7765f4e0",
       "edge.semantic/36b6159563ba391eee9240e3",
-      "edge.semantic/371cc68eef889bd09d7e3741",
       "edge.semantic/395582e273e95b34a6daf91f",
       "edge.semantic/41a809180df2886271b10bed",
       "edge.semantic/43d4376842ce5e6bedb45705",
@@ -1990,24 +1992,24 @@
       "edge.semantic/70476e9e2d8e568d3c64402a",
       "edge.semantic/73735afca4b2e96a8f56a6f9",
       "edge.semantic/753282e6a43764ef6586e50f",
-      "edge.semantic/76114ecb3d4308282142aef1",
       "edge.semantic/7a0af7773ae8746bad76d3c0",
       "edge.semantic/7c2cefbad799944b2ac1b574",
       "edge.semantic/7e31fe903c725dabbec37b67",
       "edge.semantic/846953fe49f8e4f314d40775",
       "edge.semantic/84a4da1ecda87a7288c41aab",
+      "edge.semantic/84ece910eca26d541a9c4d9e",
       "edge.semantic/88cde925c9f81887fdaf2ec5",
       "edge.semantic/8c2b5f48b4700958cfe3edf0",
       "edge.semantic/8d1916a93378d692cd9f68b7",
       "edge.semantic/8d204ceaf89754bc239463d8",
       "edge.semantic/9115bd1121e66443616c5bd9",
+      "edge.semantic/91e555239676190ebbe1dda9",
       "edge.semantic/9769bfd6a206ab39480c5018",
       "edge.semantic/99a418736ce36a199aa8356c",
       "edge.semantic/9d8700bd708755d654ca1dfd",
       "edge.semantic/9ef09b148905e85ed7ae4537",
       "edge.semantic/9fa364e9a329d9ce3588c3ee",
       "edge.semantic/a03cf6953f0b34ea548b3282",
-      "edge.semantic/a3a45009374e3519319f8d88",
       "edge.semantic/a581aee13eb2706a76f43825",
       "edge.semantic/a8a196e9bc0e6d1970ee235a",
       "edge.semantic/afead45d358a7e9caedc7a3c",
@@ -2029,9 +2031,10 @@
       "edge.semantic/cd3fedcdb5268d063134ed45",
       "edge.semantic/cd49380a5d468014da38094a",
       "edge.semantic/cd739834da5e634155a3331f",
-      "edge.semantic/d0a52410a888176fc473b644",
+      "edge.semantic/cea856df6250eec987fea73a",
       "edge.semantic/d3def595c09d4c890bc435ed",
       "edge.semantic/d5d4b41d39515d642b896ccd",
+      "edge.semantic/d634b7048f4589f4544d6f64",
       "edge.semantic/d80133aa949c9146dfa9bfc3",
       "edge.semantic/dca965c2c0c0a83706a81122",
       "edge.semantic/e25be7bfa9bb9a10baa6ffae",
@@ -2101,6 +2104,7 @@
       "symbol.contract/ffebabed1089abdb92a3206e",
       "symbol.load_bearing/0d4503ce8c137a8e0e36f0d9",
       "symbol.load_bearing/0fc1b594ed1cad70a968d5e0",
+      "symbol.load_bearing/105ee073f8341bb3a5bb88ae",
       "symbol.load_bearing/1782c1620e1223d3b4dcc5d8",
       "symbol.load_bearing/2acf300d5cd2f9874715ae34",
       "symbol.load_bearing/3426d12de4ce5580a0f07cc0",
@@ -2204,6 +2208,7 @@
       "symbol.load_bearing/23539f9b55a835c978b83aa7",
       "symbol.load_bearing/39b33be43cfadec449c2bcf5",
       "symbol.load_bearing/7c29c2d969ea7ae47577a4c1",
+      "symbol.load_bearing/8c856187c796de8eec16691d",
       "symbol.load_bearing/c79163d889e6d0bdc44d4851"
     ],
     "docs/atlas/modules/Extensions-ShortcutsActions-Entities.md": [
@@ -2668,21 +2673,22 @@
       "edge.semantic/315e1b09b1877439c22734c2",
       "edge.semantic/36ebe102504b90b076da1461",
       "edge.semantic/6634df0866f6c924fdf1bb79",
+      "edge.semantic/79408167528d5c5331cffc93",
       "edge.semantic/79f4387db69a84a716d824f5",
       "edge.semantic/7ed837bc702a6c59776c6bae",
       "edge.semantic/7fdb880cb7afa1d8454922ad",
-      "edge.semantic/8fdaa0be7fdbc178776587b9",
       "edge.semantic/98af56322b129395a9ef4d7c",
       "edge.semantic/b08289e29e8e9b4aab337a58",
       "edge.semantic/b94f18f417afadf884ccc98a",
       "edge.semantic/ca1b0a7b99464715754fc74f",
+      "edge.semantic/de60387be8f183b36c3824a0",
       "edge.semantic/f02803de682ab672f0f2d2cc",
       "module.gotchas/e49bd1cb6ac6b72baac2be2c",
       "module.purpose/409fc244594f1ddc9dd945e5",
       "module.read_when/2efbdbd752d2af003f9c1204",
       "module.summary/bc8a12df369be8a6d89ae472",
       "module.type_notes/bbfb4705c565285988750203",
-      "symbol.contract/024b11ad34963392fbfdfa0e",
+      "symbol.contract/0dfea79d90b0245e63eceeb1",
       "symbol.contract/1067a6a05125c7f11687b97b",
       "symbol.contract/22eb2febab3ec6cb1901c5f6",
       "symbol.contract/3c424fdcba275c0555aed8d4",
@@ -2793,7 +2799,7 @@
       "symbol.contract/f46cbf4832406a5d0202a8f8",
       "symbol.contract/fb1bbe2e3d9f9f8dbcac51dd",
       "symbol.load_bearing/4a1de22964dfa0665ac08836",
-      "symbol.load_bearing/abb0ea349866e8636330f4c9"
+      "symbol.load_bearing/51da6c2b611589d50c6fd7c4"
     ],
     "docs/atlas/modules/Packages-LillistCore-Sources-LillistCore-ManagedObjects.md": [
       "edge.semantic/3c5bb887ee52a08c8f332e4e",
@@ -3843,21 +3849,20 @@
       "edge.semantic/0bde2f7b28ef794d752e090f",
       "edge.semantic/1d734630dfdaffddd80349a2",
       "edge.semantic/2175254566ab76931c420744",
+      "edge.semantic/2737e7b5ff442504780e6397",
       "edge.semantic/2a32d07ff8df6c6557b4c906",
       "edge.semantic/2aece74f21ffce404d8420bd",
       "edge.semantic/3538f34880155eef8c75a23c",
       "edge.semantic/3b25be0c12f280ee337de00a",
       "edge.semantic/3c5925ad7e34e762668ea27f",
+      "edge.semantic/3f947b6d8a06e23653b68914",
       "edge.semantic/4134249db3801e86eab49898",
       "edge.semantic/44bb7cce203f3d44cf108a0f",
-      "edge.semantic/46f8fa3be695a3827f6b286f",
-      "edge.semantic/5035bd0b2cd3fa994ad03ed8",
       "edge.semantic/592e3a388bc7b6d897a45b95",
       "edge.semantic/61b26d843f9c4acf6a988688",
       "edge.semantic/631f63c95c0cf52e490cef5c",
       "edge.semantic/6a17758cd8f5c7342ec75120",
       "edge.semantic/70249f6888b1e6a33b2f1a2c",
-      "edge.semantic/7290f57b721966963e2fd56b",
       "edge.semantic/72ca6d07d5c4a91215a01910",
       "edge.semantic/73dd7b6e75f6bb4f935a9950",
       "edge.semantic/73fe8208c0b180d0be842b29",
@@ -3870,7 +3875,6 @@
       "edge.semantic/a8d4e9e9c59726a3784a185d",
       "edge.semantic/a90acf2dca388eb786470634",
       "edge.semantic/ab10ca7b54f7e6cfc470bf7c",
-      "edge.semantic/b203fd6433d8a332122f1f15",
       "edge.semantic/bdfff71b53de1d7dcd78af32",
       "edge.semantic/c0d03b1f5ee22717586e86fc",
       "edge.semantic/cb8d4d08beb74f824bfaf4fe",
@@ -3883,8 +3887,10 @@
       "edge.semantic/e5457cd2d864e99d89721162",
       "edge.semantic/e7de2af77c0f1bcab08846b7",
       "edge.semantic/ef5aea8e99b6ab9425f59ac4",
+      "edge.semantic/f297c664bfc4b2f4126720de",
       "edge.semantic/fa1240dafb73cc55a495f09b",
       "edge.semantic/fbaaa13f2460ac0e864b0b15",
+      "edge.semantic/fc3165209ed99f48edc435e3",
       "module.gotchas/9e0104d879c0c31e6fa5f931",
       "module.purpose/08f6dabb2717198bfa051dda",
       "module.read_when/2ffbf6eb5bb9dde0450e3663",
@@ -3922,7 +3928,7 @@
       "symbol.contract/f38b981d3bf0f926c990c8ea",
       "symbol.contract/ff46004a79a7410237e421fd",
       "symbol.load_bearing/5b59ad0eb4af175011c318fb",
-      "symbol.load_bearing/71525588b6124781ab6afc5a",
+      "symbol.load_bearing/69305b32183971d417ea3f94",
       "symbol.load_bearing/82c7a981fa9f7992f9fb5cec",
       "symbol.load_bearing/89bdbaeab3984d271c7a1da1",
       "symbol.load_bearing/bb85f6f38f508865753cbe94",
@@ -3952,15 +3958,15 @@
       "symbol.load_bearing/b7825b9f5fc9abbc4472f688"
     ],
     "docs/atlas/modules/Packages-LillistUI-Sources-LillistUI-CrashReporting.md": [
-      "edge.semantic/0bf96edb606f60e81bcdb710",
-      "edge.semantic/1981ac69090d20a724563ba0",
+      "edge.semantic/2a3e261e4836ec10ddac757e",
+      "edge.semantic/33edf8563f1987beb96811db",
       "edge.semantic/365a725cb11dd1bfad1a03d3",
-      "edge.semantic/40b1038d5182a5adf8f0bbc4",
       "edge.semantic/6734d8ae3954d9fa03aa02f0",
       "edge.semantic/6787471a0c637d5992cff6b9",
-      "edge.semantic/9b3e41cb49f0c506527be185",
+      "edge.semantic/6d24cbd5952ec2c1409260e6",
       "edge.semantic/b2f5b3dacfb07919a2256aa7",
       "edge.semantic/cb71686d12264fce09cd2bfb",
+      "edge.semantic/fb741fb6ec57249bff8e257d",
       "module.gotchas/d618ba6449914ea77c99ca11",
       "module.purpose/5dd5cf55be9dd983464eb3dc",
       "module.read_when/2b905380a9a43e8228e9a7e3",
@@ -4251,19 +4257,21 @@
       "edge.semantic/d24b9838bc785346e844feef",
       "edge.semantic/d45db83072a95ebc524199e7",
       "edge.semantic/e5e07dd25d9d434b6ddcfc3c",
-      "module.gotchas/729fe8bfe4a105db12fe334a",
-      "module.purpose/83020203cfc9ff5c6b5770aa",
-      "module.read_when/30762dc0feee66cf2a03a78d",
-      "module.summary/9cc000283500f670c556700d",
-      "module.type_notes/d50d8555674c3b9b827ed54a",
+      "module.gotchas/9da5cf562eaa4679785fc9e2",
+      "module.purpose/21f18ec2a3b2798874d0a139",
+      "module.read_when/4599f2ed9ea708dfe24b1f1d",
+      "module.summary/831b721c3eaf9ad4111dccfa",
+      "module.type_notes/9cf18288ee661880b0b2bcc0",
       "symbol.contract/05aba201eccaf0a4677b2f90",
       "symbol.contract/14e5f75180873946beb3a902",
       "symbol.contract/386d7d6cc8d28f784663c3b0",
       "symbol.contract/39fd2f158729af70f3a83ab7",
+      "symbol.contract/5e62b4994961c988a5cf7f94",
       "symbol.contract/6476981c949f02259bcfc0e7",
       "symbol.contract/6e98f57cd39cdba71e519120",
       "symbol.contract/7917cd45c6c253bef71053d6",
       "symbol.contract/9c07dac356a300aacd33294c",
+      "symbol.contract/cd972dab886e6e8e6e0ed6cd",
       "symbol.load_bearing/08481e15f87052596874242c"
     ],
     "docs/atlas/modules/Packages-LillistUI-Sources-LillistUI-Theme-chunk-1.md": [
@@ -4392,30 +4400,30 @@
     "docs/atlas/modules/Packages-LillistUI-Sources-LillistUI-iOS-misc.md": [
       "edge.semantic/01eaac134467e1e8314b2a54",
       "edge.semantic/08f2ab5a93a7eeb1a4b07304",
-      "edge.semantic/0e804bf136eb177115080899",
-      "edge.semantic/1440dd4ee7d9d967a9d54805",
+      "edge.semantic/16bc0e1d91d66fc5e0326bec",
       "edge.semantic/1b4dd65942aeeebb5febe759",
       "edge.semantic/1d9e33190932aa1ad84948d5",
-      "edge.semantic/1f8a2a55f4291988c435451d",
       "edge.semantic/213fd2d77100477079ccc694",
       "edge.semantic/225bef109c421c62f295657c",
-      "edge.semantic/2b6be9f4b31a903b3f8acd53",
+      "edge.semantic/27ce74086eed52682f9e51de",
       "edge.semantic/2b710672d93deedb6974eebb",
       "edge.semantic/2ff13d9b38e2cdee165fd694",
-      "edge.semantic/34473ff3ddbc80710cf793c0",
-      "edge.semantic/4ab2fcf196b47885627b65ae",
+      "edge.semantic/3f7c8b2a72dcb4adcb2cf1a6",
+      "edge.semantic/4054b205ea2eaa974359dc47",
+      "edge.semantic/505d2530f8fc59c17d259ac4",
       "edge.semantic/538a87ad412751ab6a3dd6e9",
       "edge.semantic/55c3dba6fa6e8302ba3ae128",
       "edge.semantic/57d887f87f750b58756c6d54",
-      "edge.semantic/5b34c740199d5444500f56d2",
       "edge.semantic/5b7b0d0c32e6a4bf6de4f106",
+      "edge.semantic/5c5b50f9ce461f9cdcbbd6fd",
       "edge.semantic/5c6883c45ce61469e068d5c9",
+      "edge.semantic/5df05cce7d9a7aa167293773",
       "edge.semantic/5eb48da3c64dc15cf898c702",
-      "edge.semantic/60889fa961e5099a5a3cf8af",
+      "edge.semantic/6564c7ae3121fa4311198fd0",
       "edge.semantic/6b1cc628a49e9e9c098c6d53",
       "edge.semantic/6ebd0a22f193fec992522a04",
       "edge.semantic/727b7d42052d32d01d6d9f7d",
-      "edge.semantic/77461543e1d2a35448c3fab4",
+      "edge.semantic/731fba401aa9370473a83e88",
       "edge.semantic/7da279c713aed23a97722fd0",
       "edge.semantic/7e53ef36c0338022acc855ce",
       "edge.semantic/85b389c8e6b45ee676614a5d",
@@ -4426,20 +4434,17 @@
       "edge.semantic/9e86eaae73a2ceae566daddf",
       "edge.semantic/a08012c0c74746e923fe8261",
       "edge.semantic/a7b22baf3fc7f625278ca1c9",
-      "edge.semantic/a93a2aa415a2ca20159003d3",
+      "edge.semantic/a8f60fc4abaf70ba46704f60",
       "edge.semantic/a9be5974e584629e5d8c400c",
       "edge.semantic/ab98fd58bbeb2f2ee5f1dc9c",
       "edge.semantic/adde650fb45f2ba61a688303",
       "edge.semantic/afb2d3241045cd46fa4ec785",
-      "edge.semantic/b034fd7f6327fd73611d34c4",
-      "edge.semantic/b06f9ef503a9f935f536268b",
-      "edge.semantic/b14dc259c27aaef4ac71056d",
       "edge.semantic/b1cf995550c553622c374c8b",
-      "edge.semantic/b237eccecdf0a9ee255ae875",
+      "edge.semantic/b8c715cd4a7f586f1e035c1b",
       "edge.semantic/bb8c5b3ce328b75138698461",
       "edge.semantic/bce4882995c2c7e7f10a49fd",
+      "edge.semantic/bfc4314765caac230ff1b446",
       "edge.semantic/c0cac774c19464c1d694b065",
-      "edge.semantic/c0ddbb690c4b57da89e36cc2",
       "edge.semantic/c1c76b836de95f07085af98d",
       "edge.semantic/c570a958da48906f0779c966",
       "edge.semantic/c79669838ebdc856e84642b8",
@@ -4447,17 +4452,20 @@
       "edge.semantic/cf0e96967825ed34fb041b68",
       "edge.semantic/d0d61cbbd73b52e91d4cca1c",
       "edge.semantic/d18c40741957679e26cfa62b",
-      "edge.semantic/d2013c377e48e08168c34fd2",
+      "edge.semantic/d2dedcb262f52352e21876f3",
       "edge.semantic/d8e64999cee2e5ad2048a383",
       "edge.semantic/dad334532ff388afb7e49cb2",
       "edge.semantic/dafdfa2190c60484b8020f01",
+      "edge.semantic/dd2c80eea2ee0a6e10d30b43",
       "edge.semantic/de232af96e92a98c0bec0b12",
-      "edge.semantic/de53925ef00a892d00fd0dad",
       "edge.semantic/deb2959684175e33dde5514b",
       "edge.semantic/e2f077abd43bf4f95c6f1a7b",
       "edge.semantic/e3c4509c6d2211ce60dd05b4",
       "edge.semantic/e4607f2fb80e25c47a73e26c",
+      "edge.semantic/e58d1b4c353a4b68ea474c4c",
+      "edge.semantic/e6c5c7d7045008a55822bf18",
       "edge.semantic/ee948d4c1ba32a316156e773",
+      "edge.semantic/f52dda0f24e14ef6227f954e",
       "edge.semantic/fb9e9df5fba9993a32210308",
       "module.gotchas/18577f06294f753d1e7cb88c",
       "module.purpose/dc5ae88a1c28fba021b53c40",
@@ -4517,9 +4525,9 @@
       "module.type_notes/d72c55b2dce3060123dd03ce"
     ],
     "docs/atlas/overview/ARCHITECTURE.md": [
-      "overview.dataflow/da556f18cd97e52c38b47f7c",
-      "overview.index_facts/fee4da6f72da5b9653362a6e",
-      "overview.shape/f495351756b5701b21026caa"
+      "overview.dataflow/6c0d3d40a35851516bc9ded4",
+      "overview.index_facts/a320c811a8e2b170a3c7976d",
+      "overview.shape/0357b5e9b06e1da758731c21"
     ]
   },
   "paths": {
@@ -4911,6 +4919,7 @@
     "Packages/LillistUI/Sources/LillistUI/Sync/SyncMigrationConfirmationDialog.swift": "modules/Packages-LillistUI-Sources-LillistUI-Sync.md",
     "Packages/LillistUI/Sources/LillistUI/Sync/SyncMigrationProgressSheet.swift": "modules/Packages-LillistUI-Sources-LillistUI-Sync.md",
     "Packages/LillistUI/Sources/LillistUI/Sync/SyncMigrationRecoverySheet.swift": "modules/Packages-LillistUI-Sources-LillistUI-Sync.md",
+    "Packages/LillistUI/Sources/LillistUI/Sync/SyncSheetRoute.swift": "modules/Packages-LillistUI-Sources-LillistUI-Sync.md",
     "Packages/LillistUI/Sources/LillistUI/Theme/Color+Hex.swift": "modules/Packages-LillistUI-Sources-LillistUI-Theme-chunk-1.md",
     "Packages/LillistUI/Sources/LillistUI/Theme/Fonts/LillistFonts.swift": "modules/Packages-LillistUI-Sources-LillistUI-Theme-chunk-1.md",
     "Packages/LillistUI/Sources/LillistUI/Theme/GlassRowSpike.swift": "modules/Packages-LillistUI-Sources-LillistUI-Theme-chunk-1.md",
@@ -5031,6 +5040,7 @@
       "modules/Apps-Lillist-macOS-Sources-chunk-1.md",
       "modules/Extensions-ShortcutsActions-misc.md",
       "modules/Packages-LillistCore-Sources-LillistCore-CLIBridge-Handlers-chunk-2.md",
+      "modules/Packages-LillistCore-Sources-LillistCore-Diagnostics.md",
       "modules/Packages-LillistCore-Sources-lillist-cli-Commands-chunk-2.md",
       "modules/Packages-LillistCore-Sources-lillist-cli-Support.md",
       "modules/Packages-LillistUI-Sources-LillistUI-CrashReporting.md"
@@ -5373,8 +5383,8 @@
     ]
   },
   "structure": {
-    "index_commit": "515f24730d21cb81ca1c9737ffeb981e9c414d3c",
-    "index_digest": "sha256:cbcf89033cd937629f4470a184ca48328ae3d39c9e4e024d2817645592f501f2",
+    "index_commit": "8e926f08fd5269de164d25b42880893a604a9d5c",
+    "index_digest": "sha256:50d7712f299cc5ef4f3542c230c9da319a00578875e60ad8e422e753f00d90a0",
     "symbols": {
       "Apps/Lillist-iOS/Sources/App/AppEnvironment.swift": [
         {
@@ -5437,7 +5447,7 @@
           "id": "Apps/Lillist-iOS/Sources/App/CrashReporterHost.swift::CrashReporterHost",
           "incident_edge_digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
           "signature_hash": "sha256:73ecc77aac64aca537090ee87b9180e3bd6d099af528322990d42c7ff26bb15f",
-          "span_hash": "sha256:196824ca002ecaae01812525612df67669d795e287fdb3d84771171e89eae937"
+          "span_hash": "sha256:89b0316327125fb448f52c875d6f96e4c1ea0f0c5bd1418e80b80fe22b5a0c4d"
         },
         {
           "id": "Apps/Lillist-iOS/Sources/App/CrashReporterHost.swift::clipboardFallback",
@@ -5447,6 +5457,12 @@
         }
       ],
       "Apps/Lillist-iOS/Sources/App/LillistApp.swift": [
+        {
+          "id": "Apps/Lillist-iOS/Sources/App/LillistApp.swift::LaunchSheet",
+          "incident_edge_digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "signature_hash": "sha256:39999ccb0669ebc72254ed4119153dfcf7d5ef2f787a225772de3c7761cc621e",
+          "span_hash": "sha256:664b0daf553fbee38c238a6942be2aa4beaee7794b9ad8d8a58181a6c03d8897"
+        },
         {
           "id": "Apps/Lillist-iOS/Sources/App/LillistApp.swift::LillistApp",
           "incident_edge_digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
@@ -5463,19 +5479,19 @@
           "id": "Apps/Lillist-iOS/Sources/App/LillistApp.swift::OnboardingPresentationModifier",
           "incident_edge_digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
           "signature_hash": "sha256:6de2de5fea1b030d8dcdcedf694e1162374d90a1de076e6c9614330a3c86e572",
-          "span_hash": "sha256:25cecf19bf70dcf1ebcf25e563d1c7694ebee4d030c2f5d4e9b0a9f5a1458f20"
+          "span_hash": "sha256:fcd432a4b346513e3550e0da13eab0eb6185cc63b685f5bce0cab3c2eee8c25e"
         },
         {
           "id": "Apps/Lillist-iOS/Sources/App/LillistApp.swift::body",
           "incident_edge_digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
           "signature_hash": "sha256:f45a95613f8760d1dbf3d22c97e3cb361615477ca36fcfb59635eba6e462cb38",
-          "span_hash": "sha256:3301da009d3cf51e24530f8dacbd2ad4586bcc9ba402192514db58f8cb4dedfe"
+          "span_hash": "sha256:1d32374a3c12bbd441e81a9e7f8eacccbbacde26f7099d8d4e454fc5df97b9cf"
         },
         {
           "id": "Apps/Lillist-iOS/Sources/App/LillistApp.swift::evaluate",
           "incident_edge_digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
           "signature_hash": "sha256:e547b6a066d854a1b5cb7201ce93ffae694b3b5af6cd11c98e60b465a5aec0b8",
-          "span_hash": "sha256:0c9aadd8f1eeea14bc5f2524300e4d5a0ce66ca7c192953f47a12768fead73a8"
+          "span_hash": "sha256:62b6154df68bc1ad05780c48328120900438b33aff509cc5a9fe8884344f1a61"
         },
         {
           "id": "Apps/Lillist-iOS/Sources/App/LillistApp.swift::isAvailable",
@@ -5781,7 +5797,7 @@
           "id": "Apps/Lillist-iOS/Sources/Settings/DiagnosticsSection.swift::DiagnosticsSection",
           "incident_edge_digest": "sha256:cfdcecee2d5a92f2f8fb6e4040f12c1dd51611ca9d20393933bb0976ffc3081e",
           "signature_hash": "sha256:e2c2bd0e08042be48fef8e150857a0df9cb268844216f3f5824dce6b38e3182f",
-          "span_hash": "sha256:51efa9372dc3419e3b4f4ff5946e78279cf1501c98064f4304f0eeeef5c38b1a"
+          "span_hash": "sha256:0e94467279306f47564e6b7846759bbb20077f365b7d579effdc074ae14ed2ec"
         },
         {
           "id": "Apps/Lillist-iOS/Sources/Settings/DiagnosticsSection.swift::prepare",
@@ -5795,25 +5811,19 @@
           "id": "Apps/Lillist-iOS/Sources/Settings/ICloudSyncSection.swift::ICloudSyncSection",
           "incident_edge_digest": "sha256:b7e44cb2674c3bd214073c848ecaf2c85031faafc4b90d173f1fce61f1c09c39",
           "signature_hash": "sha256:78742006f08116350ccdde172d613e27de0224fcae5af80560e8871ba34a056b",
-          "span_hash": "sha256:51804cbc778b6d31eba9af6e76884e8998c37ea03d978ce6c80edd91e89fdc28"
-        },
-        {
-          "id": "Apps/Lillist-iOS/Sources/Settings/ICloudSyncSection.swift::MigrationPhase",
-          "incident_edge_digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-          "signature_hash": "sha256:472876f971229be29a7f575eb8950a411d306e5cf6e8261431f16d08acf6cd81",
-          "span_hash": "sha256:d582f3c967d294f4eaa3a1472e400397d2612203bcf109b201339efbecabc135"
+          "span_hash": "sha256:ff92b5e86b052150ab058bbe246989b69b03033a7c7a047919c4d0d890892331"
         },
         {
           "id": "Apps/Lillist-iOS/Sources/Settings/ICloudSyncSection.swift::handleToggle",
           "incident_edge_digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
           "signature_hash": "sha256:16a5eb9b7d49e393b038de64481ab9751de32f4c46193d48101b9cb07b18c68d",
-          "span_hash": "sha256:a79cebcb0c58d868bf9979a0e2d654095a7e52b9d80fd14127b66aec47e9ac6b"
+          "span_hash": "sha256:b5b2839ebd32f42bca717417878a5cc270346e44624a2bb4d7911b361c64625b"
         },
         {
           "id": "Apps/Lillist-iOS/Sources/Settings/ICloudSyncSection.swift::isAvailable",
           "incident_edge_digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
           "signature_hash": "sha256:c6c57d0357f4be8c0146eaec6a8ddeb6a18d9efebde2dc3a0579e1f005a3b82b",
-          "span_hash": "sha256:4690222d806546e82ccf7e55a4940e89fa7f4c40931c5b5fa5535895df9f039c"
+          "span_hash": "sha256:4e4bbe2e428e79e18588b4cc000554f329f60acab5d6452c848dee772639aaf9"
         },
         {
           "id": "Apps/Lillist-iOS/Sources/Settings/ICloudSyncSection.swift::openSystemSettings",
@@ -5825,7 +5835,7 @@
           "id": "Apps/Lillist-iOS/Sources/Settings/ICloudSyncSection.swift::runMigration",
           "incident_edge_digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
           "signature_hash": "sha256:a3a2381dcb95be2a6b6c4cc33ba48414b588de212078b387e52417283403a32a",
-          "span_hash": "sha256:1b02157de0d8499ddc9cce06f2e003248a340fa1f426143f09962c55275d5150"
+          "span_hash": "sha256:f44c3d61648c55ce8aadf2f765bdcbacbeafded7cc628f6f68360d3c4911e201"
         },
         {
           "id": "Apps/Lillist-iOS/Sources/Settings/ICloudSyncSection.swift::triggerDisable",
@@ -6544,6 +6554,12 @@
       ],
       "Apps/Lillist-macOS/Sources/LillistApp.swift": [
         {
+          "id": "Apps/Lillist-macOS/Sources/LillistApp.swift::LaunchSheet",
+          "incident_edge_digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "signature_hash": "sha256:39999ccb0669ebc72254ed4119153dfcf7d5ef2f787a225772de3c7761cc621e",
+          "span_hash": "sha256:664b0daf553fbee38c238a6942be2aa4beaee7794b9ad8d8a58181a6c03d8897"
+        },
+        {
           "id": "Apps/Lillist-macOS/Sources/LillistApp.swift::LillistApp",
           "incident_edge_digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
           "signature_hash": "sha256:dc46b8acec043a09dac044a4b34288df4129b652fe681fb2aca50608dfc0df54",
@@ -6565,7 +6581,7 @@
           "id": "Apps/Lillist-macOS/Sources/LillistApp.swift::OnboardingPresentationModifier",
           "incident_edge_digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
           "signature_hash": "sha256:6de2de5fea1b030d8dcdcedf694e1162374d90a1de076e6c9614330a3c86e572",
-          "span_hash": "sha256:0f3e1ac99ba18f5908382e09a7103f651da0b9c922fe5c4c0b2178d6229a984e"
+          "span_hash": "sha256:b9173711887f6c659ec46263d3d88b091bc8e468435baf986a3714b95bacbc73"
         },
         {
           "id": "Apps/Lillist-macOS/Sources/LillistApp.swift::ScaledWindowContent",
@@ -6583,7 +6599,7 @@
           "id": "Apps/Lillist-macOS/Sources/LillistApp.swift::body#2",
           "incident_edge_digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
           "signature_hash": "sha256:f45a95613f8760d1dbf3d22c97e3cb361615477ca36fcfb59635eba6e462cb38",
-          "span_hash": "sha256:240d14934536b69a2429abbec3b669311f93cf54709f0ed62c4cfd6d18d05140"
+          "span_hash": "sha256:f239720addc1529760c757f7cb5c0af4a3e78bd5af33cd7e89e5e22ab340d65c"
         },
         {
           "id": "Apps/Lillist-macOS/Sources/LillistApp.swift::body#3",
@@ -6595,7 +6611,7 @@
           "id": "Apps/Lillist-macOS/Sources/LillistApp.swift::evaluate",
           "incident_edge_digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
           "signature_hash": "sha256:e547b6a066d854a1b5cb7201ce93ffae694b3b5af6cd11c98e60b465a5aec0b8",
-          "span_hash": "sha256:7bafe3a85ab654dcfbaeb98cad01990ce7b519ab5b3c380d925708d26ddaaa38"
+          "span_hash": "sha256:e543b90b80ca1302ed427f9492a8c90ff6fc94ecc5efb8582e717816c063d8bb"
         },
         {
           "id": "Apps/Lillist-macOS/Sources/LillistApp.swift::isAvailable",
@@ -6765,7 +6781,7 @@
           "id": "Apps/Lillist-macOS/Sources/Preferences/DiagnosticsPane.swift::DiagnosticsPane",
           "incident_edge_digest": "sha256:a9dded391c6a71152a4bb76a98af5344b902a1efe3b0fa7340d74b62764be805",
           "signature_hash": "sha256:ad445ecf77d85a32b7f7074844ceb11df6024c41f3878080ac1f2653053d63b1",
-          "span_hash": "sha256:9e8742f6c481b859d2ee149ad2cd8c5ecdb27fb49ef1dda9fc2d85e044619080"
+          "span_hash": "sha256:fd8d648fb8e5b44efe8b06e4000acd0915f28ccbc903b5e96417e2100bc3c578"
         },
         {
           "id": "Apps/Lillist-macOS/Sources/Preferences/DiagnosticsPane.swift::prepare",
@@ -6793,25 +6809,19 @@
           "id": "Apps/Lillist-macOS/Sources/Preferences/ICloudSyncPane.swift::ICloudSyncPane",
           "incident_edge_digest": "sha256:a9dded391c6a71152a4bb76a98af5344b902a1efe3b0fa7340d74b62764be805",
           "signature_hash": "sha256:f533f89145aee82961f332ec060c144a9bdad52ab1b0a5d752dd8dbdd3a3ff93",
-          "span_hash": "sha256:031dfb7265e5873ec61ee002fd53a10b1ae661ccf9c34fab6dc6da3aab660fde"
-        },
-        {
-          "id": "Apps/Lillist-macOS/Sources/Preferences/ICloudSyncPane.swift::MigrationPhase",
-          "incident_edge_digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-          "signature_hash": "sha256:472876f971229be29a7f575eb8950a411d306e5cf6e8261431f16d08acf6cd81",
-          "span_hash": "sha256:d582f3c967d294f4eaa3a1472e400397d2612203bcf109b201339efbecabc135"
+          "span_hash": "sha256:8fc831bff920cc17b3414714a938f4de6fe505313dc102cf80540819be2599aa"
         },
         {
           "id": "Apps/Lillist-macOS/Sources/Preferences/ICloudSyncPane.swift::handleToggle",
           "incident_edge_digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
           "signature_hash": "sha256:16a5eb9b7d49e393b038de64481ab9751de32f4c46193d48101b9cb07b18c68d",
-          "span_hash": "sha256:a79cebcb0c58d868bf9979a0e2d654095a7e52b9d80fd14127b66aec47e9ac6b"
+          "span_hash": "sha256:b5b2839ebd32f42bca717417878a5cc270346e44624a2bb4d7911b361c64625b"
         },
         {
           "id": "Apps/Lillist-macOS/Sources/Preferences/ICloudSyncPane.swift::isAvailable",
           "incident_edge_digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
           "signature_hash": "sha256:c6c57d0357f4be8c0146eaec6a8ddeb6a18d9efebde2dc3a0579e1f005a3b82b",
-          "span_hash": "sha256:b67c9a5fea5eddace8fd74c49c0f8c866a55c63c819ee605f16dc29ed9dc475d"
+          "span_hash": "sha256:a2e62a0d8f48c7d7192325bc6858d50090793838e6542a357568d184c67d094b"
         },
         {
           "id": "Apps/Lillist-macOS/Sources/Preferences/ICloudSyncPane.swift::openSystemSettings",
@@ -6823,7 +6833,7 @@
           "id": "Apps/Lillist-macOS/Sources/Preferences/ICloudSyncPane.swift::runMigration",
           "incident_edge_digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
           "signature_hash": "sha256:a3a2381dcb95be2a6b6c4cc33ba48414b588de212078b387e52417283403a32a",
-          "span_hash": "sha256:1b02157de0d8499ddc9cce06f2e003248a340fa1f426143f09962c55275d5150"
+          "span_hash": "sha256:f44c3d61648c55ce8aadf2f765bdcbacbeafded7cc628f6f68360d3c4911e201"
         },
         {
           "id": "Apps/Lillist-macOS/Sources/Preferences/ICloudSyncPane.swift::triggerDisable",
@@ -9255,7 +9265,7 @@
         },
         {
           "id": "Packages/LillistCore/Sources/LillistCore/CrashReporting/OSLogFetcher.swift::OSLogFetcher",
-          "incident_edge_digest": "sha256:5e503a9c829244cbe249dd1823de03b813e1ba059620511a4e933e53e82d41ab",
+          "incident_edge_digest": "sha256:3a275b569dc9fb094f13b7f9a87d00bff2ea46d0efb708edbefb41c8ccb6a15c",
           "signature_hash": "sha256:02773878aa3b1e529d623808a995ad5851962c3e571c371acf198830aa6e7a4f",
           "span_hash": "sha256:250675d6295b1d2de0c7edf5ae9821fd28606145f6c495f7707714fc70c1e4e5"
         },
@@ -9501,13 +9511,13 @@
           "id": "Packages/LillistCore/Sources/LillistCore/Diagnostics/DiagnosticPackageBuilder.swift::BuildError",
           "incident_edge_digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
           "signature_hash": "sha256:871aa7e87cbe0aaf4f657987647d97732a773bccad6c2264672550781d6544d7",
-          "span_hash": "sha256:cdb965086d5321d78941dc1aa8c407d21f501c03428019417d430a44a6580684"
+          "span_hash": "sha256:669059c92c0f1733db4b524f7b33e655d7373c0605c494e5577e30596ce52a2a"
         },
         {
           "id": "Packages/LillistCore/Sources/LillistCore/Diagnostics/DiagnosticPackageBuilder.swift::DiagnosticPackageBuilder",
           "incident_edge_digest": "sha256:7e8ed081c89f02c771f09eb40b12365d0b3ed9117a9c0aba030706763cfb08dc",
           "signature_hash": "sha256:2445c5e75052301264645d5c9379f4da294d52caac4b9ea7335f6561831101cc",
-          "span_hash": "sha256:ce30d568bcf6c8b087ca69421f751e2f780470cbcc98c048ecfa0bdf9e3e0016"
+          "span_hash": "sha256:e8f22a5a2c2060d9462130dd62328fb98bd7d6357e462e6c6c7eaf6bf64a4b04"
         },
         {
           "id": "Packages/LillistCore/Sources/LillistCore/Diagnostics/DiagnosticPackageBuilder.swift::Metadata",
@@ -9525,7 +9535,13 @@
           "id": "Packages/LillistCore/Sources/LillistCore/Diagnostics/DiagnosticPackageBuilder.swift::build",
           "incident_edge_digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
           "signature_hash": "sha256:62188e713b40e4ba080e9670edcf553ff34688a4fb9eb9deb743c6f5974dcfa1",
-          "span_hash": "sha256:3b2fa60cf22602dfa57a3bbeca123af692aed73c9950fdcff98f8b37f2706eb3"
+          "span_hash": "sha256:7288f44d8b85d8b6bce3a6abf3d37f0389c8b975bf4bd28dd27f1726ce02e5aa"
+        },
+        {
+          "id": "Packages/LillistCore/Sources/LillistCore/Diagnostics/DiagnosticPackageBuilder.swift::fetchUnifiedLog",
+          "incident_edge_digest": "sha256:931866e12a57a2124ac037a71c7810aef7e1235d93575ba1d3268037de55aa8c",
+          "signature_hash": "sha256:385bdd3ded6a3ee48bdcbacadead22c0e8ecca95e317809a1743a325c66789f6",
+          "span_hash": "sha256:5aab94653531b086d572e9060e30078b5433da77352e9ca022fd3ff8220e2ba8"
         },
         {
           "id": "Packages/LillistCore/Sources/LillistCore/Diagnostics/DiagnosticPackageBuilder.swift::manifestEncoder",
@@ -9548,8 +9564,8 @@
         {
           "id": "Packages/LillistCore/Sources/LillistCore/Diagnostics/DiagnosticPackageBuilder.swift::stage",
           "incident_edge_digest": "sha256:931866e12a57a2124ac037a71c7810aef7e1235d93575ba1d3268037de55aa8c",
-          "signature_hash": "sha256:2cb83ce0f73d47bd64521520ef51ac3ee73162f4266d7ec3cb0346456288dc31",
-          "span_hash": "sha256:cb8d656315ffbbadcd28c0927892f3c1e206ede0e576da4eb9ba345416be9a79"
+          "signature_hash": "sha256:056851ea3e479d59058ec1c4ea06924c438e169c693533b1bf2b57d984560eb7",
+          "span_hash": "sha256:b4f2b91bc28bb9987ad88938c995b0606fca6968ca9250b3c8376322d8738746"
         },
         {
           "id": "Packages/LillistCore/Sources/LillistCore/Diagnostics/DiagnosticPackageBuilder.swift::zip",
@@ -9781,7 +9797,7 @@
         },
         {
           "id": "Packages/LillistCore/Sources/LillistCore/LinkPreview/OpenGraphParser.swift::String",
-          "incident_edge_digest": "sha256:0aaefc59278161a734673b1d96a80607427ea20a96a180f4e1f52be252acf1b2",
+          "incident_edge_digest": "sha256:0306fc319e367de114af3d375e11f8686dd11bb4a39d76d0d99f791d580a01f2",
           "signature_hash": "sha256:aa1029b3916ad093221b9707abfc8147b635c86525077cdd01521a10ce3697d1",
           "span_hash": "sha256:d65cd99d7e57f2d4caf6f26201543bb1a32e1088ce8ef687753245fa0d360f99"
         },
@@ -14491,7 +14507,7 @@
           "id": "Packages/LillistUI/Sources/LillistUI/Components/SwipeableRow.swift::Axis2D",
           "incident_edge_digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
           "signature_hash": "sha256:e578947a6f36ba7f01dbbb8152ed9678311394fde6c21b03199b708581210788",
-          "span_hash": "sha256:d9245799b9e790a01aa4f744f604e7ddc801a2d1cce45aa7592167d39b4c35c0"
+          "span_hash": "sha256:0ef415d2bf5e56f9bc6256a44672f30412970d1bb7e80c77105b888b0ea91efa"
         },
         {
           "id": "Packages/LillistUI/Sources/LillistUI/Components/SwipeableRow.swift::SwipeActionSpec",
@@ -14503,13 +14519,13 @@
           "id": "Packages/LillistUI/Sources/LillistUI/Components/SwipeableRow.swift::SwipeableRow",
           "incident_edge_digest": "sha256:3cdcf256b6a40e5056032e6f59a8744b3469135d2ea1a18ac6b901cef477025d",
           "signature_hash": "sha256:8df58f7abb900fcf57a431dd1ff918a3d9174880aac18fc7309d7f46f3063816",
-          "span_hash": "sha256:bf02b9fe8e1d61725bfea974e9412f3c43ba2203584938aaeddf4a253f5737b7"
+          "span_hash": "sha256:b498421cb3f843dc36669c6aeafecb3c7279444c612e895e8c1613d3810a674a"
         },
         {
-          "id": "Packages/LillistUI/Sources/LillistUI/Components/SwipeableRow.swift::actionButton",
+          "id": "Packages/LillistUI/Sources/LillistUI/Components/SwipeableRow.swift::actionCard",
           "incident_edge_digest": "sha256:37055652a5661fd658096b788e994696a9912b698d668de14737f859bf8d786b",
-          "signature_hash": "sha256:10d0b3faf944a16a1e0fd2a5eb16b225d2005a5a7bf514ede2fa1649e3f262f1",
-          "span_hash": "sha256:1efe83d9f2306e74fd345da2d5dfff83e45602dbf0319c3fa4d3ce7200494c08"
+          "signature_hash": "sha256:ce073ab7f42d16617b79d4740eb5d1fd70434ffa6dc5e2d2c2aa588023196f09",
+          "span_hash": "sha256:5dd751927128d1454a906864d5ecb8c5e237cd61cf82ec230e3c6a90f47a9662"
         },
         {
           "id": "Packages/LillistUI/Sources/LillistUI/Components/SwipeableRow.swift::close",
@@ -14525,15 +14541,15 @@
         },
         {
           "id": "Packages/LillistUI/Sources/LillistUI/Components/SwipeableRow.swift::resist",
-          "incident_edge_digest": "sha256:5a7727add9d50dcf2343f760c1a2d87824d78c5172887ac48e01d4d6e09298dc",
+          "incident_edge_digest": "sha256:59dc0c900aeea0a5b57508434f0fcb735fceb2316498f695ea5295b0ab55fdb7",
           "signature_hash": "sha256:79a36fbd5066678b3f161627cd2925d0de1acad5398ef2bbfe666ccf842cdaf0",
-          "span_hash": "sha256:2c0c70baf7d5bb6237b0b5043bccd4245e1d8cbb961f143e57a5353bfedcee20"
+          "span_hash": "sha256:e800e27d4285d1bc4582784790fc71b5509f7f79a3795926a0df54ce6dd3d335"
         },
         {
           "id": "Packages/LillistUI/Sources/LillistUI/Components/SwipeableRow.swift::settle",
-          "incident_edge_digest": "sha256:ccbc8d838cd584c3f098d7c2f2950731604bdeeb7e95057ea3c229038a70e999",
+          "incident_edge_digest": "sha256:49a66aba830b46b9339e177357459af82d323d39c642f65f9308e1160ec642b7",
           "signature_hash": "sha256:3254387ef84e4bf51f07dc6885f1a826adcdac53e374f4f3a18244c1c4f71ace",
-          "span_hash": "sha256:177f2a0c43a4ce3efb46f34ac7ca908c02eff95f2c54898288629d991b018f32"
+          "span_hash": "sha256:75689fcfa5900a5f8286b8fd5baf98bc6885e0be2d637655946e6d6064792695"
         },
         {
           "id": "Packages/LillistUI/Sources/LillistUI/Components/SwipeableRow.swift::snap",
@@ -14617,7 +14633,7 @@
       "Packages/LillistUI/Sources/LillistUI/CrashReporting/CrashReportPreviewSheet.swift": [
         {
           "id": "Packages/LillistUI/Sources/LillistUI/CrashReporting/CrashReportPreviewSheet.swift::CrashReportPreviewSheet",
-          "incident_edge_digest": "sha256:505ad974cb781a6c1ea8bb11ccba38bdbb69d6e8a6d9c4542e1aa2e861025d4f",
+          "incident_edge_digest": "sha256:3230f56ef4ddf624bb42208f0a1e642f72ad1e5718d5400dd4e6edccb729b805",
           "signature_hash": "sha256:40dda44d07f0fd3f567c5d661c80023df6ce08b4393e1f83492df5eca805bfea",
           "span_hash": "sha256:9da9ee7a5c031c1f3bf6e4adbf24e97dc82166ad0e419f5f1715706fee0efacc"
         }
@@ -14627,7 +14643,13 @@
           "id": "Packages/LillistUI/Sources/LillistUI/CrashReporting/CrashReportSheet.swift::CrashReportSheet",
           "incident_edge_digest": "sha256:38ce8390a817ad4b2b5278b730849afe5d6253007a57ffd83902a38730ddcc52",
           "signature_hash": "sha256:78d210b740144daf8c71de0eca93545bb3b644c3508eadaa10f8f3145369f267",
-          "span_hash": "sha256:5ccc788705d10fb390c1939bf0f3fb3f2799833d045e2fb6194823616a7c8ef8"
+          "span_hash": "sha256:9f4d0cf5fda11fa80d7087ab6259657074fc5a974470255531d02395af942922"
+        },
+        {
+          "id": "Packages/LillistUI/Sources/LillistUI/CrashReporting/CrashReportSheet.swift::PreviewPayload",
+          "incident_edge_digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "signature_hash": "sha256:003742b4862de2144b97da0057f915d1c304dfe7595c6e80f48fc982930fa7af",
+          "span_hash": "sha256:08b34c4d1fa1dc19f7478c8337b533dfe6cfc93e8f58bd9c6945e3cd7fb50188"
         }
       ],
       "Packages/LillistUI/Sources/LillistUI/CrashReporting/CrashReportViewModel.swift": [
@@ -14639,19 +14661,19 @@
         },
         {
           "id": "Packages/LillistUI/Sources/LillistUI/CrashReporting/CrashReportViewModel.swift::dontSend",
-          "incident_edge_digest": "sha256:505ad974cb781a6c1ea8bb11ccba38bdbb69d6e8a6d9c4542e1aa2e861025d4f",
+          "incident_edge_digest": "sha256:3230f56ef4ddf624bb42208f0a1e642f72ad1e5718d5400dd4e6edccb729b805",
           "signature_hash": "sha256:3f11c94ae5eea383d0a20ad1ff68554d58a7b4295251c1f7e1bf786600dc5448",
           "span_hash": "sha256:9f49d9843e0e830fa1c329522a403f12d1f16de0d5cac5a8ed5517322dc440d6"
         },
         {
           "id": "Packages/LillistUI/Sources/LillistUI/CrashReporting/CrashReportViewModel.swift::refreshPreview",
-          "incident_edge_digest": "sha256:505ad974cb781a6c1ea8bb11ccba38bdbb69d6e8a6d9c4542e1aa2e861025d4f",
+          "incident_edge_digest": "sha256:3230f56ef4ddf624bb42208f0a1e642f72ad1e5718d5400dd4e6edccb729b805",
           "signature_hash": "sha256:d39e647ba8c8f853ec463df8cc62b0db6e2db06d3b36dd156afc9f772b1c4306",
           "span_hash": "sha256:b28c854a2c8b3d7cedb54a5e71b0f2a30b645bdfbc3c8dea4a64b294d0f7e868"
         },
         {
           "id": "Packages/LillistUI/Sources/LillistUI/CrashReporting/CrashReportViewModel.swift::renderPreview",
-          "incident_edge_digest": "sha256:ed7ace00ddbba1d369b7685fcb730a9eba5b5192b640e59d2b1390f2998f7418",
+          "incident_edge_digest": "sha256:f82c3ad49fd185ada880a976802be4c2cb7bc49e9eac29715490eadfcc994b0e",
           "signature_hash": "sha256:629397689abee661a908c78310cd8d3756faae16524e6ce3741e18a4efbc2fa5",
           "span_hash": "sha256:03e78599b9f1c23646e07f2f2c78893e5dac486fb28154bf443f30e0975e6e00"
         },
@@ -15778,6 +15800,20 @@
           "span_hash": "sha256:d1132e55d250d399d778996ed48a6a4590da84809ba7cc535d59029b08985551"
         }
       ],
+      "Packages/LillistUI/Sources/LillistUI/Sync/SyncSheetRoute.swift": [
+        {
+          "id": "Packages/LillistUI/Sources/LillistUI/Sync/SyncSheetRoute.swift::SyncSheetRoute",
+          "incident_edge_digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "signature_hash": "sha256:f2586901fe411d2e98ebf784b58fb89828498ea8b352e19398db501c6edc48b8",
+          "span_hash": "sha256:3a897b983b8584b7234d8edee0ba6fe6fa3f7681c79f88684184796fd9da1b2a"
+        },
+        {
+          "id": "Packages/LillistUI/Sources/LillistUI/Sync/SyncSheetRoute.swift::afterToggle",
+          "incident_edge_digest": "sha256:b04f19a7ab55e353b14a5651c28aa4471773bba94f8012a19f734bba2ccac2b4",
+          "signature_hash": "sha256:b95eccc5f3d1e4e7d3d2aea2fd80ec48ad407c250ca6d341319edfc7f719ebf9",
+          "span_hash": "sha256:3ec732b725a9dac7490d3ec735feb2a3ce3e36ad29b16a31f74ad04bf1eb319f"
+        }
+      ],
       "Packages/LillistUI/Sources/LillistUI/Theme/Color+Hex.swift": [
         {
           "id": "Packages/LillistUI/Sources/LillistUI/Theme/Color+Hex.swift::Color",
@@ -16073,7 +16109,7 @@
         },
         {
           "id": "Packages/LillistUI/Sources/LillistUI/Theme/StatusGlyph.swift::accessibilityLabel",
-          "incident_edge_digest": "sha256:8c45f64b06892505dc3e6efbfa16dcb1d8cd5678b4e08e31e481a427752e99ff",
+          "incident_edge_digest": "sha256:4adf23cdc7451047fedc743857b87eb62425ffa452e7b20420dcd3e1b67bb863",
           "signature_hash": "sha256:8dde4c929ed988368ae20c0dff2891e5bdee5df377173a5897ddfe212523383d",
           "span_hash": "sha256:43eca4248dd94a966ffeb6374873c9577f961d2b5569b4a6656f948b26173b6f"
         },
@@ -16331,7 +16367,7 @@
           "id": "Packages/LillistUI/Sources/LillistUI/iOS/Screens/TasksScreen.swift::TasksScreen",
           "incident_edge_digest": "sha256:953efd98ea316ef2d0ecc0e7a02422f92c057735547140bc66e3e501ef9cfa33",
           "signature_hash": "sha256:4f59fed0f7cdd55c463d8f185fd56e80eb05c8b8cef6a482450f59eb16c0ab56",
-          "span_hash": "sha256:53915478d2c9021b100c62552abbbb13f8038bbffb1b05a4e74ab6f261b333f2"
+          "span_hash": "sha256:80045d273cd65f368e069dd097c5696bc0b850ac9660b889c5ffe8b81fe38cdf"
         },
         {
           "id": "Packages/LillistUI/Sources/LillistUI/iOS/Screens/TasksScreen.swift::outlineRow",
@@ -16343,7 +16379,7 @@
           "id": "Packages/LillistUI/Sources/LillistUI/iOS/Screens/TasksScreen.swift::phantomRow",
           "incident_edge_digest": "sha256:3cdcf256b6a40e5056032e6f59a8744b3469135d2ea1a18ac6b901cef477025d",
           "signature_hash": "sha256:0f9d9e4bfbbd98c79ce1c49585feccc9a2266897d178e3da277b6b37fe0d2271",
-          "span_hash": "sha256:0e0f55394a4e5d77177017baf9d699a9bebdc8fc6bfbdacdb7b03ac7d6744990"
+          "span_hash": "sha256:e00e423e63a6df309f62040d86212bd081ece47812b3e9d5fd570e298b605730"
         },
         {
           "id": "Packages/LillistUI/Sources/LillistUI/iOS/Screens/TasksScreen.swift::syncDragControllerInputs",

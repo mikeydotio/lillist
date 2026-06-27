@@ -22,7 +22,7 @@ sources:
   - path: Packages/LillistUI/Sources/LillistUI/iOS/Screens/SettingsScreen.swift
     blob: e978d8960e17217951e68ad6c3526c339406e4a9
   - path: Packages/LillistUI/Sources/LillistUI/iOS/Screens/TasksScreen.swift
-    blob: 915e7dd5f2f988169ccbd72d0161855be02bd9cd
+    blob: b8185dc1c3547caee9063abdea5ccd84c6adb0c5
   - path: Packages/LillistUI/Sources/LillistUI/iOS/SizeClassRouter.swift
     blob: 1bf4ae6409a26c607411ef5490b451172f3d99c4
   - path: Packages/LillistUI/Sources/LillistUI/iOS/SyncStatusBadge.swift
@@ -33,7 +33,7 @@ sources:
     blob: 4c1b8698952989ed789fa615e748eef1ec4a2723
 references_modules: [Apps-Lillist-macOS-Sources-Hotkey, Packages-LillistCore-Sources-LillistCore-CLIBridge-Handlers-chunk-2, Packages-LillistCore-Sources-LillistCore-LinkPreview, Packages-LillistCore-Sources-LillistCore-Stores-chunk-2, Packages-LillistUI-Sources-LillistUI-Accessibility, Packages-LillistUI-Sources-LillistUI-Components-chunk-1, Packages-LillistUI-Sources-LillistUI-Components-chunk-2, Packages-LillistUI-Sources-LillistUI-DragReorder, Packages-LillistUI-Sources-LillistUI-Settings, Packages-LillistUI-Sources-LillistUI-Theme-chunk-1, Packages-LillistUI-Sources-LillistUI-iOS-Tasks]
 generator: cartographer/4
-baseline: 515f24730d21cb81ca1c9737ffeb981e9c414d3c
+baseline: 8e926f08fd5269de164d25b42880893a604a9d5c
 ---
 
 # Module: Packages/LillistUI/Sources/LillistUI/iOS (misc)

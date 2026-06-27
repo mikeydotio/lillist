@@ -6,9 +6,9 @@ sources:
   - path: Apps/Lillist-iOS/Sources/App/AppEnvironment.swift
     blob: 8d07dbbaa6d82dd80c5d263b81526635e89b64bc
   - path: Apps/Lillist-iOS/Sources/App/CrashReporterHost.swift
-    blob: 10e38c4524e8eb68e95e9d0cfae0be658b1ee067
+    blob: 18a647c008f3c042a21ac4d872571d29513ef0f8
   - path: Apps/Lillist-iOS/Sources/App/LillistApp.swift
-    blob: d18ba5f75b127be1501a9780023a8856ddcf8013
+    blob: 3a876dc1d85de09764cf9cbb33916d48ff2c2d0e
   - path: Apps/Lillist-iOS/Sources/App/MailComposerTransport.swift
     blob: af54dda7da2700518a16e86aebb5d4735e0bcc16
   - path: Apps/Lillist-iOS/Sources/App/MailComposerView.swift
@@ -17,7 +17,7 @@ sources:
     blob: 198daf20635d64ed69d25a5b805147d26a4d653f
 references_modules: [Apps-Lillist-iOS-Sources-misc, Packages-LillistCore-Sources-LillistCore-Backup, Packages-LillistCore-Sources-LillistCore-CrashReporting, Packages-LillistCore-Sources-LillistCore-Diagnostics, Packages-LillistCore-Sources-LillistCore-Export, Packages-LillistCore-Sources-LillistCore-LinkPreview, Packages-LillistCore-Sources-LillistCore-Notifications, Packages-LillistCore-Sources-LillistCore-Persistence, Packages-LillistCore-Sources-LillistCore-Reminders, Packages-LillistCore-Sources-LillistCore-Stores-chunk-1, Packages-LillistCore-Sources-LillistCore-Sync-chunk-1, Packages-LillistCore-Sources-LillistCore-Sync-chunk-2, Packages-LillistCore-Sources-LillistCore-misc, Packages-LillistUI-Sources-LillistUI-CrashReporting, Packages-LillistUI-Sources-LillistUI-Status, Packages-LillistUI-Sources-LillistUI-Sync, Packages-LillistUI-Sources-LillistUI-Theme-chunk-1, Packages-LillistUI-Sources-LillistUI-iOS-Tasks]
 generator: cartographer/4
-baseline: 515f24730d21cb81ca1c9737ffeb981e9c414d3c
+baseline: 8e926f08fd5269de164d25b42880893a604a9d5c
 ---
 
 # Module: Apps/Lillist-iOS/Sources/App
@@ -37,9 +37,9 @@ This module is the iOS app's launch and environment layer: it assembles all Lill
 | `MailComposerTransport` | class | `Apps/Lillist-iOS/Sources/App/MailComposerTransport.swift:10` | Implements `CrashReportTransport` for iOS by encoding the report and staging a `Pending` value; the SwiftUI host observes `onStage` and presents `MailComposerView`. |
 | `MailComposerView` | struct | `Apps/Lillist-iOS/Sources/App/MailComposerView.swift:5` | A `UIViewControllerRepresentable` that presents `MFMailComposeViewController` configured with the supplied recipient, subject, body, and optional JSON attachment. |
 | `MetricKitObserver` | class | `Apps/Lillist-iOS/Sources/App/MetricKitObserver.swift:14` | Subscribes to MetricKit and logs diagnostic payload summaries (crash/hang/launch/cpu/disk counts) to `LillistLog.metrics`; must be held strongly by the app because MetricKit retains subscribers weakly. |
-| `MigrationJournal` | extension | `Apps/Lillist-iOS/Sources/App/LillistApp.swift:284` | Retroactive `Identifiable` conformance on `MigrationJournal` so SwiftUI sheet bindings can drive presentation; id encodes state+operation+timestamp so retries change identity and re-present the sheet. |
+| `MigrationJournal` | extension | `Apps/Lillist-iOS/Sources/App/LillistApp.swift:300` | Retroactive `Identifiable` conformance on `MigrationJournal` so SwiftUI sheet bindings can drive presentation; id encodes state+operation+timestamp so retries change identity and re-present the sheet. |
 | `Pending` | struct | `Apps/Lillist-iOS/Sources/App/MailComposerTransport.swift:11` | Sendable value carrying the composed email subject, plain-text body, and JSON attachment for a single staged crash report; `id` is the attachment filename. |
-| `body` | func | `Apps/Lillist-iOS/Sources/App/LillistApp.swift:203` | Applies onboarding, iCloud-unavailable, and stale-migration-recovery full-screen covers; evaluation runs exactly once per lifecycle via `didEvaluate` guard; entirely bypassed under `--ui-test-bypass-gates`. |
+| `body` | func | `Apps/Lillist-iOS/Sources/App/LillistApp.swift:219` | Applies onboarding, iCloud-unavailable, and stale-migration-recovery full-screen covers; evaluation runs exactly once per lifecycle via `didEvaluate` guard; entirely bypassed under `--ui-test-bypass-gates`. |
 | `bootstrap` | func | `Apps/Lillist-iOS/Sources/App/AppEnvironment.swift:412` | Must be called once after `make()` before any store is used; registers notification categories, primes account/sync/pause state, installs lifecycle observers, and starts all background workers. |
 | `didReceive` | func | `Apps/Lillist-iOS/Sources/App/MetricKitObserver.swift:31` | Logs the count of received metric payloads to `LillistLog.metrics` with public privacy; no call-stack data is emitted. |
 | `didReceive` | func | `Apps/Lillist-iOS/Sources/App/MetricKitObserver.swift:37` | Logs crash, hang, launch, CPU-exception, and disk-write-exception counts per diagnostic payload to `LillistLog.metrics`; no stack data is included. |
@@ -59,9 +59,10 @@ This module is the iOS app's launch and environment layer: it assembles all Lill
 
 | Symbol | Kind | Location | Why it matters |
 | --- | --- | --- | --- |
+| `LaunchSheet` | enum | `Apps/Lillist-iOS/Sources/App/LillistApp.swift:205` | Single-slot enum driving OnboardingPresentationModifier's .fullScreenCover(item:), enforcing mutual exclusivity across the three launch gates (iCloudUnavailable, onboarding, recovery). Its Identifiable id fingerprints each gate case so the iCloud-unavailable → onboarding handoff is a clean slot swap rather than a sheet-clobbering dismiss-and-re-present on stacked modifiers. Guards the invariant at Apps/Lillist-iOS/Sources/App/LillistApp.swift:205. |
 | `OnboardingPresentationModifier` | struct | `Apps/Lillist-iOS/Sources/App/LillistApp.swift:195` | Controls the three first-launch gates (onboarding, iCloud-unavailable, stale-migration recovery); omitting it means new users bypass onboarding and crash-recovery is never surfaced. LillistApp.swift:195-282. |
-| `evaluate` | func | `Apps/Lillist-iOS/Sources/App/LillistApp.swift:250` | Inspects the migration journal for a stale in-flight state and drives the three-way fork (recovery / iCloud-unavailable / onboarding); the `didEvaluate` guard guarantees exactly one evaluation per lifecycle. LillistApp.swift:250-275. |
-| `isAvailable` | func | `Apps/Lillist-iOS/Sources/App/LillistApp.swift:276` | Maps `iCloudAccountState` to the Bool gate used by `evaluate` to choose between iCloud onboarding and the unavailable flow; owns the policy of which account states permit iCloud onboarding. LillistApp.swift:276-283. |
+| `evaluate` | func | `Apps/Lillist-iOS/Sources/App/LillistApp.swift:266` | Inspects the migration journal for a stale in-flight state and drives the three-way fork (recovery / iCloud-unavailable / onboarding); the `didEvaluate` guard guarantees exactly one evaluation per lifecycle. LillistApp.swift:250-275. |
+| `isAvailable` | func | `Apps/Lillist-iOS/Sources/App/LillistApp.swift:292` | Maps `iCloudAccountState` to the Bool gate used by `evaluate` to choose between iCloud onboarding and the unavailable flow; owns the policy of which account states permit iCloud onboarding. LillistApp.swift:276-283. |
 | `loadEnvironmentIfNeeded` | func | `Apps/Lillist-iOS/Sources/App/LillistApp.swift:114` | The single `.task`-driven entry point that calls `AppEnvironment.make()`, `bootstrap()`, and `defaultsInstaller.installIfNeeded()`, then assigns the result; also arms the UI-test reset seam via `--ui-test-reset-store`. LillistApp.swift:114-128. |
 | `runBackgroundPurge` | func | `Apps/Lillist-iOS/Sources/App/LillistApp.swift:169` | Constructs a fresh `AppEnvironment` in the BGTask context (the `@State` env is unavailable there) and delegates to `env.runBackgroundPurge()`; required because BGTask closures are non-isolated. LillistApp.swift:169-172. |
 | `startObservingAccountState` | func | `Apps/Lillist-iOS/Sources/App/AppEnvironment.swift:557` | Keeps `AppEnvironment.accountState` in sync with the actor-isolated `AccountStateMonitor.stateStream`; without it, SwiftUI views observing `accountState` never update after the initial bootstrap prime. AppEnvironment.swift:557-566. |
@@ -111,10 +112,10 @@ This module is the iOS app's launch and environment layer: it assembles all Lill
 - `Apps-Lillist-iOS-Sources-App.AppEnvironment -> Packages-LillistCore-Sources-LillistCore-misc.DefaultsInstaller (owns)`
 - `Apps-Lillist-iOS-Sources-App.AppEnvironment -> Packages-LillistCore-Sources-LillistCore-misc.OnboardingState (owns)`
 - `Apps-Lillist-iOS-Sources-App.AppEnvironment -> Packages-LillistUI-Sources-LillistUI-Status.CloudKitSyncStatusAdapter (owns)`
-- `Apps-Lillist-iOS-Sources-App.CrashReporterHost -> Packages-LillistCore-Sources-LillistCore-CrashReporting.detectAndPrepare (calls)`
+- `Apps-Lillist-iOS-Sources-App.CrashReporterHost -> Packages-LillistCore-Sources-LillistCore-CrashReporting.detectAndPrepare (reads)`
 - `Apps-Lillist-iOS-Sources-App.CrashReporterHost -> Packages-LillistCore-Sources-LillistCore-LinkPreview.String (calls)`
 - `Apps-Lillist-iOS-Sources-App.CrashReporterHost -> Packages-LillistUI-Sources-LillistUI-CrashReporting.CrashReportSheet (calls)`
-- `Apps-Lillist-iOS-Sources-App.CrashReporterHost -> Packages-LillistUI-Sources-LillistUI-CrashReporting.CrashReportViewModel (calls)`
+- `Apps-Lillist-iOS-Sources-App.CrashReporterHost -> Packages-LillistUI-Sources-LillistUI-CrashReporting.CrashReportViewModel (owns)`
 - `Apps-Lillist-iOS-Sources-App.LillistApp -> Apps-Lillist-iOS-Sources-misc.RootShell (calls)`
 - `Apps-Lillist-iOS-Sources-App.LillistApp -> Packages-LillistUI-Sources-LillistUI-Theme-chunk-1.registerIfNeeded (calls)`
 - `Apps-Lillist-iOS-Sources-App.LillistApp -> Packages-LillistUI-Sources-LillistUI-iOS-Tasks.TasksSort (reads)`

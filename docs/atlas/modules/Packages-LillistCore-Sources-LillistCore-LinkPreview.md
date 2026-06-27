@@ -17,7 +17,7 @@ sources:
     blob: a0806e059cf1ad66ed6e81ff912f662b77096e13
 references_modules: [Packages-LillistCore-Sources-LillistCore-Stores-chunk-1, Packages-LillistUI-Sources-LillistUI-Accessibility, Packages-LillistUI-Sources-LillistUI-Recurrence]
 generator: cartographer/4
-baseline: 515f24730d21cb81ca1c9737ffeb981e9c414d3c
+baseline: 8e926f08fd5269de164d25b42880893a604a9d5c
 ---
 
 # Module: Packages/LillistCore/Sources/LillistCore/LinkPreview
@@ -57,6 +57,7 @@ This module is the link-preview (URL unfurling) subsystem of LillistCore: it fet
 
 | Symbol | Kind | Location | Why it matters |
 | --- | --- | --- | --- |
+| `String` | extension | `Packages/LillistCore/Sources/LillistCore/LinkPreview/OpenGraphParser.swift:77` | Correctness invariant for every string extracted by `OpenGraphParser`: all three extraction paths — `ogTag` (OpenGraphParser.swift:36), `twitterTag` (OpenGraphParser.swift:51), and `titleElement` (OpenGraphParser.swift:61) — pipe their results through `decodingHTMLEntities()`. It is the sole HTML entity decode step in the pipeline; without it, sequences like `&amp;` and `&quot;` would appear verbatim in user-visible task titles and descriptions produced from URL previews. |
 | `firstMatch` | func | `Packages/LillistCore/Sources/LillistCore/LinkPreview/OpenGraphParser.swift:64` | Single NSRegularExpression bottleneck for all tag extraction in OpenGraphParser; ogTag, twitterTag, and titleElement all funnel through it (OpenGraphParser.swift:35, 50, 59). Centralizes .caseInsensitive + .dotMatchesLineSeparators options and NSRange↔String.Index conversion — removing it would require duplicating regex setup in each matcher. |
 
 ## Relationships

@@ -6,12 +6,12 @@ sources:
   - path: Packages/LillistUI/Sources/LillistUI/CrashReporting/CrashReportPreviewSheet.swift
     blob: 4eebb55707cfa2ee7ad6b6d0657875f5b557db97
   - path: Packages/LillistUI/Sources/LillistUI/CrashReporting/CrashReportSheet.swift
-    blob: 8b3c1772a55c78692accc84a811b8b23ef51a3a3
+    blob: cbc6a53679fcec49b0f68ec5be0024cd85e01c7f
   - path: Packages/LillistUI/Sources/LillistUI/CrashReporting/CrashReportViewModel.swift
     blob: 41a6b325226f75b650b581c4b7d4e843dd87e5a1
 references_modules: [Packages-LillistCore-Sources-LillistCore-CrashReporting, Packages-LillistCore-Sources-LillistCore-LinkPreview, Packages-LillistUI-Sources-LillistUI-Settings, Packages-LillistUI-Sources-LillistUI-Theme-chunk-1]
 generator: cartographer/4
-baseline: 515f24730d21cb81ca1c9737ffeb981e9c414d3c
+baseline: 8e926f08fd5269de164d25b42880893a604a9d5c
 ---
 
 # Module: Packages/LillistUI/Sources/LillistUI/CrashReporting
@@ -40,10 +40,10 @@ This module is the SwiftUI consent layer for crash reporting: it presents the po
 ## Relationships
 
 - `Packages-LillistUI-Sources-LillistUI-CrashReporting.CrashReportPreviewSheet -> Packages-LillistUI-Sources-LillistUI-Settings.Environment (calls)`
-- `Packages-LillistUI-Sources-LillistUI-CrashReporting.CrashReportSheet -> Packages-LillistCore-Sources-LillistCore-LinkPreview.String (calls)`
 - `Packages-LillistUI-Sources-LillistUI-CrashReporting.CrashReportSheet -> Packages-LillistUI-Sources-LillistUI-Settings.Environment (calls)`
 - `Packages-LillistUI-Sources-LillistUI-CrashReporting.CrashReportSheet -> Packages-LillistUI-Sources-LillistUI-Settings.preview (calls)`
-- `Packages-LillistUI-Sources-LillistUI-CrashReporting.CrashReportSheet -> Packages-LillistUI-Sources-LillistUI-Theme-chunk-1.accessibilityLabel (calls)`
+- `Packages-LillistUI-Sources-LillistUI-CrashReporting.PreviewPayload -> Packages-LillistCore-Sources-LillistCore-LinkPreview.String (calls)`
+- `Packages-LillistUI-Sources-LillistUI-CrashReporting.PreviewPayload -> Packages-LillistUI-Sources-LillistUI-Theme-chunk-1.accessibilityLabel (calls)`
 - `Packages-LillistUI-Sources-LillistUI-CrashReporting.dontSend -> Packages-LillistCore-Sources-LillistCore-CrashReporting.submit (calls)`
 - `Packages-LillistUI-Sources-LillistUI-CrashReporting.renderPreview -> Packages-LillistCore-Sources-LillistCore-CrashReporting.CrashReport (calls)`
 - `Packages-LillistUI-Sources-LillistUI-CrashReporting.renderPreview -> Packages-LillistCore-Sources-LillistCore-CrashReporting.renderedAsPlainText (reads)`

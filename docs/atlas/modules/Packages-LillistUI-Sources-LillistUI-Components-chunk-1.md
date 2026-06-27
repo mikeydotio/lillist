@@ -28,14 +28,14 @@ sources:
   - path: Packages/LillistUI/Sources/LillistUI/Components/SwipeSettleArbiter.swift
     blob: cf59ef5568e46e40829aefc608d36daea124a53f
   - path: Packages/LillistUI/Sources/LillistUI/Components/SwipeableRow.swift
-    blob: 78107c41ed9975786c1782331d6aeb6ceaba1018
+    blob: 50dff04de22eb32e3da4feeba199b7c9ca08958e
   - path: Packages/LillistUI/Sources/LillistUI/Components/SyncStatusDotView.swift
     blob: dbc3a9bc1d13fef3c9ed1eefc6e7871c9291bf27
   - path: Packages/LillistUI/Sources/LillistUI/Components/TagChipView.swift
     blob: fe7f32f66f4aff83ad028f9d2626f63ced2e4fe0
 references_modules: [Apps-Lillist-macOS-Sources-Hotkey, Extensions-ShareExtension-iOS, Packages-LillistCore-Sources-LillistCore-LinkPreview, Packages-LillistCore-Sources-LillistCore-Notifications, Packages-LillistCore-Sources-LillistCore-Stores-chunk-2, Packages-LillistCore-Sources-LillistCore-Sync-chunk-1, Packages-LillistUI-Sources-LillistUI-Accessibility, Packages-LillistUI-Sources-LillistUI-Settings, Packages-LillistUI-Sources-LillistUI-Theme-chunk-1]
 generator: cartographer/4
-baseline: 515f24730d21cb81ca1c9737ffeb981e9c414d3c
+baseline: 8e926f08fd5269de164d25b42880893a604a9d5c
 ---
 
 # Module: Packages/LillistUI/Sources/LillistUI/Components (chunk 1)
@@ -84,12 +84,12 @@ This module houses the reusable SwiftUI building blocks through which the Rainbo
 
 | Symbol | Kind | Location | Why it matters |
 | --- | --- | --- | --- |
-| `close` | func | `Packages/LillistUI/Sources/LillistUI/Components/SwipeableRow.swift:249` | Atomically resets offset to 0 and clears openRowID if this row owns the open slot; called from settle, both onChange handlers, and the tap-to-close overlay. The invariant — visual snap paired with coordination state — is enforced only here. SwipeableRow.swift:249-252. |
+| `close` | func | `Packages/LillistUI/Sources/LillistUI/Components/SwipeableRow.swift:278` | Atomically resets offset to 0 and clears openRowID if this row owns the open slot; called from settle, both onChange handlers, and the tap-to-close overlay. The invariant — visual snap paired with coordination state — is enforced only here. SwipeableRow.swift:249-252. |
 | `closure` | func | `Packages/LillistUI/Sources/LillistUI/Components/ReorderActionDispatch.swift:57` | Routing kernel for the dispatch: both availableActions (which filters it) and invoke (which calls its result) depend entirely on closure(for:) to map each ReorderAction to its handler. Its switch is the single source of truth for the action-to-handler mapping. ReorderActionDispatch.swift:57-65. |
-| `perform` | func | `Packages/LillistUI/Sources/LillistUI/Components/SwipeableRow.swift:243` | `perform(_:)` is the single convergence point that enforces the close-before-fire invariant for every swipe action. It calls `close()` (Packages/LillistUI/Sources/LillistUI/Components/SwipeableRow.swift:245) to snap the row shut visually before `spec.perform()` fires (line 246), preventing a data mutation from racing an open animation. All three internal paths that trigger an action route here: the action-button tap handler (line 149) and both full-swipe commit branches in `settle` (lines 227 and 229). Bypassing it would break the visual settle-before-mutate contract. |
+| `perform` | func | `Packages/LillistUI/Sources/LillistUI/Components/SwipeableRow.swift:272` | `perform(_:)` is the single convergence point that enforces the close-before-fire invariant for every swipe action. It calls `close()` (Packages/LillistUI/Sources/LillistUI/Components/SwipeableRow.swift:245) to snap the row shut visually before `spec.perform()` fires (line 246), preventing a data mutation from racing an open animation. All three internal paths that trigger an action route here: the action-button tap handler (line 149) and both full-swipe commit branches in `settle` (lines 227 and 229). Bypassing it would break the visual settle-before-mutate contract. |
 | `reasonDescription` | func | `Packages/LillistUI/Sources/LillistUI/Components/SyncStatusDotView.swift:105` | Single source of all PauseReason-to-string conversions; its output feeds both the popover label (via the label computed property) and the VoiceOver announcement in onChange. All pause-reason UI text is owned here. SyncStatusDotView.swift:105-114. |
-| `settle` | func | `Packages/LillistUI/Sources/LillistUI/Components/SwipeableRow.swift:212` | Gesture-end coordinator: delegates the commit/open/close decision to SwipeSettleArbiter.outcome then dispatches side effects (perform, snap, openRowID mutation). Separates policy from mechanism. SwipeableRow.swift:212-238. |
-| `snap` | func | `Packages/LillistUI/Sources/LillistUI/Components/SwipeableRow.swift:254` | Single animation entry point for all positional transitions: applies LillistMotion.squish(LillistMotion.fast) or skips animation under Reduce Motion. Every branch of settle and close flows through snap. SwipeableRow.swift:254-261. |
+| `settle` | func | `Packages/LillistUI/Sources/LillistUI/Components/SwipeableRow.swift:239` | Integration point between SwipeSettleArbiter's pure outcome and SwipeableRow's stateful side-effects (snap position, openRowID broadcast, action execution); the only code path from gesture release to a committed, opened, or closed row. |
+| `snap` | func | `Packages/LillistUI/Sources/LillistUI/Components/SwipeableRow.swift:283` | Single animation entry point for all positional transitions: applies LillistMotion.squish(LillistMotion.fast) or skips animation under Reduce Motion. Every branch of settle and close flows through snap. SwipeableRow.swift:254-261. |
 
 ## Relationships
 
@@ -130,7 +130,7 @@ This module houses the reusable SwiftUI building blocks through which the Rainbo
 - `Packages-LillistUI-Sources-LillistUI-Components-chunk-1.SyncStatusDotView -> Packages-LillistUI-Sources-LillistUI-Settings.Environment (reads)`
 - `Packages-LillistUI-Sources-LillistUI-Components-chunk-1.SyncStatusDotView -> Packages-LillistUI-Sources-LillistUI-Theme-chunk-1.accessibilityLabel (calls)`
 - `Packages-LillistUI-Sources-LillistUI-Components-chunk-1.SyncStatusDotView -> Packages-LillistUI-Sources-LillistUI-Theme-chunk-1.fill (calls)`
-- `Packages-LillistUI-Sources-LillistUI-Components-chunk-1.actionButton -> Packages-LillistUI-Sources-LillistUI-Theme-chunk-1.accessibilityLabel (calls)`
+- `Packages-LillistUI-Sources-LillistUI-Components-chunk-1.actionCard -> Packages-LillistUI-Sources-LillistUI-Theme-chunk-1.accessibilityLabel (calls)`
 - `Packages-LillistUI-Sources-LillistUI-Components-chunk-1.badgeView -> Packages-LillistCore-Sources-LillistCore-LinkPreview.String (calls)`
 - `Packages-LillistUI-Sources-LillistUI-Components-chunk-1.badgeView -> Packages-LillistUI-Sources-LillistUI-Theme-chunk-1.accessibilityLabel (calls)`
 - `Packages-LillistUI-Sources-LillistUI-Components-chunk-1.badgeView -> Packages-LillistUI-Sources-LillistUI-Theme-chunk-1.fill (calls)`

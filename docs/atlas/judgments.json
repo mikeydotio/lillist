@@ -92,22 +92,6 @@
         "verdict": "unverified"
       }
     },
-    "edge.semantic/017dc1da3e1c252cf63af8ff": {
-      "kind": "edge.semantic",
-      "provenance": {
-        "created_at_commit": "515f24730d21cb81ca1c9737ffeb981e9c414d3c",
-        "generator": "cartographer/4",
-        "model": "sonnet"
-      },
-      "value": {
-        "to": "Packages/LillistCore/Sources/LillistCore/Sync/MigrationJournal.swift::isStale",
-        "verb": "reads",
-        "why": "evaluate() reads `journal.isStale()` to distinguish a crashd migration from a fresh in-flight one before offering recovery (LillistApp.swift:363)"
-      },
-      "verify": {
-        "verdict": "unverified"
-      }
-    },
     "edge.semantic/01955f1b3e6158be3b704cd9": {
       "kind": "edge.semantic",
       "provenance": {
@@ -293,22 +277,6 @@
         "to": "Packages/LillistCore/Sources/LillistCore/CLIBridge/StoreLocator.swift::openAppGroup",
         "verb": "reads",
         "why": "NoteCommand.run opens the shared app-group persistent store to append a journal note."
-      },
-      "verify": {
-        "verdict": "unverified"
-      }
-    },
-    "edge.semantic/053f16e1abb75373a6d5d04e": {
-      "kind": "edge.semantic",
-      "provenance": {
-        "created_at_commit": "515f24730d21cb81ca1c9737ffeb981e9c414d3c",
-        "generator": "cartographer/4",
-        "model": "sonnet"
-      },
-      "value": {
-        "to": "Packages/LillistCore/Sources/LillistCore/Preferences/DevicePreferencesStore.swift::setDiagnosticLoggingEnabled",
-        "verb": "writes",
-        "why": "loggingBinding setter calls setDiagnosticLoggingEnabled to persist the toggle \u2014 DiagnosticsPane.swift:87"
       },
       "verify": {
         "verdict": "unverified"
@@ -666,6 +634,24 @@
         "verdict": "unverified"
       }
     },
+    "edge.semantic/0a5ad26d4b495ed856a5fb86": {
+      "kind": "edge.semantic",
+      "provenance": {
+        "created_at_commit": "8e926f08fd5269de164d25b42880893a604a9d5c",
+        "generator": "cartographer/4",
+        "model": "claude-sonnet-4-6"
+      },
+      "value": {
+        "to": "Packages/LillistCore/Sources/LillistCore/Sync/MigrationJournal.swift::isStale",
+        "verb": "reads",
+        "why": "evaluate() reads isStale() to distinguish a crashed migration (offer recovery sheet) from a live in-flight one (back off silently); only stale journals route to .recovery (Apps/Lillist-iOS/Sources/App/LillistApp.swift:277)."
+      },
+      "verify": {
+        "at_commit": "8e926f08fd5269de164d25b42880893a604a9d5c",
+        "verdict": "pass",
+        "verifier": "map-verifier"
+      }
+    },
     "edge.semantic/0aa421e21ae2b6fa8d60d223": {
       "kind": "edge.semantic",
       "provenance": {
@@ -741,20 +727,6 @@
       }
     },
     "edge.semantic/0bf2f364acfa4291fde73ba1": {
-      "kind": "edge.semantic",
-      "provenance": {
-        "created_at_commit": "515f24730d21cb81ca1c9737ffeb981e9c414d3c",
-        "generator": "cartographer/4",
-        "model": "sonnet"
-      },
-      "value": {
-        "verb": null
-      },
-      "verify": {
-        "verdict": "unverified"
-      }
-    },
-    "edge.semantic/0bf96edb606f60e81bcdb710": {
       "kind": "edge.semantic",
       "provenance": {
         "created_at_commit": "515f24730d21cb81ca1c9737ffeb981e9c414d3c",
@@ -915,20 +887,6 @@
         "to": "Packages/LillistCore/Sources/LillistCore/Stores/TaskStore.swift::assignTag",
         "verb": "writes",
         "why": "uiTestSeedDemo writes `try await env.taskStore.assignTag(taskID:tagID:)` to attach tags to seeded demo tasks (LillistApp.swift:257,267)"
-      },
-      "verify": {
-        "verdict": "unverified"
-      }
-    },
-    "edge.semantic/0e804bf136eb177115080899": {
-      "kind": "edge.semantic",
-      "provenance": {
-        "created_at_commit": "515f24730d21cb81ca1c9737ffeb981e9c414d3c",
-        "generator": "cartographer/4",
-        "model": "sonnet"
-      },
-      "value": {
-        "verb": null
       },
       "verify": {
         "verdict": "unverified"
@@ -1100,20 +1058,6 @@
         "verdict": "unverified"
       }
     },
-    "edge.semantic/12c98b55e38061c1038bf4d6": {
-      "kind": "edge.semantic",
-      "provenance": {
-        "created_at_commit": "515f24730d21cb81ca1c9737ffeb981e9c414d3c",
-        "generator": "cartographer/4",
-        "model": "sonnet"
-      },
-      "value": {
-        "verb": null
-      },
-      "verify": {
-        "verdict": "unverified"
-      }
-    },
     "edge.semantic/12fd638d014290de2306de53": {
       "kind": "edge.semantic",
       "provenance": {
@@ -1203,20 +1147,6 @@
       }
     },
     "edge.semantic/13b82b642caa0021eb5154f5": {
-      "kind": "edge.semantic",
-      "provenance": {
-        "created_at_commit": "515f24730d21cb81ca1c9737ffeb981e9c414d3c",
-        "generator": "cartographer/4",
-        "model": "sonnet"
-      },
-      "value": {
-        "verb": null
-      },
-      "verify": {
-        "verdict": "unverified"
-      }
-    },
-    "edge.semantic/1440dd4ee7d9d967a9d54805": {
       "kind": "edge.semantic",
       "provenance": {
         "created_at_commit": "515f24730d21cb81ca1c9737ffeb981e9c414d3c",
@@ -1382,6 +1312,20 @@
         "verdict": "unverified"
       }
     },
+    "edge.semantic/16bc0e1d91d66fc5e0326bec": {
+      "kind": "edge.semantic",
+      "provenance": {
+        "created_at_commit": "8e926f08fd5269de164d25b42880893a604a9d5c",
+        "generator": "cartographer/4",
+        "model": "claude-sonnet-4-6"
+      },
+      "value": {
+        "verb": null
+      },
+      "verify": {
+        "verdict": "unverified"
+      }
+    },
     "edge.semantic/1713ba52a0c98f20a5e9a411": {
       "kind": "edge.semantic",
       "provenance": {
@@ -1519,20 +1463,6 @@
       }
     },
     "edge.semantic/193ecb5e16a9c7cbbc158f98": {
-      "kind": "edge.semantic",
-      "provenance": {
-        "created_at_commit": "515f24730d21cb81ca1c9737ffeb981e9c414d3c",
-        "generator": "cartographer/4",
-        "model": "sonnet"
-      },
-      "value": {
-        "verb": null
-      },
-      "verify": {
-        "verdict": "unverified"
-      }
-    },
-    "edge.semantic/1981ac69090d20a724563ba0": {
       "kind": "edge.semantic",
       "provenance": {
         "created_at_commit": "515f24730d21cb81ca1c9737ffeb981e9c414d3c",
@@ -1872,12 +1802,12 @@
         "verdict": "unverified"
       }
     },
-    "edge.semantic/1df842063d00b69a3f723517": {
+    "edge.semantic/1e6fe032584994141e1f6ae4": {
       "kind": "edge.semantic",
       "provenance": {
-        "created_at_commit": "515f24730d21cb81ca1c9737ffeb981e9c414d3c",
+        "created_at_commit": "8e926f08fd5269de164d25b42880893a604a9d5c",
         "generator": "cartographer/4",
-        "model": "sonnet"
+        "model": "claude-sonnet-4-6"
       },
       "value": {
         "verb": null
@@ -1976,20 +1906,6 @@
         "verdict": "unverified"
       }
     },
-    "edge.semantic/1f8a2a55f4291988c435451d": {
-      "kind": "edge.semantic",
-      "provenance": {
-        "created_at_commit": "515f24730d21cb81ca1c9737ffeb981e9c414d3c",
-        "generator": "cartographer/4",
-        "model": "sonnet"
-      },
-      "value": {
-        "verb": null
-      },
-      "verify": {
-        "verdict": "unverified"
-      }
-    },
     "edge.semantic/2036031523322f08cb6d0fb7": {
       "kind": "edge.semantic",
       "provenance": {
@@ -2064,6 +1980,24 @@
       },
       "verify": {
         "verdict": "unverified"
+      }
+    },
+    "edge.semantic/21712b3cf02daa0002729584": {
+      "kind": "edge.semantic",
+      "provenance": {
+        "created_at_commit": "8e926f08fd5269de164d25b42880893a604a9d5c",
+        "generator": "cartographer/4",
+        "model": "claude-sonnet-4-6"
+      },
+      "value": {
+        "to": "Packages/LillistCore/Sources/LillistCore/Sync/MigrationCoordinator.swift::restoreFromBackup",
+        "verb": "writes",
+        "why": "onRestoreFromBackup closure calls restoreFromBackup(targetURL:) to overwrite the live store with the quarantine backup. Apps/Lillist-macOS/Sources/LillistApp.swift:344"
+      },
+      "verify": {
+        "at_commit": "8e926f08fd5269de164d25b42880893a604a9d5c",
+        "verdict": "pass",
+        "verifier": "map-verifier"
       }
     },
     "edge.semantic/2175254566ab76931c420744": {
@@ -2274,6 +2208,24 @@
         "verdict": "unverified"
       }
     },
+    "edge.semantic/23b7ff6bd2e73642f4594463": {
+      "kind": "edge.semantic",
+      "provenance": {
+        "created_at_commit": "8e926f08fd5269de164d25b42880893a604a9d5c",
+        "generator": "cartographer/4",
+        "model": "claude-sonnet-4-6"
+      },
+      "value": {
+        "to": "Packages/LillistUI/Sources/LillistUI/Sync/SyncMigrationProgressSheet.swift::SyncMigrationProgressSheet",
+        "verb": "owns",
+        "why": "ICloudSyncSection.swift:70 renders SyncMigrationProgressSheet in the single .sheet slot, feeding live MigrationPhase from progressStream."
+      },
+      "verify": {
+        "at_commit": "8e926f08fd5269de164d25b42880893a604a9d5c",
+        "verdict": "pass",
+        "verifier": "map-verifier"
+      }
+    },
     "edge.semantic/240806714596b73d5eefad85": {
       "kind": "edge.semantic",
       "provenance": {
@@ -2345,6 +2297,20 @@
         "to": "Packages/LillistCore/Sources/LillistCore/Persistence/RemoteChangeReconciler.swift::RemoteChangeReconciler",
         "verb": "owns",
         "why": "AppEnvironment holds `let remoteChangeReconciler: RemoteChangeReconciler` for the app lifetime; constructed at AppEnvironment.swift:187."
+      },
+      "verify": {
+        "verdict": "unverified"
+      }
+    },
+    "edge.semantic/2546de5cf6668e497f34c1f0": {
+      "kind": "edge.semantic",
+      "provenance": {
+        "created_at_commit": "8e926f08fd5269de164d25b42880893a604a9d5c",
+        "generator": "cartographer/4",
+        "model": "claude-sonnet-4-6"
+      },
+      "value": {
+        "verb": null
       },
       "verify": {
         "verdict": "unverified"
@@ -2442,6 +2408,20 @@
         "verdict": "unverified"
       }
     },
+    "edge.semantic/2737e7b5ff442504780e6397": {
+      "kind": "edge.semantic",
+      "provenance": {
+        "created_at_commit": "8e926f08fd5269de164d25b42880893a604a9d5c",
+        "generator": "cartographer/4",
+        "model": "claude-sonnet-4-6"
+      },
+      "value": {
+        "verb": null
+      },
+      "verify": {
+        "verdict": "unverified"
+      }
+    },
     "edge.semantic/2760d319303f373577bd4396": {
       "kind": "edge.semantic",
       "provenance": {
@@ -2470,12 +2450,40 @@
         "verdict": "unverified"
       }
     },
+    "edge.semantic/27ce74086eed52682f9e51de": {
+      "kind": "edge.semantic",
+      "provenance": {
+        "created_at_commit": "8e926f08fd5269de164d25b42880893a604a9d5c",
+        "generator": "cartographer/4",
+        "model": "claude-sonnet-4-6"
+      },
+      "value": {
+        "verb": null
+      },
+      "verify": {
+        "verdict": "unverified"
+      }
+    },
     "edge.semantic/27f3d9fe1cad54397256e3aa": {
       "kind": "edge.semantic",
       "provenance": {
         "created_at_commit": "515f24730d21cb81ca1c9737ffeb981e9c414d3c",
         "generator": "cartographer/4",
         "model": "sonnet"
+      },
+      "value": {
+        "verb": null
+      },
+      "verify": {
+        "verdict": "unverified"
+      }
+    },
+    "edge.semantic/2844d019b5d5d6d9323c98ba": {
+      "kind": "edge.semantic",
+      "provenance": {
+        "created_at_commit": "8e926f08fd5269de164d25b42880893a604a9d5c",
+        "generator": "cartographer/4",
+        "model": "claude-sonnet-4-6"
       },
       "value": {
         "verb": null
@@ -2660,6 +2668,20 @@
         "verdict": "unverified"
       }
     },
+    "edge.semantic/2a3e261e4836ec10ddac757e": {
+      "kind": "edge.semantic",
+      "provenance": {
+        "created_at_commit": "8e926f08fd5269de164d25b42880893a604a9d5c",
+        "generator": "cartographer/4",
+        "model": "claude-sonnet-4-6"
+      },
+      "value": {
+        "verb": null
+      },
+      "verify": {
+        "verdict": "unverified"
+      }
+    },
     "edge.semantic/2a458542018b4ae8358a8ef3": {
       "kind": "edge.semantic",
       "provenance": {
@@ -2713,20 +2735,6 @@
         "to": "Packages/LillistCore/Sources/LillistCore/CrashReporting/CrashReporter.swift::CrashReporter",
         "verb": "owns",
         "why": "AppEnvironment holds `let crashReporter: CrashReporter` for the app lifetime; constructed at AppEnvironment.swift:239."
-      },
-      "verify": {
-        "verdict": "unverified"
-      }
-    },
-    "edge.semantic/2b6be9f4b31a903b3f8acd53": {
-      "kind": "edge.semantic",
-      "provenance": {
-        "created_at_commit": "515f24730d21cb81ca1c9737ffeb981e9c414d3c",
-        "generator": "cartographer/4",
-        "model": "sonnet"
-      },
-      "value": {
-        "verb": null
       },
       "verify": {
         "verdict": "unverified"
@@ -2792,22 +2800,6 @@
         "verdict": "unverified"
       }
     },
-    "edge.semantic/2bce5a5ffff4d81f61be8180": {
-      "kind": "edge.semantic",
-      "provenance": {
-        "created_at_commit": "515f24730d21cb81ca1c9737ffeb981e9c414d3c",
-        "generator": "cartographer/4",
-        "model": "sonnet"
-      },
-      "value": {
-        "to": "Packages/LillistUI/Sources/LillistUI/Settings/CrashReportSample.swift::Environment",
-        "verb": "reads",
-        "why": "ICloudSyncSection reads AppEnvironment via @Environment(AppEnvironment.self) at line 11 for sync mode, account state, migration coordinator, and pause reason."
-      },
-      "verify": {
-        "verdict": "unverified"
-      }
-    },
     "edge.semantic/2c71c33df83ca0d199dc3610": {
       "kind": "edge.semantic",
       "provenance": {
@@ -2835,20 +2827,6 @@
         "to": "Packages/LillistCore/Sources/LillistCore/Reminders/RemindersImporter.swift::RemindersImporter",
         "verb": "owns",
         "why": "stored as `let remindersImporter: RemindersImporter` on AppEnvironment (AppEnvironment.swift:42)"
-      },
-      "verify": {
-        "verdict": "unverified"
-      }
-    },
-    "edge.semantic/2cc50f0b8c172e3c33b5bee1": {
-      "kind": "edge.semantic",
-      "provenance": {
-        "created_at_commit": "515f24730d21cb81ca1c9737ffeb981e9c414d3c",
-        "generator": "cartographer/4",
-        "model": "sonnet"
-      },
-      "value": {
-        "verb": null
       },
       "verify": {
         "verdict": "unverified"
@@ -2914,20 +2892,6 @@
         "verdict": "unverified"
       }
     },
-    "edge.semantic/2e4919b68708f6ef4df9fa88": {
-      "kind": "edge.semantic",
-      "provenance": {
-        "created_at_commit": "515f24730d21cb81ca1c9737ffeb981e9c414d3c",
-        "generator": "cartographer/4",
-        "model": "sonnet"
-      },
-      "value": {
-        "verb": null
-      },
-      "verify": {
-        "verdict": "unverified"
-      }
-    },
     "edge.semantic/2e6c42439585bec9dee656b7": {
       "kind": "edge.semantic",
       "provenance": {
@@ -2983,6 +2947,20 @@
         "to": "Packages/LillistCore/Sources/LillistCore/CrashReporting/CrashReportTransport.swift::FileSaveTransport",
         "verb": "writes",
         "why": "send delegates to FileSaveTransport to write the report as a temp .lillistcrash file before composing the mailto: URL (CLIMailtoTransport.swift:13)"
+      },
+      "verify": {
+        "verdict": "unverified"
+      }
+    },
+    "edge.semantic/302ed12d6055ae08ad825d2d": {
+      "kind": "edge.semantic",
+      "provenance": {
+        "created_at_commit": "8e926f08fd5269de164d25b42880893a604a9d5c",
+        "generator": "cartographer/4",
+        "model": "claude-sonnet-4-6"
+      },
+      "value": {
+        "verb": null
       },
       "verify": {
         "verdict": "unverified"
@@ -3146,6 +3124,24 @@
         "verdict": "unverified"
       }
     },
+    "edge.semantic/322d8692e6fe0d913e8f211c": {
+      "kind": "edge.semantic",
+      "provenance": {
+        "created_at_commit": "8e926f08fd5269de164d25b42880893a604a9d5c",
+        "generator": "cartographer/4",
+        "model": "claude-sonnet-4-6"
+      },
+      "value": {
+        "to": "Packages/LillistUI/Sources/LillistUI/Sync/SyncMigrationChoiceSheet.swift::SyncMigrationChoiceSheet",
+        "verb": "owns",
+        "why": "ICloudSyncSection.swift:45 renders SyncMigrationChoiceSheet in the choice route slot and wires callbacks to set pendingDirection state."
+      },
+      "verify": {
+        "at_commit": "8e926f08fd5269de164d25b42880893a604a9d5c",
+        "verdict": "pass",
+        "verifier": "map-verifier"
+      }
+    },
     "edge.semantic/32ba1a1824cc644281042a95": {
       "kind": "edge.semantic",
       "provenance": {
@@ -3158,6 +3154,24 @@
       },
       "verify": {
         "verdict": "unverified"
+      }
+    },
+    "edge.semantic/335e03325f912d5e59ccae11": {
+      "kind": "edge.semantic",
+      "provenance": {
+        "created_at_commit": "8e926f08fd5269de164d25b42880893a604a9d5c",
+        "generator": "cartographer/4",
+        "model": "claude-sonnet-4-6"
+      },
+      "value": {
+        "to": "Packages/LillistUI/Sources/LillistUI/Sync/SyncDisableConfirmationSheet.swift::SyncDisableConfirmationSheet",
+        "verb": "owns",
+        "why": "ICloudSyncSection.swift:52 renders SyncDisableConfirmationSheet in the disable route, wiring onSyncFirst/onDisableNow to triggerDisable."
+      },
+      "verify": {
+        "at_commit": "8e926f08fd5269de164d25b42880893a604a9d5c",
+        "verdict": "pass",
+        "verifier": "map-verifier"
       }
     },
     "edge.semantic/33737467075ee81fda9801bb": {
@@ -3202,6 +3216,20 @@
         "verdict": "unverified"
       }
     },
+    "edge.semantic/33edf8563f1987beb96811db": {
+      "kind": "edge.semantic",
+      "provenance": {
+        "created_at_commit": "8e926f08fd5269de164d25b42880893a604a9d5c",
+        "generator": "cartographer/4",
+        "model": "claude-sonnet-4-6"
+      },
+      "value": {
+        "verb": null
+      },
+      "verify": {
+        "verdict": "unverified"
+      }
+    },
     "edge.semantic/33f5e5687ca1bb4853279ee5": {
       "kind": "edge.semantic",
       "provenance": {
@@ -3213,36 +3241,6 @@
         "to": "Packages/LillistCore/Sources/LillistCore/Stores/TaskStore.swift::transition",
         "verb": "writes",
         "why": "calls env.taskStore.transition(id: record.id, to: newStatus) \u2014 writes a status change to the task store"
-      },
-      "verify": {
-        "verdict": "unverified"
-      }
-    },
-    "edge.semantic/3413c7f2771620ec0c22d5d2": {
-      "kind": "edge.semantic",
-      "provenance": {
-        "created_at_commit": "515f24730d21cb81ca1c9737ffeb981e9c414d3c",
-        "generator": "cartographer/4",
-        "model": "sonnet"
-      },
-      "value": {
-        "verb": null
-      },
-      "verify": {
-        "verdict": "unverified"
-      }
-    },
-    "edge.semantic/34473ff3ddbc80710cf793c0": {
-      "kind": "edge.semantic",
-      "provenance": {
-        "created_at_commit": "515f24730d21cb81ca1c9737ffeb981e9c414d3c",
-        "generator": "cartographer/4",
-        "model": "sonnet"
-      },
-      "value": {
-        "to": "Packages/LillistUI/Sources/LillistUI/Theme/StatusPalette.swift::color",
-        "verb": "reads",
-        "why": "phantomRow reads StatusPalette.color to get the accent tint for the drag-ghost card at TasksScreen.swift:306"
       },
       "verify": {
         "verdict": "unverified"
@@ -3410,17 +3408,15 @@
         "verdict": "unverified"
       }
     },
-    "edge.semantic/371cc68eef889bd09d7e3741": {
+    "edge.semantic/37dc5bf161aec6f566b80d2f": {
       "kind": "edge.semantic",
       "provenance": {
-        "created_at_commit": "515f24730d21cb81ca1c9737ffeb981e9c414d3c",
+        "created_at_commit": "8e926f08fd5269de164d25b42880893a604a9d5c",
         "generator": "cartographer/4",
-        "model": "sonnet"
+        "model": "claude-sonnet-4-6"
       },
       "value": {
-        "to": "Packages/LillistCore/Sources/LillistCore/Sync/SyncModeStore.swift::setMode",
-        "verb": "writes",
-        "why": "evaluate() writes setMode(.iCloudSync) when iCloud is available and onboarding has not been completed (LillistApp.swift:371)"
+        "verb": null
       },
       "verify": {
         "verdict": "unverified"
@@ -3572,6 +3568,24 @@
         "verdict": "unverified"
       }
     },
+    "edge.semantic/3a40c8dd8bb55fba88798c05": {
+      "kind": "edge.semantic",
+      "provenance": {
+        "created_at_commit": "8e926f08fd5269de164d25b42880893a604a9d5c",
+        "generator": "cartographer/4",
+        "model": "claude-sonnet-4-6"
+      },
+      "value": {
+        "to": "Packages/LillistCore/Sources/LillistCore/Preferences/DevicePreferencesStore.swift::setDiagnosticLoggingEnabled",
+        "verb": "writes",
+        "why": "DiagnosticsPane persists the user's toggle choice to UserDefaults via setDiagnosticLoggingEnabled (Apps/Lillist-macOS/Sources/Preferences/DiagnosticsPane.swift:91)."
+      },
+      "verify": {
+        "at_commit": "8e926f08fd5269de164d25b42880893a604a9d5c",
+        "verdict": "pass",
+        "verifier": "map-verifier"
+      }
+    },
     "edge.semantic/3a744ec14d0579ab89f7a743": {
       "kind": "edge.semantic",
       "provenance": {
@@ -3639,6 +3653,20 @@
         "to": "Packages/LillistCore/Sources/LillistCore/Sync/MigrationCoordinator.swift::MigrationCoordinator",
         "verb": "owns",
         "why": "AppEnvironment holds `let migrationCoordinator: MigrationCoordinator` for the app lifetime; constructed at AppEnvironment.swift:282."
+      },
+      "verify": {
+        "verdict": "unverified"
+      }
+    },
+    "edge.semantic/3b742d0ab1668dcf5546c612": {
+      "kind": "edge.semantic",
+      "provenance": {
+        "created_at_commit": "8e926f08fd5269de164d25b42880893a604a9d5c",
+        "generator": "cartographer/4",
+        "model": "claude-sonnet-4-6"
+      },
+      "value": {
+        "verb": null
       },
       "verify": {
         "verdict": "unverified"
@@ -3884,6 +3912,20 @@
         "verdict": "unverified"
       }
     },
+    "edge.semantic/3f7c8b2a72dcb4adcb2cf1a6": {
+      "kind": "edge.semantic",
+      "provenance": {
+        "created_at_commit": "8e926f08fd5269de164d25b42880893a604a9d5c",
+        "generator": "cartographer/4",
+        "model": "claude-sonnet-4-6"
+      },
+      "value": {
+        "verb": null
+      },
+      "verify": {
+        "verdict": "unverified"
+      }
+    },
     "edge.semantic/3f82b9bef5f30951e79c07ce": {
       "kind": "edge.semantic",
       "provenance": {
@@ -3895,6 +3937,20 @@
         "to": "Packages/LillistUI/Sources/LillistUI/Settings/CrashReportSample.swift::Environment",
         "verb": "reads",
         "why": "ResetDataStoreSection reads AppEnvironment via @Environment(AppEnvironment.self) at line 12 to access dataStoreReset."
+      },
+      "verify": {
+        "verdict": "unverified"
+      }
+    },
+    "edge.semantic/3f947b6d8a06e23653b68914": {
+      "kind": "edge.semantic",
+      "provenance": {
+        "created_at_commit": "8e926f08fd5269de164d25b42880893a604a9d5c",
+        "generator": "cartographer/4",
+        "model": "claude-sonnet-4-6"
+      },
+      "value": {
+        "verb": null
       },
       "verify": {
         "verdict": "unverified"
@@ -3914,12 +3970,12 @@
         "verdict": "unverified"
       }
     },
-    "edge.semantic/409f72d1de5e5bba37c1c4e0": {
+    "edge.semantic/4054b205ea2eaa974359dc47": {
       "kind": "edge.semantic",
       "provenance": {
-        "created_at_commit": "515f24730d21cb81ca1c9737ffeb981e9c414d3c",
+        "created_at_commit": "8e926f08fd5269de164d25b42880893a604a9d5c",
         "generator": "cartographer/4",
-        "model": "sonnet"
+        "model": "claude-sonnet-4-6"
       },
       "value": {
         "verb": null
@@ -3928,7 +3984,7 @@
         "verdict": "unverified"
       }
     },
-    "edge.semantic/40b1038d5182a5adf8f0bbc4": {
+    "edge.semantic/409f72d1de5e5bba37c1c4e0": {
       "kind": "edge.semantic",
       "provenance": {
         "created_at_commit": "515f24730d21cb81ca1c9737ffeb981e9c414d3c",
@@ -4160,6 +4216,24 @@
         "verdict": "unverified"
       }
     },
+    "edge.semantic/43c643a16ae8b2fae3a66f78": {
+      "kind": "edge.semantic",
+      "provenance": {
+        "created_at_commit": "8e926f08fd5269de164d25b42880893a604a9d5c",
+        "generator": "cartographer/4",
+        "model": "claude-sonnet-4-6"
+      },
+      "value": {
+        "to": "Packages/LillistUI/Sources/LillistUI/iOS/DiagnosticsIncludeSheet.swift::DiagnosticsIncludeSheet",
+        "verb": "owns",
+        "why": "DiagnosticsSection.swift:72 presents DiagnosticsIncludeSheet as a sheet, controlling lifecycle via bindings and onCreate/onCancel callbacks."
+      },
+      "verify": {
+        "at_commit": "8e926f08fd5269de164d25b42880893a604a9d5c",
+        "verdict": "pass",
+        "verifier": "map-verifier"
+      }
+    },
     "edge.semantic/43d4376842ce5e6bedb45705": {
       "kind": "edge.semantic",
       "provenance": {
@@ -4304,6 +4378,24 @@
         "verdict": "unverified"
       }
     },
+    "edge.semantic/46555a40bed6c9b95fcaad51": {
+      "kind": "edge.semantic",
+      "provenance": {
+        "created_at_commit": "8e926f08fd5269de164d25b42880893a604a9d5c",
+        "generator": "cartographer/4",
+        "model": "claude-sonnet-4-6"
+      },
+      "value": {
+        "to": "Packages/LillistCore/Sources/LillistCore/Sync/SyncModeStore.swift::setMode",
+        "verb": "writes",
+        "why": "OnboardingPresentationModifier.body writes .localOnly via setMode when the user accepts the iCloud-unavailable screen (Apps/Lillist-iOS/Sources/App/LillistApp.swift:231)."
+      },
+      "verify": {
+        "at_commit": "8e926f08fd5269de164d25b42880893a604a9d5c",
+        "verdict": "pass",
+        "verifier": "map-verifier"
+      }
+    },
     "edge.semantic/467861e75d80d428551f0560": {
       "kind": "edge.semantic",
       "provenance": {
@@ -4315,20 +4407,6 @@
         "to": "Packages/LillistCore/Sources/LillistCore/Stores/JournalStore.swift::appendNote",
         "verb": "writes",
         "why": "addJournalNote calls stores.journal.appendNote to persist a new journal entry (TaskEditorModel.swift:476)"
-      },
-      "verify": {
-        "verdict": "unverified"
-      }
-    },
-    "edge.semantic/46f8fa3be695a3827f6b286f": {
-      "kind": "edge.semantic",
-      "provenance": {
-        "created_at_commit": "515f24730d21cb81ca1c9737ffeb981e9c414d3c",
-        "generator": "cartographer/4",
-        "model": "sonnet"
-      },
-      "value": {
-        "verb": null
       },
       "verify": {
         "verdict": "unverified"
@@ -4426,22 +4504,6 @@
         "verdict": "unverified"
       }
     },
-    "edge.semantic/48e2778ba1307a00cd6cb2b4": {
-      "kind": "edge.semantic",
-      "provenance": {
-        "created_at_commit": "515f24730d21cb81ca1c9737ffeb981e9c414d3c",
-        "generator": "cartographer/4",
-        "model": "sonnet"
-      },
-      "value": {
-        "to": "Packages/LillistUI/Sources/LillistUI/Settings/CrashReportSample.swift::Environment",
-        "verb": "reads",
-        "why": "DiagnosticsSection reads AppEnvironment via @Environment(AppEnvironment.self) at line 12 to access devicePreferences, diagnosticLog, buildVersion, osVersion, deviceModel, and storeURL."
-      },
-      "verify": {
-        "verdict": "unverified"
-      }
-    },
     "edge.semantic/48ea692596488dccec080647": {
       "kind": "edge.semantic",
       "provenance": {
@@ -4501,48 +4563,6 @@
       }
     },
     "edge.semantic/4a7fcafa1c423907d4c9ac12": {
-      "kind": "edge.semantic",
-      "provenance": {
-        "created_at_commit": "515f24730d21cb81ca1c9737ffeb981e9c414d3c",
-        "generator": "cartographer/4",
-        "model": "sonnet"
-      },
-      "value": {
-        "verb": null
-      },
-      "verify": {
-        "verdict": "unverified"
-      }
-    },
-    "edge.semantic/4a8b6cae894681fe64ec07d3": {
-      "kind": "edge.semantic",
-      "provenance": {
-        "created_at_commit": "515f24730d21cb81ca1c9737ffeb981e9c414d3c",
-        "generator": "cartographer/4",
-        "model": "sonnet"
-      },
-      "value": {
-        "verb": null
-      },
-      "verify": {
-        "verdict": "unverified"
-      }
-    },
-    "edge.semantic/4aaddfc19eeaf6a3dcdafd73": {
-      "kind": "edge.semantic",
-      "provenance": {
-        "created_at_commit": "515f24730d21cb81ca1c9737ffeb981e9c414d3c",
-        "generator": "cartographer/4",
-        "model": "sonnet"
-      },
-      "value": {
-        "verb": null
-      },
-      "verify": {
-        "verdict": "unverified"
-      }
-    },
-    "edge.semantic/4ab2fcf196b47885627b65ae": {
       "kind": "edge.semantic",
       "provenance": {
         "created_at_commit": "515f24730d21cb81ca1c9737ffeb981e9c414d3c",
@@ -4660,7 +4680,7 @@
         "verdict": "unverified"
       }
     },
-    "edge.semantic/4bf4a4c9caffc27ba656f270": {
+    "edge.semantic/4c029139854e30da64cd0c19": {
       "kind": "edge.semantic",
       "provenance": {
         "created_at_commit": "515f24730d21cb81ca1c9737ffeb981e9c414d3c",
@@ -4674,18 +4694,22 @@
         "verdict": "unverified"
       }
     },
-    "edge.semantic/4c029139854e30da64cd0c19": {
+    "edge.semantic/4c323e65a7e7e12a8946fadd": {
       "kind": "edge.semantic",
       "provenance": {
-        "created_at_commit": "515f24730d21cb81ca1c9737ffeb981e9c414d3c",
+        "created_at_commit": "8e926f08fd5269de164d25b42880893a604a9d5c",
         "generator": "cartographer/4",
-        "model": "sonnet"
+        "model": "claude-sonnet-4-6"
       },
       "value": {
-        "verb": null
+        "to": "Packages/LillistUI/Sources/LillistUI/Settings/ICloudSyncSettingsSection.swift::ICloudSyncSettingsSection",
+        "verb": "owns",
+        "why": "Container for ICloudSyncSettingsSection (line 19): derives ViewState from AppEnvironment and supplies Actions closures to the pure presenter."
       },
       "verify": {
-        "verdict": "unverified"
+        "at_commit": "8e926f08fd5269de164d25b42880893a604a9d5c",
+        "verdict": "pass",
+        "verifier": "map-verifier"
       }
     },
     "edge.semantic/4ca972b7239d3900d5888944": {
@@ -4711,22 +4735,6 @@
       },
       "value": {
         "verb": null
-      },
-      "verify": {
-        "verdict": "unverified"
-      }
-    },
-    "edge.semantic/4d806f9c06d900cdf3b12f1e": {
-      "kind": "edge.semantic",
-      "provenance": {
-        "created_at_commit": "515f24730d21cb81ca1c9737ffeb981e9c414d3c",
-        "generator": "cartographer/4",
-        "model": "sonnet"
-      },
-      "value": {
-        "to": "Packages/LillistCore/Sources/LillistCore/Preferences/DevicePreferencesStore.swift::diagnosticLoggingEnabled",
-        "verb": "reads",
-        "why": ".task reads initial diagnosticLoggingEnabled state to hydrate the toggle \u2014 DiagnosticsPane.swift:54"
       },
       "verify": {
         "verdict": "unverified"
@@ -4832,40 +4840,26 @@
         "verdict": "unverified"
       }
     },
-    "edge.semantic/4f84a0a5b275aeb3c92fea76": {
-      "kind": "edge.semantic",
-      "provenance": {
-        "created_at_commit": "515f24730d21cb81ca1c9737ffeb981e9c414d3c",
-        "generator": "cartographer/4",
-        "model": "sonnet"
-      },
-      "value": {
-        "verb": null
-      },
-      "verify": {
-        "verdict": "unverified"
-      }
-    },
-    "edge.semantic/5035bd0b2cd3fa994ad03ed8": {
-      "kind": "edge.semantic",
-      "provenance": {
-        "created_at_commit": "515f24730d21cb81ca1c9737ffeb981e9c414d3c",
-        "generator": "cartographer/4",
-        "model": "sonnet"
-      },
-      "value": {
-        "verb": null
-      },
-      "verify": {
-        "verdict": "unverified"
-      }
-    },
     "edge.semantic/504261fccf4d828810de34af": {
       "kind": "edge.semantic",
       "provenance": {
         "created_at_commit": "515f24730d21cb81ca1c9737ffeb981e9c414d3c",
         "generator": "cartographer/4",
         "model": "sonnet"
+      },
+      "value": {
+        "verb": null
+      },
+      "verify": {
+        "verdict": "unverified"
+      }
+    },
+    "edge.semantic/505d2530f8fc59c17d259ac4": {
+      "kind": "edge.semantic",
+      "provenance": {
+        "created_at_commit": "8e926f08fd5269de164d25b42880893a604a9d5c",
+        "generator": "cartographer/4",
+        "model": "claude-sonnet-4-6"
       },
       "value": {
         "verb": null
@@ -5125,20 +5119,6 @@
       }
     },
     "edge.semantic/53e9934fdc9ddf167b090181": {
-      "kind": "edge.semantic",
-      "provenance": {
-        "created_at_commit": "515f24730d21cb81ca1c9737ffeb981e9c414d3c",
-        "generator": "cartographer/4",
-        "model": "sonnet"
-      },
-      "value": {
-        "verb": null
-      },
-      "verify": {
-        "verdict": "unverified"
-      }
-    },
-    "edge.semantic/5400676e08c47345060e213f": {
       "kind": "edge.semantic",
       "provenance": {
         "created_at_commit": "515f24730d21cb81ca1c9737ffeb981e9c414d3c",
@@ -5724,20 +5704,6 @@
         "verdict": "unverified"
       }
     },
-    "edge.semantic/5b34c740199d5444500f56d2": {
-      "kind": "edge.semantic",
-      "provenance": {
-        "created_at_commit": "515f24730d21cb81ca1c9737ffeb981e9c414d3c",
-        "generator": "cartographer/4",
-        "model": "sonnet"
-      },
-      "value": {
-        "verb": null
-      },
-      "verify": {
-        "verdict": "unverified"
-      }
-    },
     "edge.semantic/5b7b0d0c32e6a4bf6de4f106": {
       "kind": "edge.semantic",
       "provenance": {
@@ -5758,6 +5724,20 @@
         "created_at_commit": "515f24730d21cb81ca1c9737ffeb981e9c414d3c",
         "generator": "cartographer/4",
         "model": "sonnet"
+      },
+      "value": {
+        "verb": null
+      },
+      "verify": {
+        "verdict": "unverified"
+      }
+    },
+    "edge.semantic/5c5b50f9ce461f9cdcbbd6fd": {
+      "kind": "edge.semantic",
+      "provenance": {
+        "created_at_commit": "8e926f08fd5269de164d25b42880893a604a9d5c",
+        "generator": "cartographer/4",
+        "model": "claude-sonnet-4-6"
       },
       "value": {
         "verb": null
@@ -5922,12 +5902,40 @@
         "verdict": "unverified"
       }
     },
+    "edge.semantic/5d2dc842e553d6db0f852967": {
+      "kind": "edge.semantic",
+      "provenance": {
+        "created_at_commit": "8e926f08fd5269de164d25b42880893a604a9d5c",
+        "generator": "cartographer/4",
+        "model": "claude-sonnet-4-6"
+      },
+      "value": {
+        "verb": null
+      },
+      "verify": {
+        "verdict": "unverified"
+      }
+    },
     "edge.semantic/5d680d6a8977cc3e7bd2f0ac": {
       "kind": "edge.semantic",
       "provenance": {
         "created_at_commit": "515f24730d21cb81ca1c9737ffeb981e9c414d3c",
         "generator": "cartographer/4",
         "model": "sonnet"
+      },
+      "value": {
+        "verb": null
+      },
+      "verify": {
+        "verdict": "unverified"
+      }
+    },
+    "edge.semantic/5df05cce7d9a7aa167293773": {
+      "kind": "edge.semantic",
+      "provenance": {
+        "created_at_commit": "8e926f08fd5269de164d25b42880893a604a9d5c",
+        "generator": "cartographer/4",
+        "model": "claude-sonnet-4-6"
       },
       "value": {
         "verb": null
@@ -6024,20 +6032,22 @@
         "verdict": "unverified"
       }
     },
-    "edge.semantic/5fec091db98d087d5d05e9b7": {
+    "edge.semantic/5fcb3970b0432ed7c6d7d138": {
       "kind": "edge.semantic",
       "provenance": {
-        "created_at_commit": "515f24730d21cb81ca1c9737ffeb981e9c414d3c",
+        "created_at_commit": "8e926f08fd5269de164d25b42880893a604a9d5c",
         "generator": "cartographer/4",
-        "model": "sonnet"
+        "model": "claude-sonnet-4-6"
       },
       "value": {
-        "to": "Packages/LillistCore/Sources/LillistCore/Preferences/DevicePreferencesStore.swift::setDiagnosticLoggingEnabled",
-        "verb": "writes",
-        "why": "loggingBinding setter calls setDiagnosticLoggingEnabled(newValue) to persist the toggle at line 84."
+        "to": "Packages/LillistUI/Sources/LillistUI/Sync/PauseExplainerDialog.swift::PauseExplainerDialog",
+        "verb": "owns",
+        "why": "ICloudSyncSection.swift:62 renders PauseExplainerDialog in the pauseExplainer slot, feeding pauseReason and routing callbacks."
       },
       "verify": {
-        "verdict": "unverified"
+        "at_commit": "8e926f08fd5269de164d25b42880893a604a9d5c",
+        "verdict": "pass",
+        "verifier": "map-verifier"
       }
     },
     "edge.semantic/600b386fc92ace9666711296": {
@@ -6051,20 +6061,6 @@
         "to": "Apps/Lillist-iOS/Sources/Settings/CrashReportingSection.swift::CrashReportingSection",
         "verb": "owns",
         "why": "DebugPage composes CrashReportingSection(prefs: $prefs) in its body (DebugPage.swift:13) and is its sole navigation-destination host."
-      },
-      "verify": {
-        "verdict": "unverified"
-      }
-    },
-    "edge.semantic/60889fa961e5099a5a3cf8af": {
-      "kind": "edge.semantic",
-      "provenance": {
-        "created_at_commit": "515f24730d21cb81ca1c9737ffeb981e9c414d3c",
-        "generator": "cartographer/4",
-        "model": "sonnet"
-      },
-      "value": {
-        "verb": null
       },
       "verify": {
         "verdict": "unverified"
@@ -6095,20 +6091,6 @@
         "to": "Packages/LillistCore/Sources/LillistCore/Diagnostics/DiagnosticEvent.swift::DiagnosticEvent",
         "verb": "emits",
         "why": "emit() constructs a DiagnosticEvent and dispatches it to the diagnostic log; DragController.swift:379"
-      },
-      "verify": {
-        "verdict": "unverified"
-      }
-    },
-    "edge.semantic/612c1f1527d3fd170e203525": {
-      "kind": "edge.semantic",
-      "provenance": {
-        "created_at_commit": "515f24730d21cb81ca1c9737ffeb981e9c414d3c",
-        "generator": "cartographer/4",
-        "model": "sonnet"
-      },
-      "value": {
-        "verb": null
       },
       "verify": {
         "verdict": "unverified"
@@ -6438,6 +6420,20 @@
         "verdict": "unverified"
       }
     },
+    "edge.semantic/6564c7ae3121fa4311198fd0": {
+      "kind": "edge.semantic",
+      "provenance": {
+        "created_at_commit": "8e926f08fd5269de164d25b42880893a604a9d5c",
+        "generator": "cartographer/4",
+        "model": "claude-sonnet-4-6"
+      },
+      "value": {
+        "verb": null
+      },
+      "verify": {
+        "verdict": "unverified"
+      }
+    },
     "edge.semantic/6578e849d853e105f1515a30": {
       "kind": "edge.semantic",
       "provenance": {
@@ -6734,6 +6730,20 @@
         "verdict": "unverified"
       }
     },
+    "edge.semantic/6a2aac9349548737001f1158": {
+      "kind": "edge.semantic",
+      "provenance": {
+        "created_at_commit": "8e926f08fd5269de164d25b42880893a604a9d5c",
+        "generator": "cartographer/4",
+        "model": "claude-sonnet-4-6"
+      },
+      "value": {
+        "verb": null
+      },
+      "verify": {
+        "verdict": "unverified"
+      }
+    },
     "edge.semantic/6ac1b36fac69157d4172eb84": {
       "kind": "edge.semantic",
       "provenance": {
@@ -6916,6 +6926,20 @@
         "created_at_commit": "515f24730d21cb81ca1c9737ffeb981e9c414d3c",
         "generator": "cartographer/4",
         "model": "sonnet"
+      },
+      "value": {
+        "verb": null
+      },
+      "verify": {
+        "verdict": "unverified"
+      }
+    },
+    "edge.semantic/6d24cbd5952ec2c1409260e6": {
+      "kind": "edge.semantic",
+      "provenance": {
+        "created_at_commit": "8e926f08fd5269de164d25b42880893a604a9d5c",
+        "generator": "cartographer/4",
+        "model": "claude-sonnet-4-6"
       },
       "value": {
         "verb": null
@@ -7296,20 +7320,6 @@
         "verdict": "unverified"
       }
     },
-    "edge.semantic/7290f57b721966963e2fd56b": {
-      "kind": "edge.semantic",
-      "provenance": {
-        "created_at_commit": "515f24730d21cb81ca1c9737ffeb981e9c414d3c",
-        "generator": "cartographer/4",
-        "model": "sonnet"
-      },
-      "value": {
-        "verb": null
-      },
-      "verify": {
-        "verdict": "unverified"
-      }
-    },
     "edge.semantic/72ca6d07d5c4a91215a01910": {
       "kind": "edge.semantic",
       "provenance": {
@@ -7335,6 +7345,20 @@
         "to": "Packages/LillistCore/Sources/LillistCore/CLIBridge/Config.swift::resolvedCalendar",
         "verb": "reads",
         "why": "LsCommand.run reads the configured calendar to pass to LsHandler for date-aware filtering."
+      },
+      "verify": {
+        "verdict": "unverified"
+      }
+    },
+    "edge.semantic/731fba401aa9370473a83e88": {
+      "kind": "edge.semantic",
+      "provenance": {
+        "created_at_commit": "8e926f08fd5269de164d25b42880893a604a9d5c",
+        "generator": "cartographer/4",
+        "model": "claude-sonnet-4-6"
+      },
+      "value": {
+        "verb": null
       },
       "verify": {
         "verdict": "unverified"
@@ -7502,12 +7526,12 @@
         "verdict": "unverified"
       }
     },
-    "edge.semantic/750d65bf3d72092063d991ad": {
+    "edge.semantic/74ec645401fbe805bbf318a4": {
       "kind": "edge.semantic",
       "provenance": {
-        "created_at_commit": "515f24730d21cb81ca1c9737ffeb981e9c414d3c",
+        "created_at_commit": "8e926f08fd5269de164d25b42880893a604a9d5c",
         "generator": "cartographer/4",
-        "model": "sonnet"
+        "model": "claude-sonnet-4-6"
       },
       "value": {
         "verb": null
@@ -7562,20 +7586,6 @@
         "verdict": "unverified"
       }
     },
-    "edge.semantic/75f8fcec7218552a0d55570e": {
-      "kind": "edge.semantic",
-      "provenance": {
-        "created_at_commit": "515f24730d21cb81ca1c9737ffeb981e9c414d3c",
-        "generator": "cartographer/4",
-        "model": "sonnet"
-      },
-      "value": {
-        "verb": null
-      },
-      "verify": {
-        "verdict": "unverified"
-      }
-    },
     "edge.semantic/75fa19b2f51760b47324909b": {
       "kind": "edge.semantic",
       "provenance": {
@@ -7587,20 +7597,6 @@
         "to": "Packages/LillistCore/Sources/LillistCore/ManagedObjects/LillistTask+CoreData.swift::stampCurrentSchemaVersion",
         "verb": "writes",
         "why": "applyTask stamps current schema version on every restored LillistTask rather than copying the bundle value (Importer.swift:334)"
-      },
-      "verify": {
-        "verdict": "unverified"
-      }
-    },
-    "edge.semantic/76114ecb3d4308282142aef1": {
-      "kind": "edge.semantic",
-      "provenance": {
-        "created_at_commit": "515f24730d21cb81ca1c9737ffeb981e9c414d3c",
-        "generator": "cartographer/4",
-        "model": "sonnet"
-      },
-      "value": {
-        "verb": null
       },
       "verify": {
         "verdict": "unverified"
@@ -7622,51 +7618,7 @@
         "verdict": "unverified"
       }
     },
-    "edge.semantic/76f0e6b7301a37b331997e3a": {
-      "kind": "edge.semantic",
-      "provenance": {
-        "created_at_commit": "515f24730d21cb81ca1c9737ffeb981e9c414d3c",
-        "generator": "cartographer/4",
-        "model": "sonnet"
-      },
-      "value": {
-        "to": "Packages/LillistUI/Sources/LillistUI/Settings/CrashReportSample.swift::Environment",
-        "verb": "reads",
-        "why": "ICloudSyncPane reads AppEnvironment via @Environment(AppEnvironment.self) \u2014 ICloudSyncPane.swift:10"
-      },
-      "verify": {
-        "verdict": "unverified"
-      }
-    },
     "edge.semantic/77187aaa8811f2845b5c6204": {
-      "kind": "edge.semantic",
-      "provenance": {
-        "created_at_commit": "515f24730d21cb81ca1c9737ffeb981e9c414d3c",
-        "generator": "cartographer/4",
-        "model": "sonnet"
-      },
-      "value": {
-        "verb": null
-      },
-      "verify": {
-        "verdict": "unverified"
-      }
-    },
-    "edge.semantic/77397a57f83931843244e42c": {
-      "kind": "edge.semantic",
-      "provenance": {
-        "created_at_commit": "515f24730d21cb81ca1c9737ffeb981e9c414d3c",
-        "generator": "cartographer/4",
-        "model": "sonnet"
-      },
-      "value": {
-        "verb": null
-      },
-      "verify": {
-        "verdict": "unverified"
-      }
-    },
-    "edge.semantic/77461543e1d2a35448c3fab4": {
       "kind": "edge.semantic",
       "provenance": {
         "created_at_commit": "515f24730d21cb81ca1c9737ffeb981e9c414d3c",
@@ -7854,6 +7806,20 @@
         "verdict": "unverified"
       }
     },
+    "edge.semantic/79408167528d5c5331cffc93": {
+      "kind": "edge.semantic",
+      "provenance": {
+        "created_at_commit": "8e926f08fd5269de164d25b42880893a604a9d5c",
+        "generator": "cartographer/4",
+        "model": "claude-sonnet-4-6"
+      },
+      "value": {
+        "verb": null
+      },
+      "verify": {
+        "verdict": "unverified"
+      }
+    },
     "edge.semantic/7944dd267ee3125b9694ea11": {
       "kind": "edge.semantic",
       "provenance": {
@@ -8011,22 +7977,6 @@
       },
       "value": {
         "verb": null
-      },
-      "verify": {
-        "verdict": "unverified"
-      }
-    },
-    "edge.semantic/7ba823c22ae931f1e0f39426": {
-      "kind": "edge.semantic",
-      "provenance": {
-        "created_at_commit": "515f24730d21cb81ca1c9737ffeb981e9c414d3c",
-        "generator": "cartographer/4",
-        "model": "sonnet"
-      },
-      "value": {
-        "to": "Packages/LillistCore/Sources/LillistCore/Sync/MigrationJournal.swift::isStale",
-        "verb": "reads",
-        "why": "evaluate() reads `journal.isStale()` to distinguish a crashed in-flight migration from a currently-running one. LillistApp.swift:261."
       },
       "verify": {
         "verdict": "unverified"
@@ -8338,22 +8288,6 @@
         "verdict": "unverified"
       }
     },
-    "edge.semantic/814d04b85343d9297634e85c": {
-      "kind": "edge.semantic",
-      "provenance": {
-        "created_at_commit": "515f24730d21cb81ca1c9737ffeb981e9c414d3c",
-        "generator": "cartographer/4",
-        "model": "sonnet"
-      },
-      "value": {
-        "to": "Packages/LillistCore/Sources/LillistCore/Sync/SyncModeStore.swift::setMode",
-        "verb": "writes",
-        "why": "evaluate() writes `syncModeStore.setMode(.iCloudSync)` before presenting onboarding when iCloud is available. LillistApp.swift:269."
-      },
-      "verify": {
-        "verdict": "unverified"
-      }
-    },
     "edge.semantic/81ba567053dbc35567114a71": {
       "kind": "edge.semantic",
       "provenance": {
@@ -8498,6 +8432,24 @@
         "verdict": "unverified"
       }
     },
+    "edge.semantic/84ece910eca26d541a9c4d9e": {
+      "kind": "edge.semantic",
+      "provenance": {
+        "created_at_commit": "8e926f08fd5269de164d25b42880893a604a9d5c",
+        "generator": "cartographer/4",
+        "model": "claude-sonnet-4-6"
+      },
+      "value": {
+        "to": "Packages/LillistUI/Sources/LillistUI/Sync/SyncMigrationRecoverySheet.swift::SyncMigrationRecoverySheet",
+        "verb": "owns",
+        "why": "Instantiates SyncMigrationRecoverySheet inside .sheet(item:) for the .recovery case, injecting restore and retry callbacks. Apps/Lillist-macOS/Sources/LillistApp.swift:338"
+      },
+      "verify": {
+        "at_commit": "8e926f08fd5269de164d25b42880893a604a9d5c",
+        "verdict": "pass",
+        "verifier": "map-verifier"
+      }
+    },
     "edge.semantic/85144a920f028f94df9c81d0": {
       "kind": "edge.semantic",
       "provenance": {
@@ -8534,6 +8486,20 @@
         "created_at_commit": "515f24730d21cb81ca1c9737ffeb981e9c414d3c",
         "generator": "cartographer/4",
         "model": "sonnet"
+      },
+      "value": {
+        "verb": null
+      },
+      "verify": {
+        "verdict": "unverified"
+      }
+    },
+    "edge.semantic/859b8c8039e1c9803534bcf9": {
+      "kind": "edge.semantic",
+      "provenance": {
+        "created_at_commit": "8e926f08fd5269de164d25b42880893a604a9d5c",
+        "generator": "cartographer/4",
+        "model": "claude-sonnet-4-6"
       },
       "value": {
         "verb": null
@@ -8774,6 +8740,24 @@
         "verdict": "unverified"
       }
     },
+    "edge.semantic/8b4eed07bcd2c03b01729a17": {
+      "kind": "edge.semantic",
+      "provenance": {
+        "created_at_commit": "8e926f08fd5269de164d25b42880893a604a9d5c",
+        "generator": "cartographer/4",
+        "model": "claude-sonnet-4-6"
+      },
+      "value": {
+        "to": "Packages/LillistUI/Sources/LillistUI/CrashReporting/CrashReportViewModel.swift::CrashReportViewModel",
+        "verb": "owns",
+        "why": "CrashReporterHost instantiates CrashReportViewModel on crash detection and holds it in @State, binding the sheet's entire lifecycle to the model's presence (Apps/Lillist-iOS/Sources/App/CrashReporterHost.swift:14,41)."
+      },
+      "verify": {
+        "at_commit": "8e926f08fd5269de164d25b42880893a604a9d5c",
+        "verdict": "pass",
+        "verifier": "map-verifier"
+      }
+    },
     "edge.semantic/8ba18e4e0c30a878f449feaf": {
       "kind": "edge.semantic",
       "provenance": {
@@ -8878,6 +8862,20 @@
         "verdict": "unverified"
       }
     },
+    "edge.semantic/8dfe2efc4bd0af981f5c5fb2": {
+      "kind": "edge.semantic",
+      "provenance": {
+        "created_at_commit": "8e926f08fd5269de164d25b42880893a604a9d5c",
+        "generator": "cartographer/4",
+        "model": "claude-sonnet-4-6"
+      },
+      "value": {
+        "verb": null
+      },
+      "verify": {
+        "verdict": "unverified"
+      }
+    },
     "edge.semantic/8e13c63e8d0609af59757bc2": {
       "kind": "edge.semantic",
       "provenance": {
@@ -8892,35 +8890,7 @@
         "verdict": "unverified"
       }
     },
-    "edge.semantic/8f9afd849545852de7143baf": {
-      "kind": "edge.semantic",
-      "provenance": {
-        "created_at_commit": "515f24730d21cb81ca1c9737ffeb981e9c414d3c",
-        "generator": "cartographer/4",
-        "model": "sonnet"
-      },
-      "value": {
-        "verb": null
-      },
-      "verify": {
-        "verdict": "unverified"
-      }
-    },
     "edge.semantic/8fbdb813b96e65291ea5b0f8": {
-      "kind": "edge.semantic",
-      "provenance": {
-        "created_at_commit": "515f24730d21cb81ca1c9737ffeb981e9c414d3c",
-        "generator": "cartographer/4",
-        "model": "sonnet"
-      },
-      "value": {
-        "verb": null
-      },
-      "verify": {
-        "verdict": "unverified"
-      }
-    },
-    "edge.semantic/8fdaa0be7fdbc178776587b9": {
       "kind": "edge.semantic",
       "provenance": {
         "created_at_commit": "515f24730d21cb81ca1c9737ffeb981e9c414d3c",
@@ -9054,6 +9024,20 @@
         "verdict": "unverified"
       }
     },
+    "edge.semantic/9159a709c42acccc63804527": {
+      "kind": "edge.semantic",
+      "provenance": {
+        "created_at_commit": "8e926f08fd5269de164d25b42880893a604a9d5c",
+        "generator": "cartographer/4",
+        "model": "claude-sonnet-4-6"
+      },
+      "value": {
+        "verb": null
+      },
+      "verify": {
+        "verdict": "unverified"
+      }
+    },
     "edge.semantic/915b1684d11a95daa253749d": {
       "kind": "edge.semantic",
       "provenance": {
@@ -9110,6 +9094,24 @@
       },
       "verify": {
         "verdict": "unverified"
+      }
+    },
+    "edge.semantic/91e555239676190ebbe1dda9": {
+      "kind": "edge.semantic",
+      "provenance": {
+        "created_at_commit": "8e926f08fd5269de164d25b42880893a604a9d5c",
+        "generator": "cartographer/4",
+        "model": "claude-sonnet-4-6"
+      },
+      "value": {
+        "to": "Packages/LillistCore/Sources/LillistCore/Sync/SyncModeStore.swift::setMode",
+        "verb": "writes",
+        "why": "Writes setMode(.iCloudSync) when iCloud is available and onboarding is incomplete. Apps/Lillist-macOS/Sources/LillistApp.swift:387"
+      },
+      "verify": {
+        "at_commit": "8e926f08fd5269de164d25b42880893a604a9d5c",
+        "verdict": "pass",
+        "verifier": "map-verifier"
       }
     },
     "edge.semantic/91fcecd88daec1f30ea596e8": {
@@ -9606,20 +9608,6 @@
         "verdict": "unverified"
       }
     },
-    "edge.semantic/991dfa8c11ccd2907c29dd05": {
-      "kind": "edge.semantic",
-      "provenance": {
-        "created_at_commit": "515f24730d21cb81ca1c9737ffeb981e9c414d3c",
-        "generator": "cartographer/4",
-        "model": "sonnet"
-      },
-      "value": {
-        "verb": null
-      },
-      "verify": {
-        "verdict": "unverified"
-      }
-    },
     "edge.semantic/9933d093f31e5266a760631c": {
       "kind": "edge.semantic",
       "provenance": {
@@ -9800,18 +9788,22 @@
         "verdict": "unverified"
       }
     },
-    "edge.semantic/9b3e41cb49f0c506527be185": {
+    "edge.semantic/9b99a6d54c7faba9c66e7641": {
       "kind": "edge.semantic",
       "provenance": {
-        "created_at_commit": "515f24730d21cb81ca1c9737ffeb981e9c414d3c",
+        "created_at_commit": "8e926f08fd5269de164d25b42880893a604a9d5c",
         "generator": "cartographer/4",
-        "model": "sonnet"
+        "model": "claude-sonnet-4-6"
       },
       "value": {
-        "verb": null
+        "to": "Packages/LillistCore/Sources/LillistCore/Preferences/DevicePreferencesStore.swift::diagnosticLoggingEnabled",
+        "verb": "reads",
+        "why": "DiagnosticsSection.swift:64 reads diagnosticLoggingEnabled() during .task hydration to initialise the local `enabled` toggle state."
       },
       "verify": {
-        "verdict": "unverified"
+        "at_commit": "8e926f08fd5269de164d25b42880893a604a9d5c",
+        "verdict": "pass",
+        "verifier": "map-verifier"
       }
     },
     "edge.semantic/9bb398d8ed4ca8898ba266f3": {
@@ -9916,17 +9908,15 @@
         "verdict": "unverified"
       }
     },
-    "edge.semantic/9cb2580106196e47bef9db3a": {
+    "edge.semantic/9d1a0f26e286e60fe159cc7c": {
       "kind": "edge.semantic",
       "provenance": {
-        "created_at_commit": "515f24730d21cb81ca1c9737ffeb981e9c414d3c",
+        "created_at_commit": "8e926f08fd5269de164d25b42880893a604a9d5c",
         "generator": "cartographer/4",
-        "model": "sonnet"
+        "model": "claude-sonnet-4-6"
       },
       "value": {
-        "to": "Packages/LillistUI/Sources/LillistUI/Settings/CrashReportSample.swift::Environment",
-        "verb": "reads",
-        "why": "DiagnosticsPane reads AppEnvironment via @Environment(AppEnvironment.self) \u2014 DiagnosticsPane.swift:12"
+        "verb": null
       },
       "verify": {
         "verdict": "unverified"
@@ -10210,20 +10200,6 @@
         "verdict": "unverified"
       }
     },
-    "edge.semantic/a0315fffd8aaab9720d691c2": {
-      "kind": "edge.semantic",
-      "provenance": {
-        "created_at_commit": "515f24730d21cb81ca1c9737ffeb981e9c414d3c",
-        "generator": "cartographer/4",
-        "model": "sonnet"
-      },
-      "value": {
-        "verb": null
-      },
-      "verify": {
-        "verdict": "unverified"
-      }
-    },
     "edge.semantic/a03cf6953f0b34ea548b3282": {
       "kind": "edge.semantic",
       "provenance": {
@@ -10284,20 +10260,6 @@
         "verdict": "unverified"
       }
     },
-    "edge.semantic/a274c801618fb550d4ef0c63": {
-      "kind": "edge.semantic",
-      "provenance": {
-        "created_at_commit": "515f24730d21cb81ca1c9737ffeb981e9c414d3c",
-        "generator": "cartographer/4",
-        "model": "sonnet"
-      },
-      "value": {
-        "verb": null
-      },
-      "verify": {
-        "verdict": "unverified"
-      }
-    },
     "edge.semantic/a384c08aab7323b01109de17": {
       "kind": "edge.semantic",
       "provenance": {
@@ -10307,22 +10269,6 @@
       },
       "value": {
         "verb": null
-      },
-      "verify": {
-        "verdict": "unverified"
-      }
-    },
-    "edge.semantic/a3a45009374e3519319f8d88": {
-      "kind": "edge.semantic",
-      "provenance": {
-        "created_at_commit": "515f24730d21cb81ca1c9737ffeb981e9c414d3c",
-        "generator": "cartographer/4",
-        "model": "sonnet"
-      },
-      "value": {
-        "to": "Packages/LillistCore/Sources/LillistCore/Sync/SyncModeStore.swift::setMode",
-        "verb": "writes",
-        "why": "OnboardingPresentationModifier.body calls setMode(.localOnly) and setMode(.iCloudSync) when routing between iCloud-unavailable and onboarding paths (LillistApp.swift:305,371)"
       },
       "verify": {
         "verdict": "unverified"
@@ -10628,6 +10574,24 @@
         "verdict": "unverified"
       }
     },
+    "edge.semantic/a89d11849366e59011445b3c": {
+      "kind": "edge.semantic",
+      "provenance": {
+        "created_at_commit": "8e926f08fd5269de164d25b42880893a604a9d5c",
+        "generator": "cartographer/4",
+        "model": "claude-sonnet-4-6"
+      },
+      "value": {
+        "to": "Packages/LillistCore/Sources/LillistCore/CrashReporting/CrashReporter.swift::detectAndPrepare",
+        "verb": "reads",
+        "why": "CrashReporterHost reads the CrashCanary? result from detectAndPrepare() at task startup to decide whether to present the crash-report sheet (Apps/Lillist-iOS/Sources/App/CrashReporterHost.swift:39)."
+      },
+      "verify": {
+        "at_commit": "8e926f08fd5269de164d25b42880893a604a9d5c",
+        "verdict": "pass",
+        "verifier": "map-verifier"
+      }
+    },
     "edge.semantic/a8a196e9bc0e6d1970ee235a": {
       "kind": "edge.semantic",
       "provenance": {
@@ -10672,12 +10636,12 @@
         "verdict": "unverified"
       }
     },
-    "edge.semantic/a90acf2dca388eb786470634": {
+    "edge.semantic/a8f60fc4abaf70ba46704f60": {
       "kind": "edge.semantic",
       "provenance": {
-        "created_at_commit": "515f24730d21cb81ca1c9737ffeb981e9c414d3c",
+        "created_at_commit": "8e926f08fd5269de164d25b42880893a604a9d5c",
         "generator": "cartographer/4",
-        "model": "sonnet"
+        "model": "claude-sonnet-4-6"
       },
       "value": {
         "verb": null
@@ -10686,7 +10650,7 @@
         "verdict": "unverified"
       }
     },
-    "edge.semantic/a93a2aa415a2ca20159003d3": {
+    "edge.semantic/a90acf2dca388eb786470634": {
       "kind": "edge.semantic",
       "provenance": {
         "created_at_commit": "515f24730d21cb81ca1c9737ffeb981e9c414d3c",
@@ -11026,34 +10990,6 @@
         "verdict": "unverified"
       }
     },
-    "edge.semantic/b034fd7f6327fd73611d34c4": {
-      "kind": "edge.semantic",
-      "provenance": {
-        "created_at_commit": "515f24730d21cb81ca1c9737ffeb981e9c414d3c",
-        "generator": "cartographer/4",
-        "model": "sonnet"
-      },
-      "value": {
-        "verb": null
-      },
-      "verify": {
-        "verdict": "unverified"
-      }
-    },
-    "edge.semantic/b06f9ef503a9f935f536268b": {
-      "kind": "edge.semantic",
-      "provenance": {
-        "created_at_commit": "515f24730d21cb81ca1c9737ffeb981e9c414d3c",
-        "generator": "cartographer/4",
-        "model": "sonnet"
-      },
-      "value": {
-        "verb": null
-      },
-      "verify": {
-        "verdict": "unverified"
-      }
-    },
     "edge.semantic/b08289e29e8e9b4aab337a58": {
       "kind": "edge.semantic",
       "provenance": {
@@ -11146,20 +11082,6 @@
         "verdict": "unverified"
       }
     },
-    "edge.semantic/b14dc259c27aaef4ac71056d": {
-      "kind": "edge.semantic",
-      "provenance": {
-        "created_at_commit": "515f24730d21cb81ca1c9737ffeb981e9c414d3c",
-        "generator": "cartographer/4",
-        "model": "sonnet"
-      },
-      "value": {
-        "verb": null
-      },
-      "verify": {
-        "verdict": "unverified"
-      }
-    },
     "edge.semantic/b18a57ec59b6136e8273a778": {
       "kind": "edge.semantic",
       "provenance": {
@@ -11202,20 +11124,6 @@
         "verdict": "unverified"
       }
     },
-    "edge.semantic/b203fd6433d8a332122f1f15": {
-      "kind": "edge.semantic",
-      "provenance": {
-        "created_at_commit": "515f24730d21cb81ca1c9737ffeb981e9c414d3c",
-        "generator": "cartographer/4",
-        "model": "sonnet"
-      },
-      "value": {
-        "verb": null
-      },
-      "verify": {
-        "verdict": "unverified"
-      }
-    },
     "edge.semantic/b2351217e15ac4d9cd992d03": {
       "kind": "edge.semantic",
       "provenance": {
@@ -11227,20 +11135,6 @@
         "to": "Packages/LillistCore/Sources/LillistCore/Stores/SeriesStore.swift::SeriesStore",
         "verb": "owns",
         "why": "stored as `let seriesStore: SeriesStore` on AppEnvironment (AppEnvironment.swift:34)"
-      },
-      "verify": {
-        "verdict": "unverified"
-      }
-    },
-    "edge.semantic/b237eccecdf0a9ee255ae875": {
-      "kind": "edge.semantic",
-      "provenance": {
-        "created_at_commit": "515f24730d21cb81ca1c9737ffeb981e9c414d3c",
-        "generator": "cartographer/4",
-        "model": "sonnet"
-      },
-      "value": {
-        "verb": null
       },
       "verify": {
         "verdict": "unverified"
@@ -11436,6 +11330,34 @@
         "verdict": "unverified"
       }
     },
+    "edge.semantic/b538de015d6265a8582baafc": {
+      "kind": "edge.semantic",
+      "provenance": {
+        "created_at_commit": "8e926f08fd5269de164d25b42880893a604a9d5c",
+        "generator": "cartographer/4",
+        "model": "claude-sonnet-4-6"
+      },
+      "value": {
+        "verb": null
+      },
+      "verify": {
+        "verdict": "unverified"
+      }
+    },
+    "edge.semantic/b53fdca1938f9c61b1668ba0": {
+      "kind": "edge.semantic",
+      "provenance": {
+        "created_at_commit": "8e926f08fd5269de164d25b42880893a604a9d5c",
+        "generator": "cartographer/4",
+        "model": "claude-sonnet-4-6"
+      },
+      "value": {
+        "verb": null
+      },
+      "verify": {
+        "verdict": "unverified"
+      }
+    },
     "edge.semantic/b5827e2add69992c6645a497": {
       "kind": "edge.semantic",
       "provenance": {
@@ -11542,6 +11464,20 @@
         "created_at_commit": "515f24730d21cb81ca1c9737ffeb981e9c414d3c",
         "generator": "cartographer/4",
         "model": "sonnet"
+      },
+      "value": {
+        "verb": null
+      },
+      "verify": {
+        "verdict": "unverified"
+      }
+    },
+    "edge.semantic/b8c715cd4a7f586f1e035c1b": {
+      "kind": "edge.semantic",
+      "provenance": {
+        "created_at_commit": "8e926f08fd5269de164d25b42880893a604a9d5c",
+        "generator": "cartographer/4",
+        "model": "claude-sonnet-4-6"
       },
       "value": {
         "verb": null
@@ -11874,6 +11810,20 @@
         "verdict": "unverified"
       }
     },
+    "edge.semantic/bfc4314765caac230ff1b446": {
+      "kind": "edge.semantic",
+      "provenance": {
+        "created_at_commit": "8e926f08fd5269de164d25b42880893a604a9d5c",
+        "generator": "cartographer/4",
+        "model": "claude-sonnet-4-6"
+      },
+      "value": {
+        "verb": null
+      },
+      "verify": {
+        "verdict": "unverified"
+      }
+    },
     "edge.semantic/bff3ee8dd790468e1d1cda62": {
       "kind": "edge.semantic",
       "provenance": {
@@ -12003,20 +11953,6 @@
         "to": "Packages/LillistCore/Sources/LillistCore/Preferences/AppPreferencesPartitionMigrator.swift::AppPreferencesPartitionMigrator",
         "verb": "owns",
         "why": "AppEnvironment holds `let preferencesPartitionMigrator` for the app lifetime; constructed at AppEnvironment.swift:134-137."
-      },
-      "verify": {
-        "verdict": "unverified"
-      }
-    },
-    "edge.semantic/c0ddbb690c4b57da89e36cc2": {
-      "kind": "edge.semantic",
-      "provenance": {
-        "created_at_commit": "515f24730d21cb81ca1c9737ffeb981e9c414d3c",
-        "generator": "cartographer/4",
-        "model": "sonnet"
-      },
-      "value": {
-        "verb": null
       },
       "verify": {
         "verdict": "unverified"
@@ -12798,6 +12734,24 @@
         "verdict": "unverified"
       }
     },
+    "edge.semantic/cea856df6250eec987fea73a": {
+      "kind": "edge.semantic",
+      "provenance": {
+        "created_at_commit": "8e926f08fd5269de164d25b42880893a604a9d5c",
+        "generator": "cartographer/4",
+        "model": "claude-sonnet-4-6"
+      },
+      "value": {
+        "to": "Packages/LillistCore/Sources/LillistCore/Sync/MigrationJournal.swift::isStale",
+        "verb": "reads",
+        "why": "Reads journal.isStale() to determine whether a non-idle journal belongs to a crashed migration and should trigger the recovery sheet. Apps/Lillist-macOS/Sources/LillistApp.swift:379"
+      },
+      "verify": {
+        "at_commit": "8e926f08fd5269de164d25b42880893a604a9d5c",
+        "verdict": "pass",
+        "verifier": "map-verifier"
+      }
+    },
     "edge.semantic/cf08a9bc22b0faf903e0c199": {
       "kind": "edge.semantic",
       "provenance": {
@@ -12856,6 +12810,24 @@
         "verdict": "unverified"
       }
     },
+    "edge.semantic/cf97c400fc63e620638df5f3": {
+      "kind": "edge.semantic",
+      "provenance": {
+        "created_at_commit": "8e926f08fd5269de164d25b42880893a604a9d5c",
+        "generator": "cartographer/4",
+        "model": "claude-sonnet-4-6"
+      },
+      "value": {
+        "to": "Packages/LillistCore/Sources/LillistCore/Sync/SyncModeStore.swift::setMode",
+        "verb": "writes",
+        "why": "evaluate() writes .iCloudSync via setMode before presenting the onboarding screen when iCloud is available on a fresh install (Apps/Lillist-iOS/Sources/App/LillistApp.swift:285)."
+      },
+      "verify": {
+        "at_commit": "8e926f08fd5269de164d25b42880893a604a9d5c",
+        "verdict": "pass",
+        "verifier": "map-verifier"
+      }
+    },
     "edge.semantic/d0420c94322e044479c21e14": {
       "kind": "edge.semantic",
       "provenance": {
@@ -12870,6 +12842,24 @@
         "verdict": "unverified"
       }
     },
+    "edge.semantic/d05a01d61532087019fe7d7f": {
+      "kind": "edge.semantic",
+      "provenance": {
+        "created_at_commit": "8e926f08fd5269de164d25b42880893a604a9d5c",
+        "generator": "cartographer/4",
+        "model": "claude-sonnet-4-6"
+      },
+      "value": {
+        "to": "Packages/LillistCore/Sources/LillistCore/Preferences/DevicePreferencesStore.swift::setDiagnosticLoggingEnabled",
+        "verb": "writes",
+        "why": "DiagnosticsSection.swift:88 calls setDiagnosticLoggingEnabled when the user toggles, persisting the choice to DevicePreferencesStore."
+      },
+      "verify": {
+        "at_commit": "8e926f08fd5269de164d25b42880893a604a9d5c",
+        "verdict": "pass",
+        "verifier": "map-verifier"
+      }
+    },
     "edge.semantic/d0a4b9e24e5e6d9cdf7ca37f": {
       "kind": "edge.semantic",
       "provenance": {
@@ -12879,22 +12869,6 @@
       },
       "value": {
         "verb": null
-      },
-      "verify": {
-        "verdict": "unverified"
-      }
-    },
-    "edge.semantic/d0a52410a888176fc473b644": {
-      "kind": "edge.semantic",
-      "provenance": {
-        "created_at_commit": "515f24730d21cb81ca1c9737ffeb981e9c414d3c",
-        "generator": "cartographer/4",
-        "model": "sonnet"
-      },
-      "value": {
-        "to": "Packages/LillistUI/Sources/LillistUI/Sync/SyncMigrationRecoverySheet.swift::SyncMigrationRecoverySheet",
-        "verb": "owns",
-        "why": "OnboardingPresentationModifier.body presents SyncMigrationRecoverySheet via `.sheet(item: $recoveryJournal)` for stale migration journals (LillistApp.swift:322-339)"
       },
       "verify": {
         "verdict": "unverified"
@@ -12943,20 +12917,6 @@
       }
     },
     "edge.semantic/d1e4104acd42bc12b6e5ed34": {
-      "kind": "edge.semantic",
-      "provenance": {
-        "created_at_commit": "515f24730d21cb81ca1c9737ffeb981e9c414d3c",
-        "generator": "cartographer/4",
-        "model": "sonnet"
-      },
-      "value": {
-        "verb": null
-      },
-      "verify": {
-        "verdict": "unverified"
-      }
-    },
-    "edge.semantic/d2013c377e48e08168c34fd2": {
       "kind": "edge.semantic",
       "provenance": {
         "created_at_commit": "515f24730d21cb81ca1c9737ffeb981e9c414d3c",
@@ -13022,6 +12982,20 @@
         "created_at_commit": "515f24730d21cb81ca1c9737ffeb981e9c414d3c",
         "generator": "cartographer/4",
         "model": "sonnet"
+      },
+      "value": {
+        "verb": null
+      },
+      "verify": {
+        "verdict": "unverified"
+      }
+    },
+    "edge.semantic/d2dedcb262f52352e21876f3": {
+      "kind": "edge.semantic",
+      "provenance": {
+        "created_at_commit": "8e926f08fd5269de164d25b42880893a604a9d5c",
+        "generator": "cartographer/4",
+        "model": "claude-sonnet-4-6"
       },
       "value": {
         "verb": null
@@ -13272,6 +13246,24 @@
         "verdict": "unverified"
       }
     },
+    "edge.semantic/d634b7048f4589f4544d6f64": {
+      "kind": "edge.semantic",
+      "provenance": {
+        "created_at_commit": "8e926f08fd5269de164d25b42880893a604a9d5c",
+        "generator": "cartographer/4",
+        "model": "claude-sonnet-4-6"
+      },
+      "value": {
+        "to": "Packages/LillistCore/Sources/LillistCore/Sync/SyncModeStore.swift::setMode",
+        "verb": "writes",
+        "why": "Calls setMode(.localOnly) in the .iCloudUnavailable case handler when the user elects to proceed without iCloud. Apps/Lillist-macOS/Sources/LillistApp.swift:323"
+      },
+      "verify": {
+        "at_commit": "8e926f08fd5269de164d25b42880893a604a9d5c",
+        "verdict": "pass",
+        "verifier": "map-verifier"
+      }
+    },
     "edge.semantic/d635cc8b5c5cb5a4bb3d4e06": {
       "kind": "edge.semantic",
       "provenance": {
@@ -13447,20 +13439,6 @@
       }
     },
     "edge.semantic/d906c50c9305ee5fb0aa7000": {
-      "kind": "edge.semantic",
-      "provenance": {
-        "created_at_commit": "515f24730d21cb81ca1c9737ffeb981e9c414d3c",
-        "generator": "cartographer/4",
-        "model": "sonnet"
-      },
-      "value": {
-        "verb": null
-      },
-      "verify": {
-        "verdict": "unverified"
-      }
-    },
-    "edge.semantic/d9084170f44fc04c1d70bd1a": {
       "kind": "edge.semantic",
       "provenance": {
         "created_at_commit": "515f24730d21cb81ca1c9737ffeb981e9c414d3c",
@@ -13680,6 +13658,24 @@
         "verdict": "unverified"
       }
     },
+    "edge.semantic/dbdfde6ed7ea146865ad4918": {
+      "kind": "edge.semantic",
+      "provenance": {
+        "created_at_commit": "8e926f08fd5269de164d25b42880893a604a9d5c",
+        "generator": "cartographer/4",
+        "model": "claude-sonnet-4-6"
+      },
+      "value": {
+        "to": "Packages/LillistCore/Sources/LillistCore/Preferences/DevicePreferencesStore.swift::diagnosticLoggingEnabled",
+        "verb": "reads",
+        "why": "DiagnosticsPane reads diagnosticLoggingEnabled on .task hydration to initialize the toggle's starting state (Apps/Lillist-macOS/Sources/Preferences/DiagnosticsPane.swift:69)."
+      },
+      "verify": {
+        "at_commit": "8e926f08fd5269de164d25b42880893a604a9d5c",
+        "verdict": "pass",
+        "verifier": "map-verifier"
+      }
+    },
     "edge.semantic/dbeda620b135aee3ce9be71c": {
       "kind": "edge.semantic",
       "provenance": {
@@ -13691,6 +13687,20 @@
         "to": "Packages/LillistCore/Sources/lillist-cli/Support/GlobalOptions.swift::resolveColor",
         "verb": "reads",
         "why": "EvalCommand.run reads the color option from GlobalOptions to pass to prettyTree rendering."
+      },
+      "verify": {
+        "verdict": "unverified"
+      }
+    },
+    "edge.semantic/dc04910b0862f6990ba7a3b9": {
+      "kind": "edge.semantic",
+      "provenance": {
+        "created_at_commit": "8e926f08fd5269de164d25b42880893a604a9d5c",
+        "generator": "cartographer/4",
+        "model": "claude-sonnet-4-6"
+      },
+      "value": {
+        "verb": null
       },
       "verify": {
         "verdict": "unverified"
@@ -13802,6 +13812,20 @@
         "verdict": "unverified"
       }
     },
+    "edge.semantic/dd2c80eea2ee0a6e10d30b43": {
+      "kind": "edge.semantic",
+      "provenance": {
+        "created_at_commit": "8e926f08fd5269de164d25b42880893a604a9d5c",
+        "generator": "cartographer/4",
+        "model": "claude-sonnet-4-6"
+      },
+      "value": {
+        "verb": null
+      },
+      "verify": {
+        "verdict": "unverified"
+      }
+    },
     "edge.semantic/dd6b3697f555edb465e2b39d": {
       "kind": "edge.semantic",
       "provenance": {
@@ -13832,12 +13856,12 @@
         "verdict": "unverified"
       }
     },
-    "edge.semantic/de53925ef00a892d00fd0dad": {
+    "edge.semantic/de60387be8f183b36c3824a0": {
       "kind": "edge.semantic",
       "provenance": {
-        "created_at_commit": "515f24730d21cb81ca1c9737ffeb981e9c414d3c",
+        "created_at_commit": "8e926f08fd5269de164d25b42880893a604a9d5c",
         "generator": "cartographer/4",
-        "model": "sonnet"
+        "model": "claude-sonnet-4-6"
       },
       "value": {
         "verb": null
@@ -14216,6 +14240,20 @@
         "verdict": "unverified"
       }
     },
+    "edge.semantic/e58d1b4c353a4b68ea474c4c": {
+      "kind": "edge.semantic",
+      "provenance": {
+        "created_at_commit": "8e926f08fd5269de164d25b42880893a604a9d5c",
+        "generator": "cartographer/4",
+        "model": "claude-sonnet-4-6"
+      },
+      "value": {
+        "verb": null
+      },
+      "verify": {
+        "verdict": "unverified"
+      }
+    },
     "edge.semantic/e5ab91dc12812a30086b3bf7": {
       "kind": "edge.semantic",
       "provenance": {
@@ -14255,6 +14293,20 @@
         "to": "Packages/LillistUI/Sources/LillistUI/Accessibility/Announcements.swift::post",
         "verb": "emits",
         "why": "complete emits a high-priority accessibility announcement when onboarding fails (OnboardingScreen.swift:134)"
+      },
+      "verify": {
+        "verdict": "unverified"
+      }
+    },
+    "edge.semantic/e5d69e5270a9f8b5e334a3ef": {
+      "kind": "edge.semantic",
+      "provenance": {
+        "created_at_commit": "8e926f08fd5269de164d25b42880893a604a9d5c",
+        "generator": "cartographer/4",
+        "model": "claude-sonnet-4-6"
+      },
+      "value": {
+        "verb": null
       },
       "verify": {
         "verdict": "unverified"
@@ -14350,6 +14402,20 @@
         "verdict": "unverified"
       }
     },
+    "edge.semantic/e6c5c7d7045008a55822bf18": {
+      "kind": "edge.semantic",
+      "provenance": {
+        "created_at_commit": "8e926f08fd5269de164d25b42880893a604a9d5c",
+        "generator": "cartographer/4",
+        "model": "claude-sonnet-4-6"
+      },
+      "value": {
+        "verb": null
+      },
+      "verify": {
+        "verdict": "unverified"
+      }
+    },
     "edge.semantic/e6d727e142461d4cfbb27753": {
       "kind": "edge.semantic",
       "provenance": {
@@ -14394,22 +14460,6 @@
         "verdict": "unverified"
       }
     },
-    "edge.semantic/e714c7eff93801b9f5cb0f2c": {
-      "kind": "edge.semantic",
-      "provenance": {
-        "created_at_commit": "515f24730d21cb81ca1c9737ffeb981e9c414d3c",
-        "generator": "cartographer/4",
-        "model": "sonnet"
-      },
-      "value": {
-        "to": "Packages/LillistCore/Sources/LillistCore/Preferences/DevicePreferencesStore.swift::diagnosticLoggingEnabled",
-        "verb": "reads",
-        "why": "DiagnosticsSection .task reads diagnosticLoggingEnabled() for one-shot hydration of the toggle at line 49."
-      },
-      "verify": {
-        "verdict": "unverified"
-      }
-    },
     "edge.semantic/e77d3453719a2501223373f3": {
       "kind": "edge.semantic",
       "provenance": {
@@ -14439,20 +14489,6 @@
       }
     },
     "edge.semantic/e79fd194180544b1008da00d": {
-      "kind": "edge.semantic",
-      "provenance": {
-        "created_at_commit": "515f24730d21cb81ca1c9737ffeb981e9c414d3c",
-        "generator": "cartographer/4",
-        "model": "sonnet"
-      },
-      "value": {
-        "verb": null
-      },
-      "verify": {
-        "verdict": "unverified"
-      }
-    },
-    "edge.semantic/e7af9cce8e25e5c305913db5": {
       "kind": "edge.semantic",
       "provenance": {
         "created_at_commit": "515f24730d21cb81ca1c9737ffeb981e9c414d3c",
@@ -14786,22 +14822,6 @@
         "verdict": "unverified"
       }
     },
-    "edge.semantic/ec044e91be203db19f48e9fc": {
-      "kind": "edge.semantic",
-      "provenance": {
-        "created_at_commit": "515f24730d21cb81ca1c9737ffeb981e9c414d3c",
-        "generator": "cartographer/4",
-        "model": "sonnet"
-      },
-      "value": {
-        "to": "Packages/LillistCore/Sources/LillistCore/Sync/SyncModeStore.swift::setMode",
-        "verb": "writes",
-        "why": "OnboardingPresentationModifier.body calls `syncModeStore.setMode(.localOnly)` when the user dismisses the iCloud-unavailable screen. LillistApp.swift:213."
-      },
-      "verify": {
-        "verdict": "unverified"
-      }
-    },
     "edge.semantic/ec6fa0eed14582460c7912c8": {
       "kind": "edge.semantic",
       "provenance": {
@@ -14906,6 +14926,20 @@
         "verdict": "unverified"
       }
     },
+    "edge.semantic/edfddd5273114f594dea7aa3": {
+      "kind": "edge.semantic",
+      "provenance": {
+        "created_at_commit": "8e926f08fd5269de164d25b42880893a604a9d5c",
+        "generator": "cartographer/4",
+        "model": "claude-sonnet-4-6"
+      },
+      "value": {
+        "verb": null
+      },
+      "verify": {
+        "verdict": "unverified"
+      }
+    },
     "edge.semantic/ee05eebd40e173ac11b2e9ce": {
       "kind": "edge.semantic",
       "provenance": {
@@ -14998,6 +15032,20 @@
         "created_at_commit": "515f24730d21cb81ca1c9737ffeb981e9c414d3c",
         "generator": "cartographer/4",
         "model": "sonnet"
+      },
+      "value": {
+        "verb": null
+      },
+      "verify": {
+        "verdict": "unverified"
+      }
+    },
+    "edge.semantic/efc728e6a77e85a4ff0a4483": {
+      "kind": "edge.semantic",
+      "provenance": {
+        "created_at_commit": "8e926f08fd5269de164d25b42880893a604a9d5c",
+        "generator": "cartographer/4",
+        "model": "claude-sonnet-4-6"
       },
       "value": {
         "verb": null
@@ -15170,6 +15218,20 @@
         "verdict": "unverified"
       }
     },
+    "edge.semantic/f297c664bfc4b2f4126720de": {
+      "kind": "edge.semantic",
+      "provenance": {
+        "created_at_commit": "8e926f08fd5269de164d25b42880893a604a9d5c",
+        "generator": "cartographer/4",
+        "model": "claude-sonnet-4-6"
+      },
+      "value": {
+        "verb": null
+      },
+      "verify": {
+        "verdict": "unverified"
+      }
+    },
     "edge.semantic/f2aceb8b06a0af1b38ca9a92": {
       "kind": "edge.semantic",
       "provenance": {
@@ -15233,20 +15295,6 @@
       }
     },
     "edge.semantic/f3984c2c4609d66b28197c2f": {
-      "kind": "edge.semantic",
-      "provenance": {
-        "created_at_commit": "515f24730d21cb81ca1c9737ffeb981e9c414d3c",
-        "generator": "cartographer/4",
-        "model": "sonnet"
-      },
-      "value": {
-        "verb": null
-      },
-      "verify": {
-        "verdict": "unverified"
-      }
-    },
-    "edge.semantic/f3a40f5f47b57fbca96a8888": {
       "kind": "edge.semantic",
       "provenance": {
         "created_at_commit": "515f24730d21cb81ca1c9737ffeb981e9c414d3c",
@@ -15350,12 +15398,26 @@
         "verdict": "unverified"
       }
     },
-    "edge.semantic/f4f4eca813f79c2eb9751dda": {
+    "edge.semantic/f51946c72db97e0689d11ff8": {
       "kind": "edge.semantic",
       "provenance": {
-        "created_at_commit": "515f24730d21cb81ca1c9737ffeb981e9c414d3c",
+        "created_at_commit": "8e926f08fd5269de164d25b42880893a604a9d5c",
         "generator": "cartographer/4",
-        "model": "sonnet"
+        "model": "claude-sonnet-4-6"
+      },
+      "value": {
+        "verb": null
+      },
+      "verify": {
+        "verdict": "unverified"
+      }
+    },
+    "edge.semantic/f52dda0f24e14ef6227f954e": {
+      "kind": "edge.semantic",
+      "provenance": {
+        "created_at_commit": "8e926f08fd5269de164d25b42880893a604a9d5c",
+        "generator": "cartographer/4",
+        "model": "claude-sonnet-4-6"
       },
       "value": {
         "verb": null
@@ -15473,20 +15535,6 @@
         "to": "Packages/LillistCore/Sources/LillistCore/Sync/MigrationCoordinator.swift::beginDisable",
         "verb": "writes",
         "why": "Passes coordinator.beginDisable(strategy:storeURL:) as the runMigration kickoff, reconfiguring the sync store \u2014 ICloudSyncPane.swift:171"
-      },
-      "verify": {
-        "verdict": "unverified"
-      }
-    },
-    "edge.semantic/f7b593dd1533873ab62be383": {
-      "kind": "edge.semantic",
-      "provenance": {
-        "created_at_commit": "515f24730d21cb81ca1c9737ffeb981e9c414d3c",
-        "generator": "cartographer/4",
-        "model": "sonnet"
-      },
-      "value": {
-        "verb": null
       },
       "verify": {
         "verdict": "unverified"
@@ -15768,6 +15816,20 @@
         "verdict": "unverified"
       }
     },
+    "edge.semantic/fb741fb6ec57249bff8e257d": {
+      "kind": "edge.semantic",
+      "provenance": {
+        "created_at_commit": "8e926f08fd5269de164d25b42880893a604a9d5c",
+        "generator": "cartographer/4",
+        "model": "claude-sonnet-4-6"
+      },
+      "value": {
+        "verb": null
+      },
+      "verify": {
+        "verdict": "unverified"
+      }
+    },
     "edge.semantic/fb90826728433da56c350bd4": {
       "kind": "edge.semantic",
       "provenance": {
@@ -15818,6 +15880,20 @@
         "created_at_commit": "515f24730d21cb81ca1c9737ffeb981e9c414d3c",
         "generator": "cartographer/4",
         "model": "sonnet"
+      },
+      "value": {
+        "verb": null
+      },
+      "verify": {
+        "verdict": "unverified"
+      }
+    },
+    "edge.semantic/fc3165209ed99f48edc435e3": {
+      "kind": "edge.semantic",
+      "provenance": {
+        "created_at_commit": "8e926f08fd5269de164d25b42880893a604a9d5c",
+        "generator": "cartographer/4",
+        "model": "claude-sonnet-4-6"
       },
       "value": {
         "verb": null
@@ -16208,20 +16284,6 @@
         "verifier": "map-verifier"
       }
     },
-    "module.gotchas/3dd6666353cdd90bd4a232b4": {
-      "kind": "module.gotchas",
-      "provenance": {
-        "created_at_commit": "515f24730d21cb81ca1c9737ffeb981e9c414d3c",
-        "generator": "cartographer/4",
-        "model": "sonnet"
-      },
-      "value": "DiagnosticsPane uses a `didHydrate` flag (DiagnosticsPane.swift:84) to prevent the `.task` re-appear hydration from overwriting a mid-session user toggle \u2014 without this guard, navigating away and back resets the toggle to the stored value.\n\nICloudSyncPane's `runMigration` is `@MainActor` and starts the `progressStream` Task before calling `kickoff` (ICloudSyncPane.swift:180-185); swapping that order would lose the first phase emission.\n\nThe `MigrationPhase: @retroactive Identifiable` conformance lives here rather than in LillistCore (ICloudSyncPane.swift:195-211); the `@retroactive` attribute suppresses the cross-module conformance warning \u2014 removing it produces a warning-as-error.",
-      "verify": {
-        "at_commit": "515f24730d21cb81ca1c9737ffeb981e9c414d3c",
-        "verdict": "pass",
-        "verifier": "map-verifier"
-      }
-    },
     "module.gotchas/3e385568b9705e7421d261b7": {
       "kind": "module.gotchas",
       "provenance": {
@@ -16320,6 +16382,20 @@
         "verifier": "map-verifier"
       }
     },
+    "module.gotchas/502ea9b5f6ddbb1eb66b099f": {
+      "kind": "module.gotchas",
+      "provenance": {
+        "created_at_commit": "8e926f08fd5269de164d25b42880893a604a9d5c",
+        "generator": "cartographer/4",
+        "model": "claude-sonnet-4-6"
+      },
+      "value": "A. `DiagnosticsSection` hosts `.fileExporter` on the `Button` node, not the enclosing `Section` \u2014 a deliberate split because co-locating `.sheet` and `.fileExporter` on the same node clobbered the include sheet and dismissed the whole Settings pane (comment explains at `Apps/Lillist-iOS/Sources/Settings/DiagnosticsSection.swift:40`). B. `ICloudSyncSection` funnels exactly **four** sync modals through one `.sheet(item: $route)` (`Apps/Lillist-iOS/Sources/Settings/ICloudSyncSection.swift:40`): the `SyncSheetRoute` cases `choice`, `disable`, `pauseExplainer`, and `progress`. `afterToggle` is a static factory method on the route type (called at line 112), not a fifth case. The migration confirmation is a **separate** `.confirmationDialog` driven by `pendingDirection` (`Apps/Lillist-iOS/Sources/Settings/ICloudSyncSection.swift:25`), deliberately kept distinct because a `confirmationDialog` coexists safely with one sheet. C. `TrashSection.init` coerces any non-preset `trashRetentionDays` (e.g. a legacy slider value of 45) into the nearest value from `[7,14,30,60,90,180,365]` so `Picker` renders cleanly \u2014 a non-preset value from `PreferencesStore.Prefs` is silently overwritten on construction (`Apps/Lillist-iOS/Sources/Settings/TrashSection.swift:18`).",
+      "verify": {
+        "at_commit": "8e926f08fd5269de164d25b42880893a604a9d5c",
+        "verdict": "pass",
+        "verifier": "map-verifier"
+      }
+    },
     "module.gotchas/522f80de8398a353e70cc4ba": {
       "kind": "module.gotchas",
       "provenance": {
@@ -16384,20 +16460,6 @@
         "model": "sonnet"
       },
       "value": "Coordinate-space offset: `DragOverlay` lays out inside the safe area while `controller.geometry` frames are in the named coordinate space (behind safe areas); a `-dy` offset converts named\u2192local at runtime or the phantom drifts under different insets (DragOverlay.swift:49-58). iOS first-event coordinate space: the first `.second` event of `LongPressGesture.sequenced(before:DragGesture)` may report `drag.location` in an unexpected space; `beginDrag` anchors on `frame.midY` instead (DragReorderable.swift:87-99). macOS axis arbitration: no long-press gate means `DragAxisArbiter` must commit a direction before any reorder begins; a horizontal commit yields to `SwipeableRow`; `committedAxis` resets to `nil` at `onEnded` (DragReorderable.swift:136-178). `DragControllerState.dropping` is reserved: `endDrag()` transitions directly to `.idle`; the `.dropping` case exists for a future animated-drop phase but is not currently emitted (DragController.swift:14-16). `setOnDrop` exists because SwiftUI containers cannot capture `self` in a `@StateObject` default-value closure; the real handler must be wired from `.onAppear` (DragController.swift:77-80).",
-      "verify": {
-        "at_commit": "515f24730d21cb81ca1c9737ffeb981e9c414d3c",
-        "verdict": "pass",
-        "verifier": "map-verifier"
-      }
-    },
-    "module.gotchas/729fe8bfe4a105db12fe334a": {
-      "kind": "module.gotchas",
-      "provenance": {
-        "created_at_commit": "515f24730d21cb81ca1c9737ffeb981e9c414d3c",
-        "generator": "cartographer/4",
-        "model": "sonnet"
-      },
-      "value": "SyncMigrationConfirmationDialog exposes `title` and `message` as `public var String` (not inside body) so hosts can pass them directly to `.confirmationDialog` title/message params without embedding the view \u2014 Packages/LillistUI/Sources/LillistUI/Sync/SyncMigrationConfirmationDialog.swift:23-37. SyncMigrationRecoverySheet.detailText(for:) is `public nonisolated static` so tests and non-main-actor callers can invoke it without a main-actor dispatch hop \u2014 Packages/LillistUI/Sources/LillistUI/Sync/SyncMigrationRecoverySheet.swift:67. PauseExplainerDialog's \"Disable Sync\" button only renders for `.accountChanged`; the `onDisableSync` closure defaults to `{}` so hosts that never encounter that reason can omit it safely \u2014 Packages/LillistUI/Sources/LillistUI/Sync/PauseExplainerDialog.swift:26,57.",
       "verify": {
         "at_commit": "515f24730d21cb81ca1c9737ffeb981e9c414d3c",
         "verdict": "pass",
@@ -16544,20 +16606,6 @@
         "verifier": "map-verifier"
       }
     },
-    "module.gotchas/96e56b1eb57a4ba17d084ab3": {
-      "kind": "module.gotchas",
-      "provenance": {
-        "created_at_commit": "515f24730d21cb81ca1c9737ffeb981e9c414d3c",
-        "generator": "cartographer/4",
-        "model": "sonnet"
-      },
-      "value": "`DiagnosticsSection` presents `fileExporter` only after the include sheet fully dismisses via `onDismiss` \u2014 presenting two sheets simultaneously conflicts on iOS; `wantsExport` defers `prepare()` until the first sheet is gone (`Apps/Lillist-iOS/Sources/Settings/DiagnosticsSection.swift:52-55`).\n\n`DiagnosticsSection` `didHydrate` guards against a late async `.task` read overwriting a user-initiated toggle change (`Apps/Lillist-iOS/Sources/Settings/DiagnosticsSection.swift:46-50, 81`).\n\n`ICloudSyncSection.runMigration` falls back to a temp SQLite path when `environment.storeURL` is nil so test-fixture paths don't crash (`Apps/Lillist-iOS/Sources/Settings/ICloudSyncSection.swift:190-192`).\n\n`TrashSection.init` coerces legacy non-preset `trashRetentionDays` to nearest preset; skipping this leaves the `Picker` with no matching tag and a blank selection (`Apps/Lillist-iOS/Sources/Settings/TrashSection.swift:16-22`).",
-      "verify": {
-        "at_commit": "515f24730d21cb81ca1c9737ffeb981e9c414d3c",
-        "verdict": "pass",
-        "verifier": "map-verifier"
-      }
-    },
     "module.gotchas/9730f94563edb959cfa09a1c": {
       "kind": "module.gotchas",
       "provenance": {
@@ -16568,6 +16616,20 @@
       "value": "Reorder heal-then-recheck: after recompactSiblings runs, the in-memory anchor objects already reflect new positions \u2014 do NOT call context.refresh, which would overwrite unsaved changes with stale store values (TaskStore.swift:418-421). Tie-swap: when recompaction assigns positions in uuid-string order that conflicts with drag intent, the two anchor positions are explicitly swapped to honour the caller (TaskStore.swift:475-479); post-heal position uses afterTask.position + 0.5 (not a midpoint) to avoid colliding with an integer sibling that might sit at the midpoint (TaskStore.swift:484-487). applySoftDelete recurses into children but only stamps ones where deletedAt == nil (TaskStore.swift:849-853); clearSoftDelete only undeletes children whose deletedAt matches the parent's exact original timestamp, preventing accidental restoration of separately-deleted children (TaskStore.swift:860-864). batchPurge filters to roots only before passing to CascadeReaper to avoid double-deleting a parent and child (TaskStore.swift:818-821). listFetchBatchSize = 100 limits per-page faulting so large sibling sets are not fully materialized on viewContext at once (TaskStore.swift:47).",
       "verify": {
         "at_commit": "515f24730d21cb81ca1c9737ffeb981e9c414d3c",
+        "verdict": "pass",
+        "verifier": "map-verifier"
+      }
+    },
+    "module.gotchas/9da5cf562eaa4679785fc9e2": {
+      "kind": "module.gotchas",
+      "provenance": {
+        "created_at_commit": "8e926f08fd5269de164d25b42880893a604a9d5c",
+        "generator": "cartographer/4",
+        "model": "claude-sonnet-4-6"
+      },
+      "value": "SwiftUI multiple-modifier conflict: before `SyncSheetRoute` existed, both platform wrappers stacked several `.sheet`/`.fullScreenCover` modifiers on the same view; SwiftUI silently honors only the last one per style, so presenting an earlier modal was clobbered \u2014 and, nested inside the Settings sheet, the failed presentation cascaded up and tore down all of Settings (the 'Disable iCloud sheet flashes then dismisses, taking Settings with it' bug). `Packages/LillistUI/Sources/LillistUI/Sync/SyncSheetRoute.swift:6-13`.\n\n`.progress` case uses a constant `id` string (\"progress\") regardless of the inner `MigrationPhase` value; this is intentional so that streaming a new phase into the binding updates the presented sheet in place rather than triggering a dismiss/re-present cycle on every progress tick. `Packages/LillistUI/Sources/LillistUI/Sync/SyncSheetRoute.swift:22-33`.",
+      "verify": {
+        "at_commit": "8e926f08fd5269de164d25b42880893a604a9d5c",
         "verdict": "pass",
         "verifier": "map-verifier"
       }
@@ -16810,6 +16872,20 @@
         "verifier": "map-verifier"
       }
     },
+    "module.gotchas/de6c6007c3fc2b7e68c419b6": {
+      "kind": "module.gotchas",
+      "provenance": {
+        "created_at_commit": "8e926f08fd5269de164d25b42880893a604a9d5c",
+        "generator": "cartographer/4",
+        "model": "claude-sonnet-4-6"
+      },
+      "value": "In `DiagnosticsPane`, `.fileExporter` is attached to the `Button` node and `.sheet` to the `Form` \u2014 deliberately separate nodes \u2014 because co-locating both on the same node caused the include sheet's dismissal to cascade up and close the Preferences window (`Apps/Lillist-macOS/Sources/Preferences/DiagnosticsPane.swift:42-46`). `ICloudSyncPane` replaced four stacked `.sheet` modifiers with a single `SyncSheetRoute`-routed `.sheet(item: $route)` for the same reason: the dismiss-one-present-another sequence previously dismissed the entire Settings window (`Apps/Lillist-macOS/Sources/Preferences/ICloudSyncPane.swift:12-13`).",
+      "verify": {
+        "at_commit": "8e926f08fd5269de164d25b42880893a604a9d5c",
+        "verdict": "pass",
+        "verifier": "map-verifier"
+      }
+    },
     "module.gotchas/e49bd1cb6ac6b72baac2be2c": {
       "kind": "module.gotchas",
       "provenance": {
@@ -16948,18 +17024,6 @@
         "verdict": "unverified"
       }
     },
-    "module.purpose/15b171ad81c94781b1ffc348": {
-      "kind": "module.purpose",
-      "provenance": {
-        "created_at_commit": "515f24730d21cb81ca1c9737ffeb981e9c414d3c",
-        "generator": "cartographer/4",
-        "model": "sonnet"
-      },
-      "value": "This module is the macOS Settings scene \u2014 ten SwiftUI Form panes (iCloud Sync, General, Notifications, Trash, Backups, Quick Capture, Reminders, Crash Reporting, Diagnostics, Advanced) composed under a single TabView root. Every pane reads `AppEnvironment` via `@Environment` and writes changes back through its appropriate store, applying live side effects (scheduler, hotkey monitor, sync migration) outside the store-write path when needed. The idea that holds it together is the async subscribe \u2192 bind \u2192 write pattern: each pane hydrates from a stream, presents a SwiftUI binding, and persists on change. Remove this module and macOS users lose all settings surfaces \u2014 sync mode, notification schedules, backup management, hotkey configuration, Reminders import, crash reporting consent, and data export/import are all unreachable.",
-      "verify": {
-        "verdict": "unverified"
-      }
-    },
     "module.purpose/1e89e05e455f1fda51b72f42": {
       "kind": "module.purpose",
       "provenance": {
@@ -16980,6 +17044,18 @@
         "model": "sonnet"
       },
       "value": "This module is the persistence substrate for all of LillistCore: it owns the NSPersistentContainer/NSPersistentCloudKitContainer lifecycle (PersistenceController), executes live sync-mode swaps by removing and re-adding the underlying store on the same container instance rather than re-instantiating it (PersistenceHost), and drives remote-change history reconciliation to prevent duplicate notifications after CloudKit imports (RemoteChangeReconciler). The organizing invariant is that the container instance is permanent \u2014 re-instantiating NSPersistentCloudKitContainer triggers internal setup races \u2014 so every mode change, destructive reset, and rollback flows through PersistenceHost's actor-serialized store-swap machinery. Remove this module and every Store, the CLI, the extensions, and the sync-mode migration machinery lose their database handle and all recovery safety guarantees.",
+      "verify": {
+        "verdict": "unverified"
+      }
+    },
+    "module.purpose/21f18ec2a3b2798874d0a139": {
+      "kind": "module.purpose",
+      "provenance": {
+        "created_at_commit": "8e926f08fd5269de164d25b42880893a604a9d5c",
+        "generator": "cartographer/4",
+        "model": "claude-sonnet-4-6"
+      },
+      "value": "Provides the complete set of pure-presentation SwiftUI surfaces for the iCloud sync mode lifecycle: pause-state explanation, disable confirmation, migration choice, second-tap destructive confirmation, live migration progress, and crash-recovery. All six modal views are stateless presenters \u2014 hosts pass data and action closures, this module renders. The `SyncSheetRoute` router enum is the module's architectural keystone: it funnels every sync modal through a single `.sheet(item:)` binding, eliminating a SwiftUI multiple-presentation-modifier conflict that previously caused the Settings pane to collapse. Without this module, both platform layers would scatter sync modal logic across their own presentation stacks, re-introducing the clobbering bug and duplicating destructive-operation copy.",
       "verify": {
         "verdict": "unverified"
       }
@@ -17016,18 +17092,6 @@
         "model": "sonnet"
       },
       "value": "root-misc is the repo's integrating scaffold: the xcworkspace that binds both SPM packages and both Xcode apps into a single build graph, the CI workflow that enforces quality gates post-push, the deployit export options that pin both platforms to the Production CloudKit environment at distribution time, and the semver hook that keeps MARKETING_VERSION in lockstep with the VERSION file. Without it, there is no authoritative build-and-test matrix, no consistent CloudKit environment selection at export, and no version-number coherence across the workspace. It also carries the .gitattributes marking docs/atlas/ as linguist-generated and the .semver config governing changelog format and git tagging.",
-      "verify": {
-        "verdict": "unverified"
-      }
-    },
-    "module.purpose/30b39f665c22c2c1b8f54748": {
-      "kind": "module.purpose",
-      "provenance": {
-        "created_at_commit": "515f24730d21cb81ca1c9737ffeb981e9c414d3c",
-        "generator": "cartographer/4",
-        "model": "sonnet"
-      },
-      "value": "This module is the iOS Settings infrastructure: `SettingsTab` provides the icon-tile landing navigation, and the section components (`NotificationsSection`, `ICloudSyncSection`, `TrashSection`, `BackupSection`, `DiagnosticsSection`, `RemindersImportSection`, `CrashReportingSection`, `AdvancedSection`, `QuickCaptureSection`, `ResetDataStoreSection`) compose into the sub-pages. These sections are env-coupled \u2014 they read `AppEnvironment` directly and bridge user gestures into LillistCore operations \u2014 because they depend on stores (`DevicePreferencesStore`, `MigrationCoordinator`, `TaskStore`, etc.) that LillistUI cannot import. Without this layer, iOS Settings would have no connection to app state: the LillistUI shell (`SettingsScreen`) would have chrome but no content capable of reading or writing live data.",
       "verify": {
         "verdict": "unverified"
       }
@@ -17176,18 +17240,6 @@
         "verdict": "unverified"
       }
     },
-    "module.purpose/83020203cfc9ff5c6b5770aa": {
-      "kind": "module.purpose",
-      "provenance": {
-        "created_at_commit": "515f24730d21cb81ca1c9737ffeb981e9c414d3c",
-        "generator": "cartographer/4",
-        "model": "sonnet"
-      },
-      "value": "Provides the complete set of modal UI surfaces that gate or describe every iCloud sync mode transition: a pause explainer dialog, a disable-sync confirmation sheet, the three-step enable-sync migration sequence (choice \u2192 confirmation \u2192 progress), and a crash-recovery sheet for interrupted migrations. All views are pure presenters \u2014 no @State, no .task, no env coupling \u2014 so the host owns the state machine and these views just render phases and surface closures. Without this module, the app would have no user-facing story for sync failures, destructive migrations, or mid-migration crashes.",
-      "verify": {
-        "verdict": "unverified"
-      }
-    },
     "module.purpose/8e2cd6a4e887a0301b8e0dcb": {
       "kind": "module.purpose",
       "provenance": {
@@ -17256,6 +17308,18 @@
         "model": "sonnet"
       },
       "value": "Tokens.swift is the single source of truth for all shared visual constants in LillistUI: spacing scale, corner-radius scale, gesture-timing constants, Plus Jakarta Sans typography, reusable string tokens, and drag-reorder visual parameters. It exists to prevent magic numbers from spreading across views and to enforce Rainbow Logic design-system semantics at the token level. Without it, callsites would diverge: spacing values would drift, font stacks would mix system and custom faces, and the drag system's visual tuning would scatter across multiple files.",
+      "verify": {
+        "verdict": "unverified"
+      }
+    },
+    "module.purpose/a96180b32548287e9cc26e94": {
+      "kind": "module.purpose",
+      "provenance": {
+        "created_at_commit": "8e926f08fd5269de164d25b42880893a604a9d5c",
+        "generator": "cartographer/4",
+        "model": "claude-sonnet-4-6"
+      },
+      "value": "The Preferences module is the macOS `Settings` scene: ten tabbed panes assembled in `PreferencesWindow` covering every user-facing configuration surface the app exposes. The unifying idea is a clean store-access boundary \u2014 each pane reads `AppEnvironment` and either subscribes to the `PreferencesStore.Prefs` stream for CloudKit-synced values or queries `DevicePreferencesStore` directly for device-local values, with no direct Core Data dependency. Remove this module and the macOS app has no preferences surface; there is no other path for users to change notification schedules, sync mode, crash-reporting consent, hotkeys, or backup state.",
       "verify": {
         "verdict": "unverified"
       }
@@ -17536,6 +17600,18 @@
         "verdict": "unverified"
       }
     },
+    "module.purpose/f663f865e23d95439988d141": {
+      "kind": "module.purpose",
+      "provenance": {
+        "created_at_commit": "8e926f08fd5269de164d25b42880893a604a9d5c",
+        "generator": "cartographer/4",
+        "model": "claude-sonnet-4-6"
+      },
+      "value": "This module is the iOS-side, AppEnvironment-coupled controller layer for every Settings section \u2014 the container half of the container/presenter split used throughout Lillist. Each file wires live store state and async actions into state-free LillistUI presenters, and SettingsTab owns the root navigation that drives all per-domain drill-down pages. Without this module the pure LillistUI Settings presenters would be unreachable and all env-coupled preferences, migration, diagnostics, backup, and Reminders-import logic would have no iOS host.",
+      "verify": {
+        "verdict": "unverified"
+      }
+    },
     "module.purpose/fbf7501ca5eea6869e0aba97": {
       "kind": "module.purpose",
       "provenance": {
@@ -17596,6 +17672,18 @@
         "verdict": "unverified"
       }
     },
+    "module.read_when/01e9bcb18362aecc465f6293": {
+      "kind": "module.read_when",
+      "provenance": {
+        "created_at_commit": "8e926f08fd5269de164d25b42880893a604a9d5c",
+        "generator": "cartographer/4",
+        "model": "claude-sonnet-4-6"
+      },
+      "value": "Touching macOS Preferences panes",
+      "verify": {
+        "verdict": "unverified"
+      }
+    },
     "module.read_when/0a50480b66d1fd5054253b97": {
       "kind": "module.read_when",
       "provenance": {
@@ -17628,6 +17716,18 @@
         "model": "sonnet"
       },
       "value": "Touching sync-mode or migration state machine",
+      "verify": {
+        "verdict": "unverified"
+      }
+    },
+    "module.read_when/2107a9fa4110ff95135ee6be": {
+      "kind": "module.read_when",
+      "provenance": {
+        "created_at_commit": "8e926f08fd5269de164d25b42880893a604a9d5c",
+        "generator": "cartographer/4",
+        "model": "claude-sonnet-4-6"
+      },
+      "value": "Touching iOS Settings screens or env wiring",
       "verify": {
         "verdict": "unverified"
       }
@@ -17716,18 +17816,6 @@
         "verdict": "unverified"
       }
     },
-    "module.read_when/30762dc0feee66cf2a03a78d": {
-      "kind": "module.read_when",
-      "provenance": {
-        "created_at_commit": "515f24730d21cb81ca1c9737ffeb981e9c414d3c",
-        "generator": "cartographer/4",
-        "model": "sonnet"
-      },
-      "value": "Touching iCloud sync mode UI",
-      "verify": {
-        "verdict": "unverified"
-      }
-    },
     "module.read_when/3198bfc28dd154d1f2885a56": {
       "kind": "module.read_when",
       "provenance": {
@@ -17776,14 +17864,14 @@
         "verdict": "unverified"
       }
     },
-    "module.read_when/473591eea7dc05423414020b": {
+    "module.read_when/4599f2ed9ea708dfe24b1f1d": {
       "kind": "module.read_when",
       "provenance": {
-        "created_at_commit": "515f24730d21cb81ca1c9737ffeb981e9c414d3c",
+        "created_at_commit": "8e926f08fd5269de164d25b42880893a604a9d5c",
         "generator": "cartographer/4",
-        "model": "sonnet"
+        "model": "claude-sonnet-4-6"
       },
-      "value": "Touching iOS Settings screens",
+      "value": "Touching iCloud sync UI or sync-modal routing",
       "verify": {
         "verdict": "unverified"
       }
@@ -17964,18 +18052,6 @@
         "model": "sonnet"
       },
       "value": "Touching sync-status display or quiesce gate",
-      "verify": {
-        "verdict": "unverified"
-      }
-    },
-    "module.read_when/844e9fc88a1bc959de5082e2": {
-      "kind": "module.read_when",
-      "provenance": {
-        "created_at_commit": "515f24730d21cb81ca1c9737ffeb981e9c414d3c",
-        "generator": "cartographer/4",
-        "model": "sonnet"
-      },
-      "value": "Touching macOS Preferences panes",
       "verify": {
         "verdict": "unverified"
       }
@@ -18324,18 +18400,6 @@
         "model": "sonnet"
       },
       "value": "CI guard scripts (localization coverage, team-ID leak) and iOS archive build-number bump",
-      "verify": {
-        "verdict": "unverified"
-      }
-    },
-    "module.summary/01ba4aaf2abe6183c92b6ddf": {
-      "kind": "module.summary",
-      "provenance": {
-        "created_at_commit": "515f24730d21cb81ca1c9737ffeb981e9c414d3c",
-        "generator": "cartographer/4",
-        "model": "sonnet"
-      },
-      "value": "iOS Settings landing view and env-coupled sections: sync, notifications, trash, backup, diagnostics.",
       "verify": {
         "verdict": "unverified"
       }
@@ -18712,6 +18776,18 @@
         "verdict": "unverified"
       }
     },
+    "module.summary/831b721c3eaf9ad4111dccfa": {
+      "kind": "module.summary",
+      "provenance": {
+        "created_at_commit": "8e926f08fd5269de164d25b42880893a604a9d5c",
+        "generator": "cartographer/4",
+        "model": "claude-sonnet-4-6"
+      },
+      "value": "Pure-presentation sync-modal surfaces (pause, disable, migration, recovery) unified under SyncSheetRoute.",
+      "verify": {
+        "verdict": "unverified"
+      }
+    },
     "module.summary/89e55c97c43b741ed57016e2": {
       "kind": "module.summary",
       "provenance": {
@@ -18760,14 +18836,14 @@
         "verdict": "unverified"
       }
     },
-    "module.summary/9cc000283500f670c556700d": {
+    "module.summary/9c5dcbf36ba09ab4ba082ae3": {
       "kind": "module.summary",
       "provenance": {
-        "created_at_commit": "515f24730d21cb81ca1c9737ffeb981e9c414d3c",
+        "created_at_commit": "8e926f08fd5269de164d25b42880893a604a9d5c",
         "generator": "cartographer/4",
-        "model": "sonnet"
+        "model": "claude-sonnet-4-6"
       },
-      "value": "Pure-presenter modal sheets and dialogs for all iCloud sync management flows.",
+      "value": "iOS Settings section controllers: AppEnvironment-coupled wrappers wiring store state into LillistUI Settings presenters.",
       "verify": {
         "verdict": "unverified"
       }
@@ -18928,6 +19004,18 @@
         "verdict": "unverified"
       }
     },
+    "module.summary/dc9d721ebbd6b38f604f6850": {
+      "kind": "module.summary",
+      "provenance": {
+        "created_at_commit": "8e926f08fd5269de164d25b42880893a604a9d5c",
+        "generator": "cartographer/4",
+        "model": "claude-sonnet-4-6"
+      },
+      "value": "macOS Settings window: ten tabbed panes wiring user preferences back to LillistCore's store layer.",
+      "verify": {
+        "verdict": "unverified"
+      }
+    },
     "module.summary/e0269a233d0a3f5dde7f57de": {
       "kind": "module.summary",
       "provenance": {
@@ -18996,18 +19084,6 @@
         "model": "sonnet"
       },
       "value": "Sync-status bridge (CloudKit\u2192SyncIndicator) and task-status tap-cycle rule for LillistUI",
-      "verify": {
-        "verdict": "unverified"
-      }
-    },
-    "module.summary/f639789bb8b5be44001bdb6a": {
-      "kind": "module.summary",
-      "provenance": {
-        "created_at_commit": "515f24730d21cb81ca1c9737ffeb981e9c414d3c",
-        "generator": "cartographer/4",
-        "model": "sonnet"
-      },
-      "value": "macOS Settings window: env-coupled SwiftUI panes for sync, notifications, backup, hotkey, and Reminders import.",
       "verify": {
         "verdict": "unverified"
       }
@@ -19228,14 +19304,14 @@
         "verdict": "unverified"
       }
     },
-    "module.type_notes/58b32147f6bcfc5663af5706": {
+    "module.type_notes/50c914522ae7da33dcbe7a39": {
       "kind": "module.type_notes",
       "provenance": {
-        "created_at_commit": "515f24730d21cb81ca1c9737ffeb981e9c414d3c",
+        "created_at_commit": "8e926f08fd5269de164d25b42880893a604a9d5c",
         "generator": "cartographer/4",
-        "model": "sonnet"
+        "model": "claude-sonnet-4-6"
       },
-      "value": "Every section view reads `AppEnvironment` via `@Environment(AppEnvironment.self)` \u2014 they are env-coupled presenters, not the pure-presentation LillistUI screens that take closures at init.\n\n`RemindersImportSection` is deliberately device-only: it reads/writes `DevicePreferencesStore` (not the CloudKit-synced `PreferencesStore`) because Reminders `calendarIdentifier` values are device-local, so the section owns its own `@State enabled`/`selectedListID` rather than sharing the `PreferencesStore.Prefs` binding used by other sections (`Apps/Lillist-iOS/Sources/Settings/RemindersImportSection.swift:6-12`).\n\n`NotificationsSection` debounces scheduler calls with `.task(id: AllDayKey(...))`/`.task(id: MorningKey(...))`: changes sleep 750ms before `applyAllDayChange`/`applyMorningSummaryChange` fire, so rapid picker adjustments don't flood `NotificationScheduler` (`Apps/Lillist-iOS/Sources/Settings/NotificationsSection.swift:46-61`).\n\n`DiagnosticsSection` uses a `didHydrate` flag to guard the one-shot `.task` read: if the user taps the toggle before the async read returns, the stale read is discarded (`Apps/Lillist-iOS/Sources/Settings/DiagnosticsSection.swift:46-50`).\n\n`ICloudSyncSection.runMigration` streams `coordinator.progressStream` into `activePhase` on `@MainActor`; all enable and disable flows funnel through it so the progress sheet always reflects live migration state (`Apps/Lillist-iOS/Sources/Settings/ICloudSyncSection.swift:189-205`).\n\n`TrashSection.init` coerces any pre-Plan-26 arbitrary `trashRetentionDays` value to the nearest discrete preset so the `Picker` always has a matching tag (`Apps/Lillist-iOS/Sources/Settings/TrashSection.swift:16-22`).",
+      "value": "SettingsTab (Apps/Lillist-iOS/Sources/Settings/SettingsTab.swift:15) is the root: it reads PreferencesStore.Prefs once via .task and writes changes back via .onChange, threading a Binding<Prefs> down to NotificationsSection, TrashSection, QuickCaptureSection, and CrashReportingSection. Sections that bypass the Prefs binding \u2014 ICloudSyncSection, RemindersImportSection, DiagnosticsSection \u2014 own local @State and drive device-local or migration-coupled stores directly; their data cannot travel through the synced Prefs row.\n\nICloudSyncSection (Apps/Lillist-iOS/Sources/Settings/ICloudSyncSection.swift:10) is the sole iOS owner of migration sheet routing: it holds @State route: SyncSheetRoute? and drives MigrationCoordinator.progressStream on the MainActor inside runMigration, swapping the route to .progress(_) in-place so no dismiss/re-present conflict occurs.\n\nBackupSection (Apps/Lillist-iOS/Sources/Settings/BackupSection.swift:111) dispatches createSnapshot via Task.detached to avoid blocking the main actor during zip creation, then rejoins on MainActor to refresh the snapshot list. All sections are View types isolated to the MainActor; none is a Swift actor itself.",
       "verify": {
         "verdict": "unverified"
       }
@@ -19404,6 +19480,18 @@
         "model": "sonnet"
       },
       "value": "- `SyncStatusMonitor` (actor): all state mutations are actor-isolated. `statusStream` is a computed property returning a new `AsyncStream<SyncStatus>` per call; each new subscriber receives the current status immediately via `registerStatus` \u2192 `continuation.yield(currentStatus)` (Packages/LillistCore/Sources/LillistCore/Sync/SyncStatusMonitor.swift:49-52). The consumer `Task` uses `[weak self]` to avoid anchoring the actor's lifetime.\n- `start()` is idempotent via `guard consumeTask == nil` (Packages/LillistCore/Sources/LillistCore/Sync/SyncStatusMonitor.swift:26), so multiple `bootstrap()` call sites across app layers cannot spawn competing consumers.\n- `SyncQuiesceMonitor` (actor): `lastEventAt` is exclusively mutated through the private `recordEvent()` method, which is awaited from the watcher `Task` inside `waitForQuiesce` (Packages/LillistCore/Sources/LillistCore/Sync/SyncQuiesceMonitor.swift:49). The watcher `Task` uses `[weak self]` to avoid extending the actor's lifetime (Packages/LillistCore/Sources/LillistCore/Sync/SyncQuiesceMonitor.swift:45).\n- `SyncStatus` (struct): value type, no identity; `idle` static constant is the zero/unknown state (Packages/LillistCore/Sources/LillistCore/Sync/SyncStatus.swift:18). `error` and `lastSyncedAt` are independently nullable and carry no ordering invariant between them.\n- `iCloudAccountState` (enum): `@unknown default` in `from(ckAccountStatus:)` maps to `.noAccount` so future CKAccountStatus cases degrade safely (Packages/LillistCore/Sources/LillistCore/Sync/iCloudAccountState.swift:36-38).",
+      "verify": {
+        "verdict": "unverified"
+      }
+    },
+    "module.type_notes/9cf18288ee661880b0b2bcc0": {
+      "kind": "module.type_notes",
+      "provenance": {
+        "created_at_commit": "8e926f08fd5269de164d25b42880893a604a9d5c",
+        "generator": "cartographer/4",
+        "model": "claude-sonnet-4-6"
+      },
+      "value": "All six sheet/dialog views are pure-presentation `struct`s with no `@State` and no `.task`; all data and action closures arrive via `init` so hosts fully control lifecycle (`Packages/LillistUI/Sources/LillistUI/Sync/PauseExplainerDialog.swift:17-33`, `Packages/LillistUI/Sources/LillistUI/Sync/SyncMigrationProgressSheet.swift:11-18`).\n\n`SyncSheetRoute` is `public enum` conforming to both `Equatable` and `Identifiable`, allowing it to drive `.sheet(item:)` directly (`Packages/LillistUI/Sources/LillistUI/Sync/SyncSheetRoute.swift:14`). The `.progress(MigrationPhase)` case's `id` returns the constant string `\"progress\"` regardless of the associated phase value \u2014 a deliberate invariant that keeps the sheet alive across phase updates instead of dismissing and re-presenting (`Packages/LillistUI/Sources/LillistUI/Sync/SyncSheetRoute.swift:30-31`).\n\n`SyncMigrationRecoverySheet.detailText(for:)` is `public nonisolated static`, enabling test code to call it without crossing the `@MainActor` boundary (`Packages/LillistUI/Sources/LillistUI/Sync/SyncMigrationRecoverySheet.swift:67`).\n\n`SyncMigrationConfirmationDialog.Direction` is `Sendable` for safe cross-actor propagation (`Packages/LillistUI/Sources/LillistUI/Sync/SyncMigrationConfirmationDialog.swift:8`).\n\n`RainbowProgressBar` is module-internal (`struct`, no `public`), used only by `SyncMigrationProgressSheet` (`Packages/LillistUI/Sources/LillistUI/Sync/SyncMigrationProgressSheet.swift:109-127`).",
       "verify": {
         "verdict": "unverified"
       }
@@ -19648,18 +19736,6 @@
         "verdict": "unverified"
       }
     },
-    "module.type_notes/d50d8555674c3b9b827ed54a": {
-      "kind": "module.type_notes",
-      "provenance": {
-        "created_at_commit": "515f24730d21cb81ca1c9737ffeb981e9c414d3c",
-        "generator": "cartographer/4",
-        "model": "sonnet"
-      },
-      "value": "All six views are pure presenters: no @State, no .task, no environment reads. Callers supply all data and closures at init time, enabling IOSScreenTourTests to render them with frozen mock data. Views are implicitly @MainActor as SwiftUI Views; SyncMigrationRecoverySheet.detailText(for:) is explicitly `nonisolated static` to remain callable from test and background contexts without a main-actor hop (Packages/LillistUI/Sources/LillistUI/Sync/SyncMigrationRecoverySheet.swift:67). SyncMigrationProgressSheet binds to `MigrationPhase` from LillistCore and `MigrationJournal`/`ModeTransitionOp` are consumed by SyncMigrationRecoverySheet \u2014 both are value types, so the views hold no managed-object references. RainbowProgressBar is internal (no `public` modifier despite the assignment listing it as public) and is only instantiated from SyncMigrationProgressSheet.body (Packages/LillistUI/Sources/LillistUI/Sync/SyncMigrationProgressSheet.swift:54).",
-      "verify": {
-        "verdict": "unverified"
-      }
-    },
     "module.type_notes/d711d5ee2761b74446557507": {
       "kind": "module.type_notes",
       "provenance": {
@@ -19692,18 +19768,6 @@
         "model": "sonnet"
       },
       "value": "All six public types are value-types (struct or enum) and Sendable \u2014 safe to pass across actor boundaries without wrapping. TaskNode.hash(into:) is hand-written to hash only record.id because TaskStore.TaskRecord is Equatable but not Hashable; the comment at TaskTree.swift:29-31 makes this explicit. TaskTree.build and TreeFlattener.flatten are pure functions with no stored state, callable from any isolation context. FilterHeader and TaskOutlineRowView are stateless presenters: all mutable state flows in via @Binding or closure parameters \u2014 no @State, no .task lifecycle (per the iOS container/presenter split). FlatTaskRow.id delegates to node.id (FlatTaskRow.swift:12) so list identity is stable across re-flattens when node UUIDs are unchanged. TasksSort is persisted via @AppStorage(\"lillist.ios.sort\") as rawValue (TasksSort.swift:10).",
-      "verify": {
-        "verdict": "unverified"
-      }
-    },
-    "module.type_notes/db0fc365158bb6398e2052ce": {
-      "kind": "module.type_notes",
-      "provenance": {
-        "created_at_commit": "515f24730d21cb81ca1c9737ffeb981e9c414d3c",
-        "generator": "cartographer/4",
-        "model": "sonnet"
-      },
-      "value": "All panes are `@MainActor`-isolated SwiftUI Views that inject `AppEnvironment` via `@Environment(AppEnvironment.self)` and must be embedded under a view hierarchy that provides it (PreferencesWindow.swift:11-43).\n\nMost panes follow the prefs-stream pattern: `subscribe()` does an initial `preferencesStore.read()` then loops over `preferencesStore.prefsStream`, suppressing echo writes with an equality check (e.g. GeneralPane.swift:53-61). `DiagnosticsPane` and `RemindersPane` break this pattern \u2014 they own device-local state from `DevicePreferencesStore` not subject to CloudKit sync (DiagnosticsPane.swift:10, RemindersPane.swift:11-13).\n\n`ICloudSyncPane` owns the full migration sheet state machine (`showChoiceSheet`, `pendingDirection`, `activePhase`, `showDisableSheet`, `showPauseExplainer`) and is the sole caller of `runMigration` \u2014 a `@MainActor` closure-taking helper that subscribes to `progressStream` before the kickoff (ICloudSyncPane.swift:176-194).\n\n`PreferencesMetrics.contentWidth = 520` is enforced via `.frame(width:).fixedSize()` on every pane body (e.g. AdvancedPane.swift:65-66), keeping the window and tab bar stable across tab switches.\n\nThe `MigrationPhase: @retroactive Identifiable` conformance is declared here (ICloudSyncPane.swift:195-211) because SwiftUI's `.sheet(item:)` requires `Identifiable` and the type is owned by LillistCore.",
       "verify": {
         "verdict": "unverified"
       }
@@ -19768,6 +19832,18 @@
         "verdict": "unverified"
       }
     },
+    "module.type_notes/fbe76dfff1f2047d3115477c": {
+      "kind": "module.type_notes",
+      "provenance": {
+        "created_at_commit": "8e926f08fd5269de164d25b42880893a604a9d5c",
+        "generator": "cartographer/4",
+        "model": "claude-sonnet-4-6"
+      },
+      "value": "All ten panes are plain SwiftUI `View` structs with no retained identity between window opens; all `@State` resets when SwiftUI tears the view down. Seven panes (General, Notifications, Trash, CrashReporting, QuickCapture, Backup, iCloudSync) bind to synced prefs via a shared pattern: `.task` loads the initial value and loops on `preferencesStore.prefsStream`, while `.onChange` writes the full `PreferencesStore.Prefs` snapshot back via `preferencesStore.update` (`Apps/Lillist-macOS/Sources/Preferences/GeneralPane.swift:38-44`). `DiagnosticsPane` and `RemindersPane` own their state directly against `DevicePreferencesStore`; `DiagnosticsPane` uses a `didHydrate` flag to prevent a delayed `.task` read from overwriting a user edit already in flight (`Apps/Lillist-macOS/Sources/Preferences/DiagnosticsPane.swift:88`). No pane declares explicit actor isolation; async store calls are dispatched via `Task {}` blocks under SwiftUI's implicit `@MainActor`. `ICloudSyncPane` holds `@State private var route: SyncSheetRoute?` as the exclusive routing token for four sync sheets; the single-slot invariant prevents simultaneous sheet presentation and cascade-close (`Apps/Lillist-macOS/Sources/Preferences/ICloudSyncPane.swift:14`, `Apps/Lillist-macOS/Sources/Preferences/ICloudSyncPane.swift:43`). `NotificationsPane` carries a side-effect obligation: pref changes must also propagate to `notificationScheduler` synchronously so the in-process scheduler reflects the new cadence before its next fire (`Apps/Lillist-macOS/Sources/Preferences/NotificationsPane.swift:125-155`). `QuickCapturePane` carries an analogous obligation: after writing the new hotkey string to the store it calls `monitor.reregister(combo:)` to hot-reload the global hotkey without a relaunch (`Apps/Lillist-macOS/Sources/Preferences/QuickCapturePane.swift:50`). `PreferencesMetrics.contentWidth = 520` is the sole shared layout constant; every pane calls `.frame(width:).fixedSize()` so only the window height animates on tab switch (`Apps/Lillist-macOS/Sources/Preferences/PreferencesWindow.swift:51`).",
+      "verify": {
+        "verdict": "unverified"
+      }
+    },
     "module.type_notes/ff0d073018da39b4aa91938e": {
       "kind": "module.type_notes",
       "provenance": {
@@ -19780,24 +19856,24 @@
         "verdict": "unverified"
       }
     },
-    "overview.dataflow/da556f18cd97e52c38b47f7c": {
+    "overview.dataflow/6c0d3d40a35851516bc9ded4": {
       "kind": "overview.dataflow",
       "provenance": {
-        "created_at_commit": "515f24730d21cb81ca1c9737ffeb981e9c414d3c",
+        "created_at_commit": "8e926f08fd5269de164d25b42880893a604a9d5c",
         "generator": "cartographer/4",
-        "model": "sonnet"
+        "model": "claude-sonnet-4-6"
       },
-      "value": "Trace: user adds a task via iOS Quick Capture.\n\n1. User taps the FAB (LillistUI/iOS-misc: FloatingActionButton inside TasksScreen). The QuickCaptureOverlayModifier, hosted by TaskEditorHost in Apps-Lillist-iOS-Sources-misc, presents QuickCaptureDialog.\n\n2. As the user types \"Buy milk #groceries ^tomorrow\", QuickCaptureParser.parse (LillistUI/QuickCapture) splits the free-text string into a title, a #tag token, and a ^date token, updating the live preview on each keystroke.\n\n3. The user taps Add. The app-target wiring in Apps-Lillist-iOS-Sources-misc invokes TaskEditorModel.addTask() (LillistUI/Editor). TaskEditorModel holds a draft in memory and, on promotion, calls TaskStore.create(...) in LillistCore/Stores-chunk-2.\n\n4. TaskStore serializes the write through viewContext.perform with rollback-on-error. The LillistTask entity (LillistCore/ManagedObjects) is inserted into the NSPersistentCloudKitContainer managed by LillistCore/Persistence. FractionalIndexing math from LillistCore/Ordering computes the new row's position.\n\n5. NSPersistentCloudKitContainer mirrors the new record to the private iCloud.app.lillist CloudKit container. CloudKitEventBridge (LillistCore/Sync-chunk-1) emits a sync event; SyncStatusMonitor (LillistCore/Sync-chunk-2) advances its aggregate; CloudKitSyncStatusAdapter (LillistUI/Status) converts the SyncStatus snapshot to a SyncIndicator enum case that the sync badge in TasksScreen reflects.\n\n6. NotificationScheduler.reconcile(taskID:) (LillistCore/Notifications) runs a desired-vs-pending diff and installs a UNNotification if a reminder spec was included in the new task.\n\n7. LocalBackupCoordinator (LillistCore/Backup) observes NSManagedObjectContextDidSave and appends the new task to the live incremental backup package on disk. DiagnosticHistoryObserver (LillistCore/Diagnostics) records the Core Data insertion as a structured JSONL event.",
+      "value": "Representative action: user creates a task via Quick Capture on iOS.\n\n1. The user types in `QuickCapture` (LillistUI), which parses `#tag` and `^date` tokens inline and returns a structured draft to the iOS app's Quick Capture wrapper view.\n2. The wrapper calls `TaskStore.create(title:placement:.top)` (LillistCore Stores). `TaskStore` serializes through `viewContext.perform`, allocates a fractional position via `FractionalPositioning.position` (Ordering module), stamps `stampCurrentSchemaVersion` on the new `LillistTask` managed object, and saves. It returns a `TaskRecord` DTO \u2014 the only type that crosses the module boundary.\n3. `NSPersistentCloudKitContainer` (managed by `PersistenceController` / `PersistenceHost`) picks up the save and begins mirroring the record to the private CloudKit zone (`iCloud.app.lillist`). It fires `eventChangedNotification` events as setup and export operations progress.\n4. `CloudKitEventBridge` (Sync chunk 1) translates each notification into a `CloudKitSyncEvent` and fans it to all registered `AsyncStream` subscribers. `SyncStatusMonitor` (Sync chunk 2) consumes the stream; its `apply` reducer updates `currentStatus` and fans a `SyncStatus` snapshot to all registered continuations.\n5. `CloudKitSyncStatusAdapter` (LillistUI/Status) consumes the `SyncStatus` stream on `@MainActor` and publishes a `SyncIndicator` enum value. The sync dot in the task list re-renders without any store fetch \u2014 the event pipeline is entirely decoupled from the data layer.\n6. On other devices, `RemoteChangeReconciler` (Persistence) receives `NSPersistentStoreRemoteChange`, diffs persistent history for foreign-authored `NotificationSpec.lastFiredAt` and task changes, and fires `onAffectedTasks` with affected UUIDs, prompting the task list to refresh via `TaskStore.fetch`.",
       "verify": {
         "verdict": "unverified"
       }
     },
-    "overview.index_facts/fee4da6f72da5b9653362a6e": {
+    "overview.index_facts/a320c811a8e2b170a3c7976d": {
       "kind": "overview.index_facts",
       "provenance": {
-        "created_at_commit": "515f24730d21cb81ca1c9737ffeb981e9c414d3c",
+        "created_at_commit": "8e926f08fd5269de164d25b42880893a604a9d5c",
         "generator": "cartographer/4",
-        "model": "sonnet"
+        "model": "claude-sonnet-4-6"
       },
       "value": [
         "Four layers: LillistCore -> LillistUI -> iOS/macOS apps; extensions + CLI reuse core",
@@ -19813,14 +19889,14 @@
         "verdict": "unverified"
       }
     },
-    "overview.shape/f495351756b5701b21026caa": {
+    "overview.shape/0357b5e9b06e1da758731c21": {
       "kind": "overview.shape",
       "provenance": {
-        "created_at_commit": "515f24730d21cb81ca1c9737ffeb981e9c414d3c",
+        "created_at_commit": "8e926f08fd5269de164d25b42880893a604a9d5c",
         "generator": "cartographer/4",
-        "model": "sonnet"
+        "model": "claude-sonnet-4-6"
       },
-      "value": "Lillist is organized as a strict unidirectional dependency stack. LillistCore sits at the foundation and owns the entire data layer: eight hand-written @NSManaged entity subclasses, five primary stores (TaskStore, AttachmentStore, JournalStore, SeriesStore, SmartFilterStore), the NSPersistentCloudKitContainer lifecycle, sync-mode state machine, notification scheduling, recurrence expansion, backup, diagnostics, and the CLIBridge verb library. Every public API on LillistCore returns value-type DTOs \u2014 no NSManagedObject ever crosses the package boundary. LillistUI sits above LillistCore and provides a cross-platform SwiftUI component library whose views are pure presenters: all data arrives through init parameters and all actions leave through closures, with no @State or AppEnvironment coupling anywhere inside the package. iOS and macOS app targets sit at the top, each assembling an AppEnvironment object graph that wires LillistCore stores and services into LillistUI screens.\n\nTwo parallel tracks consume LillistCore directly without going through an app target. The lillist CLI defines AsyncParsableCommand verb structs that open the App-Group-shared Core Data container via CLIBridge.StoreLocator, then delegate every domain operation to CLIBridge handler namespaces \u2014 the same handler enums that Shortcuts App Intents call from their perform() bodies. The ShareExtension-iOS and ShortcutsActions extensions open the shared store through IntentSupport.makePersistence(), which passes through MigrationGate so headless opens never race a live sync-mode swap. CLIBridge is the explicit seam that keeps business logic deduplicated across the CLI and Shortcuts surfaces.\n\nAt the infrastructure layer, a three-level xcconfig cascade in Apps/Config decouples signing identity, build number, and distribution URLs from the committed pbxproj; two xcodegen project.yml specs generate the pbxproj files from that config. The Rainbow Glass design system lives entirely in LillistUI/Theme, providing a single #available gate for iOS/macOS 26 Liquid Glass with accessibility-respecting degradation. CI enforces pbxproj drift as a post-push gate, ensuring the generated files stay in sync with their yml sources.",
+      "value": "Lillist follows a strict four-layer dependency stack: `LillistCore` (data model, stores, sync, notifications, predicate rules, CLI bridge) is the foundation; `LillistUI` (cross-platform SwiftUI component library, theme tokens, quick-capture parser, recurrence editor, sync sheets) sits above it and has no knowledge of app lifecycle; the iOS and macOS app targets sit above that and wire `AppEnvironment` into the SwiftUI environment; the `lillist` CLI and the iOS extensions (`ShareExtension-iOS`, `ShortcutsActions`) are lateral consumers that import `LillistCore` directly, bypassing `LillistUI` entirely. The critical seam between `LillistCore` and everything above it is the value-DTO boundary: `NSManagedObject` never leaves the package; every store method returns `TaskRecord`, `JournalRecord`, `SeriesRecord`, or equivalent `Sendable`/`Equatable` structs that are safe to hold across actor boundaries.\n\nWithin each app target, a second seam runs between the `AppEnvironment` composition root \u2014 a `@MainActor @Observable` class that owns every store, scheduler, sync coordinator, and crash reporter as `let` properties \u2014 and the `LillistUI` presenter layer. `LillistUI` screens own no `@State` and make no `.task` network calls; they receive all data and closures from app-level wrapper views. The iOS tab screens and macOS `RootSplitView` are the only views that hold navigation destinations referencing app-internal types `LillistUI` cannot import, keeping the shared library free of app dependencies.\n\nExtensions and the CLI reuse `LillistCore` directly and share the App Group container `group.app.lillist`. Before any of them opens the Core Data store, `GatedPersistenceResolver` / `MigrationGate` evaluates the atomic migration journal in the App Group; if a sync-mode migration is in flight, the caller receives `LillistError.storeUnavailable` and must surface an error rather than open a half-migrated store. `PersistenceHost` \u2014 a Swift actor \u2014 is the single authority over `NSPersistentCloudKitContainer`'s lifetime; it never re-instantiates the container across sync-mode swaps, only removes and re-adds the underlying store on the same coordinator instance.",
       "verify": {
         "verdict": "unverified"
       }
@@ -19977,18 +20053,6 @@
         "model": "sonnet"
       },
       "value": "Extension grouping PurgeHandler into the CLIBridge namespace; no contract independent of the nested enum.",
-      "verify": {
-        "verdict": "unverified"
-      }
-    },
-    "symbol.contract/024b11ad34963392fbfdfa0e": {
-      "kind": "symbol.contract",
-      "provenance": {
-        "created_at_commit": "515f24730d21cb81ca1c9737ffeb981e9c414d3c",
-        "generator": "cartographer/4",
-        "model": "sonnet"
-      },
-      "value": "Builds a staging directory and returns it; caller owns cleanup of its parent; cleans up automatically on thrown error.",
       "verify": {
         "verdict": "unverified"
       }
@@ -20687,6 +20751,20 @@
       "value": "Returns true when no snapshot exists yet or the newest is at least snapshotInterval (24h) old; uses the injected clock so tests can control time.",
       "verify": {
         "verdict": "unverified"
+      }
+    },
+    "symbol.contract/0dfea79d90b0245e63eceeb1": {
+      "kind": "symbol.contract",
+      "provenance": {
+        "created_at_commit": "8e926f08fd5269de164d25b42880893a604a9d5c",
+        "generator": "cartographer/4",
+        "model": "claude-sonnet-4-6"
+      },
+      "value": "Builds the unzipped staging folder and returns its URL; store-snapshot failure degrades to a manifest note rather than throwing; caller owns cleanup of the returned URL's parent.",
+      "verify": {
+        "at_commit": "8e926f08fd5269de164d25b42880893a604a9d5c",
+        "verdict": "pass",
+        "verifier": "map-verifier"
       }
     },
     "symbol.contract/0e1439e37b2ab59490ebe8d7": {
@@ -24817,18 +24895,6 @@
         "verdict": "unverified"
       }
     },
-    "symbol.contract/49aee36e62d4c730e6845d08": {
-      "kind": "symbol.contract",
-      "provenance": {
-        "created_at_commit": "515f24730d21cb81ca1c9737ffeb981e9c414d3c",
-        "generator": "cartographer/4",
-        "model": "sonnet"
-      },
-      "value": "Root filter container (combinator + [Predicate]); the value passed directly to NSPredicateCompiler.compile and SwiftEvaluator.evaluate.",
-      "verify": {
-        "verdict": "unverified"
-      }
-    },
     "symbol.contract/49be720ceb6887511c32403d": {
       "kind": "symbol.contract",
       "provenance": {
@@ -26053,6 +26119,20 @@
         "verdict": "unverified"
       }
     },
+    "symbol.contract/5e62b4994961c988a5cf7f94": {
+      "kind": "symbol.contract",
+      "provenance": {
+        "created_at_commit": "8e926f08fd5269de164d25b42880893a604a9d5c",
+        "generator": "cartographer/4",
+        "model": "claude-sonnet-4-6"
+      },
+      "value": "Returns `.choice` when `on` is true, `.disable` when false; callers need not know which route maps to which toggle state. `Packages/LillistUI/Sources/LillistUI/Sync/SyncSheetRoute.swift:37-39`",
+      "verify": {
+        "at_commit": "8e926f08fd5269de164d25b42880893a604a9d5c",
+        "verdict": "pass",
+        "verifier": "map-verifier"
+      }
+    },
     "symbol.contract/5e75113dbb32bdfcb5a53718": {
       "kind": "symbol.contract",
       "provenance": {
@@ -26877,18 +26957,6 @@
         "model": "sonnet"
       },
       "value": "Caseless namespace for task creation; exposes run, status, and firstTagWithName as static async helpers.",
-      "verify": {
-        "verdict": "unverified"
-      }
-    },
-    "symbol.contract/6bfb6957ee16de1a0f2ea1d5": {
-      "kind": "symbol.contract",
-      "provenance": {
-        "created_at_commit": "515f24730d21cb81ca1c9737ffeb981e9c414d3c",
-        "generator": "cartographer/4",
-        "model": "sonnet"
-      },
-      "value": "Retroactively conforms `MigrationPhase` to `Identifiable` with a stable string `id` per case, enabling use as a `.fullScreenCover(item:)` binding in `ICloudSyncSection`.",
       "verify": {
         "verdict": "unverified"
       }
@@ -33145,6 +33213,20 @@
         "verdict": "unverified"
       }
     },
+    "symbol.contract/cd972dab886e6e8e6e0ed6cd": {
+      "kind": "symbol.contract",
+      "provenance": {
+        "created_at_commit": "8e926f08fd5269de164d25b42880893a604a9d5c",
+        "generator": "cartographer/4",
+        "model": "claude-sonnet-4-6"
+      },
+      "value": "Callers may bind any case to `.sheet(item:)`; at most one sheet is ever presented, and `.progress`'s `id` stays constant across phase changes so the sheet updates in place. `Packages/LillistUI/Sources/LillistUI/Sync/SyncSheetRoute.swift:14-40`",
+      "verify": {
+        "at_commit": "8e926f08fd5269de164d25b42880893a604a9d5c",
+        "verdict": "pass",
+        "verifier": "map-verifier"
+      }
+    },
     "symbol.contract/cda7917b04679c0ebc928d8f": {
       "kind": "symbol.contract",
       "provenance": {
@@ -35173,18 +35255,6 @@
         "verdict": "unverified"
       }
     },
-    "symbol.contract/ef9db34db26a13bc23eaa291": {
-      "kind": "symbol.contract",
-      "provenance": {
-        "created_at_commit": "515f24730d21cb81ca1c9737ffeb981e9c414d3c",
-        "generator": "cartographer/4",
-        "model": "sonnet"
-      },
-      "value": "Retroactive `Identifiable` conformance on `LillistCore.MigrationPhase`, enabling SwiftUI `.sheet(item:)` to bind directly to the `activePhase` state property in `ICloudSyncPane`.",
-      "verify": {
-        "verdict": "unverified"
-      }
-    },
     "symbol.contract/efa72f74a383f6da9937abd3": {
       "kind": "symbol.contract",
       "provenance": {
@@ -36559,6 +36629,20 @@
         "verifier": "map-verifier"
       }
     },
+    "symbol.load_bearing/105ee073f8341bb3a5bb88ae": {
+      "kind": "symbol.load_bearing",
+      "provenance": {
+        "created_at_commit": "8e926f08fd5269de164d25b42880893a604a9d5c",
+        "generator": "cartographer/4",
+        "model": "claude-sonnet-4-6"
+      },
+      "value": "Single-slot Identifiable enum multiplexing three mutually exclusive launch gates (iCloudUnavailable, onboarding, recovery(MigrationJournal)) behind one .sheet(item:) binding. Prevents the sheet-clobber bug that three stacked .sheet modifiers cause during iCloud-unavailable \u2192 onboarding handoff; each transition is a clean slot swap. The .recovery case carries the MigrationJournal so the sheet id fingerprints the specific failure (enabling retry re-presentation). Grounded at Apps/Lillist-macOS/Sources/LillistApp.swift:291\u2013308.",
+      "verify": {
+        "at_commit": "8e926f08fd5269de164d25b42880893a604a9d5c",
+        "verdict": "pass",
+        "verifier": "map-verifier"
+      }
+    },
     "symbol.load_bearing/138daa98dee9db9a2ac86166": {
       "kind": "symbol.load_bearing",
       "provenance": {
@@ -37295,6 +37379,20 @@
         "verifier": "map-verifier"
       }
     },
+    "symbol.load_bearing/51da6c2b611589d50c6fd7c4": {
+      "kind": "symbol.load_bearing",
+      "provenance": {
+        "created_at_commit": "8e926f08fd5269de164d25b42880893a604a9d5c",
+        "generator": "cartographer/4",
+        "model": "claude-sonnet-4-6"
+      },
+      "value": "Correctness invariant for every string extracted by `OpenGraphParser`: all three extraction paths \u2014 `ogTag` (OpenGraphParser.swift:36), `twitterTag` (OpenGraphParser.swift:51), and `titleElement` (OpenGraphParser.swift:61) \u2014 pipe their results through `decodingHTMLEntities()`. It is the sole HTML entity decode step in the pipeline; without it, sequences like `&amp;` and `&quot;` would appear verbatim in user-visible task titles and descriptions produced from URL previews.",
+      "verify": {
+        "at_commit": "8e926f08fd5269de164d25b42880893a604a9d5c",
+        "verdict": "pass",
+        "verifier": "map-verifier"
+      }
+    },
     "symbol.load_bearing/53dbe3652373ca4f93975d21": {
       "kind": "symbol.load_bearing",
       "provenance": {
@@ -37565,6 +37663,20 @@
         "verifier": "map-verifier"
       }
     },
+    "symbol.load_bearing/69305b32183971d417ea3f94": {
+      "kind": "symbol.load_bearing",
+      "provenance": {
+        "created_at_commit": "8e926f08fd5269de164d25b42880893a604a9d5c",
+        "generator": "cartographer/4",
+        "model": "claude-sonnet-4-6"
+      },
+      "value": "Integration point between SwipeSettleArbiter's pure outcome and SwipeableRow's stateful side-effects (snap position, openRowID broadcast, action execution); the only code path from gesture release to a committed, opened, or closed row.",
+      "verify": {
+        "at_commit": "8e926f08fd5269de164d25b42880893a604a9d5c",
+        "verdict": "pass",
+        "verifier": "map-verifier"
+      }
+    },
     "symbol.load_bearing/6a6f00d261cbc2f889f3f73e": {
       "kind": "symbol.load_bearing",
       "provenance": {
@@ -37659,20 +37771,6 @@
         "model": "sonnet"
       },
       "value": "Re-spaces all SmartFilter rows to even 1.0 gaps before position computation; must run inside the same context.perform block as the target update to ensure atomicity (SmartFilterStore.swift:226-241).",
-      "verify": {
-        "at_commit": "515f24730d21cb81ca1c9737ffeb981e9c414d3c",
-        "verdict": "pass",
-        "verifier": "map-verifier"
-      }
-    },
-    "symbol.load_bearing/71525588b6124781ab6afc5a": {
-      "kind": "symbol.load_bearing",
-      "provenance": {
-        "created_at_commit": "515f24730d21cb81ca1c9737ffeb981e9c414d3c",
-        "generator": "cartographer/4",
-        "model": "sonnet"
-      },
-      "value": "Gesture-end coordinator: delegates the commit/open/close decision to SwipeSettleArbiter.outcome then dispatches side effects (perform, snap, openRowID mutation). Separates policy from mechanism. SwipeableRow.swift:212-238.",
       "verify": {
         "at_commit": "515f24730d21cb81ca1c9737ffeb981e9c414d3c",
         "verdict": "pass",
@@ -38073,6 +38171,20 @@
         "verifier": "map-verifier"
       }
     },
+    "symbol.load_bearing/8c856187c796de8eec16691d": {
+      "kind": "symbol.load_bearing",
+      "provenance": {
+        "created_at_commit": "8e926f08fd5269de164d25b42880893a604a9d5c",
+        "generator": "cartographer/4",
+        "model": "claude-sonnet-4-6"
+      },
+      "value": "Private DI seam inside SharePayload that separates the production construction path (`.providers`, capturing `NSItemProvider` instances from a live `NSExtensionContext`) from the test-injection path (`.items`, accepting already-resolved `Item` values). `resolveItems()` dispatches on `source` so both public `init` variants \u2014 `init(extensionContext:)` and `init(items:)` \u2014 feed the same `decode()` pipeline without duplication. Removing it would force either two divergent decode paths or a redesigned abstraction. Documented at Extensions/ShareExtension-iOS/SharePayload.swift:41\u201344.",
+      "verify": {
+        "at_commit": "8e926f08fd5269de164d25b42880893a604a9d5c",
+        "verdict": "pass",
+        "verifier": "map-verifier"
+      }
+    },
     "symbol.load_bearing/8d93b2bb4da48a51bbece99d": {
       "kind": "symbol.load_bearing",
       "provenance": {
@@ -38421,22 +38533,6 @@
         "model": "sonnet"
       },
       "value": "Restores exactly the last archived batch (lastArchivedBatch) via taskStore.unarchive; scoped to prevent a second pull-to-refresh from accidentally resurrecting an older batch.",
-      "verify": {
-        "at_commit": "515f24730d21cb81ca1c9737ffeb981e9c414d3c",
-        "verdict": "pass",
-        "verifier": "map-verifier"
-      }
-    },
-    "symbol.load_bearing/abb0ea349866e8636330f4c9": {
-      "kind": "symbol.load_bearing",
-      "provenance": {
-        "created_at_commit": "515f24730d21cb81ca1c9737ffeb981e9c414d3c",
-        "generator": "cartographer/4",
-        "model": "sonnet"
-      },
-      "value": {
-        "load_bearing": false
-      },
       "verify": {
         "at_commit": "515f24730d21cb81ca1c9737ffeb981e9c414d3c",
         "verdict": "pass",
@@ -38905,6 +39001,20 @@
       "value": "Sequences filter load, sibling-order normalization, and list reload on launch \u2014 ordering matters: normalization must run before the first reload to avoid stale sibling positions.",
       "verify": {
         "at_commit": "515f24730d21cb81ca1c9737ffeb981e9c414d3c",
+        "verdict": "pass",
+        "verifier": "map-verifier"
+      }
+    },
+    "symbol.load_bearing/eab363c0aaeb33a9e6685e21": {
+      "kind": "symbol.load_bearing",
+      "provenance": {
+        "created_at_commit": "8e926f08fd5269de164d25b42880893a604a9d5c",
+        "generator": "cartographer/4",
+        "model": "claude-sonnet-4-6"
+      },
+      "value": "Single-slot enum driving OnboardingPresentationModifier's .fullScreenCover(item:), enforcing mutual exclusivity across the three launch gates (iCloudUnavailable, onboarding, recovery). Its Identifiable id fingerprints each gate case so the iCloud-unavailable \u2192 onboarding handoff is a clean slot swap rather than a sheet-clobbering dismiss-and-re-present on stacked modifiers. Guards the invariant at Apps/Lillist-iOS/Sources/App/LillistApp.swift:205.",
+      "verify": {
+        "at_commit": "8e926f08fd5269de164d25b42880893a604a9d5c",
         "verdict": "pass",
         "verifier": "map-verifier"
       }
