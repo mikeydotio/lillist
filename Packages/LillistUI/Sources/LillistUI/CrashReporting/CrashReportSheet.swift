@@ -18,11 +18,17 @@ public struct CrashReportSheet: View {
     /// recipient line.
     public let contactRecipient: String
 
-    @State private var showingPreview = false
-    @State private var showingLogsPreview = false
-    @State private var showingBreadcrumbsPreview = false
-    @State private var logsPreviewText = ""
-    @State private var breadcrumbsPreviewText = ""
+    /// Single presentation slot for the three preview variants (full / logs /
+    /// breadcrumbs). Three stacked `.sheet(isPresented:)` modifiers on one view
+    /// let only the last present reliably; one `.sheet(item:)` fixes that.
+    @State private var preview: PreviewPayload?
+
+    /// The text to show in the (single) preview sheet. A fresh `id` per request
+    /// re-presents the sheet even when re-previewing the same variant.
+    private struct PreviewPayload: Identifiable {
+        let id = UUID()
+        let body: String
+    }
 
     public init(
         model: CrashReportViewModel,
@@ -65,14 +71,14 @@ public struct CrashReportSheet: View {
                         }
                         Button("Preview these") {
                             Task {
-                                logsPreviewText = await model.renderPreview(
+                                let text = await model.renderPreview(
                                     includeLogs: true,
                                     includeBreadcrumbs: false,
                                     buildVersion: buildVersion,
                                     osVersion: osVersion,
                                     deviceModel: deviceModel
                                 )
-                                showingLogsPreview = true
+                                preview = PreviewPayload(body: text)
                             }
                         }
                         .font(.caption)
@@ -89,14 +95,14 @@ public struct CrashReportSheet: View {
                         }
                         Button("Preview these") {
                             Task {
-                                breadcrumbsPreviewText = await model.renderPreview(
+                                let text = await model.renderPreview(
                                     includeLogs: false,
                                     includeBreadcrumbs: true,
                                     buildVersion: buildVersion,
                                     osVersion: osVersion,
                                     deviceModel: deviceModel
                                 )
-                                showingBreadcrumbsPreview = true
+                                preview = PreviewPayload(body: text)
                             }
                         }
                         .font(.caption)
@@ -111,7 +117,7 @@ public struct CrashReportSheet: View {
                                 osVersion: osVersion,
                                 deviceModel: deviceModel
                             )
-                            showingPreview = true
+                            preview = PreviewPayload(body: model.previewText)
                         }
                     }
                 }
@@ -157,14 +163,8 @@ public struct CrashReportSheet: View {
                     .disabled(model.isSubmitting)
                 }
             }
-            .sheet(isPresented: $showingPreview) {
-                CrashReportPreviewSheet(body: model.previewText)
-            }
-            .sheet(isPresented: $showingLogsPreview) {
-                CrashReportPreviewSheet(body: logsPreviewText)
-            }
-            .sheet(isPresented: $showingBreadcrumbsPreview) {
-                CrashReportPreviewSheet(body: breadcrumbsPreviewText)
+            .sheet(item: $preview) { payload in
+                CrashReportPreviewSheet(body: payload.body)
             }
         }
     }

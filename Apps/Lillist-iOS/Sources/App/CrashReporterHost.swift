@@ -48,26 +48,34 @@ struct CrashReporterHost<Content: View>: View {
                     deviceModel: deviceModel
                 )
             }
-            .sheet(item: Binding<MailComposerTransport.Pending?>(
-                get: { mailPending },
-                set: { mailPending = $0 }
-            )) { staged in
-                #if canImport(MessageUI)
-                if MFMailComposeViewController.canSendMail() {
-                    MailComposerView(
-                        recipient: LillistCoreContact.crashReportRecipient,
-                        subject: staged.subject,
-                        body: staged.body,
-                        attachment: (staged.attachmentName, staged.attachmentData),
-                        onFinish: { _ in mailPending = nil }
-                    )
-                } else {
-                    clipboardFallback(for: staged)
-                }
-                #else
-                Text("Mail unavailable on this platform.")
-                #endif
-            }
+            // Present the mail composer from a *separate* node (a clear
+            // background) so its `.sheet` never co-locates with the crash-report
+            // `.sheet` above. Two sheet modifiers on one view is the
+            // present-then-dismiss-the-parent trap; keeping them on distinct
+            // nodes preserves the independent slots the crash→mail handoff needs.
+            .background(
+                Color.clear
+                    .sheet(item: Binding<MailComposerTransport.Pending?>(
+                        get: { mailPending },
+                        set: { mailPending = $0 }
+                    )) { staged in
+                        #if canImport(MessageUI)
+                        if MFMailComposeViewController.canSendMail() {
+                            MailComposerView(
+                                recipient: LillistCoreContact.crashReportRecipient,
+                                subject: staged.subject,
+                                body: staged.body,
+                                attachment: (staged.attachmentName, staged.attachmentData),
+                                onFinish: { _ in mailPending = nil }
+                            )
+                        } else {
+                            clipboardFallback(for: staged)
+                        }
+                        #else
+                        Text("Mail unavailable on this platform.")
+                        #endif
+                    }
+            )
             .alert(
                 String(localized: "Copied"),
                 isPresented: Binding(

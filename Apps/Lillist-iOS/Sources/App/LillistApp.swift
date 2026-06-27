@@ -195,10 +195,26 @@ struct LillistApp: App {
 private struct OnboardingPresentationModifier: ViewModifier {
     let environment: AppEnvironment
 
-    @State private var showOnboarding = false
-    @State private var showICloudUnavailable = false
     @State private var didEvaluate = false
-    @State private var recoveryJournal: MigrationJournal?
+    /// One presentation slot for the three mutually-exclusive launch gates.
+    /// Three stacked `.fullScreenCover` modifiers let the iCloud-unavailable →
+    /// onboarding handoff (dismiss-one-present-another) clobber a cover; a single
+    /// `.fullScreenCover(item:)` makes every transition a clean slot swap.
+    @State private var launch: LaunchSheet?
+
+    private enum LaunchSheet: Identifiable {
+        case iCloudUnavailable
+        case onboarding
+        case recovery(MigrationJournal)
+        var id: String {
+            switch self {
+            case .iCloudUnavailable: return "iCloudUnavailable"
+            case .onboarding: return "onboarding"
+            // The journal's id fingerprints the failure, so a retry re-presents.
+            case .recovery(let journal): return "recovery-\(journal.id)"
+            }
+        }
+    }
 
     func body(content: Content) -> some View {
         content
@@ -207,43 +223,43 @@ private struct OnboardingPresentationModifier: ViewModifier {
                 didEvaluate = true
                 await evaluate()
             }
-            .fullScreenCover(isPresented: $showICloudUnavailable) {
-                ICloudUnavailableScreen {
-                    Task {
-                        await environment.syncModeStore.setMode(.localOnly)
-                        try? await environment.persistenceHost.reconfigure(to: .localOnly)
-                        showICloudUnavailable = false
-                        showOnboarding = true
-                    }
-                }
-                .interactiveDismissDisabled(true)
-            }
-            .fullScreenCover(isPresented: $showOnboarding) {
-                OnboardingScreen(
-                    onboardingState: environment.onboardingState,
-                    installer: environment.defaultsInstaller,
-                    notificationPermissions: environment.notificationPermissions,
-                    onCompleted: { showOnboarding = false }
-                )
-                .interactiveDismissDisabled(true)
-            }
-            .fullScreenCover(item: $recoveryJournal) { journal in
-                SyncMigrationRecoverySheet(
-                    journal: journal,
-                    onRestoreFromBackup: {
+            .fullScreenCover(item: $launch) { sheet in
+                switch sheet {
+                case .iCloudUnavailable:
+                    ICloudUnavailableScreen {
                         Task {
-                            let url = environment.storeURL
-                                ?? FileManager.default.temporaryDirectory.appendingPathComponent("Lillist.sqlite")
-                            try? await environment.migrationCoordinator.restoreFromBackup(targetURL: url)
-                            recoveryJournal = nil
+                            await environment.syncModeStore.setMode(.localOnly)
+                            try? await environment.persistenceHost.reconfigure(to: .localOnly)
+                            launch = .onboarding
                         }
-                    },
-                    onTryAgain: {
-                        try? environment.migrationJournalStore.clear()
-                        recoveryJournal = nil
                     }
-                )
-                .interactiveDismissDisabled(true)
+                    .interactiveDismissDisabled(true)
+                case .onboarding:
+                    OnboardingScreen(
+                        onboardingState: environment.onboardingState,
+                        installer: environment.defaultsInstaller,
+                        notificationPermissions: environment.notificationPermissions,
+                        onCompleted: { launch = nil }
+                    )
+                    .interactiveDismissDisabled(true)
+                case .recovery(let journal):
+                    SyncMigrationRecoverySheet(
+                        journal: journal,
+                        onRestoreFromBackup: {
+                            Task {
+                                let url = environment.storeURL
+                                    ?? FileManager.default.temporaryDirectory.appendingPathComponent("Lillist.sqlite")
+                                try? await environment.migrationCoordinator.restoreFromBackup(targetURL: url)
+                                launch = nil
+                            }
+                        },
+                        onTryAgain: {
+                            try? environment.migrationJournalStore.clear()
+                            launch = nil
+                        }
+                    )
+                    .interactiveDismissDisabled(true)
+                }
             }
     }
 
@@ -259,7 +275,7 @@ private struct OnboardingPresentationModifier: ViewModifier {
             // would race it. The MigrationGate keeps blocking new work
             // either way.
             if journal.isStale() {
-                recoveryJournal = journal
+                launch = .recovery(journal)
             }
             return
         }
@@ -267,9 +283,9 @@ private struct OnboardingPresentationModifier: ViewModifier {
         guard !done else { return }
         if isAvailable(environment.accountState) {
             await environment.syncModeStore.setMode(.iCloudSync)
-            showOnboarding = true
+            launch = .onboarding
         } else {
-            showICloudUnavailable = true
+            launch = .iCloudUnavailable
         }
     }
 

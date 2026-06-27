@@ -40,6 +40,21 @@ struct DiagnosticsPane: View {
                     }
                 }
                 .disabled(isPreparing)
+                // Host the exporter on the button — a *different* view node from
+                // the Form that hosts the include sheet. Co-locating `.sheet` and
+                // `.fileExporter` on one node let the include sheet's presentation
+                // be clobbered and cascaded up to dismiss the Preferences window.
+                .fileExporter(
+                    isPresented: $showExporter,
+                    document: exportDocument,
+                    contentType: .zip,
+                    defaultFilename: "Lillist-Diagnostics"
+                ) { result in
+                    if case .failure(let error) = result {
+                        lastError = "Export failed: \(error.localizedDescription)"
+                    }
+                    exportDocument = nil
+                }
                 if let lastError {
                     Text(lastError)
                         .font(.callout)
@@ -63,17 +78,6 @@ struct DiagnosticsPane: View {
                 onCreate: { wantsExport = true; showInclude = false },
                 onCancel: { showInclude = false }
             )
-        }
-        .fileExporter(
-            isPresented: $showExporter,
-            document: exportDocument,
-            contentType: .zip,
-            defaultFilename: "Lillist-Diagnostics"
-        ) { result in
-            if case .failure(let error) = result {
-                lastError = "Export failed: \(error.localizedDescription)"
-            }
-            exportDocument = nil
         }
     }
 
