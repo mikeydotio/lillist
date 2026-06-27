@@ -4,6 +4,42 @@ Append-only log of cross-cutting engineering lessons learned while building
 Lillist. Each entry captures a non-obvious gotcha — usually one that took real
 investigation to find — so future work doesn't re-learn it the hard way.
 
+## 2026-06-27 — The real cause of the "Settings sheet nuke": a `.sheet` on a `Section`
+
+The 2026-06-26 entry below blamed the Settings-sheet teardown on *multiple
+presentation modifiers stacked on one view* and fixed it by consolidating to a
+single `.sheet(item:)`. **That fix did not work** — both the iCloud-disable and
+"Create Diagnostic Package" modals still nuked the whole Settings sheet. The
+modifier *count* was a red herring.
+
+**Real cause (proven by reproduction + bisect):** a `.sheet` whose modifier is
+attached to **`Section` / `Form`-row content**, presented from a *pushed*
+`SettingsDetailScreen` (a `Form`) inside `SettingsScreen`'s `NavigationStack`
+inside `TasksView`'s Settings `.sheet`, present-then-immediately-dismisses and
+the failed presentation cascades up to dismiss the parent Settings sheet. The
+discriminator: every settings modal that *works* is a `.confirmationDialog` or
+`.fileImporter` (Trash/Backup/Reset/Advanced, the iCloud "Replace" confirm) —
+different presentation machinery, unaffected; every one that *failed* was a
+`.sheet` hosted on a `Section`. Two theories were ruled out by evidence: env
+churn (the diag flow reads no `AppEnvironment` in its body, no migration, yet
+still nuked) and view-tree recreation (`AppEnvironment` is built once and never
+recreated; no `.id()`; `isSettingsPresented` is only ever set true).
+
+**Fix:** host the sub-page's `.sheet`/`.fileExporter` on the **stable Form
+container** — i.e. on the page wrapper's `SettingsDetailScreen`, not on the leaf
+`Section`. Lift the modal state out of the leaf section into a small
+`@MainActor @Observable` model the page owns (`DiagnosticsExportModel`,
+`ICloudSyncModalsModel`); the section renders only its rows. iOS-only: the macOS
+Preferences panes already attach their sheets to their own `Form` and aren't a
+pushed-nav-in-a-sheet, so they were never affected.
+
+**Proof / regression guard:** `Lillist-iOSUITests/SettingsSheetPresentationUITests`
+drives the diagnostic-package flow in LocalOnly (no iCloud needed — the teardown
+happens at sheet-*present* time) and asserts the app is not dumped back to the
+Tasks list. It fails on the Section-hosted `.sheet` and passes once hosting moves
+to the container. The mantra: **never attach a `.sheet` to `List`/`Form` row
+content that lives inside a presented sheet — host it on the container.**
+
 ## 2026-06-26 — One presentation modifier per view, or the parent sheet dies
 
 Stacking more than one presentation modifier (`.sheet`, `.fullScreenCover`,
