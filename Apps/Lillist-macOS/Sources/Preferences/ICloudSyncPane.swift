@@ -13,6 +13,7 @@ struct ICloudSyncPane: View {
     /// a single `.sheet(item:)` replaces the previous stack of four `.sheet`s.
     @State private var route: SyncSheetRoute?
     @State private var pendingDirection: SyncMigrationConfirmationDialog.Direction?
+    @State private var taskCounts: TaskStore.SyncCounts?
 
     var body: some View {
         Form {
@@ -25,6 +26,11 @@ struct ICloudSyncPane: View {
         .padding(LillistSpacing.l)
         .frame(width: PreferencesMetrics.contentWidth)
         .fixedSize()
+        .task { await refreshCounts() }
+        // Re-count after a sync settles so the mirrored figure tracks reality.
+        .onChange(of: environment.syncMonitor.indicator) { _, _ in
+            Task { await refreshCounts() }
+        }
         .confirmationDialog(
             confirmationTitle,
             isPresented: confirmationBinding,
@@ -95,7 +101,18 @@ struct ICloudSyncPane: View {
         let footer: String? = isToggleDisabled
             ? String(localized: "Sign into iCloud to enable sync.")
             : nil
-        return .init(mode: mode, status: status, isToggleDisabled: isToggleDisabled, disabledFooter: footer)
+        return .init(
+            mode: mode,
+            status: status,
+            isToggleDisabled: isToggleDisabled,
+            disabledFooter: footer,
+            localTaskCount: taskCounts?.local,
+            mirroredTaskCount: taskCounts?.mirrored
+        )
+    }
+
+    private func refreshCounts() async {
+        taskCounts = try? await environment.taskStore.syncCounts()
     }
 
     private var actions: ICloudSyncSettingsSection.Actions {

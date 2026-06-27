@@ -78,12 +78,22 @@ func openICloudSystemSettings() {
 struct ICloudSyncSection: View {
     @Environment(AppEnvironment.self) private var environment
     @Bindable var model: ICloudSyncModalsModel
+    @State private var taskCounts: TaskStore.SyncCounts?
 
     var body: some View {
         ICloudSyncSettingsSection(
             viewState: viewState,
             actions: actions
         )
+        .task { await refreshCounts() }
+        // Re-count after a sync settles so the mirrored figure tracks reality.
+        .onChange(of: environment.syncMonitor.indicator) { _, _ in
+            Task { await refreshCounts() }
+        }
+    }
+
+    private func refreshCounts() async {
+        taskCounts = try? await environment.taskStore.syncCounts()
     }
 
     // MARK: - View state derivation
@@ -105,7 +115,14 @@ struct ICloudSyncSection: View {
         let footer: String? = isToggleDisabled
             ? String(localized: "Sign into iCloud to enable sync.")
             : nil
-        return .init(mode: mode, status: status, isToggleDisabled: isToggleDisabled, disabledFooter: footer)
+        return .init(
+            mode: mode,
+            status: status,
+            isToggleDisabled: isToggleDisabled,
+            disabledFooter: footer,
+            localTaskCount: taskCounts?.local,
+            mirroredTaskCount: taskCounts?.mirrored
+        )
     }
 
     private var actions: ICloudSyncSettingsSection.Actions {

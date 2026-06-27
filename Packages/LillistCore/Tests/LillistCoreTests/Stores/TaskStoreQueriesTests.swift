@@ -33,6 +33,30 @@ struct TaskStoreQueriesTests {
         #expect(Set(pinned) == Set([a, b]))
     }
 
+    // MARK: - syncCounts()
+
+    @Test("syncCounts counts every local row (incl. trashed); mirrored is 0 off-cloud")
+    func syncCounts() async throws {
+        let p = try await TestStore.make()
+        let store = TaskStore(persistence: p)
+
+        // Empty store: nothing local, nothing mirrored.
+        #expect(try await store.syncCounts() == .init(local: 0, mirrored: 0))
+
+        _ = try await store.create(title: "A")
+        _ = try await store.create(title: "B")
+        let c = try await store.create(title: "C")
+        // A trashed task is tombstoned but still a synced row — it counts.
+        try await store.softDelete(id: c)
+
+        let counts = try await store.syncCounts()
+        #expect(counts.local == 3)
+        // The in-memory test store is a plain NSPersistentContainer, not an
+        // NSPersistentCloudKitContainer, so nothing is mirrored. The mirrored>0
+        // path needs a live cloud container (verified on device).
+        #expect(counts.mirrored == 0)
+    }
+
     // MARK: - tasks(forTag:)
 
     @Test("tasks(forTag:) returns only tagged non-trashed tasks")

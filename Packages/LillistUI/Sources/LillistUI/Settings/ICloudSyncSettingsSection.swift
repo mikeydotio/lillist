@@ -16,17 +16,25 @@ public struct ICloudSyncSettingsSection: View {
         public let status: SyncIndicator
         public let isToggleDisabled: Bool
         public let disabledFooter: String?
+        /// Total `LillistTask` rows on this device (nil → counts not loaded yet).
+        public let localTaskCount: Int?
+        /// How many of those are mirrored to iCloud (have a CloudKit record id).
+        public let mirroredTaskCount: Int?
 
         public init(
             mode: SyncMode,
             status: SyncIndicator,
             isToggleDisabled: Bool = false,
-            disabledFooter: String? = nil
+            disabledFooter: String? = nil,
+            localTaskCount: Int? = nil,
+            mirroredTaskCount: Int? = nil
         ) {
             self.mode = mode
             self.status = status
             self.isToggleDisabled = isToggleDisabled
             self.disabledFooter = disabledFooter
+            self.localTaskCount = localTaskCount
+            self.mirroredTaskCount = mirroredTaskCount
         }
     }
 
@@ -75,6 +83,21 @@ public struct ICloudSyncSettingsSection: View {
 
             if viewState.mode == .iCloudSync, case .idle = viewState.status {
                 Button("Sync Now", action: actions.onSyncNow)
+            }
+
+            // Reassurance metric: how many local tasks are mirrored to iCloud.
+            // `mirrored == local` once everything is in iCloud; a gap is rows not
+            // yet mirrored. Only meaningful in iCloud Sync mode.
+            if viewState.mode == .iCloudSync,
+               let local = viewState.localTaskCount,
+               let mirrored = viewState.mirroredTaskCount {
+                LabeledContent {
+                    Text(verbatim: "\(mirrored) of \(local)")
+                        .foregroundStyle(.secondary)
+                        .monospacedDigit()
+                } label: {
+                    Text("Tasks in iCloud", bundle: .module)
+                }
             }
         } header: {
             HStack {

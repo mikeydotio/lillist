@@ -1,5 +1,6 @@
 import Foundation
 import CoreData
+import CloudKit
 import os
 
 /// Where a freshly created task lands within its sibling group.
@@ -758,6 +759,43 @@ public final class TaskStore: @unchecked Sendable {
             req.predicate = NSPredicate(format: "deletedAt != nil")
             req.sortDescriptors = [NSSortDescriptor(key: "deletedAt", ascending: false)]
             return try context.fetch(req).map(record(from:))
+        }
+    }
+
+    /// Task counts for the iCloud status surface (reassurance metric).
+    public struct SyncCounts: Sendable, Equatable {
+        /// Every `LillistTask` row persisted locally, including trashed/tombstoned
+        /// ones still tracked for sync.
+        public let local: Int
+        /// Of those, how many `NSPersistentCloudKitContainer` has mirrored to
+        /// iCloud (carry a CloudKit record identity). Equals `local` in steady
+        /// state; a gap is rows not yet mirrored. `0` in local-only mode (the live
+        /// container isn't a cloud container, so nothing is mirrored).
+        public let mirrored: Int
+        public init(local: Int, mirrored: Int) {
+            self.local = local
+            self.mirrored = mirrored
+        }
+    }
+
+    /// Count local `LillistTask` rows and how many are mirrored to iCloud.
+    ///
+    /// `mirrored` uses `NSPersistentCloudKitContainer.recordIDs(for:)` — a task
+    /// has a CloudKit record identity once the mirror has accepted it for export.
+    /// This is the closest supported "is it in iCloud" signal; NSPCC exposes no
+    /// per-record server-confirmation flag (see engineering-notes 2026-06-27).
+    public func syncCounts() async throws -> SyncCounts {
+        try await context.perform { [self] in
+            let countReq = NSFetchRequest<NSFetchRequestResult>(entityName: "LillistTask")
+            let local = try context.count(for: countReq)
+            guard local > 0,
+                  let cloud = persistence.container as? NSPersistentCloudKitContainer else {
+                return SyncCounts(local: local, mirrored: 0)
+            }
+            let idReq = NSFetchRequest<NSManagedObjectID>(entityName: "LillistTask")
+            idReq.resultType = .managedObjectIDResultType
+            let ids = try context.fetch(idReq)
+            return SyncCounts(local: local, mirrored: cloud.recordIDs(for: ids).count)
         }
     }
 
