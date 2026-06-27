@@ -3,6 +3,16 @@
 All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [v0.11.6] - 2026-06-27
+
+### Added
+- export the diagnostic package via the share sheet (0fdb1ac1)
+
+### Maintenance
+- bump iOS build number to 77 (4a0bce33)
+
+_[force]_
+
 ## [v0.11.5] - 2026-06-27
 
 ### Fixed
