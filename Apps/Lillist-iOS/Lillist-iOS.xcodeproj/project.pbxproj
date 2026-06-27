@@ -43,6 +43,7 @@
 		497AB12D01096CF64355E9B7 /* SnapshotTesting in Frameworks */ = {isa = PBXBuildFile; productRef = 88DD94D3E9C1AA210C81E49A /* SnapshotTesting */; };
 		4CD99B3E30EDDCB6A7DAFEA1 /* IntentSupport.swift in Sources */ = {isa = PBXBuildFile; fileRef = E4C1FA7E921214B499AC7C78 /* IntentSupport.swift */; };
 		4D857D96D11DC576BB8DC7C9 /* FakeUserNotificationCenter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 041D28DF056EB1470CE165E2 /* FakeUserNotificationCenter.swift */; };
+		565A36023CC353BA6E535953 /* SettingsSheetPresentationUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D357EEAAE28350B58C422966 /* SettingsSheetPresentationUITests.swift */; };
 		58E910FC4630D8C34D79AAC0 /* TrashSection.swift in Sources */ = {isa = PBXBuildFile; fileRef = B9166711CEB13F01C3DB136A /* TrashSection.swift */; };
 		59E075676A12EFCF12350AEC /* LillistCoreQuickCaptureCompositionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA132EECCE2B23DFDE5E4DB6 /* LillistCoreQuickCaptureCompositionTests.swift */; };
 		5C663093326220B87F44153F /* TaskDefaultsPage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3A9D8DCE954B156CDEEF64C1 /* TaskDefaultsPage.swift */; };
@@ -234,6 +235,7 @@
 		CECC0E4966AEDB2B50C11DCA /* AddNoteIntent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddNoteIntent.swift; sourceTree = "<group>"; };
 		D1B6EFD3373C205B1003A91A /* SettingsTab.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsTab.swift; sourceTree = "<group>"; };
 		D2F899010F7F794421F9DB2A /* SharePayload.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SharePayload.swift; sourceTree = "<group>"; };
+		D357EEAAE28350B58C422966 /* SettingsSheetPresentationUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsSheetPresentationUITests.swift; sourceTree = "<group>"; };
 		D534B129C7DA95ABEE0FA7A2 /* AddTaskInput.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddTaskInput.swift; sourceTree = "<group>"; };
 		DC691C97A132B02A9B833239 /* ResetDataStoreSection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ResetDataStoreSection.swift; sourceTree = "<group>"; };
 		E4C1FA7E921214B499AC7C78 /* IntentSupport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IntentSupport.swift; sourceTree = "<group>"; };
@@ -482,6 +484,7 @@
 			isa = PBXGroup;
 			children = (
 				EF746CFB8D7F9D5046931BBC /* QuickCaptureFlowUITests.swift */,
+				D357EEAAE28350B58C422966 /* SettingsSheetPresentationUITests.swift */,
 				9B242F1EB6EBE8CC9C995946 /* StatusCycleUITests.swift */,
 				2000A135D49A3EBB6E1A921B /* SwipeDeleteUITests.swift */,
 				66FEF7EFE6D090BB80477F6E /* UITestHelpers.swift */,
@@ -959,6 +962,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				030ABB6B63120757D3857520 /* QuickCaptureFlowUITests.swift in Sources */,
+				565A36023CC353BA6E535953 /* SettingsSheetPresentationUITests.swift in Sources */,
 				46A4E35DADD70E23B574466B /* StatusCycleUITests.swift in Sources */,
 				17DA33CCE34A382353D5D03A /* SwipeDeleteUITests.swift in Sources */,
 				EB9307BFA505A7694069B4F5 /* UITestHelpers.swift in Sources */,

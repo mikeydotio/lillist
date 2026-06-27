@@ -3,109 +3,68 @@ import UniformTypeIdentifiers
 import LillistCore
 import LillistUI
 
-/// Settings → Diagnostics. Toggles file-based diagnostic logging (device-local,
-/// via `DevicePreferencesStore`) and prepares an export package. The toggle is a
-/// write-through `Binding`: `.task` hydrates `enabled` directly (no write), while
-/// only a user tap routes through `set` to persist — so hydration never echoes
-/// back as a spurious write.
-struct DiagnosticsSection: View {
-    @Environment(AppEnvironment.self) private var environment
-    @State private var enabled = false
-    @State private var didHydrate = false
-    @State private var showInclude = false
-    @State private var wantsExport = false
-    @State private var includeLogs = true
-    @State private var includeStore = true
-    @State private var isPreparing = false
-    @State private var exportDocument: DiagnosticZipDocument?
-    @State private var showExporter = false
-    @State private var lastError: String?
+/// Owns the Diagnostics export state + pipeline. Lifted out of
+/// `DiagnosticsSection` so the include `.sheet` and `.fileExporter` can be
+/// hosted by the **page** (`DebugPage`) on the `SettingsDetailScreen` container
+/// rather than on a `Section`. A `.sheet` attached to `Section`/Form-row content
+/// inside a pushed `NavigationStack` destination (itself inside the Settings
+/// `.sheet`) presents-then-immediately-dismisses and tears the whole Settings
+/// sheet down with it — see `docs/engineering-notes.md`. Hosting the
+/// presentation on the stable Form container is the fix.
+@MainActor
+@Observable
+final class DiagnosticsExportModel {
+    var enabled = false
+    var showInclude = false
+    var includeLogs = true
+    var includeStore = true
+    var isPreparing = false
+    var exportDocument: DiagnosticZipDocument?
+    var showExporter = false
+    var lastError: String?
 
-    var body: some View {
-        Section("Diagnostics") {
-            Toggle("Diagnostic logging", isOn: loggingBinding)
-            Text("Records task changes to on-device log files for troubleshooting. Logs stay on this device and are shared only when you create and send a package.")
-                .font(.footnote)
-                .foregroundStyle(.secondary)
-            Button {
-                showInclude = true
-            } label: {
-                if isPreparing {
-                    ProgressView()
-                } else {
-                    Text("Prepare diagnostic package…")
-                }
-            }
-            .disabled(isPreparing)
-            // Host the exporter on the button — a *different* view node from the
-            // Section that hosts the include sheet. Co-locating `.sheet` and
-            // `.fileExporter` on one node let the include sheet's presentation be
-            // clobbered, which cascaded up and dismissed the whole Settings pane.
-            .fileExporter(
-                isPresented: $showExporter,
-                document: exportDocument,
-                contentType: .zip,
-                defaultFilename: "Lillist-Diagnostics"
-            ) { result in
-                if case .failure(let error) = result {
-                    lastError = "Export failed: \(error.localizedDescription)"
-                }
-                exportDocument = nil
-            }
-            if let lastError {
-                Text(lastError)
-                    .font(.footnote)
-                    .foregroundStyle(RainbowPalette.cautionAmber.ink)
-            }
-        }
-        .task {
-            // One-shot hydration: if the user already toggled while this read was
-            // in flight, `didHydrate` is already true and the stale read is dropped.
-            let initial = await environment.devicePreferences.diagnosticLoggingEnabled()
-            if !didHydrate { enabled = initial; didHydrate = true }
-        }
-        .sheet(isPresented: $showInclude, onDismiss: {
-            // Build + present the exporter only AFTER the include sheet has fully
-            // dismissed, so the two presentations never conflict.
-            if wantsExport { wantsExport = false; Task { await prepare() } }
-        }) {
-            DiagnosticsIncludeSheet(
-                includeLogs: $includeLogs,
-                includeStore: $includeStore,
-                onCreate: { wantsExport = true; showInclude = false },
-                onCancel: { showInclude = false }
-            )
+    private var didHydrate = false
+    private var wantsExport = false
+
+    /// One-shot hydration: if the user already toggled while this read was in
+    /// flight, `didHydrate` is already true and the stale read is dropped.
+    func hydrate(_ env: AppEnvironment) async {
+        let initial = await env.devicePreferences.diagnosticLoggingEnabled()
+        if !didHydrate { enabled = initial; didHydrate = true }
+    }
+
+    func setLogging(_ on: Bool, _ env: AppEnvironment) {
+        didHydrate = true   // user is authoritative now — hydrate must not overwrite
+        enabled = on
+        Task {
+            await env.devicePreferences.setDiagnosticLoggingEnabled(on)
+            await env.diagnosticLog.setEnabled(on)
         }
     }
 
-    private var loggingBinding: Binding<Bool> {
-        Binding(
-            get: { enabled },
-            set: { newValue in
-                didHydrate = true   // user is authoritative now — .task must not overwrite
-                enabled = newValue
-                Task {
-                    await environment.devicePreferences.setDiagnosticLoggingEnabled(newValue)
-                    await environment.diagnosticLog.setEnabled(newValue)
-                }
-            }
-        )
+    /// Tapped "Create" in the include sheet: remember the intent and dismiss the
+    /// sheet; the actual build runs in `includeSheetDismissed` so the exporter
+    /// only presents after the include sheet has fully gone.
+    func requestCreate() { wantsExport = true; showInclude = false }
+
+    func includeSheetDismissed(_ env: AppEnvironment) {
+        if wantsExport { wantsExport = false; Task { await prepare(env) } }
     }
 
-    private func prepare() async {
+    private func prepare(_ env: AppEnvironment) async {
         isPreparing = true
         lastError = nil
         defer { isPreparing = false }
         let metadata = DiagnosticPackageBuilder.Metadata(
-            buildVersion: environment.buildVersion,
-            osVersion: environment.osVersion,
-            deviceModel: environment.deviceModel,
+            buildVersion: env.buildVersion,
+            osVersion: env.osVersion,
+            deviceModel: env.deviceModel,
             exportedAt: Date(),
             diagnosticLoggingEnabled: enabled
         )
         let builder = DiagnosticPackageBuilder(
-            diagnosticsDir: await environment.diagnosticLog.diagnosticsDirectory(),
-            storeURL: environment.storeURL,
+            diagnosticsDir: await env.diagnosticLog.diagnosticsDirectory(),
+            storeURL: env.storeURL,
             metadata: metadata
         )
         do {
@@ -116,5 +75,51 @@ struct DiagnosticsSection: View {
         } catch {
             lastError = "Couldn't build diagnostic package: \(error.localizedDescription)"
         }
+    }
+}
+
+/// Settings → Diagnostics. Toggles file-based diagnostic logging (device-local,
+/// via `DevicePreferencesStore`) and triggers an export package. The toggle is a
+/// write-through `Binding`: `.task` hydrates `enabled` directly (no write), while
+/// only a user tap routes through `set` to persist — so hydration never echoes
+/// back as a spurious write.
+///
+/// The include `.sheet` + `.fileExporter` are hosted by `DebugPage` on the
+/// `SettingsDetailScreen` container (not here on the `Section`) — see
+/// `DiagnosticsExportModel`. This section only renders the rows + drives the model.
+struct DiagnosticsSection: View {
+    @Environment(AppEnvironment.self) private var environment
+    @Bindable var model: DiagnosticsExportModel
+
+    var body: some View {
+        Section("Diagnostics") {
+            Toggle("Diagnostic logging", isOn: loggingBinding)
+            Text("Records task changes to on-device log files for troubleshooting. Logs stay on this device and are shared only when you create and send a package.")
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+            Button {
+                model.showInclude = true
+            } label: {
+                if model.isPreparing {
+                    ProgressView()
+                } else {
+                    Text("Prepare diagnostic package…")
+                }
+            }
+            .disabled(model.isPreparing)
+            if let lastError = model.lastError {
+                Text(lastError)
+                    .font(.footnote)
+                    .foregroundStyle(RainbowPalette.cautionAmber.ink)
+            }
+        }
+        .task { await model.hydrate(environment) }
+    }
+
+    private var loggingBinding: Binding<Bool> {
+        Binding(
+            get: { model.enabled },
+            set: { model.setLogging($0, environment) }
+        )
     }
 }
