@@ -4,6 +4,55 @@ Append-only log of cross-cutting engineering lessons learned while building
 Lillist. Each entry captures a non-obvious gotcha — usually one that took real
 investigation to find — so future work doesn't re-learn it the hard way.
 
+## 2026-06-26 — One presentation modifier per view, or the parent sheet dies
+
+Stacking more than one presentation modifier (`.sheet`, `.fullScreenCover`,
+`.fileExporter`/`.fileImporter`) on a **single** view is the trap behind "the
+sheet flashes then dismisses, taking the whole screen with it." SwiftUI reliably
+drives only the *last* presentation modifier of each style on a given view;
+asking an earlier one to present can be silently clobbered. When that view is
+itself **inside an already-presented sheet** (e.g. a Settings sub-page pushed in
+a `NavigationStack` that lives in the Settings `.sheet`), the failed presentation
+cascades up and dismisses the *parent* sheet too. This bit `ICloudSyncSection`
+(2 covers + 2 sheets), `ICloudSyncPane` (4 sheets), `DiagnosticsSection`/`Pane`
+(`.sheet` + `.fileExporter`), and `CrashReportSheet` (3 preview `.sheet`s) — each
+"nuked Settings."
+
+Two fixes, by situation:
+
+1. **Same-style, mutually-exclusive modals → one `.sheet(item:)` over an
+   `Identifiable` enum.** `SyncSheetRoute` is the canonical example: one slot,
+   every transition is a clean item swap (so the old dismiss-one-present-another
+   handoffs — pause→disable, disable→progress, iCloud-unavailable→onboarding —
+   can't conflict). Give a *live-updating* case (migration `progress(phase)`) a
+   **constant `id`** so streaming a new value updates the sheet **in place**
+   instead of dismiss+re-present on every tick.
+2. **Different-style modifiers that must coexist, or two independent slots whose
+   sequencing you don't want to collapse → host each on a distinct view node.**
+   `.background(Color.clear.fileExporter(…))` keeps the exporter off the `Section`
+   that owns the include `.sheet`. `CrashReporterHost` deliberately keeps the
+   crash-report and mail sheets as *separate* slots (node-separated, not merged):
+   the crash→mail handoff fires `dismiss()` then `onStage`, and merging to one
+   slot reintroduces a present/dismiss race the two independent slots avoid.
+
+`.confirmationDialog` and `.alert` are *not* part of this limit — one of each
+coexists fine alongside a single sheet.
+
+## 2026-06-26 — Custom swipe reveal: park a fixed card off-edge, clip, slide
+
+`SwipeableRow`'s revealed action is a **fixed-width card** (not a strip whose
+width tracks the drag). It's parked off the row edge at rest via an offset locked
+to the drag (`max(0, offset + revealDistance)` trailing, mirror for leading) and
+the action layer is `.clipped()` to the row frame, so the card slides out from
+*behind* the row's edge with a constant gap and a closed row never shows a sliver
+in the list-row inset. The gap equals the inter-row vertical gap (6 pt = 3+3
+`listRowInsets`); `revealDistance = actionWidth + gap` is what the resting snap,
+rubber-band clamp, and `SwipeSettleArbiter` threshold all key off (the arbiter is
+unchanged — it just receives `revealDistance` as its "actionWidth"). Disable the
+card (`offset >= 2` / `<= -2`) so the parked card never takes a phantom tap.
+Closed-row snapshots are unaffected by this change — only the leading-inset change
+(12→6) shifts the TasksScreen baselines.
+
 ## 2026-06-19 — Drag-reorder: gap+horizontal-depth model, de-parent fix
 
 The drag-reorder resolver moved from a vertical-only 25/50/25 zone model (with a
