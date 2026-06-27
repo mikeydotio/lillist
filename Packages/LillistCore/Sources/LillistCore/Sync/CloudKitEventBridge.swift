@@ -18,12 +18,17 @@ public struct CloudKitSyncEvent: Sendable, Equatable {
     public var started: Bool
     public var endedAt: Date?
     public var error: LillistError?
+    /// Whether `error` (if any) is transient — the mirror retries/reconciles.
+    /// `SyncStatusMonitor` uses this to avoid latching a persistent red error for
+    /// a one-off export conflict. Defaults to `false` (surface it).
+    public var recoverable: Bool
 
-    public init(type: EventType, started: Bool, endedAt: Date?, error: LillistError?) {
+    public init(type: EventType, started: Bool, endedAt: Date?, error: LillistError?, recoverable: Bool = false) {
         self.type = type
         self.started = started
         self.endedAt = endedAt
         self.error = error
+        self.recoverable = recoverable
     }
 }
 
@@ -123,7 +128,8 @@ public actor CloudKitEventBridge {
             logRawError(error, eventType: type)
             return CloudKitErrorClassifier.classify(error)
         }
-        return CloudKitSyncEvent(type: type, started: started, endedAt: event.endDate, error: mapped)
+        let recoverable = event.error.map { CloudKitErrorClassifier.severity(of: $0) == .recoverable } ?? false
+        return CloudKitSyncEvent(type: type, started: started, endedAt: event.endDate, error: mapped, recoverable: recoverable)
     }
 
     /// Log the raw CloudKit error before it is collapsed into the
@@ -144,7 +150,22 @@ public actor CloudKitEventBridge {
             "CloudKit \(String(describing: eventType), privacy: .public) failed: domain=\(ns.domain, privacy: .public) code=\(ns.code, privacy: .public) \(ns.localizedDescription, privacy: .public)"
         )
         guard let partials = ns.userInfo[CKPartialErrorsByItemIDKey] as? [AnyHashable: NSError],
-              !partials.isEmpty else { return }
+              !partials.isEmpty else {
+            // No per-item breakdown — dump the rest of the (framework-only) userInfo
+            // so a future *structural* error is actionable. A bare partialFailure
+            // carried nothing before, which is exactly what a real package showed.
+            if let retry = ns.userInfo[CKErrorRetryAfterKey] {
+                LillistLog.sync.error("  retryAfter=\(String(describing: retry), privacy: .public)")
+            }
+            if let underlying = ns.userInfo[NSUnderlyingErrorKey] as? NSError {
+                LillistLog.sync.error(
+                    "  underlying: domain=\(underlying.domain, privacy: .public) code=\(underlying.code, privacy: .public) \(underlying.localizedDescription, privacy: .public)"
+                )
+            }
+            let keys = ns.userInfo.keys.map { "\($0)" }.sorted().joined(separator: ",")
+            LillistLog.sync.error("  userInfo keys=[\(keys, privacy: .public)]")
+            return
+        }
         LillistLog.sync.error("CloudKit partialFailure: \(partials.count, privacy: .public) item error(s)")
         for itemError in partials.values {
             LillistLog.sync.error(

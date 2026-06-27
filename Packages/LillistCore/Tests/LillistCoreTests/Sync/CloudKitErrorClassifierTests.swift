@@ -110,4 +110,40 @@ struct CloudKitErrorClassifierTests {
         // 9999 is not a real CKError.Code.
         #expect(CloudKitErrorClassifier.name(forCKCode: 9999) == "code 9999")
     }
+
+    // MARK: - severity (transient vs structural)
+
+    @Test("A bare partialFailure (no per-item dict) is recoverable")
+    func severityBarePartialFailure() {
+        // The case a real diagnostic package showed: code 2, no CKPartialErrorsByItemIDKey.
+        #expect(CloudKitErrorClassifier.severity(of: ckError(.partialFailure)) == .recoverable)
+    }
+
+    @Test("A partialFailure of only transient per-item codes is recoverable")
+    func severityAllRecoverablePartialFailure() {
+        let err = partialFailure([.serverRecordChanged, .networkUnavailable, .batchRequestFailed])
+        #expect(CloudKitErrorClassifier.severity(of: err) == .recoverable)
+    }
+
+    @Test("A partialFailure containing a structural per-item code is structural")
+    func severityMixedPartialFailure() {
+        let err = partialFailure([.serverRecordChanged, .constraintViolation])
+        #expect(CloudKitErrorClassifier.severity(of: err) == .structural)
+    }
+
+    @Test("Structural top-level codes are structural; transient ones recoverable")
+    func severityTopLevelCodes() {
+        #expect(CloudKitErrorClassifier.severity(of: ckError(.quotaExceeded)) == .structural)
+        #expect(CloudKitErrorClassifier.severity(of: ckError(.serverRejectedRequest)) == .structural)
+        #expect(CloudKitErrorClassifier.severity(of: ckError(.notAuthenticated)) == .structural)
+        #expect(CloudKitErrorClassifier.severity(of: ckError(.networkUnavailable)) == .recoverable)
+        #expect(CloudKitErrorClassifier.severity(of: ckError(.zoneBusy)) == .recoverable)
+        #expect(CloudKitErrorClassifier.severity(of: ckError(.requestRateLimited)) == .recoverable)
+    }
+
+    @Test("A non-CloudKit error is structural (surfaced)")
+    func severityNonCloudKit() {
+        let raw = NSError(domain: "SomeOtherDomain", code: 7, userInfo: nil)
+        #expect(CloudKitErrorClassifier.severity(of: raw) == .structural)
+    }
 }

@@ -63,7 +63,15 @@ public actor SyncStatusMonitor {
         } else {
             next.inProgress = false
             if let err = event.error {
-                next.error = err
+                if event.recoverable {
+                    // Transient (network / a record conflict the mirror reconciles
+                    // / back-off): do NOT latch a persistent red error for a one-off
+                    // export blip. Keep the prior lastSyncedAt so the indicator
+                    // stays calm; a genuinely structural failure still surfaces.
+                    next.error = nil
+                } else {
+                    next.error = err
+                }
             } else if let endedAt = event.endedAt {
                 next.lastSyncedAt = endedAt
                 next.error = nil

@@ -45,6 +45,46 @@ public enum CloudKitErrorClassifier {
         }
     }
 
+    /// Whether a sync failure is transient (the mirror retries + reconciles
+    /// without user action) or structural (needs the user or a schema/account
+    /// change). Drives whether `SyncStatusMonitor` latches a persistent red
+    /// error: a single transient export conflict must NOT pin the badge.
+    public enum Severity: Sendable, Equatable { case recoverable, structural }
+
+    /// CloudKit codes `NSPersistentCloudKitContainer` recovers from on its own
+    /// (network blips, conflicts it reconciles, rate-limit/back-off, busy zones).
+    static let recoverableCodes: Set<CKError.Code> = [
+        .networkUnavailable, .networkFailure, .serviceUnavailable, .zoneBusy,
+        .requestRateLimited, .serverRecordChanged, .batchRequestFailed,
+        .accountTemporarilyUnavailable,
+    ]
+
+    /// Classify a sync error as transient vs structural.
+    ///
+    /// A `.partialFailure` is recoverable unless one of its per-item errors is a
+    /// *structural* code. A **bare** partialFailure — no `CKPartialErrorsByItemIDKey`
+    /// — is the mirror's ordinary "a record conflicted, reconciling" signal and is
+    /// recoverable: a real diagnostic package showed imports of every record type
+    /// succeeding (schema is fine) while a single non-recurring export
+    /// partialFailure with no per-item dict latched the red badge permanently.
+    /// Structural problems still surface as structural per-item codes or as
+    /// non-partial top-level codes (quota / auth / rejected / invalidArguments).
+    public static func severity(of error: Error) -> Severity {
+        let ns = error as NSError
+        guard ns.domain == CKErrorDomain, let code = CKError.Code(rawValue: ns.code) else {
+            return .structural   // non-CloudKit → surface it
+        }
+        if code == .partialFailure {
+            let partials = (ns.userInfo[CKPartialErrorsByItemIDKey] as? [AnyHashable: NSError]) ?? [:]
+            guard !partials.isEmpty else { return .recoverable }
+            let allRecoverable = partials.values.allSatisfy {
+                CKError.Code(rawValue: $0.code).map(recoverableCodes.contains) ?? false
+            }
+            return allRecoverable ? .recoverable : .structural
+        }
+        return recoverableCodes.contains(code) ? .recoverable : .structural
+    }
+
     /// Summarize a `.partialFailure` from its per-item errors. Falls back to
     /// the top-level description when the partial-error dictionary is absent
     /// (some producers omit it) so we never lose the original message.
