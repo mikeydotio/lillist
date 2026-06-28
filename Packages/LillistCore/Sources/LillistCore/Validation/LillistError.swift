@@ -12,6 +12,12 @@ public enum LillistError: Error, Sendable, Equatable {
     }
 
     case storeUnavailable(reason: String)
+    /// The local store has no tasks, so "replace iCloud with this device"
+    /// is refused — pushing an empty store would wipe iCloud and leave the
+    /// user with nothing (sync-7). Carries no payload because the remedy is
+    /// always the same (pull from iCloud instead); the user-facing copy in
+    /// `errorDescription` spells out the corrective action.
+    case localDataEmpty
     case iCloudUnavailable(reason: String)
     case syncFailure(underlying: String)
     case validationFailed([Issue])
@@ -38,6 +44,8 @@ extension LillistError: LocalizedError {
         switch self {
         case .storeUnavailable(let reason):
             return "The Lillist data store is unavailable: \(reason)"
+        case .localDataEmpty:
+            return "This device has no tasks to upload, so it can't replace iCloud — that would erase everything in iCloud. To copy your iCloud tasks onto this device instead, choose “Replace This Device with iCloud.”"
         case .iCloudUnavailable(let reason):
             return "iCloud is unavailable: \(reason)"
         case .syncFailure(let underlying):

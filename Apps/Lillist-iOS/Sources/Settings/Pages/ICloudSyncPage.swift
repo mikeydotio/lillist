@@ -56,12 +56,9 @@ struct ICloudSyncPage: View {
                 )
                 .presentationDetents([.medium])
             case .progress(let phase):
-                SyncMigrationProgressSheet(
-                    phase: phase,
-                    onDismissAfterCompletion: { model.route = nil }
-                )
-                .presentationDetents([.large])
-                .interactiveDismissDisabled(true)
+                SyncMigrationProgressSheet(phase: phase)
+                    .presentationDetents([.large])
+                    .interactiveDismissDisabled(true)
             }
         }
     }

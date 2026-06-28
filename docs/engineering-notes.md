@@ -4,6 +4,47 @@ Append-only log of cross-cutting engineering lessons learned while building
 Lillist. Each entry captures a non-obvious gotcha — usually one that took real
 investigation to find — so future work doesn't re-learn it the hard way.
 
+## 2026-06-27 — Sync-settings UX: "Reset & Download", no force-sync, host-resolved migration terminals
+
+Four coupled changes to the iCloud-sync surface, each with a non-obvious bit:
+
+1. **"Reset & Download Data" = full reset minus the zone erase — the rebuild
+   *is* the pull.** `DataStoreResetService.resetAndRedownload()` tears down and
+   `rebuildEmptyStore()`s the local store but skips `eraseManagedZones`. There is
+   **no explicit "fetch from iCloud" call** because there is no such API: a
+   `destroyPersistentStore` + fresh add leaves the store with **no CloudKit
+   import-history metadata**, and `NSPersistentCloudKitContainer` re-imports the
+   *entire* surviving zone whenever it sees a store in that state. So the only
+   difference from `resetAllData()` ("Reset Everywhere") is whether the zone is
+   erased first. It's gated to iCloudSync mode — in local-only there is nothing to
+   download, so it throws rather than silently wiping (a footgun otherwise).
+
+2. **"Sync Now" was removed, not fixed — `NSPersistentCloudKitContainer` has no
+   public force-sync.** Mirroring runs automatically on local saves and CloudKit
+   pushes; the old button called `monitor.start()`, which is idempotent and
+   already-running, so it was a guaranteed no-op with zero feedback. There is no
+   honest "push now" to wire it to, so the control (and the now-dead
+   `SyncIndicatorMonitor.retry()`) is gone rather than left as a placebo. Don't
+   re-add it expecting a force trigger to appear.
+
+3. **The migration progress sheet's terminal phases are resolved by the host, not
+   the stream loop.** Both platform `runMigration` helpers now `continue` past
+   `.completed`/`.failed` in the `progressStream` loop and resolve them in the
+   `do/catch`: success sets `route = nil` (silent dismiss — no "all done" screen),
+   failure sets `.failed(reason: error.localizedDescription)`. Rendering a phase
+   for the terminal state in the loop reintroduces the success screen and/or a
+   raw-vs-friendly flash. `SyncMigrationProgressSheet` no longer has a Done button
+   or `onDismissAfterCompletion`.
+
+4. **The "Migration failed" screen showed a raw enum dump because the host
+   interpolated `"\(error)"`.** Fixed by switching to `error.localizedDescription`
+   (so `LillistError`'s `LocalizedError` copy shows) and adding a typed
+   `LillistError.localDataEmpty` for the empty-local-store guard — its
+   `errorDescription` now *guides* ("…choose 'Replace This Device with iCloud'")
+   instead of dumping `storeUnavailable(reason: "Refusing to replace iCloud with an
+   empty local store")`. The guard itself is correct and unchanged: pushing an
+   empty local store would wipe iCloud.
+
 ## 2026-06-27 — "CKErrorDomain error 2" was a latched transient, not a schema problem
 
 A persistent red "CKErrorDomain error 2" sync badge on both platforms looked like

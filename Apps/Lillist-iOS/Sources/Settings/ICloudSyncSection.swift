@@ -44,21 +44,30 @@ final class ICloudSyncModalsModel {
     /// the progress sheet renders the live state. `storeURL` is required; in
     /// production AppEnvironment always has one — falling back to a temp path
     /// keeps the codepath defined for test fixtures.
+    ///
+    /// Terminal phases are handled here, not in the stream loop: on success the
+    /// sheet is dismissed silently (no "all done" screen); on failure it shows
+    /// `error.localizedDescription` — the `LillistError` user-facing copy —
+    /// rather than a raw enum dump.
     private func runMigration(_ env: AppEnvironment, _ kickoff: @MainActor (MigrationCoordinator, URL) async throws -> Void) async {
         let storeURL = env.storeURL
             ?? FileManager.default.temporaryDirectory.appendingPathComponent("Lillist.sqlite")
         let coordinator = env.migrationCoordinator
         let phaseTask = Task { @MainActor [coordinator] in
             for await phase in coordinator.progressStream {
-                route = .progress(phase)
+                switch phase {
+                case .completed, .failed: continue  // terminal — resolved below
+                default: route = .progress(phase)
+                }
             }
         }
         defer { phaseTask.cancel() }
         route = .progress(.preparing)
         do {
             try await kickoff(coordinator, storeURL)
+            route = nil  // success: return to Settings, no completion screen
         } catch {
-            route = .progress(.failed(reason: "\(error)"))
+            route = .progress(.failed(reason: error.localizedDescription))
         }
     }
 }

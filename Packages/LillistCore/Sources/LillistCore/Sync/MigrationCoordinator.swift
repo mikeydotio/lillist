@@ -250,9 +250,7 @@ public final class MigrationCoordinator {
             if op == .replaceICloudWithLocal {
                 let rows = await localStoreRowCount()
                 guard rows > 0 else {
-                    throw LillistError.storeUnavailable(
-                        reason: "Refusing to replace iCloud with an empty local store"
-                    )
+                    throw LillistError.localDataEmpty
                 }
             }
 

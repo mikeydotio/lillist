@@ -6,15 +6,15 @@ import LillistCore
 /// `MigrationCoordinator.progressStream`.
 ///
 /// The host owns the sheet's presentation (`.fullScreenCover` on
-/// iOS, `.sheet` pinned to keyWindow on macOS); this view just
-/// renders the active phase.
+/// iOS, `.sheet` pinned to keyWindow on macOS) **and** its dismissal:
+/// on success the host closes the sheet silently (no "all done" screen);
+/// only `.failed` is rendered for the user to read and dismiss. This view
+/// just renders the active phase.
 public struct SyncMigrationProgressSheet: View {
     public let phase: MigrationPhase
-    public let onDismissAfterCompletion: (() -> Void)?
 
-    public init(phase: MigrationPhase, onDismissAfterCompletion: (() -> Void)? = nil) {
+    public init(phase: MigrationPhase) {
         self.phase = phase
-        self.onDismissAfterCompletion = onDismissAfterCompletion
     }
 
     public var body: some View {
@@ -56,12 +56,6 @@ public struct SyncMigrationProgressSheet: View {
             }
 
             Spacer()
-
-            if case .completed = phase, let dismiss = onDismissAfterCompletion {
-                Button("Done", action: dismiss)
-                    .buttonStyle(.rainbow(.green))
-                    .padding(.bottom, LillistSpacing.l)
-            }
         }
         .padding(LillistSpacing.l)
         .frame(maxWidth: .infinity, maxHeight: .infinity)

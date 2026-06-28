@@ -74,12 +74,9 @@ struct ICloudSyncPane: View {
                 )
                 .frame(width: 460, height: 340)
             case .progress(let phase):
-                SyncMigrationProgressSheet(
-                    phase: phase,
-                    onDismissAfterCompletion: { route = nil }
-                )
-                .frame(width: 520, height: 380)
-                .interactiveDismissDisabled(true)
+                SyncMigrationProgressSheet(phase: phase)
+                    .frame(width: 520, height: 380)
+                    .interactiveDismissDisabled(true)
             }
         }
     }
@@ -173,6 +170,11 @@ struct ICloudSyncPane: View {
         }}
     }
 
+    /// Drives the migration coordinator and streams phase events into `route`.
+    /// Terminal phases are resolved here, not in the loop: success dismisses
+    /// the sheet silently (no "all done" screen); failure shows
+    /// `error.localizedDescription` (the `LillistError` user-facing copy)
+    /// rather than a raw enum dump.
     @MainActor
     private func runMigration(_ kickoff: @MainActor (MigrationCoordinator, URL) async throws -> Void) async {
         let storeURL = environment.storeURL
@@ -180,15 +182,19 @@ struct ICloudSyncPane: View {
         let coordinator = environment.migrationCoordinator
         let phaseTask = Task { @MainActor [coordinator] in
             for await phase in coordinator.progressStream {
-                route = .progress(phase)
+                switch phase {
+                case .completed, .failed: continue  // terminal — resolved below
+                default: route = .progress(phase)
+                }
             }
         }
         defer { phaseTask.cancel() }
         route = .progress(.preparing)
         do {
             try await kickoff(coordinator, storeURL)
+            route = nil  // success: return to Preferences, no completion screen
         } catch {
-            route = .progress(.failed(reason: "\(error)"))
+            route = .progress(.failed(reason: error.localizedDescription))
         }
     }
 }
