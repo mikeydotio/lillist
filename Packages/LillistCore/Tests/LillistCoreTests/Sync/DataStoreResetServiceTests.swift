@@ -100,6 +100,41 @@ struct DataStoreResetServiceTests {
         #expect(await host.resetSteps == [])
         #expect(await eraser.callCount == 0)
     }
+
+    // MARK: - Reset & Download (local rebuild, CloudKit zone preserved)
+
+    @Test("redownload: tears down then rebuilds, never erases the CloudKit zone")
+    @MainActor
+    func redownloadRebuildsWithoutErasing() async throws {
+        let host = FakePersistenceReconfigurer(initialMode: .iCloudSync)
+        let eraser = FakeCloudKitZoneEraser()
+        let service = makeService(startMode: .iCloudSync, host: host, eraser: eraser)
+
+        // NOTE: like the iCloudSync wipe path, this waits on quiesceMonitor
+        // (minQuietWindow: 5s) after the rebuild — the window in which the
+        // surviving zone re-imports — so this test intentionally takes ~5s.
+        try await service.resetAndRedownload()
+
+        #expect(await host.resetSteps == ["tearDown", "rebuild"])
+        // The whole point of redownload: the zone is preserved so it re-imports.
+        #expect(await eraser.callCount == 0)
+    }
+
+    @Test("redownload: refuses in local-only mode (nothing to download) before any teardown")
+    @MainActor
+    func redownloadRequiresICloud() async throws {
+        let host = FakePersistenceReconfigurer(initialMode: .localOnly)
+        let eraser = FakeCloudKitZoneEraser()
+        let service = makeService(startMode: .localOnly, host: host, eraser: eraser)
+
+        await #expect(throws: LillistError.self) {
+            try await service.resetAndRedownload()
+        }
+
+        // Guarded before any destructive work — no wipe, no erase.
+        #expect(await host.resetSteps == [])
+        #expect(await eraser.callCount == 0)
+    }
 }
 
 /// Zone eraser that records the call then throws, for the reset

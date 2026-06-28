@@ -1,11 +1,16 @@
 import Foundation
 import os
 
-/// Performs a **full, irreversible data-store reset** for debugging a
-/// suspected-corrupt store: it backs up, erases the CloudKit zone (when
-/// syncing), destroys the local store, and rebuilds it empty. All
-/// devices on the account lose their data — this is the user-chosen
-/// "wipe everything" behavior, not a local-only cache flush.
+/// Performs an **irreversible data-store reset** for recovering from a
+/// suspected-corrupt store. Two flavors, both of which back up to
+/// quarantine, destroy the local store, and rebuild it empty:
+///
+/// - `resetAllData()` ("Reset Everywhere") also erases the CloudKit zone
+///   when syncing, so every device on the account loses its data — the
+///   user-chosen "wipe everything" behavior, not a local-only cache flush.
+/// - `resetAndRedownload()` ("Reset & Download") leaves the CloudKit zone
+///   intact, so the rebuilt empty store re-imports the account's data —
+///   a local-only rebuild that recovers from the cloud.
 ///
 /// It deliberately **reuses the same hardened building blocks** as
 /// `MigrationCoordinator` (quarantine backup with its disk-space
@@ -56,28 +61,73 @@ public final class DataStoreResetService {
         self.breadcrumbs = breadcrumbs
     }
 
-    /// Wipe every task on this device and (when syncing) in iCloud, then
-    /// rebuild an empty store. Steps are ordered to preserve the
-    /// codebase's destructive-op invariants:
+    /// What a reset should do with the CloudKit side of the store.
+    private enum Scope {
+        /// Erase the CloudKit zone too (iCloudSync only): every device on
+        /// the account loses its data. The "wipe everything" behavior.
+        case everywhere
+        /// Leave the CloudKit zone intact and let the freshly-rebuilt empty
+        /// store re-import it. Only meaningful while syncing — there is
+        /// nothing to download in local-only mode.
+        case redownload
+    }
+
+    /// Wipe every task on this device **and** in iCloud (on every device on
+    /// the account), then rebuild an empty store. See `performReset` for the
+    /// ordered, invariant-preserving steps.
+    public func resetAllData() async throws {
+        try await performReset(.everywhere)
+    }
+
+    /// Delete only this device's local copy and re-download everything from
+    /// iCloud. The CloudKit zone is left untouched, so the rebuilt empty
+    /// store re-imports the account's data via
+    /// `NSPersistentCloudKitContainer` (which re-imports a zone whenever the
+    /// local store has no import-history metadata — exactly the state a
+    /// destroy+rebuild leaves it in). Use this to recover from suspected
+    /// **local** corruption without losing the iCloud copy.
+    ///
+    /// Throws when not syncing: in local-only mode there is no CloudKit copy
+    /// to download, so this would be a plain (unrecoverable-from-cloud) wipe
+    /// — the caller should use `resetAllData()` if that is the intent.
+    public func resetAndRedownload() async throws {
+        try await performReset(.redownload)
+    }
+
+    /// Tear down the local store and rebuild it empty, ordered to preserve
+    /// the codebase's destructive-op invariants:
     ///
     /// 1. Cancel pending notifications first, so a wipe never leaves
     ///    stale fires pointing at deleted rows (skeptic G9).
-    /// 2. Account-changed pre-flight: never erase a zone if the signed-in
+    /// 2. Account-changed pre-flight: never act on a store whose signed-in
     ///    account changed out from under us.
     /// 3. Tear down + quarantine backup — `copyStore`'s disk-space
     ///    pre-flight throws **before** the irreversible erase (blind-spot #5).
-    /// 4. Erase the CloudKit zone (iCloudSync only); on failure, re-attach
-    ///    the original store so the coordinator is never left store-less.
-    /// 5. Destroy + rebuild the local store empty.
+    /// 4. Erase the CloudKit zone (`.everywhere` + iCloudSync only); on
+    ///    failure, re-attach the original store so the coordinator is never
+    ///    left store-less.
+    /// 5. Destroy + rebuild the local store empty (in iCloudSync this also
+    ///    re-arms CloudKit mirroring, which re-imports the surviving zone for
+    ///    `.redownload`).
     /// 6. Wait for CloudKit to settle (iCloudSync only).
-    public func resetAllData() async throws {
+    private func performReset(_ scope: Scope) async throws {
         guard !isResetting else {
             throw LillistError.storeUnavailable(reason: "A data-store reset is already in progress.")
         }
         isResetting = true
         defer { isResetting = false }
 
-        LillistLog.sync.notice("data store reset start")
+        let mode = await host.currentMode
+
+        // `.redownload` only makes sense while syncing — guard before any
+        // destructive work so an invalid call is a clean no-op, not a wipe.
+        if scope == .redownload, mode != .iCloudSync {
+            throw LillistError.storeUnavailable(
+                reason: "Reset & Download needs iCloud Sync turned on — there is nothing to download in local-only mode."
+            )
+        }
+
+        LillistLog.sync.notice("data store reset start scope=\(String(describing: scope), privacy: .public)")
         await breadcrumb("data store reset start")
         do {
             // 1. cancel notifications first
@@ -92,13 +142,11 @@ public final class DataStoreResetService {
                 )
             }
 
-            let mode = await host.currentMode
-
             // 3. tear down + backup (disk pre-flight throws before erase)
             _ = try await host.tearDownStore(backupVia: quarantine)
 
-            // 4. erase the CloudKit zone (iCloudSync only)
-            if mode == .iCloudSync {
+            // 4. erase the CloudKit zone (only when wiping everywhere)
+            if scope == .everywhere, mode == .iCloudSync {
                 do {
                     _ = try await zoneEraser.eraseManagedZones(
                         in: cloudKitContainerIdentifier,
@@ -116,7 +164,8 @@ public final class DataStoreResetService {
             // 5. destroy + rebuild empty
             try await host.rebuildEmptyStore()
 
-            // 6. let CloudKit settle (iCloudSync only)
+            // 6. let CloudKit settle (iCloudSync only). For `.redownload`
+            //    this is the window in which the surviving zone re-imports.
             if mode == .iCloudSync {
                 _ = await quiesceMonitor.waitForQuiesce(minQuietWindow: 5, hardTimeout: 300)
             }
