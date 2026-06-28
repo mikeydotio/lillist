@@ -3,6 +3,22 @@
 All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [v0.11.7] - 2026-06-27
+
+### Added
+- show local + iCloud-mirrored task counts in sync settings (aaf98784)
+
+### Fixed
+- don't latch a red error for transient CloudKit partial-failures (9a67e69f)
+
+### Documentation
+- CKError 2 was a latched transient, not a schema issue (09a375a1)
+
+### Maintenance
+- bump iOS build number to 78 (98625052)
+
+_[force]_
+
 ## [v0.11.6] - 2026-06-27
 
 ### Added
