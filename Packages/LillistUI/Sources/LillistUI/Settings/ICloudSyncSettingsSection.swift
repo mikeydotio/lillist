@@ -40,18 +40,15 @@ public struct ICloudSyncSettingsSection: View {
 
     public struct Actions {
         public let onToggle: (Bool) -> Void
-        public let onSyncNow: () -> Void
         public let onOpenSystemSettings: () -> Void
         public let onPausedTap: () -> Void
 
         public init(
             onToggle: @escaping (Bool) -> Void,
-            onSyncNow: @escaping () -> Void,
             onOpenSystemSettings: @escaping () -> Void,
             onPausedTap: @escaping () -> Void = {}
         ) {
             self.onToggle = onToggle
-            self.onSyncNow = onSyncNow
             self.onOpenSystemSettings = onOpenSystemSettings
             self.onPausedTap = onPausedTap
         }
@@ -81,9 +78,10 @@ public struct ICloudSyncSettingsSection: View {
             }
             .disabled(viewState.isToggleDisabled)
 
-            if viewState.mode == .iCloudSync, case .idle = viewState.status {
-                Button("Sync Now", action: actions.onSyncNow)
-            }
+            // No "Sync Now" control: NSPersistentCloudKitContainer mirrors
+            // automatically on local edits and CloudKit pushes and exposes no
+            // public force-sync, so a button could only no-op — surfacing one
+            // would imply a capability the framework doesn't provide.
 
             // Reassurance metric: how many local tasks are mirrored to iCloud.
             // `mirrored == local` once everything is in iCloud; a gap is rows not

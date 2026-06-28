@@ -25,7 +25,6 @@ public enum SyncIndicator: Sendable, Equatable {
 @MainActor
 public protocol SyncIndicatorMonitor: AnyObject {
     var indicator: SyncIndicator { get }
-    func retry() async
     /// Connect to the underlying status source and begin reflecting live
     /// state. The app calls this once during `bootstrap()`. Static/stub
     /// monitors (previews, screen-tour tests) get the default no-op.
@@ -43,5 +42,4 @@ public extension SyncIndicatorMonitor {
 public final class IdleSyncIndicatorMonitor: SyncIndicatorMonitor {
     public var indicator: SyncIndicator = .idle(lastSync: Date())
     public init() {}
-    public func retry() async { /* no-op */ }
 }

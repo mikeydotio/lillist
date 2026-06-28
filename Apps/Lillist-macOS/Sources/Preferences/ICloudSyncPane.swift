@@ -118,7 +118,6 @@ struct ICloudSyncPane: View {
     private var actions: ICloudSyncSettingsSection.Actions {
         .init(
             onToggle: handleToggle,
-            onSyncNow: { Task { await environment.syncMonitor.retry() } },
             onOpenSystemSettings: openSystemSettings,
             onPausedTap: { route = .pauseExplainer }
         )

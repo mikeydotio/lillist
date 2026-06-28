@@ -53,14 +53,6 @@ public final class CloudKitSyncStatusAdapter: SyncIndicatorMonitor {
         consumeTask = nil
     }
 
-    /// "Sync Now" affordance. `NSPersistentCloudKitContainer` exposes no public
-    /// force-sync — mirroring runs automatically on local edits and CloudKit
-    /// pushes — so we re-assert the (idempotent) consumer to ensure the surface
-    /// is connected, and deliberately avoid faking a success timestamp.
-    public func retry() async {
-        await monitor.start()
-    }
-
     /// Reflect a status snapshot into the published ``indicator``. Internal so
     /// tests can drive the observable path without the async stream.
     func apply(_ status: SyncStatus) {
