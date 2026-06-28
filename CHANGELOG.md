@@ -3,6 +3,20 @@
 All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [v0.11.8] - 2026-06-27
+
+### Added
+- add "Reset & Download Data" reset option (3a46b620)
+
+### Fixed
+- humanize migration failure and auto-dismiss on success (92824529)
+- remove no-op "Sync Now" button (8b54ce1e)
+
+### Maintenance
+- bump iOS build number to 79 (e7feabfc)
+
+_[force]_
+
 ## [v0.11.7] - 2026-06-27
 
 ### Added
