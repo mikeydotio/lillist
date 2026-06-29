@@ -125,12 +125,45 @@ public struct ICloudSyncSettingsSection: View {
     }
 
     private var statusLine: String {
-        switch viewState.status {
-        case .idle(let last):
-            if let last {
-                return String(localized: "Synced \(Self.relativeFormatter.localizedString(for: last, relativeTo: Date()))", bundle: .module)
-            }
+        // The "…ago" formatting needs the MainActor-bound `relativeFormatter`
+        // and the current time, so resolve it here and hand the pure
+        // mode-aware mapping a pre-formatted string (see `statusLine(mode:…)`).
+        let relativeSync: String?
+        if case .idle(let last?) = viewState.status {
+            relativeSync = Self.relativeFormatter.localizedString(for: last, relativeTo: Date())
+        } else {
+            relativeSync = nil
+        }
+        return Self.statusLine(mode: viewState.mode, status: viewState.status, relativeSync: relativeSync)
+    }
+
+    /// Pure mode-aware mapping from `(mode, status)` to the row subtitle.
+    ///
+    /// `.idle(lastSync: nil)` is ambiguous — it occurs both in local-only mode
+    /// *and* in iCloud-sync mode before the first CloudKit event of the session
+    /// lands (`lastSyncedAt` isn't persisted across launches). Keying the
+    /// subtitle off `status` alone therefore made the row read "Off …" while the
+    /// toggle was on; it must branch on `mode`. Extracted as a `nonisolated
+    /// static` so non-MainActor tests can assert every branch without a live
+    /// container. `relativeSync` is the caller-formatted "…ago" string for the
+    /// `.idle(lastSync:)` case (nil when there's no timestamp yet), which keeps
+    /// this free of the MainActor-bound formatter and makes the "Synced …"
+    /// branch deterministically testable.
+    nonisolated static func statusLine(
+        mode: SyncMode,
+        status: SyncIndicator,
+        relativeSync: String?
+    ) -> String {
+        // Local-only is the only state where "Off" is truthful.
+        guard mode == .iCloudSync else {
             return String(localized: "Off — your data stays on this device", bundle: .module)
+        }
+        switch status {
+        case .idle:
+            if let relativeSync {
+                return String(localized: "Synced \(relativeSync)", bundle: .module)
+            }
+            return String(localized: "On — sync is active", bundle: .module)
         case .inProgress:
             return String(localized: "Syncing…", bundle: .module)
         case .error(let msg, _):
