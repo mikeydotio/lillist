@@ -226,30 +226,10 @@ public struct TasksScreen: View {
                 // Custom swipe (left = Delete, right = Mark open) replaces
                 // `.swipeActions`, which can't coexist with the bespoke
                 // long-press drag-reorder gesture — see SwipeableRow's note
-                // and engineering-notes 2026-06-17.
-                SwipeableRow(
-                    rowID: row.node.record.id,
-                    leading: SwipeActionSpec(
-                        titleKey: "Mark open",
-                        systemImage: StatusGlyph.symbol(for: .todo),
-                        tint: RainbowPalette.focusBlue.base,
-                        perform: { onStatusSet(row.node.record, .todo) }
-                    ),
-                    trailing: SwipeActionSpec(
-                        titleKey: "Delete",
-                        systemImage: "trash",
-                        tint: RainbowPalette.actionOrange.base,
-                        isDestructive: true,
-                        // Reveal the Delete button on swipe; require an explicit
-                        // tap to delete (no accidental full-swipe deletion).
-                        allowsFullSwipe: false,
-                        perform: { onDelete(row.node.record) }
-                    ),
-                    isReorderActive: draggedID != nil,
-                    openRowID: $openSwipeRowID
-                ) {
-                    outlineRow(row)
-                }
+                // and engineering-notes 2026-06-17. The swipe wrapping lives
+                // inside `outlineRow` → `TaskOutlineRowView` (around the card
+                // only) so the revealed controls hug the card symmetrically.
+                outlineRow(row)
                 .listRowInsets(EdgeInsets(top: 3, leading: 6, bottom: 3, trailing: 12))
                 .listRowSeparator(.hidden)
                 .listRowBackground(Color.clear)
@@ -345,6 +325,24 @@ public struct TasksScreen: View {
             row: row,
             isCollapsed: collapsedNodeIDs.contains(row.node.id),
             isDropTargetParent: dragController.dropTargetParentID == row.node.id,
+            leading: SwipeActionSpec(
+                titleKey: "Mark open",
+                systemImage: StatusGlyph.symbol(for: .todo),
+                tint: RainbowPalette.focusBlue.base,
+                perform: { onStatusSet(row.node.record, .todo) }
+            ),
+            trailing: SwipeActionSpec(
+                titleKey: "Delete",
+                systemImage: "trash",
+                tint: RainbowPalette.actionOrange.base,
+                isDestructive: true,
+                // Reveal the Delete button on swipe; require an explicit
+                // tap to delete (no accidental full-swipe deletion).
+                allowsFullSwipe: false,
+                perform: { onDelete(row.node.record) }
+            ),
+            isReorderActive: draggedID != nil,
+            openRowID: $openSwipeRowID,
             onToggleDisclosure: { onToggleCollapsed(row.node.id) },
             onStatusClick: { onStatusClick(row.node.record) },
             onStatusSet: { newStatus in onStatusSet(row.node.record, newStatus) }

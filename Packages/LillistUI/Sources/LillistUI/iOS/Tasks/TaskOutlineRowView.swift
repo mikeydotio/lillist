@@ -46,6 +46,15 @@ public struct TaskOutlineRowView<LinkContent: View>: View {
     public let onStatusSet: (Status) -> Void
     private let linkContent: (TaskOutlineRowLabel) -> LinkContent
 
+    /// Leading swipe action, revealed on a right-swipe of the card.
+    private let leading: SwipeActionSpec?
+    /// Trailing swipe action, revealed on a left-swipe of the card.
+    private let trailing: SwipeActionSpec?
+    /// When `true`, the swipe gesture is hard-disabled (a reorder is in flight).
+    private let isReorderActive: Bool
+    /// Coordinates "only one row open at a time" across sibling rows.
+    @Binding private var openRowID: UUID?
+
     private static var indentPerLevel: CGFloat { LillistDragTokens.indentPerLevel }
     private static var chevronWidth: CGFloat { 22 }
 
@@ -53,6 +62,10 @@ public struct TaskOutlineRowView<LinkContent: View>: View {
         row: FlatTaskRow,
         isCollapsed: Bool,
         isDropTargetParent: Bool = false,
+        leading: SwipeActionSpec? = nil,
+        trailing: SwipeActionSpec? = nil,
+        isReorderActive: Bool = false,
+        openRowID: Binding<UUID?>,
         onToggleDisclosure: @escaping () -> Void,
         onStatusClick: @escaping () -> Void,
         onStatusSet: @escaping (Status) -> Void,
@@ -61,6 +74,10 @@ public struct TaskOutlineRowView<LinkContent: View>: View {
         self.row = row
         self.isCollapsed = isCollapsed
         self.isDropTargetParent = isDropTargetParent
+        self.leading = leading
+        self.trailing = trailing
+        self.isReorderActive = isReorderActive
+        self._openRowID = openRowID
         self.onToggleDisclosure = onToggleDisclosure
         self.onStatusClick = onStatusClick
         self.onStatusSet = onStatusSet
@@ -78,25 +95,40 @@ public struct TaskOutlineRowView<LinkContent: View>: View {
             // the Rainbow card wraps [status — s — label]; the depth
             // indent and chevron stay outside it so the outline shape
             // reads against the workspace.
-            HStack(spacing: LillistSpacing.s) {
-                StatusIndicatorView(
-                    status: row.node.record.status,
-                    onClick: onStatusClick,
-                    onSetStatus: onStatusSet
+            //
+            // `SwipeableRow` wraps ONLY the card (not the indent/chevron
+            // gutter), so a revealed swipe action parks the same `actionGap`
+            // from the *card* on both edges — the leading "Mark open" control
+            // hugs the card exactly as the trailing "Delete" control does,
+            // at every depth. (Wrapping the whole row would inset the leading
+            // gap by the chevron gutter + indent.)
+            SwipeableRow(
+                rowID: row.node.record.id,
+                leading: leading,
+                trailing: trailing,
+                isReorderActive: isReorderActive,
+                openRowID: $openRowID
+            ) {
+                HStack(spacing: LillistSpacing.s) {
+                    StatusIndicatorView(
+                        status: row.node.record.status,
+                        onClick: onStatusClick,
+                        onSetStatus: onStatusSet
+                    )
+                    linkContent(TaskOutlineRowLabel(
+                        task: row.node.record,
+                        tagNames: row.node.tagNames
+                    ))
+                }
+                .padding(.vertical, 1)
+                .padding(.leading, LillistSpacing.xs)
+                .padding(.trailing, LillistSpacing.m)
+                .rainbowCard(
+                    accent: StatusPalette.color(for: row.node.record.status),
+                    isDone: row.node.record.status == .closed,
+                    border: isDropTargetParent ? .dropTargetParent : .hairline
                 )
-                linkContent(TaskOutlineRowLabel(
-                    task: row.node.record,
-                    tagNames: row.node.tagNames
-                ))
             }
-            .padding(.vertical, 1)
-            .padding(.leading, LillistSpacing.xs)
-            .padding(.trailing, LillistSpacing.m)
-            .rainbowCard(
-                accent: StatusPalette.color(for: row.node.record.status),
-                isDone: row.node.record.status == .closed,
-                border: isDropTargetParent ? .dropTargetParent : .hairline
-            )
         }
     }
 
