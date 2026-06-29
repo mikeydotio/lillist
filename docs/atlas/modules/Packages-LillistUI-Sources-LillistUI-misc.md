@@ -8,9 +8,9 @@ sources:
   - path: Packages/LillistUI/Sources/LillistUI/Resources/Fonts/OFL.txt
     blob: ea69b0ca12a02556c436680ea0a159efb7a748fa
   - path: Packages/LillistUI/Sources/LillistUI/Resources/Localizable.xcstrings
-    blob: d7b35f26dc403be5420be94e8120bc99a95087f6
+    blob: 67986e6b1f86a8d5722ad0af91983cecf17041ee
 generator: cartographer/4
-baseline: 515f24730d21cb81ca1c9737ffeb981e9c414d3c
+baseline: 99321d774840d17affd02fe2ac63b01b3d8cbec3
 ---
 
 # Module: Packages/LillistUI/Sources/LillistUI (misc)

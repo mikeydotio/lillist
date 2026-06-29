@@ -12,14 +12,14 @@ sources:
   - path: Packages/LillistUI/Sources/LillistUI/Sync/SyncMigrationConfirmationDialog.swift
     blob: cec35a30c637384550600a236608f9c5da0c3ae9
   - path: Packages/LillistUI/Sources/LillistUI/Sync/SyncMigrationProgressSheet.swift
-    blob: 700e0f1f0739980cf8ee8c6c295b8f65f0f65539
+    blob: 59d38deeade5e33c4b42e180280ef591e92bbe90
   - path: Packages/LillistUI/Sources/LillistUI/Sync/SyncMigrationRecoverySheet.swift
     blob: 94595d3885ceeeba0cb2be0b21c30a828e862b8d
   - path: Packages/LillistUI/Sources/LillistUI/Sync/SyncSheetRoute.swift
     blob: 1cadc05f00c4d440a2b7ff204152a0b3ca0ac2fd
 references_modules: [Packages-LillistCore-Sources-LillistCore-LinkPreview, Packages-LillistUI-Sources-LillistUI-Components-chunk-1, Packages-LillistUI-Sources-LillistUI-Theme-chunk-1]
 generator: cartographer/4
-baseline: 8e926f08fd5269de164d25b42880893a604a9d5c
+baseline: 99321d774840d17affd02fe2ac63b01b3d8cbec3
 ---
 
 # Module: Packages/LillistUI/Sources/LillistUI/Sync
@@ -34,11 +34,11 @@ Provides the complete set of pure-presentation SwiftUI surfaces for the iCloud s
 | --- | --- | --- | --- |
 | `Direction` | enum | `Packages/LillistUI/Sources/LillistUI/Sync/SyncMigrationConfirmationDialog.swift:8` | `Sendable` enum with two cases tagging the destructive sync direction; drives `title`/`message` copy on the parent confirmation dialog. |
 | `PauseExplainerDialog` | struct | `Packages/LillistUI/Sources/LillistUI/Sync/PauseExplainerDialog.swift:17` | Renders per-PauseReason sync-pause explanation; "Disable Sync" option appears only for `.accountChanged`; `onDisableSync` defaults to `{}`. |
-| `RainbowProgressBar` | struct | `Packages/LillistUI/Sources/LillistUI/Sync/SyncMigrationProgressSheet.swift:109` | Inset spectrum progress bar; clamps `value` to [0,1]; uses `.accessibilityRepresentation` to expose a native ProgressView for VoiceOver. |
+| `RainbowProgressBar` | struct | `Packages/LillistUI/Sources/LillistUI/Sync/SyncMigrationProgressSheet.swift:103` | Inset spectrum progress bar; clamps `value` to [0,1]; uses `.accessibilityRepresentation` to expose a native ProgressView for VoiceOver. |
 | `SyncDisableConfirmationSheet` | struct | `Packages/LillistUI/Sources/LillistUI/Sync/SyncDisableConfirmationSheet.swift:6` | Confirmation sheet for disabling iCloud Sync; presents sync-first vs disable-now paths; callers wire three closures, no state owned. |
 | `SyncMigrationChoiceSheet` | struct | `Packages/LillistUI/Sources/LillistUI/Sync/SyncMigrationChoiceSheet.swift:9` | Full-screen choice sheet for enabling sync from LocalOnly; surfaces two destructive options plus Cancel; no state owned. |
 | `SyncMigrationConfirmationDialog` | struct | `Packages/LillistUI/Sources/LillistUI/Sync/SyncMigrationConfirmationDialog.swift:7` | Second-tap confirmation dialog; `title` and `message` are `public var String` so hosts can extract them for `.confirmationDialog` without rendering the view. |
-| `SyncMigrationProgressSheet` | struct | `Packages/LillistUI/Sources/LillistUI/Sync/SyncMigrationProgressSheet.swift:11` | Full-screen migration progress renderer; driven by `MigrationPhase`; Done button visible only on `.completed`; progress bar shown only for phases carrying a Double. |
+| `SyncMigrationProgressSheet` | struct | `Packages/LillistUI/Sources/LillistUI/Sync/SyncMigrationProgressSheet.swift:13` | Full-screen migration progress renderer; driven by `MigrationPhase`; Done button visible only on `.completed`; progress bar shown only for phases carrying a Double. |
 | `SyncMigrationRecoverySheet` | struct | `Packages/LillistUI/Sources/LillistUI/Sync/SyncMigrationRecoverySheet.swift:8` | Launch-time recovery sheet for interrupted migrations; `detailText(for:)` is `public nonisolated static` for testability; adds disk-space hint when `failureReason` contains "insufficientDiskSpace". |
 | `SyncSheetRoute` | enum | `Packages/LillistUI/Sources/LillistUI/Sync/SyncSheetRoute.swift:14` | Callers may bind any case to `.sheet(item:)`; at most one sheet is ever presented, and `.progress`'s `id` stays constant across phase changes so the sheet updates in place. `Packages/LillistUI/Sources/LillistUI/Sync/SyncSheetRoute.swift:14-40` |
 | `afterToggle` | func | `Packages/LillistUI/Sources/LillistUI/Sync/SyncSheetRoute.swift:37` | Returns `.choice` when `on` is true, `.disable` when false; callers need not know which route maps to which toggle state. `Packages/LillistUI/Sources/LillistUI/Sync/SyncSheetRoute.swift:37-39` |
@@ -56,7 +56,6 @@ Provides the complete set of pure-presentation SwiftUI surfaces for the iCloud s
 - `Packages-LillistUI-Sources-LillistUI-Sync.RainbowProgressBar -> Packages-LillistUI-Sources-LillistUI-Theme-chunk-1.fill (calls)`
 - `Packages-LillistUI-Sources-LillistUI-Sync.SyncMigrationChoiceSheet -> Packages-LillistUI-Sources-LillistUI-Theme-chunk-1.rainbow (calls)`
 - `Packages-LillistUI-Sources-LillistUI-Sync.SyncMigrationProgressSheet -> Packages-LillistCore-Sources-LillistCore-LinkPreview.String (calls)`
-- `Packages-LillistUI-Sources-LillistUI-Sync.SyncMigrationProgressSheet -> Packages-LillistUI-Sources-LillistUI-Theme-chunk-1.rainbow (calls)`
 - `Packages-LillistUI-Sources-LillistUI-Sync.SyncMigrationRecoverySheet -> Packages-LillistCore-Sources-LillistCore-LinkPreview.String (calls)`
 - `Packages-LillistUI-Sources-LillistUI-Sync.SyncMigrationRecoverySheet -> Packages-LillistUI-Sources-LillistUI-Theme-chunk-1.rainbow (calls)`
 - `Packages-LillistUI-Sources-LillistUI-Sync.body -> Packages-LillistCore-Sources-LillistCore-LinkPreview.String (calls)`

@@ -4,9 +4,9 @@ summary: "xcodegen spec generating the Lillist-macOS Xcode project (app + unit-t
 read_when: "Editing macOS target structure or scheme"
 sources:
   - path: Apps/project.yml
-    blob: 983aae37c65f76c863ed162b82b7d5db46d43a62
+    blob: dae7821c550445f30f490bdcabfe4ac157f0f719
 generator: cartographer/4
-baseline: 8e926f08fd5269de164d25b42880893a604a9d5c
+baseline: 99321d774840d17affd02fe2ac63b01b3d8cbec3
 ---
 
 # Module: Apps (misc)

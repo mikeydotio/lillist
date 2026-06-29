@@ -3,21 +3,21 @@ module: overview/ARCHITECTURE
 summary: "System architecture and cross-module relationships"
 sources:
   - path: docs/atlas/modules/Apps-Config.md
-    blob: bab9286727342e0bd3e0de21da8469984f402a97
+    blob: 6552414d63fa0af6b60520ec9f3f791faf553b06
   - path: docs/atlas/modules/Apps-Lillist-iOS-Sources-App.md
     blob: 9aa6cf81686eee815fdc039571a930751abad267
   - path: docs/atlas/modules/Apps-Lillist-iOS-Sources-Settings-Pages.md
-    blob: 9679fdd24750f87aa6293930b3a951a12dd3552e
+    blob: fb9e61a06f7bfbdf194435543d57ab2ff913dc35
   - path: docs/atlas/modules/Apps-Lillist-iOS-Sources-Settings-misc.md
-    blob: 88f9067fa80b8a9df7c4f34f195703216d3fcced
+    blob: 3fd5204c348e22ea40976e8b8f8ea0dfb21dd981
   - path: docs/atlas/modules/Apps-Lillist-iOS-Sources-misc.md
     blob: a9a6811f500af2ecf51d9fc9a84a62721e140f59
   - path: docs/atlas/modules/Apps-Lillist-iOS-misc.md
-    blob: 59cf6cebed2c8f5ea23228ee11c76441116ee581
+    blob: 80fcebcda124dcb81fcf6590c9a0b0db3fcd768f
   - path: docs/atlas/modules/Apps-Lillist-macOS-Sources-Hotkey.md
     blob: a1ace49c8bc6b6dfe2995bb6f0484842b1ae75cd
   - path: docs/atlas/modules/Apps-Lillist-macOS-Sources-Preferences.md
-    blob: 3cdfe6a92d231193c01828d2130abadac6f2227c
+    blob: 30689be5aa98dd84b57b3cf848e110217a7b9a21
   - path: docs/atlas/modules/Apps-Lillist-macOS-Sources-chunk-1.md
     blob: 45004817fee3220224b06b252c0ea4c9db9fdf73
   - path: docs/atlas/modules/Apps-Lillist-macOS-Sources-chunk-2.md
@@ -25,7 +25,7 @@ sources:
   - path: docs/atlas/modules/Apps-Lillist-macOS-misc.md
     blob: 8717684e25ea017ded7147e370f1f0ea6e00d41d
   - path: docs/atlas/modules/Apps-misc.md
-    blob: 22eae4410762be64ad72f83442bb60b6ac2638c6
+    blob: c4f968967be989f8c7883dc252bfdbb79750023a
   - path: docs/atlas/modules/Extensions-ShareExtension-iOS.md
     blob: 64158530867522bc41ba715620828fc270974d96
   - path: docs/atlas/modules/Extensions-ShortcutsActions-Entities.md
@@ -49,7 +49,7 @@ sources:
   - path: docs/atlas/modules/Packages-LillistCore-Sources-LillistCore-Export.md
     blob: af52f7f97a48e9b5113ebacf0802c54b6af0cef1
   - path: docs/atlas/modules/Packages-LillistCore-Sources-LillistCore-LinkPreview.md
-    blob: 25f4178c8871397dda70eff0a8bf230caf432426
+    blob: c0e425bdea90068b9d55beb2af3b24a5e89066e8
   - path: docs/atlas/modules/Packages-LillistCore-Sources-LillistCore-ManagedObjects.md
     blob: 1301d3845df8a65717d861bcc6b0c732a78272cb
   - path: docs/atlas/modules/Packages-LillistCore-Sources-LillistCore-Model.md
@@ -69,13 +69,13 @@ sources:
   - path: docs/atlas/modules/Packages-LillistCore-Sources-LillistCore-Stores-chunk-1.md
     blob: 97af74e1cb3eed6948f9d704c975d6e6fc215dc9
   - path: docs/atlas/modules/Packages-LillistCore-Sources-LillistCore-Stores-chunk-2.md
-    blob: 290460ede8a4d5803231caf1f329183cac850567
+    blob: dd6a943e27442623ddc0f14f817cbfb97edc2197
   - path: docs/atlas/modules/Packages-LillistCore-Sources-LillistCore-Sync-chunk-1.md
-    blob: 6f96784b30e00c05261a9759d18659a4244acb2c
+    blob: 30e7d41bc7c2723906a86e42a70736f92cb93c27
   - path: docs/atlas/modules/Packages-LillistCore-Sources-LillistCore-Sync-chunk-2.md
-    blob: bafa6b35528efbf2cf614fcfe44ed95c4ed71613
+    blob: a83688e96b2e443500e169ea2f78a6e46319c433
   - path: docs/atlas/modules/Packages-LillistCore-Sources-LillistCore-misc.md
-    blob: 5835ee5601d2598fcae3085eaea995d64ad98084
+    blob: 2e87e4745177305a58d5230ca6cd17fcbb2b9402
   - path: docs/atlas/modules/Packages-LillistCore-Sources-lillist-cli-Commands-chunk-1.md
     blob: ca5e752339750a98f5e436396099b6347476e3c9
   - path: docs/atlas/modules/Packages-LillistCore-Sources-lillist-cli-Commands-chunk-2.md
@@ -89,7 +89,7 @@ sources:
   - path: docs/atlas/modules/Packages-LillistUI-Sources-LillistUI-Accessibility.md
     blob: 9e6348f1defc3c1b8a0a5859aa4721d5723648cd
   - path: docs/atlas/modules/Packages-LillistUI-Sources-LillistUI-Components-chunk-1.md
-    blob: 5dc4d4c3ba4cb9742b4707f0928e641ceffe98ac
+    blob: 6d63d4dbc253bf22eb5b04139a0e994b2a6457b0
   - path: docs/atlas/modules/Packages-LillistUI-Sources-LillistUI-Components-chunk-2.md
     blob: 3005025693c3d9e69af612d524da99895b673448
   - path: docs/atlas/modules/Packages-LillistUI-Sources-LillistUI-CrashReporting.md
@@ -105,11 +105,11 @@ sources:
   - path: docs/atlas/modules/Packages-LillistUI-Sources-LillistUI-Recurrence.md
     blob: a6b11ff49ed0c2a5decda9c659b16a52b0bd5929
   - path: docs/atlas/modules/Packages-LillistUI-Sources-LillistUI-Settings.md
-    blob: f19c98bbef86e9e6398873876d59273c8818bc0e
+    blob: 594529bc5bf3cc2582b1fc9d02e0aa5861008adc
   - path: docs/atlas/modules/Packages-LillistUI-Sources-LillistUI-Status.md
-    blob: 13ee85982b456da78f5f40b6168f3ff21dd05043
+    blob: fcb4925733f1b1d7d5f5f69ed8e8a048a9588b0c
   - path: docs/atlas/modules/Packages-LillistUI-Sources-LillistUI-Sync.md
-    blob: 8bcc6fab955d840f7f95bf67d5c62bea2babf36d
+    blob: 3556d904e2096d0c80eec5ae59ed15fea2feecd3
   - path: docs/atlas/modules/Packages-LillistUI-Sources-LillistUI-Theme-chunk-1.md
     blob: dbdd2ef6d80defb110cf3d4b4a9f28ba3247c744
   - path: docs/atlas/modules/Packages-LillistUI-Sources-LillistUI-Theme-chunk-2.md
@@ -119,11 +119,11 @@ sources:
   - path: docs/atlas/modules/Packages-LillistUI-Sources-LillistUI-iOS-misc.md
     blob: b596496055fd764bac016c2c5e88306c3adcab33
   - path: docs/atlas/modules/Packages-LillistUI-Sources-LillistUI-misc.md
-    blob: ff984258bc034a9a24c762bd71a55bd7d0584f23
+    blob: 30256dcab255311de2312c463f8ded7d7cef589a
   - path: docs/atlas/modules/Tools.md
     blob: 12f0da0a05abe1c8c1610b46b7601bd806de13ed
   - path: docs/atlas/modules/root-misc.md
-    blob: 5bf0d5a3030ecc3747e8d3b579b4c09418935fee
+    blob: 2b6c8885260802a794afbdbd3eb1f5b86dd6f057
 scopes:
   - tree: .claude
     sha: c0048318f41119751eb2c47fac6b554968263749
@@ -134,28 +134,28 @@ scopes:
   - tree: .semver
     sha: 5c304c73e25e543188c0621d53e93485ab8a88c9
   - tree: Apps
-    sha: f26379ccebb35e2bbce24584ac1d629f055f6ed3
+    sha: 20592a1d7093845751e84c34168e1618859e81ca
   - tree: Extensions
     sha: 7cab90c6c86441df34918c362dcae31865c3f149
   - tree: Lillist.xcworkspace
     sha: 4ab8ae97476a5eee945c84abee40f224c3608d73
   - tree: Packages
-    sha: 00d1e82950337222f00ae86aa7736d129e167b8c
+    sha: 4333c8c3496a1b88c57430b382be6dde5054f30c
   - tree: Tools
     sha: 5587bf16d839d26dd87051c9c2ee0d382492dc74
 generator: cartographer/4
-baseline: 8e926f08fd5269de164d25b42880893a604a9d5c
+baseline: 99321d774840d17affd02fe2ac63b01b3d8cbec3
 ---
 
 # Architecture
 
 ## System shape
 
-Lillist follows a strict four-layer dependency stack: `LillistCore` (data model, stores, sync, notifications, predicate rules, CLI bridge) is the foundation; `LillistUI` (cross-platform SwiftUI component library, theme tokens, quick-capture parser, recurrence editor, sync sheets) sits above it and has no knowledge of app lifecycle; the iOS and macOS app targets sit above that and wire `AppEnvironment` into the SwiftUI environment; the `lillist` CLI and the iOS extensions (`ShareExtension-iOS`, `ShortcutsActions`) are lateral consumers that import `LillistCore` directly, bypassing `LillistUI` entirely. The critical seam between `LillistCore` and everything above it is the value-DTO boundary: `NSManagedObject` never leaves the package; every store method returns `TaskRecord`, `JournalRecord`, `SeriesRecord`, or equivalent `Sendable`/`Equatable` structs that are safe to hold across actor boundaries.
+Lillist is a strictly layered Apple-platform app. Four layers stack in one direction — LillistCore, LillistUI, the two app targets (iOS and macOS), plus lateral extensions and CLI that reuse core without touching UI. LillistCore owns the data model (Core Data entities, NSPersistentCloudKitContainer), all store APIs (TaskStore, TagStore, JournalStore, etc.), the sync-mode state machine and CloudKit plumbing, recurrence expansion, notification scheduling, and the CLIBridge verb layer. LillistUI is a cross-platform SwiftUI library sitting on top of LillistCore; it supplies the design-token theme (Rainbow Logic / Liquid Glass), pure-presentation screen structs, the shared Settings primitives including ICloudSyncSettingsSection, sync-modal surfaces (SyncSheetRoute + six sheet views), the Status translation layer (CloudKitSyncStatusAdapter → SyncIndicatorMonitor), task-row components, editor, drag-reorder, quick-capture, and crash-reporting UI. The two app targets (Apps/Lillist-iOS, Apps/Lillist-macOS) are thin wrappers: they own AppEnvironment, @State, navigation destinations, and the env-coupled Settings/Preferences sections that wire live stores to LillistUI's state-free presenters. The Share Extension and Shortcuts Actions Extension sit laterally — they import LillistCore directly and are gated by MigrationGate.
 
-Within each app target, a second seam runs between the `AppEnvironment` composition root — a `@MainActor @Observable` class that owns every store, scheduler, sync coordinator, and crash reporter as `let` properties — and the `LillistUI` presenter layer. `LillistUI` screens own no `@State` and make no `.task` network calls; they receive all data and closures from app-level wrapper views. The iOS tab screens and macOS `RootSplitView` are the only views that hold navigation destinations referencing app-internal types `LillistUI` cannot import, keeping the shared library free of app dependencies.
+The seams are load-bearing. No NSManagedObject crosses LillistCore's boundary — every public store API returns a value-type DTO (TaskRecord, TagRecord, etc.). LillistUI screens are stateless presenters: they receive data and action closures via init, own no @State, issue no .task calls, and read nothing from AppEnvironment — making them fully renderable by the snapshot-test tour runner with frozen mock data. The app-layer wrappers own all lifecycle (@State, .task, environment reads) and all navigationDestination handlers that reference app-target types LillistUI cannot import.
 
-Extensions and the CLI reuse `LillistCore` directly and share the App Group container `group.app.lillist`. Before any of them opens the Core Data store, `GatedPersistenceResolver` / `MigrationGate` evaluates the atomic migration journal in the App Group; if a sync-mode migration is in flight, the caller receives `LillistError.storeUnavailable` and must surface an error rather than open a half-migrated store. `PersistenceHost` — a Swift actor — is the single authority over `NSPersistentCloudKitContainer`'s lifetime; it never re-instantiates the container across sync-mode swaps, only removes and re-adds the underlying store on the same coordinator instance.
+The sync and Settings surfaces follow this pattern explicitly: the shared ICloudSyncSettingsSection (LillistUI) and the complete sync-modal sheet set (LillistUI/Sync) are pure presenters; the env-coupled iOS ICloudSyncSection and macOS ICloudSyncPane own the MigrationCoordinator calls, SyncSheetRoute routing slot, and TaskStore.syncCounts() polling that feeds the ViewState snapshots the presenters render. CloudKitSyncStatusAdapter (LillistUI/Status) bridges the async SyncStatusMonitor stream from LillistCore onto the @Observable SyncIndicatorMonitor protocol that all UI surfaces bind to; the app layer overlays account-level PauseReason atop the adapter's output.
 
 ## Module relationships
 
@@ -178,8 +178,11 @@ Extensions and the CLI reuse `LillistCore` directly and share the App Group cont
 - `Apps-Lillist-iOS-Sources-App -> Packages-LillistUI-Sources-LillistUI-Theme-chunk-1 (calls)`
 - `Apps-Lillist-iOS-Sources-App -> Packages-LillistUI-Sources-LillistUI-iOS-Tasks (calls)`
 - `Apps-Lillist-iOS-Sources-Settings-Pages -> Apps-Lillist-iOS-Sources-Settings-misc (calls)`
+- `Apps-Lillist-iOS-Sources-Settings-Pages -> Packages-LillistCore-Sources-LillistCore-LinkPreview (calls)`
 - `Apps-Lillist-iOS-Sources-Settings-Pages -> Packages-LillistUI-Sources-LillistUI-Settings (calls)`
+- `Apps-Lillist-iOS-Sources-Settings-Pages -> Packages-LillistUI-Sources-LillistUI-Sync (calls)`
 - `Apps-Lillist-iOS-Sources-Settings-Pages -> Packages-LillistUI-Sources-LillistUI-Theme-chunk-1 (calls)`
+- `Apps-Lillist-iOS-Sources-Settings-Pages -> Packages-LillistUI-Sources-LillistUI-iOS-misc (calls)`
 - `Apps-Lillist-iOS-Sources-Settings-misc -> Apps-Lillist-iOS-Sources-Settings-Pages (calls)`
 - `Apps-Lillist-iOS-Sources-Settings-misc -> Apps-Lillist-macOS-Sources-Hotkey (calls)`
 - `Apps-Lillist-iOS-Sources-Settings-misc -> Packages-LillistCore-Sources-LillistCore-Backup (calls)`
@@ -193,7 +196,6 @@ Extensions and the CLI reuse `LillistCore` directly and share the App Group cont
 - `Apps-Lillist-iOS-Sources-Settings-misc -> Packages-LillistCore-Sources-LillistCore-misc (calls)`
 - `Apps-Lillist-iOS-Sources-Settings-misc -> Packages-LillistUI-Sources-LillistUI-Accessibility (calls)`
 - `Apps-Lillist-iOS-Sources-Settings-misc -> Packages-LillistUI-Sources-LillistUI-Settings (calls)`
-- `Apps-Lillist-iOS-Sources-Settings-misc -> Packages-LillistUI-Sources-LillistUI-Sync (calls)`
 - `Apps-Lillist-iOS-Sources-Settings-misc -> Packages-LillistUI-Sources-LillistUI-Theme-chunk-1 (calls)`
 - `Apps-Lillist-iOS-Sources-Settings-misc -> Packages-LillistUI-Sources-LillistUI-iOS-misc (calls)`
 - `Apps-Lillist-iOS-Sources-misc -> Apps-Lillist-iOS-Sources-Settings-misc (calls)`
@@ -371,6 +373,7 @@ Extensions and the CLI reuse `LillistCore` directly and share the App Group cont
 - `Packages-LillistCore-Sources-LillistCore-Stores-chunk-2 -> Packages-LillistCore-Sources-LillistCore-Ordering (calls)`
 - `Packages-LillistCore-Sources-LillistCore-Stores-chunk-2 -> Packages-LillistCore-Sources-LillistCore-Persistence (calls)`
 - `Packages-LillistCore-Sources-LillistCore-Stores-chunk-2 -> Packages-LillistCore-Sources-LillistCore-Recurrence (calls)`
+- `Packages-LillistCore-Sources-LillistCore-Stores-chunk-2 -> Packages-LillistCore-Sources-LillistCore-Stores-chunk-1 (calls)`
 - `Packages-LillistCore-Sources-LillistCore-Stores-chunk-2 -> Packages-LillistUI-Sources-LillistUI-Recurrence (calls)`
 - `Packages-LillistCore-Sources-LillistCore-Sync-chunk-1 -> Extensions-ShareExtension-iOS (calls)`
 - `Packages-LillistCore-Sources-LillistCore-Sync-chunk-1 -> Packages-LillistCore-Sources-LillistCore-LinkPreview (calls)`
@@ -451,6 +454,7 @@ Extensions and the CLI reuse `LillistCore` directly and share the App Group cont
 - `Packages-LillistUI-Sources-LillistUI-Recurrence -> Packages-LillistCore-Sources-LillistCore-Recurrence (calls)`
 - `Packages-LillistUI-Sources-LillistUI-Recurrence -> Packages-LillistUI-Sources-LillistUI-Theme-chunk-1 (calls)`
 - `Packages-LillistUI-Sources-LillistUI-Settings -> Packages-LillistCore-Sources-LillistCore-LinkPreview (calls)`
+- `Packages-LillistUI-Sources-LillistUI-Settings -> Packages-LillistUI-Sources-LillistUI-Recurrence (calls)`
 - `Packages-LillistUI-Sources-LillistUI-Settings -> Packages-LillistUI-Sources-LillistUI-iOS-misc (calls)`
 - `Packages-LillistUI-Sources-LillistUI-Status -> Packages-LillistUI-Sources-LillistUI-DragReorder (calls)`
 - `Packages-LillistUI-Sources-LillistUI-Sync -> Packages-LillistCore-Sources-LillistCore-LinkPreview (calls)`
@@ -484,22 +488,16 @@ Extensions and the CLI reuse `LillistCore` directly and share the App Group cont
 
 ## Data flow
 
-Representative action: user creates a task via Quick Capture on iOS.
-
-1. The user types in `QuickCapture` (LillistUI), which parses `#tag` and `^date` tokens inline and returns a structured draft to the iOS app's Quick Capture wrapper view.
-2. The wrapper calls `TaskStore.create(title:placement:.top)` (LillistCore Stores). `TaskStore` serializes through `viewContext.perform`, allocates a fractional position via `FractionalPositioning.position` (Ordering module), stamps `stampCurrentSchemaVersion` on the new `LillistTask` managed object, and saves. It returns a `TaskRecord` DTO — the only type that crosses the module boundary.
-3. `NSPersistentCloudKitContainer` (managed by `PersistenceController` / `PersistenceHost`) picks up the save and begins mirroring the record to the private CloudKit zone (`iCloud.app.lillist`). It fires `eventChangedNotification` events as setup and export operations progress.
-4. `CloudKitEventBridge` (Sync chunk 1) translates each notification into a `CloudKitSyncEvent` and fans it to all registered `AsyncStream` subscribers. `SyncStatusMonitor` (Sync chunk 2) consumes the stream; its `apply` reducer updates `currentStatus` and fans a `SyncStatus` snapshot to all registered continuations.
-5. `CloudKitSyncStatusAdapter` (LillistUI/Status) consumes the `SyncStatus` stream on `@MainActor` and publishes a `SyncIndicator` enum value. The sync dot in the task list re-renders without any store fetch — the event pipeline is entirely decoupled from the data layer.
-6. On other devices, `RemoteChangeReconciler` (Persistence) receives `NSPersistentStoreRemoteChange`, diffs persistent history for foreign-authored `NotificationSpec.lastFiredAt` and task changes, and fires `onAffectedTasks` with affected UUIDs, prompting the task list to refresh via `TaskStore.fetch`.
+Consider a user toggling iCloud Sync off from iOS Settings. The action originates in ICloudSyncSection (Apps-Lillist-iOS-Sources-Settings-misc), which holds an ICloudSyncModalsModel and a SyncSheetRoute? routing slot. The toggle's onChange calls handleToggle(on: false), which sets route to .disable via SyncSheetRoute.afterToggle(on:) (LillistUI/Sync). The .sheet(item: $route) bound in the host ICloudSyncPage presents SyncDisableConfirmationSheet (LillistUI/Sync) — a pure-presentation struct receiving two closures. The user chooses "Sync First"; the closure calls ICloudSyncSection.triggerDisable(strategy: .syncFirst), which invokes runMigration: it subscribes MigrationCoordinator.progressStream into route (setting it to .progress(phase)), then calls coordinator.beginDisable(strategy:) on the @MainActor MigrationCoordinator (LillistCore/Sync-chunk-1). MigrationCoordinator.runMigration, the 170-line core state machine, writes journal heartbeats at each phase, cancels pending notifications via NotificationScheduler (LillistCore/Notifications), waits for the quiesce gate via SyncStatusMonitor (LillistCore/Sync-chunk-2), tears down the CloudKit-backed store, rebuilds the local-only store via PersistenceController (LillistCore/Persistence), restores notifications, and writes the new SyncMode to SyncModeStore (LillistCore/Sync-chunk-1). Each phase boundary emits a MigrationPhase via progressStream, which runMigration's subscriber converts to a new .progress(phase) route value; the SwiftUI binding updates SyncMigrationProgressSheet (LillistUI/Sync) in place — the sheet's .progress case holds a constant id so it updates rather than dismisses. On .completed, runMigration sets route to nil, dismissing the sheet. Meanwhile CloudKitEventBridge (LillistCore/Sync-chunk-1) stops receiving eventChangedNotification events; CloudKitSyncStatusAdapter (LillistUI/Status) receives the final status from SyncStatusMonitor and publishes a new SyncIndicator to the app's sync dot. ICloudSyncSection.refreshCounts() — called on every indicator change — polls TaskStore.syncCounts() (LillistCore/Stores-chunk-2) and writes the result into ViewState, causing ICloudSyncSettingsSection (LillistUI/Settings) to render the updated local/mirrored counts.
 
 <!-- atlas:index-facts -->
-- Four layers: LillistCore -> LillistUI -> iOS/macOS apps; extensions + CLI reuse core
-- No NSManagedObject escapes LillistCore; store APIs return value DTOs (TaskRecord etc.)
-- TaskStore is the single async gateway for all LillistTask CRUD, reorder, and status
-- Date math uses Calendar; RecurrenceExpander is canonical, never addingTimeInterval
-- Smart filters: NSPredicateCompiler + SwiftEvaluator twin backends kept in parity
-- CLIBridge handlers are the shared verb layer for both lillist CLI and Shortcuts intents
-- All targets share App Group group.app.lillist; CLI/extensions gated by MigrationGate
-- LillistUI screens are state-free presenters; app wrappers own @State and navigation
+- Layers: LillistCore->LillistUI->apps; CLI/extensions reuse core
+- No NSManagedObject leaves LillistCore; stores return DTOs
+- TaskStore: sole async gateway for task CRUD/reorder/status
+- Date math via Calendar; RecurrenceExpander canonical
+- Smart filters: NSPredicateCompiler + SwiftEvaluator parity
+- App Group group.app.lillist; gated by MigrationGate
+- LillistUI screens state-free; apps own @State/nav
+- MigrationCoordinator: @MainActor sync-mode FSM
+- CloudKitSyncStatusAdapter bridges sync to UI
 <!-- /atlas:index-facts -->

@@ -18,7 +18,7 @@ sources:
   - path: .semver/hooks/pre-bump/sync-marketing-version.sh
     blob: eb38f15b18b0dc779e1276fd479e877017e40169
   - path: CHANGELOG.md
-    blob: 759a7b1b5b4f303ce597e9cf59f978bc43d9d4f6
+    blob: 7a33c351b38d5913b66486e9397ed52272b89c9a
   - path: HANDOFF.md
     blob: c507d9e2183b882c613cf819ea95bd274f96df5d
   - path: LICENSE
@@ -30,9 +30,9 @@ sources:
   - path: THIRD-PARTY-LICENSES.md
     blob: 4248c37799371a584b25acb4ffd8131cc694f694
   - path: VERSION
-    blob: 8a2b9627ad11a09c76ba73ccf51879f9ca9ad8eb
+    blob: 6b72fde64707595a66404d81a551f2dcd0c4fae3
 generator: cartographer/4
-baseline: 8e926f08fd5269de164d25b42880893a604a9d5c
+baseline: 99321d774840d17affd02fe2ac63b01b3d8cbec3
 ---
 
 # Module: root (misc)

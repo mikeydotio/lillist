@@ -14,7 +14,7 @@ sources:
   - path: Apps/Lillist-macOS/Sources/Preferences/GeneralPane.swift
     blob: b9d931ffa5f633ab2a7ba7748f5f6e2badbc0a82
   - path: Apps/Lillist-macOS/Sources/Preferences/ICloudSyncPane.swift
-    blob: 8a4b37de0cb8e797657856b68e9f3ea9950964fa
+    blob: b201bcbdf74497b6d4053a3f31f9084049c9b122
   - path: Apps/Lillist-macOS/Sources/Preferences/NotificationsPane.swift
     blob: 1a0dae89d0c41480471cd077769249173b61f621
   - path: Apps/Lillist-macOS/Sources/Preferences/PreferencesWindow.swift
@@ -27,7 +27,7 @@ sources:
     blob: 11ac9a27d3d735c3cf5075b01b7dc2957a3985f2
 references_modules: [Apps-Lillist-macOS-Sources-Hotkey, Packages-LillistCore-Sources-LillistCore-Backup, Packages-LillistCore-Sources-LillistCore-Diagnostics, Packages-LillistCore-Sources-LillistCore-Export, Packages-LillistCore-Sources-LillistCore-LinkPreview, Packages-LillistCore-Sources-LillistCore-Notifications, Packages-LillistCore-Sources-LillistCore-Persistence, Packages-LillistCore-Sources-LillistCore-Reminders, Packages-LillistCore-Sources-LillistCore-Stores-chunk-2, Packages-LillistCore-Sources-LillistCore-Sync-chunk-1, Packages-LillistCore-Sources-LillistCore-misc, Packages-LillistUI-Sources-LillistUI-Accessibility, Packages-LillistUI-Sources-LillistUI-Settings, Packages-LillistUI-Sources-LillistUI-Sync, Packages-LillistUI-Sources-LillistUI-Theme-chunk-1, Packages-LillistUI-Sources-LillistUI-iOS-misc]
 generator: cartographer/4
-baseline: 8e926f08fd5269de164d25b42880893a604a9d5c
+baseline: 99321d774840d17affd02fe2ac63b01b3d8cbec3
 ---
 
 # Module: Apps/Lillist-macOS/Sources/Preferences
@@ -60,20 +60,20 @@ The Preferences module is the macOS `Settings` scene: ten tabbed panes assembled
 | `backupNow` | func | `Apps/Lillist-macOS/Sources/Preferences/BackupPane.swift:100` | Runs BackupSnapshotManager.createSnapshot in a detached Task (non-blocking), then reloads the snapshot list. The sole create-backup path in this pane. (BackupPane.swift:100-115) |
 | `drainNow` | func | `Apps/Lillist-macOS/Sources/Preferences/RemindersPane.swift:128` | Triggers RemindersImporter.drainIfNeeded and surfaces a localized task count result string; the only on-demand import path in this pane. (RemindersPane.swift:128-133) |
 | `emptyTrash` | func | `Apps/Lillist-macOS/Sources/Preferences/TrashPane.swift:94` | Calls TaskStore.purgeAll, formats a localized result string, and posts an accessibility announcement; the sole empty-trash path including the a11y feedback contract. (TrashPane.swift:94-109) |
-| `handleToggle` | func | `Apps/Lillist-macOS/Sources/Preferences/ICloudSyncPane.swift:110` | Routes the sync toggle: enable shows the choice sheet, disable shows the disable-confirmation sheet. Gate for the full migration flow; wrong routing here breaks the migration UX. (ICloudSyncPane.swift:117-123) |
+| `handleToggle` | func | `Apps/Lillist-macOS/Sources/Preferences/ICloudSyncPane.swift:123` | Routes the sync toggle: enable shows the choice sheet, disable shows the disable-confirmation sheet. Gate for the full migration flow; wrong routing here breaks the migration UX. (ICloudSyncPane.swift:117-123) |
 | `hmBinding` | func | `Apps/Lillist-macOS/Sources/Preferences/NotificationsPane.swift:99` | Maps Int16 defaultAllDayHour/Minute prefs fields bidirectionally to a Date for the all-day DatePicker; the sole bridging path between raw prefs and the DatePicker. (NotificationsPane.swift:99-108) |
-| `isAvailable` | func | `Apps/Lillist-macOS/Sources/Preferences/ICloudSyncPane.swift:120` | Maps iCloudAccountState enum to a Bool used to gate the toggle and show a footer; called from three sites in viewState computation. (ICloudSyncPane.swift:131-134) |
+| `isAvailable` | func | `Apps/Lillist-macOS/Sources/Preferences/ICloudSyncPane.swift:133` | Maps iCloudAccountState enum to a Bool used to gate the toggle and show a footer; called from three sites in viewState computation. (ICloudSyncPane.swift:131-134) |
 | `loadIfNeeded` | func | `Apps/Lillist-macOS/Sources/Preferences/RemindersPane.swift:95` | One-shot init with didLoad guard: reads enabled flag, selected list ID, and authorization from DevicePreferencesStore, then conditionally loads Reminders lists. (RemindersPane.swift:95-104) |
 | `loadSnapshots` | func | `Apps/Lillist-macOS/Sources/Preferences/BackupPane.swift:96` | Populates the snapshot list from BackupSnapshotManager; called on .task and after backupNow. Without it, the pane always shows empty even when backups exist. (BackupPane.swift:96-98) |
 | `morningBinding` | func | `Apps/Lillist-macOS/Sources/Preferences/NotificationsPane.swift:110` | Maps Int16 morningSummaryHour/Minute prefs fields bidirectionally to a Date for the morning DatePicker. (NotificationsPane.swift:110-118) |
-| `openSystemSettings` | func | `Apps/Lillist-macOS/Sources/Preferences/ICloudSyncPane.swift:114` | Opens the macOS iCloud System Settings deep-link URL via NSWorkspace; used from both the sync-toggle context and the PauseExplainerDialog callback. (ICloudSyncPane.swift:125-129) |
-| `prepare` | func | `Apps/Lillist-macOS/Sources/Preferences/DiagnosticsPane.swift:98` | Assembles DiagnosticPackageBuilder with metadata, builds the zip, wraps it in DiagnosticZipDocument, and triggers .fileExporter. Central to the diagnostics export path. (DiagnosticsPane.swift:94-118) |
+| `prepare` | func | `Apps/Lillist-macOS/Sources/Preferences/DiagnosticsPane.swift:98` | Sole execution path for building and exporting the diagnostic package. Orchestrates DiagnosticPackageBuilder with user-selected options (includeLogs/includeStore), manages isPreparing gate, populates exportDocument to trigger the fileExporter, and surfaces any build error. Without it the 'Prepare diagnostic package' button is a dead end (DiagnosticsPane.swift:98-122). |
 | `prepareRestore` | func | `Apps/Lillist-macOS/Sources/Preferences/BackupPane.swift:134` | Schema preflight guard before showing the destructive restore confirmation; prevents incompatible backups from reaching runRestore. (BackupPane.swift:134-150) |
+| `refreshCounts` | func | `Apps/Lillist-macOS/Sources/Preferences/ICloudSyncPane.swift:111` | Sole supplier of taskCounts, which feeds localTaskCount and mirroredTaskCount into viewState for ICloudSyncSettingsSection. Called on initial .task and on every syncMonitor.indicator change to keep counts current after a sync settles. Without it both count fields always show nil (ICloudSyncPane.swift:111-113, 29-33). |
 | `refreshLists` | func | `Apps/Lillist-macOS/Sources/Preferences/RemindersPane.swift:124` | Fetches current Reminders lists from the gateway and updates the Picker; called after authorization is granted and after setEnabled. (RemindersPane.swift:124-126) |
 | `requestAccess` | func | `Apps/Lillist-macOS/Sources/Preferences/RemindersPane.swift:116` | Requests Reminders authorization, re-reads the result, and conditionally refreshes lists; fan-in 3 reflects it is called from the toggle flow, explicit button, and setEnabled. (RemindersPane.swift:116-122) |
 | `runExport` | func | `Apps/Lillist-macOS/Sources/Preferences/AdvancedPane.swift:69` | Orchestrates the full export flow: NSOpenPanel → timestamped directory creation → Exporter lifecycle → Finder reveal on success. Without it, the Advanced pane's export button is inert. (AdvancedPane.swift:69-103) |
 | `runImport` | func | `Apps/Lillist-macOS/Sources/Preferences/AdvancedPane.swift:105` | Orchestrates the import flow: NSOpenPanel → Importer lifecycle → importSummary display. The only path from UI to Importer.importBundle. (AdvancedPane.swift:105-122) |
-| `runMigration` | func | `Apps/Lillist-macOS/Sources/Preferences/ICloudSyncPane.swift:161` | Shared @MainActor migration helper: subscribes progressStream to activePhase before calling the kickoff closure, ensuring no phase is lost. Shared by both enable and disable paths. (ICloudSyncPane.swift:176-194) |
+| `runMigration` | func | `Apps/Lillist-macOS/Sources/Preferences/ICloudSyncPane.swift:179` | Shared @MainActor migration helper: subscribes progressStream to activePhase before calling the kickoff closure, ensuring no phase is lost. Shared by both enable and disable paths. (ICloudSyncPane.swift:176-194) |
 | `runRestore` | func | `Apps/Lillist-macOS/Sources/Preferences/BackupPane.swift:152` | Executes the restore via backupRestoreService.restore and prompts for relaunch; the terminal action of the backup restore flow. (BackupPane.swift:152-165) |
 | `setEnabled` | func | `Apps/Lillist-macOS/Sources/Preferences/RemindersPane.swift:106` | Sole convergence point for the enable toggle: writes the flag to `devicePreferences`, then branches — triggering `requestAccess()` when permission is undetermined or `refreshLists()` when authorized. All side effects of enabling Reminders import funnel through this one function (Apps/Lillist-macOS/Sources/Preferences/RemindersPane.swift:106), invoked from `enabledBinding` (line 77). |
 | `snapshotRow` | func | `Apps/Lillist-macOS/Sources/Preferences/BackupPane.swift:75` | ViewBuilder for each snapshot row showing date, size, Save-a-copy, and Restore buttons; the only rendering path for individual snapshots in the list. (BackupPane.swift:75-92) |
@@ -82,8 +82,8 @@ The Preferences module is the macOS `Settings` scene: ten tabbed panes assembled
 | `subscribe` | func | `Apps/Lillist-macOS/Sources/Preferences/NotificationsPane.swift:69` | Prefs-stream entry point for NotificationsPane; also reads notificationPermissions.currentStatus() on initial load for the permission section. (NotificationsPane.swift:69-79) |
 | `subscribe` | func | `Apps/Lillist-macOS/Sources/Preferences/QuickCapturePane.swift:60` | Prefs-stream entry point for QuickCapturePane; hydrates prefs and keeps the hotkey binding current across CloudKit updates. (QuickCapturePane.swift:60-70) |
 | `subscribe` | func | `Apps/Lillist-macOS/Sources/Preferences/TrashPane.swift:78` | Prefs-stream entry point for TrashPane; hydrates trashRetentionDays and keeps the slider current across external changes. (TrashPane.swift:78-93) |
-| `triggerDisable` | func | `Apps/Lillist-macOS/Sources/Preferences/ICloudSyncPane.swift:154` | Converts DisableStrategy into a runMigration kickoff call to coordinator.beginDisable; bridges UI selection to the MigrationCoordinator API. (ICloudSyncPane.swift:169-173) |
-| `triggerEnable` | func | `Apps/Lillist-macOS/Sources/Preferences/ICloudSyncPane.swift:147` | Converts UI Direction to EnableDirection and wraps coordinator.beginEnable as a runMigration kickoff; the only enable-path entry into MigrationCoordinator. (ICloudSyncPane.swift:162-167) |
+| `triggerDisable` | func | `Apps/Lillist-macOS/Sources/Preferences/ICloudSyncPane.swift:167` | Converts DisableStrategy into a runMigration kickoff call to coordinator.beginDisable; bridges UI selection to the MigrationCoordinator API. (ICloudSyncPane.swift:169-173) |
+| `triggerEnable` | func | `Apps/Lillist-macOS/Sources/Preferences/ICloudSyncPane.swift:160` | Converts UI Direction to EnableDirection and wraps coordinator.beginEnable as a runMigration kickoff; the only enable-path entry into MigrationCoordinator. (ICloudSyncPane.swift:162-167) |
 
 ## Relationships
 
@@ -97,11 +97,11 @@ The Preferences module is the macOS `Settings` scene: ten tabbed panes assembled
 - `Apps-Lillist-macOS-Sources-Preferences.GeneralPane -> Packages-LillistUI-Sources-LillistUI-Settings.Environment (reads)`
 - `Apps-Lillist-macOS-Sources-Preferences.ICloudSyncPane -> Packages-LillistCore-Sources-LillistCore-LinkPreview.String (calls)`
 - `Apps-Lillist-macOS-Sources-Preferences.ICloudSyncPane -> Packages-LillistUI-Sources-LillistUI-Settings.Environment (calls)`
-- `Apps-Lillist-macOS-Sources-Preferences.ICloudSyncPane -> Packages-LillistUI-Sources-LillistUI-Settings.ICloudSyncSettingsSection (calls)`
-- `Apps-Lillist-macOS-Sources-Preferences.ICloudSyncPane -> Packages-LillistUI-Sources-LillistUI-Sync.PauseExplainerDialog (calls)`
-- `Apps-Lillist-macOS-Sources-Preferences.ICloudSyncPane -> Packages-LillistUI-Sources-LillistUI-Sync.SyncDisableConfirmationSheet (calls)`
-- `Apps-Lillist-macOS-Sources-Preferences.ICloudSyncPane -> Packages-LillistUI-Sources-LillistUI-Sync.SyncMigrationChoiceSheet (calls)`
-- `Apps-Lillist-macOS-Sources-Preferences.ICloudSyncPane -> Packages-LillistUI-Sources-LillistUI-Sync.SyncMigrationProgressSheet (calls)`
+- `Apps-Lillist-macOS-Sources-Preferences.ICloudSyncPane -> Packages-LillistUI-Sources-LillistUI-Settings.ICloudSyncSettingsSection (owns)`
+- `Apps-Lillist-macOS-Sources-Preferences.ICloudSyncPane -> Packages-LillistUI-Sources-LillistUI-Sync.PauseExplainerDialog (owns)`
+- `Apps-Lillist-macOS-Sources-Preferences.ICloudSyncPane -> Packages-LillistUI-Sources-LillistUI-Sync.SyncDisableConfirmationSheet (owns)`
+- `Apps-Lillist-macOS-Sources-Preferences.ICloudSyncPane -> Packages-LillistUI-Sources-LillistUI-Sync.SyncMigrationChoiceSheet (owns)`
+- `Apps-Lillist-macOS-Sources-Preferences.ICloudSyncPane -> Packages-LillistUI-Sources-LillistUI-Sync.SyncMigrationProgressSheet (owns)`
 - `Apps-Lillist-macOS-Sources-Preferences.NotificationsPane -> Packages-LillistUI-Sources-LillistUI-Settings.Environment (reads)`
 - `Apps-Lillist-macOS-Sources-Preferences.QuickCapturePane -> Apps-Lillist-macOS-Sources-Hotkey.HotkeyRecorder (calls)`
 - `Apps-Lillist-macOS-Sources-Preferences.QuickCapturePane -> Apps-Lillist-macOS-Sources-Hotkey.reregister (writes)`
@@ -130,6 +130,7 @@ The Preferences module is the macOS `Settings` scene: ten tabbed panes assembled
 - `Apps-Lillist-macOS-Sources-Preferences.prepare -> Packages-LillistCore-Sources-LillistCore-Diagnostics.diagnosticsDirectory (reads)`
 - `Apps-Lillist-macOS-Sources-Preferences.prepare -> Packages-LillistUI-Sources-LillistUI-iOS-misc.DiagnosticZipDocument (owns)`
 - `Apps-Lillist-macOS-Sources-Preferences.prepareRestore -> Packages-LillistCore-Sources-LillistCore-LinkPreview.String (calls)`
+- `Apps-Lillist-macOS-Sources-Preferences.refreshCounts -> Packages-LillistCore-Sources-LillistCore-Stores-chunk-2.syncCounts (reads)`
 - `Apps-Lillist-macOS-Sources-Preferences.revealStoreInFinder -> Packages-LillistCore-Sources-LillistCore-Persistence.onDisk (reads)`
 - `Apps-Lillist-macOS-Sources-Preferences.runExport -> Packages-LillistCore-Sources-LillistCore-Export.Exporter (owns)`
 - `Apps-Lillist-macOS-Sources-Preferences.runExport -> Packages-LillistCore-Sources-LillistCore-Export.export (writes)`

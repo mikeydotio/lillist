@@ -20,12 +20,12 @@ sources:
   - path: Packages/LillistCore/Sources/LillistCore/Support/LillistLog.swift
     blob: 636f02ff196262a60ea4580af417b32e00f4df5c
   - path: Packages/LillistCore/Sources/LillistCore/Validation/LillistError.swift
-    blob: c051be3828e0433836460bd009dadbf78759bef9
+    blob: ca83930b49aa5286a9024ab1340391ced2c6fa05
   - path: Packages/LillistCore/Sources/LillistCore/Validation/Validators.swift
     blob: 17b1c63f195499c870c6a5297d7a7cacabf759e4
 references_modules: [Packages-LillistCore-Sources-LillistCore-Stores-chunk-1, Packages-LillistUI-Sources-LillistUI-Recurrence]
 generator: cartographer/4
-baseline: 515f24730d21cb81ca1c9737ffeb981e9c414d3c
+baseline: 99321d774840d17affd02fe2ac63b01b3d8cbec3
 ---
 
 # Module: Packages/LillistCore/Sources/LillistCore (misc)
@@ -45,7 +45,7 @@ This module is the cross-cutting support layer of LillistCore — the infrastruc
 | `LillistCoreContact` | enum | `Packages/LillistCore/Sources/LillistCore/Support/LillistCoreContact.swift:21` | Namespace enum; runtime-resolved crash-report recipient from Info.plist or env var; `crashReportRecipient` is resolved once at process start — use `resolveRecipient` for tests. |
 | `LillistCoreInfo` | enum | `Packages/LillistCore/Sources/LillistCore/LillistCore.swift:18` | Namespace-only enum; callers read `LillistCoreInfo.version` without shadowing the `LillistCore` module name. |
 | `LillistError` | enum | `Packages/LillistCore/Sources/LillistCore/Validation/LillistError.swift:4` | Single error type thrown by all `LillistCore` public APIs; `Equatable` and `Sendable`; callers may exhaustively switch on cases without importing Foundation. |
-| `LillistError` | extension | `Packages/LillistCore/Sources/LillistCore/Validation/LillistError.swift:36` | `LocalizedError` conformance; `errorDescription` returns a non-nil human-readable string for every case — safe to display directly in alerts. |
+| `LillistError` | extension | `Packages/LillistCore/Sources/LillistCore/Validation/LillistError.swift:42` | `LocalizedError` conformance; `errorDescription` returns a non-nil human-readable string for every case — safe to display directly in alerts. |
 | `LillistLog` | enum | `Packages/LillistCore/Sources/LillistCore/Support/LillistLog.swift:30` | Namespace enum; central `os.Logger` factory pinned to `CrashReporting.subsystemIdentifier` — splitting subsystems silently empties the crash reporter's log-collection section. |
 | `OnboardingState` | class | `Packages/LillistCore/Sources/LillistCore/Onboarding/OnboardingState.swift:19` | Init once with a `DevicePreferencesStore`; provides async access to the device-local onboarding-completion flag that survives Core Data store resets. |
 | `Outcome` | enum | `Packages/LillistCore/Sources/LillistCore/Preferences/AppPreferencesPartitionMigrator.swift:48` | `.migrated` when the copy ran this invocation, `.alreadyMigrated` when the marker was set on a prior launch; equatable for test assertions. |

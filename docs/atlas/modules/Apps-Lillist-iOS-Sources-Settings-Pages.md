@@ -8,9 +8,9 @@ sources:
   - path: Apps/Lillist-iOS/Sources/Settings/Pages/DataManagementPage.swift
     blob: 7fbbe22d508490fef1742d84d427e756c130f85b
   - path: Apps/Lillist-iOS/Sources/Settings/Pages/DebugPage.swift
-    blob: 5d0594131cc7516ef5beae41d6cffac2f33975ed
+    blob: d27d8162fad2b49fd3db057a3c97882b369c0ad8
   - path: Apps/Lillist-iOS/Sources/Settings/Pages/ICloudSyncPage.swift
-    blob: c134c69178339370e8a8928f7d1fb052e677b052
+    blob: 0fac2ae3807c7921a858e5c78f0458dcce2b5244
   - path: Apps/Lillist-iOS/Sources/Settings/Pages/NotificationsPage.swift
     blob: a80abff7dcf0788764e95fa779047b82de8e7f61
   - path: Apps/Lillist-iOS/Sources/Settings/Pages/QuickCapturePage.swift
@@ -19,9 +19,9 @@ sources:
     blob: 5f78f573662cfd0a1f35a46b2f815544f4b655f9
   - path: Apps/Lillist-iOS/Sources/Settings/Pages/TaskDefaultsPage.swift
     blob: 62514212653db5952119c175a2dcec317e20f7d8
-references_modules: [Apps-Lillist-iOS-Sources-Settings-misc, Packages-LillistUI-Sources-LillistUI-Settings, Packages-LillistUI-Sources-LillistUI-Theme-chunk-1]
+references_modules: [Apps-Lillist-iOS-Sources-Settings-misc, Packages-LillistCore-Sources-LillistCore-LinkPreview, Packages-LillistUI-Sources-LillistUI-Settings, Packages-LillistUI-Sources-LillistUI-Sync, Packages-LillistUI-Sources-LillistUI-Theme-chunk-1, Packages-LillistUI-Sources-LillistUI-iOS-misc]
 generator: cartographer/4
-baseline: 515f24730d21cb81ca1c9737ffeb981e9c414d3c
+baseline: 99321d774840d17affd02fe2ac63b01b3d8cbec3
 ---
 
 # Module: Apps/Lillist-iOS/Sources/Settings/Pages
@@ -36,8 +36,8 @@ This module is the navigation-destination layer for the iOS Settings screen: eac
 | --- | --- | --- | --- |
 | `AppearancePage` | struct | `Apps/Lillist-iOS/Sources/Settings/Pages/AppearancePage.swift:7` | Settings page for Appearance; caller provides `$prefs` binding; presents a ColorPicker bound to `prefs.defaultTagTintHex` with hex round-trip fallback. |
 | `DataManagementPage` | struct | `Apps/Lillist-iOS/Sources/Settings/Pages/DataManagementPage.swift:7` | Settings page for Data Management; caller provides `$prefs` binding; composes TrashSection, BackupSection, and AdvancedSection inside SettingsDetailScreen. |
-| `DebugPage` | struct | `Apps/Lillist-iOS/Sources/Settings/Pages/DebugPage.swift:8` | Settings page for Debug; caller provides `$prefs` binding; composes CrashReportingSection, DiagnosticsSection, and ResetDataStoreSection. |
-| `ICloudSyncPage` | struct | `Apps/Lillist-iOS/Sources/Settings/Pages/ICloudSyncPage.swift:7` | Settings page for iCloud Sync; stateless (no stored properties); wraps ICloudSyncSection which reads AppEnvironment directly. |
+| `DebugPage` | struct | `Apps/Lillist-iOS/Sources/Settings/Pages/DebugPage.swift:14` | Settings page for Debug; caller provides `$prefs` binding; composes CrashReportingSection, DiagnosticsSection, and ResetDataStoreSection. |
+| `ICloudSyncPage` | struct | `Apps/Lillist-iOS/Sources/Settings/Pages/ICloudSyncPage.swift:11` | Settings page for iCloud Sync; stateless (no stored properties); wraps ICloudSyncSection which reads AppEnvironment directly. |
 | `NotificationsPage` | struct | `Apps/Lillist-iOS/Sources/Settings/Pages/NotificationsPage.swift:8` | Settings page for Notifications; caller provides `$prefs` binding; wraps NotificationsSection inside SettingsDetailScreen chrome. |
 | `QuickCapturePage` | struct | `Apps/Lillist-iOS/Sources/Settings/Pages/QuickCapturePage.swift:8` | Settings page for Quick Capture; caller provides `$prefs` binding; wraps QuickCaptureSection inside SettingsDetailScreen chrome. |
 | `RemindersImportPage` | struct | `Apps/Lillist-iOS/Sources/Settings/Pages/RemindersImportPage.swift:7` | Settings page for Tasks from Reminders; stateless (no stored properties); wraps RemindersImportSection which reads AppEnvironment directly. |
@@ -57,12 +57,26 @@ This module is the navigation-destination layer for the iOS Settings screen: eac
 - `Apps-Lillist-iOS-Sources-Settings-Pages.DataManagementPage -> Apps-Lillist-iOS-Sources-Settings-misc.BackupSection (owns)`
 - `Apps-Lillist-iOS-Sources-Settings-Pages.DataManagementPage -> Apps-Lillist-iOS-Sources-Settings-misc.TrashSection (owns)`
 - `Apps-Lillist-iOS-Sources-Settings-Pages.DataManagementPage -> Packages-LillistUI-Sources-LillistUI-Settings.SettingsDetailScreen (owns)`
-- `Apps-Lillist-iOS-Sources-Settings-Pages.DebugPage -> Apps-Lillist-iOS-Sources-Settings-misc.CrashReportingSection (owns)`
-- `Apps-Lillist-iOS-Sources-Settings-Pages.DebugPage -> Apps-Lillist-iOS-Sources-Settings-misc.DiagnosticsSection (owns)`
-- `Apps-Lillist-iOS-Sources-Settings-Pages.DebugPage -> Apps-Lillist-iOS-Sources-Settings-misc.ResetDataStoreSection (owns)`
-- `Apps-Lillist-iOS-Sources-Settings-Pages.DebugPage -> Packages-LillistUI-Sources-LillistUI-Settings.SettingsDetailScreen (owns)`
-- `Apps-Lillist-iOS-Sources-Settings-Pages.ICloudSyncPage -> Apps-Lillist-iOS-Sources-Settings-misc.ICloudSyncSection (owns)`
-- `Apps-Lillist-iOS-Sources-Settings-Pages.ICloudSyncPage -> Packages-LillistUI-Sources-LillistUI-Settings.SettingsDetailScreen (owns)`
+- `Apps-Lillist-iOS-Sources-Settings-Pages.DebugPage -> Apps-Lillist-iOS-Sources-Settings-misc.CrashReportingSection (calls)`
+- `Apps-Lillist-iOS-Sources-Settings-Pages.DebugPage -> Apps-Lillist-iOS-Sources-Settings-misc.DiagnosticsExportModel (owns)`
+- `Apps-Lillist-iOS-Sources-Settings-Pages.DebugPage -> Apps-Lillist-iOS-Sources-Settings-misc.DiagnosticsSection (calls)`
+- `Apps-Lillist-iOS-Sources-Settings-Pages.DebugPage -> Apps-Lillist-iOS-Sources-Settings-misc.ResetDataStoreSection (calls)`
+- `Apps-Lillist-iOS-Sources-Settings-Pages.DebugPage -> Apps-Lillist-iOS-Sources-Settings-misc.ShareSheet (calls)`
+- `Apps-Lillist-iOS-Sources-Settings-Pages.DebugPage -> Apps-Lillist-iOS-Sources-Settings-misc.requestExport (calls)`
+- `Apps-Lillist-iOS-Sources-Settings-Pages.DebugPage -> Apps-Lillist-iOS-Sources-Settings-misc.sheetDismissed (calls)`
+- `Apps-Lillist-iOS-Sources-Settings-Pages.DebugPage -> Packages-LillistUI-Sources-LillistUI-Settings.Environment (reads)`
+- `Apps-Lillist-iOS-Sources-Settings-Pages.DebugPage -> Packages-LillistUI-Sources-LillistUI-Settings.SettingsDetailScreen (calls)`
+- `Apps-Lillist-iOS-Sources-Settings-Pages.DebugPage -> Packages-LillistUI-Sources-LillistUI-iOS-misc.DiagnosticsIncludeSheet (calls)`
+- `Apps-Lillist-iOS-Sources-Settings-Pages.ICloudSyncPage -> Apps-Lillist-iOS-Sources-Settings-misc.ICloudSyncModalsModel (owns)`
+- `Apps-Lillist-iOS-Sources-Settings-Pages.ICloudSyncPage -> Apps-Lillist-iOS-Sources-Settings-misc.ICloudSyncSection (calls)`
+- `Apps-Lillist-iOS-Sources-Settings-Pages.ICloudSyncPage -> Apps-Lillist-iOS-Sources-Settings-misc.confirmReplace (calls)`
+- `Apps-Lillist-iOS-Sources-Settings-Pages.ICloudSyncPage -> Packages-LillistCore-Sources-LillistCore-LinkPreview.String (calls)`
+- `Apps-Lillist-iOS-Sources-Settings-Pages.ICloudSyncPage -> Packages-LillistUI-Sources-LillistUI-Settings.Environment (reads)`
+- `Apps-Lillist-iOS-Sources-Settings-Pages.ICloudSyncPage -> Packages-LillistUI-Sources-LillistUI-Settings.SettingsDetailScreen (calls)`
+- `Apps-Lillist-iOS-Sources-Settings-Pages.ICloudSyncPage -> Packages-LillistUI-Sources-LillistUI-Sync.PauseExplainerDialog (calls)`
+- `Apps-Lillist-iOS-Sources-Settings-Pages.ICloudSyncPage -> Packages-LillistUI-Sources-LillistUI-Sync.SyncDisableConfirmationSheet (calls)`
+- `Apps-Lillist-iOS-Sources-Settings-Pages.ICloudSyncPage -> Packages-LillistUI-Sources-LillistUI-Sync.SyncMigrationChoiceSheet (calls)`
+- `Apps-Lillist-iOS-Sources-Settings-Pages.ICloudSyncPage -> Packages-LillistUI-Sources-LillistUI-Sync.SyncMigrationProgressSheet (calls)`
 - `Apps-Lillist-iOS-Sources-Settings-Pages.NotificationsPage -> Apps-Lillist-iOS-Sources-Settings-misc.NotificationsSection (owns)`
 - `Apps-Lillist-iOS-Sources-Settings-Pages.NotificationsPage -> Packages-LillistUI-Sources-LillistUI-Settings.SettingsDetailScreen (owns)`
 - `Apps-Lillist-iOS-Sources-Settings-Pages.QuickCapturePage -> Apps-Lillist-iOS-Sources-Settings-misc.QuickCaptureSection (owns)`

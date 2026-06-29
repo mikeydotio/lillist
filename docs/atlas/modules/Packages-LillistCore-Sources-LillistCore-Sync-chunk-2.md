@@ -8,11 +8,11 @@ sources:
   - path: Packages/LillistCore/Sources/LillistCore/Sync/SyncStatus.swift
     blob: 223dfb9083d24d793ee63be7e908eb838f1951c2
   - path: Packages/LillistCore/Sources/LillistCore/Sync/SyncStatusMonitor.swift
-    blob: f9bcc5757ae01fcbe270c0fb554473dab5d63c75
+    blob: 0a7e76e258e7ff0c10c776393bfe460ad2bc1a98
   - path: Packages/LillistCore/Sources/LillistCore/Sync/iCloudAccountState.swift
     blob: bb8cbfb1b0244af352900f7d1d3a575ae5b3f842
 generator: cartographer/4
-baseline: 515f24730d21cb81ca1c9737ffeb981e9c414d3c
+baseline: 99321d774840d17affd02fe2ac63b01b3d8cbec3
 ---
 
 # Module: Packages/LillistCore/Sources/LillistCore/Sync (chunk 2)

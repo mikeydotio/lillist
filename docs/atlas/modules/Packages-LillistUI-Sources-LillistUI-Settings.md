@@ -8,16 +8,16 @@ sources:
   - path: Packages/LillistUI/Sources/LillistUI/Settings/HourMinuteDate.swift
     blob: c86f0a9040a23521ff241e157fd83b0e0fcc5e1e
   - path: Packages/LillistUI/Sources/LillistUI/Settings/ICloudSyncSettingsSection.swift
-    blob: 2b3b0a8c45734528426074bc4ece98d9950f81d9
+    blob: 6ee7d66485c866cd350deec370948aa5cdcc0810
   - path: Packages/LillistUI/Sources/LillistUI/Settings/SettingsDetailScreen.swift
     blob: 82fc43eabbdb7fb0d28f5f9fc7758f652777bf2c
   - path: Packages/LillistUI/Sources/LillistUI/Settings/SettingsRowIcon.swift
     blob: fcc7f3bbc4dde451e0d4c93fb1a3fed7355bc030
   - path: "Packages/LillistUI/Sources/LillistUI/Settings/SortField+DisplayName.swift"
     blob: 1ebd38dd6f73717121b152688be85cd73fdbcf1d
-references_modules: [Packages-LillistCore-Sources-LillistCore-LinkPreview, Packages-LillistUI-Sources-LillistUI-iOS-misc]
+references_modules: [Packages-LillistCore-Sources-LillistCore-LinkPreview, Packages-LillistUI-Sources-LillistUI-Recurrence, Packages-LillistUI-Sources-LillistUI-iOS-misc]
 generator: cartographer/4
-baseline: 515f24730d21cb81ca1c9737ffeb981e9c414d3c
+baseline: 99321d774840d17affd02fe2ac63b01b3d8cbec3
 ---
 
 # Module: Packages/LillistUI/Sources/LillistUI/Settings
@@ -30,7 +30,7 @@ Shared Settings/Preferences primitives that were previously duplicated verbatim 
 
 | Symbol | Kind | Location | Contract |
 | --- | --- | --- | --- |
-| `Actions` | struct | `Packages/LillistUI/Sources/LillistUI/Settings/ICloudSyncSettingsSection.swift:33` | Callback bag holding four escaping closures; `onPausedTap` defaults to a no-op; callers supply the other three — toggle, sync-now, and open-system-settings. |
+| `Actions` | struct | `Packages/LillistUI/Sources/LillistUI/Settings/ICloudSyncSettingsSection.swift:41` | Callback bag holding four escaping closures; `onPausedTap` defaults to a no-op; callers supply the other three — toggle, sync-now, and open-system-settings. |
 | `CrashReportSample` | enum | `Packages/LillistUI/Sources/LillistUI/Settings/CrashReportSample.swift:6` | Namespace enum; callers construct an `Environment` and call `preview(_:)` to obtain the multi-line crash-report preview string. |
 | `Environment` | struct | `Packages/LillistUI/Sources/LillistUI/Settings/CrashReportSample.swift:7` | `Sendable + Equatable` value holding the five fields (build version, OS, device, recipient, method suffix) required to render a crash-report preview; callers own all fields. |
 | `HourMinuteDate` | enum | `Packages/LillistUI/Sources/LillistUI/Settings/HourMinuteDate.swift:9` | Namespace enum; callers use `date(hour:minute:calendar:)` to build a `Date` whose calendar components match today for use in a `DatePicker` binding. |
@@ -54,6 +54,7 @@ Shared Settings/Preferences primitives that were previously duplicated verbatim 
 ## Relationships
 
 - `Packages-LillistUI-Sources-LillistUI-Settings.Actions -> Packages-LillistCore-Sources-LillistCore-LinkPreview.String (calls)`
+- `Packages-LillistUI-Sources-LillistUI-Settings.Actions -> Packages-LillistUI-Sources-LillistUI-Recurrence.string (calls)`
 - `Packages-LillistUI-Sources-LillistUI-Settings.Actions -> Packages-LillistUI-Sources-LillistUI-iOS-misc.SyncStatusBadge (calls)`
 
 ## Type notes
