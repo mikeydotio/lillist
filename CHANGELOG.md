@@ -3,6 +3,19 @@
 All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [v0.11.10] - 2026-06-29
+
+### Fixed
+- equalize leading/trailing swipe-control gaps on task rows (f2ddbd3d)
+
+### Documentation
+- update (12 docs re-projected, 119 cells re-judged) (caad2df1)
+
+### Maintenance
+- bump iOS build number to 81 (99321d77)
+
+_[force]_
+
 ## [v0.11.9] - 2026-06-28
 
 ### Fixed
