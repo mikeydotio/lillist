@@ -3,6 +3,16 @@
 All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [v0.11.9] - 2026-06-28
+
+### Fixed
+- correct contradictory iCloud Sync subtitle ("Off" while ON) (e26f3a7d)
+
+### Maintenance
+- bump iOS build number to 80 (4a356ca5)
+
+_[manual]_
+
 ## [v0.11.8] - 2026-06-27
 
 ### Added
