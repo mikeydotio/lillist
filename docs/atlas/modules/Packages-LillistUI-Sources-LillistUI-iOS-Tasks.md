@@ -10,14 +10,14 @@ sources:
   - path: Packages/LillistUI/Sources/LillistUI/iOS/Tasks/FlatTaskRow.swift
     blob: 39cb162736a7480bf09c2fdc9b8f78aff7a7f90c
   - path: Packages/LillistUI/Sources/LillistUI/iOS/Tasks/TaskOutlineRowView.swift
-    blob: c2ed5c0834924e22c4441d965b8e7054037b47c6
+    blob: 8bed112eed4eae211ff337b1527a364f7d1a7b4b
   - path: Packages/LillistUI/Sources/LillistUI/iOS/Tasks/TaskTree.swift
     blob: 815f9136b2bf293dd9193a53cf6427110fa4303c
   - path: Packages/LillistUI/Sources/LillistUI/iOS/Tasks/TasksSort.swift
     blob: c217d33cfcf21c914c125485ff29e2e548dc696b
 references_modules: [Packages-LillistCore-Sources-LillistCore-LinkPreview, Packages-LillistCore-Sources-LillistCore-Ordering, Packages-LillistUI-Sources-LillistUI-Components-chunk-1, Packages-LillistUI-Sources-LillistUI-Components-chunk-2, Packages-LillistUI-Sources-LillistUI-Settings, Packages-LillistUI-Sources-LillistUI-Theme-chunk-1]
 generator: cartographer/4
-baseline: 515f24730d21cb81ca1c9737ffeb981e9c414d3c
+baseline: 5882526e2241d4d941bb92533d13ae24f2d9cf17
 ---
 
 # Module: Packages/LillistUI/Sources/LillistUI/iOS/Tasks
@@ -64,9 +64,10 @@ This module is the complete rendering pipeline for the iOS task list: it transfo
 - `Packages-LillistUI-Sources-LillistUI-iOS-Tasks.TaskOutlineRowLabel -> Packages-LillistUI-Sources-LillistUI-Components-chunk-2.TaskRowLabel (calls)`
 - `Packages-LillistUI-Sources-LillistUI-iOS-Tasks.TaskOutlineRowView -> Packages-LillistCore-Sources-LillistCore-LinkPreview.String (calls)`
 - `Packages-LillistUI-Sources-LillistUI-iOS-Tasks.TaskOutlineRowView -> Packages-LillistUI-Sources-LillistUI-Components-chunk-1.StatusIndicatorView (calls)`
+- `Packages-LillistUI-Sources-LillistUI-iOS-Tasks.TaskOutlineRowView -> Packages-LillistUI-Sources-LillistUI-Components-chunk-1.SwipeableRow (calls)`
 - `Packages-LillistUI-Sources-LillistUI-iOS-Tasks.TaskOutlineRowView -> Packages-LillistUI-Sources-LillistUI-Components-chunk-1.rainbowCard (calls)`
 - `Packages-LillistUI-Sources-LillistUI-iOS-Tasks.TaskOutlineRowView -> Packages-LillistUI-Sources-LillistUI-Theme-chunk-1.accessibilityLabel (calls)`
-- `Packages-LillistUI-Sources-LillistUI-iOS-Tasks.TaskOutlineRowView -> Packages-LillistUI-Sources-LillistUI-Theme-chunk-1.color (reads)`
+- `Packages-LillistUI-Sources-LillistUI-iOS-Tasks.TaskOutlineRowView -> Packages-LillistUI-Sources-LillistUI-Theme-chunk-1.color (calls)`
 - `Packages-LillistUI-Sources-LillistUI-iOS-Tasks.applySort -> Packages-LillistCore-Sources-LillistCore-Ordering.precedes (reads)`
 
 ## Type notes

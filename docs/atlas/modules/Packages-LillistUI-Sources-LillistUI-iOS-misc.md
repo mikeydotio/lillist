@@ -22,7 +22,7 @@ sources:
   - path: Packages/LillistUI/Sources/LillistUI/iOS/Screens/SettingsScreen.swift
     blob: e978d8960e17217951e68ad6c3526c339406e4a9
   - path: Packages/LillistUI/Sources/LillistUI/iOS/Screens/TasksScreen.swift
-    blob: b8185dc1c3547caee9063abdea5ccd84c6adb0c5
+    blob: 5452d6d89718a357dc8dcb15121f9e6b3c9927cc
   - path: Packages/LillistUI/Sources/LillistUI/iOS/SizeClassRouter.swift
     blob: 1bf4ae6409a26c607411ef5490b451172f3d99c4
   - path: Packages/LillistUI/Sources/LillistUI/iOS/SyncStatusBadge.swift
@@ -33,7 +33,7 @@ sources:
     blob: 4c1b8698952989ed789fa615e748eef1ec4a2723
 references_modules: [Apps-Lillist-macOS-Sources-Hotkey, Packages-LillistCore-Sources-LillistCore-CLIBridge-Handlers-chunk-2, Packages-LillistCore-Sources-LillistCore-LinkPreview, Packages-LillistCore-Sources-LillistCore-Stores-chunk-2, Packages-LillistUI-Sources-LillistUI-Accessibility, Packages-LillistUI-Sources-LillistUI-Components-chunk-1, Packages-LillistUI-Sources-LillistUI-Components-chunk-2, Packages-LillistUI-Sources-LillistUI-DragReorder, Packages-LillistUI-Sources-LillistUI-Settings, Packages-LillistUI-Sources-LillistUI-Theme-chunk-1, Packages-LillistUI-Sources-LillistUI-iOS-Tasks]
 generator: cartographer/4
-baseline: 8e926f08fd5269de164d25b42880893a604a9d5c
+baseline: 5882526e2241d4d941bb92533d13ae24f2d9cf17
 ---
 
 # Module: Packages/LillistUI/Sources/LillistUI/iOS (misc)
@@ -122,8 +122,6 @@ Bundles the iOS-specific presentation primitives that sit between LillistCore an
 - `Packages-LillistUI-Sources-LillistUI-iOS-misc.TasksScreen -> Packages-LillistCore-Sources-LillistCore-Stores-chunk-2.transition (calls)`
 - `Packages-LillistUI-Sources-LillistUI-iOS-misc.TasksScreen -> Packages-LillistUI-Sources-LillistUI-Components-chunk-1.BuildVersionLabel (calls)`
 - `Packages-LillistUI-Sources-LillistUI-iOS-misc.TasksScreen -> Packages-LillistUI-Sources-LillistUI-Components-chunk-1.RainbowEmptyStateView (calls)`
-- `Packages-LillistUI-Sources-LillistUI-iOS-misc.TasksScreen -> Packages-LillistUI-Sources-LillistUI-Components-chunk-1.SwipeActionSpec (calls)`
-- `Packages-LillistUI-Sources-LillistUI-iOS-misc.TasksScreen -> Packages-LillistUI-Sources-LillistUI-Components-chunk-1.SwipeableRow (calls)`
 - `Packages-LillistUI-Sources-LillistUI-iOS-misc.TasksScreen -> Packages-LillistUI-Sources-LillistUI-DragReorder.DragOverlay (calls)`
 - `Packages-LillistUI-Sources-LillistUI-iOS-misc.TasksScreen -> Packages-LillistUI-Sources-LillistUI-DragReorder.reportRowGeometry (calls)`
 - `Packages-LillistUI-Sources-LillistUI-iOS-misc.TasksScreen -> Packages-LillistUI-Sources-LillistUI-Settings.Environment (calls)`
@@ -139,10 +137,12 @@ Bundles the iOS-specific presentation primitives that sit between LillistCore an
 - `Packages-LillistUI-Sources-LillistUI-iOS-misc.makeBody -> Packages-LillistUI-Sources-LillistUI-Theme-chunk-1.squish (calls)`
 - `Packages-LillistUI-Sources-LillistUI-iOS-misc.outlineRow -> Apps-Lillist-macOS-Sources-Hotkey.toggle (calls)`
 - `Packages-LillistUI-Sources-LillistUI-iOS-misc.outlineRow -> Packages-LillistCore-Sources-LillistCore-LinkPreview.String (calls)`
+- `Packages-LillistUI-Sources-LillistUI-iOS-misc.outlineRow -> Packages-LillistUI-Sources-LillistUI-Components-chunk-1.SwipeActionSpec (calls)`
 - `Packages-LillistUI-Sources-LillistUI-iOS-misc.outlineRow -> Packages-LillistUI-Sources-LillistUI-DragReorder.dragReorderGesture (calls)`
 - `Packages-LillistUI-Sources-LillistUI-iOS-misc.outlineRow -> Packages-LillistUI-Sources-LillistUI-Theme-chunk-1.accessibilityLabel (calls)`
 - `Packages-LillistUI-Sources-LillistUI-iOS-misc.outlineRow -> Packages-LillistUI-Sources-LillistUI-iOS-Tasks.TaskOutlineRowView (calls)`
 - `Packages-LillistUI-Sources-LillistUI-iOS-misc.phantomRow -> Packages-LillistUI-Sources-LillistUI-Components-chunk-1.rainbowCard (calls)`
+- `Packages-LillistUI-Sources-LillistUI-iOS-misc.phantomRow -> Packages-LillistUI-Sources-LillistUI-Components-chunk-2.TaskRowView (calls)`
 
 ## Type notes
 

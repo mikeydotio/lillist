@@ -4,7 +4,7 @@ summary: "xcconfig scaffolding: signing team indirection, monotonic build counte
 read_when: "Code signing & build number"
 sources:
   - path: Apps/Config/BuildNumber.xcconfig
-    blob: 83758f10fa5a02b7062122c146c98bcf7eab5661
+    blob: 73054a7065e4226ea920bbeefdc93d377ccb1d85
   - path: Apps/Config/Distribution.xcconfig
     blob: 84460655dcfbf0b4e127022a8ede527f6f95e614
   - path: Apps/Config/Signing.local.xcconfig.example
@@ -12,7 +12,7 @@ sources:
   - path: Apps/Config/Signing.xcconfig
     blob: eaa9a2c9e55ed70c13d4f41953dc427da4dea455
 generator: cartographer/4
-baseline: 99321d774840d17affd02fe2ac63b01b3d8cbec3
+baseline: 5882526e2241d4d941bb92533d13ae24f2d9cf17
 ---
 
 # Module: Apps/Config

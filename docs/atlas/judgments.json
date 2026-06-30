@@ -636,20 +636,6 @@
         "verdict": "unverified"
       }
     },
-    "edge.semantic/08f2ab5a93a7eeb1a4b07304": {
-      "kind": "edge.semantic",
-      "provenance": {
-        "created_at_commit": "515f24730d21cb81ca1c9737ffeb981e9c414d3c",
-        "generator": "cartographer/4",
-        "model": "sonnet"
-      },
-      "value": {
-        "verb": null
-      },
-      "verify": {
-        "verdict": "unverified"
-      }
-    },
     "edge.semantic/08fa1b74ae4e5ebcbfe27d14": {
       "kind": "edge.semantic",
       "provenance": {
@@ -670,6 +656,20 @@
       "kind": "edge.semantic",
       "provenance": {
         "created_at_commit": "515f24730d21cb81ca1c9737ffeb981e9c414d3c",
+        "generator": "cartographer/4",
+        "model": "sonnet"
+      },
+      "value": {
+        "verb": null
+      },
+      "verify": {
+        "verdict": "unverified"
+      }
+    },
+    "edge.semantic/09ae4ea5dd5dcaa83ad74469": {
+      "kind": "edge.semantic",
+      "provenance": {
+        "created_at_commit": "5882526e2241d4d941bb92533d13ae24f2d9cf17",
         "generator": "cartographer/4",
         "model": "sonnet"
       },
@@ -1457,20 +1457,6 @@
         "to": "Packages/LillistCore/Sources/LillistCore/Stores/JournalStore.swift::appendNote",
         "verb": "writes",
         "why": "StatusCommand.run calls journal.appendNote(taskID:body:) to write an optional note after each status transition."
-      },
-      "verify": {
-        "verdict": "unverified"
-      }
-    },
-    "edge.semantic/16bc0e1d91d66fc5e0326bec": {
-      "kind": "edge.semantic",
-      "provenance": {
-        "created_at_commit": "8e926f08fd5269de164d25b42880893a604a9d5c",
-        "generator": "cartographer/4",
-        "model": "claude-sonnet-4-6"
-      },
-      "value": {
-        "verb": null
       },
       "verify": {
         "verdict": "unverified"
@@ -2348,20 +2334,6 @@
         "verdict": "unverified"
       }
     },
-    "edge.semantic/23aab6801a1634ddf5e90409": {
-      "kind": "edge.semantic",
-      "provenance": {
-        "created_at_commit": "515f24730d21cb81ca1c9737ffeb981e9c414d3c",
-        "generator": "cartographer/4",
-        "model": "sonnet"
-      },
-      "value": {
-        "verb": null
-      },
-      "verify": {
-        "verdict": "unverified"
-      }
-    },
     "edge.semantic/23e11f9ddde86bf2d1d23ee3": {
       "kind": "edge.semantic",
       "provenance": {
@@ -2596,20 +2568,6 @@
         "created_at_commit": "515f24730d21cb81ca1c9737ffeb981e9c414d3c",
         "generator": "cartographer/4",
         "model": "sonnet"
-      },
-      "value": {
-        "verb": null
-      },
-      "verify": {
-        "verdict": "unverified"
-      }
-    },
-    "edge.semantic/27ce74086eed52682f9e51de": {
-      "kind": "edge.semantic",
-      "provenance": {
-        "created_at_commit": "8e926f08fd5269de164d25b42880893a604a9d5c",
-        "generator": "cartographer/4",
-        "model": "claude-sonnet-4-6"
       },
       "value": {
         "verb": null
@@ -2992,6 +2950,20 @@
       "kind": "edge.semantic",
       "provenance": {
         "created_at_commit": "515f24730d21cb81ca1c9737ffeb981e9c414d3c",
+        "generator": "cartographer/4",
+        "model": "sonnet"
+      },
+      "value": {
+        "verb": null
+      },
+      "verify": {
+        "verdict": "unverified"
+      }
+    },
+    "edge.semantic/2dea4927e4dbe03f0dd55972": {
+      "kind": "edge.semantic",
+      "provenance": {
+        "created_at_commit": "5882526e2241d4d941bb92533d13ae24f2d9cf17",
         "generator": "cartographer/4",
         "model": "sonnet"
       },
@@ -3430,6 +3402,34 @@
       "kind": "edge.semantic",
       "provenance": {
         "created_at_commit": "515f24730d21cb81ca1c9737ffeb981e9c414d3c",
+        "generator": "cartographer/4",
+        "model": "sonnet"
+      },
+      "value": {
+        "verb": null
+      },
+      "verify": {
+        "verdict": "unverified"
+      }
+    },
+    "edge.semantic/354bb6b6ec576562cba69fd0": {
+      "kind": "edge.semantic",
+      "provenance": {
+        "created_at_commit": "5882526e2241d4d941bb92533d13ae24f2d9cf17",
+        "generator": "cartographer/4",
+        "model": "sonnet"
+      },
+      "value": {
+        "verb": null
+      },
+      "verify": {
+        "verdict": "unverified"
+      }
+    },
+    "edge.semantic/355d4f1fd38c4b3b7db92011": {
+      "kind": "edge.semantic",
+      "provenance": {
+        "created_at_commit": "5882526e2241d4d941bb92533d13ae24f2d9cf17",
         "generator": "cartographer/4",
         "model": "sonnet"
       },
@@ -4064,20 +4064,6 @@
         "verdict": "unverified"
       }
     },
-    "edge.semantic/3f7c8b2a72dcb4adcb2cf1a6": {
-      "kind": "edge.semantic",
-      "provenance": {
-        "created_at_commit": "8e926f08fd5269de164d25b42880893a604a9d5c",
-        "generator": "cartographer/4",
-        "model": "claude-sonnet-4-6"
-      },
-      "value": {
-        "verb": null
-      },
-      "verify": {
-        "verdict": "unverified"
-      }
-    },
     "edge.semantic/3f947b6d8a06e23653b68914": {
       "kind": "edge.semantic",
       "provenance": {
@@ -4098,20 +4084,6 @@
         "created_at_commit": "515f24730d21cb81ca1c9737ffeb981e9c414d3c",
         "generator": "cartographer/4",
         "model": "sonnet"
-      },
-      "value": {
-        "verb": null
-      },
-      "verify": {
-        "verdict": "unverified"
-      }
-    },
-    "edge.semantic/4054b205ea2eaa974359dc47": {
-      "kind": "edge.semantic",
-      "provenance": {
-        "created_at_commit": "8e926f08fd5269de164d25b42880893a604a9d5c",
-        "generator": "cartographer/4",
-        "model": "claude-sonnet-4-6"
       },
       "value": {
         "verb": null
@@ -5116,6 +5088,20 @@
         "verdict": "unverified"
       }
     },
+    "edge.semantic/528ddfdeca99a09948a52917": {
+      "kind": "edge.semantic",
+      "provenance": {
+        "created_at_commit": "5882526e2241d4d941bb92533d13ae24f2d9cf17",
+        "generator": "cartographer/4",
+        "model": "sonnet"
+      },
+      "value": {
+        "verb": null
+      },
+      "verify": {
+        "verdict": "unverified"
+      }
+    },
     "edge.semantic/52a87b6151023bf920ddc434": {
       "kind": "edge.semantic",
       "provenance": {
@@ -5388,6 +5374,20 @@
       "kind": "edge.semantic",
       "provenance": {
         "created_at_commit": "515f24730d21cb81ca1c9737ffeb981e9c414d3c",
+        "generator": "cartographer/4",
+        "model": "sonnet"
+      },
+      "value": {
+        "verb": null
+      },
+      "verify": {
+        "verdict": "unverified"
+      }
+    },
+    "edge.semantic/566a657c00097a4d6c6662ab": {
+      "kind": "edge.semantic",
+      "provenance": {
+        "created_at_commit": "5882526e2241d4d941bb92533d13ae24f2d9cf17",
         "generator": "cartographer/4",
         "model": "sonnet"
       },
@@ -5840,20 +5840,6 @@
         "verdict": "unverified"
       }
     },
-    "edge.semantic/5b7b0d0c32e6a4bf6de4f106": {
-      "kind": "edge.semantic",
-      "provenance": {
-        "created_at_commit": "515f24730d21cb81ca1c9737ffeb981e9c414d3c",
-        "generator": "cartographer/4",
-        "model": "sonnet"
-      },
-      "value": {
-        "verb": null
-      },
-      "verify": {
-        "verdict": "unverified"
-      }
-    },
     "edge.semantic/5bd56da7ab06e84700ab1f65": {
       "kind": "edge.semantic",
       "provenance": {
@@ -6044,20 +6030,6 @@
         "created_at_commit": "515f24730d21cb81ca1c9737ffeb981e9c414d3c",
         "generator": "cartographer/4",
         "model": "sonnet"
-      },
-      "value": {
-        "verb": null
-      },
-      "verify": {
-        "verdict": "unverified"
-      }
-    },
-    "edge.semantic/5df05cce7d9a7aa167293773": {
-      "kind": "edge.semantic",
-      "provenance": {
-        "created_at_commit": "8e926f08fd5269de164d25b42880893a604a9d5c",
-        "generator": "cartographer/4",
-        "model": "claude-sonnet-4-6"
       },
       "value": {
         "verb": null
@@ -6496,20 +6468,6 @@
         "verdict": "unverified"
       }
     },
-    "edge.semantic/6564c7ae3121fa4311198fd0": {
-      "kind": "edge.semantic",
-      "provenance": {
-        "created_at_commit": "8e926f08fd5269de164d25b42880893a604a9d5c",
-        "generator": "cartographer/4",
-        "model": "claude-sonnet-4-6"
-      },
-      "value": {
-        "verb": null
-      },
-      "verify": {
-        "verdict": "unverified"
-      }
-    },
     "edge.semantic/6578e849d853e105f1515a30": {
       "kind": "edge.semantic",
       "provenance": {
@@ -6794,6 +6752,20 @@
       "kind": "edge.semantic",
       "provenance": {
         "created_at_commit": "99321d774840d17affd02fe2ac63b01b3d8cbec3",
+        "generator": "cartographer/4",
+        "model": "sonnet"
+      },
+      "value": {
+        "verb": null
+      },
+      "verify": {
+        "verdict": "unverified"
+      }
+    },
+    "edge.semantic/697bb484c22cae2e23643095": {
+      "kind": "edge.semantic",
+      "provenance": {
+        "created_at_commit": "5882526e2241d4d941bb92533d13ae24f2d9cf17",
         "generator": "cartographer/4",
         "model": "sonnet"
       },
@@ -8090,6 +8062,20 @@
         "verdict": "unverified"
       }
     },
+    "edge.semantic/7be50ee317fbd8d192a3ca66": {
+      "kind": "edge.semantic",
+      "provenance": {
+        "created_at_commit": "5882526e2241d4d941bb92533d13ae24f2d9cf17",
+        "generator": "cartographer/4",
+        "model": "sonnet"
+      },
+      "value": {
+        "verb": null
+      },
+      "verify": {
+        "verdict": "unverified"
+      }
+    },
     "edge.semantic/7c0e8fbe86e8c916765d470f": {
       "kind": "edge.semantic",
       "provenance": {
@@ -8225,20 +8211,6 @@
       }
     },
     "edge.semantic/7e31fe903c725dabbec37b67": {
-      "kind": "edge.semantic",
-      "provenance": {
-        "created_at_commit": "515f24730d21cb81ca1c9737ffeb981e9c414d3c",
-        "generator": "cartographer/4",
-        "model": "sonnet"
-      },
-      "value": {
-        "verb": null
-      },
-      "verify": {
-        "verdict": "unverified"
-      }
-    },
-    "edge.semantic/7e53ef36c0338022acc855ce": {
       "kind": "edge.semantic",
       "provenance": {
         "created_at_commit": "515f24730d21cb81ca1c9737ffeb981e9c414d3c",
@@ -8648,6 +8620,20 @@
         "verdict": "unverified"
       }
     },
+    "edge.semantic/86b555ede9199df68508357b": {
+      "kind": "edge.semantic",
+      "provenance": {
+        "created_at_commit": "5882526e2241d4d941bb92533d13ae24f2d9cf17",
+        "generator": "cartographer/4",
+        "model": "sonnet"
+      },
+      "value": {
+        "verb": null
+      },
+      "verify": {
+        "verdict": "unverified"
+      }
+    },
     "edge.semantic/86ca6c0892e1154dcd49decd": {
       "kind": "edge.semantic",
       "provenance": {
@@ -8706,22 +8692,6 @@
         "verdict": "unverified"
       }
     },
-    "edge.semantic/87959344bd7808aba574028f": {
-      "kind": "edge.semantic",
-      "provenance": {
-        "created_at_commit": "515f24730d21cb81ca1c9737ffeb981e9c414d3c",
-        "generator": "cartographer/4",
-        "model": "sonnet"
-      },
-      "value": {
-        "to": "Packages/LillistUI/Sources/LillistUI/Theme/StatusPalette.swift::color",
-        "verb": "reads",
-        "why": "TaskOutlineRowView calls StatusPalette.color(for: row.node.record.status) at TaskOutlineRowView.swift:96 to supply the card accent tint."
-      },
-      "verify": {
-        "verdict": "unverified"
-      }
-    },
     "edge.semantic/87c997770ba6e8f2c6404521": {
       "kind": "edge.semantic",
       "provenance": {
@@ -8775,20 +8745,6 @@
         "to": "Packages/LillistCore/Sources/LillistCore/Preferences/DevicePreferencesStore.swift::diagnosticLoggingEnabled",
         "verb": "reads",
         "why": "bootstrap() reads `await devicePreferences.diagnosticLoggingEnabled()` to sync the diagnostic log enabled flag (AppEnvironment.swift:353)"
-      },
-      "verify": {
-        "verdict": "unverified"
-      }
-    },
-    "edge.semantic/8916796a1f39c9dfd65b9891": {
-      "kind": "edge.semantic",
-      "provenance": {
-        "created_at_commit": "515f24730d21cb81ca1c9737ffeb981e9c414d3c",
-        "generator": "cartographer/4",
-        "model": "sonnet"
-      },
-      "value": {
-        "verb": null
       },
       "verify": {
         "verdict": "unverified"
@@ -9192,6 +9148,20 @@
         "verdict": "unverified"
       }
     },
+    "edge.semantic/91a3285882809cf3e2906edb": {
+      "kind": "edge.semantic",
+      "provenance": {
+        "created_at_commit": "5882526e2241d4d941bb92533d13ae24f2d9cf17",
+        "generator": "cartographer/4",
+        "model": "sonnet"
+      },
+      "value": {
+        "verb": null
+      },
+      "verify": {
+        "verdict": "unverified"
+      }
+    },
     "edge.semantic/91c2f60cb7e60a10206ca508": {
       "kind": "edge.semantic",
       "provenance": {
@@ -9384,6 +9354,20 @@
         "verdict": "unverified"
       }
     },
+    "edge.semantic/93ddf4a192abe35ae0fc2bd7": {
+      "kind": "edge.semantic",
+      "provenance": {
+        "created_at_commit": "5882526e2241d4d941bb92533d13ae24f2d9cf17",
+        "generator": "cartographer/4",
+        "model": "sonnet"
+      },
+      "value": {
+        "verb": null
+      },
+      "verify": {
+        "verdict": "unverified"
+      }
+    },
     "edge.semantic/93efcef5935bc8ff7e55bf4f": {
       "kind": "edge.semantic",
       "provenance": {
@@ -9535,20 +9519,6 @@
         "to": "Packages/LillistCore/Sources/LillistCore/Diagnostics/DiagnosticHistoryObserver.swift::DiagnosticHistoryObserver",
         "verb": "owns",
         "why": "AppEnvironment holds `let diagnosticHistoryObserver: DiagnosticHistoryObserver` for the app lifetime; constructed at AppEnvironment.swift:207."
-      },
-      "verify": {
-        "verdict": "unverified"
-      }
-    },
-    "edge.semantic/964a43f54790f69b95824f50": {
-      "kind": "edge.semantic",
-      "provenance": {
-        "created_at_commit": "515f24730d21cb81ca1c9737ffeb981e9c414d3c",
-        "generator": "cartographer/4",
-        "model": "sonnet"
-      },
-      "value": {
-        "verb": null
       },
       "verify": {
         "verdict": "unverified"
@@ -9792,6 +9762,20 @@
         "verdict": "unverified"
       }
     },
+    "edge.semantic/99cfbe27db0cf1bb97a3a9aa": {
+      "kind": "edge.semantic",
+      "provenance": {
+        "created_at_commit": "5882526e2241d4d941bb92533d13ae24f2d9cf17",
+        "generator": "cartographer/4",
+        "model": "sonnet"
+      },
+      "value": {
+        "verb": null
+      },
+      "verify": {
+        "verdict": "unverified"
+      }
+    },
     "edge.semantic/9a30f9633b9ae76b97dbf10e": {
       "kind": "edge.semantic",
       "provenance": {
@@ -9865,20 +9849,6 @@
         "to": "Packages/LillistUI/Sources/LillistUI/Editor/TaskEditorModel.swift::saveTextNow",
         "verb": "writes",
         "why": "cancel flushes pending text on an existing task before closing (TaskEditorHost.swift:134)"
-      },
-      "verify": {
-        "verdict": "unverified"
-      }
-    },
-    "edge.semantic/9b1a822d9d31d192d16683e9": {
-      "kind": "edge.semantic",
-      "provenance": {
-        "created_at_commit": "515f24730d21cb81ca1c9737ffeb981e9c414d3c",
-        "generator": "cartographer/4",
-        "model": "sonnet"
-      },
-      "value": {
-        "verb": null
       },
       "verify": {
         "verdict": "unverified"
@@ -10306,20 +10276,6 @@
         "verdict": "unverified"
       }
     },
-    "edge.semantic/a08012c0c74746e923fe8261": {
-      "kind": "edge.semantic",
-      "provenance": {
-        "created_at_commit": "515f24730d21cb81ca1c9737ffeb981e9c414d3c",
-        "generator": "cartographer/4",
-        "model": "sonnet"
-      },
-      "value": {
-        "verb": null
-      },
-      "verify": {
-        "verdict": "unverified"
-      }
-    },
     "edge.semantic/a0f54ca1bbd638e330e7c404": {
       "kind": "edge.semantic",
       "provenance": {
@@ -10345,6 +10301,20 @@
         "to": "Packages/LillistCore/Sources/LillistCore/Preferences/DevicePreferencesStore.swift::setRemindersImportListID",
         "verb": "writes",
         "why": "listSelectionBinding setter calls setRemindersImportListID(newValue) to persist the chosen list at line 81."
+      },
+      "verify": {
+        "verdict": "unverified"
+      }
+    },
+    "edge.semantic/a19f818bc09e5298a942779f": {
+      "kind": "edge.semantic",
+      "provenance": {
+        "created_at_commit": "5882526e2241d4d941bb92533d13ae24f2d9cf17",
+        "generator": "cartographer/4",
+        "model": "sonnet"
+      },
+      "value": {
+        "verb": null
       },
       "verify": {
         "verdict": "unverified"
@@ -10708,6 +10678,20 @@
         "verdict": "unverified"
       }
     },
+    "edge.semantic/a819cd53efc7f4740de24352": {
+      "kind": "edge.semantic",
+      "provenance": {
+        "created_at_commit": "5882526e2241d4d941bb92533d13ae24f2d9cf17",
+        "generator": "cartographer/4",
+        "model": "sonnet"
+      },
+      "value": {
+        "verb": null
+      },
+      "verify": {
+        "verdict": "unverified"
+      }
+    },
     "edge.semantic/a898d721983a425875ae0e78": {
       "kind": "edge.semantic",
       "provenance": {
@@ -10778,20 +10762,6 @@
         "created_at_commit": "515f24730d21cb81ca1c9737ffeb981e9c414d3c",
         "generator": "cartographer/4",
         "model": "sonnet"
-      },
-      "value": {
-        "verb": null
-      },
-      "verify": {
-        "verdict": "unverified"
-      }
-    },
-    "edge.semantic/a8f60fc4abaf70ba46704f60": {
-      "kind": "edge.semantic",
-      "provenance": {
-        "created_at_commit": "8e926f08fd5269de164d25b42880893a604a9d5c",
-        "generator": "cartographer/4",
-        "model": "claude-sonnet-4-6"
       },
       "value": {
         "verb": null
@@ -11070,6 +11040,20 @@
       "kind": "edge.semantic",
       "provenance": {
         "created_at_commit": "515f24730d21cb81ca1c9737ffeb981e9c414d3c",
+        "generator": "cartographer/4",
+        "model": "sonnet"
+      },
+      "value": {
+        "verb": null
+      },
+      "verify": {
+        "verdict": "unverified"
+      }
+    },
+    "edge.semantic/ae757d932b77e2ca0ecdc6c9": {
+      "kind": "edge.semantic",
+      "provenance": {
+        "created_at_commit": "5882526e2241d4d941bb92533d13ae24f2d9cf17",
         "generator": "cartographer/4",
         "model": "sonnet"
       },
@@ -11538,6 +11522,20 @@
         "verdict": "unverified"
       }
     },
+    "edge.semantic/b598069512d3dfed02aaa52d": {
+      "kind": "edge.semantic",
+      "provenance": {
+        "created_at_commit": "5882526e2241d4d941bb92533d13ae24f2d9cf17",
+        "generator": "cartographer/4",
+        "model": "sonnet"
+      },
+      "value": {
+        "verb": null
+      },
+      "verify": {
+        "verdict": "unverified"
+      }
+    },
     "edge.semantic/b5c18c6ba9bda4542463b983": {
       "kind": "edge.semantic",
       "provenance": {
@@ -11660,20 +11658,6 @@
         "created_at_commit": "515f24730d21cb81ca1c9737ffeb981e9c414d3c",
         "generator": "cartographer/4",
         "model": "sonnet"
-      },
-      "value": {
-        "verb": null
-      },
-      "verify": {
-        "verdict": "unverified"
-      }
-    },
-    "edge.semantic/b8c715cd4a7f586f1e035c1b": {
-      "kind": "edge.semantic",
-      "provenance": {
-        "created_at_commit": "8e926f08fd5269de164d25b42880893a604a9d5c",
-        "generator": "cartographer/4",
-        "model": "claude-sonnet-4-6"
       },
       "value": {
         "verb": null
@@ -11978,6 +11962,20 @@
         "verdict": "unverified"
       }
     },
+    "edge.semantic/bef4fbef75bfc0bb1d8846ba": {
+      "kind": "edge.semantic",
+      "provenance": {
+        "created_at_commit": "5882526e2241d4d941bb92533d13ae24f2d9cf17",
+        "generator": "cartographer/4",
+        "model": "sonnet"
+      },
+      "value": {
+        "verb": null
+      },
+      "verify": {
+        "verdict": "unverified"
+      }
+    },
     "edge.semantic/bf3b6bd126dc963f61fef592": {
       "kind": "edge.semantic",
       "provenance": {
@@ -12020,12 +12018,12 @@
         "verdict": "unverified"
       }
     },
-    "edge.semantic/bfc4314765caac230ff1b446": {
+    "edge.semantic/bfca932509a3641d36649b47": {
       "kind": "edge.semantic",
       "provenance": {
-        "created_at_commit": "8e926f08fd5269de164d25b42880893a604a9d5c",
+        "created_at_commit": "5882526e2241d4d941bb92533d13ae24f2d9cf17",
         "generator": "cartographer/4",
-        "model": "claude-sonnet-4-6"
+        "model": "sonnet"
       },
       "value": {
         "verb": null
@@ -12070,6 +12068,20 @@
       "kind": "edge.semantic",
       "provenance": {
         "created_at_commit": "515f24730d21cb81ca1c9737ffeb981e9c414d3c",
+        "generator": "cartographer/4",
+        "model": "sonnet"
+      },
+      "value": {
+        "verb": null
+      },
+      "verify": {
+        "verdict": "unverified"
+      }
+    },
+    "edge.semantic/c05715c9f18e77a17be10e85": {
+      "kind": "edge.semantic",
+      "provenance": {
+        "created_at_commit": "5882526e2241d4d941bb92533d13ae24f2d9cf17",
         "generator": "cartographer/4",
         "model": "sonnet"
       },
@@ -12672,6 +12684,20 @@
         "verdict": "unverified"
       }
     },
+    "edge.semantic/ca5072c2284c6b6cca6be605": {
+      "kind": "edge.semantic",
+      "provenance": {
+        "created_at_commit": "5882526e2241d4d941bb92533d13ae24f2d9cf17",
+        "generator": "cartographer/4",
+        "model": "sonnet"
+      },
+      "value": {
+        "verb": null
+      },
+      "verify": {
+        "verdict": "unverified"
+      }
+    },
     "edge.semantic/ca70f0993735a4809f414ce1": {
       "kind": "edge.semantic",
       "provenance": {
@@ -13180,20 +13206,6 @@
         "verdict": "unverified"
       }
     },
-    "edge.semantic/d2dedcb262f52352e21876f3": {
-      "kind": "edge.semantic",
-      "provenance": {
-        "created_at_commit": "8e926f08fd5269de164d25b42880893a604a9d5c",
-        "generator": "cartographer/4",
-        "model": "claude-sonnet-4-6"
-      },
-      "value": {
-        "verb": null
-      },
-      "verify": {
-        "verdict": "unverified"
-      }
-    },
     "edge.semantic/d3305cd7ed1fd717da684091": {
       "kind": "edge.semantic",
       "provenance": {
@@ -13552,6 +13564,20 @@
         "verdict": "unverified"
       }
     },
+    "edge.semantic/d8639817ca711a977cdb6267": {
+      "kind": "edge.semantic",
+      "provenance": {
+        "created_at_commit": "5882526e2241d4d941bb92533d13ae24f2d9cf17",
+        "generator": "cartographer/4",
+        "model": "sonnet"
+      },
+      "value": {
+        "verb": null
+      },
+      "verify": {
+        "verdict": "unverified"
+      }
+    },
     "edge.semantic/d865998b8133c4ae22e00ddc": {
       "kind": "edge.semantic",
       "provenance": {
@@ -13834,6 +13860,20 @@
         "verdict": "unverified"
       }
     },
+    "edge.semantic/dafb29864d0c53ac558be1fa": {
+      "kind": "edge.semantic",
+      "provenance": {
+        "created_at_commit": "5882526e2241d4d941bb92533d13ae24f2d9cf17",
+        "generator": "cartographer/4",
+        "model": "sonnet"
+      },
+      "value": {
+        "verb": null
+      },
+      "verify": {
+        "verdict": "unverified"
+      }
+    },
     "edge.semantic/dafdfa2190c60484b8020f01": {
       "kind": "edge.semantic",
       "provenance": {
@@ -14022,20 +14062,6 @@
         "created_at_commit": "515f24730d21cb81ca1c9737ffeb981e9c414d3c",
         "generator": "cartographer/4",
         "model": "sonnet"
-      },
-      "value": {
-        "verb": null
-      },
-      "verify": {
-        "verdict": "unverified"
-      }
-    },
-    "edge.semantic/dd2c80eea2ee0a6e10d30b43": {
-      "kind": "edge.semantic",
-      "provenance": {
-        "created_at_commit": "8e926f08fd5269de164d25b42880893a604a9d5c",
-        "generator": "cartographer/4",
-        "model": "claude-sonnet-4-6"
       },
       "value": {
         "verb": null
@@ -14546,20 +14572,6 @@
         "verdict": "unverified"
       }
     },
-    "edge.semantic/e64628c6f8547dfbbefc6cbc": {
-      "kind": "edge.semantic",
-      "provenance": {
-        "created_at_commit": "515f24730d21cb81ca1c9737ffeb981e9c414d3c",
-        "generator": "cartographer/4",
-        "model": "sonnet"
-      },
-      "value": {
-        "verb": null
-      },
-      "verify": {
-        "verdict": "unverified"
-      }
-    },
     "edge.semantic/e652bfb91069c9f6ebd30d91": {
       "kind": "edge.semantic",
       "provenance": {
@@ -14587,20 +14599,6 @@
         "to": "Packages/LillistCore/Sources/LillistCore/CrashReporting/CrashReport.swift::renderedAsPlainText",
         "verb": "reads",
         "why": "send(_:) calls `report.renderedAsPlainText()` to produce the email body from the structured crash report. MailComposerTransport.swift:34."
-      },
-      "verify": {
-        "verdict": "unverified"
-      }
-    },
-    "edge.semantic/e6c5c7d7045008a55822bf18": {
-      "kind": "edge.semantic",
-      "provenance": {
-        "created_at_commit": "8e926f08fd5269de164d25b42880893a604a9d5c",
-        "generator": "cartographer/4",
-        "model": "claude-sonnet-4-6"
-      },
-      "value": {
-        "verb": null
       },
       "verify": {
         "verdict": "unverified"
@@ -14684,6 +14682,20 @@
       "kind": "edge.semantic",
       "provenance": {
         "created_at_commit": "515f24730d21cb81ca1c9737ffeb981e9c414d3c",
+        "generator": "cartographer/4",
+        "model": "sonnet"
+      },
+      "value": {
+        "verb": null
+      },
+      "verify": {
+        "verdict": "unverified"
+      }
+    },
+    "edge.semantic/e78df8a655e509c8ff4e1a21": {
+      "kind": "edge.semantic",
+      "provenance": {
+        "created_at_commit": "5882526e2241d4d941bb92533d13ae24f2d9cf17",
         "generator": "cartographer/4",
         "model": "sonnet"
       },
@@ -15605,20 +15617,6 @@
       }
     },
     "edge.semantic/f51946c72db97e0689d11ff8": {
-      "kind": "edge.semantic",
-      "provenance": {
-        "created_at_commit": "8e926f08fd5269de164d25b42880893a604a9d5c",
-        "generator": "cartographer/4",
-        "model": "claude-sonnet-4-6"
-      },
-      "value": {
-        "verb": null
-      },
-      "verify": {
-        "verdict": "unverified"
-      }
-    },
-    "edge.semantic/f52dda0f24e14ef6227f954e": {
       "kind": "edge.semantic",
       "provenance": {
         "created_at_commit": "8e926f08fd5269de164d25b42880893a604a9d5c",
