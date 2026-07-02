@@ -1,5 +1,0 @@
-{"kind":"StoryCreated","at":"2026-07-02T20:07:05Z","title":"Provision the app.lillist.Widget App ID","state":"todo"}
-{"kind":"StoryCommentAdded","at":"2026-07-02T20:07:05Z","text":"Register the new App ID `app.lillist.Widget` on the Apple Developer account with\nApp Group `group.app.lillist` and CloudKit container `iCloud.app.lillist`, and\ngenerate the matching provisioning profiles (Development / Ad-Hoc for iOS,\nDeveloper-ID for macOS). Until this exists, only Simulator and unsigned builds\nwork — signed iOS-device / macOS builds and `/deployit` fail at signing.\n(Priority: high. Labels: widget, signing, blocker.)"}
-{"kind":"StoryPrioritySet","at":"2026-07-02T20:07:15Z","priority":"high"}
-{"kind":"StoryLabelsSet","at":"2026-07-02T20:07:15Z","labels":["blocker","signing","widget"]}
-{"kind":"StoryRelationshipAdded","at":"2026-07-02T20:07:15Z","other_id":"LIL-4","relation":"blocks"}

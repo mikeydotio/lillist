@@ -1,4 +1,0 @@
-{"kind":"StoryCreated","at":"2026-07-02T20:07:05Z","title":"macOS filter-focus deep link","state":"todo"}
-{"kind":"StoryCommentAdded","at":"2026-07-02T20:07:05Z","text":"When `lillist://filter/<id>` arrives on macOS, select that filter in\n`MacTasksView` (iOS `TasksView` already does this via `pendingSelectedFilterID`).\nToday the macOS handler only brings the app forward / reopens the main window.\n(Priority: medium. Labels: widget, deep-link, macos.)"}
-{"kind":"StoryPrioritySet","at":"2026-07-02T20:07:15Z","priority":"medium"}
-{"kind":"StoryLabelsSet","at":"2026-07-02T20:07:15Z","labels":["deep-link","macos","widget"]}

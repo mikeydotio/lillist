@@ -1,4 +1,0 @@
-{"kind":"StoryCreated","at":"2026-07-02T20:07:05Z","title":"Per-task widget deep link (lillist://task/<id>)","state":"todo"}
-{"kind":"StoryCommentAdded","at":"2026-07-02T20:07:05Z","text":"Emit `lillist://task/<id>` from widget task rows and open that specific task\nin-app. The pure `DeepLink` parser already supports `.task`, and the app side is\npartially scaffolded/reserved (`AppEnvironment.pendingOpenTaskID` +\n`TasksView` consumption). Thread a per-row URL through `WidgetFilterCardView`,\nwire `pendingOpenTaskID`, and drain it in `TasksView`.\n(Priority: medium. Labels: widget, deep-link.)"}
-{"kind":"StoryPrioritySet","at":"2026-07-02T20:07:15Z","priority":"medium"}
-{"kind":"StoryLabelsSet","at":"2026-07-02T20:07:15Z","labels":["deep-link","widget"]}
