@@ -38,6 +38,15 @@ settings:
     # docs/engineering-notes.md 2026-06-20.)
     MARKETING_VERSION: "0.11.10"
     DEAD_CODE_STRIPPING: YES
+    # Xcode "recommended settings" (LastUpgradeCheck 2630): generate Swift
+    # symbols for asset-catalog and string-catalog entries.
+    ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS: YES
+    STRING_CATALOG_GENERATE_SYMBOLS: YES
+    # NB: Xcode also writes the resolved DEVELOPMENT_TEAM here — it is
+    # intentionally NOT mirrored. The team ID lives behind
+    # $(LOCAL_DEVELOPMENT_TEAM) in Config/Signing.xcconfig (see "Code signing"
+    # in CLAUDE.md) so it never lands in the pbxproj / git. Regenerating
+    # restores that indirection.
 
 packages:
   LillistCore:

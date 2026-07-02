@@ -59,6 +59,15 @@ targets:
         ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
         COMBINE_HIDPI_IMAGES: YES
         LD_RUNPATH_SEARCH_PATHS: "$(inherited) @executable_path/../Frameworks"
+        # App Sandbox resource access configured in Xcode's Signing &
+        # Capabilities: Calendars (Reminders import) + Location (location-based
+        # tasks). Modern Xcode expresses these as build settings rather than raw
+        # entitlements, so they must live here to survive `xcodegen generate`.
+        # Scoped to the app only — the widget doesn't use them (Xcode also wrote
+        # them onto LillistWidget-macOS, but an extension shouldn't request
+        # unused sensitive resources).
+        ENABLE_RESOURCE_ACCESS_CALENDARS: YES
+        ENABLE_RESOURCE_ACCESS_LOCATION: YES
     dependencies:
       - package: LillistCore
         product: LillistCore
