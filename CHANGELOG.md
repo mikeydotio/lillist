@@ -3,6 +3,31 @@
 All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [v0.12.0] - 2026-07-02
+
+### Added
+- per-task + macOS filter deep links (LIL-2, LIL-3) (a6ac60b4)
+- reload wiring + lillist:// deep-link routing (49476837)
+- iOS + macOS widget extension targets & plumbing (ae004da5)
+- LillistUI widget presentation views + snapshot tests (a88be7ad)
+- snapshot cache + deep-link model in LillistCore (26351d9b)
+
+### Documentation
+- note task-open + macOS filter-focus deep links (LIL-2/3) (80e2f363)
+- document widget architecture (367dcabc)
+- update (2 docs re-projected, 23 cells re-judged) (2d7375c6)
+
+### Maintenance
+- commit-link bookkeeping (842a58e1)
+- commit-link bookkeeping for LIL-4 (22b50b61)
+- sync xcodegen config with new capabilities + build settings (776da080)
+- close LIL-1..3, unblock LIL-4 (cb2df7b9)
+- plan widget follow-up stories (LIL-1..4) (302fdd1f)
+- initialize task tracking (prefix LIL) (e83ea7f7)
+- bump iOS build number to 82 (5882526e)
+
+_[force]_
+
 ## [v0.11.10] - 2026-06-29
 
 ### Fixed
