@@ -71,6 +71,49 @@ targets:
       # not currently define App Intents, but linking the SDK keeps the
       # processor silent and future-proofs adding an AppShortcutsProvider.
       - sdk: AppIntents.framework
+      # WidgetKit for WidgetCenter.reloadTimelines (WidgetRefreshCoordinator).
+      - sdk: WidgetKit.framework
+      - target: LillistWidget-macOS
+        embed: true
+
+  # WidgetKit extension (macOS) — Lillist's first macOS app-extension.
+  # Shares source with the iOS widget via the top-level
+  # Extensions/LillistWidget directory; Lock Screen accessory families are
+  # `#if os(iOS)`-gated out. Supplies its own Info.plist because the project
+  # base sets GENERATE_INFOPLIST_FILE: NO. Hardened runtime is inherited from
+  # settings.base (required for Developer-ID notarization).
+  LillistWidget-macOS:
+    type: app-extension
+    platform: macOS
+    deploymentTarget: "15.0"
+    sources:
+      - path: ../Extensions/LillistWidget
+        excludes:
+          - "Info.plist"
+          - "Lillist.entitlements"
+    dependencies:
+      - package: LillistCore
+        product: LillistCore
+      - package: LillistUI
+        product: LillistUI
+      - sdk: AppIntents.framework
+      - sdk: WidgetKit.framework
+      - sdk: SwiftUI.framework
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: app.lillist.Widget
+        MACOSX_DEPLOYMENT_TARGET: "15.0"
+        CODE_SIGN_ENTITLEMENTS: ../Extensions/LillistWidget/Lillist.entitlements
+        CODE_SIGN_STYLE: Automatic
+        INFOPLIST_FILE: ../Extensions/LillistWidget/Info.plist
+        # The shared widget Info.plist reads CFBundleVersion from
+        # $(CURRENT_PROJECT_VERSION). The macOS app hardcodes its own
+        # CFBundleVersion (Lillist-macOS/Info.plist) to a date-based build
+        # number, and an app-extension's CFBundleVersion MUST match its host —
+        # so override it here to the macOS app's value. (iOS uses
+        # BuildNumber.xcconfig's value, which already matches the iOS app.)
+        # Keep this in lockstep with Lillist-macOS/Info.plist's CFBundleVersion.
+        CURRENT_PROJECT_VERSION: "20260517"
 
   Lillist-macOSTests:
     type: bundle.unit-test
@@ -176,6 +219,7 @@ schemes:
     build:
       targets:
         Lillist-macOS: all
+        LillistWidget-macOS: all
         Lillist-macOSTests: [test]
         Lillist-macOSUITests: [test]
     run:

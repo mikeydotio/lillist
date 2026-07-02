@@ -71,12 +71,16 @@ targets:
         embed: true
       - target: ShortcutsActions
         embed: true
+      - target: LillistWidget
+        embed: true
       # `appintentsmetadataprocessor` runs on every app/extension target by
       # default and warns when it can't find AppIntents.framework linked.
       # Linking the SDK explicitly silences the warning even when the
       # target has no `import AppIntents`; the processor then runs and
       # cleanly produces an empty `.appintents` bundle.
       - sdk: AppIntents.framework
+      # WidgetKit for WidgetCenter.reloadTimelines (WidgetRefreshCoordinator).
+      - sdk: WidgetKit.framework
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: app.lillist
@@ -109,6 +113,8 @@ targets:
         product: LillistUI
       # See note on Lillist-iOS target re: appintentsmetadataprocessor.
       - sdk: AppIntents.framework
+      # WidgetKit: the share save reloads widget timelines (separate process).
+      - sdk: WidgetKit.framework
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: app.lillist.Share
@@ -135,6 +141,8 @@ targets:
       # explicit linkage is more robust than relying on auto-link from
       # `import AppIntents`.
       - sdk: AppIntents.framework
+      # WidgetKit: mutating intents reload widget timelines (separate process).
+      - sdk: WidgetKit.framework
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: app.lillist.Shortcuts
@@ -143,6 +151,38 @@ targets:
         CODE_SIGN_ENTITLEMENTS: ../../Extensions/ShortcutsActions/Lillist.entitlements
         CODE_SIGN_STYLE: Automatic
         INFOPLIST_FILE: ../../Extensions/ShortcutsActions/Info.plist
+
+  # WidgetKit extension — home-screen / Lock Screen widgets. Shares its
+  # source with the macOS widget target via the top-level
+  # Extensions/LillistWidget directory (see Apps/project.yml). Links
+  # LillistCore (snapshot cache reader + intent handlers) and LillistUI
+  # (Rainbow presentation views + bundled fonts). AppIntents + WidgetKit
+  # are linked explicitly (config intent, interactive complete intent).
+  LillistWidget:
+    type: app-extension
+    platform: iOS
+    deploymentTarget: "26.0"
+    sources:
+      - path: ../../Extensions/LillistWidget
+        excludes:
+          - "Info.plist"
+          - "Lillist.entitlements"
+    dependencies:
+      - package: LillistCore
+        product: LillistCore
+      - package: LillistUI
+        product: LillistUI
+      - sdk: AppIntents.framework
+      - sdk: WidgetKit.framework
+      - sdk: SwiftUI.framework
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: app.lillist.Widget
+        IPHONEOS_DEPLOYMENT_TARGET: "26.0"
+        TARGETED_DEVICE_FAMILY: "1,2"
+        CODE_SIGN_ENTITLEMENTS: ../../Extensions/LillistWidget/Lillist.entitlements
+        CODE_SIGN_STYLE: Automatic
+        INFOPLIST_FILE: ../../Extensions/LillistWidget/Info.plist
 
   Lillist-iOSTests:
     type: bundle.unit-test
@@ -274,6 +314,7 @@ schemes:
         Lillist-iOS: all
         ShareExtension-iOS: all
         ShortcutsActions: all
+        LillistWidget: all
         Lillist-iOSTests: [test]
         Lillist-iOSUITests: [test]
         Lillist-iOSAppHostedTests: [test]
