@@ -142,3 +142,5 @@ Tools/Deploy/*.local.*
 
 # Atlas runtime state (ephemeral, never committed)
 .atlas/
+
+# .storyhook/ is version-controlled project data — do not ignore

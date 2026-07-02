@@ -1,0 +1,12 @@
+[[states]]
+slug = "todo"
+super = "OPEN"
+
+[[states]]
+slug = "in-progress"
+super = "OPEN"
+role = "active"
+
+[[states]]
+slug = "done"
+super = "CLOSED"

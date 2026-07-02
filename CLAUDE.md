@@ -566,3 +566,13 @@ Versioning settings are in `.semver/config.yaml`. Do not modify this file unless
 - After committing changes to mapped source files, suggest running
   `/atlas update`.
 <!-- atlas:end -->
+
+<!-- BEGIN STORYHOOK -->
+## Storyhook
+
+This project uses **storyhook** for task tracking. Full usage instructions are in `.storyhook/CLAUDE.md` — read that file before starting work.
+
+Quick start: run `story load-context` at session start, `story next` to pick a task.
+
+Run `story help <command>` for detailed usage on any command, or `story help --compact` for the full reference.
+<!-- END STORYHOOK -->

@@ -1,0 +1,8 @@
+# Storyhook Claude Code plugin configuration
+enabled = true
+
+# Tracking verbosity: "quiet", "normal", or "verbose"
+# quiet   = minimal output, no auto-comments
+# normal  = status updates and session handoffs
+# verbose = detailed logging with progress comments
+tracking = "normal"
