@@ -4,6 +4,54 @@ Append-only log of cross-cutting engineering lessons learned while building
 Lillist. Each entry captures a non-obvious gotcha — usually one that took real
 investigation to find — so future work doesn't re-learn it the hard way.
 
+## 2026-07-01 — WidgetKit widgets: snapshot cache, WidgetKit-not-in-Core, glass-free rendering
+
+Added a configurable WidgetKit widget (iOS + macOS) rendering a saved smart
+filter's tasks. Non-obvious constraints that shaped the design:
+
+- **`LillistCore` must never `import WidgetKit`.** `lillist-cli` is an
+  `executableTarget` that links LillistCore; WidgetKit won't link headlessly, so
+  a stray import breaks the CLI build. The snapshot model/store/builder and the
+  `DeepLink` parser are therefore **pure Foundation** in `LillistCore/Widgets/`;
+  every `WidgetCenter.reloadAllTimelines()` call lives in an app/extension target
+  (`WidgetRefreshCoordinator`, the ShortcutsActions/ShareExtension refresh
+  helpers, the widget's own complete intent).
+- **Data path is a snapshot cache, not a live read.** The app writes a compact
+  per-filter JSON to `<AppGroup>/Widget/filters/<id>.json` on every
+  `NSPersistentStoreRemoteChange` (debounced) and reloads timelines. The widget's
+  `AppIntentTimelineProvider` only *reads* that JSON — it never stands up Core
+  Data on the fast path (the ~30 MB widget budget can't afford
+  `NSPersistentCloudKitContainer`). The only Core-Data touch is a strictly
+  one-shot, cache-miss rebuild of the single configured filter. Extensions are
+  separate processes and don't get the app's in-process remote-change note, so
+  each mutating path refreshes widgets itself.
+- **Fonts are process-scoped.** `LillistWidgetBundle.init()` must call
+  `LillistFonts.registerIfNeeded()` or the card renders in the system font.
+- **Liquid Glass does not render in widgets.** The card uses solid `LillistColor`
+  fills + an `AngularGradient` rainbow stroke (which *does* render), never
+  `glassSurface`/`glassEffect`. The rainbow *frame* look needs
+  `.contentMarginsDisabled()` so the card fills edge-to-edge (its border is the
+  widget edge). Presentation views live in `LillistUI/Widgets/` (WidgetKit-free)
+  so they're snapshot-testable in the existing macOS host harness; the extension
+  supplies only the timeline/config/intent plumbing and maps
+  `WidgetFamily → WidgetLayout`.
+- **macOS is Lillist's first app-extension, and its CFBundleVersion is
+  hardcoded** (date-based `20260517`) rather than `$(CURRENT_PROJECT_VERSION)`.
+  An app-extension's CFBundleVersion must match its host, so the
+  `LillistWidget-macOS` target overrides `CURRENT_PROJECT_VERSION` to that value;
+  keep it in lockstep with `Apps/Lillist-macOS/Info.plist`. (iOS matches
+  automatically via `BuildNumber.xcconfig`.)
+- **New App ID `app.lillist.Widget` needs provisioning before any *signed*
+  build/deploy.** Simulator + unsigned builds are fine; a signed iOS device /
+  macOS build needs a profile (`-allowProvisioningUpdates`, or the portal) with
+  App Group + CloudKit on the new App ID. CI/simulator verification doesn't hit
+  this.
+- **Deep links:** new `lillist://` scheme (`quickcapture`, `filter/<uuid>`,
+  `task/<uuid>`), parsed by the pure `DeepLink` enum. v1 wires quick-capture
+  (reuses the existing `isQuickCapturePresented` / capture panel) and
+  filter-focus (iOS `TasksView`); `task/<uuid>` is parsed/reserved for a future
+  notification/row deep-link.
+
 ## 2026-06-27 — Sync-settings UX: "Reset & Download", no force-sync, host-resolved migration terminals
 
 Four coupled changes to the iCloud-sync surface, each with a non-obvious bit:

@@ -486,6 +486,33 @@ All waves landed, including the Wave 6 snapshot reconciliation.
     os(macOS)` glass snapshot suites are **`XCTSkip`-quarantined**; macOS
     glass is verified manually. Revisit if Apple ships a capture API.
 
+## Widgets — COMPLETE (2026-07-01)
+
+Configurable WidgetKit widget (iOS + macOS) showing a saved smart filter's
+tasks: rainbow-bordered dark card, header (filter name + done-progress ring +
+remaining count), status-glyph rows, "+" quick-add; all system families +
+iOS Lock Screen accessories. Interactive: tap a row's circle to complete it in
+place; "+" opens Quick Capture; whole-widget tap opens the filter.
+
+- **Target:** `Extensions/LillistWidget/` — one shared source dir compiled into
+  both the `LillistWidget` (iOS) and `LillistWidget-macOS` app-extension targets
+  (macOS's *first* extension). Bundle id `app.lillist.Widget`.
+- **Data:** snapshot-cache (`LillistCore/Widgets/` — `WidgetSnapshot`,
+  `WidgetSnapshotStore`, `WidgetSnapshotBuilder`, pure Foundation). The app +
+  writing extensions regenerate `<AppGroup>/Widget/**` on store changes and call
+  `WidgetCenter.reloadAllTimelines()`; the timeline provider only reads the JSON.
+- **Views:** `LillistUI/Widgets/` (WidgetKit-free, snapshot-tested via the macOS
+  host harness — `WidgetFilterCardSnapshotTests`).
+- **Deep links:** `lillist://` (`quickcapture` / `filter/<id>` / `task/<id>`),
+  parsed by `LillistCore` `DeepLink`.
+- **Gotchas** (see engineering-notes 2026-07-01): never `import WidgetKit` in
+  LillistCore (CLI link); fonts are process-scoped (`registerIfNeeded()` in the
+  bundle init); glass doesn't render in widgets (solid fills + rainbow stroke +
+  `.contentMarginsDisabled()`); the macOS widget overrides
+  `CURRENT_PROJECT_VERSION` to match the app's hardcoded CFBundleVersion; the new
+  `app.lillist.Widget` App ID needs a provisioning profile before any *signed*
+  device/desktop build (simulator + unsigned are fine).
+
 ## When in doubt
 
 1. Check `docs/engineering-notes.md` for a known gotcha.
