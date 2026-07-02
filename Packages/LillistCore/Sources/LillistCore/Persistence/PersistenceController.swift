@@ -39,6 +39,9 @@ public final class PersistenceController: @unchecked Sendable {
     public static let appIntentsTransactionAuthor = "Lillist.appIntents"
     public static let macAppTransactionAuthor = "Lillist.macApp"
     public static let cliTransactionAuthor = "Lillist.cli"
+    /// Author for writes originated by the widget extension (interactive
+    /// complete-in-place intent).
+    public static let widgetTransactionAuthor = "Lillist.widget"
 
     /// The author actually stamped on this controller's contexts. Defaults to
     /// `localTransactionAuthor`; extensions/CLI pass their own so persistent
