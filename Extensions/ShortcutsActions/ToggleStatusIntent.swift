@@ -21,6 +21,7 @@ struct ToggleStatusIntent: AppIntent {
             note: nil,
             persistence: persistence
         )
+        await WidgetRefresh.refreshAfterMutation(persistence: persistence)
         return .result()
     }
 }

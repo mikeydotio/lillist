@@ -41,6 +41,9 @@ final class AppEnvironment {
     /// Drains the chosen Reminders list into top-level tasks on activation.
     let remindersImporter: RemindersImporter
     let smartFilterStore: SmartFilterStore
+    /// Regenerates the per-filter widget snapshot cache + reloads widget
+    /// timelines on store changes. `nil` when the App Group is unreachable.
+    let widgetRefresh: WidgetRefreshCoordinator?
     let notificationSpecStore: NotificationSpecStore
     let snoozeRegistry: SnoozeRegistry
     let notificationScheduler: NotificationScheduler
@@ -114,6 +117,12 @@ final class AppEnvironment {
         )
         let smartFilterStore = SmartFilterStore(persistence: persistence)
         self.smartFilterStore = smartFilterStore
+        // Desktop widgets read a per-filter snapshot cache this coordinator
+        // maintains; nil only if the App Group is unreachable.
+        self.widgetRefresh = WidgetRefreshCoordinator(
+            smartFilterStore: smartFilterStore,
+            appGroupID: Self.appGroupID
+        )
         self.onboardingState = OnboardingState(devicePreferences: devicePreferences)
         self.defaultsInstaller = DefaultsInstaller(filters: smartFilterStore)
         self.autoPurgeJob = AutoPurgeJob(persistence: persistence, preferences: preferencesStore)
@@ -391,6 +400,11 @@ final class AppEnvironment {
         startObservingAccountState()
         startObservingSyncMode()
         startObservingPauseReason()
+        // Keep desktop widgets fresh: rebuild the per-filter snapshot cache +
+        // reload timelines on every store change (local writes AND CloudKit
+        // imports), and warm the cache once now.
+        startObservingStoreChangesForWidgets()
+        widgetRefresh?.refreshNow()
         // Connect the live CloudKit sync-status stream to the UI indicator.
         await syncMonitor.start()
 
@@ -398,6 +412,22 @@ final class AppEnvironment {
         // has no prior foreground-activation hook, so this observer is net-new.
         installActivationDrain()
         Task { [remindersImporter] in await remindersImporter.drainIfNeeded() }
+    }
+
+    /// Rebuild the widget snapshot cache whenever the store changes. The
+    /// coordinator debounces, so a burst of writes coalesces into one rebuild +
+    /// one timeline reload. Fires for local writes and CloudKit imports alike;
+    /// registered app-lifetime (matching the other bootstrap observers).
+    private func startObservingStoreChangesForWidgets() {
+        NotificationCenter.default.addObserver(
+            forName: .NSPersistentStoreRemoteChange,
+            object: persistence.container.persistentStoreCoordinator,
+            queue: nil
+        ) { [weak self] _ in
+            Task { @MainActor [weak self] in
+                self?.widgetRefresh?.scheduleRefresh()
+            }
+        }
     }
 
     /// Drain the Reminders queue whenever the app becomes active. Fire-and-

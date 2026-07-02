@@ -55,6 +55,7 @@ struct AddTaskIntent: AppIntent {
             }
         }
         let record = try await TaskStore(persistence: persistence).fetch(id: id)
+        await WidgetRefresh.refreshAfterMutation(persistence: persistence)
         return .result(value: TaskEntity(record), dialog: "Added \(title) to Lillist.")
     }
 }

@@ -22,6 +22,7 @@ struct AddNoteIntent: AppIntent {
             body: body,
             persistence: persistence
         )
+        await WidgetRefresh.refreshAfterMutation(persistence: persistence)
         return .result()
     }
 }

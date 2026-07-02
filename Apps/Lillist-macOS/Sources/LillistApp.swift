@@ -76,6 +76,7 @@ struct LillistApp: App {
                 .environment(\.isQuickCapturePresentedBinding, $isQuickCapturePresented)
                 .environment(\.sortBinding, sortBinding)
                 .task { await loadEnvironmentIfNeeded() }
+                .onOpenURL { handleDeepLink($0) }
                 .modifier(MainWindowReopener())
         }
         .defaultSize(width: 420, height: 760)
@@ -128,6 +129,20 @@ struct LillistApp: App {
 
     private func triggerQuickCapture() {
         appDelegate.quickCapturePanel?.toggle()
+    }
+
+    /// Route an inbound `lillist://` deep link (from the desktop widget). Quick
+    /// Capture opens the global capture panel; filter/task links bring the app
+    /// forward and reopen the main window (focusing a specific filter on macOS is
+    /// a follow-up — the Mac main window has its own selection model).
+    private func handleDeepLink(_ url: URL) {
+        guard let link = DeepLink(url: url) else { return }
+        switch link {
+        case .quickCapture:
+            triggerQuickCapture()
+        case .filter, .task:
+            NotificationCenter.default.post(name: .lillistReopenMainWindow, object: nil)
+        }
     }
 
     @ViewBuilder

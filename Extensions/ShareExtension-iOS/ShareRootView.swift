@@ -1,4 +1,6 @@
 import SwiftUI
+import WidgetKit
+
 import LillistCore
 import LillistUI
 
@@ -133,6 +135,15 @@ struct ShareRootView: View {
                     thumbnailData: nil,
                     faviconData: nil
                 )
+            }
+            // Keep widgets fresh: the share extension is a separate process, so
+            // the app's store-change observer won't fire while it's backgrounded.
+            if let snapshotStore = WidgetSnapshotStore(appGroupID: appGroupID) {
+                await WidgetSnapshotBuilder(
+                    smartFilterStore: SmartFilterStore(persistence: persistence),
+                    snapshotStore: snapshotStore
+                ).regenerate()
+                WidgetCenter.shared.reloadAllTimelines()
             }
             onSaved()
         } catch let LillistError.storeUnavailable(reason) {

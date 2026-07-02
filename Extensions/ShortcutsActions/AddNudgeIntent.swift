@@ -26,6 +26,7 @@ struct AddNudgeIntent: AppIntent {
             offsetMinutes: nil,
             fireDate: fireAt
         )
+        await WidgetRefresh.refreshAfterMutation(persistence: persistence)
         return .result()
     }
 }

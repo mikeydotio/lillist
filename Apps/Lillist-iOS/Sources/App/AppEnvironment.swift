@@ -71,8 +71,15 @@ final class AppEnvironment {
     /// ``QuickCaptureHandoff``. Observed by `TaskEditorHost` to open the
     /// capture dialog pre-filled; reset to `nil` once consumed.
     var pendingQuickCaptureSeed: String?
+    /// Filter to focus, handed off by a `lillist://filter/<id>` deep link (the
+    /// widget's whole-tap target). Observed by `TasksView`, which selects it and
+    /// resets this to `nil`.
+    var pendingSelectedFilterID: UUID?
     let seriesStore: SeriesStore
     let smartFilterStore: SmartFilterStore
+    /// Regenerates the per-filter widget snapshot cache + reloads widget
+    /// timelines on store changes. `nil` when the App Group is unreachable.
+    let widgetRefresh: WidgetRefreshCoordinator?
     let notificationSpecStore: NotificationSpecStore
     let snoozeRegistry: SnoozeRegistry
     let notificationScheduler: NotificationScheduler
@@ -138,6 +145,12 @@ final class AppEnvironment {
         self.seriesStore = SeriesStore(persistence: persistence)
         let smartFilterStore = SmartFilterStore(persistence: persistence)
         self.smartFilterStore = smartFilterStore
+        // Home-screen / Lock Screen widgets read a per-filter snapshot cache
+        // this coordinator maintains; nil only if the App Group is unreachable.
+        self.widgetRefresh = WidgetRefreshCoordinator(
+            smartFilterStore: smartFilterStore,
+            appGroupID: Self.appGroupID
+        )
         self.onboardingState = OnboardingState(devicePreferences: devicePreferences)
         self.defaultsInstaller = DefaultsInstaller(filters: smartFilterStore)
         self.autoPurgeJob = AutoPurgeJob(persistence: persistence, preferences: preferencesStore)
@@ -466,6 +479,12 @@ final class AppEnvironment {
         startObservingSyncMode()
         installCanaryLifecycleObservers()
         startObservingPauseReason()
+        // Keep home-screen / Lock Screen widgets fresh: rebuild the per-filter
+        // snapshot cache + reload timelines on every store change (local writes
+        // AND CloudKit imports), and warm the cache once now so a freshly added
+        // widget renders immediately.
+        startObservingStoreChangesForWidgets()
+        widgetRefresh?.refreshNow()
         // Connect the live CloudKit sync-status stream to the UI indicator.
         await syncMonitor.start()
         metricKitObserver.startReceiving()
@@ -509,6 +528,22 @@ final class AppEnvironment {
     /// has already fired — so this observer doesn't write a canary on
     /// cold launch (that's `CrashReporterHost.detectAndPrepare()`'s
     /// job) and only fires on subsequent foreground returns.
+    /// Rebuild the widget snapshot cache whenever the store changes. The
+    /// coordinator debounces, so a burst of writes coalesces into one rebuild +
+    /// one timeline reload. Fires for local writes and CloudKit imports alike;
+    /// registered app-lifetime (matching the other bootstrap observers).
+    private func startObservingStoreChangesForWidgets() {
+        NotificationCenter.default.addObserver(
+            forName: .NSPersistentStoreRemoteChange,
+            object: persistence.container.persistentStoreCoordinator,
+            queue: nil
+        ) { [weak self] _ in
+            Task { @MainActor [weak self] in
+                self?.widgetRefresh?.scheduleRefresh()
+            }
+        }
+    }
+
     private func installCanaryLifecycleObservers() {
         let reporter = self.crashReporter
         let backup = self.localBackupCoordinator

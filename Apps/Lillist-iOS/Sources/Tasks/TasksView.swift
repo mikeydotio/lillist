@@ -115,7 +115,8 @@ struct TasksView: View {
             stores: editorStores,
             onChanged: { await reload() }
         ))
-        .task { await initialLoad() }
+        .task { await initialLoad(); drainPendingDeepLinks() }
+        .onChange(of: env.pendingSelectedFilterID) { _, _ in drainPendingDeepLinks() }
         .onAppear {
             dragController.setOnDrop { dragged, target in
                 Task { await applyDrop(dragged: dragged, target: target) }
@@ -172,6 +173,16 @@ struct TasksView: View {
         await loadSavedFilters()
         try? await env.taskStore.normalizeSiblingsIfDegenerate(ofParent: nil)
         await reload()
+    }
+
+    /// Consume a `lillist://filter/<id>` deep link handed off by the widget:
+    /// focus that filter and expand the filter header. Idempotent — clears the
+    /// pending id so it fires once per link.
+    private func drainPendingDeepLinks() {
+        guard let id = env.pendingSelectedFilterID else { return }
+        selectedSavedFilters = [id]
+        isFilterHeaderExpanded = true
+        env.pendingSelectedFilterID = nil
     }
 
     private func loadSavedFilters() async {

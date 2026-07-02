@@ -74,6 +74,7 @@ struct LillistApp: App {
                 .environment(\.isQuickCapturePresentedBinding, $isQuickCapturePresented)
                 .environment(\.sortBinding, sortBinding)
                 .task { await loadEnvironmentIfNeeded() }
+                .onOpenURL { handleDeepLink($0) }
         }
         .commands {
             LillistCommands(isQuickCapturePresented: $isQuickCapturePresented)
@@ -108,6 +109,22 @@ struct LillistApp: App {
             .padding()
         } else {
             ProgressView("Loading Lillist…")
+        }
+    }
+
+    /// Route an inbound `lillist://` deep link (from the widget). Quick Capture
+    /// opens the capture sheet; a filter link hands the id to `TasksView` via the
+    /// environment. `task` links are reserved for a future notification/row
+    /// deep-link and currently just bring the app forward.
+    private func handleDeepLink(_ url: URL) {
+        guard let link = DeepLink(url: url) else { return }
+        switch link {
+        case .quickCapture:
+            isQuickCapturePresented = true
+        case .filter(let id):
+            environment?.pendingSelectedFilterID = id
+        case .task:
+            break
         }
     }
 
