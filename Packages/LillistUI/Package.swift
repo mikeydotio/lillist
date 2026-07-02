@@ -41,7 +41,8 @@ let package = Package(
                 "Tour/__Snapshots__",
                 "Snapshots/__Snapshots__",
                 "CrashReporting/__Snapshots__",
-                "iOS/__Snapshots__"
+                "iOS/__Snapshots__",
+                "Widgets/__Snapshots__"
             ],
             swiftSettings: [
                 .treatAllWarnings(as: .error)

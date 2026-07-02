@@ -79,7 +79,13 @@
     "Add tag" : {
 
     },
+    "Add task" : {
+
+    },
     "After %lld occurrence%@" : {
+
+    },
+    "All clear" : {
 
     },
     "App version %@" : {
@@ -739,9 +745,6 @@
 
     },
     "Sync is paused. Check iCloud settings and your internet connection." : {
-
-    },
-    "Sync Now" : {
 
     },
     "Sync one final time first? Your iCloud data will be preserved." : {
