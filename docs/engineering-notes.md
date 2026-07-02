@@ -47,10 +47,15 @@ filter's tasks. Non-obvious constraints that shaped the design:
   App Group + CloudKit on the new App ID. CI/simulator verification doesn't hit
   this.
 - **Deep links:** new `lillist://` scheme (`quickcapture`, `filter/<uuid>`,
-  `task/<uuid>`), parsed by the pure `DeepLink` enum. v1 wires quick-capture
-  (reuses the existing `isQuickCapturePresented` / capture panel) and
-  filter-focus (iOS `TasksView`); `task/<uuid>` is parsed/reserved for a future
-  notification/row deep-link.
+  `task/<uuid>`), parsed by the pure `DeepLink` enum. Quick-capture reuses the
+  existing `isQuickCapturePresented` / capture panel; filter-focus and task-open
+  hand off via `AppEnvironment.pendingSelectedFilterID` / `pendingOpenTaskID`,
+  drained in `TasksView` (iOS) and `MacTasksView` (macOS) — env-based rather than
+  NotificationCenter so a deep link arriving on cold launch survives until a view
+  exists to consume it. Widget rows emit `task/<uuid>` (a title `Link`, distinct
+  from the complete-circle `Button`); the whole widget emits `filter/<uuid>`; "+"
+  emits `quickcapture`. (2026-07-02: task-open + macOS filter-focus landed as
+  LIL-2 / LIL-3.)
 
 ## 2026-06-27 — Sync-settings UX: "Reset & Download", no force-sync, host-resolved migration terminals
 
