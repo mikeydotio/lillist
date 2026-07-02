@@ -44,6 +44,13 @@ final class AppEnvironment {
     /// Regenerates the per-filter widget snapshot cache + reloads widget
     /// timelines on store changes. `nil` when the App Group is unreachable.
     let widgetRefresh: WidgetRefreshCoordinator?
+    /// Filter to focus, handed off by a `lillist://filter/<id>` deep link (the
+    /// widget's whole-tap target). Observed by `MacTasksView`, which selects it
+    /// and resets this to `nil`.
+    var pendingSelectedFilterID: UUID?
+    /// Task to open, handed off by a `lillist://task/<id>` deep link (a widget
+    /// row tap). Observed by `MacTasksView`, which opens it and resets to `nil`.
+    var pendingOpenTaskID: UUID?
     let notificationSpecStore: NotificationSpecStore
     let snoozeRegistry: SnoozeRegistry
     let notificationScheduler: NotificationScheduler

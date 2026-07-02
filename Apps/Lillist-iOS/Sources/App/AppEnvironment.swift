@@ -75,6 +75,9 @@ final class AppEnvironment {
     /// widget's whole-tap target). Observed by `TasksView`, which selects it and
     /// resets this to `nil`.
     var pendingSelectedFilterID: UUID?
+    /// Task to open, handed off by a `lillist://task/<id>` deep link (a widget
+    /// row tap). Observed by `TasksView`, which opens it and resets this to `nil`.
+    var pendingOpenTaskID: UUID?
     let seriesStore: SeriesStore
     let smartFilterStore: SmartFilterStore
     /// Regenerates the per-filter widget snapshot cache + reloads widget

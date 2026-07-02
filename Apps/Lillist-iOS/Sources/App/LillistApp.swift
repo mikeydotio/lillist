@@ -113,9 +113,8 @@ struct LillistApp: App {
     }
 
     /// Route an inbound `lillist://` deep link (from the widget). Quick Capture
-    /// opens the capture sheet; a filter link hands the id to `TasksView` via the
-    /// environment. `task` links are reserved for a future notification/row
-    /// deep-link and currently just bring the app forward.
+    /// opens the capture sheet; filter and task links hand the id to `TasksView`
+    /// via the environment (which focuses the filter / opens the task).
     private func handleDeepLink(_ url: URL) {
         guard let link = DeepLink(url: url) else { return }
         switch link {
@@ -123,8 +122,8 @@ struct LillistApp: App {
             isQuickCapturePresented = true
         case .filter(let id):
             environment?.pendingSelectedFilterID = id
-        case .task:
-            break
+        case .task(let id):
+            environment?.pendingOpenTaskID = id
         }
     }
 

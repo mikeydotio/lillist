@@ -132,16 +132,21 @@ struct LillistApp: App {
     }
 
     /// Route an inbound `lillist://` deep link (from the desktop widget). Quick
-    /// Capture opens the global capture panel; filter/task links bring the app
-    /// forward and reopen the main window (focusing a specific filter on macOS is
-    /// a follow-up — the Mac main window has its own selection model).
+    /// Capture opens the global capture panel; a filter link focuses that filter
+    /// and a task link opens that task via the environment (drained by
+    /// `MacTasksView`). The main window is reopened first so a `MacTasksView`
+    /// exists to consume the handoff even if it was closed (⌘W).
     private func handleDeepLink(_ url: URL) {
         guard let link = DeepLink(url: url) else { return }
         switch link {
         case .quickCapture:
             triggerQuickCapture()
-        case .filter, .task:
+        case .filter(let id):
             NotificationCenter.default.post(name: .lillistReopenMainWindow, object: nil)
+            environment?.pendingSelectedFilterID = id
+        case .task(let id):
+            NotificationCenter.default.post(name: .lillistReopenMainWindow, object: nil)
+            environment?.pendingOpenTaskID = id
         }
     }
 

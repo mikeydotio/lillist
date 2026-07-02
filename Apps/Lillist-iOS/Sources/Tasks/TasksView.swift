@@ -117,6 +117,7 @@ struct TasksView: View {
         ))
         .task { await initialLoad(); drainPendingDeepLinks() }
         .onChange(of: env.pendingSelectedFilterID) { _, _ in drainPendingDeepLinks() }
+        .onChange(of: env.pendingOpenTaskID) { _, _ in drainPendingDeepLinks() }
         .onAppear {
             dragController.setOnDrop { dragged, target in
                 Task { await applyDrop(dragged: dragged, target: target) }
@@ -175,14 +176,19 @@ struct TasksView: View {
         await reload()
     }
 
-    /// Consume a `lillist://filter/<id>` deep link handed off by the widget:
-    /// focus that filter and expand the filter header. Idempotent — clears the
-    /// pending id so it fires once per link.
+    /// Consume `lillist://` deep links handed off by the widget: a filter link
+    /// focuses that filter (and expands the header); a task link opens that task
+    /// in the editor. Idempotent — clears each pending id so it fires once.
     private func drainPendingDeepLinks() {
-        guard let id = env.pendingSelectedFilterID else { return }
-        selectedSavedFilters = [id]
-        isFilterHeaderExpanded = true
-        env.pendingSelectedFilterID = nil
+        if let id = env.pendingSelectedFilterID {
+            selectedSavedFilters = [id]
+            isFilterHeaderExpanded = true
+            env.pendingSelectedFilterID = nil
+        }
+        if let id = env.pendingOpenTaskID {
+            openTaskID = id
+            env.pendingOpenTaskID = nil
+        }
     }
 
     private func loadSavedFilters() async {

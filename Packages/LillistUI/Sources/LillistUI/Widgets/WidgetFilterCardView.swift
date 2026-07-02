@@ -87,17 +87,20 @@ public struct WidgetFilterCardView<RowLeading: View>: View {
     private let snapshot: WidgetSnapshot
     private let layout: WidgetLayout
     private let addURL: URL?
+    private let rowURL: (WidgetSnapshot.Row) -> URL?
     private let rowLeading: (WidgetSnapshot.Row) -> RowLeading
 
     public init(
         snapshot: WidgetSnapshot,
         layout: WidgetLayout,
         addURL: URL? = nil,
+        rowURL: @escaping (WidgetSnapshot.Row) -> URL? = { _ in nil },
         @ViewBuilder rowLeading: @escaping (WidgetSnapshot.Row) -> RowLeading
     ) {
         self.snapshot = snapshot
         self.layout = layout
         self.addURL = addURL
+        self.rowURL = rowURL
         self.rowLeading = rowLeading
     }
 
@@ -121,7 +124,7 @@ public struct WidgetFilterCardView<RowLeading: View>: View {
                 emptyState
             } else {
                 ForEach(visibleRows) { row in
-                    WidgetTaskRowView(row: row) { rowLeading(row) }
+                    WidgetTaskRowView(row: row, titleURL: rowURL(row)) { rowLeading(row) }
                 }
             }
             Spacer(minLength: 0)

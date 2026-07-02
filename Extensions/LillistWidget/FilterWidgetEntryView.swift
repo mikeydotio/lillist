@@ -41,7 +41,9 @@ struct FilterWidgetEntryView: View {
                 WidgetFilterCardView(
                     snapshot: snapshot,
                     layout: Self.layout(for: family),
-                    addURL: DeepLink.quickCapture.url
+                    addURL: DeepLink.quickCapture.url,
+                    // Tap a row (its title area) to open that task in the app.
+                    rowURL: { DeepLink.task($0.id).url }
                 ) { row in
                     // Tap the circle to complete the task in place.
                     Button(intent: CompleteTaskFromWidget(taskID: row.id.uuidString)) {
