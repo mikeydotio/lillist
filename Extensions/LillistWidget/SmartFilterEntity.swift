@@ -3,8 +3,9 @@ import Foundation
 
 import LillistCore
 
-/// The widget-configuration picker option: one saved smart filter. Built from
-/// the value-type `SmartFilterStore.SmartFilterRecord` (or the widget snapshot
+/// The widget-configuration picker option: one saved smart filter, or the
+/// reserved **"No Filter"** sentinel (all tasks, unfiltered). Built from the
+/// value-type `SmartFilterStore.SmartFilterRecord` (or the widget snapshot
 /// index) — no NSManagedObject crosses the boundary.
 struct SmartFilterEntity: AppEntity, Identifiable {
     let id: UUID
@@ -12,8 +13,23 @@ struct SmartFilterEntity: AppEntity, Identifiable {
 
     static let typeDisplayRepresentation: TypeDisplayRepresentation = "Smart Filter"
 
+    /// The unfiltered "all tasks" option — the default for a freshly added
+    /// widget. Its reserved id (``WidgetSnapshot/unfilteredID``) can never be a
+    /// real `SmartFilter.id`.
+    static let noFilter = SmartFilterEntity(id: WidgetSnapshot.unfilteredID, name: "No Filter")
+
+    /// A subtitle + icon make "No Filter" unambiguous against a saved filter that
+    /// happens to be named "No Filter" or has an empty name — saved filters show
+    /// their name alone, with no subtitle.
     var displayRepresentation: DisplayRepresentation {
-        DisplayRepresentation(title: "\(name)")
+        if id == WidgetSnapshot.unfilteredID {
+            return DisplayRepresentation(
+                title: "No Filter",
+                subtitle: "All tasks",
+                image: .init(systemName: "tray.full")
+            )
+        }
+        return DisplayRepresentation(title: "\(name)")
     }
 
     static let defaultQuery = SmartFilterEntityQuery()

@@ -70,6 +70,59 @@ struct WidgetSnapshotBuilderTests {
         #expect(snap.openCount == 1)
     }
 
+    private func openOnlyGroup() -> PredicateGroup {
+        .init(combinator: .all, predicates: [
+            .leaf(.init(field: .status, op: .isNot, value: .statusSet([.closed])))
+        ])
+    }
+
+    @Test("a task completed today sinks to the bottom of an exclude-closed filter")
+    func completedTaskSinksToBottom() async throws {
+        let controller = try await TestStore.make()
+        let tasks = TaskStore(persistence: controller)
+        let filters = SmartFilterStore(persistence: controller)
+        _ = try await tasks.create(title: "X")
+        let y = try await tasks.create(title: "Y")
+        _ = try await tasks.create(title: "Z")
+        try await tasks.transition(id: y, to: .closed)   // completed today
+        let filterID = try await filters.create(name: "Open", group: openOnlyGroup())
+
+        let (snapStore, dir) = tempSnapshotStore()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let builder = WidgetSnapshotBuilder(smartFilterStore: filters, snapshotStore: snapStore)
+        await builder.regenerate()
+
+        let snap = try #require(snapStore.read(filterID: filterID))
+        // Y is excluded by the filter yet retained (grace) — and pinned last.
+        #expect(snap.tasks.count == 3)
+        #expect(snap.tasks.last?.title == "Y")
+        #expect(snap.tasks.last?.status == .closed)
+        #expect(snap.openCount == 2)
+        #expect(Set(snap.tasks.dropLast().map(\.title)) == ["X", "Z"])
+    }
+
+    @Test("regenerate writes the No-Filter sentinel snapshot (open first, done at bottom)")
+    func regenerateWritesSentinel() async throws {
+        let controller = try await TestStore.make()
+        let tasks = TaskStore(persistence: controller)
+        let filters = SmartFilterStore(persistence: controller)
+        _ = try await tasks.create(title: "Open one")
+        let done = try await tasks.create(title: "Done one")
+        try await tasks.transition(id: done, to: .closed)
+
+        let (snapStore, dir) = tempSnapshotStore()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let builder = WidgetSnapshotBuilder(smartFilterStore: filters, snapshotStore: snapStore)
+        await builder.regenerate()
+
+        let snap = try #require(snapStore.read(filterID: WidgetSnapshot.unfilteredID))
+        #expect(snap.isUnfiltered)
+        #expect(snap.filterName == "")
+        #expect(snap.tasks.first?.title == "Open one")
+        #expect(snap.tasks.last?.title == "Done one")      // completed today, sunk to bottom
+        #expect(snap.openCount == 1)
+    }
+
     @Test("rows are capped at rowCap; totalCount reflects the full match set")
     func rowCap() async throws {
         let controller = try await TestStore.make()

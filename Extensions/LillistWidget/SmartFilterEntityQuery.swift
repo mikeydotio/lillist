@@ -11,11 +11,16 @@ import LillistCore
 struct SmartFilterEntityQuery: EntityQuery {
     func entities(for identifiers: [SmartFilterEntity.ID]) async throws -> [SmartFilterEntity] {
         let set = Set(identifiers)
-        return await allFilters().filter { set.contains($0.id) }
+        var result: [SmartFilterEntity] = []
+        if set.contains(WidgetSnapshot.unfilteredID) { result.append(.noFilter) }
+        result += await allFilters().filter { set.contains($0.id) }
+        return result
     }
 
+    /// "No Filter" leads the list so it's the obvious default; saved filters follow.
     func suggestedEntities() async throws -> [SmartFilterEntity] {
-        await allFilters()
+        let saved = await allFilters()
+        return [.noFilter] + saved
     }
 
     private func allFilters() async -> [SmartFilterEntity] {

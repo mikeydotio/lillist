@@ -22,6 +22,17 @@ public struct WidgetSnapshot: Codable, Sendable, Equatable {
         }
     }
 
+    /// Reserved id for the "No Filter" (unfiltered — all tasks) state. A fresh
+    /// widget defaults to this; it is never a real `SmartFilter.id` (Core Data
+    /// mints v4 UUIDs, never the all-zero one). Shared source of truth for the
+    /// widget config entity, the timeline provider, the snapshot builder, and the
+    /// header (which hides the name for this id).
+    public static let unfilteredID = UUID(uuidString: "00000000-0000-0000-0000-000000000000")!
+
+    /// Whether this snapshot represents the unfiltered "all tasks" view rather
+    /// than a saved smart filter.
+    public var isUnfiltered: Bool { filterID == Self.unfilteredID }
+
     /// Identity of the source smart filter.
     public var filterID: UUID
     /// User-facing filter name, rendered in the widget header.

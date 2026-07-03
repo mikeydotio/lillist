@@ -57,9 +57,12 @@ struct FilterTimelineProvider: AppIntentTimelineProvider {
 
     /// Normal path: read the cached JSON. Cold cache: rebuild just this filter
     /// once (the only place the timeline touches Core Data), then re-read.
+    ///
+    /// A missing filter id resolves to the unfiltered "all tasks" sentinel — the
+    /// default for a freshly added widget.
     private func loadSnapshot(filterID: UUID?) async -> WidgetSnapshot? {
         guard let store = WidgetSnapshotStore(appGroupID: WidgetIntentSupport.appGroupID) else { return nil }
-        guard let id = filterID ?? store.readIndex()?.filters.first?.id else { return nil }
+        let id = filterID ?? WidgetSnapshot.unfilteredID
         if let cached = store.read(filterID: id) { return cached }
         guard let persistence = try? await WidgetIntentSupport.makePersistence() else { return nil }
         let builder = WidgetSnapshotBuilder(
