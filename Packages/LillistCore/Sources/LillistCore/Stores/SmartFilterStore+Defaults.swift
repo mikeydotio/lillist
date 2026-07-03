@@ -8,7 +8,15 @@ extension SmartFilterStore {
     /// untouched (including user edits — the installer does NOT overwrite).
     /// Missing filters are recreated, so deleting "Today" and relaunching
     /// brings it back.
+    ///
+    /// Runs ``deduplicateExactDuplicates()`` first: the by-name idempotency check
+    /// only sees the *local* store, which races `NSPersistentCloudKitContainer`'s
+    /// async mirror — a launch on a not-yet-synced store re-creates the defaults,
+    /// then the cloud copies sync in, leaving duplicates. Deduping before the
+    /// create pass collapses those and keeps seeding self-healing across launches.
     public func installDefaultsIfNeeded() async throws {
+        try await deduplicateExactDuplicates()
+
         let existing = try await list()
         let existingNames = Set(existing.map(\.name))
 
@@ -21,6 +29,63 @@ extension SmartFilterStore {
                 sortAscending: spec.sortAscending
             )
         }
+    }
+
+    /// Collapse **exact structural duplicates** — filters identical in
+    /// `(name, group, sortField, sortAscending, tintColor)`. Only byte-identical
+    /// copies are merged, so a user-customized filter that merely shares a name
+    /// with a default is never touched. Idempotent.
+    ///
+    /// This is the cleanup half of the CloudKit-seed-race fix (Apple's
+    /// "deduplicate after import" pattern): the winner is deterministic across
+    /// devices — a pinned row beats an unpinned one, then the earliest
+    /// `createdAt`, then the lowest `id` — so two devices deduping independently
+    /// delete the same losers. Deletes propagate through CloudKit, clearing the
+    /// duplicates everywhere.
+    public func deduplicateExactDuplicates() async throws {
+        let all = try await list()
+
+        var kept: [SmartFilterRecord] = []
+        var losers: [UUID] = []
+        for record in all {
+            if let idx = kept.firstIndex(where: { Self.isSameFilter($0, record) }) {
+                if Self.winner(kept[idx], record).id == record.id {
+                    losers.append(kept[idx].id)   // the incumbent loses
+                    kept[idx] = record
+                } else {
+                    losers.append(record.id)
+                }
+            } else {
+                kept.append(record)
+            }
+        }
+
+        for id in losers {
+            try? await delete(id: id)
+        }
+    }
+
+    /// Structural equality: same name, predicate, sort, and tint. `PredicateGroup`
+    /// is `Equatable`, so this is an exact byte-for-byte match.
+    private static func isSameFilter(_ a: SmartFilterRecord, _ b: SmartFilterRecord) -> Bool {
+        a.name == b.name
+            && a.group == b.group
+            && a.sortField == b.sortField
+            && a.sortAscending == b.sortAscending
+            && a.tintColor == b.tintColor
+    }
+
+    /// Deterministic survivor between two identical filters: prefer a pinned row,
+    /// then the earliest `createdAt`, then the lexicographically lowest `id`.
+    private static func winner(_ a: SmartFilterRecord, _ b: SmartFilterRecord) -> SmartFilterRecord {
+        if a.isPinned != b.isPinned { return a.isPinned ? a : b }
+        switch (a.createdAt, b.createdAt) {
+        case let (ca?, cb?) where ca != cb: return ca < cb ? a : b
+        case (_?, nil): return a
+        case (nil, _?): return b
+        default: break
+        }
+        return a.id.uuidString <= b.id.uuidString ? a : b
     }
 }
 
