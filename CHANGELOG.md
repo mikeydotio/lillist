@@ -3,6 +3,23 @@
 All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [v0.13.0] - 2026-07-03
+
+### Added
+- container-relative corners, ring-less header, multi-step chips (ef98d041)
+- No Filter default + completed-today grace period (96ee2360)
+
+### Fixed
+- dedup default smart filters to end CloudKit seed-race duplicates (55e524fe)
+
+### Documentation
+- widget corner/dedup/chip/sentinel lessons (829bb482)
+
+### Maintenance
+- bump iOS build number to 83 (50ed6357)
+
+_[force]_
+
 ## [v0.12.0] - 2026-07-02
 
 ### Added
