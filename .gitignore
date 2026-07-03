@@ -131,6 +131,19 @@ iOSInjectionProject/
 /*.gcno
 **/xcshareddata/WorkspaceSettings.xcsettings
 
+# Shared schemes are xcodegen-generated artifacts, not source. xcodegen writes
+# the scheme's BuildableName from the target name (Lillist-{iOS,macOS}.app) while
+# `xcodebuild archive` rewrites it to the real product (Lillist.app, since
+# PRODUCT_NAME=Lillist) — so a committed scheme flip-flops on every deploy. Keep
+# them untracked and regenerate on demand: `xcodegen generate` runs before every
+# CI build/test and every /deployit archive, so the configured scheme (Archive
+# build-number pre-action + RECORD_SNAPSHOTS env) is always present when needed.
+# Caveat: run `xcodegen generate` before opening the workspace in Xcode's GUI, or
+# Xcode will fall back to an auto-generated scheme without those settings.
+# (Leading `**/` because the projects live under Apps/… — a mid-pattern `/`
+# otherwise anchors to the repo root and wouldn't match the nested .xcodeproj.)
+**/*.xcodeproj/xcshareddata/xcschemes/*.xcscheme
+
 # End of https://www.toptal.com/developers/gitignore/api/macos,swift,xcode
 
 # Local signing overrides — see Apps/Config/Signing.local.xcconfig.example.

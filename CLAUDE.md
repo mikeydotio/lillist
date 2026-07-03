@@ -138,6 +138,17 @@ After moving/deleting source files, regenerate the matching pbxproj:
 (cd Apps            && xcodegen generate --spec project.yml --project .)
 ```
 
+**Shared schemes are git-ignored, not committed** (`.gitignore`:
+`**/*.xcodeproj/xcshareddata/xcschemes/*.xcscheme`). xcodegen writes the scheme's
+`BuildableName` from the target name (`Lillist-{iOS,macOS}.app`) while
+`xcodebuild archive` rewrites it to the real product (`Lillist.app`, since
+`PRODUCT_NAME = Lillist`), so a *committed* scheme flip-flopped on every deploy.
+`xcodegen generate` runs before every CI build/test and every `/deployit`
+archive, so the configured scheme (Archive build-number pre-action +
+`RECORD_SNAPSHOTS` env var) is always present when needed — but **run `xcodegen
+generate` before opening the workspace in Xcode's GUI**, or Xcode falls back to
+an auto-generated scheme lacking those settings.
+
 **CI.** `.github/workflows/ci.yml` runs the matrix post-push on `main`
 (and via `workflow_dispatch`): `swift test` for both packages, a
 pbxproj-drift gate (`xcodegen generate` + `git diff --exit-code`), the
