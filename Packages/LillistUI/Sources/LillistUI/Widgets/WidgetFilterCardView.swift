@@ -2,57 +2,31 @@ import SwiftUI
 
 import LillistCore
 
-/// A small progress ring showing the done fraction of a filter's tasks. Empty
-/// (0% done) renders as a plain muted ring.
-private struct WidgetProgressRing: View {
-    var open: Int
-    var total: Int
-    var tint: Color
-
-    var body: some View {
-        let fraction = total > 0 ? Double(total - open) / Double(total) : 0
-        ZStack {
-            Circle().stroke(LillistColor.borderStrong, lineWidth: 2.5)
-            Circle()
-                .trim(from: 0, to: fraction)
-                .stroke(tint, style: StrokeStyle(lineWidth: 2.5, lineCap: .round))
-                .rotationEffect(.degrees(-90))
-        }
-        .frame(width: 16, height: 16)
-    }
-}
-
-/// The widget header: a done-progress ring, the filter name (bold), and an
-/// optional trailing remaining-count.
+/// The widget header, pinned to the top-trailing corner: the filter name (bold,
+/// only when a saved filter is applied) followed by the remaining-task count.
+/// The unfiltered "No Filter" view shows the count alone.
 public struct WidgetHeaderView: View {
     public var snapshot: WidgetSnapshot
-    public var showsCount: Bool
 
-    public init(snapshot: WidgetSnapshot, showsCount: Bool = true) {
+    public init(snapshot: WidgetSnapshot) {
         self.snapshot = snapshot
-        self.showsCount = showsCount
-    }
-
-    private var tint: Color {
-        Color(hex: snapshot.tintHex) ?? RainbowPalette.Spectrum.purple
     }
 
     public var body: some View {
         HStack(spacing: LillistSpacing.s) {
-            WidgetProgressRing(open: snapshot.openCount, total: snapshot.totalCount, tint: tint)
-            Text(snapshot.filterName)
-                .font(LillistTypography.headline)
-                .fontWeight(.bold)
-                .foregroundStyle(LillistColor.textStrong)
-                .lineLimit(1)
-                .truncationMode(.tail)
             Spacer(minLength: 0)
-            if showsCount {
-                Text("\(snapshot.openCount)")
-                    .font(LillistTypography.subheadline)
-                    .foregroundStyle(LillistColor.textMuted)
-                    .monospacedDigit()
+            if !snapshot.isUnfiltered {
+                Text(snapshot.filterName)
+                    .font(LillistTypography.headline)
+                    .fontWeight(.bold)
+                    .foregroundStyle(LillistColor.textStrong)
+                    .lineLimit(1)
+                    .truncationMode(.tail)
             }
+            Text("\(snapshot.openCount)")
+                .font(LillistTypography.subheadline)
+                .foregroundStyle(LillistColor.textMuted)
+                .monospacedDigit()
         }
     }
 }
@@ -119,7 +93,7 @@ public struct WidgetFilterCardView<RowLeading: View>: View {
 
     public var body: some View {
         VStack(alignment: .leading, spacing: layout.rowSpacing) {
-            WidgetHeaderView(snapshot: snapshot, showsCount: layout.showsHeaderCount)
+            WidgetHeaderView(snapshot: snapshot)
             if snapshot.tasks.isEmpty {
                 emptyState
             } else {
@@ -137,15 +111,14 @@ public struct WidgetFilterCardView<RowLeading: View>: View {
         }
         .padding(layout.contentPadding)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .background(
-            RoundedRectangle(cornerRadius: LillistRadius.l, style: .continuous)
-                .fill(LillistColor.card)
-        )
+        // `ContainerRelativeShape` renders concentric with the widget's own
+        // corner radius (which grew on iOS 26/27), so the card fill and the
+        // rainbow border both hug the widget edge instead of the old fixed 16/22pt
+        // radius that left a visible corner gap. The inner fill, inset by
+        // `.padding(4)`, stays concentric automatically.
+        .background(ContainerRelativeShape().fill(LillistColor.card))
         .padding(4)
-        .background(
-            RoundedRectangle(cornerRadius: LillistRadius.xl, style: .continuous)
-                .fill(Self.frameGradient)
-        )
+        .background(ContainerRelativeShape().fill(Self.frameGradient))
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
@@ -172,12 +145,13 @@ public struct WidgetFilterCardView<RowLeading: View>: View {
     }
 }
 
-extension WidgetFilterCardView where RowLeading == WidgetCheckGlyph {
-    /// Non-interactive convenience: renders plain status glyphs (previews,
-    /// snapshot tests).
+extension WidgetFilterCardView where RowLeading == WidgetStatusChip {
+    /// Non-interactive convenience: renders the app's status chip (previews,
+    /// snapshot tests). The widget extension supplies an interactive
+    /// `Button(intent:)`-wrapped `WidgetStatusChip` for tap-to-cycle.
     public init(snapshot: WidgetSnapshot, layout: WidgetLayout, addURL: URL? = nil) {
         self.init(snapshot: snapshot, layout: layout, addURL: addURL) {
-            WidgetCheckGlyph(status: $0.status)
+            WidgetStatusChip(status: $0.status)
         }
     }
 }

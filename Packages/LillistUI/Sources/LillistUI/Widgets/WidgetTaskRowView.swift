@@ -2,41 +2,30 @@ import SwiftUI
 
 import LillistCore
 
-/// The status glyph for a widget task row: an empty circle for `todo` (matching
-/// the design mock), and status-tinted glyphs otherwise. Pure visual — the
-/// widget extension wraps this in a `Button(intent:)` for tap-to-complete
-/// (WidgetKit interactivity can't live in LillistUI, which never imports it).
-public struct WidgetCheckGlyph: View {
+/// The status control for a widget task row: the app's own `StatusCubeView`
+/// chip (identical multi-step todo → started → blocked → done visual) plus a
+/// VoiceOver label (the chip itself is purely visual — its accessibility lives
+/// in `StatusIndicatorView`, which the widget can't use because it relies on a
+/// `Menu`). The widget extension wraps this in a `Button(intent:)` for
+/// tap-to-cycle; the row convenience initializer, previews, and snapshot tests
+/// render it non-interactively.
+public struct WidgetStatusChip: View {
     public var status: Status
-    /// Point size of the glyph. Scales with the row's font by default.
-    public var size: CGFloat
 
-    public init(status: Status, size: CGFloat = 18) {
+    public init(status: Status) {
         self.status = status
-        self.size = size
     }
 
     public var body: some View {
-        Image(systemName: symbolName)
-            .font(.system(size: size))
-            .foregroundStyle(StatusPalette.color(for: status))
+        StatusCubeView(status: status)
             .accessibilityLabel(Text(StatusGlyph.accessibilityLabel(for: status)))
-    }
-
-    private var symbolName: String {
-        switch status {
-        case .todo: "circle"
-        case .started: "circle.inset.filled"
-        case .blocked: "circle.dashed"
-        case .closed: "checkmark.circle.fill"
-        }
     }
 }
 
-/// A single task row: leading status glyph + one-line, tail-truncated title.
+/// A single task row: leading status chip + one-line, tail-truncated title.
 /// `Leading` is injected so the widget extension can supply an interactive
-/// `Button(intent:)`-wrapped ``WidgetCheckGlyph``; the convenience initializer
-/// renders the plain glyph for previews and snapshot tests.
+/// `Button(intent:)`-wrapped ``WidgetStatusChip``; the convenience initializer
+/// renders the plain chip for previews and snapshot tests.
 ///
 /// `titleURL`, when set, wraps the title (and the trailing space that fills the
 /// row) in a `Link` so tapping the row opens that task — a distinct tap target
@@ -78,9 +67,9 @@ public struct WidgetTaskRowView<Leading: View>: View {
     }
 }
 
-extension WidgetTaskRowView where Leading == WidgetCheckGlyph {
-    /// Non-interactive convenience: renders the plain status glyph.
+extension WidgetTaskRowView where Leading == WidgetStatusChip {
+    /// Non-interactive convenience: renders the plain status chip.
     public init(row: WidgetSnapshot.Row, titleURL: URL? = nil) {
-        self.init(row: row, titleURL: titleURL) { WidgetCheckGlyph(status: row.status) }
+        self.init(row: row, titleURL: titleURL) { WidgetStatusChip(status: row.status) }
     }
 }

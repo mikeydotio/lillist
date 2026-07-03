@@ -19,9 +19,12 @@ struct FilterWidgetEntryView: View {
     }
 
     /// Whole-widget tap target: open the app focused on this filter. The "+" and
-    /// the status circles are distinct tap targets that override this.
+    /// the status chips are distinct tap targets that override this. The
+    /// unfiltered "No Filter" view has no filter to focus, so it just opens the app.
     private var filterURL: URL? {
-        guard let id = entry.snapshot?.filterID ?? entry.configuration.filter?.id else { return nil }
+        guard let id = entry.snapshot?.filterID ?? entry.configuration.filter?.id,
+              id != WidgetSnapshot.unfilteredID
+        else { return nil }
         return DeepLink.filter(id).url
     }
 
@@ -45,9 +48,10 @@ struct FilterWidgetEntryView: View {
                     // Tap a row (its title area) to open that task in the app.
                     rowURL: { DeepLink.task($0.id).url }
                 ) { row in
-                    // Tap the circle to complete the task in place.
-                    Button(intent: CompleteTaskFromWidget(taskID: row.id.uuidString)) {
-                        WidgetCheckGlyph(status: row.status)
+                    // Tap the chip to advance the task's status in place
+                    // (todo → started → done), matching the app.
+                    Button(intent: AdvanceTaskStatusFromWidget(taskID: row.id.uuidString)) {
+                        WidgetStatusChip(status: row.status)
                     }
                     .buttonStyle(.plain)
                 }

@@ -58,6 +58,10 @@ final class WidgetFilterCardSnapshotTests: RecordableSnapshotTestCase {
         named name: String
     ) {
         let view = WidgetFilterCardView(snapshot: snapshot, layout: layout)
+            // The widget supplies a container shape at runtime; offscreen there
+            // is none, so pin one that mimics a widget's rounded corners — the
+            // card's `ContainerRelativeShape` border/fill resolve against it.
+            .containerShape(RoundedRectangle(cornerRadius: LillistRadius.xl, style: .continuous))
             .environment(\.colorScheme, scheme)
             .environment(\.locale, Locale(identifier: "en_US"))
             .frame(width: size.width, height: size.height)

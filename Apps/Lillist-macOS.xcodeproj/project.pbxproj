@@ -18,7 +18,6 @@
 		0D271B6FB8B12700E0AA370B /* CommandNotificationObserverGuardTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5626826E4EED7EAAEDDED61E /* CommandNotificationObserverGuardTests.swift */; };
 		12192573C492F4C19AC7A9AF /* LillistApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2B69FCA7EA5A0AEC03AC528 /* LillistApp.swift */; };
 		1835D5C3561B08CF2C688CD5 /* GlobalHotkeyMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 447BBBCF160E4CA4AF71A686 /* GlobalHotkeyMonitor.swift */; };
-		232E62683FD63D850DE75524 /* CompleteTaskFromWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = C74B01AE502C2DFD7E6AD90A /* CompleteTaskFromWidget.swift */; };
 		285DC7E46B1AA401F748B09E /* HotkeyRecorderTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2BC54A777EAD574C648DD1F9 /* HotkeyRecorderTests.swift */; };
 		288F35C5006B93AAEE189A8E /* IndexingServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 742CD5E123358917FB88A557 /* IndexingServiceTests.swift */; };
 		297F386CC41DF81630DAABC2 /* HotkeyRecorder.swift in Sources */ = {isa = PBXBuildFile; fileRef = D2F709C6BFFCBE01EB7EB243 /* HotkeyRecorder.swift */; };
@@ -31,6 +30,7 @@
 		45B8F62994DBA09CA3BDFA8D /* WidgetRefreshCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = B3260F13476CB414DA5B263F /* WidgetRefreshCoordinator.swift */; };
 		48BCDA9D8B5C36BB2F899B5B /* SidebarContextMenuTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 365F9079CBE5A1C7C1D0158F /* SidebarContextMenuTests.swift */; };
 		4BC8812417B7918610E71F65 /* SmartFilterEntity.swift in Sources */ = {isa = PBXBuildFile; fileRef = 616F5AB9F954A83DA4263208 /* SmartFilterEntity.swift */; };
+		4F385E775478918D1F5D0F9C /* AdvanceTaskStatusFromWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = BD0FAC659B27C6948DC4896B /* AdvanceTaskStatusFromWidget.swift */; };
 		513F80DB225B3198A6B428C6 /* CrashReporterHost.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBBEE29201F8E282644A5147 /* CrashReporterHost.swift */; };
 		51CD698709C7470BF850D750 /* TodayPopoverView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 59867850C82C90EBDA587E7A /* TodayPopoverView.swift */; };
 		52B6567908A60B67FDA9CBAC /* NotificationPermissionFlowTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 953BE94B80FD2AFB27B77F89 /* NotificationPermissionFlowTests.swift */; };
@@ -179,8 +179,8 @@
 		BBBEE29201F8E282644A5147 /* CrashReporterHost.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CrashReporterHost.swift; sourceTree = "<group>"; };
 		BC4034CAF7C667207F94C76D /* PreferencesWindow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreferencesWindow.swift; sourceTree = "<group>"; };
 		BCCB5CCE25054305FAC3B6CA /* IndexingService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IndexingService.swift; sourceTree = "<group>"; };
+		BD0FAC659B27C6948DC4896B /* AdvanceTaskStatusFromWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AdvanceTaskStatusFromWidget.swift; sourceTree = "<group>"; };
 		BD72FB43E7AD4FA8D926DF02 /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = System/Library/Frameworks/WidgetKit.framework; sourceTree = SDKROOT; };
-		C74B01AE502C2DFD7E6AD90A /* CompleteTaskFromWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CompleteTaskFromWidget.swift; sourceTree = "<group>"; };
 		CAE05B45618E3E01C96A85F4 /* WidgetIntentSupport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WidgetIntentSupport.swift; sourceTree = "<group>"; };
 		D002EB6866402CB86776B481 /* Lillist-macOS.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Lillist-macOS.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		D2F709C6BFFCBE01EB7EB243 /* HotkeyRecorder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HotkeyRecorder.swift; sourceTree = "<group>"; };
@@ -256,7 +256,7 @@
 		15D12BF72737D43C15457A8B /* LillistWidget */ = {
 			isa = PBXGroup;
 			children = (
-				C74B01AE502C2DFD7E6AD90A /* CompleteTaskFromWidget.swift */,
+				BD0FAC659B27C6948DC4896B /* AdvanceTaskStatusFromWidget.swift */,
 				ADB164EDE3E0A507862A8351 /* FilterTimelineProvider.swift */,
 				0778E4B889B9B1E054C4638C /* FilterWidget.swift */,
 				6D00DC4434B5650F0B01DC87 /* FilterWidgetEntryView.swift */,
@@ -744,7 +744,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				232E62683FD63D850DE75524 /* CompleteTaskFromWidget.swift in Sources */,
+				4F385E775478918D1F5D0F9C /* AdvanceTaskStatusFromWidget.swift in Sources */,
 				58676F6E9658FC946007D76B /* FilterTimelineProvider.swift in Sources */,
 				7B16176D5BA295CE08B3A18D /* FilterWidget.swift in Sources */,
 				031B060C542868475629E9CB /* FilterWidgetEntryView.swift in Sources */,

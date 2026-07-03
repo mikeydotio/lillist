@@ -27,11 +27,6 @@ public enum WidgetLayout: Sendable, CaseIterable {
         self != .small
     }
 
-    /// Whether the header shows the trailing remaining-count.
-    public var showsHeaderCount: Bool {
-        self != .small
-    }
-
     /// Interior padding inside the dark card.
     public var contentPadding: CGFloat {
         switch self {
