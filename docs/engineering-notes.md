@@ -3856,3 +3856,56 @@ Two meta-lessons:
    the meaningful assertion is on deletion (cell disappears — `onDelete`
    soft-deletes then `reload()`s the trashed-excluding list), not on the button's
    mere existence.
+
+## 2026-07-02 — Widget refinements: container-relative corners, CloudKit seed-race dedup, app-chip reuse
+
+Field-testing the WidgetKit widget surfaced four lessons:
+
+- **A widget border must clip to `ContainerRelativeShape`, never a fixed
+  `RoundedRectangle`.** The rainbow border/card were drawn with
+  `RoundedRectangle(cornerRadius: LillistRadius.xl/.l)` (22/16 pt). iOS bumped the
+  home-screen widget corner radius (visible on iOS 26/27), so the fixed-radius
+  border no longer reached the widget's rounded edge — a bare gap at each corner.
+  `ContainerRelativeShape()` renders concentric with whatever corner radius the
+  OS gives the widget; the inner card, inset by `.padding(4)`, stays concentric
+  automatically. Offscreen (snapshot tests, previews) there is no container, so
+  `ContainerRelativeShape` degrades to a plain rectangle — pin one in the harness
+  with `.containerShape(RoundedRectangle(cornerRadius: LillistRadius.xl, style:
+  .continuous))` so baselines stay meaningful.
+
+- **Name-by-idempotency seeding races `NSPersistentCloudKitContainer` and breeds
+  duplicates.** `SmartFilterStore.installDefaultsIfNeeded()` guarded the five
+  default filters by matching names against the **local** store, and it runs on
+  every launch. CloudKit mirrors asynchronously, so a launch on a not-yet-synced
+  store (a fresh `/deployit` install, a store reset) sees zero filters, recreates
+  all five, and then the cloud copies sync in — leaving 10, 15, 20… The picker
+  duplicates were never a widget bug; the widget only *reads* filters. Fix is
+  Apple's "deduplicate after import" pattern: `deduplicateExactDuplicates()`
+  collapses filters identical in `(name, group, sortField, sortAscending,
+  tintColor)` (`PredicateGroup` is `Equatable`) to a deterministic winner
+  (pinned → earliest `createdAt` → lowest `id`), run *before* the create pass so
+  seeding self-heals every launch. Deletes propagate through CloudKit, clearing
+  dupes everywhere. Only byte-identical copies collapse, so a user-customized
+  filter sharing a name is never touched.
+
+- **App views reuse straight into widgets when their interactive/animated paths
+  are inert offscreen.** The row status control is the app's own `StatusCubeView`
+  (wrapped as `WidgetStatusChip` only to add the VoiceOver label that normally
+  lives in `StatusIndicatorView`). Its confetti `@State`/`.task`/`.onChange` never
+  fire in a static widget render (no live status transition), so it draws as the
+  settled multi-step chip — 1:1 parity with the app for free. Tap-to-cycle reuses
+  the same `StatusCycler.nextOnClick` + `TaskStore.transition` the app's
+  `TasksView.cycle` uses (the widget intent `import`s LillistUI for the cycler).
+
+- **"No Filter" is a reserved-UUID sentinel, and completed tasks get a
+  same-day grace window.** The unfiltered default is `WidgetSnapshot.unfilteredID`
+  (all-zero UUID — Core Data never mints it); the config entity, timeline
+  provider, snapshot builder, and header all key off it (the header hides the
+  name when `isUnfiltered`). To keep a just-completed task from vanishing, the
+  builder appends tasks **closed today** (`closedAt on .today`) to the bottom of
+  every target and drops them after midnight. Caveat: for a saved filter that
+  excludes closed at the predicate level, the closed-today set is fetched
+  globally (not re-intersected with the filter's non-status criteria), so a task
+  completed today that never matched the filter can briefly appear in its done
+  section — acceptable because tasks are normally completed *from* the widget
+  showing that filter.
