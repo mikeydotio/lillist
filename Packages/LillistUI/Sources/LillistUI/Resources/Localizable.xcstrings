@@ -232,6 +232,12 @@
     "Due" : {
 
     },
+    "Due %@" : {
+
+    },
+    "Due %@ at %@" : {
+
+    },
     "due %@" : {
 
     },
@@ -506,6 +512,9 @@
     "No activity yet." : {
 
     },
+    "No due date" : {
+
+    },
     "No internet connection" : {
 
     },
@@ -714,6 +723,12 @@
     "Started" : {
 
     },
+    "Starts %@" : {
+
+    },
+    "Starts %@ at %@" : {
+
+    },
     "Status" : {
 
     },
@@ -775,6 +790,15 @@
 
     },
     "tagged %@" : {
+
+    },
+    "today" : {
+
+    },
+    "tomorrow" : {
+
+    },
+    "yesterday" : {
 
     },
     "Tags" : {
