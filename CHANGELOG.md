@@ -3,6 +3,35 @@
 All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [v0.14.0] - 2026-07-14
+
+### Added
+- compact detail card with in-card child popups (50b747f0)
+- inline "+ Tag" affordance in TagAssignmentField (08372592)
+- add DueLineFormatter for the compact detail schedule line (2e5cf74f)
+
+### Fixed
+- rows fill card height, "+" moves to corner overlay (#9) (d8a253c0)
+- keep in-progress rows in place; only completed sink (#9) (dcbab646)
+
+### Changed
+- Merge pull request #11 from mikeydotio/worktree-lil-8 (1ddd4e43)
+- drop the reminders section from the task editor (bf06119b)
+- Merge pull request #10 from mikeydotio/worktree-lil-9 (acaf7b4b)
+
+### Documentation
+- worktree signing, Form-composition seam, snapshot-stable relative dates (119f3cc9)
+
+### Testing
+- re-record the detail editor baselines (89911187)
+
+### Maintenance
+- prune LillistUI strings orphaned by the detail redesign (9802529c)
+- untrack xcodegen-generated Xcode schemes (cec85c39)
+- bump iOS build number to 84 (69f9d39a)
+
+_[manual]_
+
 ## [v0.13.0] - 2026-07-03
 
 ### Added
