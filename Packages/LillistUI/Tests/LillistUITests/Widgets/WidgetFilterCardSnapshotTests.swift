@@ -99,5 +99,33 @@ final class WidgetFilterCardSnapshotTests: RecordableSnapshotTestCase {
         ]
         assertCard(fixture(rows: rows, total: 2), layout: .large, scheme: .dark, size: largeSize, named: "long-title-dark")
     }
+
+    /// A long title on the **last** visible row of a *filled* card — the only
+    /// row that shares the "+" overlay's horizontal band — must truncate clear
+    /// of the glyph. Uses medium, whose 4-row fill packs the last row directly
+    /// beside the bottom-trailing "+", so the `trailingInset(isLast:)` collision
+    /// fix is actually exercised (at large the rows don't reach the glyph).
+    func testLongTitleLastRow_dark() {
+        let rows: [(String, Status)] = Array(referenceRows.prefix(3)) + [
+            ("Coordinate the cross-functional quarterly planning offsite logistics", .todo),
+        ]
+        assertCard(fixture(rows: rows, total: 4), layout: .medium, scheme: .dark, size: mediumSize, named: "long-title-last-row-dark")
+    }
+
+    /// Medium filled to its new cap (4 rows) verifies the reclaimed footer band
+    /// shows the extra row without clipping at the fixed 364×170 medium size.
+    func testMediumFull_dark() {
+        assertCard(fixture(rows: Array(referenceRows.prefix(4)), total: 9), layout: .medium, scheme: .dark, size: mediumSize, named: "medium-full-dark")
+    }
+
+    /// Large filled to its new cap (9 rows) verifies the reclaimed footer band
+    /// shows the extra row without clipping at the fixed 364×382 large size.
+    func testLargeFull_dark() {
+        let rows: [(String, Status)] = Array(referenceRows.prefix(7)) + [
+            ("Order replacement filters", .todo),
+            ("Schedule dentist visit", .todo),
+        ]
+        assertCard(fixture(rows: rows, total: 14), layout: .large, scheme: .dark, size: largeSize, named: "large-full-dark")
+    }
 }
 #endif

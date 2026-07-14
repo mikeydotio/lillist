@@ -140,4 +140,81 @@ struct WidgetSnapshotBuilderTests {
         #expect(snap.tasks.count == 3)
         #expect(snap.totalCount == 5)
     }
+
+    @Test("advancing an open task's status does not move it in the No-Filter sentinel")
+    func sentinelOrderStableUnderStatusChange() async throws {
+        let controller = try await TestStore.make()
+        let tasks = TaskStore(persistence: controller)
+        let filters = SmartFilterStore(persistence: controller)
+        _ = try await tasks.create(title: "A")           // creation order == position order
+        let b = try await tasks.create(title: "B")
+        _ = try await tasks.create(title: "C")
+        try await tasks.transition(id: b, to: .started)  // bumps modifiedAt; must NOT reorder
+
+        let (snapStore, dir) = tempSnapshotStore()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let builder = WidgetSnapshotBuilder(smartFilterStore: filters, snapshotStore: snapStore)
+        await builder.regenerate()
+
+        let snap = try #require(snapStore.read(filterID: WidgetSnapshot.unfilteredID))
+        #expect(snap.tasks.map(\.title) == ["A", "B", "C"])
+        #expect(snap.openCount == 3)
+    }
+
+    @Test("advancing status does not reorder a modifiedAt-sorted saved filter's open rows")
+    func savedFilterVolatileSortStableUnderStatusChange() async throws {
+        let controller = try await TestStore.make()
+        let tasks = TaskStore(persistence: controller)
+        let filters = SmartFilterStore(persistence: controller)
+        _ = try await tasks.create(title: "A")
+        let b = try await tasks.create(title: "B")
+        _ = try await tasks.create(title: "C")
+        let filterID = try await filters.create(
+            name: "Recently touched",
+            group: openOnlyGroup(),
+            sortField: .modifiedAt,
+            sortAscending: false
+        )
+        try await tasks.transition(id: b, to: .started)
+
+        let (snapStore, dir) = tempSnapshotStore()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let builder = WidgetSnapshotBuilder(smartFilterStore: filters, snapshotStore: snapStore)
+        await builder.regenerate()
+
+        let snap = try #require(snapStore.read(filterID: filterID))
+        // A modifiedAt sort would lift B (just advanced) to the top; the volatile
+        // fallback pins the open slice to position order instead.
+        #expect(snap.tasks.map(\.title) == ["A", "B", "C"])
+        #expect(snap.openCount == 3)
+    }
+
+    @Test("a saved filter's stable custom sort is preserved (not forced to position order)")
+    func savedFilterStableSortPreserved() async throws {
+        let controller = try await TestStore.make()
+        let tasks = TaskStore(persistence: controller)
+        let filters = SmartFilterStore(persistence: controller)
+        // Creation (== position) order deliberately differs from title order.
+        _ = try await tasks.create(title: "Cherry")      // position 0
+        let apple = try await tasks.create(title: "Apple")  // position 1
+        _ = try await tasks.create(title: "Banana")      // position 2
+        let filterID = try await filters.create(
+            name: "Alphabetical",
+            group: openOnlyGroup(),
+            sortField: .title,
+            sortAscending: true
+        )
+        try await tasks.transition(id: apple, to: .started)  // title unchanged
+
+        let (snapStore, dir) = tempSnapshotStore()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let builder = WidgetSnapshotBuilder(smartFilterStore: filters, snapshotStore: snapStore)
+        await builder.regenerate()
+
+        let snap = try #require(snapStore.read(filterID: filterID))
+        // Title is stable under a status transition, so the configured sort wins
+        // (position order would be Cherry, Apple, Banana).
+        #expect(snap.tasks.map(\.title) == ["Apple", "Banana", "Cherry"])
+        #expect(snap.openCount == 3)
+    }
 }

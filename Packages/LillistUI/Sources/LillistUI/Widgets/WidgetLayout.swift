@@ -11,13 +11,16 @@ public enum WidgetLayout: Sendable, CaseIterable {
     case large
     case extraLarge
 
-    /// Maximum task rows to render for this size.
+    /// Maximum task rows to render for this size. The quick-add "+" is a
+    /// bottom-trailing overlay (not a footer that consumes a row band), so the
+    /// medium/large/extraLarge caps reclaim that freed row. `extraLarge` stays
+    /// `≤ WidgetSnapshotBuilder.defaultRowCap` (16) so the snapshot can fill it.
     public var maxRows: Int {
         switch self {
         case .small: 3
-        case .medium: 3
-        case .large: 8
-        case .extraLarge: 14
+        case .medium: 4
+        case .large: 9
+        case .extraLarge: 15
         }
     }
 

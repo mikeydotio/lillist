@@ -97,20 +97,25 @@ public struct WidgetFilterCardView<RowLeading: View>: View {
             if snapshot.tasks.isEmpty {
                 emptyState
             } else {
-                ForEach(visibleRows) { row in
+                ForEach(Array(visibleRows.enumerated()), id: \.element.id) { index, row in
                     WidgetTaskRowView(row: row, titleURL: rowURL(row)) { rowLeading(row) }
+                        // Only the bottom row shares the "+"'s horizontal band, so
+                        // inset just its trailing edge to keep the title clear of
+                        // the overlaid glyph; every row above spans full width.
+                        .padding(.trailing, trailingInset(isLast: index == visibleRows.count - 1))
                 }
             }
+            // Top-anchor the rows when there are fewer than fill height; the
+            // "+" is an overlay (below), so it no longer consumes a row band.
             Spacer(minLength: 0)
-            if layout.showsQuickAdd {
-                HStack {
-                    Spacer(minLength: 0)
-                    quickAdd
-                }
-            }
         }
         .padding(layout.contentPadding)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .overlay(alignment: .bottomTrailing) {
+            if layout.showsQuickAdd {
+                quickAdd.padding(layout.contentPadding)
+            }
+        }
         // `ContainerRelativeShape` renders concentric with the widget's own
         // corner radius (which grew on iOS 26/27), so the card fill and the
         // rainbow border both hug the widget edge instead of the old fixed 16/22pt
@@ -120,6 +125,14 @@ public struct WidgetFilterCardView<RowLeading: View>: View {
         .padding(4)
         .background(ContainerRelativeShape().fill(Self.frameGradient))
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    /// Trailing inset for the bottom-most visible row so its tail-truncated
+    /// title clears the bottom-trailing "+" overlay (30pt glyph + a gap). Rows
+    /// above the last one, and every row when the "+" is hidden, get no inset.
+    private func trailingInset(isLast: Bool) -> CGFloat {
+        guard isLast, layout.showsQuickAdd else { return 0 }
+        return 30 + LillistSpacing.m
     }
 
     @ViewBuilder
