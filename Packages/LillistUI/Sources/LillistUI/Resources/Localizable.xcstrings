@@ -1,12 +1,6 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
-    "%@ deadline" : {
-
-    },
-    "%@ start" : {
-
-    },
     "%@, %lld items" : {
 
     },
@@ -55,9 +49,6 @@
     "Unpin task" : {
 
     },
-    "%lld min before" : {
-
-    },
     "%lld tasks archived. Tap to undo." : {
 
     },
@@ -70,12 +61,6 @@
     "1 day" : {
 
     },
-    "1 day before" : {
-
-    },
-    "1 hour before" : {
-
-    },
     "1 month (~30d)" : {
 
     },
@@ -83,9 +68,6 @@
 
     },
     "1 week" : {
-
-    },
-    "2 hours before" : {
 
     },
     "2 weeks" : {
@@ -97,19 +79,7 @@
     "Add" : {
 
     },
-    "Add a subtask" : {
-
-    },
-    "Add a tag" : {
-
-    },
     "Add attachment" : {
-
-    },
-    "Add reminder" : {
-
-    },
-    "Add subtask" : {
 
     },
     "Add tag" : {
@@ -127,25 +97,10 @@
     "App version %@" : {
 
     },
-    "At a set time" : {
-
-    },
-    "At a time" : {
-
-    },
-    "At the time" : {
-
-    },
     "Attachments" : {
 
     },
     "Backing up your data…" : {
-
-    },
-    "Before deadline" : {
-
-    },
-    "Before start" : {
 
     },
     "Blocked" : {
@@ -199,9 +154,6 @@
     "Daily" : {
 
     },
-    "Dates" : {
-
-    },
     "Day %lld not selected" : {
 
     },
@@ -211,19 +163,10 @@
     "Deadline" : {
 
     },
-    "Default deadline reminder" : {
-
-    },
-    "Default start reminder" : {
-
-    },
     "Delete" : {
 
     },
     "Delete attachment" : {
-
-    },
-    "Delete reminder" : {
 
     },
     "Description of what you were doing" : {
@@ -419,12 +362,6 @@
     "Help me make it more reliable by sending a quick report. Totally optional." : {
 
     },
-    "Hide Journal" : {
-
-    },
-    "How early" : {
-
-    },
     "iCloud account changed" : {
 
     },
@@ -575,16 +512,10 @@
     "Not synced yet" : {
 
     },
-    "Notes" : {
-
-    },
     "Notifications denied." : {
 
     },
     "Notifications enabled." : {
-
-    },
-    "Notify at" : {
 
     },
     "Off — your data stays on this device" : {
@@ -617,9 +548,6 @@
     "Personalized" : {
 
     },
-    "Pinned" : {
-
-    },
     "Prepare package" : {
 
     },
@@ -642,12 +570,6 @@
 
     },
     "Reconfiguring sync…" : {
-
-    },
-    "Reminder kind" : {
-
-    },
-    "Reminders" : {
 
     },
     "Remove tag %@" : {
@@ -744,9 +666,6 @@
     "Settings" : {
 
     },
-    "Show Journal" : {
-
-    },
     "Sort" : {
 
     },
@@ -766,9 +685,6 @@
 
     },
     "Status" : {
-
-    },
-    "Subtasks" : {
 
     },
     "Sunday" : {
@@ -841,9 +757,6 @@
 
     },
     "yesterday" : {
-
-    },
-    "Tags" : {
 
     },
     "Tasks" : {
