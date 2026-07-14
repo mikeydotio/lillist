@@ -96,21 +96,6 @@ struct TaskEditorModelTests {
 
     // MARK: - Auto-promote triggers
 
-    @Test("Adding a subtask silently auto-promotes the draft")
-    func subtaskPromotes() async throws {
-        let p = try await TestStore.make()
-        let model = newCapture(p)
-        model.title = "Parent"
-
-        try await model.addSubtask(title: "Child")
-
-        let id = try #require(model.taskID)
-        #expect(model.phase == .live(id))
-        let kids = try await TaskStore(persistence: p).children(of: id)
-        #expect(kids.map(\.title) == ["Child"])
-        #expect(model.subtasks.map(\.title) == ["Child"])
-    }
-
     @Test("Adding a journal note auto-promotes")
     func journalPromotes() async throws {
         let p = try await TestStore.make()
@@ -227,7 +212,7 @@ struct TaskEditorModelTests {
         let p = try await TestStore.make()
         let model = newCapture(p)
         model.title = "Promoted then bailed"
-        try await model.addSubtask(title: "child")
+        try await model.addJournalNote("kick-off")
         let id = try #require(model.taskID)
 
         await model.discard()

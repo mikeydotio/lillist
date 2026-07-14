@@ -23,7 +23,16 @@ public struct RecurrenceEditorView: View {
     }
 
     public var body: some View {
-        Form {
+        Form { formContent }
+    }
+
+    /// The recurrence sections without the enclosing `Form`, so callers can
+    /// host them inside their own `Form` alongside other sections (the task
+    /// detail card's Schedule child composes date sections + these). The
+    /// Cancel/Save section only appears when `onCommit`/`onCancel` are set.
+    @ViewBuilder
+    var formContent: some View {
+        Group {
             Section {
                 Toggle("Repeats", isOn: $viewModel.repeats)
             }

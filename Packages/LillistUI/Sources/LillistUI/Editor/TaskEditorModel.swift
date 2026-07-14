@@ -14,8 +14,8 @@ import LillistCore
 /// A brand-new capture starts as an **in-memory draft** (`phase == .draft`):
 /// nothing is written to Core Data. Scalars, tag *names*, and the recurrence
 /// rule buffer in the model. The moment the user performs an op that needs a
-/// persisted parent (subtask / attachment / journal note / a recurrence
-/// series), the draft **auto-promotes**: `ensureLive()` commits it
+/// persisted parent (attachment / journal note / a recurrence series), the
+/// draft **auto-promotes**: `ensureLive()` commits it
 /// to a real row, then the op proceeds. An existing task opens directly in
 /// `.live` and every edit live-saves.
 ///
@@ -129,7 +129,6 @@ public final class TaskEditorModel {
     public internal(set) var seriesID: UUID?
     public private(set) var attachments: [AttachmentStore.AttachmentRecord] = []
     public private(set) var journal: [JournalStore.JournalRecord] = []
-    public private(set) var subtasks: [TaskStore.TaskRecord] = []
 
     /// Non-fatal warning from a partial commit (the row was created but a
     /// follow-on enrichment step — a tag, the recurrence series — failed).
@@ -460,14 +459,6 @@ public final class TaskEditorModel {
         await reloadJournal(id: id)
     }
 
-    // MARK: - Subtasks (auto-promote)
-
-    public func addSubtask(title subtaskTitle: String) async throws {
-        let id = try await ensureLive()
-        _ = try await stores.tasks.create(title: subtaskTitle, parent: id)
-        await reloadSubtasks(id: id)
-    }
-
     // MARK: - Attachments (auto-promote; inert without an attachment store)
 
     public func addImageAttachment(filename: String, data: Data) async throws {
@@ -533,7 +524,6 @@ public final class TaskEditorModel {
         await reloadRecurrence(id: id)
         await reloadAttachments(id: id)
         await reloadJournal(id: id)
-        await reloadSubtasks(id: id)
     }
 
     private func reloadTags(id: UUID) async {
@@ -564,10 +554,6 @@ public final class TaskEditorModel {
 
     private func reloadJournal(id: UUID) async {
         journal = (try? await stores.journal.entries(forTask: id)) ?? []
-    }
-
-    private func reloadSubtasks(id: UUID) async {
-        subtasks = (try? await stores.tasks.children(of: id)) ?? []
     }
 }
 

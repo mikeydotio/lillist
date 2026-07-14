@@ -56,26 +56,6 @@ final class QuickCapturePanelController {
         }
     }
 
-    /// Row click / Return: open an existing task in full mode, re-targeting an
-    /// already-open panel rather than stacking.
-    func open(taskID: UUID) {
-        let decision = EditorOpenDecision.decide(isOpen: isOpen, request: .existing(taskID))
-        switch decision {
-        case .present:
-            let m = TaskEditorModel(stores: stores, opening: .existing(taskID))
-            present(model: m)
-            Task { await m.load() }
-        case .retarget(let id):
-            let m = TaskEditorModel(stores: stores, opening: .existing(id))
-            model = m
-            hosting?.rootView = editorRoot(m)
-            Task { await m.load() }
-            resizeForMode(animated: false)
-        case .noop:
-            break
-        }
-    }
-
     // MARK: - Presentation
 
     private func present(model: TaskEditorModel) {
@@ -120,7 +100,6 @@ final class QuickCapturePanelController {
             TaskEditorView(
                 model: model,
                 onDismiss: { [weak self] in self?.close(cancelled: false) },
-                onOpenSubtask: { [weak self] id in self?.open(taskID: id) },
                 onAddAttachment: { [weak self] in self?.presentAttachmentPicker() }
             )
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)

@@ -19,6 +19,42 @@
     "%lld items" : {
 
     },
+    "%lld attachments" : {
+
+    },
+    "%lld journal entries" : {
+
+    },
+    "1 attachment" : {
+
+    },
+    "1 journal entry" : {
+
+    },
+    "Add a description…" : {
+
+    },
+    "Back" : {
+
+    },
+    "Edit" : {
+
+    },
+    "No attachments" : {
+
+    },
+    "No journal entries yet." : {
+
+    },
+    "When" : {
+
+    },
+    "Pin task" : {
+
+    },
+    "Unpin task" : {
+
+    },
     "%lld min before" : {
 
     },
