@@ -3909,3 +3909,39 @@ Field-testing the WidgetKit widget surfaced four lessons:
   completed today that never matched the filter can briefly appear in its done
   section — acceptable because tasks are normally completed *from* the widget
   showing that filter.
+
+## 2026-07-14 — Detail redesign (issue #8): worktree signed-macOS builds, a Form-composition seam, and snapshot-stable relative dates
+
+Landing the compact task-detail card (`Closes #8`) surfaced three lessons:
+
+- **A linked worktree has no `Signing.local.xcconfig`, so signed *macOS* builds
+  fail before compiling.** The file is gitignored (per-machine team ID), so it is
+  *not* copied into `git worktree add` checkouts. iOS simulator builds still
+  succeed there because they ad-hoc "Sign to Run Locally", but the macOS app's
+  iCloud/push entitlements need a real development certificate and fail with
+  *"has entitlements that require signing with a development certificate"* —
+  a *signing* error raised before any Swift compiles, so it masquerades as
+  "my code broke macOS". Fix: `cp` the file from the main checkout into the
+  worktree's `Apps/Config/` (it stays gitignored). Any `/issue do` session that
+  needs a signed macOS build must do this first.
+
+- **A `Form`-based editor can't nest in a card's `ScrollView`; expose its
+  sections as a composable `@ViewBuilder` instead.** `RecurrenceEditorView` is a
+  `Form`, and the Schedule child popup needed date rows *and* the recurrence
+  controls in one scroller. Rather than a `Form`-in-`ScrollView` (double-scroll,
+  broken sizing), `RecurrenceEditorView.body` became `Form { formContent }` and
+  `formContent` (its `Section`s, sans the enclosing `Form`) is now composable —
+  the child hosts `Section { dates } … RecurrenceEditorView(...).formContent`
+  in a single `Form`. The buttons `Section` self-omits when `onCommit`/`onCancel`
+  are nil, so the composed use gets no stray Cancel/Save.
+
+- **Relative date text stays snapshot-stable by only going relative *near* now.**
+  `DueLineFormatter` says "tomorrow"/"today"/"yesterday" only within ±1 calendar
+  day of an injected `now`, and renders an absolute date beyond that. The
+  app-hosted editor fixture seeds the long-standing epoch `1_780_000_000`
+  (2026-05-28), which is always far from any test run → always renders as the
+  fixed absolute "Due May 28" instead of a run-date-dependent phrase. Pin the
+  `Date.FormatStyle` to the injected calendar's time zone too, or the absolute
+  date/time silently depends on the process time zone. (The AM/PM separator is a
+  narrow no-break space U+202F, not a plain space — normalize it in test
+  expectations.)
