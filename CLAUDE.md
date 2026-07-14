@@ -444,8 +444,14 @@ number to N` commit per deploy keeps it that way.
 
 ## Git workflow
 
-Solo project — commit and push directly to `main`. No PR review is
-required (and none is performed). Repo lives under `mikeydotio`. Use
+Solo project, but **`main` is PR-only**: the org-wide `mikeydotio`
+`protect-main` ruleset rejects direct pushes (and force-pushes and
+`main` deletion), so *every* change — even a one-line release-bookkeeping
+commit — reaches `main` through a PR. No external review is performed;
+you land your own completed, tested work end-to-end: branch → HTTPS push
+→ open PR (`Closes #N` where it applies) → **merge commit** (squash and
+rebase-merge are disabled org-wide) → verify the merge → delete the
+branch. Tags are *not* branch-protected and push directly. Use
 conventional-commit prefixes (`feat:`, `fix:`, `refactor:`, `test:`,
 `docs:`, `chore:`) and land small, focused commits. HTTPS push and
 never-force-push rules are in `~/.claude/CLAUDE.md`.
