@@ -18,7 +18,6 @@ struct TaskEditorModelTests {
             tags: TagStore(persistence: p),
             series: SeriesStore(persistence: p),
             journal: JournalStore(persistence: p),
-            notifications: NotificationSpecStore(persistence: p),
             attachments: AttachmentStore(persistence: p)
         )
     }
@@ -97,21 +96,6 @@ struct TaskEditorModelTests {
 
     // MARK: - Auto-promote triggers
 
-    @Test("Adding a subtask silently auto-promotes the draft")
-    func subtaskPromotes() async throws {
-        let p = try await TestStore.make()
-        let model = newCapture(p)
-        model.title = "Parent"
-
-        try await model.addSubtask(title: "Child")
-
-        let id = try #require(model.taskID)
-        #expect(model.phase == .live(id))
-        let kids = try await TaskStore(persistence: p).children(of: id)
-        #expect(kids.map(\.title) == ["Child"])
-        #expect(model.subtasks.map(\.title) == ["Child"])
-    }
-
     @Test("Adding a journal note auto-promotes")
     func journalPromotes() async throws {
         let p = try await TestStore.make()
@@ -124,20 +108,6 @@ struct TaskEditorModelTests {
         let entries = try await JournalStore(persistence: p).entries(forTask: id)
         #expect(entries.contains { $0.body == "first note" })
         #expect(model.journal.contains { $0.body == "first note" })
-    }
-
-    @Test("Adding a reminder auto-promotes")
-    func reminderPromotes() async throws {
-        let p = try await TestStore.make()
-        let model = newCapture(p)
-        model.title = "Parent"
-
-        try await model.addReminder(kind: .nudge, offsetMinutes: nil, fireDate: Date(timeIntervalSince1970: 2_000_000))
-
-        let id = try #require(model.taskID)
-        let specs = try await NotificationSpecStore(persistence: p).specs(forTask: id)
-        #expect(!specs.isEmpty)
-        #expect(!model.reminders.isEmpty)
     }
 
     @Test("Committing a recurrence rule auto-promotes and creates a series")
@@ -242,7 +212,7 @@ struct TaskEditorModelTests {
         let p = try await TestStore.make()
         let model = newCapture(p)
         model.title = "Promoted then bailed"
-        try await model.addSubtask(title: "child")
+        try await model.addJournalNote("kick-off")
         let id = try #require(model.taskID)
 
         await model.discard()

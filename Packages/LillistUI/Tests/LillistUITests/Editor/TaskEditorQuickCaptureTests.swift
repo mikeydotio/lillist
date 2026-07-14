@@ -16,7 +16,6 @@ struct TaskEditorQuickCaptureTests {
                 tags: TagStore(persistence: p),
                 series: SeriesStore(persistence: p),
                 journal: JournalStore(persistence: p),
-                notifications: NotificationSpecStore(persistence: p),
                 attachments: AttachmentStore(persistence: p)
             ),
             opening: .newCapture(parentID: nil, placement: .top)
@@ -68,34 +67,5 @@ struct TaskEditorQuickCaptureTests {
         #expect(rec.title == "Buy milk")
         let tagIDs = try await TaskStore(persistence: p).tagIDs(forTask: id)
         #expect(tagIDs.count == 2)
-    }
-}
-
-/// Pure formatting in `ReminderEditorSection`.
-@Suite("ReminderEditorSection formatting")
-struct ReminderFormattingTests {
-    @Test("offsetLabel renders friendly strings")
-    func offsetLabels() {
-        #expect(!ReminderEditorSection.offsetLabel(0).isEmpty)
-        #expect(!ReminderEditorSection.offsetLabel(60).isEmpty)
-        #expect(!ReminderEditorSection.offsetLabel(1440).isEmpty)
-        #expect(!ReminderEditorSection.offsetLabel(15).isEmpty)
-    }
-
-    @Test("describe handles every kind without crashing")
-    func describeAllKinds() {
-        for kind in NotificationKind.allCases {
-            let spec = NotificationSpecStore.SpecRecord(
-                id: UUID(),
-                taskID: UUID(),
-                kind: kind,
-                offsetMinutes: 30,
-                fireDate: Date(timeIntervalSince1970: 1_000_000),
-                lastFiredAt: nil,
-                snoozedUntil: nil,
-                createdAt: nil
-            )
-            #expect(!ReminderEditorSection.describe(spec).isEmpty)
-        }
     }
 }

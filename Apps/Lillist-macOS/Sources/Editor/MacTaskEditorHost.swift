@@ -40,7 +40,6 @@ struct MacTaskEditorHost: ViewModifier {
                     TaskEditorView(
                         model: model,
                         onDismiss: dismissCommitted,
-                        onOpenSubtask: { id in openExisting(id) },
                         onAddAttachment: { presentAttachmentPicker(for: model) }
                     )
                 }

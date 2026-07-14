@@ -45,19 +45,6 @@ final class IOSScreenTourTests: RecordableSnapshotTestCase {
         TaskNode(record: record, tagNames: tagNames, children: children)
     }
 
-    private func taskRow(
-        _ title: String,
-        status: Status = .todo,
-        deadline: Date? = nil,
-        tags: [String] = []
-    ) -> some View {
-        TaskRowView(
-            task: task(title, status: status, deadline: deadline),
-            tagNames: tags,
-            onStatusClick: {}, onStatusSet: { _ in }
-        )
-    }
-
     private func sampleRoots() -> [TaskNode] {
         let shipID = UUID()
         let shipNode = node(
@@ -316,70 +303,104 @@ final class IOSScreenTourTests: RecordableSnapshotTestCase {
 
     // MARK: - Non-Tasks screens (inline-composed)
 
-    /// The detail surface, sans floating chrome. The real screen overlays
-    /// a `FloatingAddButton` (interactive Liquid Glass) and uses
-    /// `StatusIndicatorView` (a `Menu` hit layer) — both of which blank the
-    /// *entire* offscreen capture (see docs/engineering-notes.md
-    /// 2026-06-12 + the 2026-06-14 refinement). So this composition swaps
-    /// in the display-only `StatusCubeView` chip and omits the FAB; the
-    /// glass FAB and the interactive status control are covered
-    /// app-hosted in `Lillist-iOSAppHostedTests/GlassSnapshotTests`.
+    /// The compact detail card (issue #8): status glyph + inline title + pin,
+    /// a description box, tag chips with a "+ Tag" pill, and the three drill-in
+    /// summary lines (schedule / attachments / journal). The display-only
+    /// `StatusCubeView` stands in for the interactive `StatusIndicatorView`,
+    /// whose `Menu` hit layer blanks the offscreen capture (see
+    /// docs/engineering-notes.md 2026-06-12 + the 2026-06-14 refinement); the
+    /// real card is captured app-hosted in
+    /// `Lillist-iOSAppHostedTests/GlassSnapshotTests`.
     func test_06_taskDetail_light() {
-        let view = VStack(spacing: 0) {
-            detailNavBar(title: "Draft launch email", leading: "Today", trailing: "Edit")
-            ScrollView {
-                VStack(alignment: .leading, spacing: 16) {
-                    HStack(spacing: 10) {
-                        StatusCubeView(status: .started)
-                            .frame(width: 44, height: 44)
-                        Text("Draft launch email")
-                            .font(.system(size: 22, weight: .semibold))
-                        Spacer()
-                    }
-                    HStack(spacing: 6) {
-                        TagChipView(name: "work", tint: TagTint(hex: "#3366FF"))
-                        TagChipView(name: "urgent", tint: TagTint(hex: "#FF6644"))
-                        Label("May 22", systemImage: "calendar")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
-                    Divider()
-                    labelledSection(title: "NOTES") {
-                        Text("Outline the customer announcement: highlight CloudKit sync, the new recurrence engine, and the iOS quick-capture share extension.")
-                            .font(.system(size: 14))
-                    }
-                    Divider()
-                    labelledSection(title: "SUBTASKS") {
-                        VStack(spacing: 4) {
-                            taskRow("Pull metrics from beta program", status: .closed)
-                            taskRow("Draft hero paragraph", status: .started)
-                            taskRow("Get screenshots from QA", status: .blocked,
-                                    tags: ["urgent"])
-                            taskRow("Schedule review with Alex")
-                        }
-                    }
-                    Divider()
-                    labelledSection(title: "JOURNAL") {
-                        HStack(alignment: .top, spacing: 8) {
-                            Image(systemName: "bubble.left")
-                                .foregroundStyle(.tertiary)
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text("May 14, 9:14am")
-                                    .font(.caption2).foregroundStyle(.tertiary)
-                                Text("Got first draft to Alex for review. Waiting on the screenshots from QA before sending out broadly.")
-                                    .font(.system(size: 13))
-                            }
-                        }
-                    }
-                    Spacer(minLength: 80)
-                }
-                .padding(.horizontal, 18)
-                .padding(.top, 12)
+        let card = VStack(alignment: .leading, spacing: 16) {
+            HStack(spacing: 10) {
+                StatusCubeView(status: .started)
+                    .frame(width: 44, height: 44)
+                Text("Draft launch email")
+                    .font(.system(size: 17, weight: .semibold))
+                    .foregroundStyle(LillistColor.textStrong)
+                Spacer(minLength: 8)
+                Image(systemName: "pin.fill")
+                    .font(.system(size: 17))
+                    .foregroundStyle(RainbowPalette.scriptPurple.base)
+            }
+            Text("Outline the customer announcement: highlight CloudKit sync, the new recurrence engine, and the iOS quick-capture share extension.")
+                .font(.system(size: 14))
+                .foregroundStyle(LillistColor.textBody)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(10)
+                .background(
+                    RoundedRectangle(cornerRadius: 10, style: .continuous)
+                        .fill(.rainbowWell)
+                )
+            HStack(spacing: 6) {
+                TagChipView(name: "work", tint: TagTint(hex: "#3366FF"))
+                TagChipView(name: "urgent", tint: TagTint(hex: "#FF6644"))
+                detailTagAddPill()
+            }
+            VStack(alignment: .leading, spacing: 12) {
+                detailSummaryRow(icon: "calendar", text: "Due tomorrow at 5 PM (Every week)", pill: "EDIT")
+                detailSummaryRow(icon: "paperclip", text: "2 attachments", pill: "ADD")
+                detailSummaryRow(icon: "book.closed", text: "1 journal entry", pill: nil)
             }
         }
+        .padding(18)
+        .background(
+            RoundedRectangle(cornerRadius: 22, style: .continuous)
+                .fill(LillistColor.card)
+        )
+        .padding(.horizontal, 16)
+
+        let view = ZStack {
+            LillistColor.workspace
+            card
+        }
         .frame(width: phoneSize.width, height: phoneSize.height)
-        .background(Color(.systemBackground))
         assertScreen(view, name: "06-task-detail-light", colorScheme: .light, size: phoneSize)
+    }
+
+    /// The dashed "+ Tag" pill mirrored from `TagAssignmentField`.
+    private func detailTagAddPill() -> some View {
+        HStack(spacing: 6) {
+            Image(systemName: "plus").font(.caption)
+            Text("Tag").font(.system(size: 13, weight: .medium))
+        }
+        .foregroundStyle(RainbowPalette.scriptPurple.ink)
+        .padding(.horizontal, 10)
+        .padding(.vertical, 4)
+        .overlay(
+            Capsule().strokeBorder(
+                RainbowPalette.scriptPurple.base.opacity(0.55),
+                style: StrokeStyle(lineWidth: 1, dash: [3, 3])
+            )
+        )
+    }
+
+    /// One drill-in summary line: icon + text + a trailing action pill or
+    /// chevron (mirrors `TaskEditorView.drillRow`).
+    private func detailSummaryRow(icon: String, text: String, pill: String?) -> some View {
+        HStack(spacing: 8) {
+            Image(systemName: icon)
+                .font(.system(size: 15))
+                .foregroundStyle(LillistColor.textMuted)
+                .frame(width: 22)
+            Text(text)
+                .font(.system(size: 15))
+                .foregroundStyle(LillistColor.textBody)
+            Spacer(minLength: 8)
+            if let pill {
+                Text(pill)
+                    .font(.system(size: 11.5, weight: .semibold))
+                    .foregroundStyle(RainbowPalette.scriptPurple.ink)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 4)
+                    .overlay(Capsule().strokeBorder(RainbowPalette.scriptPurple.base.opacity(0.5), lineWidth: 1))
+            } else {
+                Image(systemName: "chevron.right")
+                    .font(.caption)
+                    .foregroundStyle(LillistColor.textFaint)
+            }
+        }
     }
 
     func test_07_quickCaptureDialog_dark() {
@@ -503,48 +524,6 @@ final class IOSScreenTourTests: RecordableSnapshotTestCase {
         NavigationStack { content() }
             .frame(width: phoneSize.width, height: phoneSize.height)
             .background(Color(.systemBackground))
-    }
-
-    // MARK: - Mock chrome retained for test_06 / test_09 only
-
-    @ViewBuilder
-    private func detailNavBar(title: String,
-                              leading: String?, trailing: String?) -> some View {
-        VStack(spacing: 0) {
-            HStack {
-                if let leading {
-                    Text(leading)
-                        .font(.system(size: 16))
-                        .foregroundStyle(.tint)
-                } else {
-                    Spacer().frame(width: 60)
-                }
-                Spacer()
-                Text(title).font(.system(size: 17, weight: .semibold))
-                Spacer()
-                if let trailing {
-                    Text(trailing)
-                        .font(.system(size: 16))
-                        .foregroundStyle(.tint)
-                } else {
-                    Spacer().frame(width: 60)
-                }
-            }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 12)
-            Divider()
-        }
-        .background(Color(.systemBackground))
-    }
-
-    @ViewBuilder
-    private func labelledSection<Body: View>(title: String,
-                                             @ViewBuilder _ body: () -> Body) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text(title).font(.system(size: 11, weight: .semibold))
-                .foregroundStyle(.secondary)
-            body()
-        }
     }
 
     @ViewBuilder

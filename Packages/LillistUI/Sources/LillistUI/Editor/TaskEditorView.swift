@@ -4,21 +4,28 @@ import LillistCore
 /// The unified task editor — one cross-platform presentation with two modes
 /// (`quick` / `full`) that differ only in size and which sections show.
 ///
+/// Full mode is the compact **detail card** (issue #8): a dense header
+/// (status + inline title + pin), a description box, a tag row, and three
+/// summary lines — schedule, attachments, journal — that drill into in-card
+/// child popups. A child *replaces* the card content and returns on Back; the
+/// host's tap-outside / Esc dismisses the whole editor.
+///
 /// Pure presentation over a `TaskEditorModel`: every field binds to the model,
 /// every action routes through it. The host owns the floating window/overlay,
 /// the singleton rule, and (on macOS) window resizing; this view owns the
-/// content and the in-place quick→full grow animation.
+/// content, the quick→full grow animation, and the child-popup routing.
 ///
-/// `onOpenSubtask` and `onAddAttachment` are the only host seams (genuinely
-/// platform-specific: re-targeting the singleton, and the image/file picker).
+/// `onAddAttachment` is the one host seam (the platform-specific image/file
+/// picker).
 public struct TaskEditorView: View {
     @Bindable public var model: TaskEditorModel
     public var onDismiss: () -> Void
-    public var onOpenSubtask: ((UUID) -> Void)?
     public var onAddAttachment: (() -> Void)?
 
-    @State private var showRecurrenceSheet = false
-    @State private var showJournal = false
+    /// Which in-card popup is showing. `.main` is the compact card; the others
+    /// replace it and return on Back.
+    private enum DetailRoute { case main, schedule, attachments, journal }
+    @State private var route: DetailRoute = .main
 
     @Environment(\.accessibilityReduceMotion) private var systemReduceMotion
     @Environment(\.reduceMotionOverride) private var overrideReduceMotion
@@ -27,12 +34,10 @@ public struct TaskEditorView: View {
     public init(
         model: TaskEditorModel,
         onDismiss: @escaping () -> Void,
-        onOpenSubtask: ((UUID) -> Void)? = nil,
         onAddAttachment: (() -> Void)? = nil
     ) {
         self.model = model
         self.onDismiss = onDismiss
-        self.onOpenSubtask = onOpenSubtask
         self.onAddAttachment = onAddAttachment
     }
 
@@ -42,9 +47,6 @@ public struct TaskEditorView: View {
             case .quick: quickBody
             case .full: fullBody
             }
-        }
-        .sheet(isPresented: $showRecurrenceSheet) {
-            recurrenceSheet
         }
     }
 
@@ -93,51 +95,16 @@ public struct TaskEditorView: View {
         .glassSurface(.panel, in: RoundedRectangle(cornerRadius: LillistRadius.l))
     }
 
-    // MARK: - Full mode
+    // MARK: - Full mode (the compact detail card + child popups)
 
     private var fullBody: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: LillistSpacing.l) {
-                titleHeader
-                notesSection
-                datesSection
-                pinSection
-                section("Tags") {
-                    TagAssignmentField(
-                        tagNames: model.displayedTagNames,
-                        onAdd: { name in Task { await model.addTag(name: name) } },
-                        onRemove: { name in Task { await model.removeTag(named: name) } }
-                    )
-                }
-                recurrenceSection
-                section("Reminders") {
-                    ReminderEditorSection(
-                        reminders: model.reminders,
-                        defaultDate: model.deadline ?? model.start,
-                        onAdd: { kind, offset, date in
-                            Task { try? await model.addReminder(kind: kind, offsetMinutes: offset, fireDate: date) }
-                        },
-                        onDelete: { id in Task { await model.deleteReminder(id: id) } }
-                    )
-                }
-                section("Subtasks") {
-                    EditorSubtasksSection(
-                        subtasks: model.subtasks,
-                        onAdd: { title in Task { try? await model.addSubtask(title: title) } },
-                        onOpen: onOpenSubtask
-                    )
-                }
-                journalSection
-                section("Attachments") {
-                    EditorAttachmentsSection(
-                        attachments: model.attachments,
-                        onAddTapped: onAddAttachment,
-                        onDelete: { id in Task { await model.deleteAttachment(id: id) } }
-                    )
-                }
-                footer
+        Group {
+            switch route {
+            case .main: mainCard
+            case .schedule: scheduleChild
+            case .attachments: attachmentsChild
+            case .journal: journalChild
             }
-            .padding(LillistSpacing.l)
         }
         .frame(maxWidth: 560)
         .glassSurface(.panel, in: RoundedRectangle(cornerRadius: LillistRadius.l))
@@ -148,16 +115,34 @@ public struct TaskEditorView: View {
         .onChange(of: scalarKey) { _, _ in
             Task { await model.saveScalarsNow() }
         }
+        .animation(reduceMotion ? nil : LillistMotion.squish(LillistMotion.fast), value: route)
     }
 
-    // MARK: - Full-mode sections
+    // MARK: - Main card
 
-    /// Title rendered the way a task row is — the tappable status indicator
-    /// beside the title — so the editor header and the list row read as the
-    /// same object. The title stays inline-editable; closed tasks take the
-    /// row's muted treatment. (Replaces the former separate Status section.)
-    private var titleHeader: some View {
-        // Default (center) alignment mirrors TaskRowView's status+title row.
+    private var mainCard: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: LillistSpacing.l) {
+                header
+                descriptionField
+                TagAssignmentField(
+                    tagNames: model.displayedTagNames,
+                    onAdd: { name in Task { await model.addTag(name: name) } },
+                    onRemove: { name in Task { await model.removeTag(named: name) } }
+                )
+                VStack(alignment: .leading, spacing: LillistSpacing.s) {
+                    scheduleRow
+                    attachmentsRow
+                    journalRow
+                }
+                captureFooter
+            }
+            .padding(LillistSpacing.l)
+        }
+    }
+
+    /// Status glyph + inline title, with the pin toggle pinned top-trailing.
+    private var header: some View {
         HStack(spacing: LillistSpacing.s) {
             StatusIndicatorView(
                 status: model.status,
@@ -178,188 +163,276 @@ public struct TaskEditorView: View {
             // through the muted colour alone (the field stays editable).
             .foregroundStyle(model.status == .closed ? LillistColor.textFaint : LillistColor.textStrong)
             .accessibilityIdentifier("EditorTitleField")
+
+            pinButton
         }
     }
 
-    private var datesSection: some View {
-        section("Dates") {
+    private var pinButton: some View {
+        Button {
+            model.isPinned.toggle()
+        } label: {
+            Image(systemName: model.isPinned ? "pin.fill" : "pin")
+                .font(LillistTypography.title3)
+                .foregroundStyle(model.isPinned ? RainbowPalette.scriptPurple.base : LillistColor.textFaint)
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(model.isPinned
+            ? String(localized: "Unpin task", bundle: .module)
+            : String(localized: "Pin task", bundle: .module))
+        .accessibilityIdentifier("EditorPinButton")
+    }
+
+    private var descriptionField: some View {
+        TextEditor(text: $model.notes)
+            .font(LillistTypography.body)
+            .foregroundStyle(LillistColor.textBody)
+            .frame(minHeight: 80)
+            .scrollContentBackground(.hidden)
+            .padding(LillistSpacing.s)
+            .background {
+                RoundedRectangle(cornerRadius: LillistRadius.s, style: .continuous)
+                    .fill(.rainbowWell)
+            }
+            .overlay(alignment: .topLeading) {
+                if model.notes.isEmpty {
+                    Text("Add a description…", bundle: .module)
+                        .font(LillistTypography.body)
+                        .foregroundStyle(LillistColor.textFaint)
+                        .padding(.horizontal, LillistSpacing.s + 5)
+                        .padding(.vertical, LillistSpacing.s + 8)
+                        .allowsHitTesting(false)
+                }
+            }
+            .accessibilityIdentifier("EditorNotesField")
+    }
+
+    // MARK: - Summary rows
+
+    private var scheduleRow: some View {
+        drillRow(
+            icon: "calendar",
+            text: DueLineFormatter.string(
+                deadline: model.deadline,
+                deadlineHasTime: model.deadlineHasTime,
+                start: model.start,
+                startHasTime: model.startHasTime,
+                recurrence: model.recurrence.summary
+            ),
+            muted: model.deadline == nil && model.start == nil,
+            action: .edit,
+            identifier: "EditorScheduleRow"
+        ) { route = .schedule }
+    }
+
+    private var attachmentsRow: some View {
+        drillRow(
+            icon: "paperclip",
+            text: attachmentSummary,
+            muted: model.attachments.isEmpty,
+            action: .add,
+            identifier: "EditorAttachmentsRow"
+        ) { route = .attachments }
+    }
+
+    private var journalRow: some View {
+        drillRow(
+            icon: "book.closed",
+            text: journalSummary,
+            muted: model.journal.isEmpty,
+            action: .drill,
+            identifier: "EditorJournalRow"
+        ) { route = .journal }
+    }
+
+    private enum RowAction { case edit, add, drill }
+
+    @ViewBuilder
+    private func drillRow(
+        icon: String,
+        text: String,
+        muted: Bool,
+        action: RowAction,
+        identifier: String,
+        open: @escaping () -> Void
+    ) -> some View {
+        Button(action: open) {
+            HStack(spacing: LillistSpacing.s) {
+                Image(systemName: icon)
+                    .font(LillistTypography.body)
+                    .foregroundStyle(LillistColor.textMuted)
+                    .frame(width: 22)
+                Text(text)
+                    .font(LillistTypography.body)
+                    .foregroundStyle(muted ? LillistColor.textFaint : LillistColor.textBody)
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+                Spacer(minLength: LillistSpacing.s)
+                switch action {
+                case .edit: actionPill("Edit")
+                case .add: actionPill("Add")
+                case .drill:
+                    Image(systemName: "chevron.right")
+                        .font(LillistTypography.caption)
+                        .foregroundStyle(LillistColor.textFaint)
+                }
+            }
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityIdentifier(identifier)
+    }
+
+    private func actionPill(_ title: LocalizedStringKey) -> some View {
+        Text(title, bundle: .module)
+            .font(LillistTypography.caption)
+            .textCase(.uppercase)
+            .foregroundStyle(RainbowPalette.scriptPurple.ink)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 4)
+            .overlay(
+                Capsule().strokeBorder(RainbowPalette.scriptPurple.base.opacity(0.5), lineWidth: 1)
+            )
+    }
+
+    private var attachmentSummary: String {
+        let n = model.attachments.count
+        if n == 0 { return String(localized: "No attachments", bundle: .module) }
+        return n == 1
+            ? String(localized: "1 attachment", bundle: .module)
+            : String(localized: "\(n) attachments", bundle: .module)
+    }
+
+    private var journalSummary: String {
+        let n = model.journal.count
+        if n == 0 { return String(localized: "No journal entries yet.", bundle: .module) }
+        return n == 1
+            ? String(localized: "1 journal entry", bundle: .module)
+            : String(localized: "\(n) journal entries", bundle: .module)
+    }
+
+    /// New-capture-only commit affordance. Existing tasks live-save every
+    /// field and dismiss on tap-outside/Esc, so they need no footer buttons;
+    /// a `.capture` draft still needs an explicit "Add" (a bare dismiss can't
+    /// persist a draft that never performed a promoting op).
+    @ViewBuilder
+    private var captureFooter: some View {
+        if model.presentation == .capture {
             VStack(alignment: .leading, spacing: LillistSpacing.s) {
-                dateRow(
-                    label: "Start",
-                    date: $model.start,
-                    hasTime: $model.startHasTime
-                )
-                dateRow(
-                    label: "Deadline",
-                    date: $model.deadline,
-                    hasTime: $model.deadlineHasTime
-                )
+                if let warning = model.lastCommitWarning {
+                    Label {
+                        Text("Saved, but couldn't apply: \(warning)", bundle: .module)
+                    } icon: {
+                        Image(systemName: "exclamationmark.triangle.fill")
+                    }
+                    .font(LillistTypography.caption)
+                    .foregroundStyle(RainbowPalette.cautionAmber.ink)
+                }
+                HStack {
+                    Spacer(minLength: 0)
+                    Button(action: submitFull) {
+                        Text("Add", bundle: .module)
+                    }
+                    .buttonStyle(.rainbow(.lavender, size: .sm))
+                    .disabled(!model.isCommittable)
+                    .accessibilityIdentifier("EditorAddButton")
+                }
+            }
+        }
+    }
+
+    // MARK: - Child popups
+
+    private func childHeader(_ title: LocalizedStringKey, onBack: @escaping () -> Void) -> some View {
+        ZStack {
+            Text(title, bundle: .module)
+                .font(LillistTypography.headline)
+                .foregroundStyle(LillistColor.textStrong)
+            HStack {
+                Button(action: onBack) {
+                    HStack(spacing: 2) {
+                        Image(systemName: "chevron.left")
+                        Text("Back", bundle: .module)
+                    }
+                    .font(LillistTypography.body)
+                    .foregroundStyle(LillistColor.textBody)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityIdentifier("EditorChildBackButton")
+                Spacer(minLength: 0)
+            }
+        }
+        .padding(LillistSpacing.l)
+    }
+
+    /// Schedule child — dates + recurrence in one `Form`. Dates live-save via
+    /// the outer `scalarKey` observer; the recurrence rule is committed on Back
+    /// (`commitRecurrence` auto-promotes a draft when a rule is set).
+    private var scheduleChild: some View {
+        VStack(spacing: 0) {
+            childHeader("Schedule") {
+                Task { try? await model.commitRecurrence() }
+                route = .main
+            }
+            Form {
+                Section {
+                    dateControls(label: "Deadline", date: $model.deadline, hasTime: $model.deadlineHasTime)
+                }
+                Section {
+                    dateControls(label: "Start", date: $model.start, hasTime: $model.startHasTime)
+                }
+                RecurrenceEditorView(viewModel: $model.recurrence).formContent
             }
         }
     }
 
     @ViewBuilder
-    private func dateRow(label: LocalizedStringKey, date: Binding<Date?>, hasTime: Binding<Bool>) -> some View {
+    private func dateControls(label: LocalizedStringKey, date: Binding<Date?>, hasTime: Binding<Bool>) -> some View {
         let isSet = Binding(
             get: { date.wrappedValue != nil },
             set: { date.wrappedValue = $0 ? (date.wrappedValue ?? Date()) : nil }
         )
-        VStack(alignment: .leading, spacing: 4) {
-            Toggle(isOn: isSet) {
-                Text(label, bundle: .module)
-                    .font(LillistTypography.subheadline)
-                    .foregroundStyle(LillistColor.textBody)
+        Toggle(isOn: isSet) {
+            Text(label, bundle: .module)
+        }
+        if let unwrapped = date.wrappedValue {
+            let bound = Binding(get: { unwrapped }, set: { date.wrappedValue = $0 })
+            DatePicker(
+                selection: bound,
+                displayedComponents: hasTime.wrappedValue ? [.date, .hourAndMinute] : [.date]
+            ) {
+                Text("When", bundle: .module)
             }
-            .toggleStyle(.rainbow)
-
-            if let unwrapped = date.wrappedValue {
-                let bound = Binding(get: { unwrapped }, set: { date.wrappedValue = $0 })
-                DatePicker(
-                    selection: bound,
-                    displayedComponents: hasTime.wrappedValue ? [.date, .hourAndMinute] : [.date]
-                ) {
-                    EmptyView()
-                }
-                .labelsHidden()
-                Toggle(isOn: hasTime) {
-                    Text("Include time", bundle: .module)
-                        .font(LillistTypography.caption)
-                        .foregroundStyle(LillistColor.textMuted)
-                }
-                .toggleStyle(.rainbow)
+            Toggle(isOn: hasTime) {
+                Text("Include time", bundle: .module)
             }
         }
     }
 
-    private var pinSection: some View {
-        Toggle(isOn: $model.isPinned) {
-            Label {
-                Text("Pinned", bundle: .module)
-                    .font(LillistTypography.body)
-                    .foregroundStyle(LillistColor.textBody)
-            } icon: {
-                Image(systemName: "pin.fill")
-            }
-        }
-        .toggleStyle(.rainbow)
-    }
-
-    private var recurrenceSection: some View {
-        section("Repeats") {
-            Button {
-                showRecurrenceSheet = true
-            } label: {
-                HStack {
-                    Text(RecurrenceSummaryFormatter.string(for: model.recurrence.summary))
-                        .font(LillistTypography.body)
-                        .foregroundStyle(LillistColor.textBody)
-                    Spacer(minLength: 0)
-                    Image(systemName: "chevron.right")
-                        .font(LillistTypography.caption)
-                        .foregroundStyle(LillistColor.textFaint)
-                }
-                .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
-            .accessibilityIdentifier("EditorRecurrenceRow")
-        }
-    }
-
-    private var notesSection: some View {
-        section("Notes") {
-            TextEditor(text: $model.notes)
-                .font(LillistTypography.body)
-                .foregroundStyle(LillistColor.textBody)
-                .frame(minHeight: 80)
-                .scrollContentBackground(.hidden)
-                .padding(LillistSpacing.s)
-                .background {
-                    RoundedRectangle(cornerRadius: LillistRadius.s, style: .continuous)
-                        .fill(.rainbowWell)
-                }
-                .accessibilityIdentifier("EditorNotesField")
-        }
-    }
-
-    /// Journal is collapsed behind a button — it's reference history, not a
-    /// primary edit surface, so it stays out of the way until asked for.
-    private var journalSection: some View {
-        section("Journal") {
-            VStack(alignment: .leading, spacing: LillistSpacing.s) {
-                Button {
-                    withAnimation(reduceMotion ? nil : LillistMotion.squish(LillistMotion.fast)) {
-                        showJournal.toggle()
-                    }
-                } label: {
-                    HStack(spacing: LillistSpacing.xs) {
-                        Image(systemName: showJournal ? "chevron.down" : "chevron.right")
-                            .font(LillistTypography.caption)
-                        Text(showJournal ? "Hide Journal" : "Show Journal", bundle: .module)
-                            .font(LillistTypography.body)
-                    }
-                    .foregroundStyle(LillistColor.textBody)
-                    .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-                .accessibilityIdentifier("EditorJournalToggle")
-
-                if showJournal {
-                    EditorJournalSection(entries: model.journal)
-                }
+    private var attachmentsChild: some View {
+        VStack(spacing: 0) {
+            childHeader("Attachments") { route = .main }
+            ScrollView {
+                EditorAttachmentsSection(
+                    attachments: model.attachments,
+                    onAddTapped: onAddAttachment,
+                    onDelete: { id in Task { await model.deleteAttachment(id: id) } }
+                )
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(LillistSpacing.l)
             }
         }
     }
 
-    private var footer: some View {
-        VStack(alignment: .leading, spacing: LillistSpacing.s) {
-            if let warning = model.lastCommitWarning {
-                Label {
-                    Text("Saved, but couldn't apply: \(warning)", bundle: .module)
-                } icon: {
-                    Image(systemName: "exclamationmark.triangle.fill")
-                }
-                .font(LillistTypography.caption)
-                .foregroundStyle(RainbowPalette.cautionAmber.ink)
+    private var journalChild: some View {
+        VStack(spacing: 0) {
+            childHeader("Journal") { route = .main }
+            ScrollView {
+                EditorJournalSection(entries: model.journal)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(LillistSpacing.l)
             }
-            HStack(spacing: LillistSpacing.m) {
-                if model.presentation == .existing {
-                    Button(role: .destructive) {
-                        Task { await model.deleteTask(); onDismiss() }
-                    } label: {
-                        Text("Delete", bundle: .module)
-                    }
-                    .buttonStyle(.plain)
-                    .foregroundStyle(RainbowPalette.actionOrange.ink)
-                }
-                Spacer(minLength: 0)
-                Button(action: dismissEditor) {
-                    Text("Done", bundle: .module)
-                }
-                .buttonStyle(.rainbow(.lavender, size: .sm))
-                .accessibilityIdentifier("EditorDoneButton")
-            }
-        }
-    }
-
-    // MARK: - Recurrence sheet
-
-    private var recurrenceSheet: some View {
-        NavigationStack {
-            RecurrenceEditorView(viewModel: $model.recurrence)
-                .navigationTitle(Text("Repeats", bundle: .module))
-                .toolbar {
-                    ToolbarItem(placement: .cancellationAction) {
-                        Button {
-                            showRecurrenceSheet = false
-                        } label: { Text("Cancel", bundle: .module) }
-                    }
-                    ToolbarItem(placement: .confirmationAction) {
-                        Button {
-                            showRecurrenceSheet = false
-                            Task { try? await model.commitRecurrence() }
-                        } label: { Text("Save", bundle: .module) }
-                    }
-                }
         }
     }
 
@@ -372,6 +445,14 @@ public struct TaskEditorView: View {
         }
     }
 
+    /// Commit a full-mode capture draft and close.
+    private func submitFull() {
+        Task {
+            guard (try? await model.commitDraft()) != nil else { return }
+            onDismiss()
+        }
+    }
+
     private func expand() {
         if reduceMotion {
             model.expandToFull()
@@ -379,13 +460,6 @@ public struct TaskEditorView: View {
             withAnimation(LillistMotion.squish(LillistMotion.slow)) {
                 model.expandToFull()
             }
-        }
-    }
-
-    private func dismissEditor() {
-        Task {
-            await model.saveTextNow()
-            onDismiss()
         }
     }
 
@@ -410,18 +484,6 @@ public struct TaskEditorView: View {
             deadlineHasTime: model.deadlineHasTime,
             isPinned: model.isPinned
         )
-    }
-
-    @ViewBuilder
-    private func section<Content: View>(_ title: LocalizedStringKey, @ViewBuilder _ content: () -> Content) -> some View {
-        VStack(alignment: .leading, spacing: LillistSpacing.s) {
-            Text(title, bundle: .module)
-                .font(LillistTypography.caption)
-                .foregroundStyle(LillistColor.textMuted)
-                .textCase(.uppercase)
-            content()
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
 

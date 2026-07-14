@@ -42,7 +42,6 @@ struct TaskEditorHost: ViewModifier {
                     TaskEditorView(
                         model: model,
                         onDismiss: dismissCommitted,
-                        onOpenSubtask: { id in openExisting(id) },
                         onAddAttachment: { showPhotoPicker = true }
                     )
                 }
