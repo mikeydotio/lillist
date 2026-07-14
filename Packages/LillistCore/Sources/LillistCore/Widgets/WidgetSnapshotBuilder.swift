@@ -82,6 +82,7 @@ public struct WidgetSnapshotBuilder: Sendable {
                 filterID: filter.id,
                 filterName: filter.name,
                 tintHex: filter.tintColor,
+                sortField: filter.sortField,
                 matches: matches,
                 closedToday: closedToday
             )
@@ -93,13 +94,14 @@ public struct WidgetSnapshotBuilder: Sendable {
         if filterIDs == nil || filterIDs?.contains(WidgetSnapshot.unfilteredID) == true {
             let openMatches = (try? await smartFilterStore.evaluate(
                 group: Self.unfilteredOpenGroup,
-                sort: .modifiedAt,
-                ascending: false
+                sort: .manualPosition,
+                ascending: true
             )) ?? []
             writeSnapshot(
                 filterID: WidgetSnapshot.unfilteredID,
                 filterName: "",
                 tintHex: nil,
+                sortField: .manualPosition,
                 matches: openMatches,
                 closedToday: closedToday
             )
@@ -114,7 +116,11 @@ public struct WidgetSnapshotBuilder: Sendable {
     /// persist the snapshot. `matches` is already in the target's sort order;
     /// `closedToday` is the shared grace set.
     ///
-    /// - Open tasks keep the target's sort.
+    /// - Open tasks keep the target's sort *when it is stable under a status
+    ///   transition*; a volatile sort (`.modifiedAt`/`.status`, or the No-Filter
+    ///   sentinel) is replaced with the canonical `SiblingOrder` (position, then
+    ///   id) so advancing a task in the widget doesn't make its row jump. Only
+    ///   completing a task (which moves it out of the open slice) reorders it.
     /// - Closed tasks the target *legitimately* matched (e.g. a "Recently
     ///   Closed" filter) are kept in the target's sort, sunk below the open rows.
     /// - Tasks closed today that the target filtered out (the just-completed
@@ -123,11 +129,20 @@ public struct WidgetSnapshotBuilder: Sendable {
         filterID: UUID,
         filterName: String,
         tintHex: String?,
+        sortField: SortField,
         matches: [TaskStore.TaskRecord],
         closedToday: [TaskStore.TaskRecord]
     ) {
         let matchIDs = Set(matches.map(\.id))
-        let open = matches.filter { $0.status.isClosed == false }
+        let openRaw = matches.filter { $0.status.isClosed == false }
+        let open = sortField.isStableUnderStatusTransition
+            ? openRaw
+            : openRaw.sorted {
+                SiblingOrder.precedes(
+                    positionA: $0.position, idA: $0.id,
+                    positionB: $1.position, idB: $1.id
+                )
+            }
         let closedInMatches = matches.filter { $0.status.isClosed }
         let grace = closedToday.filter { matchIDs.contains($0.id) == false }
         let ordered = open + closedInMatches + grace
