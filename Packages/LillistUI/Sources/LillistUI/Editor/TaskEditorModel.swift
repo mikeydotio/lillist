@@ -14,8 +14,8 @@ import LillistCore
 /// A brand-new capture starts as an **in-memory draft** (`phase == .draft`):
 /// nothing is written to Core Data. Scalars, tag *names*, and the recurrence
 /// rule buffer in the model. The moment the user performs an op that needs a
-/// persisted parent (subtask / attachment / journal note / reminder / a
-/// recurrence series), the draft **auto-promotes**: `ensureLive()` commits it
+/// persisted parent (subtask / attachment / journal note / a recurrence
+/// series), the draft **auto-promotes**: `ensureLive()` commits it
 /// to a real row, then the op proceeds. An existing task opens directly in
 /// `.live` and every edit live-saves.
 ///
@@ -35,7 +35,6 @@ public final class TaskEditorModel {
         public let tags: TagStore
         public let series: SeriesStore
         public let journal: JournalStore
-        public let notifications: NotificationSpecStore
         /// Optional: macOS historically didn't wire it. When `nil` the
         /// attachment section is inert rather than crashing.
         public let attachments: AttachmentStore?
@@ -45,14 +44,12 @@ public final class TaskEditorModel {
             tags: TagStore,
             series: SeriesStore,
             journal: JournalStore,
-            notifications: NotificationSpecStore,
             attachments: AttachmentStore?
         ) {
             self.tasks = tasks
             self.tags = tags
             self.series = series
             self.journal = journal
-            self.notifications = notifications
             self.attachments = attachments
         }
     }
@@ -130,7 +127,6 @@ public final class TaskEditorModel {
     public var recurrence: RecurrenceEditorViewModel = .init(rule: nil)
     /// The backing series id, if this task recurs.
     public internal(set) var seriesID: UUID?
-    public private(set) var reminders: [NotificationSpecStore.SpecRecord] = []
     public private(set) var attachments: [AttachmentStore.AttachmentRecord] = []
     public private(set) var journal: [JournalStore.JournalRecord] = []
     public private(set) var subtasks: [TaskStore.TaskRecord] = []
@@ -456,19 +452,6 @@ public final class TaskEditorModel {
         }
     }
 
-    // MARK: - Reminders (auto-promote)
-
-    public func addReminder(kind: NotificationKind, offsetMinutes: Int32?, fireDate: Date?) async throws {
-        let id = try await ensureLive()
-        _ = try await stores.notifications.add(taskID: id, kind: kind, offsetMinutes: offsetMinutes, fireDate: fireDate)
-        await reloadReminders(id: id)
-    }
-
-    public func deleteReminder(id specID: UUID) async {
-        try? await stores.notifications.delete(id: specID)
-        if case .live(let id) = phase { await reloadReminders(id: id) }
-    }
-
     // MARK: - Journal (auto-promote)
 
     public func addJournalNote(_ body: String) async throws {
@@ -548,7 +531,6 @@ public final class TaskEditorModel {
         draftTagNames = []
         await reloadTags(id: id)
         await reloadRecurrence(id: id)
-        await reloadReminders(id: id)
         await reloadAttachments(id: id)
         await reloadJournal(id: id)
         await reloadSubtasks(id: id)
@@ -573,10 +555,6 @@ public final class TaskEditorModel {
             seriesID = nil
             recurrence = RecurrenceEditorViewModel(rule: nil, taskAnchorDate: anchor)
         }
-    }
-
-    private func reloadReminders(id: UUID) async {
-        reminders = (try? await stores.notifications.specs(forTask: id)) ?? []
     }
 
     private func reloadAttachments(id: UUID) async {

@@ -110,16 +110,6 @@ public struct TaskEditorView: View {
                     )
                 }
                 recurrenceSection
-                section("Reminders") {
-                    ReminderEditorSection(
-                        reminders: model.reminders,
-                        defaultDate: model.deadline ?? model.start,
-                        onAdd: { kind, offset, date in
-                            Task { try? await model.addReminder(kind: kind, offsetMinutes: offset, fireDate: date) }
-                        },
-                        onDelete: { id in Task { await model.deleteReminder(id: id) } }
-                    )
-                }
                 section("Subtasks") {
                     EditorSubtasksSection(
                         subtasks: model.subtasks,

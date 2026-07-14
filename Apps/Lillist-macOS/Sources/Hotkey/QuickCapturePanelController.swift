@@ -36,7 +36,6 @@ final class QuickCapturePanelController {
             tags: environment.tagStore,
             series: environment.seriesStore,
             journal: environment.journalStore,
-            notifications: environment.notificationSpecStore,
             attachments: environment.attachmentStore
         )
     }

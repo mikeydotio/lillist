@@ -100,7 +100,6 @@ final class GlassSnapshotTests: XCTestCase {
             tags: TagStore(persistence: p),
             series: SeriesStore(persistence: p),
             journal: JournalStore(persistence: p),
-            notifications: NotificationSpecStore(persistence: p),
             attachments: AttachmentStore(persistence: p)
         )
     }

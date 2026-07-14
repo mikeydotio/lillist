@@ -18,7 +18,6 @@ struct TaskEditorModelTests {
             tags: TagStore(persistence: p),
             series: SeriesStore(persistence: p),
             journal: JournalStore(persistence: p),
-            notifications: NotificationSpecStore(persistence: p),
             attachments: AttachmentStore(persistence: p)
         )
     }
@@ -124,20 +123,6 @@ struct TaskEditorModelTests {
         let entries = try await JournalStore(persistence: p).entries(forTask: id)
         #expect(entries.contains { $0.body == "first note" })
         #expect(model.journal.contains { $0.body == "first note" })
-    }
-
-    @Test("Adding a reminder auto-promotes")
-    func reminderPromotes() async throws {
-        let p = try await TestStore.make()
-        let model = newCapture(p)
-        model.title = "Parent"
-
-        try await model.addReminder(kind: .nudge, offsetMinutes: nil, fireDate: Date(timeIntervalSince1970: 2_000_000))
-
-        let id = try #require(model.taskID)
-        let specs = try await NotificationSpecStore(persistence: p).specs(forTask: id)
-        #expect(!specs.isEmpty)
-        #expect(!model.reminders.isEmpty)
     }
 
     @Test("Committing a recurrence rule auto-promotes and creates a series")

@@ -148,7 +148,6 @@ struct TasksView: View {
             tags: env.tagStore,
             series: env.seriesStore,
             journal: env.journalStore,
-            notifications: env.notificationSpecStore,
             attachments: env.attachmentStore
         )
     }
