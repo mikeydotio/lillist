@@ -129,15 +129,12 @@ public struct TaskEditorView: View {
     // MARK: - Main card
 
     /// The detail card wraps its content (like Quick Capture) and only scrolls
-    /// when the content genuinely overflows the offered height. `ViewThatFits`
-    /// picks the plain, self-sizing layout first and falls back to the scrolling
-    /// copy at large Dynamic Type / long notes, so the header/title is never
-    /// clipped off the centered overlay.
+    /// when the content genuinely overflows the offered height, so the
+    /// header/title is never clipped off the centered overlay. Shares the
+    /// `wrapToContentThenScroll` valve with the drill-in children; the main
+    /// card fits the whole overlay (no height cap).
     private var mainCard: some View {
-        ViewThatFits(in: .vertical) {
-            mainCardContent
-            ScrollView { mainCardContent }
-        }
+        wrapToContentThenScroll { mainCardContent }
     }
 
     @ViewBuilder
@@ -205,8 +202,8 @@ public struct TaskEditorView: View {
 
     /// A content-hugging notes field (a vertical-axis `TextField`, matching the
     /// title) so the card wraps its description rather than reserving a fixed
-    /// tall box: it grows from two lines with the text and scrolls in place once
-    /// it reaches `editorNotesMaxHeight`, keeping the card compact.
+    /// tall box: `.lineLimit(2...8)` grows it from two lines with the text and
+    /// scrolls in place past eight, keeping the card compact.
     private var descriptionField: some View {
         TextField(
             text: $model.notes,
@@ -435,7 +432,7 @@ public struct TaskEditorView: View {
     private var attachmentsChild: some View {
         VStack(spacing: 0) {
             childHeader("Attachments") { route = .main }
-            boundedChild {
+            wrapToContentThenScroll(maxHeight: LillistSizing.editorChildMaxHeight) {
                 EditorAttachmentsSection(
                     attachments: model.attachments,
                     onAddTapped: onAddAttachment,
@@ -450,7 +447,7 @@ public struct TaskEditorView: View {
     private var journalChild: some View {
         VStack(spacing: 0) {
             childHeader("Journal") { route = .main }
-            boundedChild {
+            wrapToContentThenScroll(maxHeight: LillistSizing.editorChildMaxHeight) {
                 EditorJournalSection(entries: model.journal)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(LillistSpacing.l)
@@ -458,18 +455,28 @@ public struct TaskEditorView: View {
         }
     }
 
-    /// Wrap a drill-in child's content so it grows to fit its content and
-    /// scrolls only once it exceeds the child height cap — the same
-    /// wrap-then-scroll behavior as the main card, so a nearly-empty child
-    /// hugs its content (no dead slack) and a long one never fills the screen.
+    /// Wrap content so it hugs its size and scrolls only on genuine overflow:
+    /// `ViewThatFits` picks the plain, self-sizing layout when it fits the
+    /// offered height and the scrolling copy otherwise (re-evaluated against the
+    /// live proposal each layout pass). `maxHeight` bounds both the fit decision
+    /// and the scroll viewport — drill-in children pass `editorChildMaxHeight`
+    /// so a nearly-empty child hugs its content and a long one scrolls; the main
+    /// card passes `nil` to fit the whole overlay.
     @ViewBuilder
-    private func boundedChild<Content: View>(@ViewBuilder _ content: () -> Content) -> some View {
+    private func wrapToContentThenScroll<Content: View>(
+        maxHeight: CGFloat? = nil,
+        @ViewBuilder _ content: () -> Content
+    ) -> some View {
         let inner = content()
-        ViewThatFits(in: .vertical) {
+        let valve = ViewThatFits(in: .vertical) {
             inner
             ScrollView { inner }
         }
-        .frame(maxHeight: LillistSizing.editorChildMaxHeight)
+        if let maxHeight {
+            valve.frame(maxHeight: maxHeight)
+        } else {
+            valve
+        }
     }
 
     // MARK: - Actions
