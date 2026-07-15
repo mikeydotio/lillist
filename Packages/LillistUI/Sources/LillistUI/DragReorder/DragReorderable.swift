@@ -5,8 +5,14 @@ import UIKit
 
 extension View {
     /// Attaches the drag-reorder gesture and geometry reporter to a
-    /// row. iOS requires a long-press first to disambiguate from
-    /// scroll; macOS uses a plain `DragGesture` (mouse-down + slop).
+    /// row. iOS bridges to a UIKit `UILongPressGestureRecognizer`
+    /// (`ReorderLongPressGesture`) so arbitration with the `List`'s
+    /// scroll pan happens at the UIKit layer — early movement fails the
+    /// long-press and the scroll pan takes the touch; once the press
+    /// matures, the recognizer owns the touch exclusively and drives
+    /// the reorder. (A SwiftUI long-press+drag composition here claimed
+    /// the touch stream even while failing, blocking the scroll —
+    /// issue #12.) macOS uses a plain `DragGesture` (mouse-down + slop).
     ///
     /// ⚠️ Never lay this over a control with an intrinsic gesture
     /// (`Button`, `Menu`, `NavigationLink`): the control's recognizer
@@ -52,8 +58,16 @@ struct DragReorderGestureModifier: ViewModifier {
     #endif
 
     func body(content: Content) -> some View {
+        // iOS attaches via the `UIGestureRecognizerRepresentable` overload of
+        // `.gesture(_:)` (the representable is not itself a `Gesture`, so it
+        // can't flow through the shared `some Gesture` property).
+        #if os(iOS)
+        content
+            .gesture(reorderGesture)
+        #else
         content
             .gesture(platformGesture)
+        #endif
     }
 
     /// Effective reduce-motion: app-level override beats the system
@@ -68,30 +82,14 @@ struct DragReorderGestureModifier: ViewModifier {
     }
 
     #if os(iOS)
-    private var platformGesture: some Gesture {
-        let drag = DragGesture(
-            minimumDistance: 0,
-            coordinateSpace: .named(DragCoordinateSpace.name)
-        )
-        return LongPressGesture(
-            minimumDuration: LillistDragTokens.longPressDuration,
-            maximumDistance: LillistDragTokens.longPressMaxDistance
-        )
-        .sequenced(before: drag)
-        .onChanged { (value: SequenceGesture<LongPressGesture, DragGesture>.Value) in
-            switch value {
-            case .first:
-                // Long-press in progress, drag has not started.
-                break
-            case .second(_, let drag?):
+    private var reorderGesture: ReorderLongPressGesture {
+        ReorderLongPressGesture(
+            onBegan: {
                 if case .idle = controller.state {
-                    guard let frame = controller.geometry[id] else { break }
-                    // Anchor on the row's natural midY (a reliable value
-                    // in the named coordinate space). Don't use
-                    // `drag.location.y` — at the first `.second` event
-                    // of the sequenced gesture it can be reported in an
-                    // unexpected coordinate space, causing the phantom
-                    // to snap to the viewport top.
+                    guard let frame = controller.geometry[id] else { return }
+                    // Anchor on the row's natural midY — a reliable value
+                    // in the named coordinate space; the recognizer's
+                    // window-space translation is applied on top of it.
                     controller.beginDrag(
                         rowID: id,
                         originalHeight: frame.height,
@@ -99,29 +97,30 @@ struct DragReorderGestureModifier: ViewModifier {
                     )
                     UIImpactFeedbackGenerator(style: .medium).impactOccurred()
                 }
-                // Track motion via translation — the coordinate-space-
-                // invariant delta from drag start — applied on top of
-                // the captured anchor.
-                let cursorY = currentCursorY(translation: drag.translation.height)
-                controller.updateCursor(translation: drag.translation.height)
+            },
+            onChanged: { translation in
+                // Only a drag that actually began drives the controller;
+                // resolving against an idle/settling session would spam
+                // selection haptics with no-op target updates.
+                guard case .dragging = controller.state else { return }
+                let cursorY = currentCursorY(translation: translation.height)
+                controller.updateCursor(translation: translation.height)
                 // Horizontal translation picks the drop depth (indent/outdent).
                 let resolved = controller.resolveTarget(
                     forDraggedID: id,
                     atY: cursorY,
-                    horizontalTranslation: drag.translation.width
+                    horizontalTranslation: translation.width
                 )
                 let previous = currentTarget()
                 if resolved != previous {
                     controller.setResolvedTarget(resolved)
                     UISelectionFeedbackGenerator().selectionChanged()
                 }
-            default:
-                break
+            },
+            onEnded: {
+                controller.endDrag(settleDuration: settleDuration)
             }
-        }
-        .onEnded { _ in
-            controller.endDrag(settleDuration: settleDuration)
-        }
+        )
     }
     #else
     private var platformGesture: some Gesture {
