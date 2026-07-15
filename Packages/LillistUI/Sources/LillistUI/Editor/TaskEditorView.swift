@@ -91,7 +91,7 @@ public struct TaskEditorView: View {
             }
         }
         .padding(LillistSpacing.l)
-        .frame(maxWidth: 360)
+        .frame(maxWidth: LillistSizing.editorQuickMaxWidth)
         .glassSurface(.panel, in: RoundedRectangle(cornerRadius: LillistRadius.l))
     }
 
@@ -106,7 +106,7 @@ public struct TaskEditorView: View {
             case .journal: journalChild
             }
         }
-        .frame(maxWidth: 560)
+        .frame(maxWidth: LillistSizing.editorCardMaxWidth)
         .glassSurface(.panel, in: RoundedRectangle(cornerRadius: LillistRadius.l))
         .task(id: textEditKey) {
             do { try await Task.sleep(for: .milliseconds(500)) } catch { return }

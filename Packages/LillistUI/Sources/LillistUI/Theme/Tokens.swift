@@ -44,6 +44,18 @@ public enum LillistTiming {
     public static let longPress: TimeInterval = 0.4
 }
 
+/// Bounded sizes for self-sizing surfaces. The task editor is a floating
+/// card that must **wrap its content** (like Quick Capture) rather than
+/// fill the screen; these caps keep it compact while letting the growable
+/// regions scroll in place once they exceed the cap. Width caps replace the
+/// former inline `560`/`360` literals.
+public enum LillistSizing {
+    /// Full-mode detail card max width.
+    public static let editorCardMaxWidth: CGFloat = 560
+    /// Quick-capture card max width.
+    public static let editorQuickMaxWidth: CGFloat = 360
+}
+
 /// Semantic typography: Plus Jakarta Sans at the Rainbow Logic scale.
 /// Every token is `relativeTo:` a Dynamic Type text style, so user
 /// accessibility text-size settings keep scaling chrome text — never
