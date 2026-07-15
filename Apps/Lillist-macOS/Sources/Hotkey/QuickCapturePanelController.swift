@@ -22,6 +22,9 @@ final class QuickCapturePanelController {
     private var hosting: NSHostingController<AnyView>?
     private var model: TaskEditorModel?
     private var sizeObservation: NSKeyValueObservation?
+    /// Tracks the last-applied mode so the panel animates only the discrete
+    /// quick→full grow, not every incremental content-size change (typing).
+    private var lastModeWasFull = false
     let environment: AppEnvironment
 
     init(environment: AppEnvironment) { self.environment = environment }
@@ -96,8 +99,13 @@ final class QuickCapturePanelController {
         // the status Menu's popover resigns key, and that must not dismiss.
 
         self.panel = panel
-        observeContentSize()
+        self.lastModeWasFull = model.mode == .full
+        // Force an initial layout pass so `preferredContentSize` is populated,
+        // then size the panel synchronously — the panel opens at its content
+        // height instead of visibly animating up from the seed height.
+        host.view.layoutSubtreeIfNeeded()
         fitPanelToContent(animated: false)
+        observeContentSize()
     }
 
     private func editorRoot(_ model: TaskEditorModel) -> AnyView {
@@ -123,7 +131,13 @@ final class QuickCapturePanelController {
         sizeObservation = hosting?.observe(\.preferredContentSize, options: [.new]) { [weak self] _, _ in
             Task { @MainActor in
                 guard let self, self.isOpen else { return }
-                self.fitPanelToContent(animated: true)
+                // Animate only the discrete quick→full grow; incremental
+                // content growth (the notes field growing as the user types)
+                // re-fits instantly so the window doesn't jitter mid-typing.
+                let isFull = self.model?.mode == .full
+                let animate = isFull != self.lastModeWasFull
+                self.lastModeWasFull = isFull
+                self.fitPanelToContent(animated: animate)
             }
         }
     }
@@ -134,14 +148,20 @@ final class QuickCapturePanelController {
         // Ignore the pre-layout zero size; clamp to the screen so an XXXL
         // editor can't grow the panel past the visible area.
         guard target.height > 1 else { return }
-        let maxHeight = (panel.screen ?? NSScreen.main)?.visibleFrame.height ?? target.height
-        let clampedHeight = min(target.height, maxHeight)
+        let visibleFrame = (panel.screen ?? NSScreen.main)?.visibleFrame
+        let clampedHeight = min(target.height, visibleFrame?.height ?? target.height)
         var frame = panel.frame
         let delta = clampedHeight - frame.size.height
         guard abs(delta) > 0.5 else { return }
-        // Pin the top edge: growing downward keeps the title field in place.
+        // Pin the top edge (growing downward keeps the title field in place),
+        // then keep the whole panel on-screen: a tall card must not push its
+        // bottom — the Add commit button — below the visible frame / Dock.
         frame.origin.y -= delta
         frame.size.height = clampedHeight
+        if let visibleFrame {
+            frame.origin.y = min(max(frame.origin.y, visibleFrame.minY),
+                                 visibleFrame.maxY - clampedHeight)
+        }
         let reduceMotion = NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
         panel.setFrame(frame, display: true, animate: animated && !reduceMotion)
     }
