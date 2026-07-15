@@ -83,6 +83,21 @@ final class TaskTapOpenUITests: XCTestCase {
             notes.waitForExistence(timeout: 5),
             "Notes field missing in the full editor"
         )
+
+        // Wait for the async `TaskEditorModel.load()` to settle before typing:
+        // it seeds every scalar (including notes = "") after presentation, so a
+        // load that lands mid-type would clobber the keystrokes. The title
+        // arriving is the "load finished" signal (same guard as the tap-open test).
+        let titleField = app.descendants(matching: .any)
+            .matching(identifier: "EditorTitleField")
+            .firstMatch
+        let loadDeadline = Date().addingTimeInterval(5)
+        while Date() < loadDeadline, (titleField.value as? String) != title {
+            Thread.sleep(forTimeInterval: 0.2)
+        }
+        XCTAssertEqual(titleField.value as? String, title,
+                       "Editor never finished loading the task before the edit")
+
         notes.tap()
         let typed = "wrap check note"
         notes.typeText(typed)
