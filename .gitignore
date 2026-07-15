@@ -157,3 +157,8 @@ Tools/Deploy/*.local.*
 .atlas/
 
 # .storyhook/ is version-controlled project data — do not ignore
+
+# rca plugin
+.rca/
+.claude/worktrees/
+.council/

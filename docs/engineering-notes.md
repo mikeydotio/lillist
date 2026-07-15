@@ -3945,3 +3945,51 @@ Landing the compact task-detail card (`Closes #8`) surfaced three lessons:
   date/time silently depends on the process time zone. (The AM/PM separator is a
   narrow no-break space U+202F, not a plain space — normalize it in test
   expectations.)
+
+## 2026-07-14 — Issue #12: SwiftUI drag-family gestures on List rows starve the scroll pan; bridge to UIKit recognizers
+
+- **A SwiftUI drag-family gesture attached to `List` row content claims the
+  touch stream at touch-down and never releases it to the List's scroll pan —
+  regardless of attachment mode, `minimumDistance`, or handler-level yields.**
+  Issue #12 ("can only scroll from the margins") was toggle-diagnosed to an
+  OR-shaped cause: the reorder `LongPress(0.3s/4pt).sequenced(before:
+  DragGesture(minimumDistance: 0))` via `.gesture()` on the label AND
+  `SwipeableRow`'s `.simultaneousGesture(DragGesture(minimumDistance: 10))` on
+  the card were EACH independently sufficient to kill vertical scrolling from
+  row content (remove either alone → still dead; remove both → scrolls).
+  This falsifies three assumptions this file previously recorded as law:
+  "the long-press gate disambiguates from scroll" (a *failed* long-press does
+  not hand the touch back), "a `simultaneousGesture` never starves the scroll",
+  and "returning early for vertical drags yields them" (an `onChanged` handler
+  cannot un-claim a touch; arbitration is settled before it runs). All prior
+  arbitration lessons here were gesture-vs-gesture — gesture-vs-*scroll-pan*
+  was an untested comment, and it was wrong on the deployed OS (26.2).
+- **The fix: move row-gesture arbitration to UIKit, the only layer with a
+  documented contract.** `ReorderLongPressGesture` (DragReorder/) wraps
+  `UILongPressGestureRecognizer` via `UIGestureRecognizerRepresentable` —
+  early movement fails the press and the scroll pan takes the touch; a matured
+  press owns it exclusively. `HorizontalSwipePanGesture` (Components/) wraps
+  `UIPanGestureRecognizer` whose `gestureRecognizerShouldBegin` *declines*
+  non-horizontal touches (|dx| > |dy|, ties → scroll), so vertical drags are
+  never claimed at all. `DragController`/`SwipeSettleArbiter` and the macOS
+  SwiftUI branches are untouched; `SwipePanProjection` replicates
+  `predictedEndTranslation` (unit-tested) since UIKit pans expose velocity,
+  not a prediction.
+- **SDK shape:** in the iOS 26.2 SDK `UIGestureRecognizerRepresentable` does
+  NOT refine `Gesture` — it attaches through a dedicated
+  `View.gesture(_ representable:)` overload, so it can't flow through a shared
+  `some Gesture` property (hence the `#if os(iOS)` fork in
+  `DragReorderGestureModifier.body`). Bridged-recognizer translation is
+  anchored in window space at `.began`; that equals named-space deltas only
+  while the List can't move mid-drag — true today because a begun reorder
+  blocks scrolling and no edge auto-scroll exists. Building auto-scroll later
+  means revisiting that anchor.
+- **The class defect and its guard:** three regressions in this module
+  (status-tap 06-12, dead reorder 06-17, scroll #12) each shipped validated
+  only against the interaction being fixed. The five-interaction real-touch
+  matrix now pins all of them: `ListScrollUITests` (scroll, the #12 witness),
+  `LongPressReorderUITests` (first-ever real-touch reorder coverage: positive
+  reorder + persistence, sub-gate drag doesn't reorder, Due-sort drag doesn't
+  corrupt personalized order), `TaskTapOpenUITests` (tap-open),
+  `SwipeDeleteUITests`, `StatusCycleUITests`. Any future row-gesture change
+  must keep the whole matrix green, not just its own test.

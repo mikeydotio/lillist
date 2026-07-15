@@ -38,22 +38,23 @@ public struct SwipeActionSpec {
 /// `trailing` on a left-swipe — with full-swipe-to-trigger.
 ///
 /// Cross-platform (iOS + macOS trackpad). Why custom and not `.swipeActions`:
-/// this app drives row reordering with a bespoke `DragController` `DragGesture`
+/// this app drives row reordering with a bespoke `DragController` gesture
 /// laid over the row. A SwiftUI `DragGesture` on cell content claims the
 /// horizontal pan the instant the pointer lands, so the UIKit-layer
 /// `.swipeActions` recognizer never fires (swipe-to-delete silently dies — the
-/// bug this replaces). By owning the swipe gesture ourselves we make
-/// arbitration deterministic:
-///   • The swipe gesture commits to an axis on first movement and yields
-///     vertical drags to the enclosing `List`'s scroll (it runs as a
-///     `simultaneousGesture`, so the scroll is never starved).
+/// bug this replaces). Arbitration is per-platform:
+///   • iOS bridges the swipe to a UIKit `UIPanGestureRecognizer`
+///     (`HorizontalSwipePanGesture`) whose delegate refuses to begin unless
+///     the touch is predominantly horizontal, so the `List`'s scroll pan
+///     claims every vertical drag at the UIKit layer. (The prior SwiftUI
+///     `DragGesture` claimed the touch even while its handler yielded
+///     vertical motion, blocking the scroll — issue #12.)
 ///   • `isReorderActive` (true once a drag is confirmed) hard-disables the
-///     swipe gesture, so a diagonal reorder can never trip an action.
-///   • iOS reorder requires a 0.3 s long-press first, so a quick horizontal
-///     flick fails it and is read as a swipe. macOS has no long-press gate, so
-///     the macOS reorder `DragGesture` is instead axis-gated to *vertical*
-///     motion only (see `DragReorderable`): a horizontal trackpad swipe is
-///     never claimed by reorder and this row's gesture owns it.
+///     swipe recognizer, so a diagonal reorder can never trip an action.
+///   • macOS keeps the SwiftUI `DragGesture`: it commits to an axis on first
+///     movement and applies only horizontal drags, while the macOS reorder
+///     `DragGesture` is axis-gated to *vertical* motion (see
+///     `DragReorderable`), keeping the two mutually exclusive.
 ///
 /// `openRowID` coordinates "only one row open at a time": opening this row
 /// stamps its `rowID`, and any row whose id no longer matches snaps closed.
@@ -97,9 +98,15 @@ public struct SwipeableRow<Content: View>: View {
 
     @State private var offset: CGFloat = 0
     @State private var dragStartOffset: CGFloat = 0
+
+    #if os(macOS)
+    /// Which axis the current macOS drag committed to. iOS needs no axis
+    /// state: the bridged pan recognizer declines vertical touches before
+    /// they ever begin.
     @State private var axis: Axis2D = .undecided
 
     private enum Axis2D { case undecided, horizontal, vertical }
+    #endif
 
     @Environment(\.accessibilityReduceMotion) private var systemReduceMotion
     @Environment(\.reduceMotionOverride) private var overrideReduceMotion
@@ -128,7 +135,37 @@ public struct SwipeableRow<Content: View>: View {
                 // revealed action (opposite edge), so they never overlap, and
                 // adding a fill would change the row's resting render.
                 .offset(x: offset)
+                #if os(iOS)
+                // The `!isReorderActive` guards are NOT dead code despite
+                // `isEnabled` mirroring the same flag: the recognizer is
+                // disabled on SwiftUI's *next update pass*, so a UIKit event
+                // already in flight when `isReorderActive` flips can still
+                // arrive before `updateUIGestureRecognizer` runs.
+                .gesture(HorizontalSwipePanGesture(
+                    isEnabled: !isReorderActive,
+                    onBegan: {
+                        guard !isReorderActive else { return }
+                        dragStartOffset = offset
+                    },
+                    onChanged: { translationX in
+                        guard !isReorderActive else { return }
+                        offset = resist(dragStartOffset + translationX)
+                    },
+                    onEnded: { predictedTranslationX in
+                        guard !isReorderActive else { return }
+                        settle(predictedTranslation: predictedTranslationX)
+                    },
+                    onCancelled: {
+                        // A cancelled touch (system interruption, or the
+                        // reorder-activation disable path) is not a release:
+                        // restore the row, never settle — settling could
+                        // commit a full-swipe action the user never chose.
+                        close()
+                    }
+                ))
+                #else
                 .simultaneousGesture(swipeGesture)
+                #endif
         }
         .onChange(of: openRowID) { _, newValue in
             if newValue != rowID, offset != 0 { close() }
@@ -199,8 +236,9 @@ public struct SwipeableRow<Content: View>: View {
         .clipShape(RoundedRectangle(cornerRadius: LillistRadius.m, style: .continuous))
     }
 
-    // MARK: - Gesture
+    // MARK: - Gesture (macOS trackpad)
 
+    #if os(macOS)
     private var swipeGesture: some Gesture {
         DragGesture(minimumDistance: 10)
             .onChanged { value in
@@ -221,6 +259,7 @@ public struct SwipeableRow<Content: View>: View {
                 settle(predictedTranslation: value.predictedEndTranslation.width)
             }
     }
+    #endif
 
     /// Clamp to the available actions, with rubber-band resistance past the
     /// resting reveal width (and near-total resistance toward a side with no
