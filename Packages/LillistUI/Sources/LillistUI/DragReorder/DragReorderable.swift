@@ -12,7 +12,13 @@ extension View {
     /// matures, the recognizer owns the touch exclusively and drives
     /// the reorder. (A SwiftUI long-press+drag composition here claimed
     /// the touch stream even while failing, blocking the scroll —
-    /// issue #12.) macOS uses a plain `DragGesture` (mouse-down + slop).
+    /// issue #12.) macOS uses a plain `DragGesture` (mouse-down + slop):
+    /// its event model differs — scrolling is scroll-wheel/trackpad input
+    /// routed to `NSScrollView`, which never competes with a mouse-drag
+    /// `DragGesture` — so the iOS root cause cannot arise there. That
+    /// branch is now guarded by the real-input `MacListScrollUITests` /
+    /// `MacReorderUITests` harness (macOS UITests run only on a signed Mac
+    /// with a window server, not in CI — see issue #18).
     ///
     /// ⚠️ Never lay this over a control with an intrinsic gesture
     /// (`Button`, `Menu`, `NavigationLink`): the control's recognizer

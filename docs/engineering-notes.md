@@ -4045,3 +4045,50 @@ Landing the compact task-detail card (`Closes #8`) surfaced three lessons:
   corrupt personalized order), `TaskTapOpenUITests` (tap-open),
   `SwipeDeleteUITests`, `StatusCycleUITests`. Any future row-gesture change
   must keep the whole matrix green, not just its own test.
+
+## 2026-07-14 — Issue #18: the macOS row gestures were unverified, not broken — verify-first, don't mirror the iOS bridge
+
+- **The iOS root cause structurally cannot occur on macOS, because the event
+  models differ.** On iOS a finger pan is one ambiguous stream (scroll *or*
+  drag) and SwiftUI wrongly gave it to the row `DragGesture` (issue #12). On
+  macOS, scrolling is scroll-wheel / two-finger-trackpad events routed to the
+  enclosing `NSScrollView`, while a `DragGesture` fires only on
+  mouse-button-down + move — *two different event streams that never compete*.
+  So #18's macOS branches were **unverified + unguarded**, not latently broken.
+  The right fix is verify-first (add the missing regression guard and let
+  evidence decide), NOT speculatively re-implementing macOS on
+  `NSGestureRecognizerRepresentable` — that would arbitrate a conflict that
+  doesn't exist and swap unverified SwiftUI for unverified AppKit. Only bridge
+  macOS if the harness ever actually goes red.
+- **The genuinely non-obvious gotcha: macOS XCUITests cannot run headless over
+  SSH/mosh.** The runner fails to initialize with
+  `Error Domain=com.apple.LocalAuthentication Code=-4 "System authentication is
+  running."` — it needs a physical console session with a live window server.
+  So the new `Lillist-macOSUITests` behavioral suites join the iCloud
+  live-swap tests as **Mikey-on-device-only** (a "Gate 4" run); CI and remote
+  Claude sessions can *compile* them (`xcodebuild build-for-testing` is the
+  agent-runnable check) but not execute them. Don't burn time trying to force
+  a headless run.
+- **macOS XCUITest input primitives differ from iOS.** Scrolling a `List`:
+  `XCUIElement.scroll(byDeltaX:deltaY:)` (synthesizes real scroll-wheel events
+  — the correct way to test "scroll from row body" on macOS, since a *drag* on
+  a row body is meant to reorder, not scroll). Dragging:
+  `XCUICoordinate.click(forDuration:thenDragTo:)` (the desktop analogue of iOS
+  `press(forDuration:thenDragTo:)`). Rows surface as *combined* accessibility
+  elements whose type (button vs. static text) is unstable — match
+  element-type-agnostically with a `label CONTAINS` predicate over
+  `descendants(matching: .any)`.
+- **New launch seam:** `--ui-test-seed-many` + `--ui-test-seed-count <N>`
+  seeds N plainly-titled root tasks (creation order = personalized order) so a
+  gesture suite gets count-appropriate deterministic content — a tall list for
+  scroll runway, a short one for reorder/swipe order-reads. Inert outside
+  XCUITest, like the other `--ui-test-*` seams.
+- **DRY:** the two macOS row gestures used to each own an axis rule
+  (`DragReorderable` via `DragAxisArbiter` at 8 pt; `SwipeableRow` inlined its
+  own `dx > dy` at 10 pt). The swipe now routes through the same
+  `DragAxisArbiter` at a new `macSwipeAxisCommitDistance` (10) token — the
+  10-vs-8 staggering that keeps the two gestures mutually exclusive is now a
+  visible, single source of truth. Proven behavior-preserving by an exhaustive
+  translation-grid equivalence test (`DragAxisArbiterTests`), which runs on any
+  host — so the refactor's guard is CI-runnable even though the real-input
+  harness is not.

@@ -117,6 +117,19 @@ assumptions (known-untested, revisit on any macOS gesture/scroll defect — issu
 bridged recognizers anchor translation in window space, which breaks if edge auto-scroll is
 ever built (issue #19).
 
+**Issue #18 update (2026-07-14):** resolved *verify-first*, not by mirroring the iOS
+UIKit bridge onto AppKit. macOS's event model makes the iOS root cause structurally
+impossible: scrolling is scroll-wheel/two-finger-trackpad input routed to `NSScrollView`,
+while a `DragGesture` fires only on mouse-button-down + move — different event streams that
+never compete. So the debt was "unverified + unguarded," not "broken." The fix adds a
+real-input macOS gesture harness (`Lillist-macOSUITests`: `MacListScrollUITests`,
+`MacReorderUITests`, `MacSwipeUITests`, `MacRowTapOpenUITests`) — the standing regression
+guard the macOS branch never had — and consolidates the swipe's inline axis rule onto the
+shared `DragAxisArbiter` (proven behavior-preserving by an exhaustive host-run grid test).
+The harness *compiles* clean; its behavioral verdict runs only on a signed Mac with a
+window server (the XCUITest runner cannot initialize headless over SSH — `LAError -4`), so
+first-run confirmation is a Mikey on-device gate (like PR #17's Gate 4).
+
 **Post-review hardening (same PR):** the merge review surfaced and the branch fixed four
 further correctness gaps in the bridges — system-cancelled touches (`.cancelled`) now abort
 instead of committing (reorder → `cancelDrag()`, swipe → close, never a full-swipe commit);

@@ -139,6 +139,15 @@ public enum LillistDragTokens {
     /// `minimumDistance` and the swipe gesture's 10 pt commit, so reorder
     /// claims a vertical drag a touch before the swipe would react.
     public static let macReorderAxisCommitDistance: CGFloat = 8
+    /// Distance (pt) the macOS swipe `DragGesture` (`SwipeableRow`) travels
+    /// before it commits to an axis via the shared `DragAxisArbiter`. Only a
+    /// *horizontal* commit reveals a swipe action; a vertical commit is
+    /// yielded to reorder/scroll. Sits one point past
+    /// `macReorderAxisCommitDistance` (8) so a near-vertical drag commits to
+    /// reorder first, keeping the two row gestures mutually exclusive. Also
+    /// the swipe `DragGesture`'s `minimumDistance`, so the SwiftUI activation
+    /// threshold and the arbiter's commit distance stay locked together.
+    public static let macSwipeAxisCommitDistance: CGFloat = 10
     /// Horizontal inset of the between-row divider capsule, matching the
     /// list row's leading/trailing insets in `TasksScreen` so the divider
     /// aligns with row content.

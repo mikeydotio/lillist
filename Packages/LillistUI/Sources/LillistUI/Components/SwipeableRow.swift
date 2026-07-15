@@ -52,9 +52,15 @@ public struct SwipeActionSpec {
 ///   • `isReorderActive` (true once a drag is confirmed) hard-disables the
 ///     swipe recognizer, so a diagonal reorder can never trip an action.
 ///   • macOS keeps the SwiftUI `DragGesture`: it commits to an axis on first
-///     movement and applies only horizontal drags, while the macOS reorder
-///     `DragGesture` is axis-gated to *vertical* motion (see
-///     `DragReorderable`), keeping the two mutually exclusive.
+///     movement — via the shared `DragAxisArbiter` (one source of truth with
+///     the macOS reorder branch) at `macSwipeAxisCommitDistance` — and
+///     applies only horizontal drags, while the macOS reorder `DragGesture`
+///     is axis-gated to *vertical* motion (see `DragReorderable`), keeping
+///     the two mutually exclusive. macOS scrolling is scroll-wheel/trackpad
+///     input to `NSScrollView` (never a mouse-drag `DragGesture`), so the
+///     iOS root cause cannot arise; the branch is guarded by the real-input
+///     `MacSwipeUITests` harness (macOS UITests run only on a signed Mac,
+///     not in CI — issue #18).
 ///
 /// `openRowID` coordinates "only one row open at a time": opening this row
 /// stamps its `rowID`, and any row whose id no longer matches snaps closed.
@@ -100,9 +106,11 @@ public struct SwipeableRow<Content: View>: View {
     @State private var dragStartOffset: CGFloat = 0
 
     #if os(macOS)
-    /// Which axis the current macOS drag committed to. iOS needs no axis
-    /// state: the bridged pan recognizer declines vertical touches before
-    /// they ever begin.
+    /// Which axis the current macOS drag committed to. The commit *decision*
+    /// comes from the shared `DragAxisArbiter` (see `swipeGesture`); this
+    /// state only tracks the result across `onChanged` calls, since the
+    /// arbiter is stateless (no `.undecided`). iOS needs no axis state: the
+    /// bridged pan recognizer declines vertical touches before they begin.
     @State private var axis: Axis2D = .undecided
 
     private enum Axis2D { case undecided, horizontal, vertical }
@@ -240,14 +248,18 @@ public struct SwipeableRow<Content: View>: View {
 
     #if os(macOS)
     private var swipeGesture: some Gesture {
-        DragGesture(minimumDistance: 10)
+        DragGesture(minimumDistance: LillistDragTokens.macSwipeAxisCommitDistance)
             .onChanged { value in
                 guard !isReorderActive else { return }
                 if axis == .undecided {
-                    let dx = abs(value.translation.width)
-                    let dy = abs(value.translation.height)
-                    guard max(dx, dy) >= 10 else { return }
-                    axis = dx > dy ? .horizontal : .vertical
+                    // Single source of truth for the reorder-vs-swipe axis
+                    // decision, shared with `DragReorderable`'s macOS branch:
+                    // commit at `macSwipeAxisCommitDistance`, ties → vertical.
+                    guard let committed = DragAxisArbiter.axis(
+                        forTranslation: value.translation,
+                        commitDistance: LillistDragTokens.macSwipeAxisCommitDistance
+                    ) else { return }
+                    axis = (committed == .horizontal) ? .horizontal : .vertical
                     dragStartOffset = offset
                 }
                 guard axis == .horizontal else { return }   // vertical → let the List scroll
