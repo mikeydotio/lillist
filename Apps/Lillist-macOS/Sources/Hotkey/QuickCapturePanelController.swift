@@ -1,6 +1,5 @@
 import AppKit
 import SwiftUI
-import Observation
 import LillistCore
 import LillistUI
 
@@ -22,13 +21,16 @@ final class QuickCapturePanelController {
     private var panel: NSPanel?
     private var hosting: NSHostingController<AnyView>?
     private var model: TaskEditorModel?
+    private var sizeObservation: NSKeyValueObservation?
     let environment: AppEnvironment
 
     init(environment: AppEnvironment) { self.environment = environment }
 
     private static let panelWidth: CGFloat = 600
-    private static let quickHeight: CGFloat = 168
-    private static let fullHeight: CGFloat = 700
+    /// Seed height only — the panel then follows the editor's own content
+    /// height (`preferredContentSize`), so quick/full/child-route sizes fall
+    /// out of the SwiftUI layout instead of hardcoded per-mode constants.
+    private static let seedHeight: CGFloat = 168
 
     private var stores: TaskEditorModel.Stores {
         TaskEditorModel.Stores(
@@ -61,7 +63,7 @@ final class QuickCapturePanelController {
     private func present(model: TaskEditorModel) {
         self.model = model
         let panel = NSPanel(
-            contentRect: NSRect(x: 0, y: 0, width: Self.panelWidth, height: Self.quickHeight),
+            contentRect: NSRect(x: 0, y: 0, width: Self.panelWidth, height: Self.seedHeight),
             styleMask: [.titled, .closable, .resizable, .fullSizeContentView, .nonactivatingPanel],
             backing: .buffered,
             defer: false
@@ -81,6 +83,9 @@ final class QuickCapturePanelController {
         panel.hasShadow = true
 
         let host = NSHostingController(rootView: editorRoot(model))
+        // Let the hosting controller report the SwiftUI content's ideal size
+        // as `preferredContentSize`, which we observe to size the panel.
+        host.sizingOptions = [.preferredContentSize]
         panel.contentViewController = host
         self.hosting = host
 
@@ -91,8 +96,8 @@ final class QuickCapturePanelController {
         // the status Menu's popover resigns key, and that must not dismiss.
 
         self.panel = panel
-        resizeForMode(animated: false)
-        observeMode()
+        observeContentSize()
+        fitPanelToContent(animated: false)
     }
 
     private func editorRoot(_ model: TaskEditorModel) -> AnyView {
@@ -102,36 +107,41 @@ final class QuickCapturePanelController {
                 onDismiss: { [weak self] in self?.close(cancelled: false) },
                 onAddAttachment: { [weak self] in self?.presentAttachmentPicker() }
             )
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+            // Fixed width, intrinsic height: the card self-sizes vertically so
+            // the panel can hug it (no `.infinity` fill, which would peg the
+            // reported size to the panel and defeat self-sizing).
             .padding(LillistSpacing.l)
+            .frame(width: Self.panelWidth)
             .onExitCommand { [weak self] in self?.close(cancelled: true) }
         )
     }
 
-    /// Re-arming `@Observable` watcher: resize the panel whenever the editor's
-    /// mode flips (the quick→full grow).
-    private func observeMode() {
-        guard let model else { return }
-        withObservationTracking {
-            _ = model.mode
-        } onChange: { [weak self] in
+    /// Follow the editor's content height: re-fit the panel whenever the
+    /// hosted view's `preferredContentSize` changes — the quick→full grow,
+    /// a child-route drill-in, or the description growing as the user types.
+    private func observeContentSize() {
+        sizeObservation = hosting?.observe(\.preferredContentSize, options: [.new]) { [weak self] _, _ in
             Task { @MainActor in
                 guard let self, self.isOpen else { return }
-                self.resizeForMode(animated: true)
-                self.observeMode() // re-arm
+                self.fitPanelToContent(animated: true)
             }
         }
     }
 
-    private func resizeForMode(animated: Bool) {
-        guard let panel, let model else { return }
-        let targetHeight = model.mode == .full ? Self.fullHeight : Self.quickHeight
+    private func fitPanelToContent(animated: Bool) {
+        guard let panel, let hosting else { return }
+        let target = hosting.preferredContentSize
+        // Ignore the pre-layout zero size; clamp to the screen so an XXXL
+        // editor can't grow the panel past the visible area.
+        guard target.height > 1 else { return }
+        let maxHeight = (panel.screen ?? NSScreen.main)?.visibleFrame.height ?? target.height
+        let clampedHeight = min(target.height, maxHeight)
         var frame = panel.frame
-        let delta = targetHeight - frame.size.height
+        let delta = clampedHeight - frame.size.height
         guard abs(delta) > 0.5 else { return }
         // Pin the top edge: growing downward keeps the title field in place.
         frame.origin.y -= delta
-        frame.size.height = targetHeight
+        frame.size.height = clampedHeight
         let reduceMotion = NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
         panel.setFrame(frame, display: true, animate: animated && !reduceMotion)
     }
@@ -175,6 +185,8 @@ final class QuickCapturePanelController {
         } else {
             notifyChanged()
         }
+        sizeObservation?.invalidate()
+        sizeObservation = nil
         panel?.orderOut(nil)
         panel = nil
         hosting = nil
