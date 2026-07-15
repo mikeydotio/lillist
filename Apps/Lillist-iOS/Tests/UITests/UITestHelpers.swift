@@ -56,6 +56,15 @@ enum UITestHelpers {
     @MainActor
     static func createTask(in app: XCUIApplication, prefix: String = "uitest") -> String {
         let title = "\(prefix)-\(UUID().uuidString.prefix(8))"
+        createTask(titled: title, in: app)
+        return title
+    }
+
+    /// Create one task via Quick Capture with a caller-chosen title —
+    /// the seeding primitive for suites that assert on known titles
+    /// (list-scroll, reorder). Same relaunch caveat as `createTask(in:)`.
+    @MainActor
+    static func createTask(titled title: String, in app: XCUIApplication) {
         let fab = app.buttons["TasksQuickCaptureFAB"]
         let emptyState = app.buttons["TasksEmptyStateCaptureButton"]
         let deadline = Date().addingTimeInterval(20)
@@ -65,19 +74,18 @@ enum UITestHelpers {
             if fab.exists { fab.tap(); opened = true; break }
             Thread.sleep(forTimeInterval: 0.25)
         }
-        XCTAssertTrue(opened, "No Quick Capture entry point appeared")
+        XCTAssertTrue(opened, "No Quick Capture entry point appeared for '\(title)'")
 
         let field = app.textFields["QuickCaptureField"]
-        XCTAssertTrue(field.waitForExistence(timeout: 5), "QuickCaptureField missing")
+        XCTAssertTrue(field.waitForExistence(timeout: 5), "QuickCaptureField missing for '\(title)'")
         field.tap()
         field.typeText(title)
         // The dialog has no Save button; Return submits.
         app.typeText("\n")
         XCTAssertTrue(
             waitForDisappearance(of: field, timeout: 5),
-            "Quick Capture dialog did not dismiss after submit"
+            "Quick Capture dialog did not dismiss after '\(title)'"
         )
-        return title
     }
 
     /// Fresh-launch + capture one task + relaunch, returning the running

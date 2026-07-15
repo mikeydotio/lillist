@@ -16,9 +16,6 @@ import XCTest
 /// trailing-margin control test passes (the reporter confirms margins
 /// still scroll), proving the assertion mechanics are sound.
 ///
-/// Deliberately self-contained: launch/capture plumbing is duplicated
-/// from `UITestHelpers` (per RCA scope rules — no shared-file edits) so
-/// this file alone is the executable definition of "fixed".
 @MainActor
 final class ListScrollUITests: XCTestCase {
 
@@ -43,14 +40,14 @@ final class ListScrollUITests: XCTestCase {
     /// captures). Subsequent calls: relaunch the existing store.
     private static func seededApp() -> XCUIApplication {
         if !hasSeeded {
-            let fresh = launch(arguments: ["--ui-test-reset-store", "--ui-test-bypass-gates"])
+            let fresh = UITestHelpers.launchFresh()
             for index in 1...seedCount {
-                createTask(titled: seedTitle(index), in: fresh)
+                UITestHelpers.createTask(titled: seedTitle(index), in: fresh)
             }
             fresh.terminate()
             hasSeeded = true
         }
-        let app = launch(arguments: ["--ui-test-bypass-gates"])
+        let app = UITestHelpers.launchExisting()
 
         // Seed verification (setup, not the defect): the relaunched list
         // must show enough rows to overflow the viewport.
@@ -64,60 +61,6 @@ final class ListScrollUITests: XCTestCase {
             "after relaunch, found \(app.cells.count)"
         )
         return app
-    }
-
-    /// Duplicated from `UITestHelpers.launchFresh/launchExisting` +
-    /// `dismissOnboardingIfPresent` (defensive Skip poll).
-    private static func launch(arguments: [String]) -> XCUIApplication {
-        let app = XCUIApplication()
-        app.launchArguments += arguments
-        app.launch()
-        let deadline = Date().addingTimeInterval(8)
-        while Date() < deadline {
-            if app.buttons["TasksSettingsButton"].exists { return app }
-            let skip = app.buttons["Skip for now"]
-            if skip.exists {
-                skip.tap()
-                return app
-            }
-            Thread.sleep(forTimeInterval: 0.25)
-        }
-        return app
-    }
-
-    /// Duplicated from `UITestHelpers.createTask`, with a fixed title.
-    private static func createTask(titled title: String, in app: XCUIApplication) {
-        let fab = app.buttons["TasksQuickCaptureFAB"]
-        let emptyState = app.buttons["TasksEmptyStateCaptureButton"]
-        var opened = false
-        let deadline = Date().addingTimeInterval(20)
-        while Date() < deadline {
-            if emptyState.exists { emptyState.tap(); opened = true; break }
-            if fab.exists { fab.tap(); opened = true; break }
-            Thread.sleep(forTimeInterval: 0.25)
-        }
-        XCTAssertTrue(
-            opened,
-            "Setup failure (not the defect): no Quick Capture entry point for '\(title)'"
-        )
-
-        let field = app.textFields["QuickCaptureField"]
-        XCTAssertTrue(
-            field.waitForExistence(timeout: 5),
-            "Setup failure (not the defect): QuickCaptureField missing for '\(title)'"
-        )
-        field.tap()
-        field.typeText(title)
-        // The dialog has no Save button; Return submits.
-        app.typeText("\n")
-        let dismissDeadline = Date().addingTimeInterval(5)
-        while Date() < dismissDeadline, field.exists {
-            Thread.sleep(forTimeInterval: 0.25)
-        }
-        XCTAssertFalse(
-            field.exists,
-            "Setup failure (not the defect): Quick Capture did not dismiss after '\(title)'"
-        )
     }
 
     // MARK: - Anchor + assertion plumbing
