@@ -46,6 +46,27 @@ final class StatusCycleUITests: XCTestCase {
             "Second tap should cycle Started → Closed"
         )
 
+        // Regression (#15): on a Closed row the control must stay a full 44pt
+        // hittable target. The Closed glyph is an SF-Symbol checkmark; when the
+        // cube isn't AX-hidden its ~10pt implicit element steals the
+        // `StatusIndicator` identifier and the hit frame collapses to it, so the
+        // no-op tap below can't even be delivered (and it fails Apple's 44pt
+        // HIG floor). Assert before the third tap so a future re-collapse fails
+        // legibly here, not as the opaque synthesized-tap abort.
+        XCTAssertTrue(
+            status.isHittable,
+            "Closed StatusIndicator is not hittable — its AX/hit frame collapsed " +
+            "to the inner checkmark glyph (#15)"
+        )
+        XCTAssertGreaterThan(
+            status.frame.height, 40,
+            "Closed StatusIndicator height \(status.frame.height) collapsed below the 44pt target (#15)"
+        )
+        XCTAssertGreaterThan(
+            status.frame.width, 40,
+            "Closed StatusIndicator width \(status.frame.width) collapsed below the 44pt target (#15)"
+        )
+
         // Closed is terminal under the one-way cycle — a further tap must
         // NOT loop back to "To do" (resetting is the swipe's job now).
         status.tap()
