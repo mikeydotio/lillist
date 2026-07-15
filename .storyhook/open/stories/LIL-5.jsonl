@@ -1,0 +1,6 @@
+{"kind":"StoryCreated","at":"2026-07-14T19:42:47Z","title":"Fix #12: iOS list scroll blocked by row gestures","state":"todo"}
+{"kind":"StoryStateChanged","at":"2026-07-14T19:42:53Z","state":"in-progress"}
+{"kind":"StoryPrioritySet","at":"2026-07-14T19:42:53Z","priority":"high"}
+{"kind":"StoryCommentAdded","at":"2026-07-14T21:46:55Z","text":"RCA complete: OR-shaped root cause verified (both row gestures independently starve the List scroll pan). Council chose C1: UIKit-bridged recognizers + five-interaction test matrix. Report posted to issue #12. Proceeding to fix."}
+{"kind":"StoryCommentAdded","at":"2026-07-14T21:47:06Z","text":"RCA complete: OR-shaped root cause verified (both row gestures independently starve the List scroll pan). Council chose C1: UIKit-bridged recognizers + five-interaction test matrix. Report posted to issue #12. Proceeding to fix."}
+{"kind":"StoryCommentAdded","at":"2026-07-15T00:28:41Z","text":"Fix implemented (C1: UIKit-bridged ReorderLongPressGesture + HorizontalSwipePanGesture + SwipePanProjection). Witness ListScrollUITests 3/3 green x4 runs; new LongPressReorderUITests + TaskTapOpenUITests green x2; LillistCore 1004 green; macOS builds. Pre-existing StatusCycle tap-arm failure filed as #15; prior handoff follow-up filed as #16. Full iOS scheme run in progress; then commits + PR."}
