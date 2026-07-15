@@ -5,11 +5,12 @@ import LillistUI
 
 /// Hosts the unified `TaskEditorView` in a floating, non-activating `NSPanel`.
 ///
-/// One panel, two modes (`quick` / `full`) that differ only in size — the panel
-/// resizes as the SwiftUI mode flips (observed via `withObservationTracking`).
-/// Singleton: the global hotkey is a no-op while a panel is open; a row-click
-/// open re-targets the existing panel instead of spawning a second (see
-/// `EditorOpenDecision`).
+/// One panel that follows its hosted editor's height: the `NSHostingController`
+/// reports the SwiftUI content's ideal size as `preferredContentSize` (KVO), and
+/// the panel re-fits to it — so quick/full and child-route sizes fall out of the
+/// content, not hardcoded per-mode constants. Singleton: the global hotkey is a
+/// no-op while a panel is open; a row-click open re-targets the existing panel
+/// instead of spawning a second (see `EditorOpenDecision`).
 ///
 /// The panel never activates Lillist (`.nonactivatingPanel`, no `NSApp.activate`)
 /// so it floats over whatever app the global hotkey fired from. Unlike the old
