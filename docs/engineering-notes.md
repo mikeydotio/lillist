@@ -4,6 +4,38 @@ Append-only log of cross-cutting engineering lessons learned while building
 Lillist. Each entry captures a non-obvious gotcha — usually one that took real
 investigation to find — so future work doesn't re-learn it the hard way.
 
+## 2026-07-15 — Make a floating card wrap its content with `ViewThatFits`, not a bare `ScrollView`; and use a vertical-axis `TextField`, not `TextEditor`, for a content-hugging editable box (issue #22)
+
+The task-detail card (`TaskEditorView` full mode) filled the whole overlay even
+after its content shrank. Two framework-shape gotchas, both worth remembering:
+
+- **A bare `ScrollView` — and a bare `TextEditor` — is vertically greedy: it
+  expands to whatever height its parent offers.** In the centered
+  `taskEditorOverlay` (which proposes the full screen and imposes no size), a
+  `ScrollView`-wrapped card stretches to ~full screen no matter how little it
+  holds. Quick mode never did this because it's a plain `VStack`. Fix: wrap the
+  card in `ViewThatFits(in: .vertical) { content; ScrollView { content } }` —
+  the self-sizing `content` wins when it fits the offered height, the scrolling
+  copy takes over only on genuine overflow (large Dynamic Type / long text). No
+  `GeometryReader`+`PreferenceKey` and no host-height injection seam. Caveats:
+  (1) `ViewThatFits` instantiates *all* candidates to measure them, but only the
+  chosen one is live — its `TextField`s stay focusable (pinned by a UI test).
+  (2) Keep a greedy child *out* of the candidates: a `Form` (or bare
+  `TextEditor`) reports an infinite/greedy ideal height and defeats the fit, so
+  the schedule `Form` is capped with a plain `.frame(maxHeight:)` instead.
+
+- **For a content-hugging editable box, use `TextField(text:, axis: .vertical)`
+  + `.lineLimit(min...max)`, not `TextEditor`.** A `TextEditor` in a bounded
+  `VStack` fills to any `maxHeight` you give it (and center-aligns its text), so
+  it can't "hug" — capping it just makes a fixed tall box. A vertical-axis
+  `TextField` grows from `min` lines with the text and scrolls past `max`,
+  matching the title field and giving the wrap layout a finite height.
+
+- **A fixed-frame snapshot can't prove "wraps to content"** — the card just
+  centers in the imposed frame. Add a `UIHostingController.sizeThatFits(in:)`
+  assertion offered a large **finite** height (an *unbounded* proposal doesn't
+  discriminate: a `ScrollView` reports its content height under it too).
+
 ## 2026-07-14 — A Menu/Shape control with loose `.accessibility*` modifiers exposes several elements; XCUITest picks a sub-44pt one and the hit target collapses
 
 `StatusIndicatorView` layers a decorative `StatusCubeView` + a transparent

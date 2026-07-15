@@ -27,6 +27,14 @@ public struct TaskEditorView: View {
     private enum DetailRoute { case main, schedule, attachments, journal }
     @State private var route: DetailRoute = .main
 
+    /// The card is wrapped in a `ViewThatFits` valve whose two candidates are
+    /// structurally-distinct copies of the editable fields. Binding focus to
+    /// external `@FocusState` lets it re-apply to the surviving candidate when a
+    /// content/keyboard change flips ViewThatFits mid-edit, so first responder
+    /// (and the keyboard) isn't dropped on the swap.
+    private enum EditorField { case title, notes }
+    @FocusState private var focusedField: EditorField?
+
     @Environment(\.accessibilityReduceMotion) private var systemReduceMotion
     @Environment(\.reduceMotionOverride) private var overrideReduceMotion
     private var reduceMotion: Bool { overrideReduceMotion ?? systemReduceMotion }
@@ -91,7 +99,7 @@ public struct TaskEditorView: View {
             }
         }
         .padding(LillistSpacing.l)
-        .frame(maxWidth: 360)
+        .frame(maxWidth: LillistSizing.editorQuickMaxWidth)
         .glassSurface(.panel, in: RoundedRectangle(cornerRadius: LillistRadius.l))
     }
 
@@ -106,7 +114,7 @@ public struct TaskEditorView: View {
             case .journal: journalChild
             }
         }
-        .frame(maxWidth: 560)
+        .frame(maxWidth: LillistSizing.editorCardMaxWidth)
         .glassSurface(.panel, in: RoundedRectangle(cornerRadius: LillistRadius.l))
         .task(id: textEditKey) {
             do { try await Task.sleep(for: .milliseconds(500)) } catch { return }
@@ -120,25 +128,33 @@ public struct TaskEditorView: View {
 
     // MARK: - Main card
 
+    /// The detail card wraps its content (like Quick Capture) and only scrolls
+    /// when the content genuinely overflows the offered height, so the
+    /// header/title is never clipped off the centered overlay. Shares the
+    /// `wrapToContentThenScroll` valve with the drill-in children; the main
+    /// card fits the whole overlay (no height cap).
     private var mainCard: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: LillistSpacing.l) {
-                header
-                descriptionField
-                TagAssignmentField(
-                    tagNames: model.displayedTagNames,
-                    onAdd: { name in Task { await model.addTag(name: name) } },
-                    onRemove: { name in Task { await model.removeTag(named: name) } }
-                )
-                VStack(alignment: .leading, spacing: LillistSpacing.s) {
-                    scheduleRow
-                    attachmentsRow
-                    journalRow
-                }
-                captureFooter
+        wrapToContentThenScroll { mainCardContent }
+    }
+
+    @ViewBuilder
+    private var mainCardContent: some View {
+        VStack(alignment: .leading, spacing: LillistSpacing.l) {
+            header
+            descriptionField
+            TagAssignmentField(
+                tagNames: model.displayedTagNames,
+                onAdd: { name in Task { await model.addTag(name: name) } },
+                onRemove: { name in Task { await model.removeTag(named: name) } }
+            )
+            VStack(alignment: .leading, spacing: LillistSpacing.s) {
+                scheduleRow
+                attachmentsRow
+                journalRow
             }
-            .padding(LillistSpacing.l)
+            captureFooter
         }
+        .padding(LillistSpacing.l)
     }
 
     /// Status glyph + inline title, with the pin toggle pinned top-trailing.
@@ -162,6 +178,7 @@ public struct TaskEditorView: View {
             // on static Text, not an editable field, so closed state reads
             // through the muted colour alone (the field stays editable).
             .foregroundStyle(model.status == .closed ? LillistColor.textFaint : LillistColor.textStrong)
+            .focused($focusedField, equals: .title)
             .accessibilityIdentifier("EditorTitleField")
 
             pinButton
@@ -183,28 +200,29 @@ public struct TaskEditorView: View {
         .accessibilityIdentifier("EditorPinButton")
     }
 
+    /// A content-hugging notes field (a vertical-axis `TextField`, matching the
+    /// title) so the card wraps its description rather than reserving a fixed
+    /// tall box: `.lineLimit(2...8)` grows it from two lines with the text and
+    /// scrolls in place past eight, keeping the card compact.
     private var descriptionField: some View {
-        TextEditor(text: $model.notes)
-            .font(LillistTypography.body)
-            .foregroundStyle(LillistColor.textBody)
-            .frame(minHeight: 80)
-            .scrollContentBackground(.hidden)
-            .padding(LillistSpacing.s)
-            .background {
-                RoundedRectangle(cornerRadius: LillistRadius.s, style: .continuous)
-                    .fill(.rainbowWell)
-            }
-            .overlay(alignment: .topLeading) {
-                if model.notes.isEmpty {
-                    Text("Add a description…", bundle: .module)
-                        .font(LillistTypography.body)
-                        .foregroundStyle(LillistColor.textFaint)
-                        .padding(.horizontal, LillistSpacing.s + 5)
-                        .padding(.vertical, LillistSpacing.s + 8)
-                        .allowsHitTesting(false)
-                }
-            }
-            .accessibilityIdentifier("EditorNotesField")
+        TextField(
+            text: $model.notes,
+            prompt: Text("Add a description…", bundle: .module),
+            axis: .vertical
+        ) {
+            Text("Add a description…", bundle: .module)
+        }
+        .textFieldStyle(.plain)
+        .font(LillistTypography.body)
+        .foregroundStyle(LillistColor.textBody)
+        .lineLimit(2...8)
+        .focused($focusedField, equals: .notes)
+        .padding(LillistSpacing.s)
+        .background {
+            RoundedRectangle(cornerRadius: LillistRadius.s, style: .continuous)
+                .fill(.rainbowWell)
+        }
+        .accessibilityIdentifier("EditorNotesField")
     }
 
     // MARK: - Summary rows
@@ -384,6 +402,7 @@ public struct TaskEditorView: View {
                 }
                 RecurrenceEditorView(viewModel: $model.recurrence).formContent
             }
+            .frame(maxHeight: LillistSizing.editorChildMaxHeight)
         }
     }
 
@@ -413,7 +432,7 @@ public struct TaskEditorView: View {
     private var attachmentsChild: some View {
         VStack(spacing: 0) {
             childHeader("Attachments") { route = .main }
-            ScrollView {
+            wrapToContentThenScroll(maxHeight: LillistSizing.editorChildMaxHeight) {
                 EditorAttachmentsSection(
                     attachments: model.attachments,
                     onAddTapped: onAddAttachment,
@@ -428,11 +447,35 @@ public struct TaskEditorView: View {
     private var journalChild: some View {
         VStack(spacing: 0) {
             childHeader("Journal") { route = .main }
-            ScrollView {
+            wrapToContentThenScroll(maxHeight: LillistSizing.editorChildMaxHeight) {
                 EditorJournalSection(entries: model.journal)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(LillistSpacing.l)
             }
+        }
+    }
+
+    /// Wrap content so it hugs its size and scrolls only on genuine overflow:
+    /// `ViewThatFits` picks the plain, self-sizing layout when it fits the
+    /// offered height and the scrolling copy otherwise (re-evaluated against the
+    /// live proposal each layout pass). `maxHeight` bounds both the fit decision
+    /// and the scroll viewport — drill-in children pass `editorChildMaxHeight`
+    /// so a nearly-empty child hugs its content and a long one scrolls; the main
+    /// card passes `nil` to fit the whole overlay.
+    @ViewBuilder
+    private func wrapToContentThenScroll<Content: View>(
+        maxHeight: CGFloat? = nil,
+        @ViewBuilder _ content: () -> Content
+    ) -> some View {
+        let inner = content()
+        let valve = ViewThatFits(in: .vertical) {
+            inner
+            ScrollView { inner }
+        }
+        if let maxHeight {
+            valve.frame(maxHeight: maxHeight)
+        } else {
+            valve
         }
     }
 

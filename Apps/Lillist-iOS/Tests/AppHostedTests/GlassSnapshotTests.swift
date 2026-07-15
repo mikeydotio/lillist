@@ -79,6 +79,28 @@ final class GlassSnapshotTests: XCTestCase {
     @MainActor func test_editor_full_light()  async throws { snapshot(try await fullEditor(), size: editorFullSize, dark: false) }
     @MainActor func test_editor_full_dark()   async throws { snapshot(try await fullEditor(), size: editorFullSize, dark: true) }
 
+    // At the largest accessibility text size the card content overflows the
+    // offered height, so the wrap-then-scroll valve must switch to scrolling
+    // and keep the header/title visible (never clip). Locks the #22 overflow
+    // path the plain-VStack card alone could not guarantee.
+    @MainActor func test_editor_full_xxxl_light() async throws {
+        snapshot(try await fullEditor().environment(\.dynamicTypeSize, .accessibility5),
+                 size: editorFullSize, dark: false)
+    }
+
+    /// Non-snapshot regression for #22: the full-mode editor must WRAP to its
+    /// content rather than fill the offered height. Fails on the pre-fix greedy
+    /// `ScrollView` (which reports ~the offered 1200), passes once the card
+    /// self-sizes. Offers a large *finite* height — an unbounded proposal would
+    /// not discriminate a greedy ScrollView from a wrapping VStack.
+    @MainActor func test_fullEditor_wrapsToContent() async throws {
+        let editor = TaskEditorView(model: try await fullEditorModel(), onDismiss: {})
+        let host = UIHostingController(rootView: editor)
+        let fit = host.sizeThatFits(in: CGSize(width: 393, height: 1200))
+        XCTAssertLessThan(fit.height, 700,
+            "Full editor should wrap to its content (~500pt), not fill the offered 1200pt height")
+    }
+
     // MARK: - fixtures
 
     private let fabSize = CGSize(width: 220, height: 180)
@@ -89,7 +111,11 @@ final class GlassSnapshotTests: XCTestCase {
     private let statusSize = CGSize(width: 240, height: 80)
     private let emptySize = CGSize(width: 390, height: 600)
     private let editorQuickSize = CGSize(width: 390, height: 260)
-    private let editorFullSize = CGSize(width: 393, height: 760)
+    // The full-mode card now wraps its content (#22), so the fixture frame is
+    // sized to hug the wrapped card with a small scrim margin rather than the
+    // old near-full-screen 760. The XXXL variant reuses this frame to exercise
+    // the wrap-then-scroll overflow path.
+    private let editorFullSize = CGSize(width: 393, height: 400)
 
     /// In-memory store bundle for the editor fixtures (no CloudKit).
     @MainActor
@@ -116,9 +142,11 @@ final class GlassSnapshotTests: XCTestCase {
         }
     }
 
-    /// Full editor over an in-memory draft with representative scalar fields.
+    /// A full-mode draft with representative scalar fields (no scrim), so
+    /// callers can either wrap it in the presentation scrim or measure the
+    /// bare card's fitting size.
     @MainActor
-    private func fullEditor() async throws -> some View {
+    private func fullEditorModel() async throws -> TaskEditorModel {
         let model = TaskEditorModel(stores: try await editorStores(), opening: .newCapture(parentID: nil, placement: .top))
         model.title = "Draft launch email"
         model.notes = "Ship the v1 announcement to the list."
@@ -128,6 +156,13 @@ final class GlassSnapshotTests: XCTestCase {
         await model.addTag(name: "marketing")
         model.isPinned = true
         model.mode = .full
+        return model
+    }
+
+    /// Full editor over an in-memory draft with representative scalar fields.
+    @MainActor
+    private func fullEditor() async throws -> some View {
+        let model = try await fullEditorModel()
         return ZStack {
             Color.black.opacity(0.35).ignoresSafeArea()
             TaskEditorView(model: model, onDismiss: {})
