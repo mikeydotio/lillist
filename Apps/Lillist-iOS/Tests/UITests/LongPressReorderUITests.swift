@@ -184,19 +184,25 @@ final class LongPressReorderUITests: XCTestCase {
         timeout: TimeInterval = 6
     ) -> [String] {
         let deadline = Date().addingTimeInterval(timeout)
-        var last = baseline
+        // The fallback must also be a STABLE order (two consecutive samples
+        // agree), never a raw mid-animation sample: a transient permutation
+        // could pass the in-session assertions and then fail the relaunch
+        // persistence check for the wrong reason.
+        var lastStable = baseline
         var previous: [String]?
         while Date() < deadline {
             if let current = visualOrder(in: app) {
-                last = current
-                if current != baseline, current == previous { return current }
+                if current == previous {
+                    lastStable = current
+                    if current != baseline { return current }
+                }
                 previous = current
             } else {
                 previous = nil
             }
             Thread.sleep(forTimeInterval: 0.3)
         }
-        return last
+        return lastStable
     }
 
     // MARK: - Gesture plumbing

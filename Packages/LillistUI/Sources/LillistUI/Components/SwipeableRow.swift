@@ -136,6 +136,11 @@ public struct SwipeableRow<Content: View>: View {
                 // adding a fill would change the row's resting render.
                 .offset(x: offset)
                 #if os(iOS)
+                // The `!isReorderActive` guards are NOT dead code despite
+                // `isEnabled` mirroring the same flag: the recognizer is
+                // disabled on SwiftUI's *next update pass*, so a UIKit event
+                // already in flight when `isReorderActive` flips can still
+                // arrive before `updateUIGestureRecognizer` runs.
                 .gesture(HorizontalSwipePanGesture(
                     isEnabled: !isReorderActive,
                     onBegan: {
@@ -149,6 +154,13 @@ public struct SwipeableRow<Content: View>: View {
                     onEnded: { predictedTranslationX in
                         guard !isReorderActive else { return }
                         settle(predictedTranslation: predictedTranslationX)
+                    },
+                    onCancelled: {
+                        // A cancelled touch (system interruption, or the
+                        // reorder-activation disable path) is not a release:
+                        // restore the row, never settle — settling could
+                        // commit a full-swipe action the user never chose.
+                        close()
                     }
                 ))
                 #else

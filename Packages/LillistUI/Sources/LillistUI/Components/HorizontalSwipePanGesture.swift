@@ -14,14 +14,21 @@ import UIKit
 ///   predominantly horizontal (|dx| > |dy|; velocity tiebreak when the
 ///   translation is still ≈ 0), leaving vertical touches for the
 ///   scroll pan to claim.
-/// - Once begun, the pan owns the touch exclusively
-///   (`shouldRecognizeSimultaneouslyWith → false`).
+/// - Once begun, the scroll pan cannot also act on the touch: neither
+///   recognizer opts into simultaneous recognition, so UIKit's default
+///   mutual exclusivity applies (see the delegate note on its limits).
 /// - `isEnabled = false` hard-disables the recognizer (an in-flight pan
 ///   is cancelled); `SwipeableRow` mirrors `!isReorderActive` here so a
 ///   reorder drag can never trip a swipe action.
+///
+/// Cancellation is distinct from release: `.ended` (finger lifts) may
+/// settle into a reveal or commit a full-swipe action, while
+/// `.cancelled` (incoming call, app switch, the disable path above)
+/// must restore the row without committing anything — hence the
+/// separate `onEnded` / `onCancelled` callbacks.
 struct HorizontalSwipePanGesture: UIGestureRecognizerRepresentable {
     /// Mirrored onto the recognizer on every update; disabling cancels
-    /// an in-flight pan (`onEnded` then fires with the raw translation).
+    /// an in-flight pan (which then arrives via `onCancelled`).
     var isEnabled: Bool
     /// Fired at `.began`, before the first `onChanged`. The horizontal
     /// commitment already happened in `gestureRecognizerShouldBegin`.
@@ -31,11 +38,13 @@ struct HorizontalSwipePanGesture: UIGestureRecognizerRepresentable {
     /// first value already includes the begin-hysteresis travel —
     /// matching the replaced `DragGesture.translation` semantics).
     var onChanged: @MainActor (CGFloat) -> Void
-    /// Fired at `.ended` with the **predicted** end translation
-    /// (`SwipePanProjection` over translation + velocity), and at
-    /// `.cancelled` with the raw translation (a cancelled pan carries
-    /// no fling intent, so no projection).
+    /// Fired at `.ended` (deliberate release) with the **predicted**
+    /// end translation (`SwipePanProjection` over translation +
+    /// velocity), which may settle open or commit a full-swipe action.
     var onEnded: @MainActor (CGFloat) -> Void
+    /// Fired at `.cancelled` (system cancellation or the `isEnabled`
+    /// disable path) — the row must be restored, never committed.
+    var onCancelled: @MainActor () -> Void
 
     func makeCoordinator(converter: CoordinateSpaceConverter) -> Coordinator {
         Coordinator()
@@ -72,15 +81,19 @@ struct HorizontalSwipePanGesture: UIGestureRecognizerRepresentable {
                 velocityPerSecond: recognizer.velocity(in: recognizer.view).x
             ))
         case .cancelled:
-            onEnded(recognizer.translation(in: recognizer.view).x)
+            onCancelled()
         default:
             break
         }
     }
 
-    /// Delegate encoding the arbitration contract: begin only for
-    /// predominantly horizontal touches, never recognize alongside
-    /// another recognizer.
+    /// Delegate for the arbitration contract: begin only for
+    /// predominantly horizontal touches. Declining simultaneous
+    /// recognition matches UIKit's default and — because the List's
+    /// scroll pan does not opt in either — the two recognizers stay
+    /// mutually exclusive. Note the limit: `false` from this side does
+    /// not *veto* simultaneity; a recognizer whose own delegate returns
+    /// `true` could still recognize alongside.
     final class Coordinator: NSObject, UIGestureRecognizerDelegate {
         /// Below this much accumulated movement (points) the translation
         /// direction is noise; fall back to the velocity direction.
@@ -90,7 +103,12 @@ struct HorizontalSwipePanGesture: UIGestureRecognizerRepresentable {
             _ gestureRecognizer: UIGestureRecognizer
         ) -> Bool {
             guard let pan = gestureRecognizer as? UIPanGestureRecognizer else {
-                return true
+                // This coordinator is only ever the delegate of the pan
+                // this representable created; any other recognizer here
+                // is a wiring bug. Fail closed — a silent `true` would
+                // let it claim vertical touches and re-open issue #12.
+                assertionFailure("HorizontalSwipePanGesture.Coordinator attached to \(gestureRecognizer)")
+                return false
             }
             let translation = pan.translation(in: pan.view)
             guard max(abs(translation.x), abs(translation.y)) >= Self.translationNoiseFloor

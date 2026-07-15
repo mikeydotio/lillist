@@ -23,12 +23,19 @@ enum SwipePanProjection {
     ///     points-per-millisecond, the unit the decay series is summed in.
     ///   - decelerationRate: Per-millisecond velocity retention. Defaults
     ///     to `0.998` (`UIScrollView.DecelerationRate.normal`).
+    ///     **Precondition: `0 < decelerationRate < 1`** — at 1 the decay
+    ///     series diverges (division by zero) and above 1 the projection's
+    ///     sign inverts.
     /// - Returns: The projected end translation, in points.
     static func predictedTranslation(
         translation: CGFloat,
         velocityPerSecond: CGFloat,
         decelerationRate: CGFloat = 0.998
     ) -> CGFloat {
-        translation + (velocityPerSecond / 1000) * decelerationRate / (1 - decelerationRate)
+        precondition(
+            decelerationRate > 0 && decelerationRate < 1,
+            "decelerationRate must be in (0, 1); got \(decelerationRate)"
+        )
+        return translation + (velocityPerSecond / 1000) * decelerationRate / (1 - decelerationRate)
     }
 }

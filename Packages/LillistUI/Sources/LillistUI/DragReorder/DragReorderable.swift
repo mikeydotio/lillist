@@ -85,24 +85,22 @@ struct DragReorderGestureModifier: ViewModifier {
     private var reorderGesture: ReorderLongPressGesture {
         ReorderLongPressGesture(
             onBegan: {
-                if case .idle = controller.state {
-                    guard let frame = controller.geometry[id] else { return }
-                    // Anchor on the row's natural midY — a reliable value
-                    // in the named coordinate space; the recognizer's
-                    // window-space translation is applied on top of it.
-                    controller.beginDrag(
-                        rowID: id,
-                        originalHeight: frame.height,
-                        cursorY: frame.midY
-                    )
-                    UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-                }
+                beginDragIfIdle()
             },
             onChanged: { translation in
-                // Only a drag that actually began drives the controller;
-                // resolving against an idle/settling session would spam
-                // selection haptics with no-op target updates.
-                guard case .dragging = controller.state else { return }
+                // Retry the begin on every event: a press that matured while
+                // the controller was still settling a previous drop
+                // (`.dropping`, 0.22 s) — or before this row's geometry was
+                // reported — begins mid-gesture as soon as the state clears,
+                // matching the replaced SwiftUI composition's semantics.
+                if case .idle = controller.state {
+                    beginDragIfIdle()
+                }
+                // Only the session's own row may drive it: a second finger's
+                // matured long-press on another row passes the `.dragging`
+                // check but must not steer or re-target this session.
+                guard case .dragging(let session) = controller.state,
+                      session.draggedID == id else { return }
                 let cursorY = currentCursorY(translation: translation.height)
                 controller.updateCursor(translation: translation.height)
                 // Horizontal translation picks the drop depth (indent/outdent).
@@ -118,9 +116,39 @@ struct DragReorderGestureModifier: ViewModifier {
                 }
             },
             onEnded: {
+                // Ownership guard mirrors onChanged: only the dragged row's
+                // release commits the drop.
+                guard case .dragging(let session) = controller.state,
+                      session.draggedID == id else { return }
                 controller.endDrag(settleDuration: settleDuration)
+            },
+            onCancelled: {
+                // A system-cancelled touch (incoming call, app switch, system
+                // edge gesture) is not a deliberate release — abort without
+                // running the drop handler so no reorder is persisted.
+                guard case .dragging(let session) = controller.state,
+                      session.draggedID == id else { return }
+                controller.cancelDrag()
             }
         )
+    }
+
+    /// Begin a drag session for this row if the controller is idle and the
+    /// row's geometry has been reported. Safe to call repeatedly; only the
+    /// transition out of `.idle` lifts the row (with its haptic).
+    private func beginDragIfIdle() {
+        if case .idle = controller.state {
+            guard let frame = controller.geometry[id] else { return }
+            // Anchor on the row's natural midY — a reliable value in the
+            // named coordinate space; the recognizer's window-space
+            // translation is applied on top of it.
+            controller.beginDrag(
+                rowID: id,
+                originalHeight: frame.height,
+                cursorY: frame.midY
+            )
+            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+        }
     }
     #else
     private var platformGesture: some Gesture {
