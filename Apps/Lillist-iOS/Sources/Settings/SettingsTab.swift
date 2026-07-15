@@ -27,6 +27,9 @@ struct SettingsTab: View {
                     navRow("Task Defaults", "checklist", RainbowPalette.focusBlue.base) {
                         TaskDefaultsPage(prefs: b)
                     }
+                    navRow("Tags & Filters", "tag.fill", RainbowPalette.Spectrum.purple) {
+                        TagsAndFiltersPage()
+                    }
                     navRow("Notifications", "bell.badge.fill", RainbowPalette.cautionAmber.base) {
                         NotificationsPage(prefs: b)
                     }
