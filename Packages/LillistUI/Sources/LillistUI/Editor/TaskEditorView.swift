@@ -27,6 +27,14 @@ public struct TaskEditorView: View {
     private enum DetailRoute { case main, schedule, attachments, journal }
     @State private var route: DetailRoute = .main
 
+    /// The card is wrapped in a `ViewThatFits` valve whose two candidates are
+    /// structurally-distinct copies of the editable fields. Binding focus to
+    /// external `@FocusState` lets it re-apply to the surviving candidate when a
+    /// content/keyboard change flips ViewThatFits mid-edit, so first responder
+    /// (and the keyboard) isn't dropped on the swap.
+    private enum EditorField { case title, notes }
+    @FocusState private var focusedField: EditorField?
+
     @Environment(\.accessibilityReduceMotion) private var systemReduceMotion
     @Environment(\.reduceMotionOverride) private var overrideReduceMotion
     private var reduceMotion: Bool { overrideReduceMotion ?? systemReduceMotion }
@@ -173,6 +181,7 @@ public struct TaskEditorView: View {
             // on static Text, not an editable field, so closed state reads
             // through the muted colour alone (the field stays editable).
             .foregroundStyle(model.status == .closed ? LillistColor.textFaint : LillistColor.textStrong)
+            .focused($focusedField, equals: .title)
             .accessibilityIdentifier("EditorTitleField")
 
             pinButton
@@ -210,6 +219,7 @@ public struct TaskEditorView: View {
         .font(LillistTypography.body)
         .foregroundStyle(LillistColor.textBody)
         .lineLimit(2...8)
+        .focused($focusedField, equals: .notes)
         .padding(LillistSpacing.s)
         .background {
             RoundedRectangle(cornerRadius: LillistRadius.s, style: .continuous)
