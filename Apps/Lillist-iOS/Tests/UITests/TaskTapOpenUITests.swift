@@ -63,4 +63,41 @@ final class TaskTapOpenUITests: XCTestCase {
             "field shows '\(observed ?? "nil")' instead of '\(title)'"
         )
     }
+
+    /// The #22 wrap fix nests the full-mode card in a `ViewThatFits`
+    /// (wrap-else-scroll), which instantiates BOTH a plain and a scrolling
+    /// copy of the card to measure them. This pins that the chosen copy's
+    /// live editors stay focusable — typed text must stick — so a
+    /// measurement-only "ghost" candidate can never swallow input.
+    func test_fullEditor_notesField_isEditable_insideWrapValve() throws {
+        let (app, title) = UITestHelpers.launchWithOneTask()
+        let cell = UITestHelpers.cell(in: app, containing: title)
+        cell.coordinate(withNormalizedOffset: CGVector(dx: 0.6, dy: 0.5)).tap()
+
+        // Matched by identifier across element types: a vertical-axis
+        // TextField's AX classification varies (textField vs textView).
+        let notes = app.descendants(matching: .any)
+            .matching(identifier: "EditorNotesField")
+            .firstMatch
+        XCTAssertTrue(
+            notes.waitForExistence(timeout: 5),
+            "Notes field missing in the full editor"
+        )
+        notes.tap()
+        let typed = "wrap check note"
+        notes.typeText(typed)
+
+        let deadline = Date().addingTimeInterval(3)
+        var observed = notes.value as? String
+        while Date() < deadline, !(observed?.contains(typed) ?? false) {
+            Thread.sleep(forTimeInterval: 0.2)
+            observed = notes.value as? String
+        }
+        XCTAssertTrue(
+            observed?.contains(typed) ?? false,
+            "Typed notes did not stick inside the ViewThatFits card — the " +
+            "focused editor may be a measurement-only candidate. Field " +
+            "reads '\(observed ?? "nil")'"
+        )
+    }
 }

@@ -120,25 +120,36 @@ public struct TaskEditorView: View {
 
     // MARK: - Main card
 
+    /// The detail card wraps its content (like Quick Capture) and only scrolls
+    /// when the content genuinely overflows the offered height. `ViewThatFits`
+    /// picks the plain, self-sizing layout first and falls back to the scrolling
+    /// copy at large Dynamic Type / long notes, so the header/title is never
+    /// clipped off the centered overlay.
     private var mainCard: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: LillistSpacing.l) {
-                header
-                descriptionField
-                TagAssignmentField(
-                    tagNames: model.displayedTagNames,
-                    onAdd: { name in Task { await model.addTag(name: name) } },
-                    onRemove: { name in Task { await model.removeTag(named: name) } }
-                )
-                VStack(alignment: .leading, spacing: LillistSpacing.s) {
-                    scheduleRow
-                    attachmentsRow
-                    journalRow
-                }
-                captureFooter
-            }
-            .padding(LillistSpacing.l)
+        ViewThatFits(in: .vertical) {
+            mainCardContent
+            ScrollView { mainCardContent }
         }
+    }
+
+    @ViewBuilder
+    private var mainCardContent: some View {
+        VStack(alignment: .leading, spacing: LillistSpacing.l) {
+            header
+            descriptionField
+            TagAssignmentField(
+                tagNames: model.displayedTagNames,
+                onAdd: { name in Task { await model.addTag(name: name) } },
+                onRemove: { name in Task { await model.removeTag(named: name) } }
+            )
+            VStack(alignment: .leading, spacing: LillistSpacing.s) {
+                scheduleRow
+                attachmentsRow
+                journalRow
+            }
+            captureFooter
+        }
+        .padding(LillistSpacing.l)
     }
 
     /// Status glyph + inline title, with the pin toggle pinned top-trailing.
@@ -183,28 +194,28 @@ public struct TaskEditorView: View {
         .accessibilityIdentifier("EditorPinButton")
     }
 
+    /// A content-hugging notes field (a vertical-axis `TextField`, matching the
+    /// title) so the card wraps its description rather than reserving a fixed
+    /// tall box: it grows from two lines with the text and scrolls in place once
+    /// it reaches `editorNotesMaxHeight`, keeping the card compact.
     private var descriptionField: some View {
-        TextEditor(text: $model.notes)
-            .font(LillistTypography.body)
-            .foregroundStyle(LillistColor.textBody)
-            .frame(minHeight: 80)
-            .scrollContentBackground(.hidden)
-            .padding(LillistSpacing.s)
-            .background {
-                RoundedRectangle(cornerRadius: LillistRadius.s, style: .continuous)
-                    .fill(.rainbowWell)
-            }
-            .overlay(alignment: .topLeading) {
-                if model.notes.isEmpty {
-                    Text("Add a description…", bundle: .module)
-                        .font(LillistTypography.body)
-                        .foregroundStyle(LillistColor.textFaint)
-                        .padding(.horizontal, LillistSpacing.s + 5)
-                        .padding(.vertical, LillistSpacing.s + 8)
-                        .allowsHitTesting(false)
-                }
-            }
-            .accessibilityIdentifier("EditorNotesField")
+        TextField(
+            text: $model.notes,
+            prompt: Text("Add a description…", bundle: .module),
+            axis: .vertical
+        ) {
+            Text("Add a description…", bundle: .module)
+        }
+        .textFieldStyle(.plain)
+        .font(LillistTypography.body)
+        .foregroundStyle(LillistColor.textBody)
+        .lineLimit(2...8)
+        .padding(LillistSpacing.s)
+        .background {
+            RoundedRectangle(cornerRadius: LillistRadius.s, style: .continuous)
+                .fill(.rainbowWell)
+        }
+        .accessibilityIdentifier("EditorNotesField")
     }
 
     // MARK: - Summary rows
@@ -384,6 +395,7 @@ public struct TaskEditorView: View {
                 }
                 RecurrenceEditorView(viewModel: $model.recurrence).formContent
             }
+            .frame(maxHeight: LillistSizing.editorChildMaxHeight)
         }
     }
 
@@ -413,7 +425,7 @@ public struct TaskEditorView: View {
     private var attachmentsChild: some View {
         VStack(spacing: 0) {
             childHeader("Attachments") { route = .main }
-            ScrollView {
+            boundedChild {
                 EditorAttachmentsSection(
                     attachments: model.attachments,
                     onAddTapped: onAddAttachment,
@@ -428,12 +440,26 @@ public struct TaskEditorView: View {
     private var journalChild: some View {
         VStack(spacing: 0) {
             childHeader("Journal") { route = .main }
-            ScrollView {
+            boundedChild {
                 EditorJournalSection(entries: model.journal)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(LillistSpacing.l)
             }
         }
+    }
+
+    /// Wrap a drill-in child's content so it grows to fit its content and
+    /// scrolls only once it exceeds the child height cap — the same
+    /// wrap-then-scroll behavior as the main card, so a nearly-empty child
+    /// hugs its content (no dead slack) and a long one never fills the screen.
+    @ViewBuilder
+    private func boundedChild<Content: View>(@ViewBuilder _ content: () -> Content) -> some View {
+        let inner = content()
+        ViewThatFits(in: .vertical) {
+            inner
+            ScrollView { inner }
+        }
+        .frame(maxHeight: LillistSizing.editorChildMaxHeight)
     }
 
     // MARK: - Actions

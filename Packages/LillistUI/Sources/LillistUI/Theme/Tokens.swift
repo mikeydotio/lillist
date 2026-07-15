@@ -54,6 +54,9 @@ public enum LillistSizing {
     public static let editorCardMaxWidth: CGFloat = 560
     /// Quick-capture card max width.
     public static let editorQuickMaxWidth: CGFloat = 360
+    /// Drill-in child (schedule / attachments / journal) max height before
+    /// it scrolls internally, so a child never grows to fill the screen.
+    public static let editorChildMaxHeight: CGFloat = 400
 }
 
 /// Semantic typography: Plus Jakarta Sans at the Rainbow Logic scale.
