@@ -35,6 +35,13 @@ public struct TaskEditorView: View {
     private enum EditorField { case title, notes }
     @FocusState private var focusedField: EditorField?
 
+    // The tag row's inline-edit state lives here (above the `ViewThatFits`
+    // valve), not inside `TagAssignmentField`, so it survives a candidate swap
+    // and the "+ Tag" field doesn't collapse mid-edit near the fit boundary.
+    @State private var isTagEditing = false
+    @State private var tagDraft = ""
+    @FocusState private var tagFieldFocused: Bool
+
     @Environment(\.accessibilityReduceMotion) private var systemReduceMotion
     @Environment(\.reduceMotionOverride) private var overrideReduceMotion
     private var reduceMotion: Bool { overrideReduceMotion ?? systemReduceMotion }
@@ -144,6 +151,9 @@ public struct TaskEditorView: View {
             descriptionField
             TagAssignmentField(
                 tagNames: model.displayedTagNames,
+                isEditing: $isTagEditing,
+                draftName: $tagDraft,
+                fieldFocused: $tagFieldFocused,
                 onAdd: { name in Task { await model.addTag(name: name) } },
                 onRemove: { name in Task { await model.removeTag(named: name) } }
             )

@@ -115,4 +115,49 @@ final class TaskTapOpenUITests: XCTestCase {
             "reads '\(observed ?? "nil")'"
         )
     }
+
+    /// The `+ Tag` inline field's edit state (`isEditing`/`draftName`/focus) is
+    /// hoisted out of `TagAssignmentField` to the host, above the wrap valve, so
+    /// it isn't reset by a candidate swap. This pins the basic flow — the field
+    /// opens on tap and accepts input — so a regression that re-internalizes the
+    /// state (collapsing the field) is caught.
+    func test_fullEditor_tagField_opensAndAcceptsInput() throws {
+        let (app, title) = UITestHelpers.launchWithOneTask()
+        let cell = UITestHelpers.cell(in: app, containing: title)
+        cell.coordinate(withNormalizedOffset: CGVector(dx: 0.6, dy: 0.5)).tap()
+
+        let titleField = app.descendants(matching: .any)
+            .matching(identifier: "EditorTitleField")
+            .firstMatch
+        XCTAssertTrue(titleField.waitForExistence(timeout: 5), "Editor did not open")
+        let loadDeadline = Date().addingTimeInterval(5)
+        while Date() < loadDeadline, (titleField.value as? String) != title {
+            Thread.sleep(forTimeInterval: 0.2)
+        }
+
+        let addTag = app.buttons["AddTagButton"]
+        XCTAssertTrue(addTag.waitForExistence(timeout: 5), "The + Tag pill is missing")
+        addTag.tap()
+
+        let tagField = app.descendants(matching: .any)
+            .matching(identifier: "TagAssignmentField")
+            .firstMatch
+        XCTAssertTrue(
+            tagField.waitForExistence(timeout: 3),
+            "The inline tag field did not open after tapping + Tag"
+        )
+        tagField.typeText("urgent")
+
+        let deadline = Date().addingTimeInterval(3)
+        var observed = tagField.value as? String
+        while Date() < deadline, !(observed?.contains("urgent") ?? false) {
+            Thread.sleep(forTimeInterval: 0.2)
+            observed = tagField.value as? String
+        }
+        XCTAssertTrue(
+            observed?.contains("urgent") ?? false,
+            "Typed tag draft did not stick in the hoisted tag field — it may " +
+            "have collapsed. Field reads '\(observed ?? "nil")'"
+        )
+    }
 }

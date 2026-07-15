@@ -9,21 +9,34 @@ import SwiftUI
 /// (`addTag` / `removeTag`), which branches on draft-vs-live. No store access
 /// here, so it stays `AppEnvironment`-free and snapshot-friendly. The default
 /// (non-editing) state is fully deterministic for snapshots.
+///
+/// The editing state (`isEditing` / `draftName` / focus) is **externally
+/// owned** by the host, not stored here: this view is embedded in the editor's
+/// `ViewThatFits` wrap valve, whose two candidates are structurally-distinct
+/// subtrees. If the state lived here it would reset every time the valve flips
+/// (e.g. the keyboard rising on `+ Tag` shrinks the offered height and swaps
+/// candidates), collapsing the open field mid-edit. Hoisting it to the host —
+/// which sits above the valve — lets the field survive the swap.
 public struct TagAssignmentField: View {
     public var tagNames: [String]
+    @Binding public var isEditing: Bool
+    @Binding public var draftName: String
+    private var fieldFocused: FocusState<Bool>.Binding
     public var onAdd: (String) -> Void
     public var onRemove: (String) -> Void
 
-    @State private var isEditing = false
-    @State private var draftName: String = ""
-    @FocusState private var fieldFocused: Bool
-
     public init(
         tagNames: [String],
+        isEditing: Binding<Bool>,
+        draftName: Binding<String>,
+        fieldFocused: FocusState<Bool>.Binding,
         onAdd: @escaping (String) -> Void,
         onRemove: @escaping (String) -> Void
     ) {
         self.tagNames = tagNames
+        self._isEditing = isEditing
+        self._draftName = draftName
+        self.fieldFocused = fieldFocused
         self.onAdd = onAdd
         self.onRemove = onRemove
     }
@@ -98,7 +111,7 @@ public struct TagAssignmentField: View {
         .textFieldStyle(.plain)
         .font(LillistTypography.subheadline)
         .foregroundStyle(LillistColor.textStrong)
-        .focused($fieldFocused)
+        .focused(fieldFocused)
         .submitLabel(.done)
         .onSubmit(commit)
         .frame(minWidth: 72)
@@ -112,9 +125,11 @@ public struct TagAssignmentField: View {
             )
         )
         .accessibilityIdentifier("TagAssignmentField")
-        .onAppear { fieldFocused = true }
-        .onChange(of: fieldFocused) { _, focused in
+        .onAppear { fieldFocused.wrappedValue = true }
+        .onChange(of: fieldFocused.wrappedValue) { _, focused in
             // Losing focus (tap-away) ends editing without adding a partial tag.
+            // The host-owned focus survives a wrap-valve candidate swap, so this
+            // fires only on a genuine tap-away, not on the swap teardown.
             if !focused { endEditing() }
         }
     }
