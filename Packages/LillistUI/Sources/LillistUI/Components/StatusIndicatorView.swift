@@ -71,11 +71,37 @@ public struct StatusIndicatorView: View {
             }
             .frame(width: 44, height: 44)
             .contentShape(Rectangle())
+            // Collapse the cube + Menu overlay into ONE accessibility element at
+            // the 44pt frame. Without this the control exposes several competing
+            // elements (the cube's shapes, the `.closed` state's implicit
+            // `checkmark` image, the Menu button); XCUITest's `StatusIndicator`
+            // firstMatch then resolves to a sub-44pt element that is occluded by
+            // the Menu overlay or collapses to the ~10pt checkmark — leaving the
+            // control un-hittable on a Closed row and below Apple's 44pt HIG floor
+            // (issue #15). One ignored-children leaf keeps a stable 44pt hit
+            // target in every state; real touches still reach the Menu hit layer.
+            .accessibilityElement(children: .ignore)
             .accessibilityIdentifier("StatusIndicator")
             .accessibilityLabel(StatusGlyph.accessibilityLabel(for: status))
             .accessibilityAddTraits(.isButton)
+            // Default activation (VoiceOver double-tap) cycles, matching a tap.
+            .accessibilityAction {
+                onClick()
+            }
             .accessibilityAction(named: Text(String(localized: "Cycle status", bundle: .module))) {
                 onClick()
+            }
+            // Ignoring children drops the Menu's setters from the a11y tree, so
+            // re-expose them as named actions (reusing the existing status labels)
+            // — AT users keep the long-press menu's Started/Blocked/Closed choices.
+            .accessibilityAction(named: Text(StatusGlyph.accessibilityLabel(for: .started))) {
+                onSetStatus(.started)
+            }
+            .accessibilityAction(named: Text(StatusGlyph.accessibilityLabel(for: .blocked))) {
+                onSetStatus(.blocked)
+            }
+            .accessibilityAction(named: Text(StatusGlyph.accessibilityLabel(for: .closed))) {
+                onSetStatus(.closed)
             }
     }
 }

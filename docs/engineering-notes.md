@@ -4,6 +4,58 @@ Append-only log of cross-cutting engineering lessons learned while building
 Lillist. Each entry captures a non-obvious gotcha — usually one that took real
 investigation to find — so future work doesn't re-learn it the hard way.
 
+## 2026-07-14 — A Menu/Shape control with loose `.accessibility*` modifiers exposes several elements; XCUITest picks a sub-44pt one and the hit target collapses
+
+`StatusIndicatorView` layers a decorative `StatusCubeView` + a transparent
+`Menu(primaryAction:)` hit layer, then applied
+`.accessibilityIdentifier("StatusIndicator")` / `.accessibilityLabel` /
+`.isButton` / a "Cycle status" action on the container — **without**
+`.accessibilityElement(children:)`. Those attributes *propagate onto descendant AX
+elements* rather than forming one merged leaf, so the control exposed several
+competing elements (the cube's content, the Menu button, and — in `closed` — the
+glyph image).
+
+- In `todo` / `started` / `blocked` the cube draws only `Shape`s (fill, stroke,
+  `Circle`, `RoundedRectangle`), which are **not** accessibility elements, and the
+  tap landed on a full-size hittable target.
+- In `closed` the cube overlays `Image(systemName: "checkmark")` at
+  `font size ≈ 10pt`. An `Image(systemName:)` **is** an implicit AX element
+  (~9.7×9.3pt). `matching(identifier: "StatusIndicator").firstMatch` then resolved
+  to that tiny checkmark; its centre is transparent / under the Menu overlay, so a
+  synthesized tap reported **"Not hittable"** and the 44pt target silently
+  collapsed (issue #15). It slipped manual review because it passed in 3 of 4
+  states.
+
+The macOS/detail `TaskRowView` escaped this by combining the whole row
+(`.accessibilityElement(children: .combine)`); the iOS outline row keeps the
+control independently addressable, so it was exposed.
+
+**Fix — collapse the control to one element; don't just hide a child.** First
+attempt was `StatusCubeView(...).accessibilityHidden(true)` (hide the decorative
+cube). That made it *worse*: with the cube removed from the subtree, `firstMatch`
+resolved to a 20×20 element whose centre hit-tested to the now-AX-hidden cube (a
+non-descendant of the element) → **every** state read "Not hittable". The reliable
+fix is `.accessibilityElement(children: .ignore)` on the container, which yields a
+single leaf at the container's own 44pt frame; the real touch still reaches the
+Menu's `Color.clear.contentShape` hit layer, so `.tap()` cycles and
+`press(forDuration:)` opens the menu. Ignoring children drops the Menu's setter
+elements, so re-expose them explicitly: a default `.accessibilityAction {}` (so
+VoiceOver double-tap cycles) plus named `.accessibilityAction(named:)` entries for
+Started/Blocked/Closed (reuse the existing `StatusGlyph.accessibilityLabel`
+strings — no new catalog entries). Net result is *more* accessible than the loose
+Menu. Guard it with a UI-test `isHittable` + 44pt frame assertion on the terminal
+state — a unit test can't see the rendered AX frame here (no ViewInspector in the
+project). Left `WidgetStatusChip` untouched: it's a bare
+`StatusCubeView().accessibilityLabel(...)` where the cube *is* the element the
+label binds to, wrapped in its own widget `Button(intent:)`.
+
+Build gotcha found while reproducing this in a worktree: `xcodebuild test -scheme
+Lillist-iOS` builds `Lillist-iOSAppHostedTests`, which links `-bundle_loader
+Lillist.app/Lillist`; with 10-core parallelism and the app not yet linked it fails
+`ld: library '…/Lillist.app/Lillist' not found`. Build the app alone first
+(`xcodebuild build -scheme Lillist-iOS ENABLE_DEBUG_DYLIB=NO`) so the host binary
+exists, then run the test.
+
 ## 2026-07-01 — WidgetKit widgets: snapshot cache, WidgetKit-not-in-Core, glass-free rendering
 
 Added a configurable WidgetKit widget (iOS + macOS) rendering a saved smart
