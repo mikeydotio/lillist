@@ -98,7 +98,7 @@ final class GlassSnapshotTests: XCTestCase {
         let host = UIHostingController(rootView: editor)
         let fit = host.sizeThatFits(in: CGSize(width: 393, height: 1200))
         XCTAssertLessThan(fit.height, 700,
-            "Full editor should wrap to its content (~500pt), not fill the offered 1200pt height")
+            "Full editor should wrap to its content (~335pt), not fill the offered 1200pt height")
     }
 
     // MARK: - fixtures

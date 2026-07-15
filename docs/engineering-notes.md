@@ -19,10 +19,21 @@ after its content shrank. Two framework-shape gotchas, both worth remembering:
   copy takes over only on genuine overflow (large Dynamic Type / long text). No
   `GeometryReader`+`PreferenceKey` and no host-height injection seam. Caveats:
   (1) `ViewThatFits` instantiates *all* candidates to measure them, but only the
-  chosen one is live — its `TextField`s stay focusable (pinned by a UI test).
-  (2) Keep a greedy child *out* of the candidates: a `Form` (or bare
-  `TextEditor`) reports an infinite/greedy ideal height and defeats the fit, so
-  the schedule `Form` is capped with a plain `.frame(maxHeight:)` instead.
+  chosen one is live. (2) Keep a greedy child *out* of the candidates: a `Form`
+  (or bare `TextEditor`) reports an infinite/greedy ideal height and defeats the
+  fit, so the schedule `Form` is capped with a plain `.frame(maxHeight:)`.
+
+- **Each `ViewThatFits` candidate is a structurally-distinct subtree, so every
+  `@State`/`@FocusState` *inside* the wrapped content gets its own copy — a
+  candidate swap resets it.** When the keyboard rising (or Dynamic Type / a
+  small screen) flips the valve mid-edit, an editable field loses first
+  responder and any in-progress child state snaps back. The fix is to **hoist
+  that state above the valve**: the title/notes fields bind to an external
+  `@FocusState` on `TaskEditorView`, and `TagAssignmentField`'s inline-edit
+  state (`isEditing`/`draftName`/focus) is likewise owned by the host and passed
+  as bindings — otherwise tapping `+ Tag` near the fit boundary self-triggers a
+  flip (keyboard → shrink → swap) and the field flickers shut. Any stateful view
+  placed inside a `ViewThatFits` valve must externalize its state this way.
 
 - **For a content-hugging editable box, use `TextField(text:, axis: .vertical)`
   + `.lineLimit(min...max)`, not `TextEditor`.** A `TextEditor` in a bounded
@@ -30,6 +41,15 @@ after its content shrank. Two framework-shape gotchas, both worth remembering:
   it can't "hug" — capping it just makes a fixed tall box. A vertical-axis
   `TextField` grows from `min` lines with the text and scrolls past `max`,
   matching the title field and giving the wrap layout a finite height.
+  **Platform asymmetry (verify on macOS):** on native AppKit a vertical-axis
+  `TextField` routes **Return to submit, not newline** (Option-Return inserts
+  the break) — the reverse of iOS, and unlike the old `TextEditor` (NSTextView)
+  which always broke lines. With no `.onSubmit` in the notes field's chain,
+  hard line breaks on macOS need Option-Return (soft-wrap via `lineLimit` and
+  multi-line paste still work). Accepted tradeoff for keeping the content-hug on
+  both platforms; if a plain-Return break is required on macOS, switch that
+  platform's notes field to a bounded `TextEditor` (finite ideal height so the
+  valve still fits it).
 
 - **A fixed-frame snapshot can't prove "wraps to content"** — the card just
   centers in the imposed frame. Add a `UIHostingController.sizeThatFits(in:)`
