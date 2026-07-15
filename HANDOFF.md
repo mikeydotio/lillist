@@ -1,54 +1,62 @@
-# HANDOFF — issue #12 fix (list scroll blocked by row gestures)
+# HANDOFF — issue #18 (macOS row gestures: unverified SwiftUI arbitration model)
 
-**State:** fix complete and verified on branch `fix/12-list-scroll-blocked`; PR open
-(link on issue #12). This session ran in a linked worktree, so per policy it stops
-after the PR — merge, versioning, and deploy happen from `main`.
+**State:** harness authored and **compiling** (`xcodebuild build-for-testing` green);
+DRY consolidation done and unit-verified; PR open (link on issue #18). This session ran
+in a linked worktree, so per policy it stops after the PR — the behavioral verdict run,
+merge, versioning, and deploy happen from `main` / on Mikey's Mac.
 
-## What landed
+## The reframe
 
-- **Root cause (RCA `ios-list-scroll-blocked-when`, HIGH confidence, toggle-proven):**
-  BOTH row gestures — the reorder `LongPress.sequenced(DragGesture(min 0))` via
-  `.gesture()` on the label and `SwipeableRow`'s `.simultaneousGesture(DragGesture(min 10))`
-  on the card — each independently starved the List's scroll pan (OR-shape). SwiftUI
-  drag-family gestures on List row content claim touches at touch-down and never
-  release them, regardless of attachment mode / minimumDistance / handler yields.
-- **Fix (council-decided C1):** both gestures bridged to UIKit recognizers via
-  `UIGestureRecognizerRepresentable` — `ReorderLongPressGesture` (long-press loses to
-  the pan on early movement, owns the touch once matured) and
-  `HorizontalSwipePanGesture` (`shouldBegin` declines non-horizontal touches) +
-  `SwipePanProjection` (unit-tested deceleration prediction). `DragController`,
-  `SwipeSettleArbiter`, and all macOS branches frozen.
-- **Five-interaction real-touch matrix** now guards the module: `ListScrollUITests`
-  (the #12 witness), `LongPressReorderUITests` (first-ever real-touch reorder tests),
-  `TaskTapOpenUITests`, plus existing `SwipeDeleteUITests` / `StatusCycleUITests`.
-- Engineering-notes entry appended (2026-07-14, gesture-vs-scroll arbitration lesson).
+#18 is tech debt, **not a live defect** and never reopened. PR #17 bridged the *iOS* row
+gestures to UIKit recognizers but froze the macOS `#else` branches on the SwiftUI
+arbitration model iOS's #12 RCA falsified. Key finding: macOS's event model makes the iOS
+root cause **structurally impossible** — scrolling is scroll-wheel/trackpad input routed to
+`NSScrollView`, while a `DragGesture` fires only on mouse-button-down + move (different
+event streams that never compete). So the debt was *unverified + unguarded*, not broken.
+Resolution chosen (with Mikey): **verify-first**, not a speculative AppKit bridge.
 
-## Remaining steps (for Mikey, from `main`)
+## What landed (this branch)
 
-1. **Merge the PR** (merge commit; verify merge; delete branch).
-2. **Gate 4 — on-device acceptance pass** after the next `/deployit deploy` from
-   `main`: scroll from row body (flick + slow), long-press reorder incl. horizontal
-   depth targeting, swipe reveal both edges (reveal-only Delete), tap-to-open,
-   status tap/menu, chevron, no scroll during an active reorder.
-3. Optionally run `/atlas update` (mapped LillistUI sources changed).
+- **macOS real-input gesture harness** in `Lillist-macOSUITests` — the regression guard the
+  macOS branch never had: `MacListScrollUITests` (scroll-wheel from row body scrolls the
+  list — the macOS #12 analogue), `MacReorderUITests` (vertical click-drag reorders +
+  persists; horizontal doesn't), `MacSwipeUITests` (horizontal reveals Delete + deletes +
+  persists; vertical doesn't reveal), `MacRowTapOpenUITests` (click opens the right task).
+- **`MacUITestHelpers`** extended with gesture-harness launches, element-agnostic row
+  location, stable-order reads, and a macOS drag/scroll driver.
+- **`--ui-test-seed-many` + `--ui-test-seed-count <N>`** launch seam in the macOS `LillistApp`.
+- **DRY consolidation:** `SwipeableRow`'s macOS branch now derives its axis from the shared
+  `DragAxisArbiter` at a new `macSwipeAxisCommitDistance` (10) token — proven
+  behavior-preserving by an exhaustive grid test in `DragAxisArbiterTests` (host-runnable).
+- Docs: `DragReorderable`/`SwipeableRow` headers, the RCA `#18 update` note, an
+  engineering-notes entry, this handoff.
 
-## Known issues filed, not fixed here
+## Verified here (agent-runnable)
 
-- **#15** — pre-existing `StatusCycleUITests.test_statusTap_cycles_and_persists`
-  failure (Closed-state indicator 9.7×9.3pt AX frame never hittable for the terminal
-  no-op tap; proven present without this fix).
-- **#16** — tag + saved-filter management UI (carried forward from the prior
-  macOS-single-column handoff; was tracked only in this file until now).
-- **#18** — tech debt: macOS row gestures keep the SwiftUI arbitration model the
-  iOS record falsified (untested there; wheel/trackpad input differs).
-- **#19** — tech debt: the bridged reorder's window-space translation anchor
-  assumes no mid-drag list movement — must be redesigned before edge
-  auto-scroll is ever built.
+- macOS `build-for-testing` **SUCCEEDED** (app + `Lillist-macOSUITests` + LillistUI compile,
+  warnings-as-errors); iOS `build` **SUCCEEDED** (shared change is macOS-only).
+- `swift test` LillistUI (skip Snapshot/Tour) green incl. the new `DragAxisArbiterTests`
+  equivalence grid; LillistCore untouched (full run for hygiene).
 
-## Artifacts
+## Remaining steps (Mikey, on-device / from `main`)
 
-RCA: `.rca/ios-list-scroll-blocked-when/` (GRID → REPRO → ORIGIN → EVIDENCE →
-HYPOTHESES/experiments → CHALLENGE → DIAGNOSIS → REPORT/REMEDIATION → FIX →
-POSTMORTEM). Council: `.council/fix-strategy-issue-12-list-scroll/DECISION.md`
-(3/3 IRV for C1 + QA rider). Storyhook: LIL-5. Both are gitignored plugin dirs;
-the durable record is the issue-#12 comment thread + the PR.
+1. **Gate 4 — run the harness on a signed Mac with a live window server** (physical console,
+   not headless SSH): the XCUITest runner cannot initialize over SSH
+   (`LAError -4 "System authentication is running"`), so it did not execute here.
+   ```
+   xcodebuild test -workspace Lillist.xcworkspace -scheme Lillist-macOS \
+     -destination 'platform=macOS' -only-testing:Lillist-macOSUITests
+   ```
+   - **Green (expected):** the debt is discharged by verification — the harness is the
+     standing guard. Merge the PR (closes #18). Consider tightening the header wording from
+     "guarded by" to "verified by".
+   - **Red:** a genuine macOS gesture defect — the trigger has fired for real. *Then* bridge
+     the affected macOS branch to `NSGestureRecognizerRepresentable` (macOS 15+) mirroring
+     the iOS bridge, red→green. (Design only if needed.)
+2. **Merge the PR** (merge commit; verify; delete branch).
+3. Optionally `/atlas update` (mapped LillistUI sources changed: SwipeableRow, Tokens).
+
+## Related issues still open
+
+- **#19** — bridged reorder's window-space translation anchor assumes no mid-drag list
+  movement; redesign before edge auto-scroll is built. (Untouched here.)
