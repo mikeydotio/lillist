@@ -189,6 +189,17 @@ struct LillistApp: App {
                 try? await env.defaultsInstaller.installIfNeeded()
                 await Self.uiTestSeedDemo(env)
             }
+            // UI-test seam: seed N plainly-titled root tasks (personalized
+            // order = creation order) so the gesture behavioral suites have
+            // deterministic, count-appropriate content — a tall list for
+            // scroll runway, a short one for reorder/swipe/tap. The count
+            // comes from an accompanying `--ui-test-seed-count <N>`
+            // (default `uiTestSeedManyDefaultCount`). Paired with
+            // `--ui-test-reset-store`; inert outside XCUITest.
+            if ProcessInfo.processInfo.arguments.contains("--ui-test-seed-many") {
+                try? await env.defaultsInstaller.installIfNeeded()
+                await Self.uiTestSeedMany(env, count: Self.uiTestSeedManyCount())
+            }
             environment = env
             appDelegate.environment = env
             appDelegate.bootstrap()
@@ -289,6 +300,39 @@ struct LillistApp: App {
             let passport = try await env.taskStore.create(title: "Renew passport")
             _ = try await env.taskStore.create(title: "Gather supporting documents", parent: passport)
             try await env.taskStore.transition(id: passport, to: .closed)
+        } catch {
+            // Best-effort seed; never block launch on a seeding failure.
+        }
+    }
+
+    /// Default row count for `--ui-test-seed-many` when no explicit
+    /// `--ui-test-seed-count` accompanies it — enough to overflow the main
+    /// window on any reasonable display so the scroll suite has runway.
+    private static let uiTestSeedManyDefaultCount = 24
+
+    /// Parse the `--ui-test-seed-count <N>` value that accompanies
+    /// `--ui-test-seed-many`, falling back to `uiTestSeedManyDefaultCount`.
+    private static func uiTestSeedManyCount() -> Int {
+        let args = ProcessInfo.processInfo.arguments
+        if let index = args.firstIndex(of: "--ui-test-seed-count"),
+           index + 1 < args.count,
+           let count = Int(args[index + 1]), count > 0 {
+            return count
+        }
+        return uiTestSeedManyDefaultCount
+    }
+
+    /// Seed `count` plainly-titled root tasks in creation order (all
+    /// `.todo`, no tags, no nesting) so the gesture UI tests can read a
+    /// deterministic top-to-bottom order. Invoked only under
+    /// `--ui-test-seed-many` (paired with `--ui-test-reset-store`).
+    private static func uiTestSeedMany(_ env: AppEnvironment, count: Int) async {
+        do {
+            for index in 1...count {
+                _ = try await env.taskStore.create(
+                    title: String(format: "Gesture seed %02d", index)
+                )
+            }
         } catch {
             // Best-effort seed; never block launch on a seeding failure.
         }
