@@ -113,9 +113,17 @@ re-attachment, raising `minimumDistance`, in-handler axis yield — SwipeableRow
 all three and blocked anyway) are dead on arrival, and removal is a feature regression.
 
 **Tech debt logged with the fix:** macOS retains the falsified SwiftUI arbitration
-assumptions (known-untested, revisit on any macOS gesture/scroll defect); the bridged
-recognizers anchor translation in window space, which breaks if edge auto-scroll is ever
-built (revisit then).
+assumptions (known-untested, revisit on any macOS gesture/scroll defect — issue #18); the
+bridged recognizers anchor translation in window space, which breaks if edge auto-scroll is
+ever built (issue #19).
+
+**Post-review hardening (same PR):** the merge review surfaced and the branch fixed four
+further correctness gaps in the bridges — system-cancelled touches (`.cancelled`) now abort
+instead of committing (reorder → `cancelDrag()`, swipe → close, never a full-swipe commit);
+`beginDrag` retries per event again so a press maturing during the previous drop's settle
+window isn't a dead touch; onChanged/onEnded carry session-ownership guards so a second
+finger can't steer another row's drag; and reorder translation tracks the first touch, not
+the multi-touch centroid.
 
 ## Preventative action — killing the class
 

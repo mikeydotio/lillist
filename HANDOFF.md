@@ -39,10 +39,11 @@ after the PR — merge, versioning, and deploy happen from `main`.
   no-op tap; proven present without this fix).
 - **#16** — tag + saved-filter management UI (carried forward from the prior
   macOS-single-column handoff; was tracked only in this file until now).
-- Tech-debt (logged in `.rca/ios-list-scroll-blocked-when/REMEDIATION.md`): macOS
-  keeps the falsified SwiftUI arbitration assumptions (untested there; wheel/trackpad
-  input differs); the bridged reorder's window-space anchor assumes no mid-drag list
-  movement — revisit if edge auto-scroll is ever built.
+- **#18** — tech debt: macOS row gestures keep the SwiftUI arbitration model the
+  iOS record falsified (untested there; wheel/trackpad input differs).
+- **#19** — tech debt: the bridged reorder's window-space translation anchor
+  assumes no mid-drag list movement — must be redesigned before edge
+  auto-scroll is ever built.
 
 ## Artifacts
 
