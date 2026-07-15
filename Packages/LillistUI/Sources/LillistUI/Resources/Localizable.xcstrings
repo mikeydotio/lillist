@@ -1,6 +1,63 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "Color" : {
+
+    },
+    "Delete Filter" : {
+
+    },
+    "Delete Tag" : {
+
+    },
+    "Delete the “%@” filter? This can’t be undone." : {
+
+    },
+    "Delete “%@” and its %lld nested tags? All will be removed from any tasks that use them. This can’t be undone." : {
+
+    },
+    "Delete “%@” and its 1 nested tag? Both will be removed from any tasks that use them. This can’t be undone." : {
+
+    },
+    "Delete “%@”? It will be removed from any tasks that use it. This can’t be undone." : {
+
+    },
+    "Edit Filter" : {
+
+    },
+    "Edit Tag" : {
+
+    },
+    "Edit filter" : {
+
+    },
+    "Edit tag" : {
+
+    },
+    "Name" : {
+
+    },
+    "No saved filters yet." : {
+
+    },
+    "No tags yet. Tags you add to tasks show up here." : {
+
+    },
+    "Pin filter" : {
+
+    },
+    "Pinned filters appear as quick chips above your task list." : {
+
+    },
+    "Saved Filters" : {
+
+    },
+    "Tags" : {
+
+    },
+    "Unpin filter" : {
+
+    },
     "%@, %lld items" : {
 
     },
