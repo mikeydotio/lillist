@@ -3,6 +3,59 @@
 All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [v0.14.1] - 2026-07-15
+
+### Added
+- wire Tags & Filters into iOS Settings + macOS Preferences (#16) (0cd4930c)
+- shared Tags & Filters management UI (#16) (564b4bca)
+
+### Fixed
+- hoist the tag field's edit state above the wrap valve (147bf343)
+- preserve field focus across the wrap-valve candidate swap (ca0a68b4)
+- keep the self-sizing capture panel on-screen and settle its resize (c738a1a7)
+- size the quick-capture panel to the editor's content (cc3de67e)
+- wrap the full-mode detail card to its content (b79006ac)
+- keep the Closed status control hittable at its 44pt target (4dfe5dc9)
+- regenerate pbxprojs with the canonical root group name (0b501821)
+- review fixes — cancellation aborts, begin retries, session ownership (be7c3bba)
+- bridge row gestures to UIKit recognizers so the list scrolls (ac312790)
+
+### Changed
+- Merge pull request #25 from mikeydotio/fix/22-task-detail-wraps-content (3ac70acb)
+- Merge pull request #24 from mikeydotio/fix/22-task-detail-wraps-content (cf976e40)
+- unify the wrap-then-scroll valve; fix a stale doc reference (56cb41ce)
+- add LillistSizing tokens; migrate editor width literals (c47c1f10)
+- Merge pull request #23 from mikeydotio/test/18-macos-row-gesture-harness (6a963190)
+- route SwipeableRow axis through shared DragAxisArbiter (issue #18) (f96148ac)
+- Merge pull request #21 from mikeydotio/worktree-lil-16 (b1fb8074)
+- Merge pull request #20 from mikeydotio/fix/15-status-indicator-closed-hittable (7057eac4)
+- Merge pull request #17 from mikeydotio/fix/12-list-scroll-blocked (b1bf6c6a)
+- dedupe launch/capture plumbing into UITestHelpers (5d0933b7)
+- Merge pull request #14 from mikeydotio/docs/claude-md-pr-only-main (63b83b2c)
+- Merge pull request #13 from mikeydotio/chore/release-v0.14.0 (139ce21a)
+
+### Documentation
+- correct stale panel doc + wrap-assertion message; note valve gotchas (8db085b1)
+- record the ViewThatFits wrap + vertical-axis TextField gotchas (#22) (42dcbacf)
+- record issue #18 verify-first resolution + macOS gesture harness (758bd5ec)
+- record the collapsed-AX-frame gotcha (2de73570)
+- cite tech-debt issues #18/#19; record post-review hardening (3fc9e201)
+- postmortem for issue #12 + engineering-notes entry + handoff (f1bcf314)
+- correct Git workflow — main is PR-only, not direct-push (00503df7)
+
+### Testing
+- wait for editor load before asserting the notes edit (7309b85d)
+- add real-input row-gesture UITest harness (issue #18) (984b9e82)
+- pin Closed-state StatusIndicator hittability + 44pt frame (25f4874e)
+
+### Maintenance
+- close LIL-5 — issue-#12 fix delivered via PR #17 (cfc4bcbd)
+- track story LIL-5; gitignore rca/council plugin state dirs (b6ab8214)
+- align macOS pbxproj with xcodegen 2.45.4 output (37f3d350)
+- bump iOS build number to 85 (36aed8a9)
+
+_[force]_
+
 ## [v0.14.0] - 2026-07-14
 
 ### Added
