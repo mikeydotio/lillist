@@ -89,78 +89,61 @@ final class GlassSnapshotTests: XCTestCase {
     }
 
     /// Non-snapshot regression for #22: the full-mode editor must WRAP to its
-    /// content rather than fill the offered height. Fails on the pre-fix greedy
-    /// `ScrollView` (which reports ~the offered 1200), passes once the card
-    /// self-sizes. Offers a large *finite* height — an unbounded proposal would
-    /// not discriminate a greedy ScrollView from a wrapping VStack.
+    /// content, not fill the offered height. Fails on the pre-fix greedy
+    /// `ScrollView` (which reports ~the full offer), passes once the card
+    /// self-sizes to ~335pt. The band (#27) has a floor too, so a card that
+    /// collapses to nothing also fails, while staying clear of a greedy fill.
     ///
-    /// The band is tightened (#27): the card wraps to ~335pt, so the old
-    /// `< 700` ceiling left a ~2× margin that a mildly-greedy layout could slip
-    /// under. Assert a floor too, so a card that collapses to nothing also
-    /// fails, while staying clear of the ~1200pt greedy-`ScrollView` value.
-    ///
-    /// Measured *settled* (`settledEditorHeight`): the single-subtree
-    /// `WrapToContentThenScroll` (#32) caps a greedy `ScrollView` to the
-    /// content's height that it measures asynchronously (`onGeometryChange`), so
-    /// a one-shot `sizeThatFits` would read the pre-measurement greedy height.
+    /// Measures the *content* height (`editorContentHeight`): the single-subtree
+    /// `WrapToContentThenScroll` (#32) caps its greedy `ScrollView` to the
+    /// content's height, measured asynchronously (`onGeometryChange`), so a
+    /// one-shot `sizeThatFits` would read the pre-measurement greedy height.
     @MainActor func test_fullEditor_wrapsToContent() async throws {
-        let height = settledEditorHeight(try await fullEditorModel(), offered: 1200)
+        let height = editorContentHeight(try await fullEditorModel())
         XCTAssertTrue((250...450).contains(height),
-            "Full editor should wrap to its content (~335pt), not fill the offered " +
-            "1200pt height nor collapse — measured \(height)pt")
+            "Full editor should wrap to its content (~335pt), not fill the offer " +
+            "nor collapse — measured \(height)pt")
     }
 
-    /// Measures the keyboard-driven fit-boundary crossing the tag-field survival
-    /// test relies on (#27). A fat-notes card is tall enough that it *wraps*
-    /// (the wrap-then-scroll reports its natural height) when offered the
-    /// keyboard-down height, but must *scroll* (its height caps to the offer)
-    /// when the keyboard shrinks the offered height. The plain card never
-    /// crosses that boundary — which is exactly why the title-only UI test could
-    /// not exercise it — so this proves the fat-notes seed does. With the
-    /// candidate swap eliminated (#32) the crossing is now a single ScrollView
-    /// engaging its scroll, not a subtree swap, so the focused field survives.
-    @MainActor func test_fatNotesEditor_engagesScrollWhenKeyboardShrinksOffer() async throws {
+    /// The fact the tag-field survival test relies on (#27): the fat-notes card's
+    /// content is taller than the keyboard-up offer, so raising the keyboard makes
+    /// the wrap card cap to the offer and scroll — crossing the fit boundary the
+    /// field must survive. Asserts the content height directly:
+    /// `WrapToContentThenScroll` caps to `min(content, offered)` at runtime, so
+    /// `content > offer` ⟹ it scrolls once the keyboard shrinks the offer. Also
+    /// checks the seed does real work (taller than the standard card), so the
+    /// crossing comes from the long notes, not incidental fixture height.
+    @MainActor func test_fatNotesEditor_contentExceedsKeyboardOffer() async throws {
         // iPhone-17 keyboard-up offered height (design-doc math from the PR #25
         // review: 874 − 103 status/nav − 336 keyboard − 48 overlay padding).
         let keyboardUpOffer: CGFloat = 387
-        let keyboardDownOffer: CGFloat = 723
 
-        let fatNatural = settledEditorHeight(try await fatNotesFullEditorModel(), offered: keyboardDownOffer)
-        let fatConstrained = settledEditorHeight(try await fatNotesFullEditorModel(), offered: keyboardUpOffer)
-        let plainConstrained = settledEditorHeight(try await fullEditorModel(), offered: keyboardUpOffer)
+        let fatContent = editorContentHeight(try await fatNotesFullEditorModel())
+        let plainContent = editorContentHeight(try await fullEditorModel())
 
-        // The fat card's natural height exceeds the keyboard-up offer, so a
-        // keyboard rising forces the card across the fit boundary.
-        XCTAssertGreaterThan(fatNatural, keyboardUpOffer,
-            "Fat-notes card (\(fatNatural)pt) must exceed the keyboard-up offer " +
-            "(\(keyboardUpOffer)pt), else the keyboard can't cross the fit boundary")
-        // Offered less than its natural height, the card caps to the offer and
-        // scrolls in place (single subtree — no candidate swap).
-        XCTAssertLessThan(fatConstrained, fatNatural,
-            "Fat-notes card did not cap to the keyboard-up offer and scroll — " +
-            "reported \(fatConstrained)pt (natural \(fatNatural)pt)")
-        // The plain card stays inside the keyboard-up offer, so it never crosses
-        // the boundary — the reason the pre-#27 title-only test couldn't reach it.
-        XCTAssertLessThanOrEqual(plainConstrained, keyboardUpOffer,
-            "Plain full editor (\(plainConstrained)pt) unexpectedly exceeds the " +
-            "keyboard-up offer; it should fit without scrolling")
+        XCTAssertGreaterThan(fatContent, keyboardUpOffer,
+            "Fat-notes card content (\(fatContent)pt) must exceed the keyboard-up " +
+            "offer (\(keyboardUpOffer)pt) so it scrolls when the keyboard rises — " +
+            "else the survival test never crosses the fit boundary")
+        XCTAssertGreaterThan(fatContent, plainContent,
+            "The fat-notes seed must make the card materially taller than the " +
+            "standard card (\(fatContent)pt vs \(plainContent)pt) — the boundary " +
+            "crossing should come from the long notes, not fixture height")
     }
 
-    /// Settled fitting height of the full editor at a given offered height —
-    /// i.e. `min(contentHeight, offered)`, the wrap card's own cap.
+    /// True content height of the full editor's wrap card — what
+    /// `WrapToContentThenScroll` measures via `onGeometryChange` and caps its
+    /// `ScrollView` to (the card's fitting height at an offer `H` is then just
+    /// `min(content, H)`).
     ///
-    /// `WrapToContentThenScroll` measures its content asynchronously
-    /// (`onGeometryChange`) and stays greedy until then, so the view is hosted in
-    /// a live window and the run loop pumped. Rather than probe at `offered`
-    /// directly — where a card that fills/overflows the offer reads the same
-    /// value measured or not, forcing a deadline spin — probe the fitting height
-    /// at a *huge* offer, which **any** real card wraps far below. The greedy
-    /// pre-measurement value fills that whole huge offer, so the first read that
-    /// drops below it is unambiguously the settled content height; no fill case,
-    /// so it converges the instant the measurement lands. Then report how that
-    /// content fits `offered`.
+    /// The measurement is async and the card is greedy until it lands, so host in
+    /// a live window and pump the run loop. Probe the fitting height at a *huge*
+    /// offer, which **any** real card wraps far below: the greedy pre-measurement
+    /// value fills that whole offer, so the first read that drops below it is
+    /// unambiguously the settled content height — no fill/overflow case to wait
+    /// out, so it converges the instant the measurement lands.
     @MainActor
-    private func settledEditorHeight(_ model: TaskEditorModel, offered: CGFloat) -> CGFloat {
+    private func editorContentHeight(_ model: TaskEditorModel) -> CGFloat {
         let host = UIHostingController(rootView: TaskEditorView(model: model, onDismiss: {}))
         let windowSize = CGSize(width: 393, height: 1200)
         host.view.frame = CGRect(origin: .zero, size: windowSize)
@@ -173,11 +156,11 @@ final class GlassSnapshotTests: XCTestCase {
         guard let scene else {
             // Unreachable in the app-hosted bundle (the host app always has a
             // foreground scene); best-effort one-shot fallback if it ever isn't.
-            return min(host.sizeThatFits(in: windowSize).height, offered)
+            return host.sizeThatFits(in: windowSize).height
         }
         let window = UIWindow(windowScene: scene)
         // Tear the window down so it doesn't outlive the call — a visible window
-        // is retained by its scene and would stack across the three probe calls.
+        // is retained by its scene and would stack across the probe calls.
         defer { window.isHidden = true; window.rootViewController = nil }
         window.frame = host.view.frame
         window.rootViewController = host
@@ -192,7 +175,7 @@ final class GlassSnapshotTests: XCTestCase {
             if measured < probe.height - 1 { content = measured; break }
             RunLoop.current.run(until: Date(timeIntervalSinceNow: 0.05))
         }
-        return min(content, offered)
+        return content
     }
 
     // MARK: - fixtures
