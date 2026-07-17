@@ -289,7 +289,11 @@ public struct TaskEditorView: View {
     private var macNotesEditor: some View {
         Text(macNotesSizerText)
             .font(LillistTypography.body)
+            // `.foregroundStyle(.clear)` only hides the sizer visually — a `Text`
+            // with content is still an AX element, so hide it or VoiceOver reads
+            // the note twice (once here, once from the live `TextEditor`).
             .foregroundStyle(.clear)
+            .accessibilityHidden(true)
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.horizontal, Self.macNotesTextInset)
             .frame(
