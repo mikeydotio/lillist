@@ -127,9 +127,22 @@ public struct TagAssignmentField: View {
         .accessibilityIdentifier("TagAssignmentField")
         .onAppear { fieldFocused.wrappedValue = true }
         .onChange(of: fieldFocused.wrappedValue) { _, focused in
-            // Losing focus (tap-away) ends editing without adding a partial tag.
-            // The host-owned focus survives a wrap-valve candidate swap, so this
-            // fires only on a genuine tap-away, not on the swap teardown.
+            // Losing focus collapses the field and discards the in-progress draft
+            // *by design* — the contract at the top of this file (unchanged since
+            // 08372592): only `commit()` adds a tag, so a tap-away never persists a
+            // partial name.
+            //
+            // Hoisting the storage above the wrap valve keeps the inert
+            // `isEditing`/`draftName` alive across a candidate swap (only this view
+            // writes them). Focus is a different animal: SwiftUI writes to
+            // `@FocusState` on first-responder lifecycle events, and it is
+            // *re-asserted* on a surviving candidate by `.focused()` + `.onAppear`
+            // (L128) — but the ordering of a removal-driven focus reset vs that
+            // incoming `.onAppear` is NOT contractual. If the reset lands last, this
+            // observer fires on a swap teardown, not only on a genuine tap-away. We
+            // accept that: a swap already collapses the field, and discarding the
+            // draft there matches the tap-away contract. Don't read this as a
+            // guarantee the draft survives a swap — it does not.
             if !focused { endEditing() }
         }
     }
