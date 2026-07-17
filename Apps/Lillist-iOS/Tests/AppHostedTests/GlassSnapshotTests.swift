@@ -146,26 +146,11 @@ final class GlassSnapshotTests: XCTestCase {
             "keyboard-up offer; it should fit without scrolling")
     }
 
-    /// The wrap card must not paint at the full offered height on its first
-    /// (pre-measurement) layout pass — `WrapToContentThenScroll` seeds a bounded
-    /// first-pass cap so the greedy `ScrollView` doesn't overshoot and then snap
-    /// down, a flash that recurs on every drill-in → Back (#33 review). A
-    /// one-shot `sizeThatFits` (no window/settling) reads exactly that first
-    /// pass: it must be bounded, not the full 1200pt offer.
-    @MainActor func test_fullEditor_firstPassIsNotGreedy() async throws {
-        let host = UIHostingController(
-            rootView: TaskEditorView(model: try await fullEditorModel(), onDismiss: {}))
-        let firstPass = host.sizeThatFits(in: CGSize(width: 393, height: 1200))
-        XCTAssertLessThan(firstPass.height, 500,
-            "The wrap card painted greedily on its first pass (\(firstPass.height)pt " +
-            "of the 1200pt offer) — it must seed a bounded first-pass height")
-    }
-
     /// Settled fitting height of the full editor at a given offered height.
     /// `WrapToContentThenScroll` measures its content asynchronously
-    /// (`onGeometryChange`), so the view must be hosted in a live window and the
-    /// run loop pumped before `sizeThatFits` reflects the wrapped/capped height
-    /// rather than the pre-measurement fallback.
+    /// (`onGeometryChange`) and stays greedy (fills the offer) until then, so the
+    /// view must be hosted in a live window and the run loop pumped before
+    /// `sizeThatFits` reflects the wrapped/capped height.
     @MainActor
     private func settledEditorHeight(_ model: TaskEditorModel, offered: CGFloat) -> CGFloat {
         let size = CGSize(width: 393, height: offered)
@@ -190,24 +175,24 @@ final class GlassSnapshotTests: XCTestCase {
         window.rootViewController = host
         window.isHidden = false
 
-        // Poll until the measured height stabilizes instead of trusting a fixed
-        // wait: `onGeometryChange` reports in a later transaction, so on a loaded
-        // machine a single sleep can read the pre-measure fallback
-        // (`maxHeight ?? firstPassCardHeight`) and return a stale number. Pump
-        // the run loop between reads and stop when two successive reads agree
-        // (the measurement has landed) — a slow measurement just lengthens the
-        // wait. If the real height equals the fallback, agreeing on it is
-        // correct; only a not-yet-applied measurement disagrees, forcing another
-        // pass. Bounded by a deadline so a stuck measurement can't hang.
+        // Before the measurement lands the card is greedy and `sizeThatFits`
+        // returns the full offer, so a fixed wait — or converging on the first
+        // two agreeing reads — can hand back that stale value on a loaded
+        // machine. Instead key on the one unambiguous signal: a read *below* the
+        // offer can only be a settled, wrapped card (the greedy pre-measurement
+        // height always fills the whole offer). Poll until a read drops below the
+        // offer and return it. A card that genuinely fills or overflows the offer
+        // never drops — its height *is* the offer — so fall back to the last read
+        // at the deadline. A slow measurement lengthens the wait, never shortens
+        // it into a stale read.
         let deadline = Date(timeIntervalSinceNow: 3)
-        host.view.layoutIfNeeded()
-        var last = host.sizeThatFits(in: size).height
+        var last = offered
         while Date() < deadline {
-            RunLoop.current.run(until: Date(timeIntervalSinceNow: 0.05))
             host.view.layoutIfNeeded()
             let current = host.sizeThatFits(in: size).height
-            if current == last { return current }
+            if current < offered - 1 { return current }
             last = current
+            RunLoop.current.run(until: Date(timeIntervalSinceNow: 0.05))
         }
         return last
     }
