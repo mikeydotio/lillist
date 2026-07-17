@@ -53,7 +53,7 @@ change flips the fit decision mid-edit, the currently-focused `TextField` inside
 - **Fix at the origin: don't swap.** Replace the valve with a single,
   non-swapping subtree — a `ScrollView` whose height is capped to the content's
   *measured* ideal height (`onGeometryChange`), bounded by an optional
-  `maxHeight` (`TaskEditorView.WrapToContentThenScroll`). A bare `ScrollView` is
+  `maxHeight` (`TaskEditorView.MeasuredGlassCard`). A bare `ScrollView` is
   vertically greedy, so the measured cap makes it hug when the content fits; the
   parent's proposal then constrains it further when the keyboard shrinks the
   offer, engaging the scroll **without recreating the subtree**. The focused
@@ -64,7 +64,7 @@ change flips the fit decision mid-edit, the currently-focused `TextField` inside
   layout, so a one-shot `UIHostingController.sizeThatFits(in:)` reads the
   uncapped greedy height (the full offer), not the wrapped height. Numeric wrap
   assertions must host the view in a live window and pump the run loop before
-  measuring (`GlassSnapshotTests.settledEditorHeight`). The rendered/settled
+  measuring (`GlassSnapshotTests.editorContentHeight`). The rendered/settled
   frame is correct (snapshots pass); only the synchronous probe needed settling.
 
 ## 2026-07-15 — Make a floating card wrap its content with `ViewThatFits`, not a bare `ScrollView`; and use a vertical-axis `TextField`, not `TextEditor`, for a content-hugging editable box (issue #22)

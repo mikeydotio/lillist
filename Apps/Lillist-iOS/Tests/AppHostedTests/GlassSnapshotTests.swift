@@ -95,7 +95,7 @@ final class GlassSnapshotTests: XCTestCase {
     /// collapses to nothing also fails, while staying clear of a greedy fill.
     ///
     /// Measures the *content* height (`editorContentHeight`): the single-subtree
-    /// `WrapToContentThenScroll` (#32) caps its greedy `ScrollView` to the
+    /// `MeasuredGlassCard` (#32) caps its greedy `ScrollView` to the
     /// content's height, measured asynchronously (`onGeometryChange`), so a
     /// one-shot `sizeThatFits` would read the pre-measurement greedy height.
     @MainActor func test_fullEditor_wrapsToContent() async throws {
@@ -109,7 +109,7 @@ final class GlassSnapshotTests: XCTestCase {
     /// content is taller than the keyboard-up offer, so raising the keyboard makes
     /// the wrap card cap to the offer and scroll — crossing the fit boundary the
     /// field must survive. Asserts the content height directly:
-    /// `WrapToContentThenScroll` caps to `min(content, offered)` at runtime, so
+    /// `MeasuredGlassCard` caps to `min(content, offered)` at runtime, so
     /// `content > offer` ⟹ it scrolls once the keyboard shrinks the offer. Also
     /// checks the seed does real work (taller than the standard card), so the
     /// crossing comes from the long notes, not incidental fixture height.
@@ -132,7 +132,7 @@ final class GlassSnapshotTests: XCTestCase {
     }
 
     /// True content height of the full editor's wrap card — what
-    /// `WrapToContentThenScroll` measures via `onGeometryChange` and caps its
+    /// `MeasuredGlassCard` measures via `onGeometryChange` and caps its
     /// `ScrollView` to (the card's fitting height at an offer `H` is then just
     /// `min(content, H)`).
     ///

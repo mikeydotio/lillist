@@ -29,8 +29,8 @@ public struct TaskEditorView: View {
 
     /// The card's editable fields bind focus to external `@FocusState` so the
     /// host owns first responder across relayouts. (The wrap card no longer
-    /// swaps subtrees — see `WrapToContentThenScroll` / issue #32 — so this is
-    /// no longer load-bearing for surviving a candidate swap, but keeping focus
+    /// swaps subtrees — see `MeasuredGlassCard` / issue #32 — so this is no
+    /// longer load-bearing for surviving a candidate swap, but keeping focus
     /// host-owned stays correct and lets the drill-in reset below manage it.)
     private enum EditorField { case title, notes }
     @FocusState private var focusedField: EditorField?
@@ -155,8 +155,8 @@ public struct TaskEditorView: View {
     /// The detail card wraps its content (like Quick Capture) and only scrolls
     /// when the content genuinely overflows the offered height, so the
     /// header/title is never clipped off the centered overlay. Shares the
-    /// `wrapToContentThenScroll` valve with the drill-in children; the main
-    /// card fits the whole overlay (no height cap).
+    /// `MeasuredGlassCard` chrome with the attachments/journal children; the main
+    /// card passes no `maxHeight`, fitting the whole overlay.
     private var mainCard: some View {
         MeasuredGlassCard { mainCardContent }
     }

@@ -65,7 +65,7 @@ final class TaskTapOpenUITests: XCTestCase {
     }
 
     /// The full-mode card wraps its content and scrolls only on overflow
-    /// (`WrapToContentThenScroll`, post-#32; the #22 wrap fix originally used a
+    /// (`MeasuredGlassCard`, post-#32; the #22 wrap fix originally used a
     /// `ViewThatFits`). This pins that the notes editor inside that wrap card
     /// stays focusable — typed text must stick — so the wrap/scroll plumbing
     /// never swallows input.

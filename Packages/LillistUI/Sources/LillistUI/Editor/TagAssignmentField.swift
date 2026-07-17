@@ -15,7 +15,7 @@ import SwiftUI
 /// same view, and hoisting this state lets the host collapse the field when the
 /// user drills into a child and returns (issue #26). It also *used* to guard a
 /// `ViewThatFits` candidate swap — but that swap is now eliminated
-/// (`TaskEditorView.WrapToContentThenScroll` / issue #32), so this view sits in
+/// (`TaskEditorView.MeasuredGlassCard` / issue #32), so this view sits in
 /// a single, non-swapping subtree and is never torn down mid-edit.
 public struct TagAssignmentField: View {
     public var tagNames: [String]
