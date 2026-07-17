@@ -539,8 +539,7 @@ public struct TaskEditorView: View {
             }
             .frame(maxHeight: LillistSizing.editorChildMaxHeight)
         }
-        .frame(maxWidth: LillistSizing.editorCardMaxWidth)
-        .glassSurface(.panel, in: RoundedRectangle(cornerRadius: LillistRadius.l))
+        .editorGlassPanel()
     }
 
     @ViewBuilder
@@ -649,6 +648,17 @@ public struct TaskEditorView: View {
     }
 }
 
+private extension View {
+    /// The full-editor card chrome — max width + the `.panel` glass surface.
+    /// Shared by every full card (`MeasuredGlassCard` and the schedule `Form`)
+    /// so the spec lives in one place. (Quick mode uses a different max width.)
+    func editorGlassPanel() -> some View {
+        self
+            .frame(maxWidth: LillistSizing.editorCardMaxWidth)
+            .glassSurface(.panel, in: RoundedRectangle(cornerRadius: LillistRadius.l))
+    }
+}
+
 /// The editor's card chrome: a glass panel that hugs its scrolling content and
 /// scrolls only on overflow.
 ///
@@ -721,8 +731,7 @@ private struct MeasuredGlassCard<Header: View, Content: View>: View {
             }
             .frame(maxHeight: cappedHeight)
         }
-        .frame(maxWidth: LillistSizing.editorCardMaxWidth)
-        .glassSurface(.panel, in: RoundedRectangle(cornerRadius: LillistRadius.l))
+        .editorGlassPanel()
     }
 
     /// Cap the greedy scroll view to the content's ideal height (so it hugs),
