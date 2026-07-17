@@ -130,11 +130,15 @@ public struct TaskEditorView: View {
             case .journal: journalChild
             }
         }
-        // The card chrome (max width, glass panel, bounded first-pass height
-        // until the content measures) is applied per card by `MeasuredGlassCard`,
-        // not here — so each card sizes only its *own* first frame while the
-        // shared route transition still animates the others. A card rebuilt on
-        // drill-in → Back seeds its height from `cardHeights` so it doesn't reset.
+        // The glass panel is applied ONCE here, to the outer Group, not per card,
+        // so it keeps a stable identity across a route change: only the card
+        // content crossfades inside one steady panel, rather than two translucent
+        // panels overlapping. Each card supplies its own *height* (bounded
+        // first-pass until measured, seeded per route from `cardHeights`), and the
+        // Group — hence the panel — animates smoothly to it. Safe to share now
+        // that the card is bounded, not greedy, so the panel never flashes the
+        // full offer.
+        .editorGlassPanel()
         .task(id: textEditKey) {
             do { try await Task.sleep(for: .milliseconds(500)) } catch { return }
             await model.saveTextNow()
@@ -539,7 +543,6 @@ public struct TaskEditorView: View {
             }
             .frame(maxHeight: LillistSizing.editorChildMaxHeight)
         }
-        .editorGlassPanel()
     }
 
     @ViewBuilder
@@ -650,8 +653,8 @@ public struct TaskEditorView: View {
 
 private extension View {
     /// The full-editor card chrome — max width + the `.panel` glass surface.
-    /// Shared by every full card (`MeasuredGlassCard` and the schedule `Form`)
-    /// so the spec lives in one place. (Quick mode uses a different max width.)
+    /// Applied once to the full-mode Group (see `fullBody`) so the panel keeps a
+    /// stable identity across route changes. (Quick mode uses a different width.)
     func editorGlassPanel() -> some View {
         self
             .frame(maxWidth: LillistSizing.editorCardMaxWidth)
@@ -659,15 +662,24 @@ private extension View {
     }
 }
 
-/// The editor's card chrome: a glass panel that hugs its scrolling content and
-/// scrolls only on overflow.
+/// A full-editor card body: hugs its scrolling content and scrolls only on
+/// overflow. The glass panel is *not* applied here — it lives on the shared
+/// `fullBody` Group (`.editorGlassPanel()`), so a route change crossfades content
+/// inside one steady panel rather than overlapping two.
 ///
 /// A bare `ScrollView` is vertically greedy, so its height is capped to the
 /// content's own measured ideal height (bounded by `maxHeight`): the parent's
 /// proposal then engages the scroll when the keyboard shrinks the offer, without
 /// recreating the subtree (so a focused "+ Tag" field isn't torn down — issue
-/// #32). `header` (a child popup's Back bar) sits above the scroll area, inside
-/// the glass; the main card passes none. Wrap-to-content (#22) is preserved.
+/// #32). `header` (a child popup's Back bar) sits above the scroll area; the main
+/// card passes none. Wrap-to-content (#22) is preserved.
+///
+/// Because `content` is always inside this scroll view (the synchronous
+/// `ViewThatFits` valve used a non-scrolling candidate when the card fit), the
+/// iOS notes `TextField`'s own in-place scroll (past 8 lines) nests inside it.
+/// `.scrollBounceBehavior(.basedOnSize)` keeps this outer scroll passive when the
+/// card fits so a drag reaches the field; worth an on-device check that a long
+/// note still scrolls the note, not the card.
 ///
 /// The measured cap arrives asynchronously (`onGeometryChange` reports in a
 /// later transaction), so for the first frame — on open, quick→full expand, and
@@ -730,8 +742,13 @@ private struct MeasuredGlassCard<Header: View, Content: View>: View {
                     }
             }
             .frame(maxHeight: cappedHeight)
+            // Don't bounce/scroll when the content fits: the iOS notes field is a
+            // vertical-axis `TextField` that scrolls its own overflow in place, so
+            // when the card fits (this scroll view's contentSize == bounds) this
+            // outer scroll must stay passive and let a drag inside a long note
+            // reach the field, not pan the card.
+            .scrollBounceBehavior(.basedOnSize)
         }
-        .editorGlassPanel()
     }
 
     /// Cap the greedy scroll view to the content's ideal height (so it hugs),
