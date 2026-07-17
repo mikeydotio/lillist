@@ -44,19 +44,6 @@ public struct TaskEditorView: View {
     @State private var tagDraft = ""
     @FocusState private var tagFieldFocused: Bool
 
-    // Routes whose wrap card has measured its content height. `fullBody` reveals
-    // the card only once its route is in here: the wrap card is greedy (fills the
-    // offer) until `onGeometryChange` lands, and the glass panel around it would
-    // otherwise paint at the full offer on a card's *first* appearance. Gated per
-    // route so a child's first visit is covered too, not just the main card; once
-    // a route measures it stays revealed (SwiftUI preserves each card's height
-    // across a drill-in → Back, so no re-gating on return). The schedule child is
-    // a bounded `Form`, not greedy, so it needs no gate — seeded here.
-    @State private var measuredRoutes: Set<DetailRoute> = [.schedule]
-
-    /// Whether the current route's card is measured and safe to paint.
-    private var cardVisible: Bool { measuredRoutes.contains(route) }
-
     @Environment(\.accessibilityReduceMotion) private var systemReduceMotion
     @Environment(\.reduceMotionOverride) private var overrideReduceMotion
     private var reduceMotion: Bool { overrideReduceMotion ?? systemReduceMotion }
@@ -136,15 +123,11 @@ public struct TaskEditorView: View {
             case .journal: journalChild
             }
         }
-        .frame(maxWidth: LillistSizing.editorCardMaxWidth)
-        .glassSurface(.panel, in: RoundedRectangle(cornerRadius: LillistRadius.l))
-        // Hide the whole card — glass panel included — until the current route's
-        // wrap card has measured, so the greedy pre-measurement frame never paints
-        // on a card's first appearance (main card on open, each child on first
-        // drill-in). Instant, never animated: the card must reveal at its real
-        // size, not fade the gate against the route transition.
-        .opacity(cardVisible ? 1 : 0)
-        .animation(nil, value: cardVisible)
+        // The card chrome (max width, glass panel, hide-until-measured gate) is
+        // applied per card by `MeasuredGlassCard`, not here — so each card defers
+        // only its *own* first greedy paint while the shared route transition
+        // still animates the others, and a card rebuilt on drill-in → Back
+        // re-hides until it re-measures (SwiftUI resets the branch's height).
         .task(id: textEditKey) {
             do { try await Task.sleep(for: .milliseconds(500)) } catch { return }
             await model.saveTextNow()
@@ -175,17 +158,7 @@ public struct TaskEditorView: View {
     /// `wrapToContentThenScroll` valve with the drill-in children; the main
     /// card fits the whole overlay (no height cap).
     private var mainCard: some View {
-        wrapToContentThenScroll(onMeasured: { markMeasured(.main) }) { mainCardContent }
-    }
-
-    /// Record that `route`'s card has measured, revealing it (see `measuredRoutes`).
-    /// Instant, not animated — the card should appear at its real size, not fade
-    /// in against any ambient transition.
-    private func markMeasured(_ route: DetailRoute) {
-        guard !measuredRoutes.contains(route) else { return }
-        var transaction = Transaction()
-        transaction.disablesAnimations = true
-        withTransaction(transaction) { _ = measuredRoutes.insert(route) }
+        MeasuredGlassCard { mainCardContent }
     }
 
     @ViewBuilder
@@ -537,6 +510,9 @@ public struct TaskEditorView: View {
     /// the outer `scalarKey` observer; the recurrence rule is committed on Back
     /// (`commitRecurrence` auto-promotes a draft when a rule is set).
     private var scheduleChild: some View {
+        // A `Form` bounded by `.frame(maxHeight:)` is not vertically greedy and
+        // lays out synchronously, so — unlike the wrap cards — it needs no
+        // measurement gate; it just carries the shared glass panel directly.
         VStack(spacing: 0) {
             childHeader("Schedule") {
                 Task { try? await model.commitRecurrence() }
@@ -553,6 +529,8 @@ public struct TaskEditorView: View {
             }
             .frame(maxHeight: LillistSizing.editorChildMaxHeight)
         }
+        .frame(maxWidth: LillistSizing.editorCardMaxWidth)
+        .glassSurface(.panel, in: RoundedRectangle(cornerRadius: LillistRadius.l))
     }
 
     @ViewBuilder
@@ -579,44 +557,27 @@ public struct TaskEditorView: View {
     }
 
     private var attachmentsChild: some View {
-        VStack(spacing: 0) {
+        MeasuredGlassCard(maxHeight: LillistSizing.editorChildMaxHeight) {
             childHeader("Attachments") { route = .main }
-            wrapToContentThenScroll(maxHeight: LillistSizing.editorChildMaxHeight, onMeasured: { markMeasured(.attachments) }) {
-                EditorAttachmentsSection(
-                    attachments: model.attachments,
-                    onAddTapped: onAddAttachment,
-                    onDelete: { id in Task { await model.deleteAttachment(id: id) } }
-                )
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(LillistSpacing.l)
-            }
+        } content: {
+            EditorAttachmentsSection(
+                attachments: model.attachments,
+                onAddTapped: onAddAttachment,
+                onDelete: { id in Task { await model.deleteAttachment(id: id) } }
+            )
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(LillistSpacing.l)
         }
     }
 
     private var journalChild: some View {
-        VStack(spacing: 0) {
+        MeasuredGlassCard(maxHeight: LillistSizing.editorChildMaxHeight) {
             childHeader("Journal") { route = .main }
-            wrapToContentThenScroll(maxHeight: LillistSizing.editorChildMaxHeight, onMeasured: { markMeasured(.journal) }) {
-                EditorJournalSection(entries: model.journal)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(LillistSpacing.l)
-            }
+        } content: {
+            EditorJournalSection(entries: model.journal)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(LillistSpacing.l)
         }
-    }
-
-    /// Wrap content so it hugs its size and scrolls only on genuine overflow,
-    /// in a **single, non-swapping subtree** (`WrapToContentThenScroll`).
-    /// `maxHeight` bounds the scroll viewport — drill-in children pass
-    /// `editorChildMaxHeight` so a nearly-empty child hugs its content and a
-    /// long one scrolls; the main card passes `nil` to fit the whole overlay.
-    /// `onMeasured` fires when the content's height is first measured, so the
-    /// host can reveal the card (see `cardMeasured`).
-    private func wrapToContentThenScroll<Content: View>(
-        maxHeight: CGFloat? = nil,
-        onMeasured: @escaping () -> Void = {},
-        @ViewBuilder _ content: () -> Content
-    ) -> some View {
-        WrapToContentThenScroll(maxHeight: maxHeight, onMeasured: onMeasured, content: content())
     }
 
     // MARK: - Actions
@@ -670,56 +631,71 @@ public struct TaskEditorView: View {
     }
 }
 
-/// Wrap-then-scroll in a **single, non-swapping subtree**: the content hugs its
-/// size when it fits the offered height and scrolls in place only on genuine
-/// overflow — without a `ViewThatFits` candidate swap.
+/// The editor's card chrome: a glass panel that hugs its scrolling content and
+/// **hides itself until that content first measures**, so the greedy
+/// pre-measurement height never paints — on first appearance *and* on re-entry
+/// after a drill-in (SwiftUI rebuilds the `switch route` branch, resetting the
+/// measured height to 0). The gate is per card and *inside* the glass, so the
+/// shared route transition still animates the other cards rather than blanking
+/// the whole subtree.
 ///
-/// The former `ViewThatFits(in: .vertical) { inner; ScrollView { inner } }`
-/// swapped between two structurally-distinct subtrees when a keyboard/content
-/// change flipped the fit decision, which *tore down and rebuilt* any focused
-/// field inside `inner`. That collapsed the inline "+ Tag" field mid-edit and
-/// dropped its keyboard — a failure no hoisted value state could fully survive,
-/// because SwiftUI mutates `@FocusState` on the teardown (issue #32).
-///
-/// A bare `ScrollView` is vertically greedy, so cap its height to the content's
-/// own measured ideal height (bounded by `maxHeight`): the parent's proposal
-/// then constrains it further when the keyboard shrinks the offer, engaging the
-/// scroll *without* recreating the subtree. Wrap-to-content (#22) is preserved.
-private struct WrapToContentThenScroll<Content: View>: View {
-    let maxHeight: CGFloat?
-    /// Fires once, when the content's height is first measured, so the host can
-    /// reveal the card (the glass panel around this view lives one level up, so
-    /// the hide-until-measured gate must be applied there, not here).
-    var onMeasured: () -> Void = {}
-    let content: Content
+/// A bare `ScrollView` is vertically greedy, so its height is capped to the
+/// content's own measured ideal height (bounded by `maxHeight`): the parent's
+/// proposal then engages the scroll when the keyboard shrinks the offer, without
+/// recreating the subtree (so a focused "+ Tag" field isn't torn down — issue
+/// #32). `header` (a child popup's Back bar) sits above the scroll area, inside
+/// the glass; the main card passes none. Wrap-to-content (#22) is preserved.
+private struct MeasuredGlassCard<Header: View, Content: View>: View {
+    private let maxHeight: CGFloat?
+    private let header: Header
+    private let content: Content
 
     /// The content's ideal (unclipped) height, measured inside the scroll view
     /// where it's proposed an unbounded vertical extent. `0` until the first
-    /// `onGeometryChange` lands; the host keeps the card hidden until then rather
-    /// than painting at a guessed or greedy height.
+    /// `onGeometryChange` lands, so the card stays hidden until then.
     @State private var contentHeight: CGFloat = 0
 
+    init(
+        maxHeight: CGFloat? = nil,
+        @ViewBuilder header: () -> Header,
+        @ViewBuilder content: () -> Content
+    ) {
+        self.maxHeight = maxHeight
+        self.header = header()
+        self.content = content()
+    }
+
     var body: some View {
-        ScrollView(.vertical) {
-            content
-                .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { newHeight in
-                    let wasUnmeasured = contentHeight == 0
-                    contentHeight = newHeight
-                    if wasUnmeasured, newHeight > 0 { onMeasured() }
-                }
+        VStack(spacing: 0) {
+            header
+            ScrollView(.vertical) {
+                content
+                    .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { contentHeight = $0 }
+            }
+            .frame(maxHeight: cappedHeight)
         }
-        .frame(maxHeight: cappedHeight)
+        .frame(maxWidth: LillistSizing.editorCardMaxWidth)
+        .glassSurface(.panel, in: RoundedRectangle(cornerRadius: LillistRadius.l))
+        // Hide until the content measures. `onGeometryChange` reports in a later
+        // transaction, so the reveal (0 → measured) isn't the route change — it's
+        // instant, not caught by the outer `.animation(value: route)`.
+        .opacity(contentHeight > 0 ? 1 : 0)
     }
 
     /// Cap the greedy scroll view to the content's ideal height (so it hugs),
-    /// bounded by `maxHeight`. `nil` until the first measurement lands — the host
-    /// keeps the card hidden until `onMeasured` fires (see `fullBody`), so the
-    /// transient greedy height is never seen; the measured value takes over on
-    /// the next transaction.
+    /// bounded by `maxHeight`. `nil` until the first measurement lands — the card
+    /// is hidden then (see `body`), so the transient greedy height is never seen.
     private var cappedHeight: CGFloat? {
         guard contentHeight > 0 else { return nil }
         guard let maxHeight else { return contentHeight }
         return min(contentHeight, maxHeight)
+    }
+}
+
+extension MeasuredGlassCard where Header == EmptyView {
+    /// A headerless card (the main detail card).
+    init(maxHeight: CGFloat? = nil, @ViewBuilder content: () -> Content) {
+        self.init(maxHeight: maxHeight, header: { EmptyView() }, content: content)
     }
 }
 
