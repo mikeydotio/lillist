@@ -160,4 +160,72 @@ final class TaskTapOpenUITests: XCTestCase {
             "have collapsed. Field reads '\(observed ?? "nil")'"
         )
     }
+
+    /// Drill-in boundary (issue #26): hoisting the tag-edit state to
+    /// `TaskEditorView` widened its lifetime from the *card* to the *editor*,
+    /// and `route` is `@State` on that same view — so drilling into a child and
+    /// returning re-evaluates `body` without destroying identity. Without a
+    /// reset, `isTagEditing` survives the round-trip and the field re-presents
+    /// on Back, focused and holding a stale draft (and `TagAssignmentField`'s
+    /// `.onAppear` re-raises the keyboard). This pins that a deliberate drill-in
+    /// collapses the field: it must fail before the `.onChange(of: route)` reset
+    /// and pass after.
+    func test_fullEditor_tagField_collapsesAfterDrillInAndBack() throws {
+        let (app, title) = UITestHelpers.launchWithOneTask()
+        let cell = UITestHelpers.cell(in: app, containing: title)
+        cell.coordinate(withNormalizedOffset: CGVector(dx: 0.6, dy: 0.5)).tap()
+
+        let titleField = app.descendants(matching: .any)
+            .matching(identifier: "EditorTitleField")
+            .firstMatch
+        XCTAssertTrue(titleField.waitForExistence(timeout: 5), "Editor did not open")
+        let loadDeadline = Date().addingTimeInterval(5)
+        while Date() < loadDeadline, (titleField.value as? String) != title {
+            Thread.sleep(forTimeInterval: 0.2)
+        }
+
+        // Open the inline tag field and type a partial, uncommitted draft.
+        let addTag = app.buttons["AddTagButton"]
+        XCTAssertTrue(addTag.waitForExistence(timeout: 5), "The + Tag pill is missing")
+        addTag.tap()
+
+        let tagField = app.descendants(matching: .any)
+            .matching(identifier: "TagAssignmentField")
+            .firstMatch
+        XCTAssertTrue(
+            tagField.waitForExistence(timeout: 3),
+            "The inline tag field did not open after tapping + Tag"
+        )
+        tagField.typeText("wor")
+
+        // Drill into the Schedule child. A SwiftUI Button tap does NOT resign
+        // the tag field's first responder, so this is a route change, not a
+        // tap-away — exactly the path that left the state alive pre-fix.
+        let scheduleRow = app.descendants(matching: .any)
+            .matching(identifier: "EditorScheduleRow")
+            .firstMatch
+        XCTAssertTrue(scheduleRow.waitForExistence(timeout: 3), "Schedule row missing")
+        scheduleRow.tap()
+
+        let back = app.buttons["EditorChildBackButton"]
+        XCTAssertTrue(back.waitForExistence(timeout: 3), "Child Back button missing")
+        back.tap()
+
+        // Back on the main card, the field must be collapsed: the + Tag pill is
+        // shown again and no inline tag field (hence no stale "wor" draft, no
+        // unbidden keyboard) is present. `.animation(value: route)` settles the
+        // rebuild quickly, so poll the pill's return.
+        XCTAssertTrue(
+            addTag.waitForExistence(timeout: 3),
+            "The + Tag pill did not return after drill-in → Back — the tag field " +
+            "re-presented with the hoisted state still set (issue #26)"
+        )
+        // Give any re-presentation a beat to appear before asserting absence.
+        Thread.sleep(forTimeInterval: 0.5)
+        XCTAssertFalse(
+            tagField.exists,
+            "The inline tag field re-opened after drill-in → Back, holding the " +
+            "abandoned draft (issue #26 regression)"
+        )
+    }
 }

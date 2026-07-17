@@ -130,6 +130,21 @@ public struct TaskEditorView: View {
         .onChange(of: scalarKey) { _, _ in
             Task { await model.saveScalarsNow() }
         }
+        // The tag row's inline-edit state is hoisted here so it survives a
+        // ViewThatFits candidate swap (see the decls above). But `route` is
+        // `@State` on this same view, so drilling into a child and returning
+        // re-evaluates `body` without destroying our identity — an open tag
+        // edit would otherwise survive the round-trip and re-present itself,
+        // focused and holding a stale draft, on Back. Drilling in is a
+        // deliberate context switch, so collapse the field and drop the draft
+        // when we leave the main card (the same discard the tap-away contract
+        // makes; the return to `.main` then shows the collapsed pill).
+        .onChange(of: route) { _, newRoute in
+            if newRoute != .main {
+                isTagEditing = false
+                tagDraft = ""
+            }
+        }
         .animation(reduceMotion ? nil : LillistMotion.squish(LillistMotion.fast), value: route)
     }
 
