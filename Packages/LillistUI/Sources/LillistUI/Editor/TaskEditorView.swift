@@ -44,6 +44,14 @@ public struct TaskEditorView: View {
     @State private var tagDraft = ""
     @FocusState private var tagFieldFocused: Bool
 
+    // True once the current route's card has measured its content height. The
+    // wrap card is greedy (fills the offer) until `onGeometryChange` lands, and
+    // the glass panel around it sizes to that greedy frame — so `fullBody` paints
+    // nothing until measured, else the panel flashes at the full offered height
+    // on open and on every drill-in → Back. Reset on route change; set by each
+    // wrap card's `onMeasured`.
+    @State private var cardMeasured = false
+
     @Environment(\.accessibilityReduceMotion) private var systemReduceMotion
     @Environment(\.reduceMotionOverride) private var overrideReduceMotion
     private var reduceMotion: Bool { overrideReduceMotion ?? systemReduceMotion }
@@ -125,6 +133,12 @@ public struct TaskEditorView: View {
         }
         .frame(maxWidth: LillistSizing.editorCardMaxWidth)
         .glassSurface(.panel, in: RoundedRectangle(cornerRadius: LillistRadius.l))
+        // Hide the whole card — glass panel included — until the first wrap card
+        // measures, so the greedy pre-measurement frame never paints on open.
+        // Not reset on route change: SwiftUI preserves each card's measured
+        // height across a drill-in → Back round-trip, so the card is already
+        // correctly sized on return — re-hiding it would only stick it blank.
+        .opacity(cardMeasured ? 1 : 0)
         .task(id: textEditKey) {
             do { try await Task.sleep(for: .milliseconds(500)) } catch { return }
             await model.saveTextNow()
@@ -132,14 +146,12 @@ public struct TaskEditorView: View {
         .onChange(of: scalarKey) { _, _ in
             Task { await model.saveScalarsNow() }
         }
-        // The tag row's inline-edit state is hoisted to this view (see the
-        // decls above). `route` is `@State` on this same view, so drilling into
-        // a child and returning re-evaluates `body` without destroying our
-        // identity — an open tag edit would otherwise survive the round-trip and
-        // re-present itself, focused and holding a stale draft, on Back. Drilling
-        // in is a deliberate context switch, so collapse the field and drop the
-        // draft when we leave the main card (the same discard the tap-away
-        // contract makes; the return to `.main` then shows the collapsed pill).
+        // The tag row's inline-edit state is hoisted to this view. `route` is
+        // `@State` here, so drilling into a child and returning re-evaluates
+        // `body` without destroying identity — an open tag edit would survive the
+        // round-trip and re-present itself, focused and holding a stale draft, on
+        // Back. Drilling in is a deliberate context switch, so collapse the field
+        // and drop the draft when we leave the main card.
         .onChange(of: route) { _, newRoute in
             if newRoute != .main {
                 isTagEditing = false
@@ -157,7 +169,17 @@ public struct TaskEditorView: View {
     /// `wrapToContentThenScroll` valve with the drill-in children; the main
     /// card fits the whole overlay (no height cap).
     private var mainCard: some View {
-        wrapToContentThenScroll { mainCardContent }
+        wrapToContentThenScroll(onMeasured: markCardMeasured) { mainCardContent }
+    }
+
+    /// Reveal the card once its wrap content has measured (see `cardMeasured`).
+    /// Instant, not animated — the card should appear at its real size, not fade
+    /// in against any ambient transition.
+    private func markCardMeasured() {
+        guard !cardMeasured else { return }
+        var transaction = Transaction()
+        transaction.disablesAnimations = true
+        withTransaction(transaction) { cardMeasured = true }
     }
 
     @ViewBuilder
@@ -276,6 +298,14 @@ public struct TaskEditorView: View {
     /// snapshot path — verify the hug on-device against a note whose lines wrap
     /// right at the box width, and tune here if needed.
     private static let macNotesSizerInset: CGFloat = 12
+    /// Vertical slack the sizer adds beyond the raw text height. `NSTextView`
+    /// insets its text vertically (`textContainerInset`, top **and** bottom) on
+    /// top of the wrapped-line height, and a note of short lines (no horizontal
+    /// wrap difference) gets no slack from `macNotesSizerInset` — so without this
+    /// the box resolves to ~the raw text height and the editor clips its last
+    /// line. Add a small over-estimate of that vertical inset (top+bottom); a bit
+    /// of bottom breathing room is harmless, a shortfall clips. Verify on-device.
+    private static let macNotesVerticalSlack: CGFloat = 8
     /// ~2 lines of body text — the iOS field's `.lineLimit(2...8)` floor.
     private static let macNotesMinHeight: CGFloat = 44
 
@@ -306,6 +336,7 @@ public struct TaskEditorView: View {
             .accessibilityHidden(true)
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.horizontal, Self.macNotesSizerInset)
+            .padding(.vertical, Self.macNotesVerticalSlack)
             .frame(
                 minHeight: Self.macNotesMinHeight,
                 maxHeight: LillistSizing.editorNotesMaxHeight,
@@ -544,7 +575,7 @@ public struct TaskEditorView: View {
     private var attachmentsChild: some View {
         VStack(spacing: 0) {
             childHeader("Attachments") { route = .main }
-            wrapToContentThenScroll(maxHeight: LillistSizing.editorChildMaxHeight) {
+            wrapToContentThenScroll(maxHeight: LillistSizing.editorChildMaxHeight, onMeasured: markCardMeasured) {
                 EditorAttachmentsSection(
                     attachments: model.attachments,
                     onAddTapped: onAddAttachment,
@@ -559,7 +590,7 @@ public struct TaskEditorView: View {
     private var journalChild: some View {
         VStack(spacing: 0) {
             childHeader("Journal") { route = .main }
-            wrapToContentThenScroll(maxHeight: LillistSizing.editorChildMaxHeight) {
+            wrapToContentThenScroll(maxHeight: LillistSizing.editorChildMaxHeight, onMeasured: markCardMeasured) {
                 EditorJournalSection(entries: model.journal)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(LillistSpacing.l)
@@ -572,11 +603,14 @@ public struct TaskEditorView: View {
     /// `maxHeight` bounds the scroll viewport — drill-in children pass
     /// `editorChildMaxHeight` so a nearly-empty child hugs its content and a
     /// long one scrolls; the main card passes `nil` to fit the whole overlay.
+    /// `onMeasured` fires when the content's height is first measured, so the
+    /// host can reveal the card (see `cardMeasured`).
     private func wrapToContentThenScroll<Content: View>(
         maxHeight: CGFloat? = nil,
+        onMeasured: @escaping () -> Void = {},
         @ViewBuilder _ content: () -> Content
     ) -> some View {
-        WrapToContentThenScroll(maxHeight: maxHeight, content: content())
+        WrapToContentThenScroll(maxHeight: maxHeight, onMeasured: onMeasured, content: content())
     }
 
     // MARK: - Actions
@@ -647,36 +681,35 @@ public struct TaskEditorView: View {
 /// scroll *without* recreating the subtree. Wrap-to-content (#22) is preserved.
 private struct WrapToContentThenScroll<Content: View>: View {
     let maxHeight: CGFloat?
+    /// Fires once, when the content's height is first measured, so the host can
+    /// reveal the card (the glass panel around this view lives one level up, so
+    /// the hide-until-measured gate must be applied there, not here).
+    var onMeasured: () -> Void = {}
     let content: Content
 
     /// The content's ideal (unclipped) height, measured inside the scroll view
     /// where it's proposed an unbounded vertical extent. `0` until the first
-    /// `onGeometryChange` lands, so the view stays hidden for that first pass
-    /// rather than painting at a guessed or greedy height.
+    /// `onGeometryChange` lands; the host keeps the card hidden until then rather
+    /// than painting at a guessed or greedy height.
     @State private var contentHeight: CGFloat = 0
 
     var body: some View {
         ScrollView(.vertical) {
             content
-                .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { contentHeight = $0 }
+                .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { newHeight in
+                    let wasUnmeasured = contentHeight == 0
+                    contentHeight = newHeight
+                    if wasUnmeasured, newHeight > 0 { onMeasured() }
+                }
         }
         .frame(maxHeight: cappedHeight)
-        // Don't paint until the first measurement lands. `onGeometryChange`
-        // reports in a *later* transaction, so the first pass has no real height
-        // — any guess is wrong for some card (a fat note settles well above a
-        // "typical" estimate; a near-empty child well below its `maxHeight`), and
-        // a greedy fill overshoots to the full offer. Either way it would snap on
-        // open and recur on every drill-in → Back (the `route` switch
-        // re-instantiates this view with `contentHeight` reset to 0). Staying
-        // hidden until measured shows the card once, at its real size. The next
-        // transaction fires within a frame, so the reveal reads as instant.
-        .opacity(contentHeight > 0 ? 1 : 0)
     }
 
     /// Cap the greedy scroll view to the content's ideal height (so it hugs),
-    /// bounded by `maxHeight`. `nil` until the first measurement lands — the view
-    /// is hidden for that pass (see `body`), so the transient greedy height is
-    /// never seen; the measured value takes over on the next transaction.
+    /// bounded by `maxHeight`. `nil` until the first measurement lands — the host
+    /// keeps the card hidden until `onMeasured` fires (see `fullBody`), so the
+    /// transient greedy height is never seen; the measured value takes over on
+    /// the next transaction.
     private var cappedHeight: CGFloat? {
         guard contentHeight > 0 else { return nil }
         guard let maxHeight else { return contentHeight }
