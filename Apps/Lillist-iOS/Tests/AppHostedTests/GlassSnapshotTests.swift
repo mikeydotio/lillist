@@ -93,12 +93,88 @@ final class GlassSnapshotTests: XCTestCase {
     /// `ScrollView` (which reports ~the offered 1200), passes once the card
     /// self-sizes. Offers a large *finite* height — an unbounded proposal would
     /// not discriminate a greedy ScrollView from a wrapping VStack.
+    ///
+    /// The band is tightened (#27): the card wraps to ~335pt, so the old
+    /// `< 700` ceiling left a ~2× margin that a mildly-greedy layout could slip
+    /// under. Assert a floor too, so a card that collapses to nothing also
+    /// fails, while staying clear of the ~1200pt greedy-`ScrollView` value.
+    ///
+    /// Measured *settled* (`settledEditorHeight`): the single-subtree
+    /// `WrapToContentThenScroll` (#32) caps a greedy `ScrollView` to the
+    /// content's height that it measures asynchronously (`onGeometryChange`), so
+    /// a one-shot `sizeThatFits` would read the pre-measurement greedy height.
     @MainActor func test_fullEditor_wrapsToContent() async throws {
-        let editor = TaskEditorView(model: try await fullEditorModel(), onDismiss: {})
-        let host = UIHostingController(rootView: editor)
-        let fit = host.sizeThatFits(in: CGSize(width: 393, height: 1200))
-        XCTAssertLessThan(fit.height, 700,
-            "Full editor should wrap to its content (~335pt), not fill the offered 1200pt height")
+        let height = settledEditorHeight(try await fullEditorModel(), offered: 1200)
+        XCTAssertTrue((250...450).contains(height),
+            "Full editor should wrap to its content (~335pt), not fill the offered " +
+            "1200pt height nor collapse — measured \(height)pt")
+    }
+
+    /// Measures the keyboard-driven fit-boundary crossing the tag-field survival
+    /// test relies on (#27). A fat-notes card is tall enough that it *wraps*
+    /// (the wrap-then-scroll reports its natural height) when offered the
+    /// keyboard-down height, but must *scroll* (its height caps to the offer)
+    /// when the keyboard shrinks the offered height. The plain card never
+    /// crosses that boundary — which is exactly why the title-only UI test could
+    /// not exercise it — so this proves the fat-notes seed does. With the
+    /// candidate swap eliminated (#32) the crossing is now a single ScrollView
+    /// engaging its scroll, not a subtree swap, so the focused field survives.
+    @MainActor func test_fatNotesEditor_engagesScrollWhenKeyboardShrinksOffer() async throws {
+        // iPhone-17 keyboard-up offered height (design-doc math from the PR #25
+        // review: 874 − 103 status/nav − 336 keyboard − 48 overlay padding).
+        let keyboardUpOffer: CGFloat = 387
+        let keyboardDownOffer: CGFloat = 723
+
+        let fatNatural = settledEditorHeight(try await fatNotesFullEditorModel(), offered: keyboardDownOffer)
+        let fatConstrained = settledEditorHeight(try await fatNotesFullEditorModel(), offered: keyboardUpOffer)
+        let plainConstrained = settledEditorHeight(try await fullEditorModel(), offered: keyboardUpOffer)
+
+        // The fat card's natural height exceeds the keyboard-up offer, so a
+        // keyboard rising forces the card across the fit boundary.
+        XCTAssertGreaterThan(fatNatural, keyboardUpOffer,
+            "Fat-notes card (\(fatNatural)pt) must exceed the keyboard-up offer " +
+            "(\(keyboardUpOffer)pt), else the keyboard can't cross the fit boundary")
+        // Offered less than its natural height, the card caps to the offer and
+        // scrolls in place (single subtree — no candidate swap).
+        XCTAssertLessThan(fatConstrained, fatNatural,
+            "Fat-notes card did not cap to the keyboard-up offer and scroll — " +
+            "reported \(fatConstrained)pt (natural \(fatNatural)pt)")
+        // The plain card stays inside the keyboard-up offer, so it never crosses
+        // the boundary — the reason the pre-#27 title-only test couldn't reach it.
+        XCTAssertLessThanOrEqual(plainConstrained, keyboardUpOffer,
+            "Plain full editor (\(plainConstrained)pt) unexpectedly exceeds the " +
+            "keyboard-up offer; it should fit without scrolling")
+    }
+
+    /// Settled fitting height of the full editor at a given offered height.
+    /// `WrapToContentThenScroll` measures its content asynchronously
+    /// (`onGeometryChange`), so the view must be hosted in a live window and the
+    /// run loop pumped before `sizeThatFits` reflects the wrapped/capped height
+    /// rather than the pre-measurement greedy fill.
+    @MainActor
+    private func settledEditorHeight(_ model: TaskEditorModel, offered: CGFloat) -> CGFloat {
+        let size = CGSize(width: 393, height: offered)
+        let host = UIHostingController(rootView: TaskEditorView(model: model, onDismiss: {}))
+        host.view.frame = CGRect(origin: .zero, size: size)
+        // App-hosted: attach to the host app's live scene so `onGeometryChange`
+        // fires. `UIWindow(frame:)` is deprecated on iOS 26 — use the scene.
+        let scene = UIApplication.shared.connectedScenes
+            .compactMap { $0 as? UIWindowScene }
+            .first { $0.activationState == .foregroundActive }
+            ?? UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }.first
+        guard let scene else {
+            // Unreachable in the app-hosted bundle (the host app always has a
+            // foreground scene); best-effort one-shot fallback if it ever isn't.
+            return host.sizeThatFits(in: size).height
+        }
+        let window = UIWindow(windowScene: scene)
+        window.frame = host.view.frame
+        window.rootViewController = host
+        window.isHidden = false
+        host.view.layoutIfNeeded()
+        RunLoop.current.run(until: Date(timeIntervalSinceNow: 0.15))
+        host.view.layoutIfNeeded()
+        return host.sizeThatFits(in: size).height
     }
 
     // MARK: - fixtures
@@ -156,6 +232,19 @@ final class GlassSnapshotTests: XCTestCase {
         await model.addTag(name: "marketing")
         model.isPinned = true
         model.mode = .full
+        return model
+    }
+
+    /// A full-mode draft whose notes body is long enough to drive the
+    /// content-hugging notes field (`.lineLimit(2...8)`) to its scroll cap, so
+    /// the card is tall enough to cross the keyboard-driven fit boundary. Mirrors
+    /// the `--ui-test-seed-fat-notes` seed the boundary UI test relies on.
+    @MainActor
+    private func fatNotesFullEditorModel() async throws -> TaskEditorModel {
+        let model = try await fullEditorModel()
+        model.notes = (1...10)
+            .map { "Notes line \($0): detail that grows the content-hugging box." }
+            .joined(separator: "\n")
         return model
     }
 
