@@ -158,11 +158,7 @@ final class GlassSnapshotTests: XCTestCase {
         host.view.frame = CGRect(origin: .zero, size: windowSize)
         // App-hosted: attach to the host app's live scene so `onGeometryChange`
         // fires. `UIWindow(frame:)` is deprecated on iOS 26 — use the scene.
-        let scene = UIApplication.shared.connectedScenes
-            .compactMap { $0 as? UIWindowScene }
-            .first { $0.activationState == .foregroundActive }
-            ?? UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }.first
-        guard let scene else {
+        guard let scene = foregroundWindowScene() else {
             // Unreachable in the app-hosted bundle (the host app always has a
             // foreground scene); best-effort one-shot fallback if it ever isn't.
             return host.sizeThatFits(in: windowSize).height
@@ -385,15 +381,16 @@ final class GlassSnapshotTests: XCTestCase {
         let host = UIHostingController(rootView: hosted)
         host.overrideUserInterfaceStyle = dark ? .dark : .light
         host.view.frame = CGRect(origin: .zero, size: size)
-        // Settle async layout before capturing: the editor's `MeasuredGlassCard`
-        // sizes to a height that `onGeometryChange` reports in a *later*
-        // transaction, so force a layout pass and pump the run loop first — else
-        // the capture could catch the bounded first-pass height instead of the
-        // measured one.
-        host.view.setNeedsLayout()
-        host.view.layoutIfNeeded()
-        RunLoop.current.run(until: Date(timeIntervalSinceNow: 0.1))
-        host.view.layoutIfNeeded()
+        // The editor's `MeasuredGlassCard` sizes to a height `onGeometryChange`
+        // reports in a later transaction, so it can't be settled by a run-loop
+        // pump on the detached `host.view` (that callback only fires in a live
+        // window). It doesn't need to be: `drawHierarchyInKeyWindow` renders
+        // `afterScreenUpdates: true`, which flushes pending layout — including the
+        // measurement's state update — before the image is captured. So the card
+        // is captured at its measured height, not the bounded first-pass one, and
+        // (unlike attaching an offscreen live window here) glass still composites
+        // correctly. Verified: the `test_editor_full_*` baselines are the
+        // populated ~335pt card.
         withSnapshotTesting(record: recordMode) {
             assertSnapshot(
                 of: host,
@@ -401,5 +398,15 @@ final class GlassSnapshotTests: XCTestCase {
                 testName: function
             )
         }
+    }
+
+    /// The host app's foreground window scene, used to host offscreen views in a
+    /// live window so `onGeometryChange`-driven layout settles.
+    @MainActor
+    private func foregroundWindowScene() -> UIWindowScene? {
+        UIApplication.shared.connectedScenes
+            .compactMap { $0 as? UIWindowScene }
+            .first { $0.activationState == .foregroundActive }
+            ?? UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }.first
     }
 }
