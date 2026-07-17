@@ -132,15 +132,14 @@ public struct TaskEditorView: View {
         .onChange(of: scalarKey) { _, _ in
             Task { await model.saveScalarsNow() }
         }
-        // The tag row's inline-edit state is hoisted here so it survives a
-        // ViewThatFits candidate swap (see the decls above). But `route` is
-        // `@State` on this same view, so drilling into a child and returning
-        // re-evaluates `body` without destroying our identity — an open tag
-        // edit would otherwise survive the round-trip and re-present itself,
-        // focused and holding a stale draft, on Back. Drilling in is a
-        // deliberate context switch, so collapse the field and drop the draft
-        // when we leave the main card (the same discard the tap-away contract
-        // makes; the return to `.main` then shows the collapsed pill).
+        // The tag row's inline-edit state is hoisted to this view (see the
+        // decls above). `route` is `@State` on this same view, so drilling into
+        // a child and returning re-evaluates `body` without destroying our
+        // identity — an open tag edit would otherwise survive the round-trip and
+        // re-present itself, focused and holding a stale draft, on Back. Drilling
+        // in is a deliberate context switch, so collapse the field and drop the
+        // draft when we leave the main card (the same discard the tap-away
+        // contract makes; the return to `.main` then shows the collapsed pill).
         .onChange(of: route) { _, newRoute in
             if newRoute != .main {
                 isTagEditing = false
@@ -270,6 +269,15 @@ public struct TaskEditorView: View {
     /// ~2 lines of body text — the iOS field's `.lineLimit(2...8)` floor.
     private static let macNotesMinHeight: CGFloat = 44
 
+    /// The string the invisible sizer measures. SwiftUI `Text` drops a trailing
+    /// newline from its measured height, so a note ending in Return (or a blank
+    /// last line) would leave the `TextEditor`'s caret on an uncounted line and
+    /// clip it. Append a zero-width space so the final line is always counted;
+    /// the sizer is `.clear`, so it's invisible either way.
+    private var macNotesSizerText: String {
+        model.notes.isEmpty ? " " : model.notes + "\u{200B}"
+    }
+
     /// macOS notes field: a bounded `TextEditor` (Return → newline, #29) whose
     /// height is driven by an **invisible `Text` sizer** so the box still hugs
     /// its content like the iOS field (#22), capped at `editorNotesMaxHeight`.
@@ -279,7 +287,7 @@ public struct TaskEditorView: View {
     /// `TextEditor` merely fills it. A plain `ZStack` would instead let the
     /// greedy editor drive the height and defeat the hug (a fixed tall box).
     private var macNotesEditor: some View {
-        Text(model.notes.isEmpty ? " " : model.notes)
+        Text(macNotesSizerText)
             .font(LillistTypography.body)
             .foregroundStyle(.clear)
             .frame(maxWidth: .infinity, alignment: .leading)
