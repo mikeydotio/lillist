@@ -261,11 +261,21 @@ public struct TaskEditorView: View {
     }
 
     #if os(macOS)
-    /// Horizontal inset AppKit's `NSTextView` (backing `TextEditor`) applies
-    /// around its text; the invisible sizer and the placeholder match it so
-    /// they wrap at the same width as the live editor. Tunable if the box
-    /// mis-hugs on macOS (a wider sizer under-counts lines and clips).
+    /// Approximate horizontal inset of `TextEditor`'s text start on macOS
+    /// (`NSTextView`'s `lineFragmentPadding` ≈ 5pt), used to left-align the
+    /// placeholder with where the caret will sit.
     private static let macNotesTextInset: CGFloat = 5
+    /// Horizontal inset for the invisible **sizer** — deliberately *larger* than
+    /// the editor's real text inset. The sizer drives the box height by wrapping
+    /// the note at its own width, so if it wrapped *wider* than the live editor
+    /// it would count too few lines and the editor would clip its last line
+    /// against the height cap. `TextEditor` also applies a `textContainerInset`
+    /// beyond `lineFragmentPadding`, and the exact total isn't publicly known, so
+    /// bias the sizer narrower than any plausible editor width: it can then only
+    /// *over*-count (a little bottom slack), never clip. The macOS box has no
+    /// snapshot path — verify the hug on-device against a note whose lines wrap
+    /// right at the box width, and tune here if needed.
+    private static let macNotesSizerInset: CGFloat = 12
     /// ~2 lines of body text — the iOS field's `.lineLimit(2...8)` floor.
     private static let macNotesMinHeight: CGFloat = 44
 
@@ -295,7 +305,7 @@ public struct TaskEditorView: View {
             .foregroundStyle(.clear)
             .accessibilityHidden(true)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.horizontal, Self.macNotesTextInset)
+            .padding(.horizontal, Self.macNotesSizerInset)
             .frame(
                 minHeight: Self.macNotesMinHeight,
                 maxHeight: LillistSizing.editorNotesMaxHeight,
@@ -641,16 +651,9 @@ private struct WrapToContentThenScroll<Content: View>: View {
 
     /// The content's ideal (unclipped) height, measured inside the scroll view
     /// where it's proposed an unbounded vertical extent. `0` until the first
-    /// `onGeometryChange` lands, so `cappedHeight` seeds a bounded estimate for
-    /// that pass rather than letting the scroll view paint greedily.
+    /// `onGeometryChange` lands, so the view stays hidden for that first pass
+    /// rather than painting at a guessed or greedy height.
     @State private var contentHeight: CGFloat = 0
-
-    /// First-pass height estimate for the uncapped main card, used only until
-    /// `onGeometryChange` reports the real content height. A typical detail-card
-    /// height, so the initial frame is close to the settled size (a bare `nil`
-    /// here would paint at the full offered height, then snap down). Computed,
-    /// not stored: a generic type can't hold a `static` stored property.
-    private static var firstPassCardHeight: CGFloat { 340 }
 
     var body: some View {
         ScrollView(.vertical) {
@@ -658,22 +661,24 @@ private struct WrapToContentThenScroll<Content: View>: View {
                 .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { contentHeight = $0 }
         }
         .frame(maxHeight: cappedHeight)
+        // Don't paint until the first measurement lands. `onGeometryChange`
+        // reports in a *later* transaction, so the first pass has no real height
+        // — any guess is wrong for some card (a fat note settles well above a
+        // "typical" estimate; a near-empty child well below its `maxHeight`), and
+        // a greedy fill overshoots to the full offer. Either way it would snap on
+        // open and recur on every drill-in → Back (the `route` switch
+        // re-instantiates this view with `contentHeight` reset to 0). Staying
+        // hidden until measured shows the card once, at its real size. The next
+        // transaction fires within a frame, so the reveal reads as instant.
+        .opacity(contentHeight > 0 ? 1 : 0)
     }
 
     /// Cap the greedy scroll view to the content's ideal height (so it hugs),
-    /// bounded by `maxHeight`.
-    ///
-    /// Before the first measurement lands (`onGeometryChange` reports in a later
-    /// transaction), fall back to a *bounded* estimate — never `nil`. A `nil`
-    /// cap lets the greedy scroll view paint at the full offered height for one
-    /// pass and then snap to the content height; that overshoot is visible and
-    /// recurs on every drill-in → Back, because the `route` switch re-instantiates
-    /// this view with `contentHeight` reset to 0, overlapping the card's
-    /// transition. Drill-in children estimate with their own `maxHeight` cap
-    /// (their content trends toward it); the uncapped main card with a typical
-    /// card height. The measured value takes over on the next pass either way.
+    /// bounded by `maxHeight`. `nil` until the first measurement lands — the view
+    /// is hidden for that pass (see `body`), so the transient greedy height is
+    /// never seen; the measured value takes over on the next transaction.
     private var cappedHeight: CGFloat? {
-        guard contentHeight > 0 else { return maxHeight ?? Self.firstPassCardHeight }
+        guard contentHeight > 0 else { return nil }
         guard let maxHeight else { return contentHeight }
         return min(contentHeight, maxHeight)
     }
