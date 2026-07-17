@@ -165,7 +165,7 @@ final class GlassSnapshotTests: XCTestCase {
     /// `WrapToContentThenScroll` measures its content asynchronously
     /// (`onGeometryChange`), so the view must be hosted in a live window and the
     /// run loop pumped before `sizeThatFits` reflects the wrapped/capped height
-    /// rather than the pre-measurement greedy fill.
+    /// rather than the pre-measurement fallback.
     @MainActor
     private func settledEditorHeight(_ model: TaskEditorModel, offered: CGFloat) -> CGFloat {
         let size = CGSize(width: 393, height: offered)
@@ -189,10 +189,27 @@ final class GlassSnapshotTests: XCTestCase {
         window.frame = host.view.frame
         window.rootViewController = host
         window.isHidden = false
+
+        // Poll until the measured height stabilizes instead of trusting a fixed
+        // wait: `onGeometryChange` reports in a later transaction, so on a loaded
+        // machine a single sleep can read the pre-measure fallback
+        // (`maxHeight ?? firstPassCardHeight`) and return a stale number. Pump
+        // the run loop between reads and stop when two successive reads agree
+        // (the measurement has landed) — a slow measurement just lengthens the
+        // wait. If the real height equals the fallback, agreeing on it is
+        // correct; only a not-yet-applied measurement disagrees, forcing another
+        // pass. Bounded by a deadline so a stuck measurement can't hang.
+        let deadline = Date(timeIntervalSinceNow: 3)
         host.view.layoutIfNeeded()
-        RunLoop.current.run(until: Date(timeIntervalSinceNow: 0.15))
-        host.view.layoutIfNeeded()
-        return host.sizeThatFits(in: size).height
+        var last = host.sizeThatFits(in: size).height
+        while Date() < deadline {
+            RunLoop.current.run(until: Date(timeIntervalSinceNow: 0.05))
+            host.view.layoutIfNeeded()
+            let current = host.sizeThatFits(in: size).height
+            if current == last { return current }
+            last = current
+        }
+        return last
     }
 
     // MARK: - fixtures
