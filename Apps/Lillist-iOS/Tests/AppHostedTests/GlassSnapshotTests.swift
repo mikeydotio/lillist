@@ -168,6 +168,9 @@ final class GlassSnapshotTests: XCTestCase {
             return host.sizeThatFits(in: size).height
         }
         let window = UIWindow(windowScene: scene)
+        // Tear the window down so it doesn't outlive the call — a visible window
+        // is retained by its scene and would stack across the three probe calls.
+        defer { window.isHidden = true; window.rootViewController = nil }
         window.frame = host.view.frame
         window.rootViewController = host
         window.isHidden = false
@@ -237,14 +240,13 @@ final class GlassSnapshotTests: XCTestCase {
 
     /// A full-mode draft whose notes body is long enough to drive the
     /// content-hugging notes field (`.lineLimit(2...8)`) to its scroll cap, so
-    /// the card is tall enough to cross the keyboard-driven fit boundary. Mirrors
-    /// the `--ui-test-seed-fat-notes` seed the boundary UI test relies on.
+    /// the card is tall enough to cross the keyboard-driven fit boundary. Uses
+    /// the shared `UITestSeedContent.fatNotesBody()` so this probe measures the
+    /// exact card the `--ui-test-seed-fat-notes` UI test drives.
     @MainActor
     private func fatNotesFullEditorModel() async throws -> TaskEditorModel {
         let model = try await fullEditorModel()
-        model.notes = (1...10)
-            .map { "Notes line \($0): detail that grows the content-hugging box." }
-            .joined(separator: "\n")
+        model.notes = UITestSeedContent.fatNotesBody()
         return model
     }
 

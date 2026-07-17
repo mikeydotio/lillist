@@ -64,11 +64,11 @@ final class TaskTapOpenUITests: XCTestCase {
         )
     }
 
-    /// The #22 wrap fix nests the full-mode card in a `ViewThatFits`
-    /// (wrap-else-scroll), which instantiates BOTH a plain and a scrolling
-    /// copy of the card to measure them. This pins that the chosen copy's
-    /// live editors stay focusable — typed text must stick — so a
-    /// measurement-only "ghost" candidate can never swallow input.
+    /// The full-mode card wraps its content and scrolls only on overflow
+    /// (`WrapToContentThenScroll`, post-#32; the #22 wrap fix originally used a
+    /// `ViewThatFits`). This pins that the notes editor inside that wrap card
+    /// stays focusable — typed text must stick — so the wrap/scroll plumbing
+    /// never swallows input.
     func test_fullEditor_notesField_isEditable_insideWrapValve() throws {
         let (app, title) = UITestHelpers.launchWithOneTask()
         let cell = UITestHelpers.cell(in: app, containing: title)
@@ -110,19 +110,18 @@ final class TaskTapOpenUITests: XCTestCase {
         }
         XCTAssertTrue(
             observed?.contains(typed) ?? false,
-            "Typed notes did not stick inside the ViewThatFits card — the " +
-            "focused editor may be a measurement-only candidate. Field " +
-            "reads '\(observed ?? "nil")'"
+            "Typed notes did not stick inside the wrap card — the focused editor " +
+            "may not be the live one. Field reads '\(observed ?? "nil")'"
         )
     }
 
     /// Smoke test of the `+ Tag` inline field's open-and-type flow on a
     /// title-only task: tapping the pill opens the field and typed text sticks.
-    /// It does NOT cross the `ViewThatFits` fit boundary — a title-only card
-    /// fits the offered height with the keyboard up, so no candidate swap
-    /// occurs and this would stay green even with the tag state re-internalized.
-    /// The candidate-swap survival claim is pinned separately by
-    /// `test_fullEditor_tagField_survivesKeyboardDrivenValveSwap` (#27).
+    /// It does NOT cross the wrap card's fit boundary — a title-only card fits
+    /// the offered height with the keyboard up, so the card never scrolls and
+    /// this would stay green even with the tag state re-internalized. The
+    /// boundary-crossing survival claim is pinned separately by
+    /// `test_fullEditor_tagField_survivesKeyboardCrossingFitBoundary` (#27).
     func test_fullEditor_tagField_opensAndAcceptsInput() throws {
         let (app, title) = UITestHelpers.launchWithOneTask()
         let cell = UITestHelpers.cell(in: app, containing: title)
@@ -231,16 +230,17 @@ final class TaskTapOpenUITests: XCTestCase {
         )
     }
 
-    /// The reason the hoist exists (#27): the tag field must survive a genuine
-    /// keyboard-driven `ViewThatFits` candidate swap. A fat-notes task makes the
-    /// card tall enough that it wraps with the keyboard down but overflows once
-    /// tapping `+ Tag` raises the keyboard — flipping the valve to the scrolling
-    /// candidate mid-edit. If the edit state were internal to `TagAssignmentField`
-    /// the new candidate would show the collapsed pill (its `isEditing == false`),
-    /// so the field would flicker shut and the draft would be lost. Hoisted, the
-    /// open field and its draft survive the swap. Reverting the hoist regresses
-    /// this loudly (the field collapses; `TagAssignmentField` never re-appears).
-    func test_fullEditor_tagField_survivesKeyboardDrivenValveSwap() throws {
+    /// The tag field must survive a genuine keyboard-driven crossing of the wrap
+    /// card's fit boundary (#27). A fat-notes task makes the card tall enough
+    /// that it hugs its content with the keyboard down but overflows the offered
+    /// height once tapping `+ Tag` raises the keyboard — so the single
+    /// wrap-then-scroll subtree engages its scroll in place. (Before #32 this was
+    /// a `ViewThatFits` candidate swap that tore the focused field down and
+    /// dropped its draft; #32 replaced the valve with one non-swapping subtree.)
+    /// The open field and its typed draft must persist through that relayout.
+    /// Reverting #32 — restoring the candidate swap — regresses this loudly: the
+    /// field collapses and `TagAssignmentField` never re-appears.
+    func test_fullEditor_tagField_survivesKeyboardCrossingFitBoundary() throws {
         let (app, title) = UITestHelpers.launchWithFatNotesTask()
         let cell = UITestHelpers.cell(in: app, containing: title)
         cell.coordinate(withNormalizedOffset: CGVector(dx: 0.6, dy: 0.5)).tap()
@@ -256,20 +256,21 @@ final class TaskTapOpenUITests: XCTestCase {
 
         // Tapping + Tag opens the inline field, focuses it, and raises the
         // keyboard — which shrinks the offered height below the fat card's
-        // natural height and flips the wrap valve to its scrolling candidate.
+        // natural height, so the single wrap-then-scroll subtree scrolls in
+        // place. No candidate swap, so the focused field is never torn down.
         let addTag = app.buttons["AddTagButton"]
         XCTAssertTrue(addTag.waitForExistence(timeout: 5), "The + Tag pill is missing")
         addTag.tap()
 
-        // The field must still be present AFTER the swap. With the state
-        // internalized this fails here — the surviving candidate shows the pill.
+        // The field must still be present AFTER the keyboard-driven relayout.
+        // If #32's swap were restored, the field would be torn down here.
         let tagField = app.descendants(matching: .any)
             .matching(identifier: "TagAssignmentField")
             .firstMatch
         XCTAssertTrue(
             tagField.waitForExistence(timeout: 4),
-            "The inline tag field did not survive the keyboard-driven valve swap — " +
-            "it collapsed to the + Tag pill (the tag state re-internalized, #27)"
+            "The inline tag field did not survive the keyboard-driven boundary " +
+            "crossing — it collapsed to the + Tag pill (a #32 regression)"
         )
         tagField.typeText("urgent")
 
@@ -281,8 +282,9 @@ final class TaskTapOpenUITests: XCTestCase {
         }
         XCTAssertTrue(
             observed?.contains("urgent") ?? false,
-            "Typed tag draft did not stick across the valve swap — the field may " +
-            "have collapsed mid-edit. Field reads '\(observed ?? "nil")'"
+            "Typed tag draft did not stick across the keyboard-driven boundary " +
+            "crossing — the field may have collapsed mid-edit. Field reads " +
+            "'\(observed ?? "nil")'"
         )
     }
 }

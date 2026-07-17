@@ -102,9 +102,13 @@ enum UITestHelpers {
     /// Fresh-launch with the fat-notes seed seam, returning the running app and
     /// the seeded task's title. The seed (see `LillistApp.uiTestSeedFatTask`)
     /// creates one task with a long notes body BEFORE first render, so the full
-    /// editor's card is tall enough to cross the keyboard-driven `ViewThatFits`
-    /// fit boundary — the swap a title-only task never triggers. The title is
-    /// fixed by the seam (`uitest-fat-notes`); keep the two in sync.
+    /// editor's card is tall enough to cross the keyboard-driven fit boundary —
+    /// which a title-only task never reaches.
+    ///
+    /// The title literal must equal `LillistCore.UITestSeedContent.fatNotesTaskTitle`.
+    /// It's repeated here rather than imported because this UI-test bundle is
+    /// black-box against the app and can't link LillistCore; a mismatch fails
+    /// loudly (the row is never found), so no silent drift.
     @MainActor
     static func launchWithFatNotesTask() -> (XCUIApplication, String) {
         let app = XCUIApplication()
