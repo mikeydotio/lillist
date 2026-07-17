@@ -130,11 +130,11 @@ public struct TaskEditorView: View {
             case .journal: journalChild
             }
         }
-        // The card chrome (max width, glass panel, hide-until-measured gate) is
-        // applied per card by `MeasuredGlassCard`, not here — so each card defers
-        // only its *own* first greedy paint while the shared route transition
-        // still animates the others, and a card rebuilt on drill-in → Back
-        // re-hides until it re-measures (SwiftUI resets the branch's height).
+        // The card chrome (max width, glass panel, bounded first-pass height
+        // until the content measures) is applied per card by `MeasuredGlassCard`,
+        // not here — so each card sizes only its *own* first frame while the
+        // shared route transition still animates the others. A card rebuilt on
+        // drill-in → Back seeds its height from `cardHeights` so it doesn't reset.
         .task(id: textEditKey) {
             do { try await Task.sleep(for: .milliseconds(500)) } catch { return }
             await model.saveTextNow()
@@ -667,6 +667,16 @@ public struct TaskEditorView: View {
 /// frame to a *bounded* first-pass height: the card shows its top, in a
 /// reasonably-sized panel, then resizes to hug once measured — a small settle
 /// masked by the entry/route animation, never a full-offer flash or a blank pop.
+///
+/// Known limitation of the async cap: it trails content *growth* by a frame. On
+/// the main card (no `maxHeight`, so the cap equals the content height), adding a
+/// notes line while typing grows the content one layout pass before
+/// `onGeometryChange` raises the cap, so the scroll view is momentarily a line
+/// short and auto-scrolls to keep the caret visible — a one-frame micro-jump the
+/// synchronous `ViewThatFits` valve didn't have. It's the cost of the single,
+/// non-swapping subtree that keeps the focused field alive (#32); eliminating it
+/// would mean the field-tearing valve or moving the scroll to the overlay.
+/// Flagged for on-device confirmation of whether the settle is perceptible.
 private struct MeasuredGlassCard<Header: View, Content: View>: View {
     private let maxHeight: CGFloat?
     private let onMeasured: (CGFloat) -> Void
