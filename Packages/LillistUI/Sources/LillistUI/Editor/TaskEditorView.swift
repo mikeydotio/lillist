@@ -44,6 +44,13 @@ public struct TaskEditorView: View {
     @State private var tagDraft = ""
     @FocusState private var tagFieldFocused: Bool
 
+    // Last measured content height per route, kept on the host (which survives a
+    // drill-in → Back) so a card rebuilt on return seeds its own height instead
+    // of resetting to the bounded first-pass and popping to size a frame later.
+    // First visit to a route has no entry yet, so that card settles once, masked
+    // by the open/drill-in animation.
+    @State private var cardHeights: [DetailRoute: CGFloat] = [:]
+
     @Environment(\.accessibilityReduceMotion) private var systemReduceMotion
     @Environment(\.reduceMotionOverride) private var overrideReduceMotion
     private var reduceMotion: Bool { overrideReduceMotion ?? systemReduceMotion }
@@ -158,7 +165,10 @@ public struct TaskEditorView: View {
     /// `MeasuredGlassCard` chrome with the attachments/journal children; the main
     /// card passes no `maxHeight`, fitting the whole overlay.
     private var mainCard: some View {
-        MeasuredGlassCard { mainCardContent }
+        MeasuredGlassCard(
+            initialHeight: cardHeights[.main],
+            onMeasured: { cardHeights[.main] = $0 }
+        ) { mainCardContent }
     }
 
     @ViewBuilder
@@ -557,7 +567,11 @@ public struct TaskEditorView: View {
     }
 
     private var attachmentsChild: some View {
-        MeasuredGlassCard(maxHeight: LillistSizing.editorChildMaxHeight) {
+        MeasuredGlassCard(
+            maxHeight: LillistSizing.editorChildMaxHeight,
+            initialHeight: cardHeights[.attachments],
+            onMeasured: { cardHeights[.attachments] = $0 }
+        ) {
             childHeader("Attachments") { route = .main }
         } content: {
             EditorAttachmentsSection(
@@ -571,7 +585,11 @@ public struct TaskEditorView: View {
     }
 
     private var journalChild: some View {
-        MeasuredGlassCard(maxHeight: LillistSizing.editorChildMaxHeight) {
+        MeasuredGlassCard(
+            maxHeight: LillistSizing.editorChildMaxHeight,
+            initialHeight: cardHeights[.journal],
+            onMeasured: { cardHeights[.journal] = $0 }
+        ) {
             childHeader("Journal") { route = .main }
         } content: {
             EditorJournalSection(entries: model.journal)
@@ -651,14 +669,16 @@ public struct TaskEditorView: View {
 /// masked by the entry/route animation, never a full-offer flash or a blank pop.
 private struct MeasuredGlassCard<Header: View, Content: View>: View {
     private let maxHeight: CGFloat?
+    private let onMeasured: (CGFloat) -> Void
     private let header: Header
     private let content: Content
 
     /// The content's ideal (unclipped) height, measured inside the scroll view
-    /// where it's proposed an unbounded vertical extent. `0` until the first
-    /// `onGeometryChange` lands, when `cappedHeight` uses the bounded first-pass
-    /// height instead.
-    @State private var contentHeight: CGFloat = 0
+    /// where it's proposed an unbounded vertical extent. Seeded from the host's
+    /// remembered height (so a rebuilt card starts sized), else `0` — when
+    /// `cappedHeight` uses the bounded first-pass height until `onGeometryChange`
+    /// lands.
+    @State private var contentHeight: CGFloat
 
     /// Bounded first-pass height until the content measures — enough to show the
     /// card's top (header + first rows) without filling the offer. Computed, not
@@ -667,12 +687,16 @@ private struct MeasuredGlassCard<Header: View, Content: View>: View {
 
     init(
         maxHeight: CGFloat? = nil,
+        initialHeight: CGFloat?,
+        onMeasured: @escaping (CGFloat) -> Void,
         @ViewBuilder header: () -> Header,
         @ViewBuilder content: () -> Content
     ) {
         self.maxHeight = maxHeight
+        self.onMeasured = onMeasured
         self.header = header()
         self.content = content()
+        self._contentHeight = State(initialValue: initialHeight ?? 0)
     }
 
     var body: some View {
@@ -680,7 +704,10 @@ private struct MeasuredGlassCard<Header: View, Content: View>: View {
             header
             ScrollView(.vertical) {
                 content
-                    .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { contentHeight = $0 }
+                    .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { newHeight in
+                        contentHeight = newHeight
+                        onMeasured(newHeight)
+                    }
             }
             .frame(maxHeight: cappedHeight)
         }
@@ -701,8 +728,16 @@ private struct MeasuredGlassCard<Header: View, Content: View>: View {
 
 extension MeasuredGlassCard where Header == EmptyView {
     /// A headerless card (the main detail card).
-    init(maxHeight: CGFloat? = nil, @ViewBuilder content: () -> Content) {
-        self.init(maxHeight: maxHeight, header: { EmptyView() }, content: content)
+    init(
+        maxHeight: CGFloat? = nil,
+        initialHeight: CGFloat?,
+        onMeasured: @escaping (CGFloat) -> Void,
+        @ViewBuilder content: () -> Content
+    ) {
+        self.init(
+            maxHeight: maxHeight, initialHeight: initialHeight,
+            onMeasured: onMeasured, header: { EmptyView() }, content: content
+        )
     }
 }
 
