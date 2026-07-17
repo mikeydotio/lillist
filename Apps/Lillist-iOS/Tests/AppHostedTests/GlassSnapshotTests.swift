@@ -134,14 +134,14 @@ final class GlassSnapshotTests: XCTestCase {
     /// True content height of the full editor's wrap card — what
     /// `MeasuredGlassCard` measures via `onGeometryChange` and caps its
     /// `ScrollView` to (the card's fitting height at an offer `H` is then just
-    /// `min(content, H)`).
+    /// `min(content, H)`). Probed at a *huge* offer, so the card is never
+    /// offer-constrained and reports its full content height.
     ///
-    /// The measurement is async and the card is greedy until it lands, so host in
-    /// a live window and pump the run loop. Probe the fitting height at a *huge*
-    /// offer, which **any** real card wraps far below: the greedy pre-measurement
-    /// value fills that whole offer, so the first read that drops below it is
-    /// unambiguously the settled content height — no fill/overflow case to wait
-    /// out, so it converges the instant the measurement lands.
+    /// The measurement is async: until `onGeometryChange` lands, the card shows a
+    /// bounded first-pass height, not its content. Host in a live window and poll
+    /// — pump the run loop between `sizeThatFits` reads until the value holds
+    /// across several consecutive reads (so a value still transitioning off the
+    /// first-pass height can't be mistaken for settled), bounded by a deadline.
     @MainActor
     private func editorContentHeight(_ model: TaskEditorModel) -> CGFloat {
         let host = UIHostingController(rootView: TaskEditorView(model: model, onDismiss: {}))
@@ -168,14 +168,18 @@ final class GlassSnapshotTests: XCTestCase {
 
         let probe = CGSize(width: 393, height: 100_000)
         let deadline = Date(timeIntervalSinceNow: 3)
-        var content = probe.height
+        var last = CGFloat.nan
+        var stableReads = 0
         while Date() < deadline {
             host.view.layoutIfNeeded()
-            let measured = host.sizeThatFits(in: probe).height
-            if measured < probe.height - 1 { content = measured; break }
-            RunLoop.current.run(until: Date(timeIntervalSinceNow: 0.05))
+            RunLoop.current.run(until: Date(timeIntervalSinceNow: 0.02))
+            host.view.layoutIfNeeded()
+            let current = host.sizeThatFits(in: probe).height
+            stableReads = (current == last) ? stableReads + 1 : 0
+            if stableReads >= 3 { return current }
+            last = current
         }
-        return content
+        return last
     }
 
     // MARK: - fixtures
