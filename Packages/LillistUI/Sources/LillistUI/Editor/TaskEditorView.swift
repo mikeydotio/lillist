@@ -44,13 +44,18 @@ public struct TaskEditorView: View {
     @State private var tagDraft = ""
     @FocusState private var tagFieldFocused: Bool
 
-    // True once the current route's card has measured its content height. The
-    // wrap card is greedy (fills the offer) until `onGeometryChange` lands, and
-    // the glass panel around it sizes to that greedy frame — so `fullBody` paints
-    // nothing until measured, else the panel flashes at the full offered height
-    // on open and on every drill-in → Back. Reset on route change; set by each
-    // wrap card's `onMeasured`.
-    @State private var cardMeasured = false
+    // Routes whose wrap card has measured its content height. `fullBody` reveals
+    // the card only once its route is in here: the wrap card is greedy (fills the
+    // offer) until `onGeometryChange` lands, and the glass panel around it would
+    // otherwise paint at the full offer on a card's *first* appearance. Gated per
+    // route so a child's first visit is covered too, not just the main card; once
+    // a route measures it stays revealed (SwiftUI preserves each card's height
+    // across a drill-in → Back, so no re-gating on return). The schedule child is
+    // a bounded `Form`, not greedy, so it needs no gate — seeded here.
+    @State private var measuredRoutes: Set<DetailRoute> = [.schedule]
+
+    /// Whether the current route's card is measured and safe to paint.
+    private var cardVisible: Bool { measuredRoutes.contains(route) }
 
     @Environment(\.accessibilityReduceMotion) private var systemReduceMotion
     @Environment(\.reduceMotionOverride) private var overrideReduceMotion
@@ -133,12 +138,13 @@ public struct TaskEditorView: View {
         }
         .frame(maxWidth: LillistSizing.editorCardMaxWidth)
         .glassSurface(.panel, in: RoundedRectangle(cornerRadius: LillistRadius.l))
-        // Hide the whole card — glass panel included — until the first wrap card
-        // measures, so the greedy pre-measurement frame never paints on open.
-        // Not reset on route change: SwiftUI preserves each card's measured
-        // height across a drill-in → Back round-trip, so the card is already
-        // correctly sized on return — re-hiding it would only stick it blank.
-        .opacity(cardMeasured ? 1 : 0)
+        // Hide the whole card — glass panel included — until the current route's
+        // wrap card has measured, so the greedy pre-measurement frame never paints
+        // on a card's first appearance (main card on open, each child on first
+        // drill-in). Instant, never animated: the card must reveal at its real
+        // size, not fade the gate against the route transition.
+        .opacity(cardVisible ? 1 : 0)
+        .animation(nil, value: cardVisible)
         .task(id: textEditKey) {
             do { try await Task.sleep(for: .milliseconds(500)) } catch { return }
             await model.saveTextNow()
@@ -169,17 +175,17 @@ public struct TaskEditorView: View {
     /// `wrapToContentThenScroll` valve with the drill-in children; the main
     /// card fits the whole overlay (no height cap).
     private var mainCard: some View {
-        wrapToContentThenScroll(onMeasured: markCardMeasured) { mainCardContent }
+        wrapToContentThenScroll(onMeasured: { markMeasured(.main) }) { mainCardContent }
     }
 
-    /// Reveal the card once its wrap content has measured (see `cardMeasured`).
+    /// Record that `route`'s card has measured, revealing it (see `measuredRoutes`).
     /// Instant, not animated — the card should appear at its real size, not fade
     /// in against any ambient transition.
-    private func markCardMeasured() {
-        guard !cardMeasured else { return }
+    private func markMeasured(_ route: DetailRoute) {
+        guard !measuredRoutes.contains(route) else { return }
         var transaction = Transaction()
         transaction.disablesAnimations = true
-        withTransaction(transaction) { cardMeasured = true }
+        withTransaction(transaction) { _ = measuredRoutes.insert(route) }
     }
 
     @ViewBuilder
@@ -575,7 +581,7 @@ public struct TaskEditorView: View {
     private var attachmentsChild: some View {
         VStack(spacing: 0) {
             childHeader("Attachments") { route = .main }
-            wrapToContentThenScroll(maxHeight: LillistSizing.editorChildMaxHeight, onMeasured: markCardMeasured) {
+            wrapToContentThenScroll(maxHeight: LillistSizing.editorChildMaxHeight, onMeasured: { markMeasured(.attachments) }) {
                 EditorAttachmentsSection(
                     attachments: model.attachments,
                     onAddTapped: onAddAttachment,
@@ -590,7 +596,7 @@ public struct TaskEditorView: View {
     private var journalChild: some View {
         VStack(spacing: 0) {
             childHeader("Journal") { route = .main }
-            wrapToContentThenScroll(maxHeight: LillistSizing.editorChildMaxHeight, onMeasured: markCardMeasured) {
+            wrapToContentThenScroll(maxHeight: LillistSizing.editorChildMaxHeight, onMeasured: { markMeasured(.journal) }) {
                 EditorJournalSection(entries: model.journal)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(LillistSpacing.l)
