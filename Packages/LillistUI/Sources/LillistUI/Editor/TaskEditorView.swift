@@ -636,10 +636,17 @@ private struct WrapToContentThenScroll<Content: View>: View {
     let content: Content
 
     /// The content's ideal (unclipped) height, measured inside the scroll view
-    /// where it's proposed an unbounded vertical extent. `0` until first
-    /// measured — one layout pass where the scroll view is only `maxHeight`-
-    /// bounded, immediately corrected.
+    /// where it's proposed an unbounded vertical extent. `0` until the first
+    /// `onGeometryChange` lands, so `cappedHeight` seeds a bounded estimate for
+    /// that pass rather than letting the scroll view paint greedily.
     @State private var contentHeight: CGFloat = 0
+
+    /// First-pass height estimate for the uncapped main card, used only until
+    /// `onGeometryChange` reports the real content height. A typical detail-card
+    /// height, so the initial frame is close to the settled size (a bare `nil`
+    /// here would paint at the full offered height, then snap down). Computed,
+    /// not stored: a generic type can't hold a `static` stored property.
+    private static var firstPassCardHeight: CGFloat { 340 }
 
     var body: some View {
         ScrollView(.vertical) {
@@ -650,10 +657,19 @@ private struct WrapToContentThenScroll<Content: View>: View {
     }
 
     /// Cap the greedy scroll view to the content's ideal height (so it hugs),
-    /// bounded by `maxHeight`. Before the first measurement, fall back to
-    /// `maxHeight` alone (`nil` on the main card — greedy for a single frame).
+    /// bounded by `maxHeight`.
+    ///
+    /// Before the first measurement lands (`onGeometryChange` reports in a later
+    /// transaction), fall back to a *bounded* estimate — never `nil`. A `nil`
+    /// cap lets the greedy scroll view paint at the full offered height for one
+    /// pass and then snap to the content height; that overshoot is visible and
+    /// recurs on every drill-in → Back, because the `route` switch re-instantiates
+    /// this view with `contentHeight` reset to 0, overlapping the card's
+    /// transition. Drill-in children estimate with their own `maxHeight` cap
+    /// (their content trends toward it); the uncapped main card with a typical
+    /// card height. The measured value takes over on the next pass either way.
     private var cappedHeight: CGFloat? {
-        guard contentHeight > 0 else { return maxHeight }
+        guard contentHeight > 0 else { return maxHeight ?? Self.firstPassCardHeight }
         guard let maxHeight else { return contentHeight }
         return min(contentHeight, maxHeight)
     }

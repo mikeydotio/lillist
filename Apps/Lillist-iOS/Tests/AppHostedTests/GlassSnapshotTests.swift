@@ -146,6 +146,21 @@ final class GlassSnapshotTests: XCTestCase {
             "keyboard-up offer; it should fit without scrolling")
     }
 
+    /// The wrap card must not paint at the full offered height on its first
+    /// (pre-measurement) layout pass — `WrapToContentThenScroll` seeds a bounded
+    /// first-pass cap so the greedy `ScrollView` doesn't overshoot and then snap
+    /// down, a flash that recurs on every drill-in → Back (#33 review). A
+    /// one-shot `sizeThatFits` (no window/settling) reads exactly that first
+    /// pass: it must be bounded, not the full 1200pt offer.
+    @MainActor func test_fullEditor_firstPassIsNotGreedy() async throws {
+        let host = UIHostingController(
+            rootView: TaskEditorView(model: try await fullEditorModel(), onDismiss: {}))
+        let firstPass = host.sizeThatFits(in: CGSize(width: 393, height: 1200))
+        XCTAssertLessThan(firstPass.height, 500,
+            "The wrap card painted greedily on its first pass (\(firstPass.height)pt " +
+            "of the 1200pt offer) — it must seed a bounded first-pass height")
+    }
+
     /// Settled fitting height of the full editor at a given offered height.
     /// `WrapToContentThenScroll` measures its content asynchronously
     /// (`onGeometryChange`), so the view must be hosted in a live window and the
