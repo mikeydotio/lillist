@@ -146,16 +146,24 @@ final class GlassSnapshotTests: XCTestCase {
             "keyboard-up offer; it should fit without scrolling")
     }
 
-    /// Settled fitting height of the full editor at a given offered height.
+    /// Settled fitting height of the full editor at a given offered height —
+    /// i.e. `min(contentHeight, offered)`, the wrap card's own cap.
+    ///
     /// `WrapToContentThenScroll` measures its content asynchronously
-    /// (`onGeometryChange`) and stays greedy (fills the offer) until then, so the
-    /// view must be hosted in a live window and the run loop pumped before
-    /// `sizeThatFits` reflects the wrapped/capped height.
+    /// (`onGeometryChange`) and stays greedy until then, so the view is hosted in
+    /// a live window and the run loop pumped. Rather than probe at `offered`
+    /// directly — where a card that fills/overflows the offer reads the same
+    /// value measured or not, forcing a deadline spin — probe the fitting height
+    /// at a *huge* offer, which **any** real card wraps far below. The greedy
+    /// pre-measurement value fills that whole huge offer, so the first read that
+    /// drops below it is unambiguously the settled content height; no fill case,
+    /// so it converges the instant the measurement lands. Then report how that
+    /// content fits `offered`.
     @MainActor
     private func settledEditorHeight(_ model: TaskEditorModel, offered: CGFloat) -> CGFloat {
-        let size = CGSize(width: 393, height: offered)
         let host = UIHostingController(rootView: TaskEditorView(model: model, onDismiss: {}))
-        host.view.frame = CGRect(origin: .zero, size: size)
+        let windowSize = CGSize(width: 393, height: 1200)
+        host.view.frame = CGRect(origin: .zero, size: windowSize)
         // App-hosted: attach to the host app's live scene so `onGeometryChange`
         // fires. `UIWindow(frame:)` is deprecated on iOS 26 — use the scene.
         let scene = UIApplication.shared.connectedScenes
@@ -165,7 +173,7 @@ final class GlassSnapshotTests: XCTestCase {
         guard let scene else {
             // Unreachable in the app-hosted bundle (the host app always has a
             // foreground scene); best-effort one-shot fallback if it ever isn't.
-            return host.sizeThatFits(in: size).height
+            return min(host.sizeThatFits(in: windowSize).height, offered)
         }
         let window = UIWindow(windowScene: scene)
         // Tear the window down so it doesn't outlive the call — a visible window
@@ -175,26 +183,16 @@ final class GlassSnapshotTests: XCTestCase {
         window.rootViewController = host
         window.isHidden = false
 
-        // Before the measurement lands the card is greedy and `sizeThatFits`
-        // returns the full offer, so a fixed wait — or converging on the first
-        // two agreeing reads — can hand back that stale value on a loaded
-        // machine. Instead key on the one unambiguous signal: a read *below* the
-        // offer can only be a settled, wrapped card (the greedy pre-measurement
-        // height always fills the whole offer). Poll until a read drops below the
-        // offer and return it. A card that genuinely fills or overflows the offer
-        // never drops — its height *is* the offer — so fall back to the last read
-        // at the deadline. A slow measurement lengthens the wait, never shortens
-        // it into a stale read.
+        let probe = CGSize(width: 393, height: 100_000)
         let deadline = Date(timeIntervalSinceNow: 3)
-        var last = offered
+        var content = probe.height
         while Date() < deadline {
             host.view.layoutIfNeeded()
-            let current = host.sizeThatFits(in: size).height
-            if current < offered - 1 { return current }
-            last = current
+            let measured = host.sizeThatFits(in: probe).height
+            if measured < probe.height - 1 { content = measured; break }
             RunLoop.current.run(until: Date(timeIntervalSinceNow: 0.05))
         }
-        return last
+        return min(content, offered)
     }
 
     // MARK: - fixtures
