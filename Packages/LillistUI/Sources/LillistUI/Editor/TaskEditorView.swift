@@ -27,17 +27,19 @@ public struct TaskEditorView: View {
     private enum DetailRoute { case main, schedule, attachments, journal }
     @State private var route: DetailRoute = .main
 
-    /// The card is wrapped in a `ViewThatFits` valve whose two candidates are
-    /// structurally-distinct copies of the editable fields. Binding focus to
-    /// external `@FocusState` lets it re-apply to the surviving candidate when a
-    /// content/keyboard change flips ViewThatFits mid-edit, so first responder
-    /// (and the keyboard) isn't dropped on the swap.
+    /// The card's editable fields bind focus to external `@FocusState` so the
+    /// host owns first responder across relayouts. (The wrap card no longer
+    /// swaps subtrees — see `WrapToContentThenScroll` / issue #32 — so this is
+    /// no longer load-bearing for surviving a candidate swap, but keeping focus
+    /// host-owned stays correct and lets the drill-in reset below manage it.)
     private enum EditorField { case title, notes }
     @FocusState private var focusedField: EditorField?
 
-    // The tag row's inline-edit state lives here (above the `ViewThatFits`
-    // valve), not inside `TagAssignmentField`, so it survives a candidate swap
-    // and the "+ Tag" field doesn't collapse mid-edit near the fit boundary.
+    // The tag row's inline-edit state lives here, on the host, so the drill-in
+    // reset (`.onChange(of: route)` below) can collapse the field when the user
+    // navigates into a child and back — the hoist widens the state's lifetime
+    // past the card, which the reset then scopes back. (Pre-#32 the hoist also
+    // aimed to survive a `ViewThatFits` swap; that swap is now eliminated.)
     @State private var isTagEditing = false
     @State private var tagDraft = ""
     @FocusState private var tagFieldFocused: Bool
@@ -480,28 +482,16 @@ public struct TaskEditorView: View {
         }
     }
 
-    /// Wrap content so it hugs its size and scrolls only on genuine overflow:
-    /// `ViewThatFits` picks the plain, self-sizing layout when it fits the
-    /// offered height and the scrolling copy otherwise (re-evaluated against the
-    /// live proposal each layout pass). `maxHeight` bounds both the fit decision
-    /// and the scroll viewport — drill-in children pass `editorChildMaxHeight`
-    /// so a nearly-empty child hugs its content and a long one scrolls; the main
-    /// card passes `nil` to fit the whole overlay.
-    @ViewBuilder
+    /// Wrap content so it hugs its size and scrolls only on genuine overflow,
+    /// in a **single, non-swapping subtree** (`WrapToContentThenScroll`).
+    /// `maxHeight` bounds the scroll viewport — drill-in children pass
+    /// `editorChildMaxHeight` so a nearly-empty child hugs its content and a
+    /// long one scrolls; the main card passes `nil` to fit the whole overlay.
     private func wrapToContentThenScroll<Content: View>(
         maxHeight: CGFloat? = nil,
         @ViewBuilder _ content: () -> Content
     ) -> some View {
-        let inner = content()
-        let valve = ViewThatFits(in: .vertical) {
-            inner
-            ScrollView { inner }
-        }
-        if let maxHeight {
-            valve.frame(maxHeight: maxHeight)
-        } else {
-            valve
-        }
+        WrapToContentThenScroll(maxHeight: maxHeight, content: content())
     }
 
     // MARK: - Actions
@@ -552,6 +542,49 @@ public struct TaskEditorView: View {
             deadlineHasTime: model.deadlineHasTime,
             isPinned: model.isPinned
         )
+    }
+}
+
+/// Wrap-then-scroll in a **single, non-swapping subtree**: the content hugs its
+/// size when it fits the offered height and scrolls in place only on genuine
+/// overflow — without a `ViewThatFits` candidate swap.
+///
+/// The former `ViewThatFits(in: .vertical) { inner; ScrollView { inner } }`
+/// swapped between two structurally-distinct subtrees when a keyboard/content
+/// change flipped the fit decision, which *tore down and rebuilt* any focused
+/// field inside `inner`. That collapsed the inline "+ Tag" field mid-edit and
+/// dropped its keyboard — a failure no hoisted value state could fully survive,
+/// because SwiftUI mutates `@FocusState` on the teardown (issue #32).
+///
+/// A bare `ScrollView` is vertically greedy, so cap its height to the content's
+/// own measured ideal height (bounded by `maxHeight`): the parent's proposal
+/// then constrains it further when the keyboard shrinks the offer, engaging the
+/// scroll *without* recreating the subtree. Wrap-to-content (#22) is preserved.
+private struct WrapToContentThenScroll<Content: View>: View {
+    let maxHeight: CGFloat?
+    let content: Content
+
+    /// The content's ideal (unclipped) height, measured inside the scroll view
+    /// where it's proposed an unbounded vertical extent. `0` until first
+    /// measured — one layout pass where the scroll view is only `maxHeight`-
+    /// bounded, immediately corrected.
+    @State private var contentHeight: CGFloat = 0
+
+    var body: some View {
+        ScrollView(.vertical) {
+            content
+                .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { contentHeight = $0 }
+        }
+        .frame(maxHeight: cappedHeight)
+    }
+
+    /// Cap the greedy scroll view to the content's ideal height (so it hugs),
+    /// bounded by `maxHeight`. Before the first measurement, fall back to
+    /// `maxHeight` alone (`nil` on the main card — greedy for a single frame).
+    private var cappedHeight: CGFloat? {
+        guard contentHeight > 0 else { return maxHeight }
+        guard let maxHeight else { return contentHeight }
+        return min(contentHeight, maxHeight)
     }
 }
 

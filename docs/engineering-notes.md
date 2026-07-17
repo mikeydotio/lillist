@@ -4,6 +4,43 @@ Append-only log of cross-cutting engineering lessons learned while building
 Lillist. Each entry captures a non-obvious gotcha — usually one that took real
 investigation to find — so future work doesn't re-learn it the hard way.
 
+## 2026-07-17 — A `ViewThatFits` wrap valve tears down a focused field on its candidate swap; hoisting the *value* state can't save it — replace the valve with a single, measured, non-swapping `ScrollView` (issue #32)
+
+The #22 wrap valve — `ViewThatFits(in: .vertical) { inner; ScrollView { inner } }`
+— has a sharp edge that the #26/#28 follow-ups only half-caught: its two
+candidates are **structurally-distinct subtrees**, so when a keyboard/content
+change flips the fit decision mid-edit, the currently-focused `TextField` inside
+`inner` is **destroyed and rebuilt** in the other candidate.
+
+- PR #25 hoisted `TagAssignmentField`'s `isEditing`/`draftName`/`@FocusState`
+  above the valve, framed as making the field "survive the swap." It does not.
+  A UI test that actually crosses the boundary (seed a long notes body so the
+  card overflows once the keyboard rises, then tap `+ Tag`) proves the field
+  **still collapses** on iOS 26. Hoisting keeps the inert *values* alive, but
+  SwiftUI writes `@FocusState` on the first-responder teardown → the surviving
+  observer sees `focused → false` → `endEditing()` → the field closes and the
+  draft is lost. Disabling `endEditing()` in an experiment left the field
+  present but **without keyboard focus** (`typeText` → "Neither element nor any
+  descendant has keyboard focus"): first responder is not re-established on the
+  new candidate either. **No hoisted value state can fully survive a candidate
+  swap, because the swap moves focus.**
+- **Fix at the origin: don't swap.** Replace the valve with a single,
+  non-swapping subtree — a `ScrollView` whose height is capped to the content's
+  *measured* ideal height (`onGeometryChange`), bounded by an optional
+  `maxHeight` (`TaskEditorView.WrapToContentThenScroll`). A bare `ScrollView` is
+  vertically greedy, so the measured cap makes it hug when the content fits; the
+  parent's proposal then constrains it further when the keyboard shrinks the
+  offer, engaging the scroll **without recreating the subtree**. The focused
+  field is never torn down. Wrap-to-content (#22) is preserved, verified by the
+  unchanged editor snapshots.
+- **Gotcha — the measured cap is async, so `sizeThatFits` sees the pre-measure
+  greedy fill.** `onGeometryChange` reports the content height *after* the first
+  layout, so a one-shot `UIHostingController.sizeThatFits(in:)` reads the
+  uncapped greedy height (the full offer), not the wrapped height. Numeric wrap
+  assertions must host the view in a live window and pump the run loop before
+  measuring (`GlassSnapshotTests.settledEditorHeight`). The rendered/settled
+  frame is correct (snapshots pass); only the synchronous probe needed settling.
+
 ## 2026-07-15 — Make a floating card wrap its content with `ViewThatFits`, not a bare `ScrollView`; and use a vertical-axis `TextField`, not `TextEditor`, for a content-hugging editable box (issue #22)
 
 The task-detail card (`TaskEditorView` full mode) filled the whole overlay even
@@ -34,6 +71,10 @@ after its content shrank. Two framework-shape gotchas, both worth remembering:
   as bindings — otherwise tapping `+ Tag` near the fit boundary self-triggers a
   flip (keyboard → shrink → swap) and the field flickers shut. Any stateful view
   placed inside a `ViewThatFits` valve must externalize its state this way.
+  **Superseded (2026-07-17, #32): hoisting the *value* state is not enough — the
+  swap also moves `@FocusState`, so a focused field still collapses. The valve
+  itself was retired for a single, non-swapping measured `ScrollView`; see the
+  2026-07-17 entry above.**
 
 - **For a content-hugging editable box, use `TextField(text:, axis: .vertical)`
   + `.lineLimit(min...max)`, not `TextEditor`.** A `TextEditor` in a bounded

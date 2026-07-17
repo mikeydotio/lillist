@@ -11,12 +11,12 @@ import SwiftUI
 /// (non-editing) state is fully deterministic for snapshots.
 ///
 /// The editing state (`isEditing` / `draftName` / focus) is **externally
-/// owned** by the host, not stored here: this view is embedded in the editor's
-/// `ViewThatFits` wrap valve, whose two candidates are structurally-distinct
-/// subtrees. If the state lived here it would reset every time the valve flips
-/// (e.g. the keyboard rising on `+ Tag` shrinks the offered height and swaps
-/// candidates), collapsing the open field mid-edit. Hoisting it to the host —
-/// which sits above the valve — lets the field survive the swap.
+/// owned** by the host: the editor drives an in-card drill-in navigation on the
+/// same view, and hoisting this state lets the host collapse the field when the
+/// user drills into a child and returns (issue #26). It also *used* to guard a
+/// `ViewThatFits` candidate swap — but that swap is now eliminated
+/// (`TaskEditorView.WrapToContentThenScroll` / issue #32), so this view sits in
+/// a single, non-swapping subtree and is never torn down mid-edit.
 public struct TagAssignmentField: View {
     public var tagNames: [String]
     @Binding public var isEditing: Bool
@@ -132,17 +132,11 @@ public struct TagAssignmentField: View {
             // 08372592): only `commit()` adds a tag, so a tap-away never persists a
             // partial name.
             //
-            // Hoisting the storage above the wrap valve keeps the inert
-            // `isEditing`/`draftName` alive across a candidate swap (only this view
-            // writes them). Focus is a different animal: SwiftUI writes to
-            // `@FocusState` on first-responder lifecycle events, and it is
-            // *re-asserted* on a surviving candidate by `.focused()` + `.onAppear`
-            // (L128) — but the ordering of a removal-driven focus reset vs that
-            // incoming `.onAppear` is NOT contractual. If the reset lands last, this
-            // observer fires on a swap teardown, not only on a genuine tap-away. We
-            // accept that: a swap already collapses the field, and discarding the
-            // draft there matches the tap-away contract. Don't read this as a
-            // guarantee the draft survives a swap — it does not.
+            // This field now lives in a single, non-swapping subtree (the wrap
+            // card no longer uses `ViewThatFits` — issue #32), so a focus loss
+            // here is a genuine tap-away, not a candidate-swap teardown. The
+            // earlier worry that a swap could fire this observer and destroy the
+            // draft no longer applies: there is no swap to fire it.
             if !focused { endEditing() }
         }
     }
