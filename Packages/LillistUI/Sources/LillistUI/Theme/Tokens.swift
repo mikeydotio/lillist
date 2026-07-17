@@ -57,6 +57,10 @@ public enum LillistSizing {
     /// Drill-in child (schedule / attachments / journal) max height before
     /// it scrolls internally, so a child never grows to fill the screen.
     public static let editorChildMaxHeight: CGFloat = 400
+    /// Notes box max height before it scrolls in place, keeping the card
+    /// compact. Bounds the macOS `TextEditor` (whose sizer would otherwise
+    /// grow unbounded) and gives the wrap card a finite height for a long note.
+    public static let editorNotesMaxHeight: CGFloat = 200
 }
 
 /// Semantic typography: Plus Jakarta Sans at the Rainbow Logic scale.

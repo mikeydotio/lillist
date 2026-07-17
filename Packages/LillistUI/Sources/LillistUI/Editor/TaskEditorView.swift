@@ -227,11 +227,19 @@ public struct TaskEditorView: View {
         .accessibilityIdentifier("EditorPinButton")
     }
 
-    /// A content-hugging notes field (a vertical-axis `TextField`, matching the
-    /// title) so the card wraps its description rather than reserving a fixed
-    /// tall box: `.lineLimit(2...8)` grows it from two lines with the text and
-    /// scrolls in place past eight, keeping the card compact.
+    /// The content-hugging notes box. iOS uses a vertical-axis `TextField`;
+    /// macOS uses a bounded `TextEditor` so **Return inserts a newline** rather
+    /// than submitting (a vertical-axis `TextField` routes Return to submit on
+    /// AppKit — issue #29), with an invisible sizer preserving the same hug.
+    @ViewBuilder
     private var descriptionField: some View {
+        #if os(macOS)
+        macNotesEditor
+        #else
+        // iOS: a vertical-axis `TextField` (matching the title) so the card
+        // wraps its description rather than reserving a fixed tall box —
+        // `.lineLimit(2...8)` grows it from two lines with the text and scrolls
+        // in place past eight, keeping the card compact.
         TextField(
             text: $model.notes,
             prompt: Text("Add a description…", bundle: .module),
@@ -250,7 +258,62 @@ public struct TaskEditorView: View {
                 .fill(.rainbowWell)
         }
         .accessibilityIdentifier("EditorNotesField")
+        #endif
     }
+
+    #if os(macOS)
+    /// Horizontal inset AppKit's `NSTextView` (backing `TextEditor`) applies
+    /// around its text; the invisible sizer and the placeholder match it so
+    /// they wrap at the same width as the live editor. Tunable if the box
+    /// mis-hugs on macOS (a wider sizer under-counts lines and clips).
+    private static let macNotesTextInset: CGFloat = 5
+    /// ~2 lines of body text — the iOS field's `.lineLimit(2...8)` floor.
+    private static let macNotesMinHeight: CGFloat = 44
+
+    /// macOS notes field: a bounded `TextEditor` (Return → newline, #29) whose
+    /// height is driven by an **invisible `Text` sizer** so the box still hugs
+    /// its content like the iOS field (#22), capped at `editorNotesMaxHeight`.
+    ///
+    /// The sizer is the base and the `TextEditor` is an `.overlay` on it — so
+    /// the sizer's natural text height drives the frame and the (greedy)
+    /// `TextEditor` merely fills it. A plain `ZStack` would instead let the
+    /// greedy editor drive the height and defeat the hug (a fixed tall box).
+    private var macNotesEditor: some View {
+        Text(model.notes.isEmpty ? " " : model.notes)
+            .font(LillistTypography.body)
+            .foregroundStyle(.clear)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, Self.macNotesTextInset)
+            .frame(
+                minHeight: Self.macNotesMinHeight,
+                maxHeight: LillistSizing.editorNotesMaxHeight,
+                alignment: .topLeading
+            )
+            .overlay(alignment: .topLeading) {
+                TextEditor(text: $model.notes)
+                    .font(LillistTypography.body)
+                    .foregroundStyle(LillistColor.textBody)
+                    .scrollContentBackground(.hidden)
+                    .focused($focusedField, equals: .notes)
+                    .accessibilityIdentifier("EditorNotesField")
+                    .overlay(alignment: .topLeading) {
+                        if model.notes.isEmpty {
+                            Text("Add a description…", bundle: .module)
+                                .font(LillistTypography.body)
+                                .foregroundStyle(LillistColor.textFaint)
+                                .padding(.horizontal, Self.macNotesTextInset)
+                                .allowsHitTesting(false)
+                                .accessibilityHidden(true)
+                        }
+                    }
+            }
+            .padding(LillistSpacing.s)
+            .background {
+                RoundedRectangle(cornerRadius: LillistRadius.s, style: .continuous)
+                    .fill(.rainbowWell)
+            }
+    }
+    #endif
 
     // MARK: - Summary rows
 
