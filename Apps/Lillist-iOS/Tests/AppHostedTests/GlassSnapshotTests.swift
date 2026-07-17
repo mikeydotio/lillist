@@ -114,17 +114,26 @@ final class GlassSnapshotTests: XCTestCase {
     /// checks the seed does real work (taller than the standard card), so the
     /// crossing comes from the long notes, not incidental fixture height.
     @MainActor func test_fatNotesEditor_contentExceedsKeyboardOffer() async throws {
-        // iPhone-17 keyboard-up offered height (design-doc math from the PR #25
-        // review: 874 − 103 status/nav − 336 keyboard − 48 overlay padding).
-        let keyboardUpOffer: CGFloat = 387
+        // Keyboard-up offered height, DERIVED from the live screen height so it
+        // isn't pinned to one device (hardcoding iPhone-17's ~387 would silently
+        // pass on a taller device where the real offer exceeds 387 while the card
+        // sits between). Components — status/nav, keyboard, overlay padding — are
+        // the estimates from the PR #25 review; a taller screen yields a larger
+        // offer, so the assertion correctly demands a taller card to still cross.
+        let screenHeight = UIApplication.shared.connectedScenes
+            .compactMap { $0 as? UIWindowScene }
+            .flatMap(\.windows)
+            .first(where: \.isKeyWindow)?.bounds.height ?? 874
+        let keyboardUpOffer = screenHeight - 103 - 336 - 48
 
         let fatContent = editorContentHeight(try await fatNotesFullEditorModel())
         let plainContent = editorContentHeight(try await fullEditorModel())
 
         XCTAssertGreaterThan(fatContent, keyboardUpOffer,
             "Fat-notes card content (\(fatContent)pt) must exceed the keyboard-up " +
-            "offer (\(keyboardUpOffer)pt) so it scrolls when the keyboard rises — " +
-            "else the survival test never crosses the fit boundary")
+            "offer (\(keyboardUpOffer)pt, from a \(screenHeight)pt screen) so it " +
+            "scrolls when the keyboard rises — else the survival test never crosses " +
+            "the fit boundary")
         XCTAssertGreaterThan(fatContent, plainContent,
             "The fat-notes seed must make the card materially taller than the " +
             "standard card (\(fatContent)pt vs \(plainContent)pt) — the boundary " +
