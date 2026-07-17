@@ -632,12 +632,7 @@ public struct TaskEditorView: View {
 }
 
 /// The editor's card chrome: a glass panel that hugs its scrolling content and
-/// **hides itself until that content first measures**, so the greedy
-/// pre-measurement height never paints — on first appearance *and* on re-entry
-/// after a drill-in (SwiftUI rebuilds the `switch route` branch, resetting the
-/// measured height to 0). The gate is per card and *inside* the glass, so the
-/// shared route transition still animates the other cards rather than blanking
-/// the whole subtree.
+/// scrolls only on overflow.
 ///
 /// A bare `ScrollView` is vertically greedy, so its height is capped to the
 /// content's own measured ideal height (bounded by `maxHeight`): the parent's
@@ -645,6 +640,15 @@ public struct TaskEditorView: View {
 /// recreating the subtree (so a focused "+ Tag" field isn't torn down — issue
 /// #32). `header` (a child popup's Back bar) sits above the scroll area, inside
 /// the glass; the main card passes none. Wrap-to-content (#22) is preserved.
+///
+/// The measured cap arrives asynchronously (`onGeometryChange` reports in a
+/// later transaction), so for the first frame — on open, quick→full expand, and
+/// each drill-in that rebuilds the card — the height is unknown. Rather than
+/// paint greedily (the panel filling the full offer, then snapping down) or
+/// blank the card (an invisible-but-hittable panel that pops in), cap that first
+/// frame to a *bounded* first-pass height: the card shows its top, in a
+/// reasonably-sized panel, then resizes to hug once measured — a small settle
+/// masked by the entry/route animation, never a full-offer flash or a blank pop.
 private struct MeasuredGlassCard<Header: View, Content: View>: View {
     private let maxHeight: CGFloat?
     private let header: Header
@@ -652,8 +656,14 @@ private struct MeasuredGlassCard<Header: View, Content: View>: View {
 
     /// The content's ideal (unclipped) height, measured inside the scroll view
     /// where it's proposed an unbounded vertical extent. `0` until the first
-    /// `onGeometryChange` lands, so the card stays hidden until then.
+    /// `onGeometryChange` lands, when `cappedHeight` uses the bounded first-pass
+    /// height instead.
     @State private var contentHeight: CGFloat = 0
+
+    /// Bounded first-pass height until the content measures — enough to show the
+    /// card's top (header + first rows) without filling the offer. Computed, not
+    /// stored: a generic type can't hold a `static` stored property.
+    private static var firstPassHeight: CGFloat { 220 }
 
     init(
         maxHeight: CGFloat? = nil,
@@ -676,19 +686,16 @@ private struct MeasuredGlassCard<Header: View, Content: View>: View {
         }
         .frame(maxWidth: LillistSizing.editorCardMaxWidth)
         .glassSurface(.panel, in: RoundedRectangle(cornerRadius: LillistRadius.l))
-        // Hide until the content measures. `onGeometryChange` reports in a later
-        // transaction, so the reveal (0 → measured) isn't the route change — it's
-        // instant, not caught by the outer `.animation(value: route)`.
-        .opacity(contentHeight > 0 ? 1 : 0)
     }
 
     /// Cap the greedy scroll view to the content's ideal height (so it hugs),
-    /// bounded by `maxHeight`. `nil` until the first measurement lands — the card
-    /// is hidden then (see `body`), so the transient greedy height is never seen.
+    /// bounded by `maxHeight`. Before the first measurement, a bounded first-pass
+    /// height (also bounded by `maxHeight`) — never `nil` (greedy) — so the card
+    /// is visible but not full-offer while it measures.
     private var cappedHeight: CGFloat? {
-        guard contentHeight > 0 else { return nil }
-        guard let maxHeight else { return contentHeight }
-        return min(contentHeight, maxHeight)
+        let unbounded = contentHeight > 0 ? contentHeight : Self.firstPassHeight
+        guard let maxHeight else { return unbounded }
+        return min(unbounded, maxHeight)
     }
 }
 
