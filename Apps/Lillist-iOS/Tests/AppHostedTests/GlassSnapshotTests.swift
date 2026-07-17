@@ -372,6 +372,15 @@ final class GlassSnapshotTests: XCTestCase {
         let host = UIHostingController(rootView: hosted)
         host.overrideUserInterfaceStyle = dark ? .dark : .light
         host.view.frame = CGRect(origin: .zero, size: size)
+        // Settle async layout before capturing: the editor's `MeasuredGlassCard`
+        // sizes to a height that `onGeometryChange` reports in a *later*
+        // transaction, so force a layout pass and pump the run loop first — else
+        // the capture could catch the bounded first-pass height instead of the
+        // measured one.
+        host.view.setNeedsLayout()
+        host.view.layoutIfNeeded()
+        RunLoop.current.run(until: Date(timeIntervalSinceNow: 0.1))
+        host.view.layoutIfNeeded()
         withSnapshotTesting(record: recordMode) {
             assertSnapshot(
                 of: host,
