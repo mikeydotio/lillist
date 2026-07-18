@@ -80,24 +80,20 @@ final class GlassSnapshotTests: XCTestCase {
     @MainActor func test_editor_full_dark()   async throws { snapshot(try await fullEditor(), size: editorFullSize, dark: true) }
 
     // At the largest accessibility text size the card content overflows the
-    // offered height, so the wrap-then-scroll valve must switch to scrolling
-    // and keep the header/title visible (never clip). Locks the #22 overflow
-    // path the plain-VStack card alone could not guarantee.
+    // offered height, so the overlay's `editorScrollAndCenter` (which `fullEditor`
+    // hosts the card through) must scroll and keep the header/title visible (never
+    // clip). Locks the #22/#38 overflow path — the plain, self-sizing card relies
+    // on the overlay scroll for this, not a card-level cap.
     @MainActor func test_editor_full_xxxl_light() async throws {
         snapshot(try await fullEditor().environment(\.dynamicTypeSize, .accessibility5),
                  size: editorFullSize, dark: false)
     }
 
-    /// Non-snapshot regression for #22: the full-mode editor must WRAP to its
-    /// content, not fill the offered height. Fails on the pre-fix greedy
-    /// `ScrollView` (which reports ~the full offer), passes once the card
-    /// self-sizes to ~335pt. The band (#27) has a floor too, so a card that
-    /// collapses to nothing also fails, while staying clear of a greedy fill.
-    ///
-    /// Measures the *content* height (`editorContentHeight`): the single-subtree
-    /// `MeasuredGlassCard` (#32) caps its greedy `ScrollView` to the
-    /// content's height, measured asynchronously (`onGeometryChange`), so a
-    /// one-shot `sizeThatFits` would read the pre-measurement greedy height.
+    /// Non-snapshot regression for #22/#38: the full-mode editor must WRAP to its
+    /// content, not fill the offered height. Passes because the card self-sizes to
+    /// ~335pt (a plain, synchronous VStack — issue #38); a card that collapsed to
+    /// nothing or filled the offer would fall outside the band. The `250` floor
+    /// (#27) guards the collapse case; `450` guards a greedy fill.
     @MainActor func test_fullEditor_wrapsToContent() async throws {
         let height = editorContentHeight(try await fullEditorModel())
         XCTAssertTrue((250...450).contains(height),
@@ -107,31 +103,28 @@ final class GlassSnapshotTests: XCTestCase {
 
     /// The fact the tag-field survival test relies on (#27): the fat-notes card's
     /// content is taller than the keyboard-up offer, so raising the keyboard makes
-    /// the wrap card cap to the offer and scroll — crossing the fit boundary the
-    /// field must survive. Asserts the content height directly:
-    /// `MeasuredGlassCard` caps to `min(content, offered)` at runtime, so
-    /// `content > offer` ⟹ it scrolls once the keyboard shrinks the offer. Also
-    /// checks the seed does real work (taller than the standard card), so the
-    /// crossing comes from the long notes, not incidental fixture height.
+    /// the **overlay** scroll engage (issue #38) — the relayout the field must
+    /// survive. Asserts the content height directly: `content > offer` ⟹ the
+    /// overlay scrolls the card once the keyboard shrinks the offer. Also checks
+    /// the seed does real work (taller than the standard card), so the crossing
+    /// comes from the long notes, not incidental fixture height.
     @MainActor func test_fatNotesEditor_contentExceedsKeyboardOffer() async throws {
-        // This proxy is calibrated for the iPhone-17 test runner (the repo's
-        // pinned destination). The keyboard-up offer's non-screen components —
-        // status/nav, keyboard, overlay padding — are fixed estimates, and the
-        // fat card's height is itself bounded (the notes field is
-        // `.lineLimit(2...8)`, so a longer body adds no more than ~6 lines over
-        // the plain card). So the fat card can't be made tall enough to clear a
-        // larger device's bigger offer — on an iPhone Plus/Pro Max the derived
-        // offer would exceed the capped `fatContent` and this would go red for a
-        // card that still crosses fine there. Skip off the calibrated class
-        // rather than assert a boundary that doesn't apply; the survival UITest
-        // exercises the real keyboard-driven crossing on whatever device runs it.
+        // The keyboard-up offer proxy is calibrated for the iPhone-17 test runner
+        // (the repo's pinned destination): its non-screen components — status/nav
+        // (103), keyboard (336), overlay padding (48) — are fixed iPhone-17
+        // estimates, not measured. On a device whose real keyboard/safe-area
+        // insets differ, the proxy no longer matches the height the card is
+        // actually offered, so the boundary assertion isn't meaningful there. Skip
+        // off the calibrated class rather than assert a proxy that doesn't apply;
+        // the survival UITest exercises the real keyboard-driven crossing on
+        // whatever device runs it.
         let screenHeight = UIApplication.shared.connectedScenes
             .compactMap { $0 as? UIWindowScene }
             .flatMap(\.windows)
             .first(where: \.isKeyWindow)?.bounds.height ?? 874
         try XCTSkipUnless(screenHeight < 900,
-            "Calibrated for iPhone-17-class screens; this \(screenHeight)pt device's " +
-            "keyboard-up offer exceeds the 8-line-capped fat card — run on iPhone 17")
+            "Keyboard-up offer proxy is calibrated for iPhone-17-class screens; " +
+            "this \(screenHeight)pt device needs measured insets — run on iPhone 17")
         let keyboardUpOffer = screenHeight - 103 - 336 - 48
 
         let fatContent = editorContentHeight(try await fatNotesFullEditorModel())
@@ -148,51 +141,18 @@ final class GlassSnapshotTests: XCTestCase {
             "crossing should come from the long notes, not fixture height")
     }
 
-    /// True content height of the full editor's wrap card — what
-    /// `MeasuredGlassCard` measures via `onGeometryChange` and caps its
-    /// `ScrollView` to (the card's fitting height at an offer `H` is then just
-    /// `min(content, H)`). Probed at a *huge* offer, so the card is never
-    /// offer-constrained and reports its full content height.
+    /// Fitting height of the full editor card at a *huge* offer, so it reports its
+    /// full content height rather than being offer-constrained.
     ///
-    /// The measurement is async: until `onGeometryChange` lands, the card shows a
-    /// bounded first-pass height, not its content. Host in a live window and poll
-    /// — pump the run loop between `sizeThatFits` reads until the value holds
-    /// across several consecutive reads (so a value still transitioning off the
-    /// first-pass height can't be mistaken for settled), bounded by a deadline.
+    /// The card sizes itself **synchronously** now (issue #38 retired the async
+    /// `onGeometryChange` measurement): a plain VStack whose intrinsic height a
+    /// single `sizeThatFits` reports after one layout pass — no live window, no
+    /// run-loop pumping, no settle poll.
     @MainActor
     private func editorContentHeight(_ model: TaskEditorModel) -> CGFloat {
         let host = UIHostingController(rootView: TaskEditorView(model: model, onDismiss: {}))
-        let windowSize = CGSize(width: 393, height: 1200)
-        host.view.frame = CGRect(origin: .zero, size: windowSize)
-        // App-hosted: attach to the host app's live scene so `onGeometryChange`
-        // fires. `UIWindow(frame:)` is deprecated on iOS 26 — use the scene.
-        guard let scene = foregroundWindowScene() else {
-            // Unreachable in the app-hosted bundle (the host app always has a
-            // foreground scene); best-effort one-shot fallback if it ever isn't.
-            return host.sizeThatFits(in: windowSize).height
-        }
-        let window = UIWindow(windowScene: scene)
-        // Tear the window down so it doesn't outlive the call — a visible window
-        // is retained by its scene and would stack across the probe calls.
-        defer { window.isHidden = true; window.rootViewController = nil }
-        window.frame = host.view.frame
-        window.rootViewController = host
-        window.isHidden = false
-
-        let probe = CGSize(width: 393, height: 100_000)
-        let deadline = Date(timeIntervalSinceNow: 3)
-        var last = CGFloat.nan
-        var stableReads = 0
-        while Date() < deadline {
-            host.view.layoutIfNeeded()
-            RunLoop.current.run(until: Date(timeIntervalSinceNow: 0.02))
-            host.view.layoutIfNeeded()
-            let current = host.sizeThatFits(in: probe).height
-            stableReads = (current == last) ? stableReads + 1 : 0
-            if stableReads >= 3 { return current }
-            last = current
-        }
-        return last
+        host.view.layoutIfNeeded()
+        return host.sizeThatFits(in: CGSize(width: 393, height: 100_000)).height
     }
 
     // MARK: - fixtures
@@ -205,10 +165,10 @@ final class GlassSnapshotTests: XCTestCase {
     private let statusSize = CGSize(width: 240, height: 80)
     private let emptySize = CGSize(width: 390, height: 600)
     private let editorQuickSize = CGSize(width: 390, height: 260)
-    // The full-mode card now wraps its content (#22), so the fixture frame is
-    // sized to hug the wrapped card with a small scrim margin rather than the
-    // old near-full-screen 760. The XXXL variant reuses this frame to exercise
-    // the wrap-then-scroll overflow path.
+    // The full-mode card hugs its content (#22/#38), so the fixture frame is
+    // sized to hug it with a small scrim margin rather than the old
+    // near-full-screen 760. The XXXL variant reuses this frame to exercise the
+    // overlay's overflow-scroll path (`editorScrollAndCenter`).
     private let editorFullSize = CGSize(width: 393, height: 400)
 
     /// In-memory store bundle for the editor fixtures (no CloudKit).
@@ -224,7 +184,8 @@ final class GlassSnapshotTests: XCTestCase {
         )
     }
 
-    /// Quick-capture draft over the dimmed scrim its real presentation uses.
+    /// Quick-capture draft over the dimmed scrim its real presentation uses,
+    /// hosted through the same `editorScrollAndCenter` the overlay applies.
     @MainActor
     private func quickEditor() async throws -> some View {
         let model = TaskEditorModel(stores: try await editorStores(), opening: .newCapture(parentID: nil, placement: .top))
@@ -232,7 +193,7 @@ final class GlassSnapshotTests: XCTestCase {
         return ZStack {
             Color.black.opacity(0.35).ignoresSafeArea()
             TaskEditorView(model: model, onDismiss: {})
-                .padding(.horizontal, 24)
+                .editorScrollAndCenter()
         }
     }
 
@@ -253,11 +214,11 @@ final class GlassSnapshotTests: XCTestCase {
         return model
     }
 
-    /// A full-mode draft whose notes body is long enough to drive the
-    /// content-hugging notes field (`.lineLimit(2...8)`) to its scroll cap, so
-    /// the card is tall enough to cross the keyboard-driven fit boundary. Uses
-    /// the shared `UITestSeedContent.fatNotesBody()` so this probe measures the
-    /// exact card the `--ui-test-seed-fat-notes` UI test drives.
+    /// A full-mode draft whose notes body is long enough that the growing notes
+    /// field (`.lineLimit(2...)`) makes the card taller than the keyboard-up
+    /// offer, so it crosses the fit boundary (the overlay scrolls it). Uses the
+    /// shared `UITestSeedContent.fatNotesBody()` so this probe measures the exact
+    /// card the `--ui-test-seed-fat-notes` UI test drives.
     @MainActor
     private func fatNotesFullEditorModel() async throws -> TaskEditorModel {
         let model = try await fullEditorModel()
@@ -265,14 +226,17 @@ final class GlassSnapshotTests: XCTestCase {
         return model
     }
 
-    /// Full editor over an in-memory draft with representative scalar fields.
+    /// Full editor over an in-memory draft with representative scalar fields,
+    /// hosted through the same `editorScrollAndCenter` the overlay applies — so
+    /// the snapshot (and especially the XXXL overflow case) exercises the real
+    /// center-or-scroll path rather than a bare, clipped card.
     @MainActor
     private func fullEditor() async throws -> some View {
         let model = try await fullEditorModel()
         return ZStack {
             Color.black.opacity(0.35).ignoresSafeArea()
             TaskEditorView(model: model, onDismiss: {})
-                .padding(.horizontal, 16)
+                .editorScrollAndCenter()
         }
     }
 
@@ -389,16 +353,11 @@ final class GlassSnapshotTests: XCTestCase {
         let host = UIHostingController(rootView: hosted)
         host.overrideUserInterfaceStyle = dark ? .dark : .light
         host.view.frame = CGRect(origin: .zero, size: size)
-        // The editor's `MeasuredGlassCard` sizes to a height `onGeometryChange`
-        // reports in a later transaction, so it can't be settled by a run-loop
-        // pump on the detached `host.view` (that callback only fires in a live
-        // window). It doesn't need to be: `drawHierarchyInKeyWindow` renders
-        // `afterScreenUpdates: true`, which flushes pending layout — including the
-        // measurement's state update — before the image is captured. So the card
-        // is captured at its measured height, not the bounded first-pass one, and
-        // (unlike attaching an offscreen live window here) glass still composites
-        // correctly. Verified: the `test_editor_full_*` baselines are the
-        // populated ~335pt card.
+        // `drawHierarchyInKeyWindow` renders `afterScreenUpdates: true`, which
+        // flushes pending layout before the capture and composites Liquid Glass
+        // correctly (unlike an offscreen `CALayer.render(in:)`). The editor card
+        // sizes itself synchronously now (issue #38 retired the async
+        // measurement), so there is no deferred state to settle first.
         withSnapshotTesting(record: recordMode) {
             assertSnapshot(
                 of: host,
@@ -406,15 +365,5 @@ final class GlassSnapshotTests: XCTestCase {
                 testName: function
             )
         }
-    }
-
-    /// The host app's foreground window scene, used to host offscreen views in a
-    /// live window so `onGeometryChange`-driven layout settles.
-    @MainActor
-    private func foregroundWindowScene() -> UIWindowScene? {
-        UIApplication.shared.connectedScenes
-            .compactMap { $0 as? UIWindowScene }
-            .first { $0.activationState == .foregroundActive }
-            ?? UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }.first
     }
 }
