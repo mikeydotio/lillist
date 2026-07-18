@@ -44,13 +44,6 @@ public struct TaskEditorView: View {
     @State private var tagDraft = ""
     @FocusState private var tagFieldFocused: Bool
 
-    // Last measured content height per route, kept on the host (which survives a
-    // drill-in → Back) so a card rebuilt on return seeds its own height instead
-    // of resetting to the bounded first-pass and popping to size a frame later.
-    // First visit to a route has no entry yet, so that card settles once, masked
-    // by the open/drill-in animation.
-    @State private var cardHeights: [DetailRoute: CGFloat] = [:]
-
     @Environment(\.accessibilityReduceMotion) private var systemReduceMotion
     @Environment(\.reduceMotionOverride) private var overrideReduceMotion
     private var reduceMotion: Bool { overrideReduceMotion ?? systemReduceMotion }
@@ -124,7 +117,7 @@ public struct TaskEditorView: View {
     private var fullBody: some View {
         Group {
             switch route {
-            case .main: mainCard
+            case .main: mainCardContent
             case .schedule: scheduleChild
             case .attachments: attachmentsChild
             case .journal: journalChild
@@ -133,11 +126,11 @@ public struct TaskEditorView: View {
         // The glass panel is applied ONCE here, to the outer Group, not per card,
         // so it keeps a stable identity across a route change: only the card
         // content crossfades inside one steady panel, rather than two translucent
-        // panels overlapping. Each card supplies its own *height* (bounded
-        // first-pass until measured, seeded per route from `cardHeights`), and the
-        // Group — hence the panel — animates smoothly to it. Safe to share now
-        // that the card is bounded, not greedy, so the panel never flashes the
-        // full offer.
+        // panels overlapping. Each branch is a plain, hugging VStack that sizes
+        // itself synchronously (issue #38), so the Group — hence the panel —
+        // animates smoothly to each route's own height with no measurement pass
+        // and no first-frame flash. The overlay's `editorScrollAndCenter` owns the
+        // single scroll and centers/scrolls this whole panel.
         .editorGlassPanel()
         .task(id: textEditKey) {
             do { try await Task.sleep(for: .milliseconds(500)) } catch { return }
@@ -163,23 +156,10 @@ public struct TaskEditorView: View {
 
     // MARK: - Main card
 
-    /// The detail card wraps its content (like Quick Capture) and only scrolls
-    /// when the content genuinely overflows the offered height, so the
-    /// header/title is never clipped off the centered overlay. Shares the
-    /// `MeasuredGlassCard` chrome with the attachments/journal children; the main
-    /// card passes no `maxHeight`, fitting the whole overlay.
-    private var mainCard: some View {
-        MeasuredGlassCard(
-            initialHeight: cardHeights[.main],
-            // Only remember the *collapsed* height. `onMeasured` also fires while
-            // the inline tag field is open (which grows the card), but the field is
-            // always collapsed on Back (the `.onChange(of: route)` reset above), so
-            // a height captured with it open would over-seed the rebuilt card and
-            // flash a blank gap below the content for a frame. Skip those. (#35)
-            onMeasured: { if !isTagEditing { cardHeights[.main] = $0 } }
-        ) { mainCardContent }
-    }
-
+    /// The detail card content — a plain, self-sizing VStack. It hugs its content
+    /// synchronously (no measurement); the overlay's `editorScrollAndCenter` owns
+    /// the single scroll and lifts/scrolls it when the keyboard shrinks the offer,
+    /// so the header/title is never clipped off the centered overlay.
     @ViewBuilder
     private var mainCardContent: some View {
         VStack(alignment: .leading, spacing: LillistSpacing.l) {
@@ -591,34 +571,28 @@ public struct TaskEditorView: View {
     }
 
     private var attachmentsChild: some View {
-        MeasuredGlassCard(
-            maxHeight: LillistSizing.editorChildMaxHeight,
-            initialHeight: cardHeights[.attachments],
-            onMeasured: { cardHeights[.attachments] = $0 }
-        ) {
+        VStack(spacing: 0) {
             childHeader("Attachments") { route = .main }
-        } content: {
-            EditorAttachmentsSection(
-                attachments: model.attachments,
-                onAddTapped: onAddAttachment,
-                onDelete: { id in Task { await model.deleteAttachment(id: id) } }
-            )
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(LillistSpacing.l)
+            EditorChildBody {
+                EditorAttachmentsSection(
+                    attachments: model.attachments,
+                    onAddTapped: onAddAttachment,
+                    onDelete: { id in Task { await model.deleteAttachment(id: id) } }
+                )
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(LillistSpacing.l)
+            }
         }
     }
 
     private var journalChild: some View {
-        MeasuredGlassCard(
-            maxHeight: LillistSizing.editorChildMaxHeight,
-            initialHeight: cardHeights[.journal],
-            onMeasured: { cardHeights[.journal] = $0 }
-        ) {
+        VStack(spacing: 0) {
             childHeader("Journal") { route = .main }
-        } content: {
-            EditorJournalSection(entries: model.journal)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(LillistSpacing.l)
+            EditorChildBody {
+                EditorJournalSection(entries: model.journal)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(LillistSpacing.l)
+            }
         }
     }
 
@@ -684,128 +658,40 @@ private extension View {
     }
 }
 
-/// A full-editor card body: hugs its scrolling content and scrolls only on
-/// overflow. The glass panel is *not* applied here — it lives on the shared
-/// `fullBody` Group (`.editorGlassPanel()`), so a route change crossfades content
-/// inside one steady panel rather than overlapping two.
+/// A child popup's scrollable body (Attachments / Journal). The Back header is
+/// pinned by the caller *above* this view; only the section content is governed
+/// here.
 ///
-/// A bare `ScrollView` is vertically greedy, so its height is capped to the
-/// content's own measured ideal height (bounded by `maxHeight`): the parent's
-/// proposal then engages the scroll when the keyboard shrinks the offer, without
-/// recreating the subtree (so a focused "+ Tag" field isn't torn down — issue
-/// #32). `header` (a child popup's Back bar) sits above the scroll area; the main
-/// card passes none. Wrap-to-content (#22) is preserved.
+/// Sizing is synchronous — no measurement, no `onGeometryChange`. The only choice
+/// is who owns the scroll, and that depends on the host (issue #38):
+///  - **`editorHasOuterScroll == true`** (the overlay's `editorScrollAndCenter`):
+///    the section *hugs* its content and the overlay's single scroll handles any
+///    overflow. No nested scroll.
+///  - **`false`** (a scroll-less host — the macOS hotkey `NSPanel`, which sizes
+///    itself to the editor's intrinsic height): the section self-bounds to
+///    `editorChildMaxHeight` and scrolls internally, so a long list can't grow the
+///    panel past the screen and clip. `.scrollBounceBehavior(.basedOnSize)` keeps
+///    it passive until it actually overflows.
 ///
-/// Because `content` is always inside this scroll view (the synchronous
-/// `ViewThatFits` valve used a non-scrolling candidate when the card fit), the
-/// iOS notes `TextField`'s own in-place scroll (past 8 lines) nests inside it.
-/// `.scrollBounceBehavior(.basedOnSize)` keeps this outer scroll passive in the
-/// *fitting* case (contentSize == bounds), so a drag reaches the field. In the
-/// *overflowing* case (fat notes with the keyboard up), this outer scroll is
-/// active, so a drag begun inside a >8-line note is genuinely ambiguous — it may
-/// pan the card rather than scroll the note's own overflow. There's no clean
-/// declarative resolution short of the field-tearing valve or an overlay-level
-/// scroll; flagged for on-device confirmation.
-///
-/// The measured cap arrives asynchronously (`onGeometryChange` reports in a
-/// later transaction), so for the first frame — on open, quick→full expand, and
-/// each drill-in that rebuilds the card — the height is unknown. Rather than
-/// paint greedily (the panel filling the full offer, then snapping down) or
-/// blank the card (an invisible-but-hittable panel that pops in), cap that first
-/// frame to a *bounded* first-pass height: the card shows its top, in a
-/// reasonably-sized panel, then resizes to hug once measured — a small settle
-/// masked by the entry/route animation, never a full-offer flash or a blank pop.
-///
-/// Known limitations of the async cap, both accepted costs of the single,
-/// non-swapping subtree that keeps the focused field alive (#32):
-///  - It trails content *growth* by a frame. On the main card (no `maxHeight`, so
-///    the cap equals the content height), adding a notes line while typing grows
-///    the content one layout pass before `onGeometryChange` raises the cap, so
-///    the scroll view is momentarily a line short and auto-scrolls to keep the
-///    caret visible — a one-frame micro-jump the synchronous `ViewThatFits` valve
-///    didn't have.
-///  - `onMeasured` writes the host's `cardHeights` `@State` from the geometry
-///    callback, so a genuine content-height change re-evaluates the whole
-///    `TaskEditorView` body, not just this subtree. It's a no-op re-render when
-///    the height is unchanged (e.g. a seeded card re-measuring the same value),
-///    and content-height changes are infrequent, so this is cheap in practice.
-/// Removing either would mean the field-tearing valve or moving the scroll to the
-/// overlay. Flagged for on-device confirmation of whether the settle is perceptible.
-private struct MeasuredGlassCard<Header: View, Content: View>: View {
-    private let maxHeight: CGFloat?
-    private let onMeasured: (CGFloat) -> Void
-    private let header: Header
+/// The glass panel is *not* applied here — it lives on the shared `fullBody` Group
+/// (`.editorGlassPanel()`), so a route change crossfades content inside one steady
+/// panel.
+struct EditorChildBody<Content: View>: View {
+    @Environment(\.editorHasOuterScroll) private var hasOuterScroll
     private let content: Content
 
-    /// The content's ideal (unclipped) height, measured inside the scroll view
-    /// where it's proposed an unbounded vertical extent. Seeded from the host's
-    /// remembered height (so a rebuilt card starts sized), else `0` — when
-    /// `cappedHeight` uses the bounded first-pass height until `onGeometryChange`
-    /// lands.
-    @State private var contentHeight: CGFloat
-
-    /// Bounded first-pass height until the content measures — enough to show the
-    /// card's top (header + first rows) without filling the offer. Computed, not
-    /// stored: a generic type can't hold a `static` stored property.
-    private static var firstPassHeight: CGFloat { 220 }
-
-    init(
-        maxHeight: CGFloat? = nil,
-        initialHeight: CGFloat?,
-        onMeasured: @escaping (CGFloat) -> Void,
-        @ViewBuilder header: () -> Header,
-        @ViewBuilder content: () -> Content
-    ) {
-        self.maxHeight = maxHeight
-        self.onMeasured = onMeasured
-        self.header = header()
+    init(@ViewBuilder content: () -> Content) {
         self.content = content()
-        self._contentHeight = State(initialValue: initialHeight ?? 0)
     }
 
     var body: some View {
-        VStack(spacing: 0) {
-            header
-            ScrollView(.vertical) {
-                content
-                    .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { newHeight in
-                        contentHeight = newHeight
-                        onMeasured(newHeight)
-                    }
-            }
-            .frame(maxHeight: cappedHeight)
-            // Don't bounce/scroll when the content fits: the iOS notes field is a
-            // vertical-axis `TextField` that scrolls its own overflow in place, so
-            // when the card fits (this scroll view's contentSize == bounds) this
-            // outer scroll must stay passive and let a drag inside a long note
-            // reach the field, not pan the card.
-            .scrollBounceBehavior(.basedOnSize)
+        if hasOuterScroll {
+            content
+        } else {
+            ScrollView(.vertical) { content }
+                .frame(maxHeight: LillistSizing.editorChildMaxHeight)
+                .scrollBounceBehavior(.basedOnSize)
         }
-    }
-
-    /// Cap the greedy scroll view to the content's ideal height (so it hugs),
-    /// bounded by `maxHeight`. Before the first measurement, a bounded first-pass
-    /// height (also bounded by `maxHeight`) — never `nil` (greedy) — so the card
-    /// is visible but not full-offer while it measures.
-    private var cappedHeight: CGFloat? {
-        let unbounded = contentHeight > 0 ? contentHeight : Self.firstPassHeight
-        guard let maxHeight else { return unbounded }
-        return min(unbounded, maxHeight)
-    }
-}
-
-extension MeasuredGlassCard where Header == EmptyView {
-    /// A headerless card (the main detail card).
-    init(
-        maxHeight: CGFloat? = nil,
-        initialHeight: CGFloat?,
-        onMeasured: @escaping (CGFloat) -> Void,
-        @ViewBuilder content: () -> Content
-    ) {
-        self.init(
-            maxHeight: maxHeight, initialHeight: initialHeight,
-            onMeasured: onMeasured, header: { EmptyView() }, content: content
-        )
     }
 }
 
