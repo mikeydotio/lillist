@@ -41,8 +41,6 @@ private struct TaskEditorOverlay<EditorContent: View>: ViewModifier {
                             .transition(.opacity)
 
                         editorContent()
-                            .padding(.horizontal, LillistSpacing.l)
-                            .padding(.vertical, LillistSpacing.xl)
                             .transition(
                                 reduceMotion
                                     ? .opacity
@@ -53,6 +51,13 @@ private struct TaskEditorOverlay<EditorContent: View>: ViewModifier {
                                 isPresented = false
                                 return .handled
                             }
+                            // The single scroll owner: the card centers when it
+                            // fits the (keyboard-aware) offer and scrolls when it
+                            // overflows. The card's own padding now lives here.
+                            .editorScrollAndCenter(onBackgroundTap: {
+                                onCancel()
+                                isPresented = false
+                            })
                     }
                 }
             }
