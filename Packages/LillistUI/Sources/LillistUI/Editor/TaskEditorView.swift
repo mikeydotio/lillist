@@ -176,8 +176,18 @@ public struct TaskEditorView: View {
             // always collapsed on Back (the `.onChange(of: route)` reset above), so
             // a height captured with it open would over-seed the rebuilt card and
             // flash a blank gap below the content for a frame. Skip those. (#35)
-            onMeasured: { if !isTagEditing { cardHeights[.main] = $0 } }
+            onMeasured: { if Self.shouldRememberMainCardHeight(isTagEditing: isTagEditing) { cardHeights[.main] = $0 } }
         ) { mainCardContent }
+    }
+
+    /// Whether a freshly measured `.main` card height should be remembered as the
+    /// seed for the card rebuilt on a drill-in → Back round-trip. Only the
+    /// collapsed height is valid: the inline tag field grows the card while open,
+    /// and it is always collapsed on Back (the `.onChange(of: route)` reset), so a
+    /// height captured while editing would over-seed the rebuilt card. Pinned by
+    /// `MainCardHeightSeedTests`; `internal` for `@testable` reach. (#35)
+    nonisolated static func shouldRememberMainCardHeight(isTagEditing: Bool) -> Bool {
+        !isTagEditing
     }
 
     @ViewBuilder
@@ -744,11 +754,6 @@ private struct MeasuredGlassCard<Header: View, Content: View>: View {
     /// lands.
     @State private var contentHeight: CGFloat
 
-    /// Bounded first-pass height until the content measures — enough to show the
-    /// card's top (header + first rows) without filling the offer. Computed, not
-    /// stored: a generic type can't hold a `static` stored property.
-    private static var firstPassHeight: CGFloat { 220 }
-
     init(
         maxHeight: CGFloat? = nil,
         initialHeight: CGFloat?,
@@ -788,7 +793,24 @@ private struct MeasuredGlassCard<Header: View, Content: View>: View {
     /// height (also bounded by `maxHeight`) — never `nil` (greedy) — so the card
     /// is visible but not full-offer while it measures.
     private var cappedHeight: CGFloat? {
-        let unbounded = contentHeight > 0 ? contentHeight : Self.firstPassHeight
+        MeasuredCardSizing.cappedHeight(content: contentHeight, maxHeight: maxHeight)
+    }
+}
+
+/// Pure sizing math shared by every `MeasuredGlassCard`, factored out of the
+/// generic view so `MeasuredCardSizingTests` can pin the seeding contract without
+/// a host render (the generic, `private` view is unreachable via `@testable`).
+/// Being non-generic, it also lets `firstPassHeight` be a proper stored `let`. (#35)
+enum MeasuredCardSizing {
+    /// Bounded first-pass height until the content measures — enough to show the
+    /// card's top (header + first rows) without filling the offer.
+    static let firstPassHeight: CGFloat = 220
+
+    /// The measured content height (or the first-pass fallback when unmeasured),
+    /// clamped to `maxHeight` when the card is bounded. Never nil: a bounded card
+    /// can only ever seed up to its cap, so a stale-tall seed can't gap the layout.
+    static func cappedHeight(content: CGFloat, maxHeight: CGFloat?) -> CGFloat {
+        let unbounded = content > 0 ? content : firstPassHeight
         guard let maxHeight else { return unbounded }
         return min(unbounded, maxHeight)
     }
