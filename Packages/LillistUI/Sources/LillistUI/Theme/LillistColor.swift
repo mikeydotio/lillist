@@ -1,5 +1,9 @@
 import SwiftUI
 
+#if canImport(AppKit)
+import AppKit
+#endif
+
 /// Semantic surface, text, and border colors — the only color API
 /// components should reach for (alongside the functional hues on
 /// `RainbowPalette` and the status/sync/tag palettes).
@@ -28,11 +32,11 @@ public enum LillistColor {
     /// Titles and emphasized content.
     public static let textStrong = RainbowPalette.dynamic(light: 0x1B1C22, dark: 0xF4F5F9)
     /// Default body text.
-    public static let textBody = RainbowPalette.dynamic(light: 0x3C3F49, dark: 0xC9CCD6)
+    public static let textBody = RainbowPalette.dynamic(light: Hex.textBody.light, dark: Hex.textBody.dark)
     /// Secondary/meta text (due dates, counts, captions).
     public static let textMuted = RainbowPalette.dynamic(light: 0x71757F, dark: 0x9A9EA9)
     /// Tertiary text, placeholders, and the todo-status neutral.
-    public static let textFaint = RainbowPalette.dynamic(light: 0x969AA6, dark: 0x70747F)
+    public static let textFaint = RainbowPalette.dynamic(light: Hex.textFaint.light, dark: Hex.textFaint.dark)
 
     // MARK: Borders
 
@@ -42,4 +46,29 @@ public enum LillistColor {
     public static let borderHair = RainbowPalette.dynamic(light: 0xE9EBF1, dark: 0x2B2D36)
     /// Borders under Increase Contrast.
     public static let borderStrong = RainbowPalette.dynamic(light: 0xC0C3CD, dark: 0x4A4E59)
+
+    // MARK: AppKit accessors
+
+    /// Single-source scheme hex for the tokens that also need a real `NSColor`
+    /// (AppKit-backed views can't take a SwiftUI `Color`). Both the `Color`
+    /// tokens above and the `NSColor` accessors below derive from these, so the
+    /// two representations can never drift.
+    private enum Hex {
+        static let textBody: (light: UInt32, dark: UInt32) = (0x3C3F49, 0xC9CCD6)
+        static let textFaint: (light: UInt32, dark: UInt32) = (0x969AA6, 0x70747F)
+    }
+
+    #if canImport(AppKit)
+    /// `textBody` as a name-based dynamic `NSColor`, for AppKit-backed views
+    /// such as the macOS notes editor (`MacNotesTextView`). Same scheme values
+    /// as `textBody`; re-resolves for light/dark at draw time.
+    static var textBodyNSColor: NSColor {
+        RainbowPalette.dynamicNSColor(light: Hex.textBody.light, dark: Hex.textBody.dark)
+    }
+    /// `textFaint` as a name-based dynamic `NSColor` — the notes-field
+    /// placeholder color drawn by `MacNotesTextView`.
+    static var textFaintNSColor: NSColor {
+        RainbowPalette.dynamicNSColor(light: Hex.textFaint.light, dark: Hex.textFaint.dark)
+    }
+    #endif
 }

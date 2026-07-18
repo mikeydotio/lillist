@@ -57,10 +57,9 @@ public enum LillistSizing {
     /// Drill-in child (schedule / attachments / journal) max height before
     /// it scrolls internally, so a child never grows to fill the screen.
     public static let editorChildMaxHeight: CGFloat = 400
-    /// **macOS only:** max height of the macOS notes `TextEditor` before it
-    /// scrolls in place, bounding its invisible sizer (which would otherwise grow
-    /// unbounded). iOS bounds its notes `TextField` with `.lineLimit(2...8)`, not
-    /// this token.
+    /// **macOS only:** max height of the macOS notes editor (`MacNotesTextView`)
+    /// before its `NSScrollView` scrolls in place. iOS bounds its notes
+    /// `TextField` with `.lineLimit(2...8)`, not this token.
     public static let editorNotesMaxHeight: CGFloat = 200
 }
 
