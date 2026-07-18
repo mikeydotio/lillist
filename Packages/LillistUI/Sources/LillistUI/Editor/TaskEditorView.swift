@@ -236,9 +236,12 @@ public struct TaskEditorView: View {
         macNotesEditor
         #else
         // iOS: a vertical-axis `TextField` (matching the title) so the card
-        // wraps its description rather than reserving a fixed tall box —
-        // `.lineLimit(2...8)` grows it from two lines with the text and scrolls
-        // in place past eight, keeping the card compact.
+        // wraps its description rather than reserving a fixed tall box.
+        // `.lineLimit(2...)` grows it from two lines with the text and — crucially —
+        // never scrolls in place: with no upper cap there is no inner scroll to
+        // fight the overlay's single scroll, so a drag inside a long note scrolls
+        // the whole card instead of being ambiguous (issue #34). The overlay
+        // handles overflow.
         TextField(
             text: $model.notes,
             prompt: Text("Add a description…", bundle: .module),
@@ -249,7 +252,7 @@ public struct TaskEditorView: View {
         .textFieldStyle(.plain)
         .font(LillistTypography.body)
         .foregroundStyle(LillistColor.textBody)
-        .lineLimit(2...8)
+        .lineLimit(2...)
         .focused($focusedField, equals: .notes)
         .padding(LillistSpacing.s)
         .background {
@@ -299,7 +302,7 @@ public struct TaskEditorView: View {
     /// line. Add a small over-estimate of that vertical inset (top+bottom); a bit
     /// of bottom breathing room is harmless, a shortfall clips. Verify on-device.
     nonisolated static let macNotesVerticalSlack: CGFloat = 8
-    /// ~2 lines of body text — the iOS field's `.lineLimit(2...8)` floor.
+    /// ~2 lines of body text — the iOS field's `.lineLimit(2...)` floor.
     private static let macNotesMinHeight: CGFloat = 44
 
     /// The string the invisible sizer measures. SwiftUI `Text` drops a trailing
