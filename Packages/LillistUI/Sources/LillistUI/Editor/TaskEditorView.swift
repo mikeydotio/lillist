@@ -279,7 +279,19 @@ public struct TaskEditorView: View {
     /// Approximate horizontal inset of `TextEditor`'s text start on macOS
     /// (`NSTextView`'s `lineFragmentPadding` ≈ 5pt), used to left-align the
     /// placeholder with where the caret will sit.
+    ///
+    /// The three `macNotes*Inset`/`Slack` constants below **estimate undocumented
+    /// `NSTextView` metrics** (`lineFragmentPadding` + `textContainerInset`),
+    /// whose exact total isn't public. They're biased to over-count so the box
+    /// never clips, and were set against **macOS 26 / iOS 26**; there's no
+    /// automated coverage (macOS glass/editor snapshots are `XCTSkip`-quarantined),
+    /// so if a future OS changes those insets past the slack the field could clip.
+    /// Verify/tune on-device; re-check whenever the deployment target moves.
     private static let macNotesTextInset: CGFloat = 5
+    /// Top inset estimating `NSTextView`'s vertical `textContainerInset`, so the
+    /// empty-state placeholder's first line lands on the caret's baseline instead
+    /// of a few points above it (see the metrics caveat on `macNotesTextInset`).
+    private static let macNotesTopInset: CGFloat = 5
     /// Horizontal inset for the invisible **sizer** — deliberately *larger* than
     /// the editor's real text inset. The sizer drives the box height by wrapping
     /// the note at its own width, so if it wrapped *wider* than the live editor
@@ -348,6 +360,7 @@ public struct TaskEditorView: View {
                                 .font(LillistTypography.body)
                                 .foregroundStyle(LillistColor.textFaint)
                                 .padding(.horizontal, Self.macNotesTextInset)
+                                .padding(.top, Self.macNotesTopInset)
                                 .allowsHitTesting(false)
                                 .accessibilityHidden(true)
                         }
@@ -677,9 +690,13 @@ private extension View {
 /// Because `content` is always inside this scroll view (the synchronous
 /// `ViewThatFits` valve used a non-scrolling candidate when the card fit), the
 /// iOS notes `TextField`'s own in-place scroll (past 8 lines) nests inside it.
-/// `.scrollBounceBehavior(.basedOnSize)` keeps this outer scroll passive when the
-/// card fits so a drag reaches the field; worth an on-device check that a long
-/// note still scrolls the note, not the card.
+/// `.scrollBounceBehavior(.basedOnSize)` keeps this outer scroll passive in the
+/// *fitting* case (contentSize == bounds), so a drag reaches the field. In the
+/// *overflowing* case (fat notes with the keyboard up), this outer scroll is
+/// active, so a drag begun inside a >8-line note is genuinely ambiguous — it may
+/// pan the card rather than scroll the note's own overflow. There's no clean
+/// declarative resolution short of the field-tearing valve or an overlay-level
+/// scroll; flagged for on-device confirmation.
 ///
 /// The measured cap arrives asynchronously (`onGeometryChange` reports in a
 /// later transaction), so for the first frame — on open, quick→full expand, and
@@ -690,15 +707,21 @@ private extension View {
 /// reasonably-sized panel, then resizes to hug once measured — a small settle
 /// masked by the entry/route animation, never a full-offer flash or a blank pop.
 ///
-/// Known limitation of the async cap: it trails content *growth* by a frame. On
-/// the main card (no `maxHeight`, so the cap equals the content height), adding a
-/// notes line while typing grows the content one layout pass before
-/// `onGeometryChange` raises the cap, so the scroll view is momentarily a line
-/// short and auto-scrolls to keep the caret visible — a one-frame micro-jump the
-/// synchronous `ViewThatFits` valve didn't have. It's the cost of the single,
-/// non-swapping subtree that keeps the focused field alive (#32); eliminating it
-/// would mean the field-tearing valve or moving the scroll to the overlay.
-/// Flagged for on-device confirmation of whether the settle is perceptible.
+/// Known limitations of the async cap, both accepted costs of the single,
+/// non-swapping subtree that keeps the focused field alive (#32):
+///  - It trails content *growth* by a frame. On the main card (no `maxHeight`, so
+///    the cap equals the content height), adding a notes line while typing grows
+///    the content one layout pass before `onGeometryChange` raises the cap, so
+///    the scroll view is momentarily a line short and auto-scrolls to keep the
+///    caret visible — a one-frame micro-jump the synchronous `ViewThatFits` valve
+///    didn't have.
+///  - `onMeasured` writes the host's `cardHeights` `@State` from the geometry
+///    callback, so a genuine content-height change re-evaluates the whole
+///    `TaskEditorView` body, not just this subtree. It's a no-op re-render when
+///    the height is unchanged (e.g. a seeded card re-measuring the same value),
+///    and content-height changes are infrequent, so this is cheap in practice.
+/// Removing either would mean the field-tearing valve or moving the scroll to the
+/// overlay. Flagged for on-device confirmation of whether the settle is perceptible.
 private struct MeasuredGlassCard<Header: View, Content: View>: View {
     private let maxHeight: CGFloat?
     private let onMeasured: (CGFloat) -> Void
