@@ -59,10 +59,10 @@ public enum LillistSizing {
     /// use it only when there is no outer scroll (`EditorChildBody`) — under the
     /// overlay they hug and the overlay scrolls them.
     public static let editorChildMaxHeight: CGFloat = 400
-    /// **macOS only:** max height of the macOS notes `TextEditor` before it
-    /// scrolls in place, bounding its invisible sizer (which would otherwise grow
-    /// unbounded). iOS notes grow with `.lineLimit(2...)` (no upper cap) and the
-    /// overlay scrolls the card, so iOS does not use this token.
+    /// **macOS only:** max height of the macOS notes editor (`MacNotesTextView`)
+    /// before its `NSScrollView` scrolls in place. iOS notes grow with
+    /// `.lineLimit(2...)` (no upper cap) and the overlay scrolls the card, so iOS
+    /// does not use this token.
     public static let editorNotesMaxHeight: CGFloat = 200
 }
 

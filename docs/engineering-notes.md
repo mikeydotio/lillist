@@ -55,6 +55,56 @@ the one scroll up to the overlay.
   fail-safe): it hugs under the overlay (which scrolls) and self-bounds +
   scrolls internally under the scroll-less `NSPanel` (so a long list can't grow
   the panel past the screen and clip). The overlay's container sets the flag.
+## 2026-07-18 — The macOS notes hug, done right: a self-measuring `NSTextView` (`NSViewRepresentable`) replaces the invisible-`Text`-sizer estimate (issue #36)
+
+**Supersedes the 2026-07-17 invisible-`Text`-sizer entry below.** That approach
+drove the box height by wrapping a hidden SwiftUI `Text` offset from the live
+`TextEditor` by four hand-tuned constants that *estimated* undocumented
+`NSTextView` insets (`lineFragmentPadding` + `textContainerInset`). It worked but
+could silently clip on a future OS inset change, and the real hug had no
+host-testable coverage. `MacNotesTextView` replaces it: one `NSTextView` both
+displays and measures, so displayed metrics **are** measured metrics — nothing to
+estimate, and the height math runs in plain `swift test`.
+
+- **`usedRect` omits the trailing empty line.** `NSLayoutManager.usedRect(for:)`
+  does *not* include the extra fragment AppKit lays out for an empty document or
+  text ending in `\n`. Measure it as `usedRect.union(extraLineFragmentRect)` when
+  `extraLineFragmentTextContainer != nil`, then add `textContainerInset.height*2`.
+  Skip this and a note ending in Return measures one line short and clips — the
+  exact bug #36 feared. This is also what retires the old zero-width-space hack
+  (the SwiftUI `Text` sizer dropped a trailing newline; the layout manager reports
+  it honestly).
+- **Build an explicit TextKit 1 stack** (`NSTextStorage → NSLayoutManager →
+  NSTextContainer → NSTextView(frame:textContainer:)`). A default macOS-15
+  `NSTextView` is TextKit 2 with *lazy* layout; touching `usedRect`/`layoutManager`
+  forces a live downgrade and non-deterministic reads. Explicit construction pins
+  TextKit 1, so measurement is deterministic (and unit-testable).
+- **Report height via `NSViewRepresentable.sizeThatFits(_:nsView:context:)`**,
+  measured through the shared config at the *proposed* width — don't mutate the
+  live view mid-layout and don't push height back through a `@Binding` +
+  `DispatchQueue.async` (that's the "modifying state during view update" trap). A
+  `@Binding text` change re-renders the parent, which re-queries `sizeThatFits`.
+- **One config, two consumers.** A single factory (`MacNotesTextConfig`) builds
+  both the live view and the measurer's scratch view, so "measured == displayed"
+  is structural, not hand-synced. That is the whole correctness argument, and it's
+  what a host test can pin.
+- **`NSColor(someSwiftUIColor)` collapses a dynamic color** to a static snapshot
+  of the *current* appearance. AppKit views need the real dynamic `NSColor`
+  (name-based, re-resolving at draw time) for text/caret/placeholder — added as
+  `RainbowPalette.dynamicNSColor` + `LillistColor.textBodyNSColor`/`textFaintNSColor`.
+- **Bridge focus with `becomeFirstResponder`/`resignFirstResponder` overrides**,
+  not `textDidBegin/EndEditing` (which track editing, not focus). Reconcile the
+  other way in `updateNSView` via `window?.makeFirstResponder` (never in
+  `makeNSView` — no `window` yet), guard the echo with a flag, defer the write-out.
+- **Always autohide the scroller** (`hasVerticalScroller` + `autohidesScrollers`),
+  never gate it on `measured > cap`: if a measurement is ever a hair low the
+  content scrolls instead of clipping — belt-and-suspenders over the boundary.
+- **Payoff:** AppKit text layout composites offscreen without a window (unlike
+  glass), so `MacNotesTextMeasurer` is host-unit-tested (`MacNotesTextMeasurerTests`,
+  11 relation-based invariants, runs in CI) — the automated coverage the estimate
+  could never have. Return→newline is native to `NSTextView` (issue #29 comes for
+  free); the *visual* hug is still eyeball-verified on-device (no macOS
+  offscreen-capture path), and `MacNotesFieldUITests` still pins Return→newline.
 
 ## 2026-07-17 — A content-hugging, newline-accepting macOS notes box: bound a `TextEditor` and drive its height with an *invisible `Text` sizer* (issue #29)
 

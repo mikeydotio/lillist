@@ -37,14 +37,34 @@ public enum RainbowPalette {
                 : UIColor(hex: light, alpha: lightAlpha)
         })
         #elseif canImport(AppKit)
-        return Color(nsColor: NSColor(name: nil) { appearance in
+        return Color(nsColor: dynamicNSColor(
+            light: light, dark: dark, lightAlpha: lightAlpha, darkAlpha: darkAlpha
+        ))
+        #endif
+    }
+
+    #if canImport(AppKit)
+    /// The AppKit primitive behind `dynamic(...)`: a name-based dynamic
+    /// `NSColor` that re-resolves against `NSAppearance.current` at draw time.
+    ///
+    /// AppKit-backed views that can't take a SwiftUI `Color` — e.g. the macOS
+    /// notes `NSTextView` (`MacNotesTextView`) — need a real `NSColor` for
+    /// `textColor`/`insertionPointColor`/drawn placeholders. Routing through
+    /// `NSColor(someSwiftUIColor)` would collapse the (light, dark) pair to a
+    /// static snapshot of the *current* appearance, so those views would stop
+    /// tracking light/dark. This keeps the dynamic behaviour intact.
+    static func dynamicNSColor(
+        light: UInt32, dark: UInt32,
+        lightAlpha: Double = 1, darkAlpha: Double = 1
+    ) -> NSColor {
+        NSColor(name: nil) { appearance in
             let isDark = appearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
             return isDark
                 ? NSColor(hex: dark, alpha: darkAlpha)
                 : NSColor(hex: light, alpha: lightAlpha)
-        })
-        #endif
+        }
     }
+    #endif
 
     // MARK: Rainbow spectrum (scheme-invariant)
 
