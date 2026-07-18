@@ -171,7 +171,12 @@ public struct TaskEditorView: View {
     private var mainCard: some View {
         MeasuredGlassCard(
             initialHeight: cardHeights[.main],
-            onMeasured: { cardHeights[.main] = $0 }
+            // Only remember the *collapsed* height. `onMeasured` also fires while
+            // the inline tag field is open (which grows the card), but the field is
+            // always collapsed on Back (the `.onChange(of: route)` reset above), so
+            // a height captured with it open would over-seed the rebuilt card and
+            // flash a blank gap below the content for a frame. Skip those. (#35)
+            onMeasured: { if !isTagEditing { cardHeights[.main] = $0 } }
         ) { mainCardContent }
     }
 
