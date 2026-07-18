@@ -4,6 +4,69 @@ Append-only log of cross-cutting engineering lessons learned while building
 Lillist. Each entry captures a non-obvious gotcha — usually one that took real
 investigation to find — so future work doesn't re-learn it the hard way.
 
+## 2026-07-17 — A content-hugging, newline-accepting macOS notes box: bound a `TextEditor` and drive its height with an *invisible `Text` sizer* (issue #29)
+
+macOS needed the notes field to accept a plain Return as a newline (a
+vertical-axis `TextField` submits on AppKit), but a plain bounded `TextEditor`
+— the fix the #22 note originally suggested — does **not** hug: a `TextEditor`
+fills whatever height it's given, so capping it just makes a fixed tall box.
+
+- **Make an invisible `Text` the height authority, not the editor.** Render an
+  `.foregroundStyle(.clear)` `Text(model.notes)` as the *base* view and put the
+  `TextEditor` in an `.overlay` on it. `.overlay` takes the base's size, so the
+  sizer's natural text height drives the box and the (greedy) editor merely
+  fills it. A plain `ZStack` does the opposite — the greedy editor wins and the
+  box is a fixed tall box again. Cap with `.frame(maxHeight:)` for scroll-in-
+  place and `.frame(minHeight:)` for the ~2-line floor.
+- **Match the sizer's wrap width to the editor's.** `NSTextView` (backing
+  `TextEditor`) insets its text (`lineFragmentPadding`, ~5pt); give the sizer
+  the same horizontal inset or it wraps at a different width and mis-counts
+  lines (a wider sizer under-counts and clips the last line). Kept as a tunable
+  `macNotesTextInset` constant. `TextEditor` has no `prompt:`, so the
+  placeholder is a separate `.allowsHitTesting(false)` overlay shown when empty.
+- iOS keeps the vertical-axis `TextField` + `.lineLimit(2...8)`; only macOS
+  takes the `#if os(macOS)` branch. macOS has no offscreen-capture path for this
+  (glass/editor snapshots are `XCTSkip`-quarantined), so the *visual* hug is
+  build-and-eyeball verified; the Return→newline *behavior* is pinned by a macOS
+  UITest (`MacNotesFieldUITests`).
+
+## 2026-07-17 — A `ViewThatFits` wrap valve tears down a focused field on its candidate swap; hoisting the *value* state can't save it — replace the valve with a single, measured, non-swapping `ScrollView` (issue #32)
+
+The #22 wrap valve — `ViewThatFits(in: .vertical) { inner; ScrollView { inner } }`
+— has a sharp edge that the #26/#28 follow-ups only half-caught: its two
+candidates are **structurally-distinct subtrees**, so when a keyboard/content
+change flips the fit decision mid-edit, the currently-focused `TextField` inside
+`inner` is **destroyed and rebuilt** in the other candidate.
+
+- PR #25 hoisted `TagAssignmentField`'s `isEditing`/`draftName`/`@FocusState`
+  above the valve, framed as making the field "survive the swap." It does not.
+  A UI test that actually crosses the boundary (seed a long notes body so the
+  card overflows once the keyboard rises, then tap `+ Tag`) proves the field
+  **still collapses** on iOS 26. Hoisting keeps the inert *values* alive, but
+  SwiftUI writes `@FocusState` on the first-responder teardown → the surviving
+  observer sees `focused → false` → `endEditing()` → the field closes and the
+  draft is lost. Disabling `endEditing()` in an experiment left the field
+  present but **without keyboard focus** (`typeText` → "Neither element nor any
+  descendant has keyboard focus"): first responder is not re-established on the
+  new candidate either. **No hoisted value state can fully survive a candidate
+  swap, because the swap moves focus.**
+- **Fix at the origin: don't swap.** Replace the valve with a single,
+  non-swapping subtree — a `ScrollView` whose height is capped to the content's
+  *measured* ideal height (`onGeometryChange`), bounded by an optional
+  `maxHeight` (`TaskEditorView.MeasuredGlassCard`). A bare `ScrollView` is
+  vertically greedy, so the measured cap makes it hug when the content fits; the
+  parent's proposal then constrains it further when the keyboard shrinks the
+  offer, engaging the scroll **without recreating the subtree**. The focused
+  field is never torn down. Wrap-to-content (#22) is preserved, verified by the
+  unchanged editor snapshots.
+- **Gotcha — the measured cap is async, so `sizeThatFits` sees the pre-measure
+  greedy fill.** `onGeometryChange` reports the content height *after* the first
+  layout, so a one-shot `UIHostingController.sizeThatFits(in:)` reads the
+  uncapped greedy height (the full offer), not the wrapped height. Numeric wrap
+  assertions must host the view in a live window and pump the run loop before
+  measuring (`GlassSnapshotTests.editorContentHeight`). The rendered/settled
+  frame is correct (snapshots pass); only the synchronous probe needed settling.
+
 ## 2026-07-15 — Make a floating card wrap its content with `ViewThatFits`, not a bare `ScrollView`; and use a vertical-axis `TextField`, not `TextEditor`, for a content-hugging editable box (issue #22)
 
 The task-detail card (`TaskEditorView` full mode) filled the whole overlay even
@@ -34,6 +97,10 @@ after its content shrank. Two framework-shape gotchas, both worth remembering:
   as bindings — otherwise tapping `+ Tag` near the fit boundary self-triggers a
   flip (keyboard → shrink → swap) and the field flickers shut. Any stateful view
   placed inside a `ViewThatFits` valve must externalize its state this way.
+  **Superseded (2026-07-17, #32): hoisting the *value* state is not enough — the
+  swap also moves `@FocusState`, so a focused field still collapses. The valve
+  itself was retired for a single, non-swapping measured `ScrollView`; see the
+  2026-07-17 entry above.**
 
 - **For a content-hugging editable box, use `TextField(text:, axis: .vertical)`
   + `.lineLimit(min...max)`, not `TextEditor`.** A `TextEditor` in a bounded
@@ -41,15 +108,16 @@ after its content shrank. Two framework-shape gotchas, both worth remembering:
   it can't "hug" — capping it just makes a fixed tall box. A vertical-axis
   `TextField` grows from `min` lines with the text and scrolls past `max`,
   matching the title field and giving the wrap layout a finite height.
-  **Platform asymmetry (verify on macOS):** on native AppKit a vertical-axis
-  `TextField` routes **Return to submit, not newline** (Option-Return inserts
-  the break) — the reverse of iOS, and unlike the old `TextEditor` (NSTextView)
-  which always broke lines. With no `.onSubmit` in the notes field's chain,
-  hard line breaks on macOS need Option-Return (soft-wrap via `lineLimit` and
-  multi-line paste still work). Accepted tradeoff for keeping the content-hug on
-  both platforms; if a plain-Return break is required on macOS, switch that
-  platform's notes field to a bounded `TextEditor` (finite ideal height so the
-  valve still fits it).
+  **Platform asymmetry (RESOLVED 2026-07-17, issue #29):** on native AppKit a
+  vertical-axis `TextField` routes **Return to submit, not newline**
+  (Option-Return inserts the break) — the reverse of iOS. That was shipped as an
+  accepted tradeoff, then fixed: the macOS notes field is now a **bounded
+  `TextEditor`** (Return → newline) whose height is driven by an invisible
+  `Text` **sizer** so it still hugs its content (the plain bounded `TextEditor`
+  the original note suggested does *not* hug — capping it just makes a fixed
+  tall box, see below). iOS keeps the vertical-axis `TextField`. See the
+  `descriptionField` / `macNotesEditor` split in `TaskEditorView` and the
+  2026-07-17 macOS-notes entry.
 
 - **A fixed-frame snapshot can't prove "wraps to content"** — the card just
   centers in the imposed frame. Add a `UIHostingController.sizeThatFits(in:)`

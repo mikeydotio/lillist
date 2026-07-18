@@ -99,6 +99,27 @@ enum UITestHelpers {
         return (launchExisting(), title)
     }
 
+    /// Fresh-launch with the fat-notes seed seam, returning the running app and
+    /// the seeded task's title. The seed (see `LillistApp.uiTestSeedFatTask`)
+    /// creates one task with a long notes body BEFORE first render, so the full
+    /// editor's card is tall enough to cross the keyboard-driven fit boundary —
+    /// which a title-only task never reaches.
+    ///
+    /// The title literal must equal `LillistCore.UITestSeedContent.fatNotesTaskTitle`.
+    /// It's repeated here rather than imported because this UI-test bundle is
+    /// black-box against the app and can't link LillistCore; a mismatch fails
+    /// loudly (the row is never found), so no silent drift.
+    @MainActor
+    static func launchWithFatNotesTask() -> (XCUIApplication, String) {
+        let app = XCUIApplication()
+        app.launchArguments += [
+            "--ui-test-reset-store", "--ui-test-bypass-gates", "--ui-test-seed-fat-notes",
+        ]
+        app.launch()
+        dismissOnboardingIfPresent(in: app)
+        return (app, "uitest-fat-notes")
+    }
+
     /// The list cell whose subtree carries `text` in a label.
     @MainActor
     static func cell(in app: XCUIApplication, containing text: String) -> XCUIElement {

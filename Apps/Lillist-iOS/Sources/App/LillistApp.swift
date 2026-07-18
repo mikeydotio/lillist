@@ -136,6 +136,16 @@ struct LillistApp: App {
             let env = try await AppEnvironment.make()
             await env.bootstrap()
             try? await env.defaultsInstaller.installIfNeeded()
+            // UI-test seam: seed one task with a long notes body BEFORE the
+            // first render, so the full editor's card is tall enough that
+            // tapping "+ Tag" (which raises the keyboard) shrinks the offered
+            // height and makes the wrap card scroll in place. `TaskTapOpenUITests`
+            // needs that keyboard-driven boundary crossing to exercise the
+            // tag-field survival contract; a title-only task never reaches it.
+            // Paired with `--ui-test-reset-store`; inert outside XCUITest.
+            if ProcessInfo.processInfo.arguments.contains("--ui-test-seed-fat-notes") {
+                await Self.uiTestSeedFatTask(env)
+            }
             environment = env
             Self.scheduleBackgroundPurge()
         } catch {
@@ -178,6 +188,23 @@ struct LillistApp: App {
             .setHasCompletedOnboarding(true)
         await SyncModeStore(appGroupID: AppEnvironment.appGroupID).setMode(.localOnly)
         UserDefaults(suiteName: AppEnvironment.appGroupID)?.synchronize()
+    }
+
+    /// UI-test seam: seed a single task whose notes body is long enough to
+    /// drive the full editor's content-hugging notes field (`.lineLimit(2...8)`)
+    /// toward its scroll cap, making the detail card tall. The card then fits
+    /// the offered height with the keyboard down but overflows it once "+ Tag"
+    /// raises the keyboard, so the wrap card scrolls in place — the exact
+    /// keyboard-driven boundary crossing `TaskTapOpenUITests` must reach. Title
+    /// and body come from the shared `UITestSeedContent` so the app-hosted
+    /// `GlassSnapshotTests` probes measure the same card. Only invoked under the
+    /// `--ui-test-seed-fat-notes` argument; production code paths never call it.
+    private static func uiTestSeedFatTask(_ env: AppEnvironment) async {
+        // Best-effort seed; never block launch on a seeding failure.
+        _ = try? await env.taskStore.create(
+            title: UITestSeedContent.fatNotesTaskTitle,
+            notes: UITestSeedContent.fatNotesBody()
+        )
     }
 
     /// Build a fresh environment, run the purge, tear it down. Used only by

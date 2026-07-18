@@ -27,20 +27,29 @@ public struct TaskEditorView: View {
     private enum DetailRoute { case main, schedule, attachments, journal }
     @State private var route: DetailRoute = .main
 
-    /// The card is wrapped in a `ViewThatFits` valve whose two candidates are
-    /// structurally-distinct copies of the editable fields. Binding focus to
-    /// external `@FocusState` lets it re-apply to the surviving candidate when a
-    /// content/keyboard change flips ViewThatFits mid-edit, so first responder
-    /// (and the keyboard) isn't dropped on the swap.
+    /// The card's editable fields bind focus to external `@FocusState` so the
+    /// host owns first responder across relayouts. (The wrap card no longer
+    /// swaps subtrees — see `MeasuredGlassCard` / issue #32 — so this is no
+    /// longer load-bearing for surviving a candidate swap, but keeping focus
+    /// host-owned stays correct and lets the drill-in reset below manage it.)
     private enum EditorField { case title, notes }
     @FocusState private var focusedField: EditorField?
 
-    // The tag row's inline-edit state lives here (above the `ViewThatFits`
-    // valve), not inside `TagAssignmentField`, so it survives a candidate swap
-    // and the "+ Tag" field doesn't collapse mid-edit near the fit boundary.
+    // The tag row's inline-edit state lives here, on the host, so the drill-in
+    // reset (`.onChange(of: route)` below) can collapse the field when the user
+    // navigates into a child and back — the hoist widens the state's lifetime
+    // past the card, which the reset then scopes back. (Pre-#32 the hoist also
+    // aimed to survive a `ViewThatFits` swap; that swap is now eliminated.)
     @State private var isTagEditing = false
     @State private var tagDraft = ""
     @FocusState private var tagFieldFocused: Bool
+
+    // Last measured content height per route, kept on the host (which survives a
+    // drill-in → Back) so a card rebuilt on return seeds its own height instead
+    // of resetting to the bounded first-pass and popping to size a frame later.
+    // First visit to a route has no entry yet, so that card settles once, masked
+    // by the open/drill-in animation.
+    @State private var cardHeights: [DetailRoute: CGFloat] = [:]
 
     @Environment(\.accessibilityReduceMotion) private var systemReduceMotion
     @Environment(\.reduceMotionOverride) private var overrideReduceMotion
@@ -121,14 +130,33 @@ public struct TaskEditorView: View {
             case .journal: journalChild
             }
         }
-        .frame(maxWidth: LillistSizing.editorCardMaxWidth)
-        .glassSurface(.panel, in: RoundedRectangle(cornerRadius: LillistRadius.l))
+        // The glass panel is applied ONCE here, to the outer Group, not per card,
+        // so it keeps a stable identity across a route change: only the card
+        // content crossfades inside one steady panel, rather than two translucent
+        // panels overlapping. Each card supplies its own *height* (bounded
+        // first-pass until measured, seeded per route from `cardHeights`), and the
+        // Group — hence the panel — animates smoothly to it. Safe to share now
+        // that the card is bounded, not greedy, so the panel never flashes the
+        // full offer.
+        .editorGlassPanel()
         .task(id: textEditKey) {
             do { try await Task.sleep(for: .milliseconds(500)) } catch { return }
             await model.saveTextNow()
         }
         .onChange(of: scalarKey) { _, _ in
             Task { await model.saveScalarsNow() }
+        }
+        // The tag row's inline-edit state is hoisted to this view. `route` is
+        // `@State` here, so drilling into a child and returning re-evaluates
+        // `body` without destroying identity — an open tag edit would survive the
+        // round-trip and re-present itself, focused and holding a stale draft, on
+        // Back. Drilling in is a deliberate context switch, so collapse the field
+        // and drop the draft when we leave the main card.
+        .onChange(of: route) { _, newRoute in
+            if newRoute != .main {
+                isTagEditing = false
+                tagDraft = ""
+            }
         }
         .animation(reduceMotion ? nil : LillistMotion.squish(LillistMotion.fast), value: route)
     }
@@ -138,10 +166,13 @@ public struct TaskEditorView: View {
     /// The detail card wraps its content (like Quick Capture) and only scrolls
     /// when the content genuinely overflows the offered height, so the
     /// header/title is never clipped off the centered overlay. Shares the
-    /// `wrapToContentThenScroll` valve with the drill-in children; the main
-    /// card fits the whole overlay (no height cap).
+    /// `MeasuredGlassCard` chrome with the attachments/journal children; the main
+    /// card passes no `maxHeight`, fitting the whole overlay.
     private var mainCard: some View {
-        wrapToContentThenScroll { mainCardContent }
+        MeasuredGlassCard(
+            initialHeight: cardHeights[.main],
+            onMeasured: { cardHeights[.main] = $0 }
+        ) { mainCardContent }
     }
 
     @ViewBuilder
@@ -210,11 +241,19 @@ public struct TaskEditorView: View {
         .accessibilityIdentifier("EditorPinButton")
     }
 
-    /// A content-hugging notes field (a vertical-axis `TextField`, matching the
-    /// title) so the card wraps its description rather than reserving a fixed
-    /// tall box: `.lineLimit(2...8)` grows it from two lines with the text and
-    /// scrolls in place past eight, keeping the card compact.
+    /// The content-hugging notes box. iOS uses a vertical-axis `TextField`;
+    /// macOS uses a bounded `TextEditor` so **Return inserts a newline** rather
+    /// than submitting (a vertical-axis `TextField` routes Return to submit on
+    /// AppKit — issue #29), with an invisible sizer preserving the same hug.
+    @ViewBuilder
     private var descriptionField: some View {
+        #if os(macOS)
+        macNotesEditor
+        #else
+        // iOS: a vertical-axis `TextField` (matching the title) so the card
+        // wraps its description rather than reserving a fixed tall box —
+        // `.lineLimit(2...8)` grows it from two lines with the text and scrolls
+        // in place past eight, keeping the card compact.
         TextField(
             text: $model.notes,
             prompt: Text("Add a description…", bundle: .module),
@@ -233,7 +272,107 @@ public struct TaskEditorView: View {
                 .fill(.rainbowWell)
         }
         .accessibilityIdentifier("EditorNotesField")
+        #endif
     }
+
+    #if os(macOS)
+    /// Approximate horizontal inset of `TextEditor`'s text start on macOS
+    /// (`NSTextView`'s `lineFragmentPadding` ≈ 5pt), used to left-align the
+    /// placeholder with where the caret will sit.
+    ///
+    /// The three `macNotes*Inset`/`Slack` constants below **estimate undocumented
+    /// `NSTextView` metrics** (`lineFragmentPadding` + `textContainerInset`),
+    /// whose exact total isn't public. They're biased to over-count so the box
+    /// never clips, and were set against **macOS 26 / iOS 26**; there's no
+    /// automated coverage (macOS glass/editor snapshots are `XCTSkip`-quarantined),
+    /// so if a future OS changes those insets past the slack the field could clip.
+    /// Verify/tune on-device; re-check whenever the deployment target moves.
+    private static let macNotesTextInset: CGFloat = 5
+    /// Top inset estimating `NSTextView`'s vertical `textContainerInset`, so the
+    /// empty-state placeholder's first line lands on the caret's baseline instead
+    /// of a few points above it (see the metrics caveat on `macNotesTextInset`).
+    private static let macNotesTopInset: CGFloat = 5
+    /// Horizontal inset for the invisible **sizer** — deliberately *larger* than
+    /// the editor's real text inset. The sizer drives the box height by wrapping
+    /// the note at its own width, so if it wrapped *wider* than the live editor
+    /// it would count too few lines and the editor would clip its last line
+    /// against the height cap. `TextEditor` also applies a `textContainerInset`
+    /// beyond `lineFragmentPadding`, and the exact total isn't publicly known, so
+    /// bias the sizer narrower than any plausible editor width: it can then only
+    /// *over*-count (a little bottom slack), never clip. The macOS box has no
+    /// snapshot path — verify the hug on-device against a note whose lines wrap
+    /// right at the box width, and tune here if needed.
+    private static let macNotesSizerInset: CGFloat = 12
+    /// Vertical slack the sizer adds beyond the raw text height. `NSTextView`
+    /// insets its text vertically (`textContainerInset`, top **and** bottom) on
+    /// top of the wrapped-line height, and a note of short lines (no horizontal
+    /// wrap difference) gets no slack from `macNotesSizerInset` — so without this
+    /// the box resolves to ~the raw text height and the editor clips its last
+    /// line. Add a small over-estimate of that vertical inset (top+bottom); a bit
+    /// of bottom breathing room is harmless, a shortfall clips. Verify on-device.
+    private static let macNotesVerticalSlack: CGFloat = 8
+    /// ~2 lines of body text — the iOS field's `.lineLimit(2...8)` floor.
+    private static let macNotesMinHeight: CGFloat = 44
+
+    /// The string the invisible sizer measures. SwiftUI `Text` drops a trailing
+    /// newline from its measured height, so a note ending in Return (or a blank
+    /// last line) would leave the `TextEditor`'s caret on an uncounted line and
+    /// clip it. Append a zero-width space so the final line is always counted;
+    /// the sizer is `.clear`, so it's invisible either way.
+    private var macNotesSizerText: String {
+        model.notes.isEmpty ? " " : model.notes + "\u{200B}"
+    }
+
+    /// macOS notes field: a bounded `TextEditor` (Return → newline, #29) whose
+    /// height is driven by an **invisible `Text` sizer** so the box still hugs
+    /// its content like the iOS field (#22), capped at `editorNotesMaxHeight`.
+    ///
+    /// The sizer is the base and the `TextEditor` is an `.overlay` on it — so
+    /// the sizer's natural text height drives the frame and the (greedy)
+    /// `TextEditor` merely fills it. A plain `ZStack` would instead let the
+    /// greedy editor drive the height and defeat the hug (a fixed tall box).
+    private var macNotesEditor: some View {
+        Text(macNotesSizerText)
+            .font(LillistTypography.body)
+            // `.foregroundStyle(.clear)` only hides the sizer visually — a `Text`
+            // with content is still an AX element, so hide it or VoiceOver reads
+            // the note twice (once here, once from the live `TextEditor`).
+            .foregroundStyle(.clear)
+            .accessibilityHidden(true)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, Self.macNotesSizerInset)
+            .padding(.vertical, Self.macNotesVerticalSlack)
+            .frame(
+                minHeight: Self.macNotesMinHeight,
+                maxHeight: LillistSizing.editorNotesMaxHeight,
+                alignment: .topLeading
+            )
+            .overlay(alignment: .topLeading) {
+                TextEditor(text: $model.notes)
+                    .font(LillistTypography.body)
+                    .foregroundStyle(LillistColor.textBody)
+                    .scrollContentBackground(.hidden)
+                    .focused($focusedField, equals: .notes)
+                    .accessibilityIdentifier("EditorNotesField")
+                    .overlay(alignment: .topLeading) {
+                        if model.notes.isEmpty {
+                            Text("Add a description…", bundle: .module)
+                                .font(LillistTypography.body)
+                                .foregroundStyle(LillistColor.textFaint)
+                                .padding(.horizontal, Self.macNotesTextInset)
+                                .padding(.top, Self.macNotesTopInset)
+                                .allowsHitTesting(false)
+                                .accessibilityHidden(true)
+                        }
+                    }
+            }
+            .padding(LillistSpacing.s)
+            .background {
+                RoundedRectangle(cornerRadius: LillistRadius.s, style: .continuous)
+                    .fill(.rainbowWell)
+            }
+    }
+    #endif
 
     // MARK: - Summary rows
 
@@ -398,6 +537,9 @@ public struct TaskEditorView: View {
     /// the outer `scalarKey` observer; the recurrence rule is committed on Back
     /// (`commitRecurrence` auto-promotes a draft when a rule is set).
     private var scheduleChild: some View {
+        // A `Form` bounded by `.frame(maxHeight:)` is not vertically greedy and
+        // lays out synchronously, so — unlike the wrap cards — it needs no
+        // measurement gate; it just carries the shared glass panel directly.
         VStack(spacing: 0) {
             childHeader("Schedule") {
                 Task { try? await model.commitRecurrence() }
@@ -440,52 +582,34 @@ public struct TaskEditorView: View {
     }
 
     private var attachmentsChild: some View {
-        VStack(spacing: 0) {
+        MeasuredGlassCard(
+            maxHeight: LillistSizing.editorChildMaxHeight,
+            initialHeight: cardHeights[.attachments],
+            onMeasured: { cardHeights[.attachments] = $0 }
+        ) {
             childHeader("Attachments") { route = .main }
-            wrapToContentThenScroll(maxHeight: LillistSizing.editorChildMaxHeight) {
-                EditorAttachmentsSection(
-                    attachments: model.attachments,
-                    onAddTapped: onAddAttachment,
-                    onDelete: { id in Task { await model.deleteAttachment(id: id) } }
-                )
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(LillistSpacing.l)
-            }
+        } content: {
+            EditorAttachmentsSection(
+                attachments: model.attachments,
+                onAddTapped: onAddAttachment,
+                onDelete: { id in Task { await model.deleteAttachment(id: id) } }
+            )
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(LillistSpacing.l)
         }
     }
 
     private var journalChild: some View {
-        VStack(spacing: 0) {
+        MeasuredGlassCard(
+            maxHeight: LillistSizing.editorChildMaxHeight,
+            initialHeight: cardHeights[.journal],
+            onMeasured: { cardHeights[.journal] = $0 }
+        ) {
             childHeader("Journal") { route = .main }
-            wrapToContentThenScroll(maxHeight: LillistSizing.editorChildMaxHeight) {
-                EditorJournalSection(entries: model.journal)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(LillistSpacing.l)
-            }
-        }
-    }
-
-    /// Wrap content so it hugs its size and scrolls only on genuine overflow:
-    /// `ViewThatFits` picks the plain, self-sizing layout when it fits the
-    /// offered height and the scrolling copy otherwise (re-evaluated against the
-    /// live proposal each layout pass). `maxHeight` bounds both the fit decision
-    /// and the scroll viewport — drill-in children pass `editorChildMaxHeight`
-    /// so a nearly-empty child hugs its content and a long one scrolls; the main
-    /// card passes `nil` to fit the whole overlay.
-    @ViewBuilder
-    private func wrapToContentThenScroll<Content: View>(
-        maxHeight: CGFloat? = nil,
-        @ViewBuilder _ content: () -> Content
-    ) -> some View {
-        let inner = content()
-        let valve = ViewThatFits(in: .vertical) {
-            inner
-            ScrollView { inner }
-        }
-        if let maxHeight {
-            valve.frame(maxHeight: maxHeight)
-        } else {
-            valve
+        } content: {
+            EditorJournalSection(entries: model.journal)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(LillistSpacing.l)
         }
     }
 
@@ -536,6 +660,142 @@ public struct TaskEditorView: View {
             deadline: model.deadline,
             deadlineHasTime: model.deadlineHasTime,
             isPinned: model.isPinned
+        )
+    }
+}
+
+private extension View {
+    /// The full-editor card chrome — max width + the `.panel` glass surface.
+    /// Applied once to the full-mode Group (see `fullBody`) so the panel keeps a
+    /// stable identity across route changes. (Quick mode uses a different width.)
+    func editorGlassPanel() -> some View {
+        self
+            .frame(maxWidth: LillistSizing.editorCardMaxWidth)
+            .glassSurface(.panel, in: RoundedRectangle(cornerRadius: LillistRadius.l))
+    }
+}
+
+/// A full-editor card body: hugs its scrolling content and scrolls only on
+/// overflow. The glass panel is *not* applied here — it lives on the shared
+/// `fullBody` Group (`.editorGlassPanel()`), so a route change crossfades content
+/// inside one steady panel rather than overlapping two.
+///
+/// A bare `ScrollView` is vertically greedy, so its height is capped to the
+/// content's own measured ideal height (bounded by `maxHeight`): the parent's
+/// proposal then engages the scroll when the keyboard shrinks the offer, without
+/// recreating the subtree (so a focused "+ Tag" field isn't torn down — issue
+/// #32). `header` (a child popup's Back bar) sits above the scroll area; the main
+/// card passes none. Wrap-to-content (#22) is preserved.
+///
+/// Because `content` is always inside this scroll view (the synchronous
+/// `ViewThatFits` valve used a non-scrolling candidate when the card fit), the
+/// iOS notes `TextField`'s own in-place scroll (past 8 lines) nests inside it.
+/// `.scrollBounceBehavior(.basedOnSize)` keeps this outer scroll passive in the
+/// *fitting* case (contentSize == bounds), so a drag reaches the field. In the
+/// *overflowing* case (fat notes with the keyboard up), this outer scroll is
+/// active, so a drag begun inside a >8-line note is genuinely ambiguous — it may
+/// pan the card rather than scroll the note's own overflow. There's no clean
+/// declarative resolution short of the field-tearing valve or an overlay-level
+/// scroll; flagged for on-device confirmation.
+///
+/// The measured cap arrives asynchronously (`onGeometryChange` reports in a
+/// later transaction), so for the first frame — on open, quick→full expand, and
+/// each drill-in that rebuilds the card — the height is unknown. Rather than
+/// paint greedily (the panel filling the full offer, then snapping down) or
+/// blank the card (an invisible-but-hittable panel that pops in), cap that first
+/// frame to a *bounded* first-pass height: the card shows its top, in a
+/// reasonably-sized panel, then resizes to hug once measured — a small settle
+/// masked by the entry/route animation, never a full-offer flash or a blank pop.
+///
+/// Known limitations of the async cap, both accepted costs of the single,
+/// non-swapping subtree that keeps the focused field alive (#32):
+///  - It trails content *growth* by a frame. On the main card (no `maxHeight`, so
+///    the cap equals the content height), adding a notes line while typing grows
+///    the content one layout pass before `onGeometryChange` raises the cap, so
+///    the scroll view is momentarily a line short and auto-scrolls to keep the
+///    caret visible — a one-frame micro-jump the synchronous `ViewThatFits` valve
+///    didn't have.
+///  - `onMeasured` writes the host's `cardHeights` `@State` from the geometry
+///    callback, so a genuine content-height change re-evaluates the whole
+///    `TaskEditorView` body, not just this subtree. It's a no-op re-render when
+///    the height is unchanged (e.g. a seeded card re-measuring the same value),
+///    and content-height changes are infrequent, so this is cheap in practice.
+/// Removing either would mean the field-tearing valve or moving the scroll to the
+/// overlay. Flagged for on-device confirmation of whether the settle is perceptible.
+private struct MeasuredGlassCard<Header: View, Content: View>: View {
+    private let maxHeight: CGFloat?
+    private let onMeasured: (CGFloat) -> Void
+    private let header: Header
+    private let content: Content
+
+    /// The content's ideal (unclipped) height, measured inside the scroll view
+    /// where it's proposed an unbounded vertical extent. Seeded from the host's
+    /// remembered height (so a rebuilt card starts sized), else `0` — when
+    /// `cappedHeight` uses the bounded first-pass height until `onGeometryChange`
+    /// lands.
+    @State private var contentHeight: CGFloat
+
+    /// Bounded first-pass height until the content measures — enough to show the
+    /// card's top (header + first rows) without filling the offer. Computed, not
+    /// stored: a generic type can't hold a `static` stored property.
+    private static var firstPassHeight: CGFloat { 220 }
+
+    init(
+        maxHeight: CGFloat? = nil,
+        initialHeight: CGFloat?,
+        onMeasured: @escaping (CGFloat) -> Void,
+        @ViewBuilder header: () -> Header,
+        @ViewBuilder content: () -> Content
+    ) {
+        self.maxHeight = maxHeight
+        self.onMeasured = onMeasured
+        self.header = header()
+        self.content = content()
+        self._contentHeight = State(initialValue: initialHeight ?? 0)
+    }
+
+    var body: some View {
+        VStack(spacing: 0) {
+            header
+            ScrollView(.vertical) {
+                content
+                    .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { newHeight in
+                        contentHeight = newHeight
+                        onMeasured(newHeight)
+                    }
+            }
+            .frame(maxHeight: cappedHeight)
+            // Don't bounce/scroll when the content fits: the iOS notes field is a
+            // vertical-axis `TextField` that scrolls its own overflow in place, so
+            // when the card fits (this scroll view's contentSize == bounds) this
+            // outer scroll must stay passive and let a drag inside a long note
+            // reach the field, not pan the card.
+            .scrollBounceBehavior(.basedOnSize)
+        }
+    }
+
+    /// Cap the greedy scroll view to the content's ideal height (so it hugs),
+    /// bounded by `maxHeight`. Before the first measurement, a bounded first-pass
+    /// height (also bounded by `maxHeight`) — never `nil` (greedy) — so the card
+    /// is visible but not full-offer while it measures.
+    private var cappedHeight: CGFloat? {
+        let unbounded = contentHeight > 0 ? contentHeight : Self.firstPassHeight
+        guard let maxHeight else { return unbounded }
+        return min(unbounded, maxHeight)
+    }
+}
+
+extension MeasuredGlassCard where Header == EmptyView {
+    /// A headerless card (the main detail card).
+    init(
+        maxHeight: CGFloat? = nil,
+        initialHeight: CGFloat?,
+        onMeasured: @escaping (CGFloat) -> Void,
+        @ViewBuilder content: () -> Content
+    ) {
+        self.init(
+            maxHeight: maxHeight, initialHeight: initialHeight,
+            onMeasured: onMeasured, header: { EmptyView() }, content: content
         )
     }
 }

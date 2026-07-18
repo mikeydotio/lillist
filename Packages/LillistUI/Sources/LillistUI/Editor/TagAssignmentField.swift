@@ -11,12 +11,12 @@ import SwiftUI
 /// (non-editing) state is fully deterministic for snapshots.
 ///
 /// The editing state (`isEditing` / `draftName` / focus) is **externally
-/// owned** by the host, not stored here: this view is embedded in the editor's
-/// `ViewThatFits` wrap valve, whose two candidates are structurally-distinct
-/// subtrees. If the state lived here it would reset every time the valve flips
-/// (e.g. the keyboard rising on `+ Tag` shrinks the offered height and swaps
-/// candidates), collapsing the open field mid-edit. Hoisting it to the host —
-/// which sits above the valve — lets the field survive the swap.
+/// owned** by the host: the editor drives an in-card drill-in navigation on the
+/// same view, and hoisting this state lets the host collapse the field when the
+/// user drills into a child and returns (issue #26). It also *used* to guard a
+/// `ViewThatFits` candidate swap — but that swap is now eliminated
+/// (`TaskEditorView.MeasuredGlassCard` / issue #32), so this view sits in
+/// a single, non-swapping subtree and is never torn down mid-edit.
 public struct TagAssignmentField: View {
     public var tagNames: [String]
     @Binding public var isEditing: Bool
@@ -127,9 +127,16 @@ public struct TagAssignmentField: View {
         .accessibilityIdentifier("TagAssignmentField")
         .onAppear { fieldFocused.wrappedValue = true }
         .onChange(of: fieldFocused.wrappedValue) { _, focused in
-            // Losing focus (tap-away) ends editing without adding a partial tag.
-            // The host-owned focus survives a wrap-valve candidate swap, so this
-            // fires only on a genuine tap-away, not on the swap teardown.
+            // Losing focus collapses the field and discards the in-progress draft
+            // *by design* — the contract at the top of this file (unchanged since
+            // 08372592): only `commit()` adds a tag, so a tap-away never persists a
+            // partial name.
+            //
+            // This field now lives in a single, non-swapping subtree (the wrap
+            // card no longer uses `ViewThatFits` — issue #32), so a focus loss
+            // here is a genuine tap-away, not a candidate-swap teardown. The
+            // earlier worry that a swap could fire this observer and destroy the
+            // draft no longer applies: there is no swap to fire it.
             if !focused { endEditing() }
         }
     }
