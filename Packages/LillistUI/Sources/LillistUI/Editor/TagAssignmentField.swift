@@ -14,9 +14,9 @@ import SwiftUI
 /// owned** by the host: the editor drives an in-card drill-in navigation on the
 /// same view, and hoisting this state lets the host collapse the field when the
 /// user drills into a child and returns (issue #26). It also *used* to guard a
-/// `ViewThatFits` candidate swap — but that swap is now eliminated
-/// (`TaskEditorView.MeasuredGlassCard` / issue #32), so this view sits in
-/// a single, non-swapping subtree and is never torn down mid-edit.
+/// `ViewThatFits` candidate swap — but the editor card is now one stable,
+/// self-sizing subtree (issues #32/#38), so this view is never torn down
+/// mid-edit.
 public struct TagAssignmentField: View {
     public var tagNames: [String]
     @Binding public var isEditing: Bool

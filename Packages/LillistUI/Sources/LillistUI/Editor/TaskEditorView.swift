@@ -28,8 +28,8 @@ public struct TaskEditorView: View {
     @State private var route: DetailRoute = .main
 
     /// The card's editable fields bind focus to external `@FocusState` so the
-    /// host owns first responder across relayouts. (The wrap card no longer
-    /// swaps subtrees — see `MeasuredGlassCard` / issue #32 — so this is no
+    /// host owns first responder across relayouts. (The card is one stable,
+    /// self-sizing subtree that never swaps — issues #32/#38 — so this is no
     /// longer load-bearing for surviving a candidate swap, but keeping focus
     /// host-owned stays correct and lets the drill-in reset below manage it.)
     private enum EditorField { case title, notes }

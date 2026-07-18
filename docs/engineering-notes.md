@@ -4,6 +4,58 @@ Append-only log of cross-cutting engineering lessons learned while building
 Lillist. Each entry captures a non-obvious gotcha — usually one that took real
 investigation to find — so future work doesn't re-learn it the hard way.
 
+## 2026-07-18 — Size the editor card synchronously and put the *single* scroll in the overlay, not the card (issue #38)
+
+The task-detail card used to size itself from an **async `onGeometryChange`
+measurement** (`MeasuredGlassCard`): a greedy `ScrollView` capped to the
+content's measured height. That one choice — introduced by #32 to avoid a
+`ViewThatFits` candidate swap that tore down the focused tag field — spawned a
+whole family of one-frame transients (greedy-fill flash, blank pop, unanimated
+pop-resize on drill-in → Back, a stale per-route height seed #35, a
+notes-growth micro-jump #37) plus a nested-scroll drag ambiguity (#34). The
+durable fix is to **stop measuring** and let the card size synchronously, moving
+the one scroll up to the overlay.
+
+- **The scroll lives at the overlay, never inside the card.** `TaskEditorView`
+  must keep *self-sizing* its intrinsic height, because the macOS hotkey host
+  (`QuickCapturePanelController`) sizes an `NSPanel` to `preferredContentSize`. A
+  `GeometryReader`/`ScrollView` inside the card would peg its reported size to
+  the proposal and defeat that. So the center-or-scroll container is a modifier
+  on the overlay (`editorScrollAndCenter`), applied by `TaskEditorOverlay`; the
+  card is a plain, hugging VStack.
+- **Center-or-scroll idiom:** `GeometryReader { proxy in ScrollView { card
+  .frame(maxWidth: .infinity, minHeight: proxy.size.height, alignment: .center) }
+  .scrollBounceBehavior(.basedOnSize) }`. `minHeight == viewport` resolves to
+  `max(viewport, content)`, so the card **centers when it fits** (bounce passive)
+  and **top-anchors + scrolls when it overflows** — synchronous, no measurement.
+- **Tap-outside-dismiss can't rely on fall-through.** The viewport-filling
+  `ScrollView` occludes the sibling dim backdrop, and the glass panel
+  `.background`/`.glassEffect` is **not hit-testable**, so a naive gutter tap
+  neither reaches the backdrop nor is swallowed by the card. Make it explicit:
+  give the card a `.contentShape(rounded).onTapGesture {}` so it swallows taps on
+  its own bounds (glass gaps included), and put the dismiss `onTapGesture` on a
+  `Color.clear.contentShape(Rectangle())` fill *behind* the card. Only gutter
+  taps dismiss; drags still scroll. Modifier order here is load-bearing.
+- **Don't hand-tune keyboard avoidance.** Do not subtract
+  `safeAreaInsets.bottom` from `minHeight` — that double-counts against the
+  ScrollView's own keyboard inset and jitters. If the proxy shrinks, the card
+  centers above the keyboard; if it doesn't, the ScrollView scrolls to the
+  focused field. There is no stuck-field case either way.
+- **#34 needs the notes field to stop scrolling in place.** Moving the scroll up
+  is not enough on its own: an inner `TextField(.lineLimit(2...8))` still scrolls
+  its own >8-line overflow and fights the outer scroll. Change it to
+  `.lineLimit(2...)` (grow, no upper cap, no inner scroll) so the overlay is the
+  single scroll owner. macOS keeps its bounded `TextEditor` (#29), unchanged.
+- **Bounding is a *host* concern, gated by environment, not `ViewThatFits`.**
+  There is no synchronous "hug-up-to-max-then-scroll" primitive
+  (`ScrollView{}.frame(maxHeight:)` is greedy; `ViewThatFits` picks against the
+  *proposed* size, which is infinite inside a ScrollView and unspecified in the
+  panel, so it never bounds the host that needs it). Instead a child popup reads
+  a custom `editorHasOuterScroll` environment flag (default **false** =
+  fail-safe): it hugs under the overlay (which scrolls) and self-bounds +
+  scrolls internally under the scroll-less `NSPanel` (so a long list can't grow
+  the panel past the screen and clip). The overlay's container sets the flag.
+
 ## 2026-07-17 — A content-hugging, newline-accepting macOS notes box: bound a `TextEditor` and drive its height with an *invisible `Text` sizer* (issue #29)
 
 macOS needed the notes field to accept a plain Return as a newline (a
