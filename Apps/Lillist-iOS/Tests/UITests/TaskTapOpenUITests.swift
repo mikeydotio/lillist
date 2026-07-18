@@ -64,12 +64,10 @@ final class TaskTapOpenUITests: XCTestCase {
         )
     }
 
-    /// The full-mode card wraps its content and scrolls only on overflow
-    /// (`MeasuredGlassCard`, post-#32; the #22 wrap fix originally used a
-    /// `ViewThatFits`). This pins that the notes editor inside that wrap card
-    /// stays focusable — typed text must stick — so the wrap/scroll plumbing
-    /// never swallows input.
-    func test_fullEditor_notesField_isEditable_insideWrapValve() throws {
+    /// The full-mode card is a plain, self-sizing VStack scrolled by the overlay
+    /// (issue #38). This pins that the notes editor stays focusable — typed text
+    /// must stick — so the editor plumbing never swallows input.
+    func test_fullEditor_notesField_isEditable() throws {
         let (app, title) = UITestHelpers.launchWithOneTask()
         let cell = UITestHelpers.cell(in: app, containing: title)
         cell.coordinate(withNormalizedOffset: CGVector(dx: 0.6, dy: 0.5)).tap()
@@ -110,15 +108,15 @@ final class TaskTapOpenUITests: XCTestCase {
         }
         XCTAssertTrue(
             observed?.contains(typed) ?? false,
-            "Typed notes did not stick inside the wrap card — the focused editor " +
+            "Typed notes did not stick — the focused editor " +
             "may not be the live one. Field reads '\(observed ?? "nil")'"
         )
     }
 
     /// Smoke test of the `+ Tag` inline field's open-and-type flow on a
     /// title-only task: tapping the pill opens the field and typed text sticks.
-    /// It does NOT cross the wrap card's fit boundary — a title-only card fits
-    /// the offered height with the keyboard up, so the card never scrolls and
+    /// It does NOT overflow the offered height — a title-only card fits
+    /// with the keyboard up, so the overlay never scrolls and
     /// this would stay green even with the tag state re-internalized. The
     /// boundary-crossing survival claim is pinned separately by
     /// `test_fullEditor_tagField_survivesKeyboardCrossingFitBoundary` (#27).
@@ -230,15 +228,15 @@ final class TaskTapOpenUITests: XCTestCase {
         )
     }
 
-    /// The tag field must survive a genuine keyboard-driven crossing of the wrap
-    /// card's fit boundary (#27). A fat-notes task makes the card tall enough
-    /// that it hugs its content with the keyboard down but overflows the offered
-    /// height once tapping `+ Tag` raises the keyboard — so the single
-    /// wrap-then-scroll subtree engages its scroll in place. (Before #32 this was
-    /// a `ViewThatFits` candidate swap that tore the focused field down and
-    /// dropped its draft; #32 replaced the valve with one non-swapping subtree.)
-    /// The open field and its typed draft must persist through that relayout.
-    /// Reverting #32 — restoring the candidate swap — regresses this loudly: the
+    /// The tag field must survive a genuine keyboard-driven relayout (#27). A
+    /// fat-notes task makes the card tall enough that it fits with the keyboard
+    /// down but overflows the offered height once tapping `+ Tag` raises the
+    /// keyboard — so the overlay's scroll engages (issue #38). The card is one
+    /// stable, self-sizing VStack that is never swapped or rebuilt, so the focused
+    /// field and its typed draft persist through that relayout. (Before #32 this
+    /// was a `ViewThatFits` candidate swap that tore the focused field down and
+    /// dropped its draft; #32 removed the swap, and #38 moved the scroll to the
+    /// overlay.) Reverting to a subtree-swapping card regresses this loudly: the
     /// field collapses and `TagAssignmentField` never re-appears.
     func test_fullEditor_tagField_survivesKeyboardCrossingFitBoundary() throws {
         let (app, title) = UITestHelpers.launchWithFatNotesTask()
@@ -256,8 +254,8 @@ final class TaskTapOpenUITests: XCTestCase {
 
         // Tapping + Tag opens the inline field, focuses it, and raises the
         // keyboard — which shrinks the offered height below the fat card's
-        // natural height, so the single wrap-then-scroll subtree scrolls in
-        // place. No candidate swap, so the focused field is never torn down.
+        // natural height, so the overlay scrolls the card. The card is never
+        // swapped or rebuilt, so the focused field is never torn down.
         let addTag = app.buttons["AddTagButton"]
         XCTAssertTrue(addTag.waitForExistence(timeout: 5), "The + Tag pill is missing")
         addTag.tap()

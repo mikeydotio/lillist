@@ -54,12 +54,15 @@ public enum LillistSizing {
     public static let editorCardMaxWidth: CGFloat = 560
     /// Quick-capture card max width.
     public static let editorQuickMaxWidth: CGFloat = 360
-    /// Drill-in child (schedule / attachments / journal) max height before
-    /// it scrolls internally, so a child never grows to fill the screen.
+    /// Drill-in child (schedule / attachments / journal) max height. The
+    /// schedule `Form` is always bounded by it; the attachments/journal bodies
+    /// use it only when there is no outer scroll (`EditorChildBody`) — under the
+    /// overlay they hug and the overlay scrolls them.
     public static let editorChildMaxHeight: CGFloat = 400
     /// **macOS only:** max height of the macOS notes editor (`MacNotesTextView`)
-    /// before its `NSScrollView` scrolls in place. iOS bounds its notes
-    /// `TextField` with `.lineLimit(2...8)`, not this token.
+    /// before its `NSScrollView` scrolls in place. iOS notes grow with
+    /// `.lineLimit(2...)` (no upper cap) and the overlay scrolls the card, so iOS
+    /// does not use this token.
     public static let editorNotesMaxHeight: CGFloat = 200
 }
 
