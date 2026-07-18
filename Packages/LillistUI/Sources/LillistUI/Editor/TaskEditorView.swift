@@ -247,13 +247,28 @@ public struct TaskEditorView: View {
     }
 
     /// The content-hugging notes box. iOS uses a vertical-axis `TextField`;
-    /// macOS uses a bounded `TextEditor` so **Return inserts a newline** rather
-    /// than submitting (a vertical-axis `TextField` routes Return to submit on
-    /// AppKit — issue #29), with an invisible sizer preserving the same hug.
+    /// macOS uses a self-measuring `NSTextView` (`MacNotesTextView`) so **Return
+    /// inserts a newline** rather than submitting (a vertical-axis `TextField`
+    /// routes Return to submit on AppKit — issue #29), while still hugging its
+    /// content like the iOS field (#22, #36).
     @ViewBuilder
     private var descriptionField: some View {
         #if os(macOS)
-        macNotesEditor
+        MacNotesTextView(
+            text: $model.notes,
+            isFocused: Binding(
+                get: { focusedField == .notes },
+                // Only ever clear `.notes` on resign — don't stomp a focus that
+                // has already moved to another field (e.g. the title).
+                set: { focusedField = $0 ? .notes : (focusedField == .notes ? nil : focusedField) }
+            ),
+            placeholder: String(localized: "Add a description…", bundle: .module)
+        )
+        .padding(LillistSpacing.s)
+        .background {
+            RoundedRectangle(cornerRadius: LillistRadius.s, style: .continuous)
+                .fill(.rainbowWell)
+        }
         #else
         // iOS: a vertical-axis `TextField` (matching the title) so the card
         // wraps its description rather than reserving a fixed tall box —
@@ -279,109 +294,6 @@ public struct TaskEditorView: View {
         .accessibilityIdentifier("EditorNotesField")
         #endif
     }
-
-    #if os(macOS)
-    /// Approximate horizontal inset of `TextEditor`'s text start on macOS
-    /// (`NSTextView`'s `lineFragmentPadding` ≈ 5pt), used to left-align the
-    /// placeholder with where the caret will sit.
-    ///
-    /// The `macNotes*Inset`/`Slack` constants below **estimate undocumented
-    /// `NSTextView` metrics** (`lineFragmentPadding` + `textContainerInset`),
-    /// whose exact total isn't public. They're biased to over-count so the box
-    /// never clips, and were set against **macOS 26 / iOS 26**. There is no
-    /// *pixel-level* coverage — macOS glass/editor snapshots are
-    /// `XCTSkip`-quarantined, so if a future OS changes those insets past the
-    /// slack the field could clip; verify/tune on-device and re-check whenever the
-    /// deployment target moves. `MacNotesSizerMetricsTests` pins the over-count
-    /// *contract* (sizer inset > editor inset, positive slack) but not the real
-    /// hug — hence these are `internal`, not `private` (#36).
-    nonisolated static let macNotesTextInset: CGFloat = 5
-    /// Top inset estimating `NSTextView`'s vertical `textContainerInset`, so the
-    /// empty-state placeholder's first line lands on the caret's baseline instead
-    /// of a few points above it (see the metrics caveat on `macNotesTextInset`).
-    nonisolated static let macNotesTopInset: CGFloat = 5
-    /// Horizontal inset for the invisible **sizer** — deliberately *larger* than
-    /// the editor's real text inset. The sizer drives the box height by wrapping
-    /// the note at its own width, so if it wrapped *wider* than the live editor
-    /// it would count too few lines and the editor would clip its last line
-    /// against the height cap. `TextEditor` also applies a `textContainerInset`
-    /// beyond `lineFragmentPadding`, and the exact total isn't publicly known, so
-    /// bias the sizer narrower than any plausible editor width: it can then only
-    /// *over*-count (a little bottom slack), never clip. The macOS box has no
-    /// snapshot path — verify the hug on-device against a note whose lines wrap
-    /// right at the box width, and tune here if needed.
-    nonisolated static let macNotesSizerInset: CGFloat = 12
-    /// Vertical slack the sizer adds beyond the raw text height. `NSTextView`
-    /// insets its text vertically (`textContainerInset`, top **and** bottom) on
-    /// top of the wrapped-line height, and a note of short lines (no horizontal
-    /// wrap difference) gets no slack from `macNotesSizerInset` — so without this
-    /// the box resolves to ~the raw text height and the editor clips its last
-    /// line. Add a small over-estimate of that vertical inset (top+bottom); a bit
-    /// of bottom breathing room is harmless, a shortfall clips. Verify on-device.
-    nonisolated static let macNotesVerticalSlack: CGFloat = 8
-    /// ~2 lines of body text — the iOS field's `.lineLimit(2...8)` floor.
-    private static let macNotesMinHeight: CGFloat = 44
-
-    /// The string the invisible sizer measures. SwiftUI `Text` drops a trailing
-    /// newline from its measured height, so a note ending in Return (or a blank
-    /// last line) would leave the `TextEditor`'s caret on an uncounted line and
-    /// clip it. Append a zero-width space so the final line is always counted;
-    /// the sizer is `.clear`, so it's invisible either way. Static so
-    /// `MacNotesSizerMetricsTests` can pin the trailing-newline rule (#36).
-    nonisolated static func macNotesSizerText(for notes: String) -> String {
-        notes.isEmpty ? " " : notes + "\u{200B}"
-    }
-
-    /// macOS notes field: a bounded `TextEditor` (Return → newline, #29) whose
-    /// height is driven by an **invisible `Text` sizer** so the box still hugs
-    /// its content like the iOS field (#22), capped at `editorNotesMaxHeight`.
-    ///
-    /// The sizer is the base and the `TextEditor` is an `.overlay` on it — so
-    /// the sizer's natural text height drives the frame and the (greedy)
-    /// `TextEditor` merely fills it. A plain `ZStack` would instead let the
-    /// greedy editor drive the height and defeat the hug (a fixed tall box).
-    private var macNotesEditor: some View {
-        Text(Self.macNotesSizerText(for: model.notes))
-            .font(LillistTypography.body)
-            // `.foregroundStyle(.clear)` only hides the sizer visually — a `Text`
-            // with content is still an AX element, so hide it or VoiceOver reads
-            // the note twice (once here, once from the live `TextEditor`).
-            .foregroundStyle(.clear)
-            .accessibilityHidden(true)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.horizontal, Self.macNotesSizerInset)
-            .padding(.vertical, Self.macNotesVerticalSlack)
-            .frame(
-                minHeight: Self.macNotesMinHeight,
-                maxHeight: LillistSizing.editorNotesMaxHeight,
-                alignment: .topLeading
-            )
-            .overlay(alignment: .topLeading) {
-                TextEditor(text: $model.notes)
-                    .font(LillistTypography.body)
-                    .foregroundStyle(LillistColor.textBody)
-                    .scrollContentBackground(.hidden)
-                    .focused($focusedField, equals: .notes)
-                    .accessibilityIdentifier("EditorNotesField")
-                    .overlay(alignment: .topLeading) {
-                        if model.notes.isEmpty {
-                            Text("Add a description…", bundle: .module)
-                                .font(LillistTypography.body)
-                                .foregroundStyle(LillistColor.textFaint)
-                                .padding(.horizontal, Self.macNotesTextInset)
-                                .padding(.top, Self.macNotesTopInset)
-                                .allowsHitTesting(false)
-                                .accessibilityHidden(true)
-                        }
-                    }
-            }
-            .padding(LillistSpacing.s)
-            .background {
-                RoundedRectangle(cornerRadius: LillistRadius.s, style: .continuous)
-                    .fill(.rainbowWell)
-            }
-    }
-    #endif
 
     // MARK: - Summary rows
 
