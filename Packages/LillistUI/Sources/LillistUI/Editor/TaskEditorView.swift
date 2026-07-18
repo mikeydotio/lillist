@@ -285,18 +285,21 @@ public struct TaskEditorView: View {
     /// (`NSTextView`'s `lineFragmentPadding` ≈ 5pt), used to left-align the
     /// placeholder with where the caret will sit.
     ///
-    /// The three `macNotes*Inset`/`Slack` constants below **estimate undocumented
+    /// The `macNotes*Inset`/`Slack` constants below **estimate undocumented
     /// `NSTextView` metrics** (`lineFragmentPadding` + `textContainerInset`),
     /// whose exact total isn't public. They're biased to over-count so the box
-    /// never clips, and were set against **macOS 26 / iOS 26**; there's no
-    /// automated coverage (macOS glass/editor snapshots are `XCTSkip`-quarantined),
-    /// so if a future OS changes those insets past the slack the field could clip.
-    /// Verify/tune on-device; re-check whenever the deployment target moves.
-    private static let macNotesTextInset: CGFloat = 5
+    /// never clips, and were set against **macOS 26 / iOS 26**. There is no
+    /// *pixel-level* coverage — macOS glass/editor snapshots are
+    /// `XCTSkip`-quarantined, so if a future OS changes those insets past the
+    /// slack the field could clip; verify/tune on-device and re-check whenever the
+    /// deployment target moves. `MacNotesSizerMetricsTests` pins the over-count
+    /// *contract* (sizer inset > editor inset, positive slack) but not the real
+    /// hug — hence these are `internal`, not `private` (#36).
+    nonisolated static let macNotesTextInset: CGFloat = 5
     /// Top inset estimating `NSTextView`'s vertical `textContainerInset`, so the
     /// empty-state placeholder's first line lands on the caret's baseline instead
     /// of a few points above it (see the metrics caveat on `macNotesTextInset`).
-    private static let macNotesTopInset: CGFloat = 5
+    nonisolated static let macNotesTopInset: CGFloat = 5
     /// Horizontal inset for the invisible **sizer** — deliberately *larger* than
     /// the editor's real text inset. The sizer drives the box height by wrapping
     /// the note at its own width, so if it wrapped *wider* than the live editor
@@ -307,7 +310,7 @@ public struct TaskEditorView: View {
     /// *over*-count (a little bottom slack), never clip. The macOS box has no
     /// snapshot path — verify the hug on-device against a note whose lines wrap
     /// right at the box width, and tune here if needed.
-    private static let macNotesSizerInset: CGFloat = 12
+    nonisolated static let macNotesSizerInset: CGFloat = 12
     /// Vertical slack the sizer adds beyond the raw text height. `NSTextView`
     /// insets its text vertically (`textContainerInset`, top **and** bottom) on
     /// top of the wrapped-line height, and a note of short lines (no horizontal
@@ -315,7 +318,7 @@ public struct TaskEditorView: View {
     /// the box resolves to ~the raw text height and the editor clips its last
     /// line. Add a small over-estimate of that vertical inset (top+bottom); a bit
     /// of bottom breathing room is harmless, a shortfall clips. Verify on-device.
-    private static let macNotesVerticalSlack: CGFloat = 8
+    nonisolated static let macNotesVerticalSlack: CGFloat = 8
     /// ~2 lines of body text — the iOS field's `.lineLimit(2...8)` floor.
     private static let macNotesMinHeight: CGFloat = 44
 
@@ -323,9 +326,10 @@ public struct TaskEditorView: View {
     /// newline from its measured height, so a note ending in Return (or a blank
     /// last line) would leave the `TextEditor`'s caret on an uncounted line and
     /// clip it. Append a zero-width space so the final line is always counted;
-    /// the sizer is `.clear`, so it's invisible either way.
-    private var macNotesSizerText: String {
-        model.notes.isEmpty ? " " : model.notes + "\u{200B}"
+    /// the sizer is `.clear`, so it's invisible either way. Static so
+    /// `MacNotesSizerMetricsTests` can pin the trailing-newline rule (#36).
+    nonisolated static func macNotesSizerText(for notes: String) -> String {
+        notes.isEmpty ? " " : notes + "\u{200B}"
     }
 
     /// macOS notes field: a bounded `TextEditor` (Return → newline, #29) whose
@@ -337,7 +341,7 @@ public struct TaskEditorView: View {
     /// `TextEditor` merely fills it. A plain `ZStack` would instead let the
     /// greedy editor drive the height and defeat the hug (a fixed tall box).
     private var macNotesEditor: some View {
-        Text(macNotesSizerText)
+        Text(Self.macNotesSizerText(for: model.notes))
             .font(LillistTypography.body)
             // `.foregroundStyle(.clear)` only hides the sizer visually — a `Text`
             // with content is still an AX element, so hide it or VoiceOver reads
