@@ -3,6 +3,74 @@
 All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [v0.15.0] - 2026-07-19
+
+### Added
+- add self-measuring NSTextView notes editor for macOS (0b58267a)
+- expose dynamic NSColor accessors for AppKit-backed views (d77f8c26)
+- add editorHasOuterScroll env flag + overlay scroll-and-center (9d3adb7f)
+
+### Fixed
+- grow the iOS notes field instead of scrolling it in place (#34) (7930e93b)
+- remember only the collapsed main-card height (#35) (2d256963)
+- align the notes placeholder vertically; pin the notes-metric estimates (#33 review) (e43e29f2)
+- one shared glass panel + passive outer scroll for the nested notes field (#33 review) (515832a9)
+- seed each card's height per route so drill-in → Back doesn't pop-resize (#33 review) (2109c94e)
+- show the wrap card at a bounded first-pass height, not an opacity gate (#33 review) (d41bf63b)
+- gate each card's reveal inside its own glass, robust to Back rebuilds (#33 review) (31b43007)
+- gate the card reveal per route so child cards don't flash either (#33 review) (c0c71431)
+- gate the whole card (glass included) on measurement; add notes vertical slack (#33 review) (60f5732e)
+- hide the wrap card until measured, and widen the macOS notes sizer (#33 review) (18d6601f)
+- hide the invisible notes sizer from VoiceOver (#33 review) (e18bbcf6)
+- seed a bounded first-pass height so the wrap card doesn't flash greedy (#33 review) (062562dc)
+- count a trailing newline in the notes sizer height (#29 review) (2f1b1506)
+- hugging TextEditor notes field so Return breaks lines (#29) (5636ce2e)
+- eliminate the ViewThatFits swap that tore down the focused tag field (#32) (0f690ba6)
+- collapse the tag field on drill-in navigation (#26) (c5b5754e)
+
+### Changed
+- Merge pull request #47 from mikeydotio/docs/engineering-notes-apphosted-worktree (c01b8a6b)
+- Merge pull request #46 from mikeydotio/test/editor-45-snapshot-baselines (7f2a4434)
+- Merge pull request #42 from mikeydotio/fix/editor-38-overlay-scroll (1d3c9236)
+- Merge remote-tracking branch 'origin/main' into fix/editor-38-overlay-scroll (9e984fd2)
+- Merge pull request #43 from mikeydotio/fix/editor-36-nstextview-measurer (be15ad69)
+- drive the macOS notes hug with MacNotesTextView (91040ba4)
+- retire MeasuredGlassCard for a synchronous self-sizing card (3dde0e0c)
+- Merge pull request #39 from mikeydotio/fix/editor-33-followups-35-36 (a46ac11f)
+- Merge pull request #33 from mikeydotio/worktree-lil-31 (31026bde)
+- extract .editorGlassPanel() so the card chrome has one definition (#33 review) (b10ab5d0)
+- Merge pull request #30 from mikeydotio/chore/release-v0.14.1 (e6e88b05)
+
+### Documentation
+- correct the worktree app-hosted snapshot recipe (f7546c6d)
+- record the NSTextView notes-hug redesign (#36) (fb39163e)
+- record the overlay-scroll cutover; drop stale MeasuredGlassCard refs (f1f0732c)
+- correct the stale gate comment; document the async-cap growth trail (#33 review) (53bb8657)
+- replace phantom WrapToContentThenScroll/settledEditorHeight names after the rename (#33 review) (289b535c)
+- downgrade the overstated @FocusState ordering comment (#28) (fa073aa4)
+
+### Testing
+- re-record editor baselines for overlay-scroll redesign (#45) (68717db8)
+- migrate the async-measurement probes to synchronous assertions (707fd93f)
+- pin the macOS notes-sizer over-count contract (#36) (0eeb4b40)
+- pin the fat-notes boundary proxy to iPhone-17, drop the over-strict margin (#33 review) (b80e999f)
+- assert the fat card clears the keyboard offer by a margin, not a knife-edge (#33 review) (60276a23)
+- drop the no-op snapshot settle; rely on drawHierarchyInKeyWindow (#33 review) (e7bbddb1)
+- derive the keyboard-up offer from the live screen, not a hardcoded 387 (#33 review) (2ca3d7b8)
+- make editorContentHeight actually settle, not break on the first read (#33 review) (c3d38fa1)
+- settle async layout before capturing editor snapshots (#33 review) (1b0bbd81)
+- assert the fat-notes boundary crossing on real content, not tautologies (#33 review) (d2f9b54e)
+- converge settledEditorHeight via a huge-offer probe, no deadline spin (#33 review) (44cf1d14)
+- make the settled-height poll immune to the greedy pre-measure read (#33 review) (feedbaef)
+- poll until the editor height settles instead of a fixed sleep (#33 review) (8327e8b8)
+- address PR #33 review — window leak, shared fixture, post-#32 wording (89c85dbc)
+- cross the ViewThatFits fit boundary and pin tag-field survival (#27) (f4bbda04)
+
+### Maintenance
+- bump iOS build number to 86 (add305c7)
+
+_[manual]_
+
 ## [v0.14.1] - 2026-07-15
 
 ### Added

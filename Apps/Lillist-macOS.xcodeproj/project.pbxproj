@@ -25,6 +25,7 @@
 		2F203B07FBD275E48F0ABB96 /* Sparkle in Frameworks */ = {isa = PBXBuildFile; productRef = CF695397835B406FC45EA94B /* Sparkle */; };
 		30076A7693DF0351539864C6 /* LillistUI in Frameworks */ = {isa = PBXBuildFile; productRef = C52B8214523B326624D787B2 /* LillistUI */; };
 		34205E56AB7BBAC39AABE64A /* LillistCore in Frameworks */ = {isa = PBXBuildFile; productRef = D5DCD7417305E330CB4C0DC0 /* LillistCore */; };
+		3BB6CCB75298814DB87A3DAA /* MacNotesFieldUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7397742ED376A21AC07FB908 /* MacNotesFieldUITests.swift */; };
 		41A3F0BCDABB8E588C8A1F05 /* RemindersPane.swift in Sources */ = {isa = PBXBuildFile; fileRef = F3D397212929ED75B7D59146 /* RemindersPane.swift */; };
 		41D5332FFC9A37D6874E1E44 /* AppIntents.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = ECE3A50348E57FE59F4366B8 /* AppIntents.framework */; };
 		45B8F62994DBA09CA3BDFA8D /* WidgetRefreshCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = B3260F13476CB414DA5B263F /* WidgetRefreshCoordinator.swift */; };
@@ -166,6 +167,7 @@
 		702938FB7797F816EE1EA2B0 /* QuickCapturePlacementTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuickCapturePlacementTests.swift; sourceTree = "<group>"; };
 		714EC7647AE061D0704C0E76 /* QuickCapturePlacementMath.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuickCapturePlacementMath.swift; sourceTree = "<group>"; };
 		727828BA4EDE344AF9A975F3 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
+		7397742ED376A21AC07FB908 /* MacNotesFieldUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacNotesFieldUITests.swift; sourceTree = "<group>"; };
 		742CD5E123358917FB88A557 /* IndexingServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IndexingServiceTests.swift; sourceTree = "<group>"; };
 		7759FEF67B66174A46618A2F /* MacListScrollUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacListScrollUITests.swift; sourceTree = "<group>"; };
 		7A53E5AF3D478A947E6F11DD /* EditorOpenDecision.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EditorOpenDecision.swift; sourceTree = "<group>"; };
@@ -344,6 +346,7 @@
 			isa = PBXGroup;
 			children = (
 				7759FEF67B66174A46618A2F /* MacListScrollUITests.swift */,
+				7397742ED376A21AC07FB908 /* MacNotesFieldUITests.swift */,
 				6689D260F19F87FD0D52A0D5 /* MacReorderUITests.swift */,
 				387398654A3BFE1280BF04C7 /* MacRowTapOpenUITests.swift */,
 				CA3A04DE4AA12F24B8E12E72 /* MacSwipeUITests.swift */,
@@ -727,6 +730,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				6C3E563303459399A0FB16C2 /* MacListScrollUITests.swift in Sources */,
+				3BB6CCB75298814DB87A3DAA /* MacNotesFieldUITests.swift in Sources */,
 				535BCE398E7085DD54F38163 /* MacReorderUITests.swift in Sources */,
 				EDA153719D3EF16408B0ACE8 /* MacRowTapOpenUITests.swift in Sources */,
 				FF069736802FAEFCD48E8A57 /* MacSwipeUITests.swift in Sources */,
@@ -862,7 +866,7 @@
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				GENERATE_INFOPLIST_FILE = NO;
 				MACOSX_DEPLOYMENT_TARGET = 15.0;
-				MARKETING_VERSION = 0.14.1;
+				MARKETING_VERSION = 0.15.0;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -1044,7 +1048,7 @@
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				GENERATE_INFOPLIST_FILE = NO;
 				MACOSX_DEPLOYMENT_TARGET = 15.0;
-				MARKETING_VERSION = 0.14.1;
+				MARKETING_VERSION = 0.15.0;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
