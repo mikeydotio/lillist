@@ -276,7 +276,31 @@ Lillist-iOS` builds `Lillist-iOSAppHostedTests`, which links `-bundle_loader
 Lillist.app/Lillist`; with 10-core parallelism and the app not yet linked it fails
 `ld: library '…/Lillist.app/Lillist' not found`. Build the app alone first
 (`xcodebuild build -scheme Lillist-iOS ENABLE_DEBUG_DYLIB=NO`) so the host binary
-exists, then run the test.
+exists, then run the test. (For *running/recording* the app-hosted tests this
+flag is wrong — see the 2026-07-18 correction immediately below.)
+
+**Correction (2026-07-18 — re-recording the editor snapshot baselines, issue
+#45 / PR #46).** `ENABLE_DEBUG_DYLIB=NO` clears the *build* link race above, but
+it breaks the *run* of the app-hosted snapshot suite: with the debug dylib off,
+the host is a plain executable that doesn't dynamically export `LillistCore`'s
+symbols, so the injected `Lillist-iOSAppHostedTests` bundle fails to load with
+`Symbol not found: _$s11LillistCore…TaskCMa` (a LillistCore type-metadata
+accessor). Use the **canonical** recipe instead — debug dylib *on*, no flag —
+with a **retry-once**: the first `xcodebuild test` pass links the app, and the
+retry's test-bundle link then resolves `-bundle_loader Lillist.app/Lillist`
+against it (the `.debug.dylib` exports the package symbols). Two more
+worktree-only prerequisites the original note omits:
+
+- **Regenerate the scheme first.** Shared schemes are gitignored, so a fresh
+  worktree has no `Lillist-iOS.xcscheme`; `xcodebuild test` then fails with
+  *"Lillist-iOSAppHostedTests isn't a member of the specified test plan or
+  scheme."* Run `xcodegen generate --spec Apps/Lillist-iOS/project.yml --project
+  Apps/Lillist-iOS` (the resulting pbxproj UUID-shuffle is cosmetic — don't
+  commit it).
+- **Scope `RECORD_SNAPSHOTS=YES` per test** (`-only-testing:…/GlassSnapshotTests/
+  test_editor_…`) so the sibling fab/buttons/toggles baselines in the same class
+  aren't rewritten, then re-run without record mode to confirm the fresh
+  baselines compare clean. Recorded on the pinned iPhone 17 / iOS 26.2.
 
 ## 2026-07-01 — WidgetKit widgets: snapshot cache, WidgetKit-not-in-Core, glass-free rendering
 
