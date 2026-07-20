@@ -137,6 +137,21 @@
     },
     "Welcome to Lillist" : {
 
+    },
+    "Cancel" : {
+
+    },
+    "Name" : {
+
+    },
+    "Save" : {
+
+    },
+    "Save as Smart Filter" : {
+
+    },
+    "Smart search failed." : {
+
     }
   },
   "version" : "1.0"

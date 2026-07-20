@@ -4568,3 +4568,18 @@ Landing the compact task-detail card (`Closes #8`) surfaced three lessons:
   opts in. This is what makes wiring iOS and macOS in separate commits
   (issue #51 waves E and F) safe rather than a two-platform lockstep
   requirement.
+- **Two transient false alarms while verifying wave F, both confirmed
+  benign on a second run — don't chase either past one retry.** (1)
+  `swift test --package-path Packages/LillistCore --parallel
+  --num-workers 2` reported a `LillistCoreTests` failure with no test name
+  attached anywhere in the log — a from-cold-cache re-run passed clean at
+  the same 1015/201 count, matching the documented "Parallel-test flakes"
+  entry (2026-06-04) exactly. (2) `check-lillistui-localization.sh`
+  reported "all 0 extracted keys are present" (vacuously true, not a real
+  pass) immediately after several other `swift build`/`swift test`
+  invocations against the same toolchain — an incremental-build artifact
+  where `-emit-localized-strings` didn't re-run because nothing looked
+  recompiled to SwiftPM; a fresh invocation extracted the real 273 keys
+  and passed for real. Both fit the existing "retry once before treating
+  a flake as real" posture — no new mitigation needed, just recorded so a
+  future zero-count or unattributed failure isn't chased as a regression.
