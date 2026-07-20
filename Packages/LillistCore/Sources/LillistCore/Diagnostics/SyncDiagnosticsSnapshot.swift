@@ -1,5 +1,7 @@
 import Foundation
+#if os(macOS)
 import Security
+#endif
 
 /// Which CloudKit environment (Development vs Production) this device's
 /// signed build is talking to.
@@ -15,7 +17,10 @@ public enum CloudKitEnvironment: String, Codable, Sendable, Equatable {
     case production = "Production"
     /// Neither the `icloud-container-environment` nor an `aps-environment`
     /// entitlement was present or recognized — e.g. the process is unsigned
-    /// (`swift test`), or a future entitlement value this app doesn't know.
+    /// (`swift test`), running in the iOS Simulator (no embedded provisioning
+    /// profile), distributed via TestFlight/App Store (Apple strips the
+    /// embedded profile from those builds — see `SelfEntitlementReader`), or
+    /// a future entitlement value this app doesn't know.
     case unknown = "unknown"
 }
 
@@ -27,21 +32,80 @@ public protocol EntitlementReading: Sendable {
     func stringValue(forEntitlement key: String) -> String?
 }
 
-/// Reads the *running process's own* code-signing entitlements via the
-/// public, App-Store-safe `Security` API `SecTaskCreateFromSelf` /
-/// `SecTaskCopyValueForEntitlement` — the same mechanism apps use to
-/// introspect their own provisioning at runtime. Returns `nil` for every key
-/// when the process is unsigned (e.g. under `swift test`), which is why
-/// production values are only ever read from inside the signed app.
+/// Reads the *running process's own* code-signing entitlements, by whichever
+/// public, App-Store-safe technique its platform actually exposes.
+///
+/// The two platforms need genuinely different mechanisms — this is not a
+/// stylistic choice: `<Security/SecTask.h>` (`SecTaskCreateFromSelf` /
+/// `SecTaskCopyValueForEntitlement`) ships only in the **macOS** SDK; it is
+/// absent from both the iphoneos and iphonesimulator SDKs (confirmed against
+/// Xcode 26's SDK headers — this is not merely undocumented, the header
+/// doesn't exist there), so it cannot be used on iOS at all.
+///
+/// - **macOS:** `SecTaskCreateFromSelf` + `SecTaskCopyValueForEntitlement`.
+/// - **iOS:** parses the app's own embedded provisioning profile
+///   (`embedded.mobileprovision`, a bundle resource every Development and
+///   Ad-Hoc build ships) for its `Entitlements` dictionary. This is a
+///   standard, widely-shipped technique: the profile is a CMS-signed blob,
+///   but its plist payload is embedded as clear text, so no decryption is
+///   needed — only public `Bundle`/`PropertyListSerialization` APIs are
+///   used. **Known limitation:** Apple strips this file from
+///   TestFlight/App-Store-distributed builds, and the iOS Simulator has no
+///   embedded profile at all, so this reader degrades to `nil` (→
+///   `.unknown`) in both cases — an honest "can't tell" rather than a wrong
+///   answer. Lillist's iOS distribution is currently Development/Ad-Hoc only
+///   (see docs/engineering-notes.md CloudKit-environment posture), so this
+///   covers every real distribution channel today; revisit if iOS ever moves
+///   to TestFlight/App Store.
+///
+/// Either way, returns `nil` for every key when the process is unsigned
+/// (`swift test`) or the platform-specific signal is unavailable, which is
+/// why production values are only ever read from inside the signed app.
 public struct SelfEntitlementReader: EntitlementReading {
     public init() {}
 
     public func stringValue(forEntitlement key: String) -> String? {
+        #if os(macOS)
         guard let task = SecTaskCreateFromSelf(nil) else { return nil }
         var error: Unmanaged<CFError>?
         let value = SecTaskCopyValueForEntitlement(task, key as CFString, &error)
         return value as? String
+        #elseif os(iOS)
+        return Self.provisioningProfileEntitlements?[key]
+        #else
+        return nil
+        #endif
     }
+
+    #if os(iOS)
+    /// Parsed once per process and cached — the file never changes for the
+    /// life of a launch, and every diagnostics-row read would otherwise
+    /// re-decode the whole embedded profile from scratch. Narrowed to
+    /// `[String: String]` (not `[String: Any]`) both because
+    /// `stringValue(forEntitlement:)` never needs non-string entitlement
+    /// values, and because `[String: String]` — unlike a `[String: Any]`
+    /// holding an existential — is `Sendable`, so this `static let` needs no
+    /// `nonisolated(unsafe)` escape hatch under strict concurrency.
+    private static let provisioningProfileEntitlements: [String: String]? = {
+        guard let url = Bundle.main.url(forResource: "embedded", withExtension: "mobileprovision"),
+              let data = try? Data(contentsOf: url),
+              // isoLatin1 maps every byte 0–255 to a code point, so it can
+              // "decode" the surrounding binary CMS bytes without failing —
+              // we only need it to survive long enough to locate the
+              // embedded plist substring.
+              let content = String(data: data, encoding: .isoLatin1),
+              let plistStart = content.range(of: "<plist"),
+              let plistEnd = content.range(of: "</plist>")
+        else { return nil }
+        let plistXML = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
+            + content[plistStart.lowerBound..<plistEnd.upperBound]
+        guard let plistData = plistXML.data(using: .isoLatin1),
+              let plist = try? PropertyListSerialization.propertyList(from: plistData, format: nil) as? [String: Any],
+              let entitlements = plist["Entitlements"] as? [String: Any]
+        else { return nil }
+        return entitlements.compactMapValues { $0 as? String }
+    }()
+    #endif
 }
 
 /// A point-in-time capture of this device's CloudKit provenance: which
