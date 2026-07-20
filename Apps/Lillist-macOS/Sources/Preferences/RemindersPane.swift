@@ -32,8 +32,13 @@ struct RemindersPane: View {
                     case .authorized:
                         Picker("List", selection: listSelectionBinding) {
                             Text("None").tag(String?.none)
-                            ForEach(lists) { list in
-                                Text(list.title).tag(Optional(list.id))
+                            ForEach(ReminderListGrouping.grouped(lists)) { group in
+                                Section(group.accountName) {
+                                    ForEach(group.lists) { list in
+                                        reminderListRow(list)
+                                            .tag(Optional(list.id))
+                                    }
+                                }
                             }
                         }
                         HStack {
@@ -65,6 +70,27 @@ struct RemindersPane: View {
         .frame(width: PreferencesMetrics.contentWidth)
         .fixedSize() // Plan 15 Task 26: pane self-sizes height; window animates.
         .task { await loadIfNeeded() }
+    }
+
+    // MARK: Rows
+
+    /// One picker row: the list's title with its incomplete-reminder count
+    /// trailing, mirroring the sidebar's count-badge idiom.
+    @ViewBuilder
+    private func reminderListRow(_ list: ReminderListInfo) -> some View {
+        HStack {
+            Text(list.title)
+            Spacer()
+            Text(list.incompleteCount, format: .number)
+                .foregroundStyle(.secondary)
+                .monospacedDigit()
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(Self.accessibilityLabel(for: list))
+    }
+
+    private static func accessibilityLabel(for list: ReminderListInfo) -> String {
+        String(localized: "\(list.title), \(list.incompleteCount) reminder\(list.incompleteCount == 1 ? "" : "s")")
     }
 
     // MARK: Bindings
