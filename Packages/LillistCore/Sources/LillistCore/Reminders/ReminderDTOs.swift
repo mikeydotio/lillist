@@ -6,10 +6,28 @@ import Foundation
 public struct ReminderListInfo: Sendable, Equatable, Identifiable {
     public let id: String
     public let title: String
+    /// The owning account's `EKSource.sourceIdentifier` — stable grouping key
+    /// for lists that belong to the same account (iCloud, a Google/CalDAV
+    /// account, …).
+    public let accountID: String
+    /// The owning account's display name (`EKSource.title`), e.g. "iCloud".
+    public let accountName: String
+    /// Count of incomplete reminders in this list — exactly what a drain of
+    /// this list would import.
+    public let incompleteCount: Int
 
-    public init(id: String, title: String) {
+    public init(
+        id: String,
+        title: String,
+        accountID: String,
+        accountName: String,
+        incompleteCount: Int
+    ) {
         self.id = id
         self.title = title
+        self.accountID = accountID
+        self.accountName = accountName
+        self.incompleteCount = incompleteCount
     }
 }
 

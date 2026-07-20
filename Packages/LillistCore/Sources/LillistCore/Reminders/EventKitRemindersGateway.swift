@@ -33,9 +33,52 @@ public actor EventKitRemindersGateway: RemindersGateway {
         }
     }
 
-    public func lists() throws -> [ReminderListInfo] {
-        store.calendars(for: .reminder)
-            .map { ReminderListInfo(id: $0.calendarIdentifier, title: $0.title) }
+    public func lists() async throws -> [ReminderListInfo] {
+        let calendars = store.calendars(for: .reminder)
+        guard !calendars.isEmpty else { return [] }
+
+        // One fetch across every list, bucketed by calendar id, rather than
+        // an EventKit round-trip per list.
+        let counts = await incompleteCounts(for: calendars)
+        return calendars
+            .map { calendar in
+                ReminderListInfo(
+                    id: calendar.calendarIdentifier,
+                    title: calendar.title,
+                    accountID: calendar.source.sourceIdentifier,
+                    accountName: calendar.source.title,
+                    incompleteCount: counts[calendar.calendarIdentifier] ?? 0
+                )
+            }
+            .sorted {
+                $0.accountName != $1.accountName
+                    ? $0.accountName < $1.accountName
+                    : $0.title < $1.title
+            }
+    }
+
+    private func incompleteCounts(for calendars: [EKCalendar]) async -> [String: Int] {
+        let predicate = store.predicateForIncompleteReminders(
+            withDueDateStarting: nil, ending: nil, calendars: calendars
+        )
+        // Map to a Sendable count dictionary *inside* the completion handler
+        // so the non-Sendable `[EKReminder]` never crosses the continuation
+        // boundary.
+        return await withCheckedContinuation { continuation in
+            store.fetchReminders(matching: predicate) { reminders in
+                continuation.resume(returning: Self.countByCalendar(reminders ?? []))
+            }
+        }
+    }
+
+    /// Pure EKReminder-list → per-calendar count projection. `nonisolated
+    /// static` for the same reason as ``makeItem(from:)``: EventKit's fetch
+    /// completion handler is non-isolated.
+    private nonisolated static func countByCalendar(_ reminders: [EKReminder]) -> [String: Int] {
+        reminders.reduce(into: [String: Int]()) { counts, reminder in
+            guard let id = reminder.calendar?.calendarIdentifier else { return }
+            counts[id, default: 0] += 1
+        }
     }
 
     public func items(inListID listID: String) async throws -> [ReminderItem] {
