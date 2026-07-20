@@ -62,6 +62,36 @@ jobs:
       - name: Test LillistUI (logic only — snapshots are host-pinned)
         run: swift test --package-path Packages/LillistUI --skip Snapshot --skip Tour
 
+  cli:
+    # Packages/LillistCLI (the `lillist` executable, `lillistCLITests`) was
+    # split out of Packages/LillistCore specifically so it could depend on
+    # LillistSearchIntelligence (the `--smart` flag's real translator)
+    # without creating a package cycle back through LillistCore — see the
+    # "Issue #51" entry in docs/engineering-notes.md. That means this job
+    # needs the same Xcode 27 (beta) preference as the ios/macos/
+    # release-archive-smoke jobs below; the `spm` job above does NOT (it
+    # only tests LillistCore/LillistUI, which stay FoundationModels-free).
+    name: LillistCLI (swift test)
+    runs-on: macos-15
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Select Xcode toolchain (27 beta if present, else 26.3)
+        run: |
+          BETA=$(ls -d /Applications/Xcode_27*.app /Applications/Xcode-beta.app 2>/dev/null | head -1)
+          if [ -n "$BETA" ]; then
+            echo "Selecting Xcode 27: $BETA"
+            sudo xcode-select -switch "$BETA"
+          else
+            echo "::warning::No Xcode 27 (beta) install found on this runner — falling back to 26.3. Packages/LillistCLI links LillistSearchIntelligence (FoundationModels.PrivateCloudComputeLanguageModel needs the iOS/macOS 27 SDK); the build below will fail until this runner has an Xcode 27 image. See docs/engineering-notes.md 'Issue #51' entry."
+            sudo xcode-select -switch /Applications/Xcode_26.3.app
+          fi
+          xcodebuild -version
+
+      - name: Test LillistCLI
+        run: swift test --package-path Packages/LillistCLI
+
   project-drift:
     name: pbxproj drift (xcodegen)
     runs-on: macos-15
@@ -312,7 +342,7 @@ jobs:
   notify:
     name: Notify on failure
     runs-on: macos-15
-    needs: [spm, project-drift, ios, macos, release-archive-smoke, localization-lint, secrets-guard]
+    needs: [spm, cli, project-drift, ios, macos, release-archive-smoke, localization-lint, secrets-guard]
     if: failure()
     steps:
       - name: Mark the run failed

@@ -8,11 +8,9 @@ let package = Package(
         .iOS(.v18)
     ],
     products: [
-        .library(name: "LillistCore", targets: ["LillistCore"]),
-        .executable(name: "lillist", targets: ["lillist-cli"])
+        .library(name: "LillistCore", targets: ["LillistCore"])
     ],
     dependencies: [
-        .package(url: "https://github.com/apple/swift-argument-parser", from: "1.5.0"),
         .package(url: "https://github.com/weichsel/ZIPFoundation", from: "0.9.0")
     ],
     targets: [
@@ -40,32 +38,6 @@ let package = Package(
             resources: [
                 .copy("CrashReporting/Fixtures"),
                 .copy("LinkPreview/HTMLFixtures")
-            ],
-            swiftSettings: [
-                .treatAllWarnings(as: .error)
-            ]
-        ),
-        .executableTarget(
-            name: "lillist-cli",
-            dependencies: [
-                "LillistCore",
-                .product(name: "ArgumentParser", package: "swift-argument-parser")
-            ],
-            exclude: ["README.md"],
-            swiftSettings: [
-                .enableExperimentalFeature("StrictConcurrency"),
-                .treatAllWarnings(as: .error)
-            ]
-        ),
-        .testTarget(
-            name: "lillistCLITests",
-            dependencies: [
-                "lillist-cli",
-                "LillistCore",
-                .product(name: "ArgumentParser", package: "swift-argument-parser")
-            ],
-            resources: [
-                .copy("Fixtures/snapshots")
             ],
             swiftSettings: [
                 .treatAllWarnings(as: .error)

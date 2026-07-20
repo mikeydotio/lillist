@@ -2,6 +2,8 @@
 <Workspace version = "1.0">
    <FileRef location = "group:Packages/LillistCore"></FileRef>
    <FileRef location = "group:Packages/LillistUI"></FileRef>
+   <FileRef location = "group:Packages/LillistSearchIntelligence"></FileRef>
+   <FileRef location = "group:Packages/LillistCLI"></FileRef>
    <FileRef location = "group:Apps/Lillist-macOS.xcodeproj"></FileRef>
    <FileRef location = "group:Apps/Lillist-iOS/Lillist-iOS.xcodeproj"></FileRef>
 </Workspace>

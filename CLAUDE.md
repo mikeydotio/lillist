@@ -14,14 +14,31 @@ in-house crash reporter.
 ## Topology
 
 - **`Packages/LillistCore/`** — data model, stores, notification
-  scheduler, recurrence expander, predicate engine, crash reporter,
-  CLI. Public APIs return value-type DTOs. Strict concurrency on the
-  source target.
+  scheduler, recurrence expander, predicate engine, crash reporter.
+  Public APIs return value-type DTOs. Strict concurrency on the
+  source target. No FoundationModels dependency, by design (see
+  `LillistSearchIntelligence` below) — importable and testable on any
+  Xcode install.
 - **`Packages/LillistUI/`** — cross-platform SwiftUI library shared by
   both apps. Design tokens (`Theme/Tokens.swift`), Quick Capture
   parser, recurrence editor, status surfaces, iOS Tab Screens at
   `iOS/Screens/<Tab>Screen.swift`, snapshot tests at
   `Tests/LillistUITests/`.
+- **`Packages/LillistSearchIntelligence/`** *(added for agentic search,
+  issue #51)* — the on-device (`SystemLanguageModel`, iOS/macOS 26+)
+  and Private Cloud Compute (`PrivateCloudComputeLanguageModel`,
+  iOS/macOS 27+) `FilterQueryTranslator` implementations, selected by
+  `FilterTranslatorFactory`. Depends on `LillistCore` (for `Field`/`Op`/
+  `PredicateGroup`/the `Search/` translation types) but nothing depends
+  on it *from within* `LillistCore` — that would be circular, which is
+  exactly why the CLI lives in its own package (next). Needs the Xcode
+  27 beta SDK to compile — see *Two Xcode toolchains* below.
+- **`Packages/LillistCLI/`** — the `lillist` CLI executable
+  (`lillist-cli` target, `swift-argument-parser`-based; handlers
+  thin-wrap `LillistCore` stores). Split out from `Packages/LillistCore`
+  specifically so it can depend on both `LillistCore` *and*
+  `LillistSearchIntelligence` without the latter creating a package
+  cycle back through `LillistCore`.
 - **`Apps/Lillist-macOS/`** — macOS shell (`RootSplitView`, command
   menu, Preferences scene, AppDelegate window management).
 - **`Apps/Lillist-iOS/`** — `AppEnvironment`, `TabShell` (compact) /
@@ -31,8 +48,6 @@ in-house crash reporter.
   `ShareExtension-iOS/` (share-sheet capture) and `ShortcutsActions/`
   (App Intents). All targets share App Group
   `group.app.lillist`.
-- **CLI** — `lillist-cli` target under `Packages/LillistCore`,
-  `swift-argument-parser`-based; handlers thin-wrap stores.
 - **`Tools/Deploy/`** — `deploy-ios.sh` archives Lillist-iOS, exports a
   Development-signed `.ipa`, and serves it over Tailscale Serve for OTA
   install on registered devices. See *Deploy (iOS test builds)* below
