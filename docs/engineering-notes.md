@@ -4549,3 +4549,22 @@ Landing the compact task-detail card (`Closes #8`) surfaced three lessons:
   through `LillistCore` itself. Verified as a pure, behavior-preserving
   move (identical test counts before/after) before adding the `--smart`
   wiring on top, per the two-hats rule.
+- **`String(localized:)` calls don't auto-extract into `.xcstrings` under
+  headless `swift build`/`xcodebuild`.** Only Xcode's own GUI build (or
+  explicitly running `Tools/CI/check-lillistui-localization.sh`, which
+  rebuilds with `-emit-localized-strings` and diffs the extracted keys
+  against the catalog) reveals which keys are missing — a successful
+  `xcodebuild build` from the CLI proves the *code* compiles, not that the
+  *catalog* is in sync. Added `SmartSearchField`'s 8 strings straight to
+  `LillistUI/Resources/Localizable.xcstrings` this way (ran the lint
+  script locally, added exactly what it reported missing, empty `{}`
+  entries per its own instructions) rather than trusting a clean app
+  build to mean the strings were covered.
+- **`TasksScreen`/`FilterHeader` defaulting every new parameter kept the
+  macOS build green with zero macOS-side changes in this same commit.**
+  `isSmartModeAvailable: Bool = false` (etc.) means `MacTasksView`'s
+  existing, unmodified call site renders exactly as before — the new
+  `SmartSearchField` inside `FilterHeader` only appears when a caller
+  opts in. This is what makes wiring iOS and macOS in separate commits
+  (issue #51 waves E and F) safe rather than a two-platform lockstep
+  requirement.

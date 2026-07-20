@@ -914,6 +914,30 @@
     },
     "Your tasks sync to your private iCloud database. Sign-out, account changes, and network outages are surfaced as a paused indicator — the app keeps working locally." : {
 
+    },
+    "Smart Search" : {
+
+    },
+    "Describe what you're looking for, then press Return." : {
+
+    },
+    "Interpreting…" : {
+
+    },
+    "Interpreted as: %@" : {
+
+    },
+    "Save as Filter" : {
+
+    },
+    "Couldn't understand that query — showing a plain text search instead." : {
+
+    },
+    "Ignored: %@" : {
+
+    },
+    "Smart search requires Apple Intelligence, which isn't available on this device." : {
+
     }
   },
   "version" : "1.0"

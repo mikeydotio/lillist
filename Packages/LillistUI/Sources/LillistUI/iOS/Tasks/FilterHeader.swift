@@ -44,18 +44,41 @@ public struct FilterHeader: View {
     public let savedFilters: [SavedFilterChipSpec]
     public let onClear: () -> Void
 
+    /// Whether the smart-search toggle is offered at all — the host
+    /// checks the translator factory's availability once and passes the
+    /// result down; `FilterHeader` itself never touches FoundationModels.
+    public var isSmartModeAvailable: Bool
+    @Binding public var isSmartMode: Bool
+    public var smartState: SmartSearchState
+    /// Fires on the search field's Return key. A no-op in plain-search
+    /// mode (live filtering already tracks `searchText`); in smart mode
+    /// the host runs the natural-language translation — deliberately not
+    /// on every keystroke, since translation costs hundreds of ms–seconds.
+    public var onSubmitSearch: () -> Void
+    public var onSaveSmartFilter: () -> Void
+
     public init(
         searchText: Binding<String>,
         selectedTokens: Binding<Set<QuickFilterToken>>,
         selectedSavedFilters: Binding<Set<UUID>>,
         savedFilters: [SavedFilterChipSpec],
-        onClear: @escaping () -> Void
+        onClear: @escaping () -> Void,
+        isSmartModeAvailable: Bool = false,
+        isSmartMode: Binding<Bool> = .constant(false),
+        smartState: SmartSearchState = .idle,
+        onSubmitSearch: @escaping () -> Void = {},
+        onSaveSmartFilter: @escaping () -> Void = {}
     ) {
         self._searchText = searchText
         self._selectedTokens = selectedTokens
         self._selectedSavedFilters = selectedSavedFilters
         self.savedFilters = savedFilters
         self.onClear = onClear
+        self.isSmartModeAvailable = isSmartModeAvailable
+        self._isSmartMode = isSmartMode
+        self.smartState = smartState
+        self.onSubmitSearch = onSubmitSearch
+        self.onSaveSmartFilter = onSaveSmartFilter
     }
 
     @FocusState private var searchFocused: Bool
@@ -63,6 +86,14 @@ public struct FilterHeader: View {
     public var body: some View {
         VStack(spacing: 10) {
             searchField
+            if isSmartModeAvailable {
+                SmartSearchField(
+                    isAvailable: isSmartModeAvailable,
+                    isSmartMode: $isSmartMode,
+                    state: smartState,
+                    onSave: onSaveSmartFilter
+                )
+            }
             chipScroll
         }
         .padding(.horizontal, 16)
@@ -92,6 +123,7 @@ public struct FilterHeader: View {
             .textInputAutocapitalization(.never)
             #endif
             .accessibilityIdentifier("FilterSearchField")
+            .onSubmit(onSubmitSearch)
 
             if !searchText.isEmpty || !selectedTokens.isEmpty || !selectedSavedFilters.isEmpty {
                 Button {

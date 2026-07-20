@@ -102,6 +102,7 @@
 		B8CE41C81582614D47DD9865 /* QuickCapturePage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 28624868A1C3FE87CA2918A6 /* QuickCapturePage.swift */; };
 		BAE212E795C6ABD2867565C2 /* TaskEditorHost.swift in Sources */ = {isa = PBXBuildFile; fileRef = 876E5B0298457707F165352B /* TaskEditorHost.swift */; };
 		BD2F163A8E4A99169DDDAA0F /* LongPressReorderUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CCCB79E78FCAB53B722B8391 /* LongPressReorderUITests.swift */; };
+		C24BA26A53B9AFE65C67C14E /* LillistSearchIntelligence in Frameworks */ = {isa = PBXBuildFile; productRef = 4745349FD363542464E56C4B /* LillistSearchIntelligence */; };
 		C37A5B3B5892E493D5874513 /* ReportCrashIntentTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 97A39E4B87749E005F34B7FF /* ReportCrashIntentTests.swift */; };
 		C37B06058C1A8FA6FC726189 /* FilterTimelineProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8F8C166D4F9D37E546C600E6 /* FilterTimelineProvider.swift */; };
 		C4286EAF37A8DBFC4CD4C0C8 /* LiveSwapHostMetaTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5F5EAD1E444A07943C9C4297 /* LiveSwapHostMetaTests.swift */; };
@@ -314,6 +315,7 @@
 			files = (
 				7A6D0D29236C8CF6E2FD5EDE /* LillistCore in Frameworks */,
 				379E3FE8AFB068E832A2617E /* LillistUI in Frameworks */,
+				C24BA26A53B9AFE65C67C14E /* LillistSearchIntelligence in Frameworks */,
 				A82205462289E0B47874AF4D /* AppIntents.framework in Frameworks */,
 				922C87516D1C74178EE89DF4 /* WidgetKit.framework in Frameworks */,
 			);
@@ -895,6 +897,7 @@
 			packageProductDependencies = (
 				9ED0B06375B70267A31FB5CA /* LillistCore */,
 				2ABD72EED49C2E40D19B1F5F /* LillistUI */,
+				4745349FD363542464E56C4B /* LillistSearchIntelligence */,
 			);
 			productName = "Lillist-iOS";
 			productReference = 5E708B597B5A514DE89C94FC /* Lillist-iOS.app */;
@@ -1725,6 +1728,10 @@
 		2ABD72EED49C2E40D19B1F5F /* LillistUI */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = LillistUI;
+		};
+		4745349FD363542464E56C4B /* LillistSearchIntelligence */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = LillistSearchIntelligence;
 		};
 		632F42FE2460074A366178DF /* LillistUI */ = {
 			isa = XCSwiftPackageProductDependency;

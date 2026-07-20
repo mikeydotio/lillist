@@ -78,6 +78,8 @@ targets:
         product: LillistCore
       - package: LillistUI
         product: LillistUI
+      - package: LillistSearchIntelligence
+        product: LillistSearchIntelligence
       - target: ShareExtension-iOS
         embed: true
       - target: ShortcutsActions
