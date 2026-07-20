@@ -161,4 +161,7 @@ Tools/Deploy/*.local.*
 # rca plugin
 .rca/
 .claude/worktrees/
+# Claude Code per-user, machine-local settings (permission approvals, local
+# scratch paths). Shared/team settings belong in a tracked .claude/settings.json.
+.claude/settings.local.json
 .council/
