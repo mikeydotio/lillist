@@ -109,6 +109,20 @@ public struct ICloudSyncSettingsSection: View {
                     Text("Tasks in iCloud", bundle: .module)
                 }
             }
+
+            // Issue #54: the loud counterpart to the reassurance metric above —
+            // fires only for the narrow "claims active, mirrors nothing" anomaly
+            // (see `divergenceWarning`'s doc). Functional cautionAmber, per the
+            // Rainbow Logic house rule that color is functional, never decorative.
+            if let warning = divergenceWarning {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(warning.title)
+                        .font(.footnote.bold())
+                    Text(warning.message)
+                        .font(.footnote)
+                }
+                .foregroundStyle(RainbowPalette.cautionAmber.ink)
+            }
         } header: {
             HStack {
                 Text("iCloud Sync")
@@ -134,6 +148,17 @@ public struct ICloudSyncSettingsSection: View {
                     .foregroundStyle(.secondary)
             }
         }
+    }
+
+    /// Instance-side wrapper around the pure static decision function, for
+    /// `body` to read directly off `viewState` — mirrors `statusLine`.
+    private var divergenceWarning: DivergenceWarning? {
+        Self.divergenceWarning(
+            mode: viewState.mode,
+            status: viewState.status,
+            localCount: viewState.localTaskCount,
+            mirroredCount: viewState.mirroredTaskCount
+        )
     }
 
     private var statusLine: String {
