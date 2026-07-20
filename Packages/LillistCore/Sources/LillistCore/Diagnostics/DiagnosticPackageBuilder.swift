@@ -24,15 +24,22 @@ public struct DiagnosticPackageBuilder: Sendable {
         public let deviceModel: String
         public let exportedAt: Date
         public let diagnosticLoggingEnabled: Bool
+        /// Issue #54: this device's CloudKit provenance (environment,
+        /// container, account, sync mode, mirror counts) at export time — the
+        /// signal that reveals a Dev/Prod distribution-channel split across a
+        /// fleet without a Mac. `nil` for packages built before this field
+        /// existed or where the caller couldn't assemble it.
+        public var sync: SyncDiagnosticsSnapshot?
         public var files: [String]
         public var notes: [String]
 
-        public init(buildVersion: String, osVersion: String, deviceModel: String, exportedAt: Date, diagnosticLoggingEnabled: Bool, files: [String] = [], notes: [String] = []) {
+        public init(buildVersion: String, osVersion: String, deviceModel: String, exportedAt: Date, diagnosticLoggingEnabled: Bool, sync: SyncDiagnosticsSnapshot? = nil, files: [String] = [], notes: [String] = []) {
             self.buildVersion = buildVersion
             self.osVersion = osVersion
             self.deviceModel = deviceModel
             self.exportedAt = exportedAt
             self.diagnosticLoggingEnabled = diagnosticLoggingEnabled
+            self.sync = sync
             self.files = files
             self.notes = notes
         }

@@ -220,4 +220,45 @@ final class DiagnosticPackageBuilderTests: XCTestCase {
         XCTAssertFalse(FileManager.default.fileExists(atPath: stage.appendingPathComponent("events.jsonl").path))
         XCTAssertFalse(FileManager.default.fileExists(atPath: stage.appendingPathComponent("raw").path))
     }
+
+    // MARK: - Issue #54: sync-provenance snapshot round-trips through the manifest
+
+    func test_stage_populatedSync_roundTripsThroughManifest() throws {
+        let dir = try seedDiagnosticsDir()
+        let sync = SyncDiagnosticsSnapshot(
+            cloudKitEnvironment: .development, cloudKitContainerIdentifier: "iCloud.app.lillist",
+            accountStatusLabel: "available", syncMode: .iCloudSync,
+            mirroredCount: 0, localCount: 22
+        )
+        let metadata = DiagnosticPackageBuilder.Metadata(
+            buildVersion: "39", osVersion: "26.2", deviceModel: "iPhone17,1",
+            exportedAt: Date(timeIntervalSince1970: 1_700_000_000), diagnosticLoggingEnabled: true,
+            sync: sync
+        )
+        let builder = DiagnosticPackageBuilder(diagnosticsDir: dir, storeURL: nil, metadata: metadata)
+        let stage = try builder.stage(options: .init(includeLogs: false, includeStore: false))
+        defer { try? FileManager.default.removeItem(at: stage.deletingLastPathComponent()) }
+
+        let decoder = JSONDecoder(); decoder.dateDecodingStrategy = .iso8601
+        let meta = try decoder.decode(DiagnosticPackageBuilder.Metadata.self, from: Data(contentsOf: stage.appendingPathComponent("manifest.json")))
+        XCTAssertEqual(meta.sync?.cloudKitEnvironment, .development)
+        XCTAssertEqual(meta.sync?.accountStatusLabel, "available")
+        XCTAssertEqual(meta.sync?.syncMode, .iCloudSync)
+        XCTAssertEqual(meta.sync?.mirroredCount, 0)
+        XCTAssertEqual(meta.sync?.localCount, 22)
+    }
+
+    func test_stage_nilSync_decodesBackToNil_backwardCompatible() throws {
+        // sampleMetadata() omits `sync` — existing callers/manifests must
+        // still decode cleanly with the field simply absent.
+        let dir = try seedDiagnosticsDir()
+        let builder = DiagnosticPackageBuilder(diagnosticsDir: dir, storeURL: nil, metadata: sampleMetadata())
+        let stage = try builder.stage(options: .init(includeLogs: false, includeStore: false))
+        defer { try? FileManager.default.removeItem(at: stage.deletingLastPathComponent()) }
+
+        let decoder = JSONDecoder(); decoder.dateDecodingStrategy = .iso8601
+        let meta = try decoder.decode(DiagnosticPackageBuilder.Metadata.self, from: Data(contentsOf: stage.appendingPathComponent("manifest.json")))
+        XCTAssertNil(meta.sync)
+        XCTAssertEqual(meta.buildVersion, "39")
+    }
 }

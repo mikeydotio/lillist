@@ -452,6 +452,9 @@
     "iCloud Sync" : {
 
     },
+    "iCloud sync is on and your account is available, but none of your %lld tasks have reached iCloud yet. This can happen when your devices are signed into different iCloud (CloudKit) environments. Export a diagnostic package from each device and compare the CloudKit Environment shown in Diagnostics." : {
+
+    },
     "iCloud Unavailable" : {
 
     },
@@ -823,6 +826,9 @@
 
     },
     "The data store copy contains all of your task content. The package never leaves your device unless you share it." : {
+
+    },
+    "This device may not be sharing tasks" : {
 
     },
     "This permanently replaces iCloud's data with what's on this device. Other devices syncing this iCloud account will see this change. This cannot be undone." : {

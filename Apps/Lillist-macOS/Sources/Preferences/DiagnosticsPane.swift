@@ -28,6 +28,14 @@ struct DiagnosticsPane: View {
                 Text("Records task changes to on-device log files for troubleshooting. Logs stay on this Mac and are shared only when you create and save a package.")
                     .font(.callout)
                     .foregroundStyle(.secondary)
+                // Issue #54: the app never surfaced its own CloudKit
+                // environment, so a Development/Production split across a
+                // device fleet was invisible. A pure, synchronous read of
+                // this build's own entitlements — no live container needed.
+                LabeledContent("CloudKit Environment") {
+                    Text(SyncDiagnosticsSnapshot.resolveEnvironment(using: SelfEntitlementReader()).rawValue)
+                        .foregroundStyle(.secondary)
+                }
             }
             Section {
                 Button {
@@ -99,12 +107,22 @@ struct DiagnosticsPane: View {
         isPreparing = true
         lastError = nil
         defer { isPreparing = false }
+        // Issue #54: fold this device's CloudKit provenance into the export so
+        // a Dev/Prod split (or an account fault) is visible without a Mac.
+        let counts = (try? await environment.taskStore.syncCounts()) ?? .init(local: 0, mirrored: 0)
+        let sync = SyncDiagnosticsSnapshot.make(
+            containerIdentifier: StoreConfiguration.defaultCloudKitContainerIdentifier,
+            accountState: environment.accountState,
+            syncMode: environment.currentSyncMode,
+            counts: counts
+        )
         let metadata = DiagnosticPackageBuilder.Metadata(
             buildVersion: environment.buildVersion,
             osVersion: environment.osVersion,
             deviceModel: environment.deviceModel,
             exportedAt: Date(),
-            diagnosticLoggingEnabled: enabled
+            diagnosticLoggingEnabled: enabled,
+            sync: sync
         )
         let builder = DiagnosticPackageBuilder(
             diagnosticsDir: await environment.diagnosticLog.diagnosticsDirectory(),
