@@ -22,22 +22,53 @@
     "Days in Trash before auto-purge" : {
 
     },
+    "Couldn't read that list. Try again." : {
+
+    },
     "Drain now" : {
 
     },
     "Grant Reminders access" : {
 
     },
+    "Import already running." : {
+
+    },
     "Import from a Reminders list" : {
 
     },
+    "Imported %@ tasks." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Imported %1$@ tasks."
+          }
+        }
+      }
+    },
+    "Imported 1 task." : {
+
+    },
+    "No reminders to import." : {
+
+    },
     "Open System Settings" : {
+
+    },
+    "Reminders access is off." : {
 
     },
     "Reminders access is off. Turn it on in System Settings ▸ Privacy & Security ▸ Reminders." : {
 
     },
     "Tasks from Reminders" : {
+
+    },
+    "That list is no longer available. Pick it again." : {
+
+    },
+    "Turn on Reminders import first." : {
 
     },
     "When enabled, Lillist empties the chosen list into new tasks each time it becomes active — title, notes, and due date carry across, and the reminder is removed." : {

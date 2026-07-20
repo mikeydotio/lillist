@@ -19,7 +19,7 @@ struct RemindersImportSection: View {
     @State private var authorization: RemindersAuthorization = .notDetermined
     @State private var didLoad = false
     @State private var isDraining = false
-    @State private var drainMessage: String?
+    @State private var drainMessage: LocalizedStringKey?
 
     var body: some View {
         Section("Tasks from Reminders") {
@@ -145,9 +145,44 @@ struct RemindersImportSection: View {
     }
 
     private func drainNow() async {
+        guard let listID = selectedListID else { return }
         isDraining = true
-        let count = await environment.remindersImporter.drainIfNeeded()
+        // Drain the in-memory selection directly rather than going through
+        // `drainIfNeeded()` (which re-reads the *persisted* list id). That
+        // persisted value is written by `listSelectionBinding`'s fire-and-forget
+        // `Task`, so a quick pick-then-drain could otherwise race it and read a
+        // stale/nil id — issue #50.
+        let outcome = await environment.remindersImporter.drain(listID: listID)
         isDraining = false
-        drainMessage = count == 1 ? "Imported 1 task." : "Imported \(count) tasks."
+        drainMessage = message(for: outcome)
+    }
+
+    /// Maps a drain outcome to its Settings message. Kept per-app (not a
+    /// shared LillistUI helper): `RemindersDrainOutcome` is LillistCore-only
+    /// (no SwiftUI there), and this section already carries reminders strings
+    /// that intentionally differ per platform (see the `.denied` case above,
+    /// "Settings" vs. "System Settings"). Only the cases below need to read
+    /// identically on iOS and macOS — keep them verbatim-synced with
+    /// `RemindersPane.message(for:)`.
+    private func message(for outcome: RemindersDrainOutcome) -> LocalizedStringKey {
+        switch outcome {
+        case .completed(let imported, _):
+            if imported == 0 { return "No reminders to import." }
+            if imported == 1 { return "Imported 1 task." }
+            return "Imported \(imported) tasks."
+        case .listUnavailable:
+            return "That list is no longer available. Pick it again."
+        case .notAuthorized:
+            return "Reminders access is off."
+        case .fetchFailed:
+            return "Couldn't read that list. Try again."
+        case .busy:
+            return "Import already running."
+        case .featureDisabled, .noListSelected:
+            // Not reachable via `drain(listID:)` — this view never calls
+            // `drainIfNeeded()`, the only entry point that can produce these.
+            // Handled defensively for exhaustiveness.
+            return "Turn on Reminders import first."
+        }
     }
 }
