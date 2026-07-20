@@ -82,13 +82,25 @@ public actor EventKitRemindersGateway: RemindersGateway {
     }
 
     public func items(inListID listID: String) async throws -> [ReminderItem] {
-        guard let calendar = store.calendar(withIdentifier: listID) else { return [] }
+        // A stale/unresolvable calendarIdentifier must not be indistinguishable
+        // from a genuinely empty list — that conflation was issue #50's root
+        // cause (silently reporting "Imported 0 tasks" for both). Throw instead
+        // of returning [].
+        guard let calendar = store.calendar(withIdentifier: listID) else {
+            throw RemindersGatewayError.listUnavailable(id: listID)
+        }
         let predicate = store.predicateForReminders(in: [calendar])
         // Map to Sendable DTOs *inside* the completion handler so the
         // non-Sendable `[EKReminder]` never crosses the continuation boundary.
-        return await withCheckedContinuation { continuation in
+        return try await withCheckedThrowingContinuation { continuation in
             store.fetchReminders(matching: predicate) { reminders in
-                continuation.resume(returning: (reminders ?? []).map(Self.makeItem))
+                // `fetchReminders` passes nil on fetch failure — another silent
+                // swallow this method used to turn into an empty result.
+                guard let reminders else {
+                    continuation.resume(throwing: RemindersGatewayError.fetchFailed(id: listID))
+                    return
+                }
+                continuation.resume(returning: reminders.map(Self.makeItem))
             }
         }
     }
