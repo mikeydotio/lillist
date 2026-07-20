@@ -67,14 +67,17 @@ xcodebuild -workspace Lillist.xcworkspace -scheme Lillist-iOS \
 
 ## Configuration
 
-Two values are neutral by default so the public build ships no personal or
-private data; set them per-machine in the gitignored
-`Apps/Config/Signing.local.xcconfig` (see the template for both):
+One value is neutral by default so the public build ships no personal data;
+set it per-machine in the gitignored `Apps/Config/Signing.local.xcconfig`
+(see the template):
 
 - `LOCAL_CONTACT_EMAIL` — the address crash reports are emailed to. Empty by
   default; when unset, the crash-report UI hides its email affordances.
-- `LOCAL_SU_FEED_URL` — the Sparkle auto-update appcast feed (macOS). Defaults
-  to a GitHub Releases-hosted appcast.
+
+The Sparkle auto-update appcast feed (macOS) is **not** a per-machine
+override — `SU_FEED_URL` is pinned in `Apps/Config/Distribution.xcconfig` to
+a single public, GitHub Releases-hosted appcast, so every distributed build
+points at the same feed regardless of which Mac produced the archive.
 
 ## License
 
