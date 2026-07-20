@@ -98,8 +98,29 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Select Xcode 26.3
-        run: sudo xcode-select -switch /Applications/Xcode_26.3.app
+      # This scheme links LillistSearchIntelligence, whose
+      # FoundationModelsQueryTranslator references
+      # FoundationModels.PrivateCloudComputeLanguageModel — an
+      # @available(iOS 27, macOS 27, *) symbol that only exists in the iOS
+      # 27 / macOS 27 SDK, so the *whole app build* needs an Xcode 27
+      # toolchain from here on, not just the PCC-specific code path (see the
+      # "Issue #51" entry in docs/engineering-notes.md for why availability
+      # annotations alone don't avoid this). Falls back to 26.3 with a loud
+      # warning if no 27 install is found — the build below will then fail
+      # on the missing symbol, which is the correct, attributable outcome;
+      # adjust the glob/path once the runner image's actual Xcode-27 layout
+      # is known.
+      - name: Select Xcode toolchain (27 beta if present, else 26.3)
+        run: |
+          BETA=$(ls -d /Applications/Xcode_27*.app /Applications/Xcode-beta.app 2>/dev/null | head -1)
+          if [ -n "$BETA" ]; then
+            echo "Selecting Xcode 27: $BETA"
+            sudo xcode-select -switch "$BETA"
+          else
+            echo "::warning::No Xcode 27 (beta) install found on this runner — falling back to 26.3. This job links LillistSearchIntelligence (FoundationModels.PrivateCloudComputeLanguageModel needs the iOS/macOS 27 SDK); the build below will fail until this runner has an Xcode 27 image. See docs/engineering-notes.md 'Issue #51' entry."
+            sudo xcode-select -switch /Applications/Xcode_26.3.app
+          fi
+          xcodebuild -version
 
       - name: Install xcodegen
         run: brew install xcodegen
@@ -145,8 +166,19 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Select Xcode 26.3
-        run: sudo xcode-select -switch /Applications/Xcode_26.3.app
+      # See the identical comment in the `ios` job above: this scheme also
+      # links LillistSearchIntelligence, so it needs the Xcode 27 SDK.
+      - name: Select Xcode toolchain (27 beta if present, else 26.3)
+        run: |
+          BETA=$(ls -d /Applications/Xcode_27*.app /Applications/Xcode-beta.app 2>/dev/null | head -1)
+          if [ -n "$BETA" ]; then
+            echo "Selecting Xcode 27: $BETA"
+            sudo xcode-select -switch "$BETA"
+          else
+            echo "::warning::No Xcode 27 (beta) install found on this runner — falling back to 26.3. This job links LillistSearchIntelligence (FoundationModels.PrivateCloudComputeLanguageModel needs the iOS/macOS 27 SDK); the build below will fail until this runner has an Xcode 27 image. See docs/engineering-notes.md 'Issue #51' entry."
+            sudo xcode-select -switch /Applications/Xcode_26.3.app
+          fi
+          xcodebuild -version
 
       - name: Install xcodegen
         run: brew install xcodegen
@@ -195,8 +227,19 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Select Xcode 26.3
-        run: sudo xcode-select -switch /Applications/Xcode_26.3.app
+      # See the identical comment in the `ios` job above: this scheme also
+      # links LillistSearchIntelligence, so it needs the Xcode 27 SDK.
+      - name: Select Xcode toolchain (27 beta if present, else 26.3)
+        run: |
+          BETA=$(ls -d /Applications/Xcode_27*.app /Applications/Xcode-beta.app 2>/dev/null | head -1)
+          if [ -n "$BETA" ]; then
+            echo "Selecting Xcode 27: $BETA"
+            sudo xcode-select -switch "$BETA"
+          else
+            echo "::warning::No Xcode 27 (beta) install found on this runner — falling back to 26.3. This job links LillistSearchIntelligence (FoundationModels.PrivateCloudComputeLanguageModel needs the iOS/macOS 27 SDK); the build below will fail until this runner has an Xcode 27 image. See docs/engineering-notes.md 'Issue #51' entry."
+            sudo xcode-select -switch /Applications/Xcode_26.3.app
+          fi
+          xcodebuild -version
 
       - name: Install xcodegen
         run: brew install xcodegen

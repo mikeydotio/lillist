@@ -4410,3 +4410,60 @@ Landing the compact task-detail card (`Closes #8`) surfaced three lessons:
   the pinned feed URL is *correct* but still 404s; full end-to-end "older
   build detects and installs a newer one" verification waits on both halves
   shipping together from `main`.
+
+## 2026-07-20 — Issue #51: "AIKit" doesn't exist — it's `FoundationModels.PrivateCloudComputeLanguageModel`, and the iOS 27 toolchain was already on the Mac
+
+- **"AIKit" is not a real framework.** The WWDC-2026 Private-Cloud-Compute
+  on-device-LLM feature referenced by issue #51 is
+  `FoundationModels.PrivateCloudComputeLanguageModel` — a new `@available(iOS
+  27, macOS 27, *)` class added to the *existing* `FoundationModels` framework
+  (present since iOS 26 as `SystemLanguageModel`, the on-device-only tier).
+  Both tiers share one API surface (`LanguageModelSession`, `@Generable` /
+  `@Guide` guided generation, `respond(to:generating:)`), so a single
+  translator can target either by swapping which `LanguageModel` it hands to
+  the session. There is no dedicated entitlement key for either tier in the
+  public `iPhoneOS27.0.sdk/Entitlements.plist` — availability is
+  device/account-gated (`.availability` on the model), not capability-gated.
+- **Two Xcode installs coexist on this Mac, and the second one is easy to
+  miss.** `/Applications/Xcode.app` is the `xcode-select`ed default (Xcode
+  26.6, iOS 26.5 SDK). A second copy, **`~/Downloads/Xcode-beta.app` (Xcode
+  27.0, build 27A5218g)**, ships the iOS 27.0 + macOS 27.0 SDKs and was
+  already on the machine before this feature started — nothing needed
+  installing. Drive it per-command via `DEVELOPER_DIR=~/Downloads/Xcode-beta.app/
+  Contents/Developer xcodebuild …` / `swift build …`; never `xcode-select
+  -switch` to it globally, so Xcode GUI and the rest of the toolchain stay on
+  the stable 26.6 default. An iOS-27-only symbol (`PrivateCloudCompute
+  LanguageModel`) genuinely fails to compile under the default Xcode 26.6 (`iOS
+  SDKs` only go to 26.5) and genuinely compiles + links under the beta
+  (`xcrun --sdk iphonesimulator swiftc -target arm64-apple-ios27.0-simulator
+  -emit-object` succeeds) — a cheap two-line check before assuming a "we don't
+  have the SDK yet" blocker is real.
+- **The whole workspace is beta-toolchain-clean today.** `LillistCore`'s full
+  suite (965 tests / 196 suites), `LillistUI`'s non-snapshot suite (79/17), and
+  signed `xcodebuild build` for `Lillist-iOS` (both iOS 26.2 *and* iOS 27.0
+  sims) and `Lillist-macOS` all pass unmodified under Xcode 27 beta / Swift
+  6.4 — no warnings-as-errors or new-compiler breakage encountered switching
+  toolchains. App deployment floors stay iOS 26 / macOS 15; the beta SDK only
+  matters for compiling the new `@available(iOS 27, macOS 27, *)` PCC path.
+- **Per-worktree signing gap:** `Apps/Config/Signing.local.xcconfig` is
+  gitignored and untracked, so it does **not** exist in a fresh linked
+  worktree even though the main checkout has one — signed builds fail there
+  until it's recreated. The Team ID doesn't require touching the (read-off-limits)
+  main checkout: `security find-certificate -c "Apple Development: ..." -p
+  login.keychain-db | openssl x509 -noout -subject` prints the cert's `OU=`
+  field, which *is* the Team ID.
+- **`xcodegen generate` can produce incidental, unrelated pbxproj drift** for
+  files shared across multiple targets (e.g. the `Extensions/LillistWidget`
+  sources compiled into both the iOS and macOS widget extensions) — a fresh
+  regen changed the `PBXFileReference`/`PBXBuildFile` GUIDs for exactly those
+  shared-target widget files even though nothing about them changed, while
+  every single-target file's GUID stayed byte-identical. The local xcodegen
+  (2.45.4) is internally idempotent (two consecutive local regens produced a
+  byte-identical file), so the drift is a version-independent property of how
+  xcodegen assigns GUIDs to files with more than one target membership, not
+  environment noise from re-running the tool. Since CI's drift gate installs
+  whatever `brew install xcodegen` resolves to at run time (unpinned), this can
+  in principle surface as a "spurious" CI drift failure unrelated to a given
+  PR's actual changes — noted here rather than chased, since it's orthogonal
+  to #51; `git checkout -- '*.pbxproj'` cleanly discards an incidental regen
+  when the current session made no real project.yml changes.

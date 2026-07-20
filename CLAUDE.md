@@ -106,6 +106,29 @@ xcodebuild -workspace Lillist.xcworkspace -scheme Lillist-{iOS,macOS} \
   CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO build
 ```
 
+**Two Xcode toolchains.** `/Applications/Xcode.app` (26.6, iOS 26.5 SDK) is
+the `xcode-select`ed default and covers everything above. **Anything that
+touches `FoundationModels.PrivateCloudComputeLanguageModel`** (the
+`@available(iOS 27, macOS 27, *)` agentic-search PCC tier — see
+`Packages/LillistSearchIntelligence/`) **needs the iOS 27 / macOS 27 SDK**,
+which only `~/Downloads/Xcode-beta.app` (Xcode 27.0) has. Drive it
+per-command via `DEVELOPER_DIR`, never a global `xcode-select -switch` (keeps
+the GUI + everything else on the stable default):
+
+```bash
+export DEVELOPER_DIR=~/Downloads/Xcode-beta.app/Contents/Developer
+swift test --package-path Packages/LillistCore --parallel --num-workers 2
+xcodebuild -workspace Lillist.xcworkspace -scheme Lillist-iOS \
+  -destination 'platform=iOS Simulator,name=iPhone 17,OS=27.0' build
+```
+
+The on-device tier (`SystemLanguageModel`, iOS/macOS 26) and everything else
+in the `LillistSearchIntelligence` target compiles fine under the default
+26.6 toolchain too — only the PCC class needs the beta SDK. See the
+"Issue #51" entry in `docs/engineering-notes.md` for how this was discovered
+and verified (full `LillistCore`/`LillistUI` suites + both app builds pass
+unmodified under the beta).
+
 The **migration/store-swap tests are app-hosted**: `MigrationCoordinatorTests`,
 `PersistenceHostTests`, and `StoreLevelModeSwapSpike` gate their
 live-container cases on a real `CFBundleIdentifier` (`liveSwapAllowed`),
@@ -168,6 +191,15 @@ needed) and the **`Lillist-iOSAppHostedTests` live-swap tests +
 active iCloud account and must be verified by Mikey). See the
 "CI established + build-posture alignment" entry in
 `docs/engineering-notes.md`.
+
+Starting with the agentic-search feature (#51), the `ios`, `macos`, and
+`release-archive-smoke` jobs select an **Xcode 27 (beta) toolchain when
+present, falling back to 26.3 with a loud warning otherwise** — those
+schemes link `LillistSearchIntelligence`, which needs the iOS/macOS 27 SDK
+to compile `FoundationModels.PrivateCloudComputeLanguageModel`. The `spm`
+job (LillistCore/LillistUI) and `project-drift` job are unaffected — neither
+package depends on `LillistSearchIntelligence`. See "Two Xcode toolchains"
+above and the "Issue #51" entry in `docs/engineering-notes.md`.
 
 **Parallel-test flakes (`LillistCore`).** Heavy concurrent in-memory
 store creation intermittently SIGSEGVs inside Core Data, and the same CPU
