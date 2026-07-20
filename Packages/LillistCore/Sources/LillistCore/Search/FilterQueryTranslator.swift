@@ -14,6 +14,19 @@ public enum TranslationFailure: Error, Sendable, Equatable {
     case underlying(String)
 }
 
+extension TranslationFailure: LocalizedError {
+    public var errorDescription: String? {
+        switch self {
+        case .unsupported:
+            return "Smart search requires Apple Intelligence (on-device or Private Cloud Compute), which isn't available on this device."
+        case .emptyQuery:
+            return "Enter a search query."
+        case .underlying(let message):
+            return "Smart search failed: \(message)"
+        }
+    }
+}
+
 /// Translates a natural-language search query into an executable
 /// `PredicateGroup`. Conforming types implement only
 /// `generateIntermediateFilter(for:context:)` — the *only* job of a

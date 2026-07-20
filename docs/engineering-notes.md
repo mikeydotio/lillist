@@ -4528,3 +4528,24 @@ Landing the compact task-detail card (`Closes #8`) surfaced three lessons:
   intentionally left for follow-up rather than gating this PR, matching the
   plan's "verified manually on a capable device, not asserted in committed
   tests" posture for live inference.
+- **A circular SwiftPM package dependency crashes `swift build` outright
+  instead of reporting a clean error.** Wiring the CLI's `--smart` flag
+  meant `lillist-cli` needed `LillistSearchIntelligence` (for the real
+  translator factory), but `LillistSearchIntelligence` already depends on
+  `LillistCore` for `Field`/`Op`/`PredicateGroup`/the `Search/` types —
+  and `lillist-cli` lived *inside* `Packages/LillistCore/Package.swift`.
+  Adding the edge made `LillistCore` → `LillistSearchIntelligence` →
+  `LillistCore`, a genuine package-level cycle (SwiftPM doesn't
+  distinguish "only one target uses the reverse edge" — the
+  `dependencies:` array is package-wide). Every `swift build`/`swift test`
+  invocation on the cyclic graph failed with a bare exit 138 (SIGBUS) and
+  **zero diagnostic output**, even across fresh scratch dirs and a
+  from-cold-cache retry — nothing pointed at "cyclic dependency." If a
+  `swift build` on a graph you just changed produces no output at all and
+  a nonzero exit, suspect a dependency cycle before suspecting the
+  environment. Fix: extract `lillist-cli` into its own package
+  (`Packages/LillistCLI/`) that depends on both `LillistCore` and
+  `LillistSearchIntelligence`, so the reverse edge no longer passes
+  through `LillistCore` itself. Verified as a pure, behavior-preserving
+  move (identical test counts before/after) before adding the `--smart`
+  wiring on top, per the two-hats rule.
