@@ -180,6 +180,14 @@ jobs:
             CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO \
             | xcbeautify
 
+      # Regression guard for issue #55: a distributed build's Sparkle
+      # SUFeedURL silently reverting to a private/tailnet URL, or
+      # CFBundleVersion silently reverting to a hardcoded (never-incrementing)
+      # literal. Reads resolved build settings from the project this job
+      # already generated above — no extra signing/build needed.
+      - name: Sparkle appcast feed + build-number guard
+        run: ./Tools/CI/check-macos-sparkle-feed.sh
+
   release-archive-smoke:
     name: Release archive smoke build
     runs-on: macos-15

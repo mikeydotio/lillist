@@ -4338,3 +4338,75 @@ Landing the compact task-detail card (`Closes #8`) surfaced three lessons:
   translation-grid equivalence test (`DragAxisArbiterTests`), which runs on any
   host — so the refactor's guard is CI-runnable even though the real-input
   harness is not.
+
+## 2026-07-20 — Issue #55: a fully-wired Sparkle updater that could never actually update, three independent ways
+
+- **Full Sparkle wiring is not the same as a working update path.** The macOS
+  app had `SPUStandardUpdaterController`, a "Check for Updates…" menu item, and
+  the `Info.plist` `SU*` keys since the original integration — but a
+  distributed Developer-ID build could never complete an update, because of
+  three unrelated defects stacked on top of each other. Fixing only the one
+  named in the issue title would still have left it broken.
+  1. **The feed URL a distribution build ships depends on which Mac produced
+     the archive.** `SUFeedURL` resolved through `Signing.xcconfig`'s
+     `SU_FEED_URL = $(LOCAL_SU_FEED_URL)`, and deployit archives every macOS
+     build — dev *and* distribution — with the same configuration (it
+     hardcodes `-configuration Debug`). So a maintainer's gitignored
+     `Signing.local.xcconfig` `LOCAL_SU_FEED_URL` override (a private tailnet
+     appcast, for convenient on-tailnet testing) baked straight into the
+     Developer-ID export too, and was unreachable for anyone off that tailnet.
+     Fix: `SU_FEED_URL` is now pinned directly in `Distribution.xcconfig` with
+     **no** per-machine override mechanism — every distributed build ships the
+     same public GitHub-Releases appcast URL, full stop. (The tailnet dev feed
+     was deliberately dropped, not preserved behind a warning — simpler is
+     better here than "convenient but easy to leak again.")
+  2. **`CFBundleVersion` never changed.** Sparkle decides "is this newer?"
+     purely by `CFBundleVersion`, but the macOS `Info.plist` hardcoded it to a
+     literal (`20260517`) — the build-number bump pre-action
+     (`Tools/Deploy/bump-build-number.sh`) was wired only into the **iOS**
+     scheme's Archive step. Every macOS release shipped the identical
+     `CFBundleVersion`, so Sparkle always reported "up to date" independent of
+     the feed. Fix: a dedicated `Apps/Config/BuildNumber-macOS.xcconfig`
+     counter + a matching Archive pre-action on the `Lillist-macOS` scheme,
+     mirroring iOS's. **Kept as a genuinely separate counter from iOS's**
+     (not a shared reseed) — the two platforms archive independently and
+     conflating their build numbers would make either counter jump
+     unpredictably when only one platform ships.
+  3. **Sandboxed but not Sparkle-sandboxed.** The app has
+     `com.apple.security.app-sandbox` but none of Sparkle's prescribed
+     sandboxing setup, so even a reachable, correctly-versioned appcast
+     couldn't actually *install* — the sandboxed process can't replace its own
+     bundle; that privileged step needs Sparkle's `Installer.xpc`. Fix:
+     `SUEnableInstallerLauncherService` in `Info.plist` plus the
+     `com.apple.security.temporary-exception.mach-lookup.global-name`
+     entitlement (`$(PRODUCT_BUNDLE_IDENTIFIER)-spks`/`-spki`).
+     `com.apple.security.network.client` (already present) covers the
+     in-process appcast/download fetch, so `SUEnableDownloaderService` isn't
+     needed.
+- **Sparkle's XPC services embed automatically via SPM — no build-phase
+  wiring needed.** `Installer.xpc`/`Downloader.xpc` ship inside
+  `Sparkle.framework` itself (verified in a local signed build:
+  `Contents/Frameworks/Sparkle.framework/Versions/B/XPCServices/`); Sparkle's
+  sandboxing docs describe a Copy-Files-phase setup that predates SPM
+  distribution and doesn't apply here.
+- **One-time version-transition caveat, not a bug:** the new macOS counter
+  starts at 50 (seeded 49, bumped on first archive), which Sparkle's numeric
+  comparator ranks *below* the previously-shipped `20260517`. Existing
+  installs won't be auto-offered the first post-fix release — they need one
+  manual reinstall to cross onto the new counter; every build from 50 onward
+  then auto-updates normally. Acceptable for a solo project's own machines;
+  would need a higher seed (or a version-scheme reset communicated to users)
+  for a wider install base.
+- **The regression class is now CI-guarded, not just fixed once.**
+  `Tools/CI/check-macos-sparkle-feed.sh` resolves the *actual* build settings
+  (not just greps one file) and fails if `SU_FEED_URL` isn't a public
+  `https://github.com/...` URL, or if `CFBundleVersion` isn't literally
+  `$(CURRENT_PROJECT_VERSION)`, or if the resolved build number isn't numeric
+  — so a future stray override or a re-hardcoded literal fails CI immediately
+  instead of silently shipping a non-functional updater again.
+- **This fix is only half the story.** Publishing `appcast.xml` (EdDSA-signed,
+  with release-asset enclosure URLs) to the GitHub release is deployit's job,
+  not this repo's — tracked as `mikeydotio/agentics#111`. Until that lands,
+  the pinned feed URL is *correct* but still 404s; full end-to-end "older
+  build detects and installs a newer one" verification waits on both halves
+  shipping together from `main`.

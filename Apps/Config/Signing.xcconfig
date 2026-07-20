@@ -10,8 +10,9 @@
 //
 // New contributors: see Apps/Config/Signing.local.xcconfig.example.
 
-// Public distribution defaults (contact email, Sparkle feed). Included
-// BEFORE the local override file so a per-machine `LOCAL_*` value wins.
+// Public distribution defaults (contact email, pinned Sparkle feed).
+// Included BEFORE the local override file so a per-machine `LOCAL_*`
+// value (currently just contact email) wins where one exists.
 #include "Distribution.xcconfig"
 
 #include? "Signing.local.xcconfig"
@@ -23,7 +24,12 @@
 DEVELOPMENT_TEAM = $(LOCAL_DEVELOPMENT_TEAM)
 
 // Resolved distribution values, fed into the Info.plists via
-// $(LILLIST_CONTACT_EMAIL) and $(SU_FEED_URL). Defaults live in
-// Distribution.xcconfig; per-machine overrides in Signing.local.xcconfig.
+// $(LILLIST_CONTACT_EMAIL). Default lives in Distribution.xcconfig;
+// per-machine override in Signing.local.xcconfig.
+//
+// SU_FEED_URL is NOT resolved here — it is pinned directly in
+// Distribution.xcconfig and has no per-machine override (see the comment
+// there and issue #55). A stray LOCAL_SU_FEED_URL left in a gitignored
+// Signing.local.xcconfig from before this change is inert: nothing
+// references it anymore.
 LILLIST_CONTACT_EMAIL = $(LOCAL_CONTACT_EMAIL)
-SU_FEED_URL = $(LOCAL_SU_FEED_URL)

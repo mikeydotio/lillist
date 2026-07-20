@@ -18,8 +18,7 @@ LOCAL_DEVELOPMENT_TEAM =
 // ship the neutral "no contact configured" default. Forks set their own.
 // LOCAL_CONTACT_EMAIL = you@example.com
 
-// Optional: override the Sparkle auto-update appcast feed (macOS) for
-// YOUR builds (e.g. a privately-served feed). The committed default is a
-// GitHub Releases-hosted appcast. NOTE: xcconfig treats `//` as a comment,
-// so build the scheme separator from $(SLASH) (defined in Distribution.xcconfig):
-// LOCAL_SU_FEED_URL = https:$(SLASH)$(SLASH)example.com/appcast.xml
+// The Sparkle auto-update appcast feed (macOS) has no per-machine override
+// here — it is pinned directly in Distribution.xcconfig (SU_FEED_URL) so
+// every distributed build points at the same public, GitHub Releases-hosted
+// appcast regardless of which Mac produced the archive (issue #55).

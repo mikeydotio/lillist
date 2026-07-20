@@ -33,5 +33,19 @@
 	<true/>
 	<key>com.apple.security.personal-information.reminders</key>
 	<true/>
+	<!--
+	  Sparkle's sandboxed-installation path: SUEnableInstallerLauncherService
+	  (Info.plist) hands off the actual update install to Sparkle's
+	  Installer.xpc, which the sandboxed app reaches via this mach-lookup
+	  exception. Sparkle.framework bundles Installer.xpc/Downloader.xpc and
+	  embeds them automatically (SPM); network.client above covers the
+	  in-process appcast/download fetch, so SUEnableDownloaderService is not
+	  needed. See issue #55.
+	-->
+	<key>com.apple.security.temporary-exception.mach-lookup.global-name</key>
+	<array>
+		<string>$(PRODUCT_BUNDLE_IDENTIFIER)-spks</string>
+		<string>$(PRODUCT_BUNDLE_IDENTIFIER)-spki</string>
+	</array>
 </dict>
 </plist>
