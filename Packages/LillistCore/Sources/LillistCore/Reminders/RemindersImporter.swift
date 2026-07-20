@@ -3,9 +3,11 @@ import Foundation
 /// Drains a chosen Reminders.app list into top-level Lillist tasks.
 ///
 /// Invoked when the app becomes active (cold launch via `bootstrap()`, warm
-/// returns via the platform `didBecomeActive` observer). Each reminder becomes
-/// a top-level task — title + notes + due date (→ deadline) — and is then
-/// removed from the list, so the list behaves as an input queue.
+/// returns via the platform `didBecomeActive` observer). Each *incomplete*
+/// reminder becomes a top-level task — title + notes + due date (→ deadline)
+/// — and is then removed from the list, so the list behaves as an input
+/// queue. Completed reminders are left untouched: neither imported nor
+/// removed, so the list's incomplete count is exactly what a drain will do.
 ///
 /// An `actor` so overlapping activations serialize; an `isDraining` flag
 /// coalesces a queued second pass into a no-op. The create→delete crash window
@@ -70,7 +72,15 @@ public actor RemindersImporter {
 
         var imported = 0
         for item in items {
-            if !inFlight.contains(item.id) {
+            let wasInFlight = inFlight.contains(item.id)
+            if !wasInFlight {
+                // Completed reminders are never drained — the list's
+                // incomplete count is the promise of what a drain will do. An
+                // item already mid-flight (task created, delete pending from
+                // a prior crash) is *not* skipped here even if it has since
+                // been completed: the create already happened, so the delete
+                // below must still run to clear its in-flight marker.
+                guard !item.isCompleted else { continue }
                 // Create first, then record the id, so a crash before delete
                 // can't re-create the task on the next pass.
                 do {

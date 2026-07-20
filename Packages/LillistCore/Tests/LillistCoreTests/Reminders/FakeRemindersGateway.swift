@@ -58,5 +58,22 @@ actor FakeRemindersGateway: RemindersGateway {
     func setAuth(_ value: RemindersAuthorization) { auth = value }
     func clearFailRemove() { failRemoveIDs = [] }
 
+    /// Marks an existing item completed in place, simulating the user
+    /// completing a reminder in Reminders.app between two drain passes.
+    func markCompleted(itemID: String, inListID listID: String) {
+        guard let items = itemsByList[listID],
+              let index = items.firstIndex(where: { $0.id == itemID })
+        else { return }
+        let original = items[index]
+        itemsByList[listID]?[index] = ReminderItem(
+            id: original.id,
+            title: original.title,
+            notes: original.notes,
+            dueDate: original.dueDate,
+            dueHasTime: original.dueHasTime,
+            isCompleted: true
+        )
+    }
+
     enum FakeError: Error { case removeFailed }
 }
