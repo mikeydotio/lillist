@@ -35,7 +35,10 @@ struct RemindersImporterTests {
                 notes: notes,
                 dueDate: due,
                 dueHasTime: withDue,
-                isCompleted: (i % 2 == 0)
+                // The drain only ever processes incomplete reminders (see
+                // `skipsCompletedReminders`); these fixtures default to
+                // incomplete so the other tests exercise that common path.
+                isCompleted: false
             ))
         }
         return result
@@ -169,6 +172,67 @@ struct RemindersImporterTests {
         let second = await importer.drainIfNeeded()
         #expect(second == 0)
         #expect(try await Self.allTasks(persistence).count == 3) // still 3, no dupe
+        #expect(await gateway.remainingItems(inListID: Self.listID).isEmpty)
+        #expect(await prefs.remindersInFlightIDs().isEmpty)
+    }
+
+    @Test("Completed reminders are skipped: not imported, not removed")
+    func skipsCompletedReminders() async throws {
+        let persistence = try await TestStore.make()
+        let taskStore = TaskStore(persistence: persistence)
+        let prefs = await Self.enabledPrefs()
+        let incomplete = ReminderItem(
+            id: "rem-open", title: "Open reminder", notes: nil,
+            dueDate: nil, dueHasTime: false, isCompleted: false
+        )
+        let completed = ReminderItem(
+            id: "rem-done", title: "Done reminder", notes: nil,
+            dueDate: nil, dueHasTime: false, isCompleted: true
+        )
+        let gateway = FakeRemindersGateway(itemsByList: [Self.listID: [incomplete, completed]])
+        let importer = RemindersImporter(gateway: gateway, taskStore: taskStore, devicePreferences: prefs)
+
+        let count = await importer.drainIfNeeded()
+        #expect(count == 1)
+
+        let tasks = try await Self.allTasks(persistence)
+        #expect(tasks.count == 1)
+        #expect(tasks.first?.title == "Open reminder")
+
+        // The completed reminder is left in Reminders untouched — neither
+        // imported nor removed.
+        let remaining = await gateway.remainingItems(inListID: Self.listID)
+        #expect(remaining.map(\.id) == ["rem-done"])
+    }
+
+    @Test("A mid-flight item still gets deleted even if it's completed before the retry")
+    func inFlightItemStillRemovedIfCompletedBeforeRetry() async throws {
+        let persistence = try await TestStore.make()
+        let taskStore = TaskStore(persistence: persistence)
+        let prefs = await Self.enabledPrefs()
+        let item = ReminderItem(
+            id: "rem-1", title: "Reminder 1", notes: nil,
+            dueDate: nil, dueHasTime: false, isCompleted: false
+        )
+        // First pass: the task is created but the delete fails, leaving
+        // "rem-1" in-flight.
+        let gateway = FakeRemindersGateway(itemsByList: [Self.listID: [item]], failRemoveIDs: ["rem-1"])
+        let importer = RemindersImporter(gateway: gateway, taskStore: taskStore, devicePreferences: prefs)
+
+        let first = await importer.drainIfNeeded()
+        #expect(first == 1)
+        #expect(await prefs.remindersInFlightIDs() == ["rem-1"])
+
+        // The user completes it in Reminders.app before the retry, and the
+        // delete now succeeds.
+        await gateway.markCompleted(itemID: "rem-1", inListID: Self.listID)
+        await gateway.clearFailRemove()
+
+        let second = await importer.drainIfNeeded()
+        // No new task — the create already happened on the first pass.
+        #expect(second == 0)
+        #expect(try await Self.allTasks(persistence).count == 1)
+        // But the reminder is still removed, and its marker cleared.
         #expect(await gateway.remainingItems(inListID: Self.listID).isEmpty)
         #expect(await prefs.remindersInFlightIDs().isEmpty)
     }
