@@ -53,6 +53,8 @@ packages:
     path: ../../Packages/LillistCore
   LillistUI:
     path: ../../Packages/LillistUI
+  LillistSearchIntelligence:
+    path: ../../Packages/LillistSearchIntelligence
   # App-hosted glass snapshots: Liquid Glass only composites in a live
   # key window, which needs an app-hosted test bundle (see
   # docs/engineering-notes.md 2026-06-12). The standalone LillistUITests
@@ -76,6 +78,8 @@ targets:
         product: LillistCore
       - package: LillistUI
         product: LillistUI
+      - package: LillistSearchIntelligence
+        product: LillistSearchIntelligence
       - target: ShareExtension-iOS
         embed: true
       - target: ShortcutsActions
@@ -146,6 +150,8 @@ targets:
     dependencies:
       - package: LillistCore
         product: LillistCore
+      - package: LillistSearchIntelligence
+        product: LillistSearchIntelligence
       # ShortcutsActions is the target that actually defines App Intents;
       # explicit linkage is more robust than relying on auto-link from
       # `import AppIntents`.

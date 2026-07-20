@@ -64,4 +64,23 @@ struct TagStoreTests {
             _ = try await store.fetch(id: id)
         }
     }
+
+    @Test("list() flattens every tag across the hierarchy, sorted by name")
+    func listFlattensHierarchy() async throws {
+        let p = try await TestStore.make()
+        let store = TagStore(persistence: p)
+        let parentID = try await store.create(name: "Work")
+        _ = try await store.create(name: "Urgent", parent: parentID)
+        _ = try await store.create(name: "Home")
+
+        let all = try await store.list()
+        #expect(all.map(\.name) == ["Home", "Urgent", "Work"])
+    }
+
+    @Test("list() on an empty store returns an empty array, not an error")
+    func listEmptyStore() async throws {
+        let p = try await TestStore.make()
+        let store = TagStore(persistence: p)
+        #expect(try await store.list().isEmpty)
+    }
 }

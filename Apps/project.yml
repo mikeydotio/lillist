@@ -38,6 +38,8 @@ packages:
     path: ../Packages/LillistCore
   LillistUI:
     path: ../Packages/LillistUI
+  LillistSearchIntelligence:
+    path: ../Packages/LillistSearchIntelligence
   Sparkle:
     url: https://github.com/sparkle-project/Sparkle
     from: "2.6.0"
@@ -77,6 +79,8 @@ targets:
         product: LillistCore
       - package: LillistUI
         product: LillistUI
+      - package: LillistSearchIntelligence
+        product: LillistSearchIntelligence
       - package: Sparkle
         product: Sparkle
       # `appintentsmetadataprocessor` runs on every app/test target and

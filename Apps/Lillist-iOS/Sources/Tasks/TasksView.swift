@@ -1,6 +1,7 @@
 import SwiftUI
 import LillistCore
 import LillistUI
+import LillistSearchIntelligence
 
 /// Container for the single primary iOS surface. Owns the fetch and
 /// reload lifecycle, the AppStorage-backed sort selection, the
@@ -25,6 +26,16 @@ struct TasksView: View {
     @State private var isSettingsPresented = false
 
     @State private var searchDebounceTask: Task<Void, Never>?
+
+    // Smart (natural-language) search — issue #51. `isSmartMode` is
+    // explicit-toggle, submit-driven: translation costs hundreds of
+    // ms–seconds, so it never rides the 250ms plain-search debounce above.
+    @State private var isSmartMode = false
+    @State private var smartState: SmartSearchState = .idle
+    @State private var translatedQuery: TranslatedQuery?
+    @State private var smartSearchTask: Task<Void, Never>?
+    @State private var isSaveFilterPresented = false
+    @State private var saveFilterName = ""
 
     /// Suppresses the row-insertion animation on the very first populate
     /// (empty → N rows on launch), where an animated cascade reads as a
@@ -59,6 +70,9 @@ struct TasksView: View {
             searchText: $searchText,
             selectedTokens: $selectedTokens,
             selectedSavedFilters: $selectedSavedFilters,
+            isSmartModeAvailable: isSmartModeAvailable,
+            isSmartMode: $isSmartMode,
+            smartState: smartState,
             isArchiveToastPresented: $isArchiveToastPresented,
             isReorderToastPresented: $isReorderToastPresented,
             isStatusToastPresented: $isStatusToastPresented,
@@ -93,10 +107,25 @@ struct TasksView: View {
                 isSettingsPresented = true
             },
             onUndoArchive: { Task { await undoArchive() } },
-            onOpenTask: { id in openTaskID = id }
+            onOpenTask: { id in openTaskID = id },
+            onSubmitSearch: { submitSearch() },
+            onSaveSmartFilter: {
+                saveFilterName = ""
+                isSaveFilterPresented = true
+            }
         )
         .sheet(isPresented: $isSettingsPresented) {
             SettingsTab()
+        }
+        .alert(
+            String(localized: "Save as Smart Filter"),
+            isPresented: $isSaveFilterPresented
+        ) {
+            TextField(String(localized: "Name"), text: $saveFilterName)
+            Button(String(localized: "Save")) {
+                Task { await saveSmartFilter() }
+            }
+            Button(String(localized: "Cancel"), role: .cancel) {}
         }
         .environment(\.quickCaptureAction, { isQuickCapturePresented.wrappedValue = true })
         .overlay(alignment: .bottomTrailing) {
@@ -128,6 +157,10 @@ struct TasksView: View {
         .onChange(of: selectedTokens) { _, _ in Task { await reload() } }
         .onChange(of: selectedSavedFilters) { _, _ in Task { await reload() } }
         .onChange(of: searchText) { _, newValue in
+            // In smart mode, `searchText` changes as the user types their
+            // natural-language query — never live-filter on it (translation
+            // is submit-driven, see `submitSearch()`).
+            guard !isSmartMode else { return }
             searchDebounceTask?.cancel()
             searchDebounceTask = Task {
                 try? await Task.sleep(nanoseconds: 250_000_000)
@@ -137,9 +170,27 @@ struct TasksView: View {
                 }
             }
         }
+        .onChange(of: isSmartMode) { _, newValue in
+            if !newValue {
+                smartSearchTask?.cancel()
+                translatedQuery = nil
+                smartState = .idle
+                Task { await reload() }
+            }
+        }
     }
 
     // MARK: - Derived
+
+    /// Whether to offer the smart-search toggle at all — a static,
+    /// device-level capability check (Apple Intelligence on-device or
+    /// Private Cloud Compute availability), consulted once per body
+    /// evaluation rather than cached, so it reflects a live availability
+    /// change (e.g. Apple Intelligence toggled in Settings) without
+    /// requiring a relaunch.
+    private var isSmartModeAvailable: Bool {
+        FilterTranslatorFactory.isAgenticSearchSupported
+    }
 
     /// Store bundle for the unified editor, assembled from the environment.
     private var editorStores: TaskEditorModel.Stores {
@@ -274,14 +325,71 @@ struct TasksView: View {
             }
         }
 
-        let trimmed = searchText.trimmingCharacters(in: .whitespaces)
-        if !trimmed.isEmpty {
-            predicates.append(
-                .leaf(Leaf(field: .title, op: .contains, value: .string(trimmed)))
-            )
+        if isSmartMode, let translatedQuery, !translatedQuery.isEmpty {
+            predicates.append(.group(translatedQuery.group))
+        } else if !isSmartMode {
+            let trimmed = searchText.trimmingCharacters(in: .whitespaces)
+            if !trimmed.isEmpty {
+                predicates.append(
+                    .leaf(Leaf(field: .title, op: .contains, value: .string(trimmed)))
+                )
+            }
         }
 
         return PredicateGroup(combinator: .all, predicates: predicates)
+    }
+
+    // MARK: - Smart search
+
+    /// Runs on the search field's Return key while in smart mode (never on
+    /// every keystroke — translation costs hundreds of ms–seconds). An
+    /// empty query resets to the plain, unfiltered list.
+    private func submitSearch() {
+        guard isSmartMode else { return }
+        let query = searchText.trimmingCharacters(in: .whitespaces)
+        guard !query.isEmpty else {
+            translatedQuery = nil
+            smartState = .idle
+            Task { await reload() }
+            return
+        }
+        smartSearchTask?.cancel()
+        smartSearchTask = Task {
+            smartState = .translating
+            guard let translator = FilterTranslatorFactory.makeBest() else {
+                smartState = .unsupported
+                return
+            }
+            do {
+                let tags = try await env.tagStore.list()
+                let context = TranslationContext(knownTags: tags.map { TagRef(id: $0.id, name: $0.name) })
+                let result = try await translator.translate(query, context: context)
+                if Task.isCancelled { return }
+                translatedQuery = result
+                smartState = .translated(explanation: result.explanation, unmappedTerms: result.unmappedTerms)
+                await reload()
+            } catch {
+                if Task.isCancelled { return }
+                let message = (error as? LocalizedError)?.errorDescription
+                    ?? String(localized: "Smart search failed.")
+                smartState = .failed(message: message)
+            }
+        }
+    }
+
+    /// Persists the current translated query as a durable, editable saved
+    /// filter — the payoff for a good natural-language query.
+    private func saveSmartFilter() async {
+        guard let translatedQuery, !translatedQuery.isEmpty else { return }
+        let name = saveFilterName.trimmingCharacters(in: .whitespaces)
+        guard !name.isEmpty else { return }
+        do {
+            _ = try await env.smartFilterStore.create(name: name, group: translatedQuery.group)
+            await loadSavedFilters()
+        } catch {
+            // Saved filters are an additive convenience; a failed save
+            // leaves the live smart-search result unaffected.
+        }
     }
 
     private var storeSortField: SortField {

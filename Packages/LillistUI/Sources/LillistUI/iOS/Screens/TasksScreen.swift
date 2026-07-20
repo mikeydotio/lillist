@@ -25,6 +25,9 @@ public struct TasksScreen: View {
     @Binding public var searchText: String
     @Binding public var selectedTokens: Set<QuickFilterToken>
     @Binding public var selectedSavedFilters: Set<UUID>
+    public var isSmartModeAvailable: Bool
+    @Binding public var isSmartMode: Bool
+    public var smartState: SmartSearchState
     @Binding public var isArchiveToastPresented: Bool
     @Binding public var isReorderToastPresented: Bool
     @Binding public var isStatusToastPresented: Bool
@@ -49,6 +52,8 @@ public struct TasksScreen: View {
     /// Open the unified task editor for the tapped row. Replaces the former
     /// `NavigationLink`-to-detail push.
     public var onOpenTask: @MainActor (UUID) -> Void
+    public var onSubmitSearch: @MainActor () -> Void
+    public var onSaveSmartFilter: @MainActor () -> Void
 
     @Environment(\.quickCaptureAction) private var quickCaptureAction
 
@@ -61,6 +66,9 @@ public struct TasksScreen: View {
         searchText: Binding<String>,
         selectedTokens: Binding<Set<QuickFilterToken>>,
         selectedSavedFilters: Binding<Set<UUID>>,
+        isSmartModeAvailable: Bool = false,
+        isSmartMode: Binding<Bool> = .constant(false),
+        smartState: SmartSearchState = .idle,
         isArchiveToastPresented: Binding<Bool> = .constant(false),
         isReorderToastPresented: Binding<Bool> = .constant(false),
         isStatusToastPresented: Binding<Bool> = .constant(false),
@@ -76,7 +84,9 @@ public struct TasksScreen: View {
         onClearFilter: @escaping @MainActor () -> Void = {},
         onOpenSettings: @escaping @MainActor () -> Void = {},
         onUndoArchive: @escaping @MainActor () -> Void = {},
-        onOpenTask: @escaping @MainActor (UUID) -> Void = { _ in }
+        onOpenTask: @escaping @MainActor (UUID) -> Void = { _ in },
+        onSubmitSearch: @escaping @MainActor () -> Void = {},
+        onSaveSmartFilter: @escaping @MainActor () -> Void = {}
     ) {
         self.roots = roots
         self.loadError = loadError
@@ -86,6 +96,9 @@ public struct TasksScreen: View {
         self._searchText = searchText
         self._selectedTokens = selectedTokens
         self._selectedSavedFilters = selectedSavedFilters
+        self.isSmartModeAvailable = isSmartModeAvailable
+        self._isSmartMode = isSmartMode
+        self.smartState = smartState
         self._isArchiveToastPresented = isArchiveToastPresented
         self._isReorderToastPresented = isReorderToastPresented
         self._isStatusToastPresented = isStatusToastPresented
@@ -102,6 +115,8 @@ public struct TasksScreen: View {
         self.onOpenSettings = onOpenSettings
         self.onUndoArchive = onUndoArchive
         self.onOpenTask = onOpenTask
+        self.onSubmitSearch = onSubmitSearch
+        self.onSaveSmartFilter = onSaveSmartFilter
     }
 
     // MARK: - Derived
@@ -142,7 +157,12 @@ public struct TasksScreen: View {
                     selectedTokens: $selectedTokens,
                     selectedSavedFilters: $selectedSavedFilters,
                     savedFilters: savedFilters,
-                    onClear: onClearFilter
+                    onClear: onClearFilter,
+                    isSmartModeAvailable: isSmartModeAvailable,
+                    isSmartMode: $isSmartMode,
+                    smartState: smartState,
+                    onSubmitSearch: onSubmitSearch,
+                    onSaveSmartFilter: onSaveSmartFilter
                 )
                 .transition(.move(edge: .top).combined(with: .opacity))
             }

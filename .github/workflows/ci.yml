@@ -62,6 +62,36 @@ jobs:
       - name: Test LillistUI (logic only — snapshots are host-pinned)
         run: swift test --package-path Packages/LillistUI --skip Snapshot --skip Tour
 
+  cli:
+    # Packages/LillistCLI (the `lillist` executable, `lillistCLITests`) was
+    # split out of Packages/LillistCore specifically so it could depend on
+    # LillistSearchIntelligence (the `--smart` flag's real translator)
+    # without creating a package cycle back through LillistCore — see the
+    # "Issue #51" entry in docs/engineering-notes.md. That means this job
+    # needs the same Xcode 27 (beta) preference as the ios/macos/
+    # release-archive-smoke jobs below; the `spm` job above does NOT (it
+    # only tests LillistCore/LillistUI, which stay FoundationModels-free).
+    name: LillistCLI (swift test)
+    runs-on: macos-15
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Select Xcode toolchain (27 beta if present, else 26.3)
+        run: |
+          BETA=$(ls -d /Applications/Xcode_27*.app /Applications/Xcode-beta.app 2>/dev/null | head -1)
+          if [ -n "$BETA" ]; then
+            echo "Selecting Xcode 27: $BETA"
+            sudo xcode-select -switch "$BETA"
+          else
+            echo "::warning::No Xcode 27 (beta) install found on this runner — falling back to 26.3. Packages/LillistCLI links LillistSearchIntelligence (FoundationModels.PrivateCloudComputeLanguageModel needs the iOS/macOS 27 SDK); the build below will fail until this runner has an Xcode 27 image. See docs/engineering-notes.md 'Issue #51' entry."
+            sudo xcode-select -switch /Applications/Xcode_26.3.app
+          fi
+          xcodebuild -version
+
+      - name: Test LillistCLI
+        run: swift test --package-path Packages/LillistCLI
+
   project-drift:
     name: pbxproj drift (xcodegen)
     runs-on: macos-15
@@ -98,8 +128,29 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Select Xcode 26.3
-        run: sudo xcode-select -switch /Applications/Xcode_26.3.app
+      # This scheme links LillistSearchIntelligence, whose
+      # FoundationModelsQueryTranslator references
+      # FoundationModels.PrivateCloudComputeLanguageModel — an
+      # @available(iOS 27, macOS 27, *) symbol that only exists in the iOS
+      # 27 / macOS 27 SDK, so the *whole app build* needs an Xcode 27
+      # toolchain from here on, not just the PCC-specific code path (see the
+      # "Issue #51" entry in docs/engineering-notes.md for why availability
+      # annotations alone don't avoid this). Falls back to 26.3 with a loud
+      # warning if no 27 install is found — the build below will then fail
+      # on the missing symbol, which is the correct, attributable outcome;
+      # adjust the glob/path once the runner image's actual Xcode-27 layout
+      # is known.
+      - name: Select Xcode toolchain (27 beta if present, else 26.3)
+        run: |
+          BETA=$(ls -d /Applications/Xcode_27*.app /Applications/Xcode-beta.app 2>/dev/null | head -1)
+          if [ -n "$BETA" ]; then
+            echo "Selecting Xcode 27: $BETA"
+            sudo xcode-select -switch "$BETA"
+          else
+            echo "::warning::No Xcode 27 (beta) install found on this runner — falling back to 26.3. This job links LillistSearchIntelligence (FoundationModels.PrivateCloudComputeLanguageModel needs the iOS/macOS 27 SDK); the build below will fail until this runner has an Xcode 27 image. See docs/engineering-notes.md 'Issue #51' entry."
+            sudo xcode-select -switch /Applications/Xcode_26.3.app
+          fi
+          xcodebuild -version
 
       - name: Install xcodegen
         run: brew install xcodegen
@@ -145,8 +196,19 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Select Xcode 26.3
-        run: sudo xcode-select -switch /Applications/Xcode_26.3.app
+      # See the identical comment in the `ios` job above: this scheme also
+      # links LillistSearchIntelligence, so it needs the Xcode 27 SDK.
+      - name: Select Xcode toolchain (27 beta if present, else 26.3)
+        run: |
+          BETA=$(ls -d /Applications/Xcode_27*.app /Applications/Xcode-beta.app 2>/dev/null | head -1)
+          if [ -n "$BETA" ]; then
+            echo "Selecting Xcode 27: $BETA"
+            sudo xcode-select -switch "$BETA"
+          else
+            echo "::warning::No Xcode 27 (beta) install found on this runner — falling back to 26.3. This job links LillistSearchIntelligence (FoundationModels.PrivateCloudComputeLanguageModel needs the iOS/macOS 27 SDK); the build below will fail until this runner has an Xcode 27 image. See docs/engineering-notes.md 'Issue #51' entry."
+            sudo xcode-select -switch /Applications/Xcode_26.3.app
+          fi
+          xcodebuild -version
 
       - name: Install xcodegen
         run: brew install xcodegen
@@ -195,8 +257,19 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Select Xcode 26.3
-        run: sudo xcode-select -switch /Applications/Xcode_26.3.app
+      # See the identical comment in the `ios` job above: this scheme also
+      # links LillistSearchIntelligence, so it needs the Xcode 27 SDK.
+      - name: Select Xcode toolchain (27 beta if present, else 26.3)
+        run: |
+          BETA=$(ls -d /Applications/Xcode_27*.app /Applications/Xcode-beta.app 2>/dev/null | head -1)
+          if [ -n "$BETA" ]; then
+            echo "Selecting Xcode 27: $BETA"
+            sudo xcode-select -switch "$BETA"
+          else
+            echo "::warning::No Xcode 27 (beta) install found on this runner — falling back to 26.3. This job links LillistSearchIntelligence (FoundationModels.PrivateCloudComputeLanguageModel needs the iOS/macOS 27 SDK); the build below will fail until this runner has an Xcode 27 image. See docs/engineering-notes.md 'Issue #51' entry."
+            sudo xcode-select -switch /Applications/Xcode_26.3.app
+          fi
+          xcodebuild -version
 
       - name: Install xcodegen
         run: brew install xcodegen
@@ -269,7 +342,7 @@ jobs:
   notify:
     name: Notify on failure
     runs-on: macos-15
-    needs: [spm, project-drift, ios, macos, release-archive-smoke, localization-lint, secrets-guard]
+    needs: [spm, cli, project-drift, ios, macos, release-archive-smoke, localization-lint, secrets-guard]
     if: failure()
     steps:
       - name: Mark the run failed
