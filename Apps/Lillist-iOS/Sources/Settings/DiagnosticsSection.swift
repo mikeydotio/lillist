@@ -78,12 +78,22 @@ final class DiagnosticsExportModel {
         isPreparing = true
         lastError = nil
         defer { isPreparing = false }
+        // Issue #54: fold this device's CloudKit provenance into the export so
+        // a Dev/Prod split (or an account fault) is visible without a Mac.
+        let counts = (try? await env.taskStore.syncCounts()) ?? .init(local: 0, mirrored: 0)
+        let sync = SyncDiagnosticsSnapshot.make(
+            containerIdentifier: StoreConfiguration.defaultCloudKitContainerIdentifier,
+            accountState: env.accountState,
+            syncMode: env.currentSyncMode,
+            counts: counts
+        )
         let metadata = DiagnosticPackageBuilder.Metadata(
             buildVersion: env.buildVersion,
             osVersion: env.osVersion,
             deviceModel: env.deviceModel,
             exportedAt: Date(),
-            diagnosticLoggingEnabled: enabled
+            diagnosticLoggingEnabled: enabled,
+            sync: sync
         )
         let builder = DiagnosticPackageBuilder(
             diagnosticsDir: await env.diagnosticLog.diagnosticsDirectory(),
@@ -134,6 +144,14 @@ struct DiagnosticsSection: View {
             Text("Records task changes to on-device log files for troubleshooting. Logs stay on this device and are shared only when you create and send a package.")
                 .font(.footnote)
                 .foregroundStyle(.secondary)
+            // Issue #54: the app never surfaced its own CloudKit environment,
+            // so a Development/Production split across a device fleet was
+            // invisible. A pure, synchronous read of this build's own
+            // entitlements — no live container needed.
+            LabeledContent("CloudKit Environment") {
+                Text(SyncDiagnosticsSnapshot.resolveEnvironment(using: SelfEntitlementReader()).rawValue)
+                    .foregroundStyle(.secondary)
+            }
             Button {
                 model.sheet = .include
             } label: {
