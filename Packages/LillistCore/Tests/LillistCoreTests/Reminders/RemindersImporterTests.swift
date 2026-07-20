@@ -65,8 +65,8 @@ struct RemindersImporterTests {
         let gateway = FakeRemindersGateway(itemsByList: [Self.listID: Self.items(3, withDue: true)])
         let importer = RemindersImporter(gateway: gateway, taskStore: taskStore, devicePreferences: prefs)
 
-        let count = await importer.drainIfNeeded()
-        #expect(count == 3)
+        let outcome = await importer.drainIfNeeded()
+        #expect(outcome == .completed(imported: 3, deletedWithoutImport: 0))
 
         let tasks = try await Self.allTasks(persistence)
         #expect(tasks.count == 3)
@@ -81,7 +81,7 @@ struct RemindersImporterTests {
         #expect(remaining.isEmpty)
     }
 
-    @Test("Second drain is a no-op once the list is empty")
+    @Test("Second drain reports a clean completed(0,0) once the list is empty")
     func idempotent() async throws {
         let persistence = try await TestStore.make()
         let taskStore = TaskStore(persistence: persistence)
@@ -91,11 +91,11 @@ struct RemindersImporterTests {
 
         _ = await importer.drainIfNeeded()
         let second = await importer.drainIfNeeded()
-        #expect(second == 0)
+        #expect(second == .completed(imported: 0, deletedWithoutImport: 0))
         #expect(try await Self.allTasks(persistence).count == 2)
     }
 
-    @Test("Disabled feature drains nothing and leaves the list intact")
+    @Test("Disabled feature reports featureDisabled and leaves the list intact")
     func disabledNoOp() async throws {
         let persistence = try await TestStore.make()
         let taskStore = TaskStore(persistence: persistence)
@@ -104,12 +104,12 @@ struct RemindersImporterTests {
         let gateway = FakeRemindersGateway(itemsByList: [Self.listID: Self.items(2)])
         let importer = RemindersImporter(gateway: gateway, taskStore: taskStore, devicePreferences: prefs)
 
-        #expect(await importer.drainIfNeeded() == 0)
+        #expect(await importer.drainIfNeeded() == .featureDisabled)
         #expect(try await Self.allTasks(persistence).isEmpty)
         #expect(await gateway.remainingItems(inListID: Self.listID).count == 2)
     }
 
-    @Test("No selected list drains nothing")
+    @Test("No selected list reports noListSelected")
     func unsetListNoOp() async throws {
         let persistence = try await TestStore.make()
         let taskStore = TaskStore(persistence: persistence)
@@ -117,11 +117,11 @@ struct RemindersImporterTests {
         let gateway = FakeRemindersGateway(itemsByList: [Self.listID: Self.items(2)])
         let importer = RemindersImporter(gateway: gateway, taskStore: taskStore, devicePreferences: prefs)
 
-        #expect(await importer.drainIfNeeded() == 0)
+        #expect(await importer.drainIfNeeded() == .noListSelected)
         #expect(try await Self.allTasks(persistence).isEmpty)
     }
 
-    @Test("Unauthorized drains nothing")
+    @Test("Unauthorized reports notAuthorized")
     func unauthorizedNoOp() async throws {
         let persistence = try await TestStore.make()
         let taskStore = TaskStore(persistence: persistence)
@@ -129,8 +129,87 @@ struct RemindersImporterTests {
         let gateway = FakeRemindersGateway(auth: .denied, itemsByList: [Self.listID: Self.items(2)])
         let importer = RemindersImporter(gateway: gateway, taskStore: taskStore, devicePreferences: prefs)
 
-        #expect(await importer.drainIfNeeded() == 0)
+        #expect(await importer.drainIfNeeded() == .notAuthorized)
         #expect(try await Self.allTasks(persistence).isEmpty)
+    }
+
+    @Test("A persisted list id the gateway doesn't recognize reports listUnavailable, not a false empty completion")
+    func staleListSurfacesUnavailable() async throws {
+        let persistence = try await TestStore.make()
+        let taskStore = TaskStore(persistence: persistence)
+        // The prefs point at Self.listID, but the gateway only knows a
+        // *different* list — simulating a persisted calendarIdentifier that
+        // no longer resolves on this EKEventStore (issue #50, sub-cause B).
+        let prefs = await Self.enabledPrefs()
+        let gateway = FakeRemindersGateway(itemsByList: ["some-other-list": Self.items(2)])
+        let importer = RemindersImporter(gateway: gateway, taskStore: taskStore, devicePreferences: prefs)
+
+        #expect(await importer.drainIfNeeded() == .listUnavailable(listID: Self.listID))
+        #expect(try await Self.allTasks(persistence).isEmpty)
+    }
+
+    @Test("A known list with zero items reports completed(0,0), not listUnavailable")
+    func emptyKnownListReportsCompletedZero() async throws {
+        let persistence = try await TestStore.make()
+        let taskStore = TaskStore(persistence: persistence)
+        let prefs = await Self.enabledPrefs()
+        // Key present, value empty — a genuinely empty (not unresolvable) list.
+        let gateway = FakeRemindersGateway(itemsByList: [Self.listID: []])
+        let importer = RemindersImporter(gateway: gateway, taskStore: taskStore, devicePreferences: prefs)
+
+        #expect(await importer.drainIfNeeded() == .completed(imported: 0, deletedWithoutImport: 0))
+    }
+
+    @Test("drain(listID:) drains the passed list even when no list is persisted (kills the picker-persist race)")
+    func explicitDrainUsesPassedListIgnoringPersisted() async throws {
+        let persistence = try await TestStore.make()
+        let taskStore = TaskStore(persistence: persistence)
+        // Persisted state has NO list selected — as it would be immediately
+        // after picking one, before the picker's fire-and-forget persist Task
+        // lands. "Drain now" must still work off the in-memory selection.
+        let prefs = await Self.enabledPrefs(list: nil)
+        let gateway = FakeRemindersGateway(itemsByList: [Self.listID: Self.items(2)])
+        let importer = RemindersImporter(gateway: gateway, taskStore: taskStore, devicePreferences: prefs)
+
+        let outcome = await importer.drain(listID: Self.listID)
+        #expect(outcome == .completed(imported: 2, deletedWithoutImport: 0))
+        #expect(try await Self.allTasks(persistence).count == 2)
+    }
+
+    @Test("drain(listID:) still requires authorization")
+    func explicitDrainRequiresAuthorization() async throws {
+        let persistence = try await TestStore.make()
+        let taskStore = TaskStore(persistence: persistence)
+        let prefs = await Self.enabledPrefs(list: nil)
+        let gateway = FakeRemindersGateway(auth: .denied, itemsByList: [Self.listID: Self.items(2)])
+        let importer = RemindersImporter(gateway: gateway, taskStore: taskStore, devicePreferences: prefs)
+
+        #expect(await importer.drain(listID: Self.listID) == .notAuthorized)
+        #expect(try await Self.allTasks(persistence).isEmpty)
+    }
+
+    @Test("A concurrent call while one is already draining coalesces to busy, not a false empty completion")
+    func alreadyDrainingReturnsBusy() async throws {
+        let persistence = try await TestStore.make()
+        let taskStore = TaskStore(persistence: persistence)
+        let prefs = await Self.enabledPrefs()
+        let gateway = FakeRemindersGateway(itemsByList: [Self.listID: Self.items(2)])
+        await gateway.setHoldFetch(true)
+        let importer = RemindersImporter(gateway: gateway, taskStore: taskStore, devicePreferences: prefs)
+
+        // The first call sets isDraining synchronously and then suspends
+        // inside gateway.items(inListID:) (held by the fake). Awaiting the
+        // first call's *start* via a task and yielding gives it a chance to
+        // reach that suspension point before the second call fires.
+        let first = Task { await importer.drainIfNeeded() }
+        try await Task.sleep(for: .milliseconds(50))
+
+        let second = await importer.drainIfNeeded()
+        #expect(second == .busy)
+
+        await gateway.releaseFetch()
+        let firstOutcome = await first.value
+        #expect(firstOutcome == .completed(imported: 2, deletedWithoutImport: 0))
     }
 
     @Test("Blank-title reminder still drains via a fallback title")
@@ -142,14 +221,14 @@ struct RemindersImporterTests {
         let gateway = FakeRemindersGateway(itemsByList: [Self.listID: [blank]])
         let importer = RemindersImporter(gateway: gateway, taskStore: taskStore, devicePreferences: prefs)
 
-        #expect(await importer.drainIfNeeded() == 1)
+        #expect(await importer.drainIfNeeded() == .completed(imported: 1, deletedWithoutImport: 0))
         let tasks = try await Self.allTasks(persistence)
         #expect(tasks.count == 1)
         #expect(tasks.first?.title == "Untitled")
         #expect(await gateway.remainingItems(inListID: Self.listID).isEmpty)
     }
 
-    @Test("Crash window: a failed delete never produces a duplicate on the next pass")
+    @Test("Crash window: a failed delete never produces a duplicate on the next pass, and is reported as deletedWithoutImport")
     func dedupAcrossFailedDelete() async throws {
         let persistence = try await TestStore.make()
         let taskStore = TaskStore(persistence: persistence)
@@ -162,15 +241,16 @@ struct RemindersImporterTests {
         let importer = RemindersImporter(gateway: gateway, taskStore: taskStore, devicePreferences: prefs)
 
         let first = await importer.drainIfNeeded()
-        #expect(first == 3)
+        #expect(first == .completed(imported: 3, deletedWithoutImport: 0))
         // rem-1 survived the delete and is still queued + marked in-flight.
         #expect(await gateway.remainingItems(inListID: Self.listID).map(\.id) == ["rem-1"])
         #expect(await prefs.remindersInFlightIDs() == ["rem-1"])
 
-        // Delete now succeeds; the next pass must NOT re-create rem-1's task.
+        // Delete now succeeds; the next pass must NOT re-create rem-1's task,
+        // and must report it as crash-window cleanup, not a fresh import.
         await gateway.clearFailRemove()
         let second = await importer.drainIfNeeded()
-        #expect(second == 0)
+        #expect(second == .completed(imported: 0, deletedWithoutImport: 1))
         #expect(try await Self.allTasks(persistence).count == 3) // still 3, no dupe
         #expect(await gateway.remainingItems(inListID: Self.listID).isEmpty)
         #expect(await prefs.remindersInFlightIDs().isEmpty)
@@ -192,8 +272,8 @@ struct RemindersImporterTests {
         let gateway = FakeRemindersGateway(itemsByList: [Self.listID: [incomplete, completed]])
         let importer = RemindersImporter(gateway: gateway, taskStore: taskStore, devicePreferences: prefs)
 
-        let count = await importer.drainIfNeeded()
-        #expect(count == 1)
+        let outcome = await importer.drainIfNeeded()
+        #expect(outcome == .completed(imported: 1, deletedWithoutImport: 0))
 
         let tasks = try await Self.allTasks(persistence)
         #expect(tasks.count == 1)
@@ -220,7 +300,7 @@ struct RemindersImporterTests {
         let importer = RemindersImporter(gateway: gateway, taskStore: taskStore, devicePreferences: prefs)
 
         let first = await importer.drainIfNeeded()
-        #expect(first == 1)
+        #expect(first == .completed(imported: 1, deletedWithoutImport: 0))
         #expect(await prefs.remindersInFlightIDs() == ["rem-1"])
 
         // The user completes it in Reminders.app before the retry, and the
@@ -229,8 +309,10 @@ struct RemindersImporterTests {
         await gateway.clearFailRemove()
 
         let second = await importer.drainIfNeeded()
-        // No new task — the create already happened on the first pass.
-        #expect(second == 0)
+        // No new task — the create already happened on the first pass. The
+        // cleanup delete still counts as deletedWithoutImport (crash-window
+        // cleanup), not a fresh import.
+        #expect(second == .completed(imported: 0, deletedWithoutImport: 1))
         #expect(try await Self.allTasks(persistence).count == 1)
         // But the reminder is still removed, and its marker cleared.
         #expect(await gateway.remainingItems(inListID: Self.listID).isEmpty)
@@ -248,7 +330,7 @@ struct RemindersImporterTests {
 
             // Fire several drains concurrently; the actor + isDraining guard
             // must collapse them to a single effective pass.
-            await withTaskGroup(of: Int.self) { group in
+            await withTaskGroup(of: RemindersDrainOutcome.self) { group in
                 for _ in 0..<4 { group.addTask { await importer.drainIfNeeded() } }
                 for await _ in group {}
             }

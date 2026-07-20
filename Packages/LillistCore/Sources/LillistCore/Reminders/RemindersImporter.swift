@@ -3,21 +3,30 @@ import Foundation
 /// Drains a chosen Reminders.app list into top-level Lillist tasks.
 ///
 /// Invoked when the app becomes active (cold launch via `bootstrap()`, warm
-/// returns via the platform `didBecomeActive` observer). Each *incomplete*
-/// reminder becomes a top-level task — title + notes + due date (→ deadline)
-/// — and is then removed from the list, so the list behaves as an input
-/// queue. Completed reminders are left untouched: neither imported nor
-/// removed, so the list's incomplete count is exactly what a drain will do.
+/// returns via the platform `didBecomeActive` observer) via ``drainIfNeeded()``,
+/// and explicitly from the Settings "Drain now" action via ``drain(listID:)``.
+/// Each *incomplete* reminder becomes a top-level task — title + notes + due
+/// date (→ deadline) — and is then removed from the list, so the list
+/// behaves as an input queue. Completed reminders are left untouched: neither
+/// imported nor removed, so the list's incomplete count is exactly what a
+/// drain will do.
 ///
 /// An `actor` so overlapping activations serialize; an `isDraining` flag
-/// coalesces a queued second pass into a no-op. The create→delete crash window
-/// is guarded by an in-flight id set in device preferences: an id recorded but
-/// not yet confirmed-deleted is, on the next pass, deleted *without*
-/// re-creating a duplicate task.
+/// coalesces a queued second pass into ``RemindersDrainOutcome/busy``. The
+/// create→delete crash window is guarded by an in-flight id set in device
+/// preferences: an id recorded but not yet confirmed-deleted is, on the next
+/// pass, deleted *without* re-creating a duplicate task.
+///
+/// Every pass returns a ``RemindersDrainOutcome`` rather than a bare count —
+/// see its doc comment for why that distinction is the point of this type
+/// (issue #50). When `diagnosticLog` is non-nil, each pass also emits one
+/// `reminders.drain` event, so the automatic (silent, UI-less) activation
+/// drains become inspectable after the fact.
 public actor RemindersImporter {
     private let gateway: RemindersGateway
     private let taskStore: TaskStore
     private let devicePreferences: DevicePreferencesStore
+    private let diagnosticLog: DiagnosticSink?
     private var isDraining = false
 
     /// Fallback title for a reminder with a blank title — `TaskStore.create`
@@ -27,39 +36,82 @@ public actor RemindersImporter {
     public init(
         gateway: RemindersGateway,
         taskStore: TaskStore,
-        devicePreferences: DevicePreferencesStore
+        devicePreferences: DevicePreferencesStore,
+        diagnosticLog: DiagnosticSink? = nil
     ) {
         self.gateway = gateway
         self.taskStore = taskStore
         self.devicePreferences = devicePreferences
+        self.diagnosticLog = diagnosticLog
     }
 
     /// Drain the configured list when the feature is enabled, a list is
-    /// chosen, and Reminders access is granted. Best-effort and silent: a
-    /// failure to import or delete one item never blocks the rest or the
-    /// caller. Returns the number of newly-created tasks (useful for tests).
+    /// chosen, and Reminders access is granted. Reads `enabled` and the
+    /// selected list id from persisted device preferences — the path used by
+    /// the automatic activation drains. Best-effort: a failure to import or
+    /// delete one item never blocks the rest or the caller.
     @discardableResult
-    public func drainIfNeeded() async -> Int {
+    public func drainIfNeeded() async -> RemindersDrainOutcome {
         // Set the guard flag *synchronously* after the check — before any
         // `await`. The first `await` releases actor isolation, so if the flag
         // were set later, concurrent activations would all pass the check and
         // drain in parallel (creating duplicates). Caught by the stress test.
-        guard !isDraining else { return 0 }
+        guard !isDraining else { return await finish(.busy, listID: nil, trigger: "auto") }
         isDraining = true
         defer { isDraining = false }
 
-        guard await devicePreferences.remindersImportEnabled(),
-              let listID = await devicePreferences.remindersImportListID()
-        else { return 0 }
-        guard await gateway.authorization() == .authorized else { return 0 }
+        guard await devicePreferences.remindersImportEnabled() else {
+            return await finish(.featureDisabled, listID: nil, trigger: "auto")
+        }
+        guard let listID = await devicePreferences.remindersImportListID() else {
+            return await finish(.noListSelected, listID: nil, trigger: "auto")
+        }
+        return await performDrain(listID: listID, trigger: "auto")
+    }
+
+    /// Drain the given list directly, bypassing the persisted selection.
+    ///
+    /// The Settings "Drain now" action calls this with its own in-memory
+    /// selected-list state rather than going through ``drainIfNeeded()``'s
+    /// persisted read. That persisted read is written by an unordered
+    /// fire-and-forget `Task` from the picker binding — a quick pick-then-drain
+    /// could otherwise read a stale or not-yet-written list id (issue #50's
+    /// race). Still subject to the same authorization check and `isDraining`
+    /// guard as the automatic path.
+    @discardableResult
+    public func drain(listID: String) async -> RemindersDrainOutcome {
+        guard !isDraining else { return await finish(.busy, listID: listID, trigger: "manual") }
+        isDraining = true
+        defer { isDraining = false }
+        return await performDrain(listID: listID, trigger: "manual")
+    }
+
+    /// Shared core once a list id is known: check authorization, fetch,
+    /// import, delete. `trigger` ("auto"/"manual") only affects the emitted
+    /// diagnostic event, not behavior.
+    private func performDrain(listID: String, trigger: String) async -> RemindersDrainOutcome {
+        guard await gateway.authorization() == .authorized else {
+            return await finish(.notAuthorized, listID: listID, trigger: trigger)
+        }
 
         let items: [ReminderItem]
         do {
             items = try await gateway.items(inListID: listID)
+        } catch let error as RemindersGatewayError {
+            switch error {
+            case .listUnavailable(let id):
+                return await finish(.listUnavailable(listID: id), listID: listID, trigger: trigger)
+            case .fetchFailed(let id):
+                return await finish(.fetchFailed(listID: id), listID: listID, trigger: trigger)
+            }
         } catch {
-            return 0
+            // A conforming gateway threw something other than
+            // RemindersGatewayError — still a legible outcome, never a silent 0.
+            return await finish(.fetchFailed(listID: listID), listID: listID, trigger: trigger)
         }
-        guard !items.isEmpty else { return 0 }
+        guard !items.isEmpty else {
+            return await finish(.completed(imported: 0, deletedWithoutImport: 0), listID: listID, trigger: trigger)
+        }
 
         var inFlight = await devicePreferences.remindersInFlightIDs()
         // Prune markers for ids no longer in the list so the set stays bounded
@@ -71,9 +123,10 @@ public actor RemindersImporter {
         }
 
         var imported = 0
+        var deletedWithoutImport = 0
         for item in items {
-            let wasInFlight = inFlight.contains(item.id)
-            if !wasInFlight {
+            let wasAlreadyInFlight = inFlight.contains(item.id)
+            if !wasAlreadyInFlight {
                 // Completed reminders are never drained — the list's
                 // incomplete count is the promise of what a drain will do. An
                 // item already mid-flight (task created, delete pending from
@@ -98,11 +151,61 @@ public actor RemindersImporter {
                 try await gateway.remove(itemID: item.id)
                 inFlight.remove(item.id)
                 await devicePreferences.setRemindersInFlightIDs(inFlight)
+                // Counted only when the item was already in-flight from a prior,
+                // interrupted pass — a fresh create+delete in the same pass is
+                // "imported", not crash-window cleanup.
+                if wasAlreadyInFlight { deletedWithoutImport += 1 }
             } catch {
                 // Keep the marker; the next pass deletes without re-creating.
             }
         }
-        return imported
+        return await finish(
+            .completed(imported: imported, deletedWithoutImport: deletedWithoutImport),
+            listID: listID,
+            trigger: trigger
+        )
+    }
+
+    /// Emits the diagnostic event for this pass (if a sink is wired) and
+    /// returns the outcome unchanged — every return path in this actor routes
+    /// through here so no outcome ships without a matching diagnostic record.
+    private func finish(_ outcome: RemindersDrainOutcome, listID: String?, trigger: String) async -> RemindersDrainOutcome {
+        if let diagnosticLog {
+            await diagnosticLog.log(DiagnosticEvent(
+                at: Date(),
+                seq: 0,
+                process: .app,
+                category: .data,
+                name: "reminders.drain",
+                payload: payload(for: outcome, listID: listID, trigger: trigger)
+            ))
+        }
+        return outcome
+    }
+
+    private func payload(for outcome: RemindersDrainOutcome, listID: String?, trigger: String) -> [String: DiagValue] {
+        var payload: [String: DiagValue] = [
+            "trigger": .string(trigger),
+            "outcome": .string(outcomeName(outcome))
+        ]
+        if let listID { payload["listID"] = .string(listID) }
+        if case .completed(let imported, let deletedWithoutImport) = outcome {
+            payload["imported"] = .int(imported)
+            payload["deletedWithoutImport"] = .int(deletedWithoutImport)
+        }
+        return payload
+    }
+
+    private func outcomeName(_ outcome: RemindersDrainOutcome) -> String {
+        switch outcome {
+        case .featureDisabled: return "featureDisabled"
+        case .noListSelected: return "noListSelected"
+        case .notAuthorized: return "notAuthorized"
+        case .busy: return "busy"
+        case .listUnavailable: return "listUnavailable"
+        case .fetchFailed: return "fetchFailed"
+        case .completed: return "completed"
+        }
     }
 
     private func createTask(from item: ReminderItem) async throws {

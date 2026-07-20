@@ -308,7 +308,8 @@ final class AppEnvironment {
         self.remindersImporter = RemindersImporter(
             gateway: remindersGateway,
             taskStore: self.taskStore,
-            devicePreferences: devicePreferences
+            devicePreferences: devicePreferences,
+            diagnosticLog: diagnosticLog
         )
     }
 

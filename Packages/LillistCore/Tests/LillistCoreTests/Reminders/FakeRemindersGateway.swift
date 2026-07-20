@@ -14,6 +14,13 @@ actor FakeRemindersGateway: RemindersGateway {
     private var failRemoveIDs: Set<String>
     private(set) var requestAccessCount = 0
     private(set) var removeCallCount = 0
+    /// When true, `items(inListID:)` suspends until `releaseFetch()` is called.
+    /// Simulates a slow EventKit fetch so a test can deterministically fire a
+    /// second, concurrent `RemindersImporter` call while the first is still
+    /// mid-drain (past `isDraining = true`, before it returns) — the only way
+    /// to observe `.busy` without a race on wall-clock timing.
+    private var holdFetch = false
+    private var fetchWaiters: [CheckedContinuation<Void, Never>] = []
 
     init(
         auth: RemindersAuthorization = .authorized,
@@ -38,8 +45,19 @@ actor FakeRemindersGateway: RemindersGateway {
 
     func lists() -> [ReminderListInfo] { lists_ }
 
-    func items(inListID listID: String) -> [ReminderItem] {
-        itemsByList[listID] ?? []
+    /// Mirrors the production gateway's fixed behavior: an unresolvable list
+    /// throws `.listUnavailable` rather than silently returning `[]`. "Known"
+    /// means the key is present in `itemsByList` — including a key whose value
+    /// is now `[]` because `remove` drained it, so a fully-drained list still
+    /// reports `[]` (an empty completion), never `.listUnavailable`.
+    func items(inListID listID: String) async throws -> [ReminderItem] {
+        if holdFetch {
+            await withCheckedContinuation { fetchWaiters.append($0) }
+        }
+        guard let items = itemsByList[listID] else {
+            throw RemindersGatewayError.listUnavailable(id: listID)
+        }
+        return items
     }
 
     func remove(itemID: String) throws {
@@ -73,6 +91,16 @@ actor FakeRemindersGateway: RemindersGateway {
             dueHasTime: original.dueHasTime,
             isCompleted: true
         )
+    }
+
+    func setHoldFetch(_ value: Bool) { holdFetch = value }
+    /// Releases every `items(inListID:)` call currently suspended, and stops
+    /// holding future calls.
+    func releaseFetch() {
+        holdFetch = false
+        let waiters = fetchWaiters
+        fetchWaiters = []
+        for waiter in waiters { waiter.resume() }
     }
 
     enum FakeError: Error { case removeFailed }
