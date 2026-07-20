@@ -388,6 +388,40 @@ Production, no device registration) and the macOS Developer-ID build is already
 shippable. macOS Developer-ID builds cannot use Development — never re-attempt
 that pin.
 
+## Sparkle auto-update (macOS)
+
+The macOS app's Sparkle updater (`SPUStandardUpdaterController`, "Check for
+Updates…" menu item) reads `SUFeedURL` from `Info.plist`, resolved from
+`Apps/Config/Distribution.xcconfig`'s **pinned** `SU_FEED_URL` — a public
+`https://github.com/mikeydotio/lillist/releases/latest/download/appcast.xml`.
+There is **no per-machine override** for this value (unlike
+`LOCAL_CONTACT_EMAIL`) — every distributed build must ship the same public
+feed; see the issue #55 entry in `docs/engineering-notes.md` (2026-07-20) for
+why a per-machine override previously leaked a private tailnet feed into
+Developer-ID exports.
+
+- **Build number is a dedicated, monotonic counter.** Sparkle decides
+  "newer" purely by `CFBundleVersion`. macOS uses its own
+  `Apps/Config/BuildNumber-macOS.xcconfig` (bumped by the `Lillist-macOS`
+  scheme's Archive pre-action), separate from iOS's `BuildNumber.xcconfig` —
+  never point one platform's `Info.plist` at the other's counter, and never
+  hardcode `CFBundleVersion` to a literal (it must always read
+  `$(CURRENT_PROJECT_VERSION)`).
+- **Sandboxed installer path.** `Info.plist` sets
+  `SUEnableInstallerLauncherService`; `Lillist.entitlements` carries the
+  `com.apple.security.temporary-exception.mach-lookup.global-name` exception
+  Sparkle's `Installer.xpc` needs under App Sandbox. `Installer.xpc` /
+  `Downloader.xpc` embed automatically from the Sparkle SPM package — no
+  Copy Files build phase needed.
+- **CI guard:** `Tools/CI/check-macos-sparkle-feed.sh` (wired into the
+  `macos` job) fails the build if `SU_FEED_URL` ever resolves to anything
+  but a public GitHub URL, or if `CFBundleVersion` isn't the live
+  `$(CURRENT_PROJECT_VERSION)` variable.
+- **The appcast itself is published by `deployit`, not this repo** — tracked
+  as `mikeydotio/agentics#111`. Until that lands, `SU_FEED_URL` is correct
+  but 404s; full end-to-end update verification needs both halves shipped
+  together from `main`.
+
 ## Deploy (iOS test builds)
 
 Deployment is handled by the **`deployit` plugin** (`/deployit`),
