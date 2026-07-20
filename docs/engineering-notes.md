@@ -4484,3 +4484,47 @@ Landing the compact task-detail card (`Closes #8`) surfaced three lessons:
   `RelativeDateParityTests`) differently in its own summary count. Trust
   `swift test list` + the per-test pass/fail stream over the top-line
   total when comparing toolchains; don't chase the summary number itself.
+- **`@Test` rejects `@available`-restricted functions outright** — Swift
+  Testing's macro errors with "Attribute 'Test' cannot be applied to this
+  function because it has been marked '@available'" if you annotate a test
+  function (or its enclosing `@Suite` type) with `@available(iOS 26, *)`,
+  which you'd otherwise want for a type like `GeneratedFilter` that's itself
+  `@available`-gated (required for anything using `@Generable`, since the
+  macro's synthesized conformance carries FoundationModels' own
+  availability). The fix: leave the `@Test` function/`@Suite` type
+  unannotated and put `guard #available(iOS 26, macOS 26, *) else { return
+  }` as the first line of each test body instead — satisfies the
+  compile-time deployment-target check without tripping the macro
+  restriction. See `LillistSearchIntelligence/Tests/.../
+  GeneratedFilterConversionTests.swift`.
+- **A `@Generable` macro already synthesizes a full memberwise init** — the
+  same pattern used everywhere else in this codebase (hand-write a
+  convenience init with defaulted-nil optionals so call sites don't have to
+  name every parameter) causes an *infinite recursion* compile error here,
+  because the macro already generates that exact init. Don't add one;
+  `@Generable`'s synthesized init already defaults every optional property
+  to `nil`.
+- **Live end-to-end verification (this Mac, on-device tier) — real, useful
+  signal, not just structural.** Ran the actual translator (not the mock)
+  against this Mac's on-device Apple Intelligence via a throwaway
+  scratchpad executable. The full pipeline (NL string → live
+  `LanguageModelSession` guided generation → `IntermediateFilterMapper` →
+  `PredicateGroup`) genuinely works: `"has due date in the past and is
+  incomplete"` produced exactly `deadline before today AND status isNot
+  closed` on the first try. Terser initial instructions caused real
+  misfires on harder phrasings — "added before today" came back with the
+  date direction inverted, and "tagged Work" was parsed as a title-text
+  search instead of a tag clause — both fixed by adding explicit
+  before/after wording and a "tagged X" example to
+  `FoundationModelsInstructions.build`. Two things to take away: (1) the
+  mapper's safety net held throughout — every hallucinated/off-matrix
+  clause the model produced (e.g. `isPinned isUnset`, extra unrequested
+  clauses) surfaced as a dropped/unmapped term rather than corrupting the
+  query, which is the whole point of routing every translator through
+  `IntermediateFilterMapper`; (2) the on-device tier still has real
+  precision gaps on more nuanced phrasing (e.g. "blocked" alone resolved to
+  "status is not closed" rather than "status is blocked" specifically) —
+  prompt-quality tuning for the on-device tier is open-ended product work,
+  intentionally left for follow-up rather than gating this PR, matching the
+  plan's "verified manually on a capable device, not asserted in committed
+  tests" posture for live inference.
