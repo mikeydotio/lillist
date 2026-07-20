@@ -10,9 +10,13 @@ options:
 
 # Local-only signing values (DEVELOPMENT_TEAM) live in a gitignored
 # xcconfig so they survive `xcodegen generate`. See Config/Signing.xcconfig.example.
+# Signing-macOS.xcconfig layers a dedicated, monotonic macOS build-number
+# counter (BuildNumber-macOS.xcconfig) on top of the shared Signing.xcconfig
+# (issue #55 — the macOS app previously hardcoded CFBundleVersion and never
+# incremented it, so Sparkle could never detect a newer build).
 configFiles:
-  Debug: Config/Signing.xcconfig
-  Release: Config/Signing.xcconfig
+  Debug: Config/Signing-macOS.xcconfig
+  Release: Config/Signing-macOS.xcconfig
 
 settings:
   base:
@@ -116,13 +120,12 @@ targets:
         CODE_SIGN_STYLE: Automatic
         INFOPLIST_FILE: ../Extensions/LillistWidget/Info.plist
         # The shared widget Info.plist reads CFBundleVersion from
-        # $(CURRENT_PROJECT_VERSION). The macOS app hardcodes its own
-        # CFBundleVersion (Lillist-macOS/Info.plist) to a date-based build
-        # number, and an app-extension's CFBundleVersion MUST match its host —
-        # so override it here to the macOS app's value. (iOS uses
-        # BuildNumber.xcconfig's value, which already matches the iOS app.)
-        # Keep this in lockstep with Lillist-macOS/Info.plist's CFBundleVersion.
-        CURRENT_PROJECT_VERSION: "20260517"
+        # $(CURRENT_PROJECT_VERSION). No override needed here (issue #55
+        # removed the old hardcoded literal): this target's configFiles come
+        # from the project-level Signing-macOS.xcconfig, which resolves
+        # CURRENT_PROJECT_VERSION from BuildNumber-macOS.xcconfig — the same
+        # value the Lillist-macOS app target resolves — so the extension
+        # stays in lockstep with its host automatically.
 
   Lillist-macOSTests:
     type: bundle.unit-test
@@ -233,6 +236,20 @@ schemes:
         Lillist-macOSUITests: [test]
     run:
       config: Debug
+    archive:
+      config: Debug
+      preActions:
+        # Bumps CFBundleVersion via Apps/Config/BuildNumber-macOS.xcconfig
+        # before every Archive (Xcode UI or `xcodebuild archive`), mirroring
+        # the Lillist-iOS scheme's pre-action. Fixes issue #55: without
+        # this, macOS's CFBundleVersion never changed between releases and
+        # Sparkle could never detect a newer build. Pre-actions run with
+        # $PROJECT_DIR pointing at Apps/ (this project.yml's directory) —
+        # one `..` to reach the repo root, unlike the iOS scheme's two.
+        - script: |
+            "$PROJECT_DIR/../Tools/Deploy/bump-build-number.sh" "$PROJECT_DIR/Config/BuildNumber-macOS.xcconfig"
+          name: Bump build number
+          settingsTarget: Lillist-macOS
     test:
       config: Debug
       targets:

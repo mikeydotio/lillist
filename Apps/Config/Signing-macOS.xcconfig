@@ -1,0 +1,10 @@
+// macOS-specific signing entry point. Committed.
+//
+// Signing.xcconfig already #includes BuildNumber.xcconfig (the iOS
+// counter), which would leave the macOS project sharing iOS's build
+// number. Re-include BuildNumber-macOS.xcconfig AFTER Signing.xcconfig so
+// its CURRENT_PROJECT_VERSION assignment wins (xcconfig: later assignment
+// for the same key overrides an earlier one) — the macOS project gets its
+// own dedicated, monotonic counter without disturbing iOS's.
+#include "Signing.xcconfig"
+#include "BuildNumber-macOS.xcconfig"
