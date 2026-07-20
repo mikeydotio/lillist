@@ -61,6 +61,19 @@ public final class TagStore: @unchecked Sendable {
         }
     }
 
+    /// All tags, flattened across the parent/child hierarchy, sorted by
+    /// name. Used to build a `TranslationContext` for agentic search (issue
+    /// #51) — the translator/mapper needs every tag name up front to
+    /// resolve a natural-language mention ("tagged Home") to an id,
+    /// independent of where that tag sits in the tree.
+    public func list() async throws -> [TagRecord] {
+        try await context.perform { [self] in
+            let req = NSFetchRequest<Tag>(entityName: "Tag")
+            req.sortDescriptors = [NSSortDescriptor(key: "name", ascending: true)]
+            return try context.fetch(req).map(record(from:))
+        }
+    }
+
     public func children(of parentID: UUID?) async throws -> [TagRecord] {
         try await context.perform { [self] in
             let req = NSFetchRequest<Tag>(entityName: "Tag")

@@ -4467,3 +4467,20 @@ Landing the compact task-detail card (`Closes #8`) surfaced three lessons:
   PR's actual changes — noted here rather than chased, since it's orthogonal
   to #51; `git checkout -- '*.pbxproj'` cleanly discards an incidental regen
   when the current session made no real project.yml changes.
+- **The two toolchains' `swift test` summary lines can report different
+  totals for the identical source tree — this is a reporting quirk, not a
+  real gap.** After adding the `Search/` test suite (Wave B), the default
+  toolchain (26.6) reported "1050 tests in 208 suites passed" while the beta
+  (27.0, isolated `--scratch-path`, ruling out `.build` cross-toolchain
+  contamination) reported "1011 tests in 200 suites passed" — same commit,
+  zero failures either way. `swift test --package-path Packages/LillistCore
+  list` (the static, compile-time test enumeration) is *effectively
+  identical* between the two — a raw diff of the sorted lists shows only
+  build-log noise (`Compiling plugin…`, `Write swift-version…`), no missing
+  test identifiers. Conclusion: the two Xcodes bundle different Swift
+  Testing library versions (confirmed via the printed `Testing Library
+  Version:` line), and the newer one tallies parameterized
+  `@Test(arguments:)` sub-tests (heavy in `ParitySuiteTests` /
+  `RelativeDateParityTests`) differently in its own summary count. Trust
+  `swift test list` + the per-test pass/fail stream over the top-line
+  total when comparing toolchains; don't chase the summary number itself.
