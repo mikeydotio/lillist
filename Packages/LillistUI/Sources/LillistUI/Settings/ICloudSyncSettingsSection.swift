@@ -38,6 +38,18 @@ public struct ICloudSyncSettingsSection: View {
         }
     }
 
+    /// Issue #54: sync claims to be on and healthy, but nothing is actually
+    /// reaching iCloud — see `divergenceWarning(mode:status:localCount:mirroredCount:)`.
+    public struct DivergenceWarning: Equatable, Sendable {
+        public let title: String
+        public let message: String
+
+        public init(title: String, message: String) {
+            self.title = title
+            self.message = message
+        }
+    }
+
     public struct Actions {
         public let onToggle: (Bool) -> Void
         public let onOpenSystemSettings: () -> Void
@@ -171,6 +183,40 @@ public struct ICloudSyncSettingsSection: View {
         case .paused:
             return String(localized: "Sync paused — iCloud unavailable", bundle: .module)
         }
+    }
+
+    /// Issue #54: four devices on the same account diverged because
+    /// "sync is active" and "0 of N tasks mirrored" can both be true at
+    /// once, and nothing said so. This is a loud, low-false-positive guard
+    /// for exactly that anomaly — not a general health check.
+    ///
+    /// Fires only when **every** condition holds:
+    /// - iCloud Sync is the selected mode.
+    /// - `status` is `.idle(lastSync: .some)` — i.e. NOT `.paused` (account
+    ///   already surfaced), NOT `.error` (already surfaced), NOT
+    ///   `.inProgress` (mid-sync), AND the engine has completed at least one
+    ///   CloudKit event *this session* (`.idle(lastSync: nil)` is the
+    ///   ambiguous pre-first-event window — see `statusLine`'s doc — and is
+    ///   deliberately excluded so a fresh launch never false-positives).
+    /// - There's at least one local task to mirror.
+    /// - None of them have mirrored.
+    ///
+    /// `nonisolated static` for the same reason as `statusLine`: testable
+    /// without a live container or the MainActor.
+    nonisolated static func divergenceWarning(
+        mode: SyncMode,
+        status: SyncIndicator,
+        localCount: Int?,
+        mirroredCount: Int?
+    ) -> DivergenceWarning? {
+        guard mode == .iCloudSync else { return nil }
+        guard case .idle(.some) = status else { return nil }
+        guard let local = localCount, local > 0 else { return nil }
+        guard let mirrored = mirroredCount, mirrored == 0 else { return nil }
+        return DivergenceWarning(
+            title: String(localized: "This device may not be sharing tasks", bundle: .module),
+            message: String(localized: "iCloud sync is on and your account is available, but none of your \(local) tasks have reached iCloud yet. This can happen when your devices are signed into different iCloud (CloudKit) environments. Export a diagnostic package from each device and compare the CloudKit Environment shown in Diagnostics.", bundle: .module)
+        )
     }
 
     private var statusColor: Color {
