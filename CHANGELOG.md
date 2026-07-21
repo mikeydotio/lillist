@@ -3,6 +3,28 @@
 All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [v0.16.1] - 2026-07-21
+
+### Fixed
+- sidebar-based, resizable Settings window (#62) (dc6490c2)
+
+### Changed
+- Merge pull request #64 from mikeydotio/chore/storyhook-lil4-archive (e67c4e59)
+- Merge pull request #63 from mikeydotio/worktree-lil-62 (a4edc7a8)
+- Merge pull request #61 from mikeydotio/chore/release-v0.16.0 (ed7631ce)
+
+### Testing
+- update Settings UITest helpers for the sidebar (#62) (9c491706)
+- add PreferencesPane enum + regression guard (#62) (0c41d2dd)
+
+### Maintenance
+- archive LIL-4 (On-device widget verification) (98d1458e)
+- catalog the Settings sidebar's 11 pane labels (#62) (6dc9ef0b)
+- bump macOS build number to 50 (9ec5168a)
+- bump iOS build number to 88 (65d186ab)
+
+_[manual]_
+
 ## [v0.16.0] - 2026-07-20
 
 ### Added
