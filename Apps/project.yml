@@ -176,6 +176,11 @@ targets:
       # IndexingService (whose AppEnvironment dependency would pull
       # in the entire app graph).
       - path: Lillist-macOS/Sources/Indexing/IndexingMappers.swift
+      # Issue #62: PreferencesPane is the enum-driven source of truth for the
+      # Settings sidebar (title/systemImage per pane). Dependency-free, so
+      # co-compiled here for PreferencesPaneTests to assert all 11 panes
+      # without a signed app test host.
+      - path: Lillist-macOS/Sources/Preferences/PreferencesPane.swift
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: app.lillist.tests
