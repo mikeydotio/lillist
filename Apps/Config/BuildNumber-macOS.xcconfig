@@ -1,19 +1,5 @@
-// Tracked in git — the single source of truth for Lillist-macOS's build
-// number. Incremented automatically by the Lillist-macOS scheme's Archive
+// Tracked in git — the single source of truth for this platform's build
+// number. Incremented automatically by its Xcode scheme's Archive
 // pre-action (Tools/Deploy/bump-build-number.sh). Commit after each
 // archive so the counter never regresses.
-//
-// Dedicated macOS counter, separate from Apps/Config/BuildNumber.xcconfig
-// (iOS). Before issue #55, the macOS app hardcoded CFBundleVersion to a
-// stale literal (20260517) that never incremented, so Sparkle always
-// reported "up to date" regardless of the appcast — this counter is what
-// makes CFBundleVersion actually monotonic across macOS releases.
-//
-// Seeded at 49 so the first archive after this change bumps to 50 and
-// ships CFBundleVersion = 50. NOTE (one-time transition): 50 is LOWER
-// than the previously-shipped literal 20260517, so Sparkle's version
-// comparator treats existing installs as already "newer" — those
-// installs will not be auto-offered the first build-50+ release and need
-// a one-time manual reinstall. Every build from 50 onward then
-// auto-updates normally. See docs/engineering-notes.md and issue #55.
-CURRENT_PROJECT_VERSION = 49
+CURRENT_PROJECT_VERSION = 50
