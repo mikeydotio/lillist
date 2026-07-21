@@ -109,6 +109,9 @@
     "%lld tasks archived. Tap to undo." : {
 
     },
+    "%lld of %lld tasks on this device haven't reached iCloud. Back up your data first (Settings → Backups), then use the Reset tools: reload this device from iCloud if your other devices already have your tasks, or start fresh everywhere only if this device holds tasks that exist nowhere else." : {
+
+    },
     "^%@" : {
 
     },
@@ -630,6 +633,9 @@
 
     },
     "Reconfiguring sync…" : {
+
+    },
+    "Recover this device's sync" : {
 
     },
     "Remove tag %@" : {

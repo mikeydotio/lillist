@@ -17,6 +17,22 @@ struct AdvancedPane: View {
     @State private var isImporting = false
     @State private var lastExportError: String?
     @State private var importSummary: Importer.ImportSummary?
+    @State private var confirmingReset: ResetKind?
+    @State private var isResetting = false
+    @State private var resetResult: String?
+    @State private var resetResultIsError = false
+
+    /// Which reset the user is confirming. A single field (rather than two
+    /// independent booleans) so the two destructive confirmations can't both
+    /// present at once. Mirrors iOS `ResetDataStoreSection` — see its doc
+    /// for why these two paths exist and when each is appropriate; issue
+    /// #66 found macOS had no self-serve equivalent of this iOS tool, so a
+    /// stuck device there had no in-app recovery path.
+    private enum ResetKind: Identifiable {
+        case redownload
+        case everywhere
+        var id: Self { self }
+    }
 
     var body: some View {
         Form {
@@ -60,8 +76,114 @@ struct AdvancedPane: View {
                         .foregroundStyle(RainbowPalette.cautionAmber.ink)
                 }
             }
+            resetSection
         }
         .formStyle(.grouped)
+        .confirmationDialog(
+            resetConfirmTitle,
+            isPresented: resetConfirmBinding,
+            titleVisibility: .visible,
+            presenting: confirmingReset
+        ) { kind in
+            Button(resetConfirmButtonLabel(kind), role: .destructive) {
+                Task { await runReset(kind) }
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: { kind in
+            Text(resetConfirmMessage(kind))
+        }
+    }
+
+    // MARK: - Reset (issue #66: macOS parity with iOS's ResetDataStoreSection)
+
+    @ViewBuilder
+    private var resetSection: some View {
+        Section {
+            // Recommended-first: re-download keeps the iCloud copy and only
+            // appears while syncing (nothing to download in local-only mode).
+            if environment.currentSyncMode == .iCloudSync {
+                resetButton(.redownload, title: "Reset & Download Data…")
+            }
+            resetButton(.everywhere, title: "Reset Everywhere…")
+
+            if let resetResult {
+                Text(resetResult)
+                    .font(.callout)
+                    .foregroundStyle(resetResultIsError ? RainbowPalette.cautionAmber.ink : Color.secondary)
+            }
+        } header: {
+            Text("Reset")
+        } footer: {
+            Text("Use when you suspect the local data store is corrupted. Reset & Download keeps your iCloud data and re-downloads it; Reset Everywhere erases every task on all devices. A local backup is kept for 30 days. Relaunch Lillist after resetting.")
+        }
+    }
+
+    @ViewBuilder
+    private func resetButton(_ kind: ResetKind, title: LocalizedStringKey) -> some View {
+        Button(role: .destructive) {
+            confirmingReset = kind
+        } label: {
+            if isResetting, confirmingReset == kind {
+                ProgressView().controlSize(.small)
+            } else {
+                Text(title)
+            }
+        }
+        .disabled(isResetting)
+    }
+
+    private var resetConfirmBinding: Binding<Bool> {
+        Binding(get: { confirmingReset != nil }, set: { if !$0 { confirmingReset = nil } })
+    }
+
+    private var resetConfirmTitle: String {
+        switch confirmingReset {
+        case .redownload: return String(localized: "Reset & Download Data?")
+        case .everywhere: return String(localized: "Reset Everywhere?")
+        case nil: return ""
+        }
+    }
+
+    private func resetConfirmButtonLabel(_ kind: ResetKind) -> LocalizedStringKey {
+        switch kind {
+        case .redownload: return "Reset & Download"
+        case .everywhere: return "Erase Everywhere"
+        }
+    }
+
+    private func resetConfirmMessage(_ kind: ResetKind) -> String {
+        switch kind {
+        case .redownload:
+            return String(localized: "This deletes the copy on this device and downloads a fresh copy of everything from iCloud. Your iCloud data and other devices are unaffected. A local backup is kept for 30 days.")
+        case .everywhere:
+            return String(localized: "This permanently deletes every task on this device and in iCloud — on all devices signed in to this account. A local backup is kept for 30 days. This cannot be undone.")
+        }
+    }
+
+    private func runReset(_ kind: ResetKind) async {
+        isResetting = true
+        resetResult = nil
+        resetResultIsError = false
+        defer { isResetting = false }
+        do {
+            switch kind {
+            case .redownload:
+                try await environment.dataStoreReset.resetAndRedownload()
+                let msg = String(localized: "Local data cleared — downloading from iCloud. Relaunch Lillist once sync settles.")
+                resetResult = msg
+                AccessibilityAnnouncements.post(msg, priority: .high)
+            case .everywhere:
+                try await environment.dataStoreReset.resetAllData()
+                let msg = String(localized: "Data store reset. Relaunch Lillist to reload.")
+                resetResult = msg
+                AccessibilityAnnouncements.post(msg, priority: .high)
+            }
+        } catch {
+            let failure = String(localized: "Reset failed: \(error.localizedDescription)")
+            resetResult = failure
+            resetResultIsError = true
+            AccessibilityAnnouncements.post(failure, priority: .high)
+        }
     }
 
     private func runExport() async {
