@@ -1,8 +1,0 @@
-{"kind":"StoryCreated","at":"2026-07-02T20:07:05Z","title":"On-device widget verification","state":"todo"}
-{"kind":"StoryCommentAdded","at":"2026-07-02T20:07:05Z","text":"Manually verify the widget on a real iPhone + macOS desktop once signing exists:\ntap-to-complete-in-place, the \"+\" Quick Capture link, and the whole-widget filter\ndeep link; confirm the snapshot cache refreshes after app, Share Extension,\nShortcuts, and in-widget writes. Requires a signed build (blocked by provisioning).\n(Priority: medium. Labels: widget, verification.)"}
-{"kind":"StoryPrioritySet","at":"2026-07-02T20:07:15Z","priority":"medium"}
-{"kind":"StoryLabelsSet","at":"2026-07-02T20:07:15Z","labels":["verification","widget"]}
-{"kind":"StoryRelationshipAdded","at":"2026-07-02T20:07:15Z","other_id":"LIL-1","relation":"blocked-by"}
-{"kind":"StoryCommentAdded","at":"2026-07-02T20:19:33Z","text":"[git] cb2df7b: chore(storyhook): close LIL-1..3, unblock LIL-4"}
-{"kind":"StoryStateChanged","at":"2026-07-02T20:19:33Z","state":"in-progress"}
-{"kind":"StoryCommentAdded","at":"2026-07-02T22:08:51Z","text":"[git] 22b50b6: chore(storyhook): commit-link bookkeeping for LIL-4"}
