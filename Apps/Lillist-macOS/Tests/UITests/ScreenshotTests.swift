@@ -86,7 +86,7 @@ final class ScreenshotTests: XCTestCase {
         app.terminate()
     }
 
-    // MARK: - Preferences (all 8 panes)
+    // MARK: - Preferences (all 11 panes)
 
     @MainActor func testPreferencesLight() { capturePreferences(.light) }
     @MainActor func testPreferencesDark()  { capturePreferences(.dark) }
@@ -104,18 +104,24 @@ final class ScreenshotTests: XCTestCase {
         app.typeKey(",", modifierFlags: .command)
         Thread.sleep(forTimeInterval: 1.0)
 
+        // Issue #62: the sidebar (PreferencesPane.allCases) has no toolbar
+        // ceiling, so all 11 panes are reachable and captured here — the old
+        // TabView list stopped at 8 (the rest were behind the ">>" overflow).
         let tabs = [
             ("iCloud Sync", "01-icloud"),
             ("General", "02-general"),
-            ("Notifications", "03-notifications"),
-            ("Trash", "04-trash"),
-            ("Quick Capture", "05-quick-capture"),
-            ("Crash Reporting", "06-crash-reporting"),
-            ("Diagnostics", "07-diagnostics"),
-            ("Advanced", "08-advanced"),
+            ("Tags & Filters", "03-tags-filters"),
+            ("Notifications", "04-notifications"),
+            ("Trash", "05-trash"),
+            ("Backups", "06-backups"),
+            ("Quick Capture", "07-quick-capture"),
+            ("Tasks from Reminders", "08-reminders"),
+            ("Crash Reporting", "09-crash-reporting"),
+            ("Diagnostics", "10-diagnostics"),
+            ("Advanced", "11-advanced"),
         ]
         for (label, slug) in tabs {
-            clickPreferencesTab(app, label)
+            selectPreferencesPane(app, label)
             Thread.sleep(forTimeInterval: 0.6)
             // The Settings window's title is the selected pane's name.
             captureScreenshot(app, named: "prefs-\(slug)-\(suffix)", windowTitle: label)

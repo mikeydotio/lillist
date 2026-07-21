@@ -5,51 +5,76 @@ import LillistUI
 /// Root of the macOS `Settings { … }` scene. Eleven panes (design
 /// Section 7): iCloud Sync, General, Tags & Filters, Notifications, Trash,
 /// Backups, Quick Capture, Tasks from Reminders, Crash Reporting, Diagnostics,
-/// Advanced. Each pane self-sizes its height but pins a common
-/// `PreferencesMetrics.contentWidth` so the window — and the toolbar tab row —
-/// stay put when switching panes. (Tags & Filters is the exception: it pins a
-/// fixed height so its list scrolls instead of growing the window.)
+/// Advanced — enumerated by `PreferencesPane` and rendered as a source-list
+/// sidebar (issue #62). The old top-toolbar `TabView` overflowed once panes
+/// exceeded the toolbar's width, collapsing extras behind a grayed-out `>>`
+/// chevron menu; a sidebar has no such ceiling — it scrolls instead — and,
+/// paired with `.windowResizability(.contentMinSize)` on the `Settings`
+/// scene (`LillistApp.swift`), the window is now freely resizable.
 struct PreferencesWindow: View {
+    @State private var selection: PreferencesPane? = .iCloudSync
+
     var body: some View {
-        TabView {
-            ICloudSyncPane()
-                .tabItem { Label("iCloud Sync", systemImage: "icloud") }
-            GeneralPane()
-                .tabItem { Label("General", systemImage: "gearshape") }
-            TagsAndFiltersPane()
-                .tabItem { Label("Tags & Filters", systemImage: "tag") }
-            NotificationsPane()
-                .tabItem { Label("Notifications", systemImage: "bell") }
-            TrashPane()
-                .tabItem { Label("Trash", systemImage: "trash") }
-            BackupPane()
-                .tabItem { Label("Backups", systemImage: "archivebox") }
-            QuickCapturePane()
-                .tabItem { Label("Quick Capture", systemImage: "keyboard") }
-            RemindersPane()
-                .tabItem { Label("Tasks from Reminders", systemImage: "tray.and.arrow.down") }
-            CrashReportingPane()
-                .tabItem { Label("Crash Reporting", systemImage: "ant") }
-            DiagnosticsPane()
-                .tabItem { Label("Diagnostics", systemImage: "stethoscope") }
-            AdvancedPane()
-                .tabItem { Label("Advanced", systemImage: "wrench.and.screwdriver") }
+        NavigationSplitView {
+            List(selection: $selection) {
+                ForEach(PreferencesPane.allCases) { pane in
+                    Label {
+                        Text(LocalizedStringKey(pane.title))
+                    } icon: {
+                        Image(systemName: pane.systemImage)
+                    }
+                    .tag(pane)
+                }
+            }
+            .navigationSplitViewColumnWidth(
+                min: PreferencesMetrics.sidebarMinWidth,
+                ideal: PreferencesMetrics.sidebarIdealWidth,
+                max: PreferencesMetrics.sidebarMaxWidth
+            )
+        } detail: {
+            let current = selection ?? .iCloudSync
+            detail(for: current)
+                .frame(
+                    minWidth: PreferencesMetrics.detailMinWidth,
+                    idealWidth: PreferencesMetrics.detailIdealWidth,
+                    maxWidth: .infinity,
+                    minHeight: PreferencesMetrics.detailMinHeight,
+                    maxHeight: .infinity
+                )
+                .navigationTitle(Text(LocalizedStringKey(current.title)))
         }
         // Rainbow Logic full-whimsy: every pane toggle uses the tactile
-        // switch. Window chrome, tab bar, and Form layout stay native.
+        // switch. Window chrome, sidebar, and Form layout stay native.
         .toggleStyle(.rainbow)
-        // Plan 15 Task 26: each pane self-sizes its *height* (its outer
-        // container ends with `.fixedSize()`); the TabView animates the
-        // height between tabs the way System Settings does. Width is pinned
-        // to `PreferencesMetrics.contentWidth` across every pane so the
-        // window — and the toolbar tab row — don't reflow on tab switch.
+    }
+
+    @ViewBuilder
+    private func detail(for pane: PreferencesPane) -> some View {
+        switch pane {
+        case .iCloudSync: ICloudSyncPane()
+        case .general: GeneralPane()
+        case .tagsAndFilters: TagsAndFiltersPane()
+        case .notifications: NotificationsPane()
+        case .trash: TrashPane()
+        case .backups: BackupPane()
+        case .quickCapture: QuickCapturePane()
+        case .reminders: RemindersPane()
+        case .crashReporting: CrashReportingPane()
+        case .diagnostics: DiagnosticsPane()
+        case .advanced: AdvancedPane()
+        }
     }
 }
 
-/// Shared metrics for the macOS Preferences panes. A single pinned content
-/// width keeps the Settings window from resizing (and the toolbar tabs from
-/// shifting) every time the user switches panes — see the 2026-06-23 macOS
-/// visual design pass (docs/reviews/).
+/// Sizing for the macOS Settings sidebar + detail column (issue #62).
+/// Replaces the old single pinned `contentWidth`: every pane used to pin
+/// 520pt + `.fixedSize()` so the toolbar-tab row wouldn't reflow — obsolete
+/// now that panes live in a resizable `NavigationSplitView` detail column.
 enum PreferencesMetrics {
-    static let contentWidth: CGFloat = 520
+    static let sidebarMinWidth: CGFloat = 200
+    static let sidebarIdealWidth: CGFloat = 215
+    static let sidebarMaxWidth: CGFloat = 260
+    static let detailMinWidth: CGFloat = 480
+    static let detailIdealWidth: CGFloat = 520
+    static let detailMinHeight: CGFloat = 400
 }

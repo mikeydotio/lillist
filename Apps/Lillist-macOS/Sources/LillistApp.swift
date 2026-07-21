@@ -94,22 +94,27 @@ struct LillistApp: App {
             }
         }
 
-        // Plan 10: Preferences scene. SwiftUI's `Settings { ... }`
-        // produces the standard ⌘, window with native tab styling.
+        // Plan 10: Preferences scene. SwiftUI's `Settings { ... }` produces
+        // the standard ⌘, window. Issue #62: the panes now render behind a
+        // sidebar `NavigationSplitView` (`PreferencesWindow`), so the window
+        // is freely resizable via `.contentMinSize` — mirroring the main
+        // `WindowGroup`'s resizability pattern above.
         Settings {
             if let environment {
                 PreferencesWindow()
                     .environment(environment)
             } else {
-                // Plan 15 Task 26: the loaded panes self-size via
-                // `.fixedSize()`, so the placeholder also self-sizes
-                // (just paddding around the spinner). Don't lock to
-                // the old 520×420 — that was the only artifact pinning
-                // a square window even when only one tab was tall.
+                // Match the loaded window's minimums so the window doesn't
+                // resize/jump once the environment finishes loading.
                 ProgressView("Loading…")
-                    .padding()
+                    .frame(
+                        minWidth: PreferencesMetrics.sidebarMinWidth + PreferencesMetrics.detailMinWidth,
+                        minHeight: PreferencesMetrics.detailMinHeight
+                    )
             }
         }
+        .windowResizability(.contentMinSize)
+        .defaultSize(width: 760, height: 520)
 
         // Plan 15 Task 9: SwiftUI MenuBarExtra scene replaces the
         // AppKit-bridge StatusBarController. `isInserted:` is driven

@@ -216,32 +216,21 @@ extension XCTestCase {
         }
     }
 
-    /// Click a Preferences tab by its label. The Settings window is a
-    /// self-sizing TabView whose toolbar collapses extra tabs behind a ">>"
-    /// overflow chevron once 8 panes no longer fit — so a direct hit is tried
-    /// first, then the toolbar overflow menu. Best-effort.
+    /// Select a Preferences pane by clicking its sidebar row (issue #62: the
+    /// Settings window is now a `NavigationSplitView` source-list sidebar,
+    /// replacing the old self-sizing `TabView` whose toolbar collapsed extra
+    /// tabs behind a ">>" overflow chevron once 8+ panes no longer fit).
+    /// Matched element-type-agnostically — a sidebar row's XCUITest
+    /// classification (outline row vs. static text) is not stable across
+    /// macOS releases — mirroring `rowElement(in:containing:)` above.
     @MainActor
     @discardableResult
-    func clickPreferencesTab(_ app: XCUIApplication, _ label: String, timeout: TimeInterval = 4) -> Bool {
-        // 1) Direct: the tab is visible in the toolbar.
-        let direct = app.buttons[label]
-        if direct.waitForExistence(timeout: 1.5), direct.isHittable {
-            direct.click()
-            return true
-        }
-        // 2) Overflow: click the toolbar ">>" chevron, then the menu item.
-        let overflowCandidates: [XCUIElement] = [
-            app.buttons["NSToolbarMoreItem"],
-            app.toolbars.firstMatch.buttons.allElementsBoundByIndex.last ?? app.buttons.firstMatch,
-        ]
-        for chevron in overflowCandidates where chevron.exists && chevron.isHittable {
-            chevron.click()
-            let item = app.menuItems[label]
-            if item.waitForExistence(timeout: 2), item.isHittable {
-                item.click()
-                return true
-            }
-        }
-        return false
+    func selectPreferencesPane(_ app: XCUIApplication, _ label: String, timeout: TimeInterval = 4) -> Bool {
+        let row = app.descendants(matching: .any)
+            .matching(NSPredicate(format: "label == %@", label))
+            .firstMatch
+        guard row.waitForExistence(timeout: timeout), row.isHittable else { return false }
+        row.click()
+        return true
     }
 }
