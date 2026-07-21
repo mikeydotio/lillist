@@ -7,9 +7,9 @@ import LillistUI
 /// and owns the edit-sheet state. Store failures surface on `errorMessage` rather
 /// than being swallowed.
 ///
-/// Unlike the self-sizing (`.fixedSize()`) panes, this one pins a fixed height so a
-/// long tag/filter list scrolls inside the pane instead of growing the window
-/// unboundedly.
+/// A long tag/filter list scrolls inside the bounded Settings detail column
+/// (see `PreferencesWindow`) rather than growing the window unboundedly — no
+/// per-pane frame is needed here.
 struct TagsAndFiltersPane: View {
     @Environment(AppEnvironment.self) private var environment
 
@@ -23,7 +23,6 @@ struct TagsAndFiltersPane: View {
             TagsAndFiltersSettingsSection(viewState: viewState, actions: actions)
         }
         .formStyle(.grouped)
-        .frame(width: PreferencesMetrics.contentWidth, height: 460)
         .task { await load() }
         .sheet(item: $route) { route in
             editSheet(for: route)

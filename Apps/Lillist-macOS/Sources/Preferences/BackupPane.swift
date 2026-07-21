@@ -53,8 +53,6 @@ struct BackupPane: View {
             }
         }
         .formStyle(.grouped)
-        .frame(width: PreferencesMetrics.contentWidth)
-        .fixedSize()
         .task { await loadSnapshots() }
         .confirmationDialog(
             "Restore from this backup?",

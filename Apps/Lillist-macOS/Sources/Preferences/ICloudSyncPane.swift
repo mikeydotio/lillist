@@ -24,8 +24,6 @@ struct ICloudSyncPane: View {
         }
         .formStyle(.grouped)
         .padding(LillistSpacing.l)
-        .frame(width: PreferencesMetrics.contentWidth)
-        .fixedSize()
         .task { await refreshCounts() }
         // Re-count after a sync settles so the mirrored figure tracks reality.
         .onChange(of: environment.syncMonitor.indicator) { _, _ in
