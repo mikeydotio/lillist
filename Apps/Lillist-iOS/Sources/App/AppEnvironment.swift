@@ -89,6 +89,11 @@ final class AppEnvironment {
     /// Drives notification reconciliation from CloudKit imports (review
     /// notif-2). Retained for the app's lifetime; deinit removes its observer.
     let remoteChangeReconciler: RemoteChangeReconciler
+    /// Issue #66: merges `LillistTask` rows that share one app `id` — the
+    /// shape a resync produces when local mirroring bookkeeping is
+    /// discarded/rebuilt while the CloudKit zone still holds a matching
+    /// record. Retained for the app's lifetime; deinit removes its observer.
+    let taskDuplicateReconciler: TaskDuplicateReconciler
     /// File-based diagnostic logging (design 2026-06-06). On-by-default in
     /// Debug/TestFlight, off in Release. Injected into the stores + drag layer.
     let diagnosticLog: DiagnosticLog
@@ -209,6 +214,7 @@ final class AppEnvironment {
                 await scheduler.reconcile(taskID: taskID)
             }
         }
+        self.taskDuplicateReconciler = TaskDuplicateReconciler(persistence: persistence)
 
         // Diagnostic logging. Constructed with the build-config default; the real
         // toggle value is read from `DevicePreferencesStore` (an actor) in
@@ -438,6 +444,11 @@ final class AppEnvironment {
         try? await preferencesStore.normalizeSingletons()
         await remoteChangeReconciler.processPendingHistory()
         remoteChangeReconciler.start()
+        // Issue #66: catch up on any duplicate LillistTask rows that arrived
+        // while the app wasn't running (e.g. a restore performed on a prior
+        // launch), then begin observing live remote changes.
+        await taskDuplicateReconciler.reconcileNow()
+        taskDuplicateReconciler.start()
         // Diagnostics: sync the cached enabled flag from device prefs, then run a
         // catch-up pass over any history that accrued while not running and begin
         // observing live remote changes. Order matters — set the flag first so the

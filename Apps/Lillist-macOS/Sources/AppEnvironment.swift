@@ -85,6 +85,11 @@ final class AppEnvironment {
     /// the observer is net-new wiring with its own watermark key.
     let diagnosticLog: DiagnosticLog
     let diagnosticHistoryObserver: DiagnosticHistoryObserver
+    /// Issue #66: merges `LillistTask` rows that share one app `id` — the
+    /// shape a resync produces when local mirroring bookkeeping is
+    /// discarded/rebuilt while the CloudKit zone still holds a matching
+    /// record. Retained for the app's lifetime; deinit removes its observer.
+    let taskDuplicateReconciler: TaskDuplicateReconciler
     var crashPromptsEnabled: Bool = PreferencesStore.Prefs.crashPromptsDefault
     /// Plan 10: latest known iCloud account state, mirrored off the
     /// `AccountStateMonitor` actor so SwiftUI views can react via
@@ -229,6 +234,7 @@ final class AppEnvironment {
         )
         self.taskStore.diagnosticLog = diagnosticLog
         self.smartFilterStore.diagnosticLog = diagnosticLog
+        self.taskDuplicateReconciler = TaskDuplicateReconciler(persistence: persistence)
 
         // Plan 21: assemble the migration machinery + classifier.
         let quarantineRoot = storeURL.map { $0.deletingLastPathComponent() }
@@ -370,6 +376,11 @@ final class AppEnvironment {
         await diagnosticLog.setEnabled(await devicePreferences.diagnosticLoggingEnabled())
         await diagnosticHistoryObserver.processPendingHistory()
         diagnosticHistoryObserver.start()
+        // Issue #66: catch up on any duplicate LillistTask rows that arrived
+        // while the app wasn't running (e.g. a restore performed on a prior
+        // launch), then begin observing live remote changes.
+        await taskDuplicateReconciler.reconcileNow()
+        taskDuplicateReconciler.start()
         await notificationScheduler.bootstrap()
         // Persist-6: opportunistically clear expired trash at launch.
         _ = try? await autoPurgeJob.run()
