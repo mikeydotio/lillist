@@ -41,6 +41,17 @@ struct CloudKitSyncStatusAdapterTests {
         #expect(CloudKitSyncStatusAdapter.indicator(for: .idle) == .idle(lastSync: nil))
     }
 
+    @Test("Issue #66: a stalled-export status maps to .error, keeping the last real success")
+    func mapsSyncStalled() {
+        let last = Date(timeIntervalSince1970: 500)
+        let status = SyncStatus(lastSyncedAt: last, inProgress: false, error: .syncStalled(consecutiveFailures: 3))
+        let expected = SyncIndicator.error(
+            message: LillistError.syncStalled(consecutiveFailures: 3).localizedDescription,
+            lastSuccess: last
+        )
+        #expect(CloudKitSyncStatusAdapter.indicator(for: status) == expected)
+    }
+
     // MARK: - Observable update path
 
     @MainActor

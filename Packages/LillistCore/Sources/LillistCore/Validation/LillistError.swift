@@ -37,6 +37,12 @@ public enum LillistError: Error, Sendable, Equatable {
     /// A backup archive's CloudKit schema version does not match this build's
     /// current version, so it cannot be safely restored (issue #7).
     case schemaVersionMismatch(found: Int, current: Int)
+    /// Issue #66: `consecutiveFailures` recoverable CloudKit export failures
+    /// have happened in a row with no successful export in between —
+    /// `CloudKitErrorClassifier`'s one-off-blip suppression exists precisely
+    /// so a single transient conflict doesn't latch this, so reaching this
+    /// case means the mirror genuinely stopped uploading local changes.
+    case syncStalled(consecutiveFailures: Int)
 }
 
 extension LillistError: LocalizedError {
@@ -75,6 +81,8 @@ extension LillistError: LocalizedError {
             return "This export was written by a newer version of Lillist (schema \(found); this app supports up to \(supported)). Update Lillist and try again."
         case .schemaVersionMismatch(let found, let current):
             return "This backup was made with a different data schema (version \(found); this app uses \(current)) and can't be restored."
+        case .syncStalled(let consecutiveFailures):
+            return "Sync stuck — \(consecutiveFailures) export attempts in a row failed. Your changes aren't reaching iCloud. Open iCloud Sync settings to recover."
         }
     }
 }

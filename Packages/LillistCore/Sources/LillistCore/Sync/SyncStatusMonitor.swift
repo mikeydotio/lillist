@@ -5,12 +5,29 @@ import Foundation
 public actor SyncStatusMonitor {
     public private(set) var currentStatus: SyncStatus = .idle
 
+    /// Issue #66: consecutive **recoverable** export failures since the last
+    /// successful export, with no successful export in between. Resets to 0
+    /// on any successful export or any *structural* failure (which already
+    /// surfaces on its own — see `apply(_:)`). Exposed so
+    /// `SyncDiagnosticsSnapshot` can capture it without SQLite forensics.
+    public private(set) var consecutiveExportFailures: Int = 0
+
+    /// Recoverable export failures in a row before the streak escalates to a
+    /// surfaced (red) `.syncStalled` error. `CloudKitErrorClassifier`
+    /// deliberately treats a *single* bare `partialFailure` as recoverable so
+    /// a one-off blip doesn't latch a permanent red badge (see its doc); this
+    /// threshold is what tells a one-off blip apart from a genuinely wedged
+    /// export — issue #66 found devices stuck for weeks with every local
+    /// change silently failing to upload while the badge stayed calm.
+    private let stallThreshold: Int
+
     private let bridge: CloudKitEventBridge
     private var consumeTask: Task<Void, Never>?
     private var statusContinuations: [UUID: AsyncStream<SyncStatus>.Continuation] = [:]
 
-    public init(bridge: CloudKitEventBridge) {
+    public init(bridge: CloudKitEventBridge, stallThreshold: Int = 3) {
         self.bridge = bridge
+        self.stallThreshold = stallThreshold
     }
 
     /// Cancel the consumer task. The `[weak self]` capture makes this
@@ -62,11 +79,13 @@ public actor SyncStatusMonitor {
             next.error = nil
         } else {
             next.inProgress = false
-            if let err = event.error {
+            if event.type == .export {
+                applyExportOutcome(event, into: &next)
+            } else if let err = event.error {
                 if event.recoverable {
                     // Transient (network / a record conflict the mirror reconciles
                     // / back-off): do NOT latch a persistent red error for a one-off
-                    // export blip. Keep the prior lastSyncedAt so the indicator
+                    // blip. Keep the prior lastSyncedAt so the indicator
                     // stays calm; a genuinely structural failure still surfaces.
                     next.error = nil
                 } else {
@@ -80,6 +99,36 @@ public actor SyncStatusMonitor {
         currentStatus = next
         for continuation in statusContinuations.values {
             continuation.yield(next)
+        }
+    }
+
+    /// Export-specific outcome handling. Layers `consecutiveExportFailures`
+    /// tracking on top of the general recoverable/structural split above: a
+    /// *single* recoverable export failure still doesn't latch a red error
+    /// (issue #54's fix stands), but a streak reaching `stallThreshold` does
+    /// (issue #66) — that's the difference between a one-off blip and an
+    /// export that has actually stopped working.
+    private func applyExportOutcome(_ event: CloudKitSyncEvent, into next: inout SyncStatus) {
+        guard let err = event.error else {
+            consecutiveExportFailures = 0
+            if let endedAt = event.endedAt {
+                next.lastSyncedAt = endedAt
+            }
+            next.error = nil
+            return
+        }
+        guard event.recoverable else {
+            // Structural failures (quota, auth, rejected, …) already surface
+            // on their own; the recoverable-only streak doesn't apply.
+            consecutiveExportFailures = 0
+            next.error = err
+            return
+        }
+        consecutiveExportFailures += 1
+        if consecutiveExportFailures >= stallThreshold {
+            next.error = .syncStalled(consecutiveFailures: consecutiveExportFailures)
+        } else {
+            next.error = nil
         }
     }
 }

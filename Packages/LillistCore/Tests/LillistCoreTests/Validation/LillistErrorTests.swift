@@ -50,11 +50,25 @@ struct LillistErrorTests {
             .migrationRequired,
             .migrationFailed(underlying: "test"),
             .modelUnavailable(searchedFilenames: ["LillistModel.momd"]),
-            .unsupportedExportVersion(found: 2, supported: 1)
+            .unsupportedExportVersion(found: 2, supported: 1),
+            .schemaVersionMismatch(found: 2, current: 1),
+            .syncStalled(consecutiveFailures: 3)
         ]
         for err in cases {
             #expect(err.localizedDescription.isEmpty == false)
         }
+    }
+
+    @Test("syncStalled carries the consecutive-failure count")
+    func syncStalledCarriesCount() {
+        let err = LillistError.syncStalled(consecutiveFailures: 5)
+        if case .syncStalled(let count) = err {
+            #expect(count == 5)
+        } else {
+            Issue.record("expected .syncStalled")
+        }
+        #expect(err.localizedDescription.contains("5"))
+        #expect(err != LillistError.syncStalled(consecutiveFailures: 6))
     }
 
     @Test("unsupportedExportVersion carries found and supported versions")
