@@ -171,6 +171,25 @@ public actor DevicePreferencesStore {
         defaults.set(Array(value), forKey: Self.remindersInFlightIDsKey)
     }
 
+    private static let remindersLastImportedTaskIDsKey = "lillist.devicePrefs.remindersLastImportedTaskIDs"
+    /// Issue #66: the `LillistTask.id`s created by the most recent drain pass
+    /// that imported at least one task — the one-shot "Undo Import" affordance's
+    /// source of truth. Overwritten only by a pass with `imported > 0` (a
+    /// later empty/no-op pass must not clear a still-undoable prior batch);
+    /// cleared once undone. Not a full history — only the latest import is
+    /// undoable, matching the "that import was a mistake" use case rather
+    /// than a general-purpose import log.
+    public func remindersLastImportedTaskIDs() -> [UUID] {
+        (defaults.stringArray(forKey: Self.remindersLastImportedTaskIDsKey) ?? []).compactMap(UUID.init)
+    }
+    public func setRemindersLastImportedTaskIDs(_ value: [UUID]) {
+        if value.isEmpty {
+            defaults.removeObject(forKey: Self.remindersLastImportedTaskIDsKey)
+        } else {
+            defaults.set(value.map(\.uuidString), forKey: Self.remindersLastImportedTaskIDsKey)
+        }
+    }
+
     // MARK: One-time migration marker
 
     private static let migrationFlagKey = "lillist.devicePrefs.cdPartitionMigrationCompleted"

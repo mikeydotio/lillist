@@ -27,22 +27,82 @@ public actor RemindersImporter {
     private let taskStore: TaskStore
     private let devicePreferences: DevicePreferencesStore
     private let diagnosticLog: DiagnosticSink?
+    private let autoImportLimit: Int
     private var isDraining = false
 
     /// Fallback title for a reminder with a blank title — `TaskStore.create`
     /// rejects empty titles, and we must still drain the item.
     private static let fallbackTitle = "Untitled"
 
+    /// Issue #66: ceiling on how many incomplete reminders an **automatic**
+    /// (activation-triggered, no UI to confirm through) pass will import
+    /// before treating the list as too big to drain silently. Large enough
+    /// that an ordinary automatic drain (a handful of items added since the
+    /// last launch) is never affected; small enough that the incident this
+    /// guards against (~1,900 reminders imported in one silent pass, with no
+    /// preview and no way to undo — the drained reminder is also deleted
+    /// from Reminders.app, so a full local restore was the only recourse) is
+    /// caught by a wide margin. The **manual** "Drain now" path is never
+    /// subject to this limit — the Settings UI gates it behind
+    /// ``preview(listID:)`` and an explicit confirmation instead.
+    public static let defaultAutoImportLimit = 25
+
     public init(
         gateway: RemindersGateway,
         taskStore: TaskStore,
         devicePreferences: DevicePreferencesStore,
-        diagnosticLog: DiagnosticSink? = nil
+        diagnosticLog: DiagnosticSink? = nil,
+        autoImportLimit: Int = defaultAutoImportLimit
     ) {
         self.gateway = gateway
         self.taskStore = taskStore
         self.devicePreferences = devicePreferences
         self.diagnosticLog = diagnosticLog
+        self.autoImportLimit = autoImportLimit
+    }
+
+    /// Issue #66: a non-mutating count of what draining `listID` would do
+    /// right now — the manual "Drain now" UI's preview, shown in a
+    /// confirmation dialog before anything is imported or removed from
+    /// Reminders. `nil` when access isn't granted or the list can't be read
+    /// (the caller falls back to its existing authorization/list-unavailable
+    /// messaging in that case; this is purely the "how many" signal for the
+    /// happy path).
+    public func preview(listID: String) async -> RemindersDrainPreview? {
+        guard await gateway.authorization() == .authorized else { return nil }
+        guard let items = try? await gateway.items(inListID: listID) else { return nil }
+        let candidateCount = items.filter { !$0.isCompleted }.count
+        return RemindersDrainPreview(listID: listID, candidateCount: candidateCount)
+    }
+
+    /// Issue #66: undo the most recent drain pass that imported at least one
+    /// task — soft-deletes (moves to Trash) exactly those tasks. This can
+    /// only undo the **Lillist** side: the drained reminders were already
+    /// removed from Reminders.app during the import (existing, unchanged
+    /// behavior) and cannot be restored there. Guarded by the same
+    /// `isDraining` flag as a drain pass, so an undo can't race an in-flight
+    /// import clobbering the batch it's about to read.
+    @discardableResult
+    public func undoLastImport() async -> RemindersUndoOutcome {
+        guard !isDraining else { return .busy }
+        isDraining = true
+        defer { isDraining = false }
+
+        let ids = await devicePreferences.remindersLastImportedTaskIDs()
+        guard !ids.isEmpty else { return .nothingToUndo }
+
+        var undone = 0
+        for id in ids {
+            do {
+                try await taskStore.softDelete(id: id)
+                undone += 1
+            } catch {
+                // Already gone (hard-deleted since, or a prior partial
+                // undo) — still counts toward clearing the batch below.
+            }
+        }
+        await devicePreferences.setRemindersLastImportedTaskIDs([])
+        return .undone(count: undone)
     }
 
     /// Drain the configured list when the feature is enabled, a list is
@@ -113,6 +173,22 @@ public actor RemindersImporter {
             return await finish(.completed(imported: 0, deletedWithoutImport: 0), listID: listID, trigger: trigger)
         }
 
+        // Issue #66: an automatic pass never silently imports more than
+        // autoImportLimit — it imports nothing and reports
+        // .tooManyToAutoImport, so a large batch is reviewed and confirmed
+        // through the manual path instead. The manual path itself is never
+        // gated here — its UI already gated the user through preview(_:)
+        // before calling drain(listID:).
+        if trigger == "auto" {
+            let candidateCount = items.filter { !$0.isCompleted }.count
+            guard candidateCount <= autoImportLimit else {
+                return await finish(
+                    .tooManyToAutoImport(listID: listID, count: candidateCount),
+                    listID: listID, trigger: trigger
+                )
+            }
+        }
+
         var inFlight = await devicePreferences.remindersInFlightIDs()
         // Prune markers for ids no longer in the list so the set stays bounded
         // (an item still mid-flight is, by definition, still present).
@@ -124,6 +200,7 @@ public actor RemindersImporter {
 
         var imported = 0
         var deletedWithoutImport = 0
+        var importedTaskIDs: [UUID] = []
         for item in items {
             let wasAlreadyInFlight = inFlight.contains(item.id)
             if !wasAlreadyInFlight {
@@ -137,7 +214,8 @@ public actor RemindersImporter {
                 // Create first, then record the id, so a crash before delete
                 // can't re-create the task on the next pass.
                 do {
-                    try await createTask(from: item)
+                    let taskID = try await createTask(from: item)
+                    importedTaskIDs.append(taskID)
                     imported += 1
                 } catch {
                     // Couldn't create — leave the reminder so a later pass retries.
@@ -158,6 +236,12 @@ public actor RemindersImporter {
             } catch {
                 // Keep the marker; the next pass deletes without re-creating.
             }
+        }
+        // Issue #66: record this pass's imports as the undoable batch — but
+        // only when it actually imported something. A later empty/no-op
+        // pass must not clear a still-undoable prior batch.
+        if !importedTaskIDs.isEmpty {
+            await devicePreferences.setRemindersLastImportedTaskIDs(importedTaskIDs)
         }
         return await finish(
             .completed(imported: imported, deletedWithoutImport: deletedWithoutImport),
@@ -193,6 +277,9 @@ public actor RemindersImporter {
             payload["imported"] = .int(imported)
             payload["deletedWithoutImport"] = .int(deletedWithoutImport)
         }
+        if case .tooManyToAutoImport(_, let count) = outcome {
+            payload["candidateCount"] = .int(count)
+        }
         return payload
     }
 
@@ -204,11 +291,13 @@ public actor RemindersImporter {
         case .busy: return "busy"
         case .listUnavailable: return "listUnavailable"
         case .fetchFailed: return "fetchFailed"
+        case .tooManyToAutoImport: return "tooManyToAutoImport"
         case .completed: return "completed"
         }
     }
 
-    private func createTask(from item: ReminderItem) async throws {
+    @discardableResult
+    private func createTask(from item: ReminderItem) async throws -> UUID {
         let title = TaskStore.isCommittableTitle(item.title) ? item.title : Self.fallbackTitle
         let id = try await taskStore.create(
             title: title,
@@ -216,10 +305,11 @@ public actor RemindersImporter {
             parent: nil,
             placement: .top
         )
-        guard let due = item.dueDate else { return }
+        guard let due = item.dueDate else { return id }
         try await taskStore.update(id: id) { draft in
             draft.deadline = due
             draft.deadlineHasTime = item.dueHasTime
         }
+        return id
     }
 }
