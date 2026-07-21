@@ -305,7 +305,9 @@ final class AppEnvironment {
             reset: self.dataStoreReset,
             importer: Importer(persistence: persistence),
             preferences: preferencesStore,
-            packageDirectory: backupPackageDirectory
+            packageDirectory: backupPackageDirectory,
+            diagnosticLog: diagnosticLog,
+            process: .macApp
         )
 
         // Tasks from Reminders: EventKit gateway + drain importer (iOS parity).

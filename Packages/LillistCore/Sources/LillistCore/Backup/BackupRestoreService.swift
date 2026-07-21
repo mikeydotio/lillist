@@ -23,17 +23,28 @@ public final class BackupRestoreService {
     private let importer: Importer
     private let preferences: PreferencesStore
     private let packageDirectory: URL
+    /// Issue #66: restore is a major, destructive, hard-to-reverse operation
+    /// that — before this — left no diagnostic trace at all; the #66
+    /// investigation could not confirm whether or when a restore happened on
+    /// the affected device. `nil` (the default) preserves prior behavior for
+    /// any caller that doesn't wire a sink.
+    private let diagnosticLog: DiagnosticSink?
+    private let process: DiagProcess
 
     public init(
         reset: any BackupDataResetting,
         importer: Importer,
         preferences: PreferencesStore,
-        packageDirectory: URL
+        packageDirectory: URL,
+        diagnosticLog: DiagnosticSink? = nil,
+        process: DiagProcess = .app
     ) {
         self.reset = reset
         self.importer = importer
         self.preferences = preferences
         self.packageDirectory = packageDirectory
+        self.diagnosticLog = diagnosticLog
+        self.process = process
     }
 
     /// What to restore from: the live package, or a specific snapshot zip.
@@ -71,31 +82,73 @@ public final class BackupRestoreService {
     /// captured preferences.
     @discardableResult
     public func restore(from source: RestoreSource) async throws -> Importer.ImportSummary {
-        let resolved = try resolveReader(source)
-        defer { resolved.cleanup() }
-        let reader = resolved.reader
+        do {
+            let resolved = try resolveReader(source)
+            defer { resolved.cleanup() }
+            let reader = resolved.reader
 
-        let pre = try Self.preflight(reader: reader)
-        guard pre.isCompatible else {
-            throw LillistError.schemaVersionMismatch(
-                found: pre.fileCloudKitSchemaVersion,
-                current: pre.currentCloudKitSchemaVersion
+            let pre = try Self.preflight(reader: reader)
+            guard pre.isCompatible else {
+                let error = LillistError.schemaVersionMismatch(
+                    found: pre.fileCloudKitSchemaVersion,
+                    current: pre.currentCloudKitSchemaVersion
+                )
+                await emit(source: source, outcome: "incompatible", summary: nil)
+                throw error
+            }
+
+            // Wipe local + iCloud, rebuild empty.
+            try await reset.resetAllData()
+
+            // Replace with the backup's contents (atomic, all-or-nothing).
+            let document = try reader.assembleDocument()
+            let summary = try await importer.apply(
+                document: document,
+                policy: .replaceExisting,
+                assetsDirectory: reader.assetsDirectory
             )
+            // Importer does not touch preferences — apply the captured set here.
+            try await applyPreferences(document.preferences)
+            await emit(source: source, outcome: "completed", summary: summary)
+            return summary
+        } catch {
+            // The `incompatible` path already emitted above (it needs its own
+            // outcome label, not the generic "failed"); every OTHER throw —
+            // reset failure, corrupt package, import failure — lands here.
+            if case LillistError.schemaVersionMismatch = error {
+                throw error
+            }
+            await emit(source: source, outcome: "failed", summary: nil)
+            throw error
         }
+    }
 
-        // Wipe local + iCloud, rebuild empty.
-        try await reset.resetAllData()
+    /// Every return path — success, schema refusal, or any other failure —
+    /// routes through here, so a restore never completes (or fails) without
+    /// a matching diagnostic record. Issue #66's investigation had no way to
+    /// confirm whether or when a restore happened; this closes that gap.
+    private func emit(source: RestoreSource, outcome: String, summary: Importer.ImportSummary?) async {
+        guard let diagnosticLog else { return }
+        var payload: [String: DiagValue] = [
+            "source": .string(sourceName(source)),
+            "outcome": .string(outcome)
+        ]
+        if let summary {
+            payload["tasksInserted"] = .int(summary.tasksInserted)
+            payload["tasksUpdated"] = .int(summary.tasksUpdated)
+            payload["tasksSkipped"] = .int(summary.tasksSkipped)
+        }
+        await diagnosticLog.log(DiagnosticEvent(
+            at: Date(), seq: 0, process: process, category: .data,
+            name: "backup.restore", payload: payload
+        ))
+    }
 
-        // Replace with the backup's contents (atomic, all-or-nothing).
-        let document = try reader.assembleDocument()
-        let summary = try await importer.apply(
-            document: document,
-            policy: .replaceExisting,
-            assetsDirectory: reader.assetsDirectory
-        )
-        // Importer does not touch preferences — apply the captured set here.
-        try await applyPreferences(document.preferences)
-        return summary
+    private func sourceName(_ source: RestoreSource) -> String {
+        switch source {
+        case .livePackage: return "livePackage"
+        case .snapshotZip: return "snapshotZip"
+        }
     }
 
     // MARK: - Internals

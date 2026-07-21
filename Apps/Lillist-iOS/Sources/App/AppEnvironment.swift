@@ -355,7 +355,9 @@ final class AppEnvironment {
             reset: self.dataStoreReset,
             importer: Importer(persistence: persistence),
             preferences: preferencesStore,
-            packageDirectory: backupPackageDirectory
+            packageDirectory: backupPackageDirectory,
+            diagnosticLog: diagnosticLog,
+            process: .app
         )
 
         // Tasks from Reminders: EventKit gateway + drain importer. The
