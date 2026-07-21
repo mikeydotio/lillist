@@ -3,6 +3,30 @@
 All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [v0.17.0] - 2026-07-21
+
+### Added
+- cap the automatic drain and add preview + undo (63125f6f)
+- instrument restore with a diagnostic event (fb0f9c08)
+- merge LillistTask rows that share one app id after a resync (ab7859fc)
+- surface recovery guidance and give macOS parity with iOS's Reset tools (39c6f675)
+- capture export-stall health in diagnostic packages (e64200ed)
+- detect persistent CloudKit export stalls (65ffb939)
+
+### Fixed
+- correct the divergence warning's disproven root-cause claim (d3de45f0)
+
+### Changed
+- Merge pull request #68 from mikeydotio/chore/restore-macos-build-number (6b23de2f)
+- Merge pull request #67 from mikeydotio/fix/66-icloud-sync-stall-detection (a3b11671)
+- Merge pull request #65 from mikeydotio/chore/release-v0.16.1 (979daa7a)
+
+### Maintenance
+- restore macOS build number to 51 (v0.16.1 shipped 50) (80fa056f)
+- bump iOS build number to 89 (73403722)
+
+_[manual]_
+
 ## [v0.16.1] - 2026-07-21
 
 ### Fixed
