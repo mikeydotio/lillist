@@ -26,7 +26,17 @@ final class ICloudSyncDivergenceTests: XCTestCase {
         let result = warning(status: .idle(lastSync: Date()), local: 22, mirrored: 0)
         XCTAssertNotNil(result)
         XCTAssertTrue(result!.message.contains("22"))
-        XCTAssertTrue(result!.message.lowercased().contains("environment"))
+    }
+
+    /// Issue #66: the diagnostic packages that motivated this warning
+    /// disproved the "different iCloud (CloudKit) environments" theory the
+    /// original copy asserted — all four devices shared one Production
+    /// container/account. Pins that the message no longer guesses at a
+    /// specific (wrong) cause.
+    func test_message_doesNotClaimAnEnvironmentSplit() {
+        let result = warning(status: .idle(lastSync: Date()), local: 22, mirrored: 0)
+        XCTAssertNotNil(result)
+        XCTAssertFalse(result!.message.lowercased().contains("environment"))
     }
 
     // MARK: - Healthy / partial: silent

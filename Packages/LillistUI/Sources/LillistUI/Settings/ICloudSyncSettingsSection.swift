@@ -218,13 +218,32 @@ public struct ICloudSyncSettingsSection: View {
     /// Fires only when **every** condition holds:
     /// - iCloud Sync is the selected mode.
     /// - `status` is `.idle(lastSync: .some)` — i.e. NOT `.paused` (account
-    ///   already surfaced), NOT `.error` (already surfaced), NOT
-    ///   `.inProgress` (mid-sync), AND the engine has completed at least one
-    ///   CloudKit event *this session* (`.idle(lastSync: nil)` is the
-    ///   ambiguous pre-first-event window — see `statusLine`'s doc — and is
-    ///   deliberately excluded so a fresh launch never false-positives).
+    ///   already surfaced), NOT `.error` (already surfaced — including the
+    ///   `.syncStalled` escalation from `SyncStatusMonitor`, issue #66),
+    ///   NOT `.inProgress` (mid-sync), AND the engine has completed at
+    ///   least one CloudKit event *this session* (`.idle(lastSync: nil)` is
+    ///   the ambiguous pre-first-event window — see `statusLine`'s doc —
+    ///   and is deliberately excluded so a fresh launch never
+    ///   false-positives).
     /// - There's at least one local task to mirror.
     /// - None of them have mirrored.
+    ///
+    /// Deliberately **not** broadened to `local > mirrored` (a partial
+    /// mismatch): that shape is indistinguishable from a device that just
+    /// enabled sync and is still catching up, which must stay silent. A
+    /// *sustained* partial stall is instead `SyncStatusMonitor`'s job (issue
+    /// #66's `consecutiveExportFailures` streak) — this function has no
+    /// memory across calls to tell "still catching up" from "stuck," so it
+    /// only ever fires the one unambiguous shape: nothing at all has
+    /// mirrored while sync claims to be caught up.
+    ///
+    /// Issue #66 traced two real devices into this exact state — the
+    /// message below used to name "different iCloud (CloudKit)
+    /// environments" as the cause; the #66 diagnostic packages disproved
+    /// that (all four devices shared one Production container/account) and
+    /// found the real cause is a wedged CloudKit export, so the copy no
+    /// longer guesses at a specific cause and instead points at the signals
+    /// that do explain it.
     ///
     /// `nonisolated static` for the same reason as `statusLine`: testable
     /// without a live container or the MainActor.
@@ -240,7 +259,7 @@ public struct ICloudSyncSettingsSection: View {
         guard let mirrored = mirroredCount, mirrored == 0 else { return nil }
         return DivergenceWarning(
             title: String(localized: "This device may not be sharing tasks", bundle: .module),
-            message: String(localized: "iCloud sync is on and your account is available, but none of your \(local) tasks have reached iCloud yet. This can happen when your devices are signed into different iCloud (CloudKit) environments. Export a diagnostic package from each device and compare the CloudKit Environment shown in Diagnostics.", bundle: .module)
+            message: String(localized: "iCloud sync is on and your account is available, but none of your \(local) tasks have reached iCloud yet. This is expected briefly after enabling sync. If it doesn't clear up, look for a “Sync stuck” message in iCloud Sync status, or export a diagnostic package from Settings → Diagnostics for more detail.", bundle: .module)
         )
     }
 
