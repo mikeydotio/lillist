@@ -29,10 +29,19 @@ public protocol SyncIndicatorMonitor: AnyObject {
     /// state. The app calls this once during `bootstrap()`. Static/stub
     /// monitors (previews, screen-tour tests) get the default no-op.
     func start() async
+    /// Issue #66: best-effort export-stall signals, for diagnostics capture
+    /// (`SyncDiagnosticsSnapshot.make(exportHealth:)`). Stand-ins with no
+    /// real CloudKit event source get the default `nil` via the extension
+    /// below; `CloudKitSyncStatusAdapter` overrides it to forward to its
+    /// wrapped `LillistCore.SyncStatusMonitor`.
+    var exportHealth: LillistCore.SyncStatusMonitor.ExportHealth? { get async }
 }
 
 public extension SyncIndicatorMonitor {
     func start() async {}
+    var exportHealth: LillistCore.SyncStatusMonitor.ExportHealth? {
+        get async { nil }
+    }
 }
 
 /// Stub used until Plan 2's `LillistCore.SyncStatusMonitor` is bridged into

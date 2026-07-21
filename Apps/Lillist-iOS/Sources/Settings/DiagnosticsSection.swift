@@ -80,12 +80,16 @@ final class DiagnosticsExportModel {
         defer { isPreparing = false }
         // Issue #54: fold this device's CloudKit provenance into the export so
         // a Dev/Prod split (or an account fault) is visible without a Mac.
+        // Issue #66: also fold in export-stall signals (consecutive failure
+        // streak + last raw CKError) so a wedged export is self-explaining
+        // without SQLite forensics.
         let counts = (try? await env.taskStore.syncCounts()) ?? .init(local: 0, mirrored: 0)
         let sync = SyncDiagnosticsSnapshot.make(
             containerIdentifier: StoreConfiguration.defaultCloudKitContainerIdentifier,
             accountState: env.accountState,
             syncMode: env.currentSyncMode,
-            counts: counts
+            counts: counts,
+            exportHealth: await env.syncMonitor.exportHealth
         )
         let metadata = DiagnosticPackageBuilder.Metadata(
             buildVersion: env.buildVersion,

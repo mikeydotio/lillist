@@ -21,6 +21,13 @@ struct RemindersPane: View {
     @State private var didLoad = false
     @State private var isDraining = false
     @State private var drainMessage: LocalizedStringKey?
+    /// Issue #66: the list + count pending the "Import N reminders?"
+    /// confirmation — set by `drainNow()` before anything is imported or
+    /// removed from Reminders, cleared once the user confirms or cancels.
+    @State private var pendingDrain: RemindersDrainPreview?
+    /// Whether the most recent drain imported at least one task, so an
+    /// "Undo" affordance is worth showing alongside `drainMessage`.
+    @State private var lastImportIsUndoable = false
 
     var body: some View {
         Form {
@@ -49,6 +56,10 @@ struct RemindersPane: View {
                                     .font(.footnote)
                                     .foregroundStyle(.secondary)
                             }
+                            if lastImportIsUndoable {
+                                Button("Undo") { Task { await undoLastImport() } }
+                                    .font(.footnote)
+                            }
                         }
                     case .denied:
                         Text("Reminders access is off. Turn it on in System Settings ▸ Privacy & Security ▸ Reminders.")
@@ -68,6 +79,29 @@ struct RemindersPane: View {
         }
         .formStyle(.grouped)
         .task { await loadIfNeeded() }
+        // Issue #66: preview + confirm before a manual drain commits, rather
+        // than silently draining whatever's in the list.
+        .confirmationDialog(
+            confirmTitle,
+            isPresented: pendingDrainBinding,
+            titleVisibility: .visible
+        ) {
+            Button("Import") { Task { await confirmPendingDrain() } }
+            Button("Cancel", role: .cancel) { pendingDrain = nil }
+        } message: {
+            Text("This removes them from Reminders and adds them as tasks in Lillist.")
+        }
+    }
+
+    private var confirmTitle: String {
+        guard let count = pendingDrain?.candidateCount else { return "" }
+        return count == 1
+            ? String(localized: "Import 1 reminder?")
+            : String(localized: "Import \(count) reminders?")
+    }
+
+    private var pendingDrainBinding: Binding<Bool> {
+        Binding(get: { pendingDrain != nil }, set: { if !$0 { pendingDrain = nil } })
     }
 
     // MARK: Rows
@@ -149,8 +183,30 @@ struct RemindersPane: View {
         lists = (try? await environment.remindersGateway.lists()) ?? []
     }
 
+    /// Issue #66: preview the list before committing — an empty/unreadable
+    /// preview skips straight to `performDrain`, whose existing
+    /// outcome-based messaging (`notAuthorized`/`listUnavailable`/`fetchFailed`/
+    /// "No reminders to import") already covers those cases without a
+    /// pointless confirmation dialog. Only a non-empty candidate count pauses
+    /// for the "Import N reminders?" confirmation.
     private func drainNow() async {
         guard let listID = selectedListID else { return }
+        guard let preview = await environment.remindersImporter.preview(listID: listID),
+              preview.candidateCount > 0
+        else {
+            await performDrain(listID: listID)
+            return
+        }
+        pendingDrain = preview
+    }
+
+    private func confirmPendingDrain() async {
+        guard let listID = pendingDrain?.listID else { return }
+        pendingDrain = nil
+        await performDrain(listID: listID)
+    }
+
+    private func performDrain(listID: String) async {
         isDraining = true
         // Drain the in-memory selection directly rather than going through
         // `drainIfNeeded()` (which re-reads the *persisted* list id). That
@@ -160,6 +216,24 @@ struct RemindersPane: View {
         let outcome = await environment.remindersImporter.drain(listID: listID)
         isDraining = false
         drainMessage = message(for: outcome)
+        lastImportIsUndoable = outcome.importedCount > 0
+    }
+
+    /// Issue #66: undo the most recent import — soft-deletes the tasks it
+    /// created. Cannot restore the drained reminders to Reminders.app (they
+    /// were already removed as part of the import); the message says so.
+    private func undoLastImport() async {
+        switch await environment.remindersImporter.undoLastImport() {
+        case .undone(let count):
+            drainMessage = count == 1
+                ? "Undid 1 imported task. The original reminder was already removed and won't come back."
+                : "Undid \(count) imported tasks. The original reminders were already removed and won't come back."
+        case .nothingToUndo:
+            drainMessage = "Nothing to undo."
+        case .busy:
+            drainMessage = "Import already running."
+        }
+        lastImportIsUndoable = false
     }
 
     /// Maps a drain outcome to its Preferences message. Kept per-app (not a
@@ -183,10 +257,13 @@ struct RemindersPane: View {
             return "Couldn't read that list. Try again."
         case .busy:
             return "Import already running."
-        case .featureDisabled, .noListSelected:
+        case .featureDisabled, .noListSelected, .tooManyToAutoImport:
             // Not reachable via `drain(listID:)` — this view never calls
-            // `drainIfNeeded()`, the only entry point that can produce these.
-            // Handled defensively for exhaustiveness.
+            // `drainIfNeeded()`, the only entry point that can produce these
+            // (tooManyToAutoImport is specifically the *automatic* path's
+            // limit; the manual "Drain now" flow here is never subject to
+            // it — see RemindersImporter.performDrain). Handled defensively
+            // for exhaustiveness.
             return "Turn on Reminders import first."
         }
     }

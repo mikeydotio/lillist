@@ -50,6 +50,18 @@ public struct ICloudSyncSettingsSection: View {
         }
     }
 
+    /// Issue #66: a confirmed local/mirrored gap, with guidance toward
+    /// recovery — see `recoveryAdvisory(mode:status:localCount:mirroredCount:)`.
+    public struct RecoveryAdvisory: Equatable, Sendable {
+        public let title: String
+        public let message: String
+
+        public init(title: String, message: String) {
+            self.title = title
+            self.message = message
+        }
+    }
+
     public struct Actions {
         public let onToggle: (Bool) -> Void
         public let onOpenSystemSettings: () -> Void
@@ -123,6 +135,22 @@ public struct ICloudSyncSettingsSection: View {
                 }
                 .foregroundStyle(RainbowPalette.cautionAmber.ink)
             }
+
+            // Issue #66: what to DO about a confirmed mirror gap — complements
+            // `divergenceWarning` (which explains something looks wrong) and
+            // also fires once that gap has escalated to `SyncStatusMonitor`'s
+            // `.syncStalled` red badge, when recovery guidance is most needed.
+            // See `recoveryAdvisory`'s doc for why this points at the existing
+            // Reset tools rather than a new one-click action.
+            if let advisory = recoveryAdvisory {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(advisory.title)
+                        .font(.footnote.bold())
+                    Text(advisory.message)
+                        .font(.footnote)
+                }
+                .foregroundStyle(RainbowPalette.cautionAmber.ink)
+            }
         } header: {
             HStack {
                 Text("iCloud Sync")
@@ -154,6 +182,17 @@ public struct ICloudSyncSettingsSection: View {
     /// `body` to read directly off `viewState` — mirrors `statusLine`.
     private var divergenceWarning: DivergenceWarning? {
         Self.divergenceWarning(
+            mode: viewState.mode,
+            status: viewState.status,
+            localCount: viewState.localTaskCount,
+            mirroredCount: viewState.mirroredTaskCount
+        )
+    }
+
+    /// Instance-side wrapper around the pure static decision function, for
+    /// `body` to read directly off `viewState` — mirrors `divergenceWarning`.
+    private var recoveryAdvisory: RecoveryAdvisory? {
+        Self.recoveryAdvisory(
             mode: viewState.mode,
             status: viewState.status,
             localCount: viewState.localTaskCount,
@@ -218,13 +257,32 @@ public struct ICloudSyncSettingsSection: View {
     /// Fires only when **every** condition holds:
     /// - iCloud Sync is the selected mode.
     /// - `status` is `.idle(lastSync: .some)` — i.e. NOT `.paused` (account
-    ///   already surfaced), NOT `.error` (already surfaced), NOT
-    ///   `.inProgress` (mid-sync), AND the engine has completed at least one
-    ///   CloudKit event *this session* (`.idle(lastSync: nil)` is the
-    ///   ambiguous pre-first-event window — see `statusLine`'s doc — and is
-    ///   deliberately excluded so a fresh launch never false-positives).
+    ///   already surfaced), NOT `.error` (already surfaced — including the
+    ///   `.syncStalled` escalation from `SyncStatusMonitor`, issue #66),
+    ///   NOT `.inProgress` (mid-sync), AND the engine has completed at
+    ///   least one CloudKit event *this session* (`.idle(lastSync: nil)` is
+    ///   the ambiguous pre-first-event window — see `statusLine`'s doc —
+    ///   and is deliberately excluded so a fresh launch never
+    ///   false-positives).
     /// - There's at least one local task to mirror.
     /// - None of them have mirrored.
+    ///
+    /// Deliberately **not** broadened to `local > mirrored` (a partial
+    /// mismatch): that shape is indistinguishable from a device that just
+    /// enabled sync and is still catching up, which must stay silent. A
+    /// *sustained* partial stall is instead `SyncStatusMonitor`'s job (issue
+    /// #66's `consecutiveExportFailures` streak) — this function has no
+    /// memory across calls to tell "still catching up" from "stuck," so it
+    /// only ever fires the one unambiguous shape: nothing at all has
+    /// mirrored while sync claims to be caught up.
+    ///
+    /// Issue #66 traced two real devices into this exact state — the
+    /// message below used to name "different iCloud (CloudKit)
+    /// environments" as the cause; the #66 diagnostic packages disproved
+    /// that (all four devices shared one Production container/account) and
+    /// found the real cause is a wedged CloudKit export, so the copy no
+    /// longer guesses at a specific cause and instead points at the signals
+    /// that do explain it.
     ///
     /// `nonisolated static` for the same reason as `statusLine`: testable
     /// without a live container or the MainActor.
@@ -240,7 +298,51 @@ public struct ICloudSyncSettingsSection: View {
         guard let mirrored = mirroredCount, mirrored == 0 else { return nil }
         return DivergenceWarning(
             title: String(localized: "This device may not be sharing tasks", bundle: .module),
-            message: String(localized: "iCloud sync is on and your account is available, but none of your \(local) tasks have reached iCloud yet. This can happen when your devices are signed into different iCloud (CloudKit) environments. Export a diagnostic package from each device and compare the CloudKit Environment shown in Diagnostics.", bundle: .module)
+            message: String(localized: "iCloud sync is on and your account is available, but none of your \(local) tasks have reached iCloud yet. This is expected briefly after enabling sync. If it doesn't clear up, look for a “Sync stuck” message in iCloud Sync status, or export a diagnostic package from Settings → Diagnostics for more detail.", bundle: .module)
+        )
+    }
+
+    /// Issue #66: guidance toward recovery once there's a *confirmed*
+    /// local/mirrored gap — a narrower trigger than `divergenceWarning`'s
+    /// exact `mirrored == 0` shape (this also fires for a partial gap,
+    /// `0 < mirrored < local`), and unlike `divergenceWarning` this does
+    /// **not** go silent once `status` has escalated to `.error` — that's
+    /// precisely when recovery help is most needed (the badge already
+    /// speaks for itself, so `divergenceWarning`'s inline text would be
+    /// redundant there, but this advisory is not).
+    ///
+    /// Deliberately does **not** offer a one-click destructive action or try
+    /// to guess which of "reload from iCloud" vs. "start fresh everywhere"
+    /// is safe: the two real #66 devices had the **identical** mirror-count
+    /// shape (`mirrored == 0`) despite needing opposite recovery paths — one
+    /// held tasks that existed nowhere else, the other held nothing unique.
+    /// Only the person using the device knows which is true, so this points
+    /// at the existing, already-safe Reset tools (Settings → Debug → Reset
+    /// on iOS; the Advanced pane on macOS) rather than inventing a new
+    /// action whose safety this function can't actually determine.
+    ///
+    /// `nonisolated static` for the same reason as `statusLine`: testable
+    /// without a live container or the MainActor.
+    nonisolated static func recoveryAdvisory(
+        mode: SyncMode,
+        status: SyncIndicator,
+        localCount: Int?,
+        mirroredCount: Int?
+    ) -> RecoveryAdvisory? {
+        guard mode == .iCloudSync else { return nil }
+        switch status {
+        case .paused, .inProgress:
+            return nil
+        case .idle(let lastSync):
+            guard lastSync != nil else { return nil }
+        case .error:
+            break
+        }
+        guard let local = localCount, local > 0 else { return nil }
+        guard let mirrored = mirroredCount, mirrored < local else { return nil }
+        return RecoveryAdvisory(
+            title: String(localized: "Recover this device's sync", bundle: .module),
+            message: String(localized: "\(local - mirrored) of \(local) tasks on this device haven't reached iCloud. Back up your data first (Settings → Backups), then use the Reset tools: reload this device from iCloud if your other devices already have your tasks, or start fresh everywhere only if this device holds tasks that exist nowhere else.", bundle: .module)
         )
     }
 

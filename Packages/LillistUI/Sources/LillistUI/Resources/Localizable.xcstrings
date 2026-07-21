@@ -109,6 +109,9 @@
     "%lld tasks archived. Tap to undo." : {
 
     },
+    "%lld of %lld tasks on this device haven't reached iCloud. Back up your data first (Settings → Backups), then use the Reset tools: reload this device from iCloud if your other devices already have your tasks, or start fresh everywhere only if this device holds tasks that exist nowhere else." : {
+
+    },
     "^%@" : {
 
     },
@@ -452,7 +455,7 @@
     "iCloud Sync" : {
 
     },
-    "iCloud sync is on and your account is available, but none of your %lld tasks have reached iCloud yet. This can happen when your devices are signed into different iCloud (CloudKit) environments. Export a diagnostic package from each device and compare the CloudKit Environment shown in Diagnostics." : {
+    "iCloud sync is on and your account is available, but none of your %lld tasks have reached iCloud yet. This is expected briefly after enabling sync. If it doesn't clear up, look for a “Sync stuck” message in iCloud Sync status, or export a diagnostic package from Settings → Diagnostics for more detail." : {
 
     },
     "iCloud Unavailable" : {
@@ -630,6 +633,9 @@
 
     },
     "Reconfiguring sync…" : {
+
+    },
+    "Recover this device's sync" : {
 
     },
     "Remove tag %@" : {

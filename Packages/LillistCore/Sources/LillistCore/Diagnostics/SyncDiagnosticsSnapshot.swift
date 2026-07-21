@@ -127,6 +127,31 @@ public struct SyncDiagnosticsSnapshot: Codable, Sendable, Equatable {
     /// From `TaskStore.SyncCounts` at capture time.
     public let mirroredCount: Int
     public let localCount: Int
+    /// Issue #66: consecutive **recoverable** export failures since the last
+    /// success, from `SyncStatusMonitor.consecutiveExportFailures` at capture
+    /// time. `nil` on packages built before this field existed, or when no
+    /// live monitor was available to sample — decodes missing keys to `nil`,
+    /// so older manifests remain fully readable.
+    public let consecutiveExportFailures: Int?
+    /// Raw `CKError` domain/code behind the most recent export failure this
+    /// session, if any — e.g. `domain: "CKErrorDomain", code: 2` for the bare
+    /// `partialFailure` that wedged two #66 devices. Persists across a later
+    /// successful export (it's forensic history, not current health — read
+    /// alongside `consecutiveExportFailures`: `0` there with a populated
+    /// error here means "hit this once, but recovered"). `nil` when no
+    /// export has failed this session, or the failure wasn't a `CKError`.
+    public let lastExportErrorDomain: String?
+    public let lastExportErrorCode: Int?
+    /// Best-effort count of local `LillistTask` rows `NSPersistentCloudKitContainer`
+    /// hasn't yet assigned a CloudKit record identity to (`max(0, localCount
+    /// - mirroredCount)`). Named separately from the two counts above purely
+    /// for manifest readability. Deliberately scoped to `LillistTask` only —
+    /// the mirroring-metadata detail that distinguishes *which* entities are
+    /// stuck (tasks vs. journal entries vs. smart filters, as issue #66's
+    /// forensics needed to fully characterize a stall) lives in Core Data's
+    /// private `NSPersistentCloudKitContainer` bookkeeping tables, which this
+    /// type deliberately does not read (unsupported, unstable private schema).
+    public let pendingUploadCount: Int?
 
     public init(
         cloudKitEnvironment: CloudKitEnvironment,
@@ -134,7 +159,11 @@ public struct SyncDiagnosticsSnapshot: Codable, Sendable, Equatable {
         accountStatusLabel: String,
         syncMode: SyncMode,
         mirroredCount: Int,
-        localCount: Int
+        localCount: Int,
+        consecutiveExportFailures: Int? = nil,
+        lastExportErrorDomain: String? = nil,
+        lastExportErrorCode: Int? = nil,
+        pendingUploadCount: Int? = nil
     ) {
         self.cloudKitEnvironment = cloudKitEnvironment
         self.cloudKitContainerIdentifier = cloudKitContainerIdentifier
@@ -142,6 +171,10 @@ public struct SyncDiagnosticsSnapshot: Codable, Sendable, Equatable {
         self.syncMode = syncMode
         self.mirroredCount = mirroredCount
         self.localCount = localCount
+        self.consecutiveExportFailures = consecutiveExportFailures
+        self.lastExportErrorDomain = lastExportErrorDomain
+        self.lastExportErrorCode = lastExportErrorCode
+        self.pendingUploadCount = pendingUploadCount
     }
 }
 
@@ -187,14 +220,19 @@ extension SyncDiagnosticsSnapshot {
 
     /// Convenience assembly used by both app targets' diagnostics screens.
     /// Pure except for the (synchronous) entitlement read; callers gather the
-    /// async pieces (`TaskStore.syncCounts()`, live account state) themselves
-    /// and hand them in.
+    /// async pieces (`TaskStore.syncCounts()`, live account state,
+    /// `SyncStatusMonitor.exportHealth`) themselves and hand them in.
+    ///
+    /// - Parameter exportHealth: issue #66's export-stall signals, from
+    ///   `SyncStatusMonitor.exportHealth`. `nil` when no live monitor was
+    ///   available to sample (e.g. a caller without a running sync stack).
     public static func make(
         reader: EntitlementReading = SelfEntitlementReader(),
         containerIdentifier: String,
         accountState: iCloudAccountState,
         syncMode: SyncMode,
-        counts: TaskStore.SyncCounts
+        counts: TaskStore.SyncCounts,
+        exportHealth: SyncStatusMonitor.ExportHealth? = nil
     ) -> SyncDiagnosticsSnapshot {
         SyncDiagnosticsSnapshot(
             cloudKitEnvironment: resolveEnvironment(using: reader),
@@ -202,7 +240,11 @@ extension SyncDiagnosticsSnapshot {
             accountStatusLabel: accountState.diagnosticLabel,
             syncMode: syncMode,
             mirroredCount: counts.mirrored,
-            localCount: counts.local
+            localCount: counts.local,
+            consecutiveExportFailures: exportHealth?.consecutiveFailures,
+            lastExportErrorDomain: exportHealth?.lastErrorDomain,
+            lastExportErrorCode: exportHealth?.lastErrorCode,
+            pendingUploadCount: max(0, counts.local - counts.mirrored)
         )
     }
 }

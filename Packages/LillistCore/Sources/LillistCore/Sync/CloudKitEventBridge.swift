@@ -22,13 +22,27 @@ public struct CloudKitSyncEvent: Sendable, Equatable {
     /// `SyncStatusMonitor` uses this to avoid latching a persistent red error for
     /// a one-off export conflict. Defaults to `false` (surface it).
     public var recoverable: Bool
+    /// Issue #66: the raw `CKError` domain/code behind `error`, captured
+    /// before `CloudKitErrorClassifier` collapses it into the `LillistError`
+    /// taxonomy — e.g. `domain: "CKErrorDomain", code: 2` for the bare
+    /// `partialFailure` that wedged two #66 devices for weeks. `SyncStatusMonitor`
+    /// carries the most recent pair forward into diagnostics so a future
+    /// package can report the literal error without SQLite forensics. `nil`
+    /// when `error` is nil or didn't originate from `CKErrorDomain`.
+    public var rawErrorDomain: String?
+    public var rawErrorCode: Int?
 
-    public init(type: EventType, started: Bool, endedAt: Date?, error: LillistError?, recoverable: Bool = false) {
+    public init(
+        type: EventType, started: Bool, endedAt: Date?, error: LillistError?, recoverable: Bool = false,
+        rawErrorDomain: String? = nil, rawErrorCode: Int? = nil
+    ) {
         self.type = type
         self.started = started
         self.endedAt = endedAt
         self.error = error
         self.recoverable = recoverable
+        self.rawErrorDomain = rawErrorDomain
+        self.rawErrorCode = rawErrorCode
     }
 }
 
@@ -124,12 +138,20 @@ public actor CloudKitEventBridge {
         @unknown default: type = .setup
         }
         let started = event.endDate == nil
+        var rawErrorDomain: String?
+        var rawErrorCode: Int?
         let mapped: LillistError? = event.error.map { error in
             logRawError(error, eventType: type)
+            let ns = error as NSError
+            rawErrorDomain = ns.domain
+            rawErrorCode = ns.code
             return CloudKitErrorClassifier.classify(error)
         }
         let recoverable = event.error.map { CloudKitErrorClassifier.severity(of: $0) == .recoverable } ?? false
-        return CloudKitSyncEvent(type: type, started: started, endedAt: event.endDate, error: mapped, recoverable: recoverable)
+        return CloudKitSyncEvent(
+            type: type, started: started, endedAt: event.endDate, error: mapped, recoverable: recoverable,
+            rawErrorDomain: rawErrorDomain, rawErrorCode: rawErrorCode
+        )
     }
 
     /// Log the raw CloudKit error before it is collapsed into the

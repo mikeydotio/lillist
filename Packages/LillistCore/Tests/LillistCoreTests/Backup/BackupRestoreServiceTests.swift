@@ -55,12 +55,17 @@ struct BackupRestoreServiceTests {
         }
     }
 
-    private func makeService(into p: PersistenceController, packageDir: URL, reset: FakeResetter) -> BackupRestoreService {
+    private func makeService(
+        into p: PersistenceController, packageDir: URL, reset: any BackupDataResetting,
+        diagnosticLog: DiagnosticSink? = nil, process: DiagProcess = .app
+    ) -> BackupRestoreService {
         BackupRestoreService(
             reset: reset,
             importer: Importer(persistence: p),
             preferences: PreferencesStore(persistence: p),
-            packageDirectory: packageDir
+            packageDirectory: packageDir,
+            diagnosticLog: diagnosticLog,
+            process: process
         )
     }
 
@@ -155,5 +160,93 @@ struct BackupRestoreServiceTests {
         // The gate must fire BEFORE the destructive reset.
         #expect(reset.resetCount == 0)
         #expect(await count("LillistTask", in: target) == 0)
+    }
+
+    // MARK: - Issue #66: restore emits a diagnostic event
+
+    /// A `BackupDataResetting` that always throws, so the failure path can be
+    /// exercised without a schema mismatch.
+    final class ThrowingResetter: BackupDataResetting {
+        func resetAllData() async throws { throw LillistError.storeUnavailable(reason: "simulated") }
+    }
+
+    @Test("A successful restore emits one backup.restore event naming the source and outcome")
+    func successfulRestoreEmitsEvent() async throws {
+        let dir = tempDir("pkg")
+        defer { try? FileManager.default.removeItem(at: dir) }
+        _ = try await buildPopulatedPackage(into: dir)
+
+        let target = try await TestStore.make()
+        let spy = SpyDiagnosticSink()
+        let service = makeService(into: target, packageDir: dir, reset: FakeResetter(), diagnosticLog: spy, process: .macApp)
+
+        _ = try await service.restore(from: .livePackage)
+
+        let events = await spy.events
+        let event = try #require(events.last { $0.name == "backup.restore" })
+        #expect(event.category == .data)
+        #expect(event.process == .macApp)
+        #expect(event.payload["source"] == .string("livePackage"))
+        #expect(event.payload["outcome"] == .string("completed"))
+        #expect(event.payload["tasksInserted"] == .int(1))
+    }
+
+    @Test("A schema-mismatch refusal emits backup.restore with outcome:incompatible")
+    func incompatibleRestoreEmitsEvent() async throws {
+        let dir = tempDir("pkg")
+        defer { try? FileManager.default.removeItem(at: dir) }
+        _ = try await buildPopulatedPackage(into: dir)
+        let store = TaskBackupStore(packageDirectory: dir)
+        try await store.writeManifest(.init(
+            backupSchemaVersion: BackupPackageSchema.version,
+            cloudKitSchemaVersion: CloudKitSchema.currentVersion + 1,
+            updatedAt: Date(),
+            taskCount: 1
+        ))
+
+        let target = try await TestStore.make()
+        let spy = SpyDiagnosticSink()
+        let service = makeService(into: target, packageDir: dir, reset: FakeResetter(), diagnosticLog: spy)
+
+        await #expect(throws: LillistError.self) {
+            try await service.restore(from: .livePackage)
+        }
+
+        let events = await spy.events
+        let event = try #require(events.last { $0.name == "backup.restore" })
+        #expect(event.payload["outcome"] == .string("incompatible"))
+    }
+
+    @Test("A reset failure emits backup.restore with outcome:failed")
+    func resetFailureEmitsEvent() async throws {
+        let dir = tempDir("pkg")
+        defer { try? FileManager.default.removeItem(at: dir) }
+        _ = try await buildPopulatedPackage(into: dir)
+
+        let target = try await TestStore.make()
+        let spy = SpyDiagnosticSink()
+        let service = makeService(into: target, packageDir: dir, reset: ThrowingResetter(), diagnosticLog: spy)
+
+        await #expect(throws: LillistError.self) {
+            try await service.restore(from: .livePackage)
+        }
+
+        let events = await spy.events
+        let event = try #require(events.last { $0.name == "backup.restore" })
+        #expect(event.payload["outcome"] == .string("failed"))
+    }
+
+    @Test("No diagnostic sink means no emission, and restore still works")
+    func nilSinkEmitsNothing() async throws {
+        let dir = tempDir("pkg")
+        defer { try? FileManager.default.removeItem(at: dir) }
+        _ = try await buildPopulatedPackage(into: dir)
+
+        let target = try await TestStore.make()
+        // No diagnosticLog: — the default-nil param must not be required at
+        // the existing call sites above.
+        let service = makeService(into: target, packageDir: dir, reset: FakeResetter())
+        let summary = try await service.restore(from: .livePackage)
+        #expect(summary.tasksInserted == 1)
     }
 }
