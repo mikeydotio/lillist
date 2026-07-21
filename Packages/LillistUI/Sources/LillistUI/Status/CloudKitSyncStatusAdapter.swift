@@ -53,6 +53,12 @@ public final class CloudKitSyncStatusAdapter: SyncIndicatorMonitor {
         consumeTask = nil
     }
 
+    /// Issue #66: forwards to the wrapped Core monitor's export-stall
+    /// signals, for diagnostics capture.
+    public var exportHealth: SyncStatusMonitor.ExportHealth? {
+        get async { await monitor.exportHealth }
+    }
+
     /// Reflect a status snapshot into the published ``indicator``. Internal so
     /// tests can drive the observable path without the async stream.
     func apply(_ status: SyncStatus) {

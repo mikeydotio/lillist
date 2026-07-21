@@ -238,4 +238,69 @@ struct SyncStatusMonitorTests {
         let final = await recordRecoverableExportFailures(1, bridge: bridge, iterator: &iterator)
         #expect(final?.error == .syncStalled(consecutiveFailures: 1))
     }
+
+    // MARK: - Issue #66: export-health capture for diagnostics
+
+    @Test("A failed export records the raw CKError domain/code")
+    func exportFailureRecordsRawError() async throws {
+        let bridge = CloudKitEventBridge()
+        let monitor = SyncStatusMonitor(bridge: bridge)
+        await monitor.start()
+        var iterator = await monitor.statusStream.makeAsyncIterator()
+        _ = await iterator.next() // initial replay
+
+        await bridge.recordEvent(.init(type: .export, started: true, endedAt: nil, error: nil))
+        _ = await iterator.next()
+        await bridge.recordEvent(.init(
+            type: .export, started: false, endedAt: Date(),
+            error: .syncFailure(underlying: "1 record failed"), recoverable: true,
+            rawErrorDomain: "CKErrorDomain", rawErrorCode: 2
+        ))
+        _ = await iterator.next()
+
+        let health = await monitor.exportHealth
+        #expect(health.consecutiveFailures == 1)
+        #expect(health.lastErrorDomain == "CKErrorDomain")
+        #expect(health.lastErrorCode == 2)
+    }
+
+    @Test("The last export error persists across a later success (forensic history)")
+    func lastExportErrorPersistsAcrossSuccess() async throws {
+        let bridge = CloudKitEventBridge()
+        let monitor = SyncStatusMonitor(bridge: bridge)
+        await monitor.start()
+        var iterator = await monitor.statusStream.makeAsyncIterator()
+        _ = await iterator.next() // initial replay
+
+        await bridge.recordEvent(.init(type: .export, started: true, endedAt: nil, error: nil))
+        _ = await iterator.next()
+        await bridge.recordEvent(.init(
+            type: .export, started: false, endedAt: Date(),
+            error: .syncFailure(underlying: "1 record failed"), recoverable: true,
+            rawErrorDomain: "CKErrorDomain", rawErrorCode: 2
+        ))
+        _ = await iterator.next()
+
+        // A subsequent successful export resets the *streak* but the last
+        // error's domain/code remain as forensic history — a diagnostics
+        // reader can tell "hit CKErrorDomain/2 at some point, but 0
+        // consecutive failures now" apart from "never hit anything."
+        await bridge.recordEvent(.init(type: .export, started: false, endedAt: Date(), error: nil))
+        _ = await iterator.next()
+
+        let health = await monitor.exportHealth
+        #expect(health.consecutiveFailures == 0)
+        #expect(health.lastErrorDomain == "CKErrorDomain")
+        #expect(health.lastErrorCode == 2)
+    }
+
+    @Test("No export failure yet leaves exportHealth at its zero value")
+    func exportHealthDefaultsToZero() async throws {
+        let bridge = CloudKitEventBridge()
+        let monitor = SyncStatusMonitor(bridge: bridge)
+        await monitor.start()
+
+        let health = await monitor.exportHealth
+        #expect(health == SyncStatusMonitor.ExportHealth(consecutiveFailures: 0, lastErrorDomain: nil, lastErrorCode: nil))
+    }
 }

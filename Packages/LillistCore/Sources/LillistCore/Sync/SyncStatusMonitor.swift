@@ -12,6 +12,39 @@ public actor SyncStatusMonitor {
     /// `SyncDiagnosticsSnapshot` can capture it without SQLite forensics.
     public private(set) var consecutiveExportFailures: Int = 0
 
+    /// Raw `CKError` domain/code behind the most recent export failure this
+    /// session (recoverable or structural) — e.g. `("CKErrorDomain", 2)` for
+    /// the bare `partialFailure` that wedged two #66 devices. Unlike
+    /// `consecutiveExportFailures`, these persist across a later successful
+    /// export: they're forensic history ("this device did hit this error at
+    /// some point"), not current health.
+    public private(set) var lastExportErrorDomain: String?
+    public private(set) var lastExportErrorCode: Int?
+
+    /// Issue #66: the export-stall signals bundled into one actor-isolated
+    /// read, so a diagnostics capture can't observe an inconsistent partial
+    /// update — three separate `await`s would each cross a suspension point
+    /// where a live CloudKit event could mutate state in between.
+    public struct ExportHealth: Sendable, Equatable {
+        public let consecutiveFailures: Int
+        public let lastErrorDomain: String?
+        public let lastErrorCode: Int?
+
+        public init(consecutiveFailures: Int, lastErrorDomain: String?, lastErrorCode: Int?) {
+            self.consecutiveFailures = consecutiveFailures
+            self.lastErrorDomain = lastErrorDomain
+            self.lastErrorCode = lastErrorCode
+        }
+    }
+
+    public var exportHealth: ExportHealth {
+        ExportHealth(
+            consecutiveFailures: consecutiveExportFailures,
+            lastErrorDomain: lastExportErrorDomain,
+            lastErrorCode: lastExportErrorCode
+        )
+    }
+
     /// Recoverable export failures in a row before the streak escalates to a
     /// surfaced (red) `.syncStalled` error. `CloudKitErrorClassifier`
     /// deliberately treats a *single* bare `partialFailure` as recoverable so
@@ -117,6 +150,12 @@ public actor SyncStatusMonitor {
             next.error = nil
             return
         }
+        // Forensic history: record the raw error regardless of severity, and
+        // regardless of whether the streak below ultimately surfaces
+        // anything — a diagnostics reader benefits from "this device did hit
+        // CKErrorDomain/2" even when the streak self-resolved.
+        lastExportErrorDomain = event.rawErrorDomain
+        lastExportErrorCode = event.rawErrorCode
         guard event.recoverable else {
             // Structural failures (quota, auth, rejected, …) already surface
             // on their own; the recoverable-only streak doesn't apply.

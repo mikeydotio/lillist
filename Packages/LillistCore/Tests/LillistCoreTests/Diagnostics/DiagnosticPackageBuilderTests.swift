@@ -248,6 +248,60 @@ final class DiagnosticPackageBuilderTests: XCTestCase {
         XCTAssertEqual(meta.sync?.localCount, 22)
     }
 
+    // MARK: - Issue #66: export-health fields round-trip through the manifest
+
+    func test_stage_populatedExportHealth_roundTripsThroughManifest() throws {
+        let dir = try seedDiagnosticsDir()
+        let sync = SyncDiagnosticsSnapshot(
+            cloudKitEnvironment: .production, cloudKitContainerIdentifier: "iCloud.app.lillist",
+            accountStatusLabel: "available", syncMode: .iCloudSync,
+            mirroredCount: 0, localCount: 25,
+            consecutiveExportFailures: 21, lastExportErrorDomain: "CKErrorDomain",
+            lastExportErrorCode: 2, pendingUploadCount: 53
+        )
+        let metadata = DiagnosticPackageBuilder.Metadata(
+            buildVersion: "88", osVersion: "27.0", deviceModel: "iPhone17,1",
+            exportedAt: Date(timeIntervalSince1970: 1_700_000_000), diagnosticLoggingEnabled: true,
+            sync: sync
+        )
+        let builder = DiagnosticPackageBuilder(diagnosticsDir: dir, storeURL: nil, metadata: metadata)
+        let stage = try builder.stage(options: .init(includeLogs: false, includeStore: false))
+        defer { try? FileManager.default.removeItem(at: stage.deletingLastPathComponent()) }
+
+        let decoder = JSONDecoder(); decoder.dateDecodingStrategy = .iso8601
+        let meta = try decoder.decode(DiagnosticPackageBuilder.Metadata.self, from: Data(contentsOf: stage.appendingPathComponent("manifest.json")))
+        XCTAssertEqual(meta.sync?.consecutiveExportFailures, 21)
+        XCTAssertEqual(meta.sync?.lastExportErrorDomain, "CKErrorDomain")
+        XCTAssertEqual(meta.sync?.lastExportErrorCode, 2)
+        XCTAssertEqual(meta.sync?.pendingUploadCount, 53)
+    }
+
+    func test_stage_syncWithoutExportHealth_decodesFieldsToNil_backwardCompatible() throws {
+        // Mirrors a manifest.json written before issue #66's fields existed:
+        // `sync` is populated (issue #54) but the newer fields are absent.
+        let dir = try seedDiagnosticsDir()
+        let sync = SyncDiagnosticsSnapshot(
+            cloudKitEnvironment: .development, cloudKitContainerIdentifier: "iCloud.app.lillist",
+            accountStatusLabel: "available", syncMode: .iCloudSync,
+            mirroredCount: 0, localCount: 22
+        )
+        let metadata = DiagnosticPackageBuilder.Metadata(
+            buildVersion: "39", osVersion: "26.2", deviceModel: "iPhone17,1",
+            exportedAt: Date(timeIntervalSince1970: 1_700_000_000), diagnosticLoggingEnabled: true,
+            sync: sync
+        )
+        let builder = DiagnosticPackageBuilder(diagnosticsDir: dir, storeURL: nil, metadata: metadata)
+        let stage = try builder.stage(options: .init(includeLogs: false, includeStore: false))
+        defer { try? FileManager.default.removeItem(at: stage.deletingLastPathComponent()) }
+
+        let decoder = JSONDecoder(); decoder.dateDecodingStrategy = .iso8601
+        let meta = try decoder.decode(DiagnosticPackageBuilder.Metadata.self, from: Data(contentsOf: stage.appendingPathComponent("manifest.json")))
+        XCTAssertNil(meta.sync?.consecutiveExportFailures)
+        XCTAssertNil(meta.sync?.lastExportErrorDomain)
+        XCTAssertNil(meta.sync?.lastExportErrorCode)
+        XCTAssertNil(meta.sync?.pendingUploadCount)
+    }
+
     func test_stage_nilSync_decodesBackToNil_backwardCompatible() throws {
         // sampleMetadata() omits `sync` — existing callers/manifests must
         // still decode cleanly with the field simply absent.
