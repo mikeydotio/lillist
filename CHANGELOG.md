@@ -3,6 +3,53 @@
 All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [v0.16.0] - 2026-07-20
+
+### Added
+- add smart-search UI to the macOS Tasks window (#51) (d7f8d5b6)
+- add smart-search UI to the iOS Tasks screen (#51) (aa589e67)
+- wire --smart onto lillist search and the Shortcuts intent (#51) (133e50f2)
+- add the FoundationModels translator tiers (#51) (6ef1bf4e)
+- add the deterministic NL-query mapping core (#51) (7207dc29)
+- surface the divergence warning inline in iCloud Sync settings (7c02a005)
+- add pure divergenceWarning decision function (965d810e)
+- populate provenance snapshot + surface CloudKit Environment row (984eef0e)
+- fold provenance snapshot into the diagnostic manifest (8e54b555)
+- add runtime CloudKit provenance probe (5e5a8c79)
+- group the list picker by account, show incomplete counts (847b0acd)
+- add pure ReminderListGrouping helper (3de9eaf8)
+- carry account + incomplete count on ReminderListInfo (f20db2ab)
+
+### Fixed
+- give macOS its own monotonic Sparkle build-number counter (8663bd97)
+- enable Sparkle's sandboxed installer path (01b73950)
+- pin Sparkle distribution feed, retire per-machine override (6157cf8e)
+- SecTask entitlement API is macOS-only, not cross-platform (a730093c)
+- show why Reminders drain imported nothing, and kill the picker race (c152c256)
+- stop conflating Reminders drain failures with an empty list (26555eef)
+- drain skips completed reminders (d3e9db53)
+
+### Changed
+- Merge pull request #60 from mikeydotio/chore/untrack-claude-settings-local (bf963776)
+- Merge pull request #57 from mikeydotio/feat/agentic-search-51 (c5a05763)
+- extract lillist-cli into its own package (#51) (ffab2005)
+- Merge pull request #59 from mikeydotio/fix/55-sparkle-appcast-feed (28c1d768)
+- Merge pull request #56 from mikeydotio/worktree-lil-54 (df2b300f)
+- Merge pull request #53 from mikeydotio/fix/reminders-drain-now-silent-zero (126551f2)
+- Merge pull request #52 from mikeydotio/worktree-lil-49 (1c1e65a5)
+- Merge pull request #48 from mikeydotio/chore/release-v0.15.0 (844d203b)
+
+### Testing
+- guard against the Sparkle feed/build-number regression class (6240b0fb)
+
+### Maintenance
+- stop tracking .claude/settings.local.json (machine-local) (b794dd02)
+- adopt Xcode 27 beta for the agentic-search PCC path (#51) (3f4c173f)
+- add divergence-warning strings to LillistUI catalog (58597542)
+- bump iOS build number to 87 (598315c0)
+
+_[manual]_
+
 ## [v0.15.0] - 2026-07-19
 
 ### Added
