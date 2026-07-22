@@ -1,0 +1,22 @@
+# Project-local deployit overrides (see the deployit plugin's
+# references/toolchain.md). Separate from the per-machine
+# ~/Library/Application Support/deployit/config.toml — this file is
+# committed, so the pin travels with the repo onto every Mac that deploys it.
+
+[toolchain]
+# Lillist links Packages/LillistSearchIntelligence, whose Private Cloud
+# Compute search tier (FoundationModels.PrivateCloudComputeLanguageModel)
+# only exists in the iOS/macOS 27 SDK. As of #70 that reference is
+# compile-gated (`#if canImport(FoundationModels, _version: 2)`), so the app
+# also builds fine on the default Xcode 26.x SDK — but a 26.x deploy would
+# silently ship without the PCC tier. Pin the toolchain by minimum Xcode
+# version so deployit resolves the newest matching /Applications/Xcode*.app
+# (a portable selector, not a hardcoded path — Xcode install locations and
+# names churn, e.g. a beta moving from ~/Downloads to /Applications, or being
+# renamed once it ships stable) and fails loudly if nothing satisfies it,
+# rather than silently building with the PCC tier missing.
+#
+# Obsolescence: once the default Xcode ships the 27 SDK, this pin (and the
+# #if canImport(FoundationModels, _version: 2) gates) can be removed — see
+# the "Issue #70" entry in docs/engineering-notes.md.
+min_sdk = "27"

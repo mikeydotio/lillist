@@ -4583,3 +4583,83 @@ Landing the compact task-detail card (`Closes #8`) surfaced three lessons:
   and passed for real. Both fit the existing "retry once before treating
   a flake as real" posture — no new mitigation needed, just recorded so a
   future zero-count or unattributed failure isn't chased as a regression.
+
+## 2026-07-21 — Issue #70: compile-gate the PCC tier instead of pinning the whole app build to Xcode 27
+
+The #51 entry above established that referencing
+`FoundationModels.PrivateCloudComputeLanguageModel` forces the *whole app
+build* onto an Xcode 27 toolchain, because `@available` gates usage, not
+symbol existence. That made CI red on every `main` commit (the GitHub
+`macos-15` runner has no Xcode 27 image) and every `/deployit deploy` fail
+its first archive without a hand-set `DEVELOPER_DIR`. #70 fixes both by
+making the PCC tier itself optional at compile time, rather than working
+around the requirement everywhere it bites.
+
+- **`canImport(FoundationModels)` cannot discriminate the two SDKs — it's
+  true on both.** The plain form only tests whether the module exists at
+  all, and `FoundationModels` has shipped since iOS 26 (as
+  `SystemLanguageModel`). The fix needed a discriminator that's true only
+  when the *PCC-capable* module is present.
+- **`canImport(FoundationModels, _version: 2)` is that discriminator, and
+  it's the one to reach for over `compiler(>=6.4)`.** Empirically: the iOS
+  26.5 SDK's `FoundationModels.swiftinterface` declares
+  `-user-module-version 1.5.2` with zero `PrivateCloudCompute*` symbols; the
+  iOS 27.0 SDK declares `2.0.59` with 47. `_version:` keys off the
+  **module's** version, not the Swift compiler's — so it stays correct even
+  if a future Xcode 26.x ships a newer compiler (e.g. 6.4) against the
+  still-26 SDK, a case where `compiler(>=6.4)` would wrongly flip true and
+  reintroduce the exact break this fix removes. Verified on three real
+  toolchains: absent under Xcode 26.6 (default), present under Xcode 27.0
+  beta 3 and beta 4 — including confirming via `nm` on the compiled `.o`
+  that the object contains **zero** `PrivateCloudCompute*` symbols under the
+  default toolchain and **37** under the beta, i.e. the gate isn't just
+  compiling silently either way, it's actually removing the code.
+  `#if os(iOS 27)` isn't a real option — Swift's `#if os(...)` has no
+  version operand, and there's no compile-time SDK-version directive at
+  all (unlike Objective-C's `__IPHONE_OS_VERSION_MAX_ALLOWED`, which Swift's
+  `#if` can't read anyway).
+- **Only two touch points needed the gate**, because the on-device tier and
+  its supporting types (`OnDeviceQueryTranslator`, `FoundationModelsInstructions`,
+  `GeneratedFilter`) are all `@available(iOS 26, macOS 26)` and already
+  compile fine on the 26 SDK: the whole-file guard on
+  `PrivateCloudComputeQueryTranslator.swift`, and the PCC branch inside
+  `FilterTranslatorFactory.makeBest()` (the on-device branch stays
+  ungated). Gating out the PCC branch reduces `makeBest()` to the on-device
+  branch + `return nil` with zero warnings-as-errors fallout — no unused
+  imports (the on-device branch keeps `FoundationModels` alive), no
+  unreachable code, and `TranslatorKind.privateCloudCompute` (defined
+  unconditionally in `LillistCore`) survives so the existing
+  `FilterTranslatorFactoryTests` compile and pass unchanged on either SDK.
+- **The silent-regression risk moved from "CI is red" to "a 26.x deploy
+  builds fine but silently ships without PCC."** That's strictly worse than
+  a build failure if unnoticed, so the guard against it has to live in the
+  *deploy* path, not the build — a build-time assertion would defeat the
+  whole point of making 26.x compile green. See the deployit `[toolchain]`
+  entry below for how that guard actually works.
+- **CI keeps probing for Xcode 27 rather than pinning 26.3 outright.** The
+  `cli`/`ios`/`macos`/`release-archive-smoke` jobs still glob for a 27
+  install and prefer it; the only change is that the 26.3 fallback path,
+  which used to be a documented, *expected* failure, now genuinely succeeds
+  (PCC compiled out, on-device tier still built/tested). Kept intentionally
+  so a future GitHub runner image with Xcode 27 auto-exercises the real PCC
+  path instead of only ever building the on-device fallback.
+- **Deploys now pin the toolchain via a new deployit plugin feature,
+  landed first as its own change** (`mikeydotio/agentics#116`): a
+  project's own `<repo>/.deployit/config.toml` can carry a `[toolchain]`
+  table (`min_sdk = "27"` here — a portable selector that resolves to the
+  newest matching `/Applications/Xcode*.app`, deliberately not a hardcoded
+  path, since the beta's own install location moved from `~/Downloads` to
+  `/Applications` mid-investigation). This is the deploy-time guard from
+  above: resolution fails loudly, before any `xcodebuild` call, if nothing
+  on disk satisfies the pin — never silently falls back to whatever
+  toolchain happens to be ambient. Separate from the per-machine deployit
+  `config.toml` (server/notarization/Sparkle settings); this one is
+  repo-committed so the pin travels with the project.
+- **Obsolescence trigger.** Once the default Xcode ships the 27 SDK (i.e.
+  `FoundationModels` module version >= 2 under `xcode-select`'s default),
+  remove: both `#if canImport(FoundationModels, _version: 2)` gates (revert
+  to plain `#if canImport(FoundationModels)`), the CI comment/notice text
+  that references the compile-gate, and the `[toolchain] min_sdk = "27"`
+  table in `.deployit/config.toml`. None of the three depend on each other
+  surviving, so they can be pulled independently as the toolchain
+  landscape shifts.
