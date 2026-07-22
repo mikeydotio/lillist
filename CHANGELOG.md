@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [v0.18.1] - 2026-07-22
+
+### Changed
+- Merge pull request #74 from mikeydotio/chore/release-v0.18.0 (d98f1bf5)
+
+### Maintenance
+- bump macOS build number to 53 (b249ec2f)
+- bump iOS build number to 91 (f598e58e)
+
+_[force]_
+
 ## [v0.18.0] - 2026-07-21
 
 ### Added
