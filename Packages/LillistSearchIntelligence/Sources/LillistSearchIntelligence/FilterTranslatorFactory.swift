@@ -14,11 +14,13 @@ import FoundationModels
 public enum FilterTranslatorFactory {
     public static func makeBest() -> (any FilterQueryTranslator)? {
         #if canImport(FoundationModels)
+        #if canImport(FoundationModels, _version: 2)
         if #available(iOS 27, macOS 27, *) {
             if case .available = PrivateCloudComputeLanguageModel().availability {
                 return PrivateCloudComputeQueryTranslator()
             }
         }
+        #endif
         if #available(iOS 26, macOS 26, *) {
             if case .available = SystemLanguageModel.default.availability {
                 return OnDeviceQueryTranslator()
