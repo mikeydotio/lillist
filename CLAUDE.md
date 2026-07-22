@@ -122,27 +122,31 @@ xcodebuild -workspace Lillist.xcworkspace -scheme Lillist-{iOS,macOS} \
 ```
 
 **Two Xcode toolchains.** `/Applications/Xcode.app` (26.6, iOS 26.5 SDK) is
-the `xcode-select`ed default and covers everything above. **Anything that
-touches `FoundationModels.PrivateCloudComputeLanguageModel`** (the
-`@available(iOS 27, macOS 27, *)` agentic-search PCC tier — see
-`Packages/LillistSearchIntelligence/`) **needs the iOS 27 / macOS 27 SDK**,
-which only `~/Downloads/Xcode-beta.app` (Xcode 27.0) has. Drive it
-per-command via `DEVELOPER_DIR`, never a global `xcode-select -switch` (keeps
-the GUI + everything else on the stable default):
+the `xcode-select`ed default and builds the **whole app**, including
+`Packages/LillistSearchIntelligence` — as of #70, the reference to
+`FoundationModels.PrivateCloudComputeLanguageModel` (the `@available(iOS 27,
+macOS 27, *)` agentic-search PCC tier) is compile-gated behind `#if
+canImport(FoundationModels, _version: 2)`, which is false on the 26.5 SDK, so
+that one tier compiles out and the on-device tier (`SystemLanguageModel`,
+iOS/macOS 26) keeps working. **You only need the iOS 27 / macOS 27 SDK to
+*include* the PCC tier** — for local PCC iteration/testing, or for a deploy
+that should ship it (see *Deploy* below). Only `/Applications/Xcode-beta.app`
+(Xcode 27.0) has that SDK. Drive it per-command via `DEVELOPER_DIR`, never a
+global `xcode-select -switch` (keeps the GUI + everything else on the stable
+default):
 
 ```bash
-export DEVELOPER_DIR=~/Downloads/Xcode-beta.app/Contents/Developer
+export DEVELOPER_DIR=/Applications/Xcode-beta.app/Contents/Developer
 swift test --package-path Packages/LillistCore --parallel --num-workers 2
 xcodebuild -workspace Lillist.xcworkspace -scheme Lillist-iOS \
   -destination 'platform=iOS Simulator,name=iPhone 17,OS=27.0' build
 ```
 
-The on-device tier (`SystemLanguageModel`, iOS/macOS 26) and everything else
-in the `LillistSearchIntelligence` target compiles fine under the default
-26.6 toolchain too — only the PCC class needs the beta SDK. See the
-"Issue #51" entry in `docs/engineering-notes.md` for how this was discovered
-and verified (full `LillistCore`/`LillistUI` suites + both app builds pass
-unmodified under the beta).
+See the "Issue #51" entry in `docs/engineering-notes.md` for how the two
+toolchains were discovered and verified (full `LillistCore`/`LillistUI`
+suites + both app builds pass unmodified under the beta), and the "Issue
+#70" entry for the compile-gate mechanism and its obsolescence trigger
+(delete the `_version: 2` gates once the default Xcode ships the 27 SDK).
 
 The **migration/store-swap tests are app-hosted**: `MigrationCoordinatorTests`,
 `PersistenceHostTests`, and `StoreLevelModeSwapSpike` gate their
@@ -207,14 +211,17 @@ active iCloud account and must be verified by Mikey). See the
 "CI established + build-posture alignment" entry in
 `docs/engineering-notes.md`.
 
-Starting with the agentic-search feature (#51), the `ios`, `macos`, and
-`release-archive-smoke` jobs select an **Xcode 27 (beta) toolchain when
-present, falling back to 26.3 with a loud warning otherwise** — those
-schemes link `LillistSearchIntelligence`, which needs the iOS/macOS 27 SDK
-to compile `FoundationModels.PrivateCloudComputeLanguageModel`. The `spm`
-job (LillistCore/LillistUI) and `project-drift` job are unaffected — neither
-package depends on `LillistSearchIntelligence`. See "Two Xcode toolchains"
-above and the "Issue #51" entry in `docs/engineering-notes.md`.
+Starting with the agentic-search feature (#51), the `cli`, `ios`, `macos`,
+and `release-archive-smoke` jobs select an **Xcode 27 (beta) toolchain when
+present, falling back to 26.3 otherwise**, so the PCC search tier's path
+still gets exercised when a 27 runner is available. As of #70 the fallback
+is no longer a failure: `FoundationModels.PrivateCloudComputeLanguageModel`
+is compile-gated (`#if canImport(FoundationModels, _version: 2)`), so 26.3
+compiles green with the PCC tier gated out and the on-device tier still
+built/tested. The `spm` job (LillistCore/LillistUI) and `project-drift` job
+are unaffected — neither package depends on `LillistSearchIntelligence`. See
+"Two Xcode toolchains" above and the "Issue #51"/"Issue #70" entries in
+`docs/engineering-notes.md`.
 
 **Parallel-test flakes (`LillistCore`).** Heavy concurrent in-memory
 store creation intermittently SIGSEGVs inside Core Data, and the same CPU
@@ -491,6 +498,23 @@ contributor's tailnet.
 - Run `/deployit bootstrap` once on each Mac. The plugin owns its
   Tailscale Serve config and the localhost HTTP backend on
   `127.0.0.1:8729`; no shell-rc env vars are required.
+- An Xcode install with the iOS/macOS 27 SDK (currently
+  `/Applications/Xcode-beta.app`). Not a manual step at deploy time — see
+  below.
+
+**Toolchain — no hand-set `DEVELOPER_DIR` needed.** The repo's
+`.deployit/config.toml` pins `[toolchain] min_sdk = "27"`
+(`mikeydotio/agentics#116`), so `/deployit deploy` resolves the newest
+matching `/Applications/Xcode*.app` itself and fails loudly, before
+archiving, if none satisfies it. This matters because of #70's compile-gate:
+`Packages/LillistSearchIntelligence`'s Private Cloud Compute search tier now
+compiles out cleanly on the default Xcode 26.x SDK (see *Two Xcode
+toolchains* above), which means an **unpinned** deploy would *build
+successfully but silently ship without the PCC tier* — a build failure
+would have been safer than that. The pin exists specifically to prevent it;
+don't remove it without confirming the default Xcode ships the 27 SDK (see
+the "Issue #70" entry in `docs/engineering-notes.md` for the obsolescence
+trigger).
 
 **Run:**
 
