@@ -3,6 +3,36 @@
 All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [v0.18.0] - 2026-07-21
+
+### Added
+- wire DeviceRoster/ControlInbox/ResetSignalMonitor into iOS and macOS AppEnvironment (face4c7d)
+- fan out a control event after a successful restore (9655dbaf)
+- add resetEverywhereToEmpty and resetAndReseedFromThisDevice (14219c81)
+- add ResetSignalMonitor and ResetPropagator (4cc73e54)
+- add ControlInbox (per-event, per-recipient KVS keys) (977f44f4)
+- add KeyValueSyncStore seam + DeviceRoster (d5c26a5f)
+
+### Fixed
+- compile-gate PCC tier so app/CLI build without the 27 SDK (11b67324)
+- honest three-button reset copy (iOS + macOS) (7fe07c84)
+
+### Changed
+- Merge pull request #73 from mikeydotio/worktree-lil-70 (ab7f6c1c)
+- Merge pull request #72 from mikeydotio/fix/71-reset-propagation (64d41298)
+- Merge pull request #69 from mikeydotio/chore/release-v0.17.0 (b8dc2942)
+
+### Documentation
+- record #70 compile-gate + deploy protocol (906f0bcf)
+
+### Maintenance
+- pin Xcode 27 via repo .deployit/config.toml (716981a9)
+- 26.x fallback now compiles green; refresh stale Xcode-27 notices (427a6c7d)
+- bump macOS build number to 52 (797bfe50)
+- bump iOS build number to 90 (913a0ce8)
+
+_[manual]_
+
 ## [v0.17.0] - 2026-07-21
 
 ### Added
