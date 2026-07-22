@@ -57,7 +57,8 @@ struct BackupRestoreServiceTests {
 
     private func makeService(
         into p: PersistenceController, packageDir: URL, reset: any BackupDataResetting,
-        diagnosticLog: DiagnosticSink? = nil, process: DiagProcess = .app
+        diagnosticLog: DiagnosticSink? = nil, process: DiagProcess = .app,
+        propagator: ResetPropagator? = nil
     ) -> BackupRestoreService {
         BackupRestoreService(
             reset: reset,
@@ -65,7 +66,8 @@ struct BackupRestoreServiceTests {
             preferences: PreferencesStore(persistence: p),
             packageDirectory: packageDir,
             diagnosticLog: diagnosticLog,
-            process: process
+            process: process,
+            propagator: propagator
         )
     }
 
@@ -112,6 +114,63 @@ struct BackupRestoreServiceTests {
 
         let restoredPrefs = try await PreferencesStore(persistence: target).read()
         #expect(restoredPrefs.trashRetentionDays == 14)
+    }
+
+    @Test("issue #71: a successful restore broadcasts a resetAndReseed control event to known peers")
+    func successfulRestoreBroadcastsToKnownPeers() async throws {
+        let dir = tempDir("pkg")
+        defer { try? FileManager.default.removeItem(at: dir) }
+        _ = try await buildPopulatedPackage(into: dir)
+
+        let target = try await TestStore.make()
+        let kv = InMemoryKeyValueSyncStore()
+        let roster = DeviceRoster(kv: kv)
+        let inbox = ControlInbox(kv: kv)
+        roster.register(id: "device-B", displayName: "Vertumnus")
+        let propagator = ResetPropagator(
+            roster: roster, inbox: inbox, deviceID: "device-A", deviceDisplayName: "Nephele"
+        )
+        let service = makeService(
+            into: target, packageDir: dir, reset: FakeResetter(), propagator: propagator
+        )
+
+        _ = try await service.restore(from: .livePackage)
+
+        let pending = inbox.pendingEvents(for: "device-B")
+        #expect(pending.count == 1)
+        #expect(pending.first?.kind == .resetAndReseed)
+    }
+
+    @Test("issue #71: a refused (schema-mismatched) restore never broadcasts")
+    func refusedRestoreDoesNotBroadcast() async throws {
+        let dir = tempDir("pkg")
+        defer { try? FileManager.default.removeItem(at: dir) }
+        _ = try await buildPopulatedPackage(into: dir)
+        let store = TaskBackupStore(packageDirectory: dir)
+        try await store.writeManifest(.init(
+            backupSchemaVersion: BackupPackageSchema.version,
+            cloudKitSchemaVersion: CloudKitSchema.currentVersion + 1,
+            updatedAt: Date(),
+            taskCount: 1
+        ))
+
+        let target = try await TestStore.make()
+        let kv = InMemoryKeyValueSyncStore()
+        let roster = DeviceRoster(kv: kv)
+        let inbox = ControlInbox(kv: kv)
+        roster.register(id: "device-B", displayName: "Vertumnus")
+        let propagator = ResetPropagator(
+            roster: roster, inbox: inbox, deviceID: "device-A", deviceDisplayName: "Nephele"
+        )
+        let service = makeService(
+            into: target, packageDir: dir, reset: FakeResetter(), propagator: propagator
+        )
+
+        await #expect(throws: LillistError.self) {
+            try await service.restore(from: .livePackage)
+        }
+
+        #expect(inbox.pendingEvents(for: "device-B").isEmpty)
     }
 
     @Test("restore from a snapshot zip works end to end")

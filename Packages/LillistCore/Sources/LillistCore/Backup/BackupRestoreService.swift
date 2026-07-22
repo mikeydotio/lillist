@@ -17,6 +17,16 @@ extension DataStoreResetService: BackupDataResetting {}
 /// iCloud data (`BackupDataResetting`) and replaces it with the backup's
 /// contents via the atomic `Importer`. `@MainActor` because the reset primitive
 /// is main-actor isolated (it drives a SwiftUI-facing service).
+///
+/// Issue #71: on success, also broadcasts a `.resetAndReseed` control event
+/// via `ResetPropagator` (when configured) — a restore replaces this
+/// device's data with the backup's contents, which is exactly the "converge
+/// every other device on what's now here" case `resetAndReseedFromThisDevice()`
+/// handles for a live device. Before this, a restore's cross-device
+/// consequences were entirely silent (the same root cause "Reset Everywhere"
+/// had: `resetAllData()` only ever erased the CloudKit zone, which does not
+/// propagate — see `DataStoreResetService`'s doc comment for the full
+/// root-cause writeup).
 @MainActor
 public final class BackupRestoreService {
     private let reset: any BackupDataResetting
@@ -30,6 +40,10 @@ public final class BackupRestoreService {
     /// any caller that doesn't wire a sink.
     private let diagnosticLog: DiagnosticSink?
     private let process: DiagProcess
+    /// Cross-device "converge to current iCloud state" signal (issue #71).
+    /// `nil` → restore still succeeds locally but doesn't notify peers
+    /// (test/legacy callers).
+    private let propagator: ResetPropagator?
 
     public init(
         reset: any BackupDataResetting,
@@ -37,7 +51,8 @@ public final class BackupRestoreService {
         preferences: PreferencesStore,
         packageDirectory: URL,
         diagnosticLog: DiagnosticSink? = nil,
-        process: DiagProcess = .app
+        process: DiagProcess = .app,
+        propagator: ResetPropagator? = nil
     ) {
         self.reset = reset
         self.importer = importer
@@ -45,6 +60,7 @@ public final class BackupRestoreService {
         self.packageDirectory = packageDirectory
         self.diagnosticLog = diagnosticLog
         self.process = process
+        self.propagator = propagator
     }
 
     /// What to restore from: the live package, or a specific snapshot zip.
@@ -110,6 +126,9 @@ public final class BackupRestoreService {
             // Importer does not touch preferences — apply the captured set here.
             try await applyPreferences(document.preferences)
             await emit(source: source, outcome: "completed", summary: summary)
+            // This device's data just became the account's new truth — tell
+            // every other known device to converge on it too.
+            propagator?.broadcast(.resetAndReseed)
             return summary
         } catch {
             // The `incompatible` path already emitted above (it needs its own
