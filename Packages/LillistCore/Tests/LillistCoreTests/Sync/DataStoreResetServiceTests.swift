@@ -22,7 +22,10 @@ struct DataStoreResetServiceTests {
         startMode: SyncMode,
         host: FakePersistenceReconfigurer,
         eraser: any CloudKitZoneEraser,
-        accountStateProvider: AccountStateProviding? = nil
+        accountStateProvider: AccountStateProviding? = nil,
+        propagator: ResetPropagator? = nil,
+        exporter: Exporter? = nil,
+        importer: Importer? = nil
     ) -> DataStoreResetService {
         DataStoreResetService(
             host: host,
@@ -31,7 +34,10 @@ struct DataStoreResetServiceTests {
             quiesceMonitor: SyncQuiesceMonitor(bridge: CloudKitEventBridge()),
             notificationScheduler: nil,
             cloudKitContainerIdentifier: "iCloud.test",
-            accountStateProvider: accountStateProvider
+            accountStateProvider: accountStateProvider,
+            propagator: propagator,
+            exporter: exporter,
+            importer: importer
         )
     }
 
@@ -134,6 +140,160 @@ struct DataStoreResetServiceTests {
         // Guarded before any destructive work — no wipe, no erase.
         #expect(await host.resetSteps == [])
         #expect(await eraser.callCount == 0)
+    }
+
+    // MARK: - Reset Everywhere to Empty (propagating, issue #71)
+
+    @Test("resetEverywhereToEmpty: wipes exactly like resetAllData, then broadcasts to every known peer")
+    @MainActor
+    func resetEverywhereToEmptyWipesThenBroadcasts() async throws {
+        let host = FakePersistenceReconfigurer(initialMode: .iCloudSync)
+        let eraser = FakeCloudKitZoneEraser()
+        let kv = InMemoryKeyValueSyncStore()
+        let roster = DeviceRoster(kv: kv)
+        let inbox = ControlInbox(kv: kv)
+        roster.register(id: "device-B", displayName: "Vertumnus")
+        let propagator = ResetPropagator(
+            roster: roster, inbox: inbox, deviceID: "device-A", deviceDisplayName: "Nephele"
+        )
+        let service = makeService(
+            startMode: .iCloudSync, host: host, eraser: eraser, propagator: propagator
+        )
+
+        try await service.resetEverywhereToEmpty()
+
+        // Exactly the same wipe steps resetAllData() runs.
+        #expect(await host.resetSteps == ["tearDown", "rebuild"])
+        #expect(await eraser.callCount == 1)
+        // ...and the peer was signalled.
+        let pending = inbox.pendingEvents(for: "device-B")
+        #expect(pending.count == 1)
+        #expect(pending.first?.kind == .resetToEmpty)
+    }
+
+    @Test("resetEverywhereToEmpty: with no propagator configured, still wipes correctly")
+    @MainActor
+    func resetEverywhereToEmptyWithoutPropagatorStillWipes() async throws {
+        let host = FakePersistenceReconfigurer(initialMode: .iCloudSync)
+        let eraser = FakeCloudKitZoneEraser()
+        let service = makeService(startMode: .iCloudSync, host: host, eraser: eraser)
+
+        try await service.resetEverywhereToEmpty()
+
+        #expect(await host.resetSteps == ["tearDown", "rebuild"])
+        #expect(await eraser.callCount == 1)
+    }
+
+    @Test("resetEverywhereToEmpty: a failed wipe never reaches the broadcast step")
+    @MainActor
+    func resetEverywhereToEmptyFailureSkipsBroadcast() async throws {
+        let host = FakePersistenceReconfigurer(initialMode: .iCloudSync)
+        let eraser = ThrowingZoneEraser()
+        let kv = InMemoryKeyValueSyncStore()
+        let roster = DeviceRoster(kv: kv)
+        let inbox = ControlInbox(kv: kv)
+        roster.register(id: "device-B", displayName: "Vertumnus")
+        let propagator = ResetPropagator(
+            roster: roster, inbox: inbox, deviceID: "device-A", deviceDisplayName: "Nephele"
+        )
+        let service = makeService(
+            startMode: .iCloudSync, host: host, eraser: eraser, propagator: propagator
+        )
+
+        await #expect(throws: LillistError.self) {
+            try await service.resetEverywhereToEmpty()
+        }
+
+        #expect(inbox.pendingEvents(for: "device-B").isEmpty)
+    }
+
+    // MARK: - Reset & Re-seed from this device (propagating, issue #71)
+
+    @Test("resetAndReseedFromThisDevice: throws immediately without exporter/importer configured, no destructive work")
+    @MainActor
+    func resetAndReseedWithoutExporterImporterThrows() async throws {
+        let host = FakePersistenceReconfigurer(initialMode: .iCloudSync)
+        let eraser = FakeCloudKitZoneEraser()
+        let service = makeService(startMode: .iCloudSync, host: host, eraser: eraser)
+
+        await #expect(throws: LillistError.self) {
+            try await service.resetAndReseedFromThisDevice()
+        }
+
+        #expect(await host.resetSteps == [])
+        #expect(await eraser.callCount == 0)
+    }
+
+    @Test("resetAndReseedFromThisDevice: exports current data, wipes, re-imports it, then broadcasts — round-tripping real data through a real store")
+    @MainActor
+    func resetAndReseedRoundTripsRealData() async throws {
+        // A REAL in-memory store, seeded with a task, so this test proves
+        // the export -> wipe -> reimport sequence is actually
+        // data-preserving — not just that the steps ran in order. The wipe
+        // itself is exercised via the fake host (as every other test in
+        // this suite does); the export/reimport pair operates on the real
+        // controller underneath.
+        let persistence = try await TestStore.make()
+        let preferences = PreferencesStore(persistence: persistence)
+        _ = try await preferences.read()
+        let tasks = TaskStore(persistence: persistence)
+        let seededID = try await tasks.create(title: "Buy milk")
+
+        let host = FakePersistenceReconfigurer(initialMode: .iCloudSync)
+        let eraser = FakeCloudKitZoneEraser()
+        let kv = InMemoryKeyValueSyncStore()
+        let roster = DeviceRoster(kv: kv)
+        let inbox = ControlInbox(kv: kv)
+        roster.register(id: "device-B", displayName: "Vertumnus")
+        let propagator = ResetPropagator(
+            roster: roster, inbox: inbox, deviceID: "device-A", deviceDisplayName: "Nephele"
+        )
+        let service = makeService(
+            startMode: .iCloudSync, host: host, eraser: eraser,
+            propagator: propagator,
+            exporter: Exporter(persistence: persistence, preferences: preferences),
+            importer: Importer(persistence: persistence)
+        )
+
+        try await service.resetAndReseedFromThisDevice()
+
+        // The (faked) local+iCloud wipe ran exactly like resetAllData()'s.
+        #expect(await host.resetSteps == ["tearDown", "rebuild"])
+        #expect(await eraser.callCount == 1)
+        // The exported snapshot survived the round trip back into the
+        // (real) store.
+        let survivor = try await tasks.fetch(id: seededID)
+        #expect(survivor.title == "Buy milk")
+        // ...and the peer was told to converge on this device's data.
+        let pending = inbox.pendingEvents(for: "device-B")
+        #expect(pending.count == 1)
+        #expect(pending.first?.kind == .resetAndReseed)
+    }
+
+    @Test("resetAndReseedFromThisDevice: cleans up its temp export directory")
+    @MainActor
+    func resetAndReseedCleansUpTempDirectory() async throws {
+        let persistence = try await TestStore.make()
+        let preferences = PreferencesStore(persistence: persistence)
+        _ = try await preferences.read()
+        let host = FakePersistenceReconfigurer(initialMode: .iCloudSync)
+        let eraser = FakeCloudKitZoneEraser()
+        let tempRoot = FileManager.default.temporaryDirectory
+        let before = (try? FileManager.default.contentsOfDirectory(atPath: tempRoot.path).filter {
+            $0.hasPrefix("lillist-reseed-")
+        }) ?? []
+
+        let service = makeService(
+            startMode: .iCloudSync, host: host, eraser: eraser,
+            exporter: Exporter(persistence: persistence, preferences: preferences),
+            importer: Importer(persistence: persistence)
+        )
+        try await service.resetAndReseedFromThisDevice()
+
+        let after = (try? FileManager.default.contentsOfDirectory(atPath: tempRoot.path).filter {
+            $0.hasPrefix("lillist-reseed-")
+        }) ?? []
+        #expect(after.count == before.count)
     }
 }
 

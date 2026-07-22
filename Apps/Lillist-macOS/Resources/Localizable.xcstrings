@@ -110,6 +110,57 @@
     "Export now…" : {
 
     },
+    "Erase Local Data and Download Fresh…" : {
+
+    },
+    "Erase Data from All Devices and Start Over…" : {
+
+    },
+    "Erase Data from All Devices and Restore All from This Device's Backup…" : {
+
+    },
+    "Erase Local Data?" : {
+
+    },
+    "Erase Everywhere?" : {
+
+    },
+    "Restore Everywhere from This Device?" : {
+
+    },
+    "Erase & Download" : {
+
+    },
+    "Erase Everywhere" : {
+
+    },
+    "Restore from This Device" : {
+
+    },
+    "This deletes the copy on this device and downloads a fresh copy of everything from iCloud. Other devices are unaffected. A local backup is kept for 30 days." : {
+
+    },
+    "This permanently deletes every task on this device and in iCloud. Other devices signed in to this account will also erase their data and start fresh the next time they're open and connected to the internet. A local backup of this device is kept for 30 days. This cannot be undone." : {
+
+    },
+    "This device's current data becomes the new copy everywhere: iCloud and every other device signed in to this account will erase their existing data and adopt this device's data the next time they're open and connected to the internet. A backup of the previous state on each device is kept locally for 30 days. This cannot be undone." : {
+
+    },
+    "Use when you suspect the local data store is corrupted, or to deliberately reset every device on this account. Erase Local Data keeps your iCloud data and re-downloads it. The other two options also tell every other signed-in device to erase and converge — to empty, or to this device's data — the next time each is open and online. A local backup is kept for 30 days. Relaunch Lillist after resetting." : {
+
+    },
+    "Local data cleared — downloading from iCloud. Relaunch Lillist once sync settles." : {
+
+    },
+    "Data store reset. Your other devices will erase and reload the next time they're open and online. Relaunch Lillist to reload." : {
+
+    },
+    "This device is now the source of truth. Your other devices will catch up the next time they're open and online. Relaunch Lillist to reload." : {
+
+    },
+    "Reset" : {
+
+    },
     "Get started" : {
 
     },
