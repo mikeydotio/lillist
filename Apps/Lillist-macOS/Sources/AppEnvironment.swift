@@ -64,6 +64,19 @@ final class AppEnvironment {
     /// Issue #7: full-data reset primitive (wipe local + iCloud, rebuild empty).
     /// macOS parity with iOS; used by the backup restore flow.
     let dataStoreReset: DataStoreResetService
+    /// Issue #71: self-registering directory of this iCloud account's
+    /// devices, over the iCloud Key-Value Store (a separate channel from
+    /// the Core Data/CloudKit mirror — see `ResetSignalMonitor`'s doc
+    /// comment for why that separation is the point).
+    let deviceRoster: DeviceRoster
+    /// Issue #71: watches for a reset broadcast from another device and
+    /// converges this one to current iCloud state. Started in
+    /// `bootstrap()`, after one launch catch-up pass. Runs on macOS the
+    /// same way `TaskDuplicateReconciler` already does — the observer is
+    /// author-agnostic (compares epochs, not `NSPersistentStoreRemoteChange`
+    /// transaction authors), so macOS's lack of a `RemoteChangeReconciler`
+    /// is irrelevant here.
+    let resetSignalMonitor: ResetSignalMonitor
     /// Issue #7: keeps the on-disk JSON backup package in step with the live
     /// store (one file per task) and rolls daily snapshot zips.
     let localBackupCoordinator: LocalBackupCoordinator
@@ -268,6 +281,23 @@ final class AppEnvironment {
             cloudKitContainerIdentifier: ckContainerID,
             localStoreRowCount: localStoreRowCount
         )
+        // Issue #71: the reset-propagation control channel, over iCloud
+        // Key-Value Store — a separate iCloud subsystem from the Core
+        // Data/CloudKit mirror, so it survives exactly the kind of wedged
+        // export queue issue #66 diagnosed. Register this device in the
+        // roster now (independent of whether it ever triggers a reset,
+        // so it's discoverable as a fan-out target for peers that do).
+        let deviceID = DeviceFingerprint.current()
+        let keyValueSyncStore = LiveKeyValueSyncStore()
+        let deviceRoster = DeviceRoster(kv: keyValueSyncStore)
+        deviceRoster.register(id: deviceID, displayName: hostname)
+        self.deviceRoster = deviceRoster
+        let controlInbox = ControlInbox(kv: keyValueSyncStore)
+        let resetPropagator = ResetPropagator(
+            roster: deviceRoster, inbox: controlInbox,
+            deviceID: deviceID, deviceDisplayName: hostname
+        )
+
         // Issue #7: full-data reset primitive (parity with iOS) — the
         // destructive half of a backup restore.
         let resetAccountProbe: AccountStateProviding = { [accountStateMonitor] in
@@ -281,8 +311,19 @@ final class AppEnvironment {
             notificationScheduler: scheduler,
             cloudKitContainerIdentifier: ckContainerID,
             accountStateProvider: resetAccountProbe,
-            breadcrumbs: breadcrumbs
+            breadcrumbs: breadcrumbs,
+            propagator: resetPropagator,
+            exporter: Exporter(persistence: persistence, preferences: preferencesStore),
+            importer: Importer(persistence: persistence)
         )
+        self.resetSignalMonitor = ResetSignalMonitor(
+            inbox: controlInbox,
+            applied: AppliedEventStore(),
+            deviceID: deviceID,
+            breadcrumbs: breadcrumbs
+        ) { [dataStoreReset] _ in
+            try await dataStoreReset.resetAndRedownload()
+        }
 
         // Issue #7: local JSON backup subsystem, rooted alongside the store and
         // quarantine under the App Group container.
@@ -307,7 +348,8 @@ final class AppEnvironment {
             preferences: preferencesStore,
             packageDirectory: backupPackageDirectory,
             diagnosticLog: diagnosticLog,
-            process: .macApp
+            process: .macApp,
+            propagator: resetPropagator
         )
 
         // Tasks from Reminders: EventKit gateway + drain importer (iOS parity).
@@ -383,6 +425,10 @@ final class AppEnvironment {
         // launch), then begin observing live remote changes.
         await taskDuplicateReconciler.reconcileNow()
         taskDuplicateReconciler.start()
+        // Issue #71: catch up on any reset broadcast that arrived while the
+        // app wasn't running, then begin observing live ones.
+        await resetSignalMonitor.checkAndApply()
+        resetSignalMonitor.start()
         await notificationScheduler.bootstrap()
         // Persist-6: opportunistically clear expired trash at launch.
         _ = try? await autoPurgeJob.run()

@@ -39,6 +39,15 @@ final class AppEnvironment {
     /// empty. Reuses the same quarantine / zone-eraser / quiesce pieces
     /// as `migrationCoordinator`.
     let dataStoreReset: DataStoreResetService
+    /// Issue #71: self-registering directory of this iCloud account's
+    /// devices, over the iCloud Key-Value Store (a separate channel from
+    /// the Core Data/CloudKit mirror — see `ResetSignalMonitor`'s doc
+    /// comment for why that separation is the point).
+    let deviceRoster: DeviceRoster
+    /// Issue #71: watches for a reset broadcast from another device and
+    /// converges this one to current iCloud state. Started in
+    /// `bootstrap()`, after one launch catch-up pass.
+    let resetSignalMonitor: ResetSignalMonitor
     /// Issue #7: keeps the on-disk JSON backup package in step with the live
     /// store (one file per task), and rolls daily snapshot zips. Retained for
     /// the app's lifetime; deinit removes its observers.
@@ -314,6 +323,23 @@ final class AppEnvironment {
             cloudKitContainerIdentifier: ckContainerID,
             localStoreRowCount: localStoreRowCount
         )
+        // Issue #71: the reset-propagation control channel, over iCloud
+        // Key-Value Store — a separate iCloud subsystem from the Core
+        // Data/CloudKit mirror, so it survives exactly the kind of wedged
+        // export queue issue #66 diagnosed. Register this device in the
+        // roster now (independent of whether it ever triggers a reset,
+        // so it's discoverable as a fan-out target for peers that do).
+        let deviceID = DeviceFingerprint.current()
+        let keyValueSyncStore = LiveKeyValueSyncStore()
+        let deviceRoster = DeviceRoster(kv: keyValueSyncStore)
+        deviceRoster.register(id: deviceID, displayName: hostname)
+        self.deviceRoster = deviceRoster
+        let controlInbox = ControlInbox(kv: keyValueSyncStore)
+        let resetPropagator = ResetPropagator(
+            roster: deviceRoster, inbox: controlInbox,
+            deviceID: deviceID, deviceDisplayName: hostname
+        )
+
         // Debug full-reset service. Same building blocks as the migration
         // coordinator (quarantine backup, CloudKit zone eraser, quiesce
         // wait) but a distinct type: a reset is not a mode transition and
@@ -330,8 +356,19 @@ final class AppEnvironment {
             notificationScheduler: scheduler,
             cloudKitContainerIdentifier: ckContainerID,
             accountStateProvider: resetAccountProbe,
-            breadcrumbs: breadcrumbs
+            breadcrumbs: breadcrumbs,
+            propagator: resetPropagator,
+            exporter: Exporter(persistence: persistence, preferences: preferencesStore),
+            importer: Importer(persistence: persistence)
         )
+        self.resetSignalMonitor = ResetSignalMonitor(
+            inbox: controlInbox,
+            applied: AppliedEventStore(),
+            deviceID: deviceID,
+            breadcrumbs: breadcrumbs
+        ) { [dataStoreReset] _ in
+            try await dataStoreReset.resetAndRedownload()
+        }
 
         // Issue #7: local JSON backup subsystem, rooted alongside the store and
         // quarantine under the App Group container (`<root>/Backup/Package` +
@@ -357,7 +394,8 @@ final class AppEnvironment {
             preferences: preferencesStore,
             packageDirectory: backupPackageDirectory,
             diagnosticLog: diagnosticLog,
-            process: .app
+            process: .app,
+            propagator: resetPropagator
         )
 
         // Tasks from Reminders: EventKit gateway + drain importer. The
@@ -451,6 +489,10 @@ final class AppEnvironment {
         // launch), then begin observing live remote changes.
         await taskDuplicateReconciler.reconcileNow()
         taskDuplicateReconciler.start()
+        // Issue #71: catch up on any reset broadcast that arrived while the
+        // app wasn't running, then begin observing live ones.
+        await resetSignalMonitor.checkAndApply()
+        resetSignalMonitor.start()
         // Diagnostics: sync the cached enabled flag from device prefs, then run a
         // catch-up pass over any history that accrued while not running and begin
         // observing live remote changes. Order matters — set the flag first so the
