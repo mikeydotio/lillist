@@ -22,15 +22,17 @@ struct AdvancedPane: View {
     @State private var resetResult: String?
     @State private var resetResultIsError = false
 
-    /// Which reset the user is confirming. A single field (rather than two
-    /// independent booleans) so the two destructive confirmations can't both
+    /// Which reset the user is confirming. A single field (rather than
+    /// independent booleans) so the destructive confirmations can't both
     /// present at once. Mirrors iOS `ResetDataStoreSection` — see its doc
-    /// for why these two paths exist and when each is appropriate; issue
-    /// #66 found macOS had no self-serve equivalent of this iOS tool, so a
-    /// stuck device there had no in-app recovery path.
+    /// for why these three paths exist, when each is appropriate, and how
+    /// the two propagating ones actually reach other devices (issue #71).
+    /// Issue #66 found macOS had no self-serve equivalent of this iOS
+    /// tool, so a stuck device there had no in-app recovery path.
     private enum ResetKind: Identifiable {
         case redownload
-        case everywhere
+        case eraseEverywhere
+        case reseedFromThisDevice
         var id: Self { self }
     }
 
@@ -102,9 +104,10 @@ struct AdvancedPane: View {
             // Recommended-first: re-download keeps the iCloud copy and only
             // appears while syncing (nothing to download in local-only mode).
             if environment.currentSyncMode == .iCloudSync {
-                resetButton(.redownload, title: "Reset & Download Data…")
+                resetButton(.redownload, title: "Erase Local Data and Download Fresh…")
             }
-            resetButton(.everywhere, title: "Reset Everywhere…")
+            resetButton(.eraseEverywhere, title: "Erase Data from All Devices and Start Over…")
+            resetButton(.reseedFromThisDevice, title: "Erase Data from All Devices and Restore All from This Device's Backup…")
 
             if let resetResult {
                 Text(resetResult)
@@ -114,7 +117,7 @@ struct AdvancedPane: View {
         } header: {
             Text("Reset")
         } footer: {
-            Text("Use when you suspect the local data store is corrupted. Reset & Download keeps your iCloud data and re-downloads it; Reset Everywhere erases every task on all devices. A local backup is kept for 30 days. Relaunch Lillist after resetting.")
+            Text("Use when you suspect the local data store is corrupted, or to deliberately reset every device on this account. Erase Local Data keeps your iCloud data and re-downloads it. The other two options also tell every other signed-in device to erase and converge — to empty, or to this device's data — the next time each is open and online. A local backup is kept for 30 days. Relaunch Lillist after resetting.")
         }
     }
 
@@ -138,25 +141,29 @@ struct AdvancedPane: View {
 
     private var resetConfirmTitle: String {
         switch confirmingReset {
-        case .redownload: return String(localized: "Reset & Download Data?")
-        case .everywhere: return String(localized: "Reset Everywhere?")
+        case .redownload: return String(localized: "Erase Local Data?")
+        case .eraseEverywhere: return String(localized: "Erase Everywhere?")
+        case .reseedFromThisDevice: return String(localized: "Restore Everywhere from This Device?")
         case nil: return ""
         }
     }
 
     private func resetConfirmButtonLabel(_ kind: ResetKind) -> LocalizedStringKey {
         switch kind {
-        case .redownload: return "Reset & Download"
-        case .everywhere: return "Erase Everywhere"
+        case .redownload: return "Erase & Download"
+        case .eraseEverywhere: return "Erase Everywhere"
+        case .reseedFromThisDevice: return "Restore from This Device"
         }
     }
 
     private func resetConfirmMessage(_ kind: ResetKind) -> String {
         switch kind {
         case .redownload:
-            return String(localized: "This deletes the copy on this device and downloads a fresh copy of everything from iCloud. Your iCloud data and other devices are unaffected. A local backup is kept for 30 days.")
-        case .everywhere:
-            return String(localized: "This permanently deletes every task on this device and in iCloud — on all devices signed in to this account. A local backup is kept for 30 days. This cannot be undone.")
+            return String(localized: "This deletes the copy on this device and downloads a fresh copy of everything from iCloud. Other devices are unaffected. A local backup is kept for 30 days.")
+        case .eraseEverywhere:
+            return String(localized: "This permanently deletes every task on this device and in iCloud. Other devices signed in to this account will also erase their data and start fresh the next time they're open and connected to the internet. A local backup of this device is kept for 30 days. This cannot be undone.")
+        case .reseedFromThisDevice:
+            return String(localized: "This device's current data becomes the new copy everywhere: iCloud and every other device signed in to this account will erase their existing data and adopt this device's data the next time they're open and connected to the internet. A backup of the previous state on each device is kept locally for 30 days. This cannot be undone.")
         }
     }
 
@@ -172,9 +179,14 @@ struct AdvancedPane: View {
                 let msg = String(localized: "Local data cleared — downloading from iCloud. Relaunch Lillist once sync settles.")
                 resetResult = msg
                 AccessibilityAnnouncements.post(msg, priority: .high)
-            case .everywhere:
-                try await environment.dataStoreReset.resetAllData()
-                let msg = String(localized: "Data store reset. Relaunch Lillist to reload.")
+            case .eraseEverywhere:
+                try await environment.dataStoreReset.resetEverywhereToEmpty()
+                let msg = String(localized: "Data store reset. Your other devices will erase and reload the next time they're open and online. Relaunch Lillist to reload.")
+                resetResult = msg
+                AccessibilityAnnouncements.post(msg, priority: .high)
+            case .reseedFromThisDevice:
+                try await environment.dataStoreReset.resetAndReseedFromThisDevice()
+                let msg = String(localized: "This device is now the source of truth. Your other devices will catch up the next time they're open and online. Relaunch Lillist to reload.")
                 resetResult = msg
                 AccessibilityAnnouncements.post(msg, priority: .high)
             }
