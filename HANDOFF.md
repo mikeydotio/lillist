@@ -54,7 +54,6 @@ Resolution chosen (with Mikey): **verify-first**, not a speculative AppKit bridg
      the affected macOS branch to `NSGestureRecognizerRepresentable` (macOS 15+) mirroring
      the iOS bridge, red→green. (Design only if needed.)
 2. **Merge the PR** (merge commit; verify; delete branch).
-3. Optionally `/atlas update` (mapped LillistUI sources changed: SwipeableRow, Tokens).
 
 ## Related issues still open
 
