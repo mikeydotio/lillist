@@ -2,3 +2,4 @@
 {"kind":"StoryPrioritySet","at":"2026-07-28T16:32:21Z","priority":"critical"}
 {"kind":"StoryLabelsSet","at":"2026-07-28T16:32:21Z","labels":["plan-1a","sev-critical","sweep-stores"]}
 {"kind":"StoryDescriptionSet","at":"2026-07-28T16:32:21Z","description":"restore(id:) clears deletedAt on the child only (TaskStore.swift:737-754); the parent stays trashed. The child is now in no list (not the parent's children since the parent is trashed/hidden, not root children since it has a parent) and becomes C1's next victim. PRODUCT DECISION (Mikey, 2026-07-28): restoring a child whose parent is still trashed PROMOTES THE CHILD TO ROOT, severing the link to the trashed parent. This is binding for the fix. Severity: Critical. Wave/Plan: Wave 1, plan 1a trash-tree-integrity. Sweep: stores/persistence. Verified directly against source."}
+{"kind":"StoryStateChanged","at":"2026-07-28T17:10:07Z","state":"in-progress"}

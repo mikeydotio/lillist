@@ -2,3 +2,4 @@
 {"kind":"StoryPrioritySet","at":"2026-07-28T16:32:21Z","priority":"critical"}
 {"kind":"StoryLabelsSet","at":"2026-07-28T16:32:21Z","labels":["plan-1a","sev-critical","sweep-stores"]}
 {"kind":"StoryDescriptionSet","at":"2026-07-28T16:32:21Z","description":"ctx.delete(loser) cascades children/journal entries/attachments with no re-pointing or field merge (TaskDuplicateReconciler.swift:134-137). Failure scenario: an issue-#66-shaped duplicate-ID collision (the class that motivated the original reconciler) can lose an entire subtree of subtasks, notes, and attachments attached to whichever row loses the merge. Severity: Critical. Wave/Plan: Wave 1, plan 1a trash-tree-integrity. Sweep: stores/persistence."}
+{"kind":"StoryStateChanged","at":"2026-07-28T17:10:07Z","state":"in-progress"}

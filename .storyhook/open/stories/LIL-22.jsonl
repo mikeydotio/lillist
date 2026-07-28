@@ -2,3 +2,4 @@
 {"kind":"StoryPrioritySet","at":"2026-07-28T16:32:21Z","priority":"high"}
 {"kind":"StoryLabelsSet","at":"2026-07-28T16:32:21Z","labels":["plan-1a","sev-high","sweep-stores"]}
 {"kind":"StoryDescriptionSet","at":"2026-07-28T16:32:21Z","description":"Restoring a task can land two live siblings on the exact same fractional position (TaskStore.swift:987-1076). Severity: High. Wave/Plan: Wave 1, plan 1a trash-tree-integrity. Sweep: stores/persistence."}
+{"kind":"StoryStateChanged","at":"2026-07-28T17:10:07Z","state":"in-progress"}
