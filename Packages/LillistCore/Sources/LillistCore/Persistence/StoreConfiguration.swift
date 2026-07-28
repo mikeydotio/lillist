@@ -29,15 +29,28 @@ public struct StoreConfiguration: Sendable {
     /// `.localOnly` omits them. Honored only when `storeKind` is
     /// `.onDisk` — in-memory stores never mirror regardless of mode.
     public var syncMode: SyncMode
+    /// Data-sync-hardening `X15`: whether this configuration is *permitted*
+    /// to attach `cloudKitContainerOptions`, independent of `syncMode`.
+    /// `syncMode` answers "is this device syncing"; this answers "may the
+    /// process opening this store arm CloudKit mirroring at all." Only the
+    /// two main apps should — the widget, Share/Shortcuts extensions, and
+    /// CLI all open the same shared store but must never each stand up
+    /// their own mirroring delegate against it (see `StoreLocation.Role`).
+    /// Defaults to `true` so every pre-existing call site and test is
+    /// unaffected; only `StoreLocation.makeConfiguration(syncMode:)` sets
+    /// it `false` for non-`.mainApp` roles.
+    public var armsCloudKitMirroring: Bool
 
     public init(
         storeKind: StoreKind,
         cloudKitContainerIdentifier: String = StoreConfiguration.defaultCloudKitContainerIdentifier,
-        syncMode: SyncMode = .default
+        syncMode: SyncMode = .default,
+        armsCloudKitMirroring: Bool = true
     ) {
         self.storeKind = storeKind
         self.cloudKitContainerIdentifier = cloudKitContainerIdentifier
         self.syncMode = syncMode
+        self.armsCloudKitMirroring = armsCloudKitMirroring
     }
 
     /// In-memory store backed by `/dev/null`. For tests and previews.

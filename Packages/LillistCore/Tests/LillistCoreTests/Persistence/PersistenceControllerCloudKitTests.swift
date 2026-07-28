@@ -107,6 +107,26 @@ struct PersistenceControllerCloudKitTests {
         #expect(cloud is NSPersistentCloudKitContainer)
     }
 
+    @Test("armsCloudKitMirroring = false suppresses CloudKit options even in iCloudSync mode (X15)")
+    func description_armsCloudKitMirroringFalse_suppressesOptionsEvenInICloudSync() {
+        let url = URL(fileURLWithPath: "/tmp/Lillist-x15.sqlite")
+        var cfg = StoreConfiguration.onDisk(url: url, syncMode: .iCloudSync)
+        cfg.armsCloudKitMirroring = false
+        let desc = PersistenceController.makeStoreDescription(for: cfg)
+        #expect(desc.cloudKitContainerOptions == nil)
+        // Persistent-history + remote-change flags stay enabled regardless —
+        // only the CloudKit mirroring attach is gated.
+        #expect(desc.isOptionTrue(NSPersistentHistoryTrackingKey))
+        #expect(desc.isOptionTrue(NSPersistentStoreRemoteChangeNotificationPostOptionKey))
+    }
+
+    @Test("armsCloudKitMirroring defaults to true, preserving every pre-existing call site's behavior")
+    func armsCloudKitMirroringDefaultsTrue() {
+        let url = URL(fileURLWithPath: "/tmp/Lillist-default.sqlite")
+        #expect(StoreConfiguration.onDisk(url: url, syncMode: .iCloudSync).armsCloudKitMirroring == true)
+        #expect(StoreConfiguration.inMemory.armsCloudKitMirroring == true)
+    }
+
     @Test("viewContext carries a stable transaction author + name after store load")
     func viewContextTransactionAuthorIsSet() async throws {
         let controller = try await PersistenceController(configuration: .inMemory)

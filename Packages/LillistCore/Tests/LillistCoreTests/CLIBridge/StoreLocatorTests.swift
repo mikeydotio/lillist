@@ -32,4 +32,24 @@ struct StoreLocatorTests {
             Issue.record("expected LillistError.storeUnavailable, got \(error)")
         }
     }
+
+    @Test("X2: the CLI resolves the SAME canonical path as every other role, not its own third path")
+    func x2_resolvesCanonicalPathNotOwnThirdPath() async {
+        // Before X2's fix this identifier resolved to a real (unsandboxed)
+        // container, but the CLI built <group>/Library/Application
+        // Support/Lillist/Lillist.sqlite — a path nothing else ever wrote.
+        // The "store not found" message now must point at the canonical
+        // <group>/Lillist/Lillist.sqlite path shared by every role, proving
+        // the CLI no longer has its own divergent path.
+        let identifier = "group.app.lillist.tests.x2-\(UUID().uuidString)"
+        do {
+            _ = try await CLIBridge.StoreLocator.openAppGroup(identifier: identifier)
+            Issue.record("expected storeUnavailable (no store file exists at a brand-new test container)")
+        } catch let LillistError.storeUnavailable(reason) {
+            #expect(reason.contains("/Lillist/Lillist.sqlite"))
+            #expect(reason.contains("/Library/Application Support/") == false)
+        } catch {
+            Issue.record("expected LillistError.storeUnavailable, got \(error)")
+        }
+    }
 }
