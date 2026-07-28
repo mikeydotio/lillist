@@ -1,4 +1,0 @@
-{"kind":"StoryCreated","at":"2026-07-28T16:32:21Z","title":"X13: .skipExisting import still rewrites parents","state":"todo"}
-{"kind":"StoryPrioritySet","at":"2026-07-28T16:32:21Z","priority":"high"}
-{"kind":"StoryLabelsSet","at":"2026-07-28T16:32:21Z","labels":["plan-1d","sev-high","sweep-crossproc"]}
-{"kind":"StoryDescriptionSet","at":"2026-07-28T16:32:21Z","description":"The second pass re-parents existing tasks even when told to skip them; a missing bundle parent silently promotes the child to root. Severity: High. Wave/Plan: Wave 1, plan 1d export-schema-completeness. Sweep: cross-process."}
