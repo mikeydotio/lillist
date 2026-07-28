@@ -1,6 +1,7 @@
 import Testing
 import Foundation
 import CloudKit
+import CoreData
 @testable import LillistCore
 
 @Suite("MigrationCoordinator runner (executing, no live store)", .serialized)
@@ -123,7 +124,7 @@ struct MigrationRunnerExecutingTests {
         #expect(phases.last == .completed)
     }
 
-    @Test("replaceICloudWithLocal: eraser called once, reconfigure precedes erase, cancel-before-destructive")
+    @Test("replaceICloudWithLocal: eraser called once, erase precedes reconfigure, cancel-before-destructive (S6)")
     @MainActor
     func replaceICloudWithLocalExecutes() async throws {
         let (coordinator, recon, journal, eraser, dir) = makeCoordinator(
@@ -145,16 +146,21 @@ struct MigrationRunnerExecutingTests {
         #expect(await recon.reconfigureCalls == [.iCloudSync])
         // Journal cleared (idle) on success.
         #expect(try journal.read() == .idle)
-        // .preparing precedes both the swap and the erase — proving
+        // .preparing precedes both the erase and the swap — proving
         // notification cancellation fires before any destructive step.
+        // S6: the erase must now precede reconfigure — attaching
+        // mirroring to a store that hasn't been erased yet is the exact
+        // bug this finding reports (remote data merging back in, or
+        // CloudKit's export bookkeeping believing rows were already
+        // uploaded before the erase that was supposed to predate them).
         let preparingIdx = phases.firstIndex(of: .preparing)
         let reconfigIdx = phases.firstIndex(of: .reconfiguringStore)
         let eraseIdx = phases.firstIndex {
             if case .erasingICloud = $0 { return true } else { return false }
         }
         #expect(preparingIdx != nil && reconfigIdx != nil && eraseIdx != nil)
-        #expect(preparingIdx! < reconfigIdx!)
-        #expect(reconfigIdx! < eraseIdx!)
+        #expect(preparingIdx! < eraseIdx!)
+        #expect(eraseIdx! < reconfigIdx!)
     }
 
     // MARK: - Failure-injection test
@@ -182,6 +188,217 @@ struct MigrationRunnerExecutingTests {
         #expect(await eraser.callCount == 0)
         // The fake's mode must be unchanged — the throw keeps the mode at iCloudSync.
         #expect(await recon.mode == .iCloudSync)
+    }
+
+    // MARK: - S1: replaceLocalWithICloud actually wipes local data
+
+    @Test("replaceLocalWithICloud: tears down, wipes, THEN reconfigures — local rows do NOT survive (S1 class-kill)")
+    @MainActor
+    func replaceLocalWithICloudWipesLocalData() async throws {
+        // RealWipingReconfigurer (not the ordering-only FakePersistenceReconfigurer)
+        // so this test can prove actual data loss, not just call ordering —
+        // a fake that never truly clears the store would satisfy a naive
+        // "reconfigure happened" assertion regardless of whether S1's bug
+        // is present.
+        let persistence = try await TestStore.make()
+        let taskStore = TaskStore(persistence: persistence)
+        _ = try await taskStore.create(title: "must not survive the wipe")
+
+        let dir = tempDir()
+        let host = RealWipingReconfigurer(persistence: persistence, initialMode: .localOnly)
+        let journal = InMemoryMigrationJournalStore()
+        let suite = "MigRunner-\(UUID().uuidString)"
+        let modeStore = SyncModeStore(suiteName: suite)
+        await modeStore.setMode(.localOnly)
+        let coordinator = MigrationCoordinator(
+            host: host,
+            journal: journal,
+            quarantine: QuarantineManager(rootDirectory: dir),
+            zoneEraser: FakeCloudKitZoneEraser(),
+            quiesceMonitor: SyncQuiesceMonitor(bridge: CloudKitEventBridge()),
+            notificationScheduler: nil,
+            syncModeStore: modeStore,
+            localStoreRowCount: { 1 },
+            quiesceMinQuietWindow: 0.05,
+            quiesceHardTimeout: 2
+        )
+        let storeURL = dir.appendingPathComponent("Lillist.sqlite")
+
+        try await coordinator.beginEnable(direction: .replaceLocal, storeURL: storeURL)
+
+        // Ordering: tear down -> rebuild -> THEN reconfigure to the target.
+        #expect(await host.resetSteps == ["tearDown", "rebuild"])
+        #expect(await host.reconfigureCalls == [.iCloudSync])
+        #expect(await modeStore.currentMode() == .iCloudSync)
+        #expect(try journal.read() == .idle)
+
+        // The class-kill: the row created before the migration must be
+        // GONE — the store was genuinely wiped, not merely reconfigured
+        // in place (which would let the row merge into iCloud instead of
+        // being replaced by it).
+        let remaining = try await persistence.container.viewContext.perform {
+            try persistence.container.viewContext.count(for: NSFetchRequest<LillistTask>(entityName: "LillistTask"))
+        }
+        #expect(remaining == 0)
+    }
+
+    @Test("replaceLocalWithICloud: a rebuildEmptyStore failure best-effort reattaches before failing (S12)")
+    @MainActor
+    func replaceLocalWithICloudReattachesOnRebuildFailure() async throws {
+        let dir = tempDir()
+        let recon = FakePersistenceReconfigurer(initialMode: .localOnly)
+        await recon.failOnRebuild()
+        let journal = InMemoryMigrationJournalStore()
+        let suite = "MigRunner-\(UUID().uuidString)"
+        let modeStore = SyncModeStore(suiteName: suite)
+        await modeStore.setMode(.localOnly)
+        let coordinator = MigrationCoordinator(
+            host: recon,
+            journal: journal,
+            quarantine: QuarantineManager(rootDirectory: dir),
+            zoneEraser: FakeCloudKitZoneEraser(),
+            quiesceMonitor: SyncQuiesceMonitor(bridge: CloudKitEventBridge()),
+            notificationScheduler: nil,
+            syncModeStore: modeStore,
+            localStoreRowCount: { 1 }
+        )
+        let storeURL = dir.appendingPathComponent("Lillist.sqlite")
+
+        await #expect(throws: LillistError.self) {
+            try await coordinator.beginEnable(direction: .replaceLocal, storeURL: storeURL)
+        }
+
+        // tearDown ran, rebuild failed, and the catch's best-effort
+        // reattach ran too — the coordinator must never be left
+        // store-less on this failure path (S12). reconfigure never ran
+        // (rebuild failed before it), so mode is unchanged.
+        #expect(await recon.resetSteps == ["tearDown", "rebuild", "reattach"])
+        #expect(await recon.reconfigureCalls == [])
+        #expect(await modeStore.currentMode() == .localOnly)
+        let j = try journal.read()
+        #expect(j.state == .failed)
+    }
+
+    // MARK: - S5/S14: syncFirstThenDisable quiesces BEFORE detaching
+
+    @Test("syncFirstThenDisable: quiesces THEN detaches, in that order (S5 happy path)")
+    @MainActor
+    func syncFirstThenDisableQuiescesBeforeDetaching() async throws {
+        let dir = tempDir()
+        let recon = FakePersistenceReconfigurer(initialMode: .iCloudSync)
+        let journal = InMemoryMigrationJournalStore()
+        let suite = "MigRunner-\(UUID().uuidString)"
+        let modeStore = SyncModeStore(suiteName: suite)
+        await modeStore.setMode(.iCloudSync)
+        let coordinator = MigrationCoordinator(
+            host: recon,
+            journal: journal,
+            quarantine: QuarantineManager(rootDirectory: dir),
+            zoneEraser: FakeCloudKitZoneEraser(),
+            quiesceMonitor: SyncQuiesceMonitor(bridge: CloudKitEventBridge()),
+            notificationScheduler: nil,
+            syncModeStore: modeStore,
+            quiesceMinQuietWindow: 0.05,
+            quiesceHardTimeout: 2
+        )
+        let storeURL = dir.appendingPathComponent("Lillist.sqlite")
+        try Data("x".utf8).write(to: storeURL)
+
+        let phases = try await collectPhases(from: coordinator) {
+            try await coordinator.beginDisable(strategy: .syncFirst, storeURL: storeURL)
+        }
+
+        #expect(await recon.reconfigureCalls == [.localOnly])
+        #expect(await modeStore.currentMode() == .localOnly)
+        #expect(try journal.read() == .idle)
+        let uploadIdx = phases.firstIndex { if case .uploading = $0 { return true } else { return false } }
+        let reconfigIdx = phases.firstIndex(of: .reconfiguringStore)
+        #expect(uploadIdx != nil && reconfigIdx != nil)
+        // The final-sync wait must precede the detach — waiting AFTER
+        // reconfigure(to: .localOnly) is pointless (no CloudKit container
+        // remains to export through) and is exactly the bug S5 reports.
+        #expect(uploadIdx! < reconfigIdx!)
+    }
+
+    @Test("syncFirstThenDisable: a quiesce timeout fails the step BEFORE detaching, never strands mode (S5/S14)")
+    @MainActor
+    func syncFirstThenDisableFailsClosedOnQuiesceTimeout() async throws {
+        let dir = tempDir()
+        let recon = FakePersistenceReconfigurer(initialMode: .iCloudSync)
+        let journal = InMemoryMigrationJournalStore()
+        let suite = "MigRunner-\(UUID().uuidString)"
+        let modeStore = SyncModeStore(suiteName: suite)
+        await modeStore.setMode(.iCloudSync)
+        let coordinator = MigrationCoordinator(
+            host: recon,
+            journal: journal,
+            quarantine: QuarantineManager(rootDirectory: dir),
+            zoneEraser: FakeCloudKitZoneEraser(),
+            // No events ever fire on this bridge, and hardTimeout sits
+            // below minQuietWindow, so the wait can only ever time out —
+            // that's the failure path this test proves.
+            quiesceMonitor: SyncQuiesceMonitor(bridge: CloudKitEventBridge()),
+            notificationScheduler: nil,
+            syncModeStore: modeStore,
+            quiesceMinQuietWindow: 1.0,
+            quiesceHardTimeout: 0.05
+        )
+        let storeURL = dir.appendingPathComponent("Lillist.sqlite")
+        try Data("x".utf8).write(to: storeURL)
+
+        await #expect(throws: LillistError.self) {
+            try await coordinator.beginDisable(strategy: .syncFirst, storeURL: storeURL)
+        }
+
+        // The whole point of "sync first": a timeout must fail the step
+        // BEFORE detaching mirroring, so unsynced edits are never
+        // silently stranded (S5). reconfigure must never have been
+        // called, and mode must still read the original iCloudSync.
+        #expect(await recon.reconfigureCalls == [])
+        #expect(await recon.mode == .iCloudSync)
+        #expect(await modeStore.currentMode() == .iCloudSync)
+        #expect(try journal.read().state == .failed)
+    }
+
+    // MARK: - S14: a POST-destructive quiesce timeout does not fail the migration
+
+    @Test("replaceLocalWithICloud: a post-completion quiesce timeout still COMPLETES the migration (S14 — nothing left to revert)")
+    @MainActor
+    func postDestructiveQuiesceTimeoutStillCompletes() async throws {
+        let dir = tempDir()
+        let recon = FakePersistenceReconfigurer(initialMode: .localOnly)
+        let journal = InMemoryMigrationJournalStore()
+        let suite = "MigRunner-\(UUID().uuidString)"
+        let modeStore = SyncModeStore(suiteName: suite)
+        await modeStore.setMode(.localOnly)
+        let coordinator = MigrationCoordinator(
+            host: recon,
+            journal: journal,
+            quarantine: QuarantineManager(rootDirectory: dir),
+            zoneEraser: FakeCloudKitZoneEraser(),
+            quiesceMonitor: SyncQuiesceMonitor(bridge: CloudKitEventBridge()),
+            notificationScheduler: nil,
+            syncModeStore: modeStore,
+            localStoreRowCount: { 1 },
+            quiesceMinQuietWindow: 1.0,
+            quiesceHardTimeout: 0.05
+        )
+        let storeURL = dir.appendingPathComponent("Lillist.sqlite")
+        try Data("x".utf8).write(to: storeURL)
+
+        // The wait times out (hardTimeout < minQuietWindow, no events
+        // ever fire). The destructive work (tear down + rebuild +
+        // reconfigure) already succeeded by this point, so the migration
+        // must still COMPLETE rather than fail — there is nothing left
+        // to revert, and failing here would strand the user on a
+        // half-migrated store for no benefit (matches
+        // `QuiesceResult.timedOut`'s own documented "proceeds anyway"
+        // contract).
+        try await coordinator.beginEnable(direction: .replaceLocal, storeURL: storeURL)
+
+        #expect(await recon.reconfigureCalls == [.iCloudSync])
+        #expect(await modeStore.currentMode() == .iCloudSync)
+        #expect(try journal.read() == .idle)
     }
 }
 

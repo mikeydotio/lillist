@@ -175,9 +175,17 @@ public actor PersistenceHost: PersistenceReconfiguring, PersistenceResetting {
                 if ctx.hasChanges {
                     try ctx.save()
                 }
-                // We only support a single attached store in production; in
-                // tests there may be zero (in-memory) — bail in that case.
-                guard let store = coordinator.persistentStores.first else { return }
+                // We only support a single attached store. Zero attached
+                // stores means a prior step already left the coordinator
+                // store-less (e.g. a reset's tearDownStore ran without a
+                // matching reattach) — silently returning here would let
+                // `reconfigure(to:)` advance `currentMode` as if the swap
+                // succeeded, with no store actually attached (S12).
+                guard let store = coordinator.persistentStores.first else {
+                    throw LillistError.storeUnavailable(
+                        reason: "flushAndSwap found no persistent store attached; cannot reconfigure."
+                    )
+                }
 
                 let rollbackDesc = PersistenceController.makeStoreDescription(for: originalConfig)
                 let desc = PersistenceController.makeStoreDescription(for: newConfig)

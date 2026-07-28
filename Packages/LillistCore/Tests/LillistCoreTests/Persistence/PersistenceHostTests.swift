@@ -100,6 +100,24 @@ struct PersistenceHostTests {
         #expect(await host.currentMode == .iCloudSync)
     }
 
+    @Test("reconfigure throws (not silently succeeds) when zero stores are attached (S12)", .enabled(if: liveSwapAllowed))
+    func reconfigureThrowsWithZeroAttachedStores() async throws {
+        let url = Self.freshStoreURL()
+        let host = try await PersistenceHost.make(initialMode: .localOnly, storeURL: url)
+        // Detach the store without reattaching or rebuilding — the exact
+        // state a reset's tearDownStore leaves behind if a caller skips
+        // the matching reattach/rebuild step.
+        _ = try await host.tearDownStore(backupVia: nil)
+
+        await #expect(throws: (any Error).self) {
+            try await host.reconfigure(to: .iCloudSync)
+        }
+        // The throw must have happened BEFORE currentMode advanced — a
+        // silent "success" here would let a caller believe the swap
+        // happened when no store is actually attached.
+        #expect(await host.currentMode == .localOnly)
+    }
+
     // Roadmap #1 proof. The framework does not surface
     // `cloudKitContainerOptions` back through the live `NSPersistentStore`
     // (only the *description* carries them — see

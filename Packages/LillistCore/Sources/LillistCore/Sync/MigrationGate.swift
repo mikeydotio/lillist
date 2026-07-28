@@ -25,7 +25,17 @@ public struct MigrationGate: Sendable {
     }
 
     public func evaluate() async -> Decision {
-        let entry = (try? journal.read()) ?? .idle
+        let entry: MigrationJournal
+        do {
+            entry = try journal.read()
+        } catch {
+            // A missing file is not an error — FileMigrationJournalStore.read()
+            // returns .idle for that case without throwing. Reaching this
+            // branch means the file exists but failed to decode (S15):
+            // fail closed rather than conflating "unreadable" with "idle,"
+            // which would let a caller proceed on top of unknown state.
+            return .abort(message: "Sync settings could not be read (the migration journal appears corrupted). Try relaunching Lillist.")
+        }
         if entry.isInFlight {
             return .abort(message: "Sync settings are being changed. Try again in a moment.")
         }

@@ -176,9 +176,12 @@ struct MigrationRecoveryTests {
         // write the .failed journal — make that write throw too. The
         // ORIGINAL reconfigure error must still propagate.
         let inner = InMemoryMigrationJournalStore()
-        // write sequence under disableNow: 1=preparing, 2=reconfiguring,
-        // then reconfigure throws → catch write is the 3rd write.
-        let journal = ThrowingMigrationJournalStore(underlying: inner, throwOnWrite: 3)
+        // write sequence under disableNow (post S1/S6/S8 reorder):
+        // 1=preparing, 2=quarantining, 3=quarantining+folderName (a real
+        // file exists at storeURL, so copyStore's write runs too),
+        // 4=reconfiguringStore, then reconfigure throws → catch write is
+        // the 5th write.
+        let journal = ThrowingMigrationJournalStore(underlying: inner, throwOnWrite: 5)
         let (coordinator, recon, _) = makeCoordinator(startMode: .iCloudSync, journal: journal, quarantineRoot: dir)
         await recon.failOnReconfigure(call: 1)
 
