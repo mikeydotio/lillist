@@ -26,8 +26,23 @@ public final class AutoPurgeJob: @unchecked Sendable {
             // cascade closure and delete it entity-by-entity (a single batch
             // is restricted to one entity). The IDs are merged into the
             // viewContext below.
-            let ids = CascadeReaper.objectIDs(forDeleting: victims)
-            return try CascadeReaper.batchDelete(objectIDs: ids, in: ctx)
+            //
+            // C1: bound the cascade at any live descendant (see the matching
+            // comment in `TaskStore.batchPurge`) — promote it to root and
+            // save before the batch delete runs, rather than merely
+            // excluding it from the deletable set (which would not spare it;
+            // the model's Cascade delete rule still reaches it at the SQLite
+            // row level for a batch delete).
+            let plan = CascadeReaper.planPurge(ofTrashedRoots: victims)
+            if !plan.liveDescendantsToPromote.isEmpty {
+                for objectID in plan.liveDescendantsToPromote {
+                    if let child = try? ctx.existingObject(with: objectID) as? LillistTask {
+                        TaskTreeRepair.promoteToRoot(child)
+                    }
+                }
+                try ctx.save()
+            }
+            return try CascadeReaper.batchDelete(objectIDs: plan.deletable, in: ctx)
         }
         guard !deletedIDs.isEmpty else { return 0 }
         await viewContext.perform {

@@ -884,8 +884,24 @@ public final class TaskStore: @unchecked Sendable {
             // are merged into the viewContext below so it invalidates the
             // corresponding in-memory objects and callers see no dangling
             // faults.
-            let ids = CascadeReaper.objectIDs(forDeleting: roots)
-            return try CascadeReaper.batchDelete(objectIDs: ids, in: ctx)
+            //
+            // C1: a root's cascade can include a *live* descendant (from a
+            // CloudKit merge, or — pre-M1/C2 — a stray local mutation). The
+            // model's `children` relationship cascades at the SQLite row
+            // level even for batch deletes, so simply excluding a live
+            // descendant from the deletable set does not spare it — its
+            // `parent` link must be severed first. Promote every such node
+            // to root and save *before* the batch delete runs.
+            let plan = CascadeReaper.planPurge(ofTrashedRoots: roots)
+            if !plan.liveDescendantsToPromote.isEmpty {
+                for objectID in plan.liveDescendantsToPromote {
+                    if let child = try? ctx.existingObject(with: objectID) as? LillistTask {
+                        TaskTreeRepair.promoteToRoot(child)
+                    }
+                }
+                try ctx.save()
+            }
+            return try CascadeReaper.batchDelete(objectIDs: plan.deletable, in: ctx)
         }
         guard !deletedIDs.isEmpty else { return 0 }
         await viewContext.perform {

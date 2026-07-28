@@ -44,6 +44,84 @@ public enum CascadeReaper {
         return Array(collected)
     }
 
+    // MARK: - Purge planning (C1)
+
+    /// The outcome of planning a trash purge: which objectIDs are safe to
+    /// hard-delete, and which live descendants must be promoted to root
+    /// (`parent = nil`) **before** the delete executes.
+    ///
+    /// `objectIDs(forDeleting:)` above recurses into every descendant of a
+    /// root unconditionally — correct for a fully cascade-trashed subtree,
+    /// but wrong when a descendant is live (`deletedAt == nil`): the model's
+    /// `children` relationship still cascades at the SQLite row level even
+    /// for `NSBatchDeleteRequest` (see `docs/engineering-notes.md`, "Batch
+    /// delete skips delete rules — and the result set lies"), so merely
+    /// *excluding* a live descendant's objectID from the deletion set is
+    /// not enough — the store's own FK cascade would still remove its row
+    /// when the trashed ancestor's row is deleted, regardless of what this
+    /// type reports. The only way to actually spare it is to sever its
+    /// `parent` link first, via a normal managed-object mutation + save, so
+    /// it is no longer reachable by the cascade at all.
+    public struct PurgePlan: Sendable {
+        /// Every objectID (across all reaped entities) safe to hard-delete.
+        public let deletable: [NSManagedObjectID]
+        /// Live `LillistTask` objectIDs that must have `parent` set to `nil`
+        /// and be saved *before* `deletable` is batch-deleted.
+        public let liveDescendantsToPromote: [NSManagedObjectID]
+    }
+
+    /// Plans a purge of `roots` (top-level trashed `LillistTask`s), bounding
+    /// the cascade at the first live descendant encountered on each branch:
+    /// that node (and, structurally, its own subtree along with it, live or
+    /// trashed) is excluded from `deletable` and reported in
+    /// `liveDescendantsToPromote` instead. A promoted node's own descendants
+    /// stay attached to it and are never independently walked or reaped —
+    /// they aren't reachable from any of `roots` once the barrier node is
+    /// detached.
+    public static func planPurge(ofTrashedRoots roots: [LillistTask]) -> PurgePlan {
+        var deletable: Set<NSManagedObjectID> = []
+        var promote: Set<NSManagedObjectID> = []
+        for root in roots {
+            collectForPurge(task: root, into: &deletable, promote: &promote)
+        }
+        return PurgePlan(deletable: Array(deletable), liveDescendantsToPromote: Array(promote))
+    }
+
+    private static func collectForPurge(
+        task: LillistTask,
+        into deletable: inout Set<NSManagedObjectID>,
+        promote: inout Set<NSManagedObjectID>
+    ) {
+        guard deletable.insert(task.objectID).inserted else { return }
+
+        if let entries = task.journalEntries as? Set<JournalEntry> {
+            for entry in entries {
+                collect(entry: entry, into: &deletable)
+            }
+        }
+        if let attachments = task.attachments as? Set<Attachment> {
+            for attachment in attachments {
+                deletable.insert(attachment.objectID)
+            }
+        }
+        if let specs = task.notificationSpecs as? Set<NotificationSpec> {
+            for spec in specs {
+                deletable.insert(spec.objectID)
+            }
+        }
+        if let children = task.children as? Set<LillistTask> {
+            for child in children {
+                if child.deletedAt == nil {
+                    // Live-under-trashed barrier: spare it (and, structurally,
+                    // everything still attached to it) — do not recurse further.
+                    promote.insert(child.objectID)
+                    continue
+                }
+                collectForPurge(task: child, into: &deletable, promote: &promote)
+            }
+        }
+    }
+
     // MARK: - Private traversal
 
     private static func collect(task: LillistTask, into set: inout Set<NSManagedObjectID>) {
