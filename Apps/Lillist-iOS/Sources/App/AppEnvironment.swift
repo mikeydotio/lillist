@@ -426,15 +426,21 @@ final class AppEnvironment {
     /// Intents extension see the same data. The initial sync mode is
     /// resolved from `SyncModeStore` (defaults to iCloudSync when no
     /// value is persisted yet — preserving Plan 20 upgrade behavior).
+    ///
+    /// Data-sync-hardening `X1` (folded-in iOS detail): this used to fall
+    /// back silently to `StoreConfiguration.defaultOnDisk` (a private,
+    /// per-sandbox path the Share/Shortcuts extensions and widget can't
+    /// see) whenever the App Group container was unreachable — a fourth,
+    /// undocumented store-location fork. `StoreLocation.resolve` now
+    /// throws loud instead: an unreachable App Group is a real
+    /// misconfiguration (missing entitlement, unsigned build) that must
+    /// surface as a launch failure, never a silent fork onto a store the
+    /// rest of the app can't share.
     static func make() async throws -> AppEnvironment {
         let syncModeStore = SyncModeStore(appGroupID: appGroupID)
         let initialMode = await syncModeStore.currentMode()
-        var config: StoreConfiguration
-        if let group = StoreConfiguration.appGroupOnDisk(groupID: appGroupID, syncMode: initialMode) {
-            config = group
-        } else {
-            config = try StoreConfiguration.defaultOnDisk.withSyncMode(initialMode)
-        }
+        let location = try StoreLocation.resolve(role: .mainApp, appGroupID: appGroupID)
+        let config = location.makeConfiguration(syncMode: initialMode)
         let persistence = try await PersistenceController(configuration: config)
         let host = PersistenceHost(controller: persistence, initialMode: initialMode)
         let devicePreferences = DevicePreferencesStore(appGroupID: appGroupID)

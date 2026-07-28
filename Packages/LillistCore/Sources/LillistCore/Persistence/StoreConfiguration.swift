@@ -79,37 +79,26 @@ public struct StoreConfiguration: Sendable {
         }
     }
 
-    /// On-disk SQLite store inside the App Group's shared container. Use
-    /// when the main app and its extensions (Share / App Intents) need to
-    /// see the same store. Returns `nil` if the group container is not
-    /// reachable (entitlement missing or running outside a signed sandbox).
-    public static func appGroupOnDisk(
-        groupID: String,
-        syncMode: SyncMode = .default
-    ) -> StoreConfiguration? {
-        guard let container = FileManager.default
-            .containerURL(forSecurityApplicationGroupIdentifier: groupID)
-        else { return nil }
-        let dir = container.appendingPathComponent("Lillist", isDirectory: true)
-        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
-        return .onDisk(url: dir.appendingPathComponent("Lillist.sqlite"), syncMode: syncMode)
-    }
-
     /// Returns a copy with the given CloudKit container identifier substituted in.
+    /// Preserves `armsCloudKitMirroring` — a "with" copy must not silently
+    /// reset a role's mirroring permission back to the default (`X15`).
     public func withCloudKitContainer(_ identifier: String) -> StoreConfiguration {
         StoreConfiguration(
             storeKind: storeKind,
             cloudKitContainerIdentifier: identifier,
-            syncMode: syncMode
+            syncMode: syncMode,
+            armsCloudKitMirroring: armsCloudKitMirroring
         )
     }
 
-    /// Returns a copy with the given sync mode substituted in.
+    /// Returns a copy with the given sync mode substituted in. Preserves
+    /// `armsCloudKitMirroring` — see `withCloudKitContainer(_:)`.
     public func withSyncMode(_ mode: SyncMode) -> StoreConfiguration {
         StoreConfiguration(
             storeKind: storeKind,
             cloudKitContainerIdentifier: cloudKitContainerIdentifier,
-            syncMode: mode
+            syncMode: mode,
+            armsCloudKitMirroring: armsCloudKitMirroring
         )
     }
 }

@@ -15,7 +15,7 @@ public struct WidgetSnapshotStore: Sendable {
 
     /// Production initializer. Returns `nil` when the App Group container is not
     /// reachable (entitlement missing or running outside a signed sandbox) —
-    /// mirrors ``StoreConfiguration/appGroupOnDisk(groupID:syncMode:)``.
+    /// mirrors ``StoreLocation/resolve(role:appGroupID:containerProvider:fileManager:)``.
     public init?(appGroupID: String) {
         guard let container = FileManager.default
             .containerURL(forSecurityApplicationGroupIdentifier: appGroupID)
