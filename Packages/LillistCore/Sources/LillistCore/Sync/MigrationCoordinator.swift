@@ -383,25 +383,34 @@ public final class MigrationCoordinator {
                 // S6: erase the iCloud zone BEFORE mirroring re-attaches.
                 // At this point the store is still plain .localOnly — no
                 // mirroring delegate exists yet to race the erase, or to
-                // mark local rows as already-exported ahead of it. The
-                // quarantine copy mechanism itself is UNCHANGED (S7's
-                // territory, left alone) — it just now runs earlier in
-                // absolute terms, still immediately before the
-                // irreversible erase (its disk-space pre-flight still
-                // throws before the erase — blind-spot #5).
+                // mark local rows as already-exported ahead of it.
+                //
+                // S7: the quarantine anchor now comes from a CLOSED store.
+                // tearDownStore closes the SQLite connection before
+                // copying — the same closed-store mechanism
+                // .replaceLocalWithICloud already used (via
+                // host.tearDownStore above), reconciling the asymmetry
+                // 2a's closing report flagged: this op used to call
+                // quarantine.copyStore(at:) directly against the
+                // still-open, potentially WAL-active store. The
+                // disk-space pre-flight (inside tearDownStore's copy)
+                // still throws before the irreversible erase below
+                // (blind-spot #5) — unchanged guarantee.
                 entry.state = .quarantining
                 entry.lastHeartbeatAt = Date()
                 try journal.write(entry)
                 emit(.backingUp)
-                if FileManager.default.fileExists(atPath: storeURL.path) {
-                    let backup = try quarantine.copyStore(at: storeURL)
-                    entry.quarantineFolderName = backup.folderName
+                let icloudBackup = try await host.tearDownStore(backupVia: quarantine)
+                if let icloudBackup {
+                    entry.quarantineFolderName = icloudBackup.folderName
                     try journal.write(entry)
                 }
                 // Pre-flight: never erase if the signed-in account changed
                 // out from under us — that would wipe the wrong account's
                 // zone. This throws into the catch below, which records
                 // `.failed` for the recovery sheet (PauseReason.accountChanged).
+                // The store is intentionally left detached here — the
+                // catch's unconditional reattach handles it.
                 if let provider = accountStateProvider,
                    await provider() == .accountChanged {
                     throw LillistError.storeUnavailable(
@@ -424,16 +433,23 @@ public final class MigrationCoordinator {
                 try journal.write(entry)
                 emit(.reconfiguringStore)
                 LillistLog.sync.notice("migration reconfiguring store")
-                try await host.reconfigure(to: targetMode)
+                // S2 sibling: attachStore(at:), not reconfigure(to:) — the
+                // store was fully detached above by tearDownStore, so
+                // there is nothing left for reconfigure's remove-then-add
+                // swap to remove; attachStore performs just the add half,
+                // at the target mode.
+                try await host.attachStore(at: targetMode)
 
             case .syncFirstThenDisable, .disableNow:
+                // S7: same closed-store quarantine mechanism as
+                // .replaceICloudWithLocal above — see that case's comment.
                 entry.state = .quarantining
                 entry.lastHeartbeatAt = Date()
                 try journal.write(entry)
                 emit(.backingUp)
-                if FileManager.default.fileExists(atPath: storeURL.path) {
-                    let backup = try quarantine.copyStore(at: storeURL)
-                    entry.quarantineFolderName = backup.folderName
+                let disableBackup = try await host.tearDownStore(backupVia: quarantine)
+                if let disableBackup {
+                    entry.quarantineFolderName = disableBackup.folderName
                     try journal.write(entry)
                 }
                 entry.state = .reconfiguringStore
@@ -441,7 +457,7 @@ public final class MigrationCoordinator {
                 try journal.write(entry)
                 emit(.reconfiguringStore)
                 LillistLog.sync.notice("migration reconfiguring store")
-                try await host.reconfigure(to: targetMode)
+                try await host.attachStore(at: targetMode)
             }
 
             // 5. wait for CloudKit to settle (only when going to
@@ -497,18 +513,20 @@ public final class MigrationCoordinator {
             LillistLog.sync.notice("migration completed op=\(op.rawValue, privacy: .public)")
             await breadcrumb("sync mode change completed \(op.rawValue)")
         } catch {
-            // S12: replaceLocalWithICloud is the only op that ever tears
-            // the store off the coordinator (tearDownStore/rebuildEmptyStore
-            // above) before reconfigure runs. Whichever of those sub-steps
-            // failed, best-effort reattach so the coordinator is never left
-            // store-less — reattachStore() is itself a safe no-op when a
-            // store is already attached, so this is safe regardless of
-            // exactly where the failure occurred. The quarantine backup
-            // captured above (if it got that far) remains the real
-            // recovery path for the user's pre-wipe data.
-            if op == .replaceLocalWithICloud {
-                try? await host.reattachStore()
-            }
+            // S12/S7: every op now tears the store off the coordinator at
+            // some point before its structural swap — either to
+            // destroy+rebuild it empty (.replaceLocalWithICloud), or to
+            // take a closed-store quarantine copy before attaching the
+            // target mode (the other three ops, since S7). Whichever
+            // sub-step failed, best-effort reattach — unconditionally,
+            // regardless of which op was running — so the coordinator is
+            // never left store-less. reattachStore() is itself a safe
+            // no-op when a store is already attached (e.g. a failure
+            // AFTER attachStore already succeeded), so this is safe
+            // regardless of exactly where the failure occurred. The
+            // quarantine backup captured above (if it got that far)
+            // remains the real recovery path for the user's data.
+            try? await host.reattachStore()
             entry.state = .failed
             entry.failureReason = "\(error)"
             entry.lastHeartbeatAt = Date()

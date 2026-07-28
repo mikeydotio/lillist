@@ -126,6 +126,12 @@ struct MigrationCoordinatorTests {
         // FakePersistenceReconfigurer keeps the test ungated: it flips
         // its currentMode without a live container, so no liveSwapAllowed.
         let host = FakePersistenceReconfigurer(initialMode: .localOnly)
+        // S7: the quarantine copy now runs INSIDE tearDownStore rather
+        // than as a direct MigrationCoordinator->quarantine call — point
+        // the fake at the real on-disk file so it performs a REAL
+        // quarantine.copyStore(at:) and genuinely exercises the
+        // disk-space pre-flight this test is about.
+        await host.setStoreURL(storeURL)
         let journal = InMemoryMigrationJournalStore()
         // Zero free space, non-zero footprint -> pre-flight must throw.
         let probe = FakeDiskSpaceProbe(availableBytes: 0, footprintBytes: 4096)

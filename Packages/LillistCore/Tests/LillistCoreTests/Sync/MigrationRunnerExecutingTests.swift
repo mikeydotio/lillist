@@ -108,8 +108,12 @@ struct MigrationRunnerExecutingTests {
 
         // Eraser must not run on a disable (no CloudKit zone erasure).
         #expect(await eraser.callCount == 0)
-        // Mode swapped to localOnly exactly once.
-        #expect(await recon.reconfigureCalls == [.localOnly])
+        // S7: the trailing swap now runs through tearDown+attachStore
+        // (closed-store quarantine copy), not the old reconfigure(to:)
+        // path.
+        #expect(await recon.resetSteps == ["tearDown"])
+        #expect(await recon.attachCalls == [.localOnly])
+        #expect(await recon.reconfigureCalls == [])
         // Journal cleared (idle) on success.
         #expect(try journal.read() == .idle)
         // .preparing must precede the structural swap — this proves
@@ -142,8 +146,10 @@ struct MigrationRunnerExecutingTests {
 
         // Eraser is called exactly once (the CloudKit zone erasure step).
         #expect(await eraser.callCount == 1)
-        // Mode swapped to iCloudSync exactly once.
-        #expect(await recon.reconfigureCalls == [.iCloudSync])
+        // S7: the trailing swap now runs through tearDown+attachStore.
+        #expect(await recon.resetSteps == ["tearDown"])
+        #expect(await recon.attachCalls == [.iCloudSync])
+        #expect(await recon.reconfigureCalls == [])
         // Journal cleared (idle) on success.
         #expect(try journal.read() == .idle)
         // .preparing precedes both the erase and the swap — proving
@@ -165,12 +171,13 @@ struct MigrationRunnerExecutingTests {
 
     // MARK: - Failure-injection test
 
-    @Test("Reconfigure failure leaves .failed journal with previousMode and rethrows")
+    @Test("attachStore failure leaves .failed journal with previousMode, reattaches, and rethrows (S7)")
     @MainActor
     func reconfigureFailureLeavesFailedJournal() async throws {
         let (coordinator, recon, journal, eraser, dir) = makeCoordinator(startMode: .iCloudSync)
-        // Arm the fake to throw on the first reconfigure call.
-        await recon.failOnReconfigure(call: 1)
+        // S7: disableNow's trailing swap now runs through attachStore(at:),
+        // not reconfigure(to:) — arm the failure on the NEW mechanism.
+        await recon.failOnAttachStore(call: 1)
         let storeURL = dir.appendingPathComponent("Lillist.sqlite")
         try Data("x".utf8).write(to: storeURL)
 
@@ -186,6 +193,9 @@ struct MigrationRunnerExecutingTests {
         #expect(j.failureReason?.isEmpty == false)
         // Eraser never ran (disable does not erase; also we failed before it).
         #expect(await eraser.callCount == 0)
+        // tearDown ran, attachStore failed, and the catch's now-
+        // unconditional best-effort reattach ran too.
+        #expect(await recon.resetSteps == ["tearDown", "reattach"])
         // The fake's mode must be unchanged — the throw keeps the mode at iCloudSync.
         #expect(await recon.mode == .iCloudSync)
     }
@@ -308,7 +318,10 @@ struct MigrationRunnerExecutingTests {
             try await coordinator.beginDisable(strategy: .syncFirst, storeURL: storeURL)
         }
 
-        #expect(await recon.reconfigureCalls == [.localOnly])
+        // S7: the trailing swap now runs through tearDown+attachStore.
+        #expect(await recon.resetSteps == ["tearDown"])
+        #expect(await recon.attachCalls == [.localOnly])
+        #expect(await recon.reconfigureCalls == [])
         #expect(await modeStore.currentMode() == .localOnly)
         #expect(try journal.read() == .idle)
         let uploadIdx = phases.firstIndex { if case .uploading = $0 { return true } else { return false } }
@@ -352,12 +365,65 @@ struct MigrationRunnerExecutingTests {
 
         // The whole point of "sync first": a timeout must fail the step
         // BEFORE detaching mirroring, so unsynced edits are never
-        // silently stranded (S5). reconfigure must never have been
-        // called, and mode must still read the original iCloudSync.
+        // silently stranded (S5). Neither the old (reconfigure) nor the
+        // new (tearDown+attachStore, S7) swap mechanism must ever have
+        // run — the timeout throws before step 4's switch even starts.
+        // The catch block's now-unconditional best-effort reattach DOES
+        // still run (a harmless no-op here, since nothing was ever
+        // detached) — that's the one "reattach" entry `resetSteps` picks
+        // up.
         #expect(await recon.reconfigureCalls == [])
+        #expect(await recon.resetSteps == ["reattach"])
+        #expect(await recon.attachCalls == [])
         #expect(await recon.mode == .iCloudSync)
         #expect(await modeStore.currentMode() == .iCloudSync)
         #expect(try journal.read().state == .failed)
+    }
+
+    // MARK: - S7: quarantine anchor comes from the closed-store mechanism
+
+    @Test("disableNow's quarantine anchor is captured via tearDownStore, not a direct live-store copy (S7)")
+    @MainActor
+    func disableNowQuarantinesViaTearDownStore() async throws {
+        let (coordinator, recon, journal, _, dir) = makeCoordinator(startMode: .iCloudSync)
+        let storeURL = dir.appendingPathComponent("Lillist.sqlite")
+        try Data("pre-disable-content".utf8).write(to: storeURL)
+        // Point the fake at the real file so tearDownStore's quarantine
+        // copy is genuine (see FakePersistenceReconfigurer.storeURL) —
+        // this proves the capture happens via the SAME primitive
+        // .replaceLocalWithICloud already used, not a direct
+        // MigrationCoordinator -> quarantine call bypassing the host.
+        await recon.setStoreURL(storeURL)
+
+        try await coordinator.beginDisable(strategy: .now, storeURL: storeURL)
+
+        #expect(await recon.resetSteps == ["tearDown"])
+        let quarantine = QuarantineManager(rootDirectory: dir)
+        let backup = try quarantine.latestQuarantinedStore(filename: "Lillist.sqlite")
+        #expect(backup != nil)
+        #expect(try String(contentsOf: backup!, encoding: .utf8) == "pre-disable-content")
+        #expect(try journal.read() == .idle)
+    }
+
+    @Test("replaceICloudWithLocal's quarantine anchor is captured via tearDownStore before the erase (S7)")
+    @MainActor
+    func replaceICloudWithLocalQuarantinesViaTearDownStore() async throws {
+        let (coordinator, recon, journal, eraser, dir) = makeCoordinator(
+            startMode: .localOnly, rowCount: { 5 }
+        )
+        let storeURL = dir.appendingPathComponent("Lillist.sqlite")
+        try Data("pre-erase-content".utf8).write(to: storeURL)
+        await recon.setStoreURL(storeURL)
+
+        try await coordinator.beginEnable(direction: .replaceICloud, storeURL: storeURL)
+
+        #expect(await recon.resetSteps == ["tearDown"])
+        #expect(await eraser.callCount == 1)
+        let quarantine = QuarantineManager(rootDirectory: dir)
+        let backup = try quarantine.latestQuarantinedStore(filename: "Lillist.sqlite")
+        #expect(backup != nil)
+        #expect(try String(contentsOf: backup!, encoding: .utf8) == "pre-erase-content")
+        #expect(try journal.read() == .idle)
     }
 
     // MARK: - S14: a POST-destructive quiesce timeout does not fail the migration

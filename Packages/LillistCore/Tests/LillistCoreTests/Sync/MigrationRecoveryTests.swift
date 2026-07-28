@@ -245,28 +245,30 @@ struct MigrationRecoveryTests {
         let dir = tempDir()
         let storeURL = dir.appendingPathComponent("Lillist.sqlite")
         try Data("x".utf8).write(to: storeURL)
-        // The reconfigure throws (call 1). The catch then attempts to
-        // write the .failed journal — make that write throw too. The
-        // ORIGINAL reconfigure error must still propagate.
+        // The attachStore swap throws (call 1). The catch then attempts
+        // to write the .failed journal — make that write throw too. The
+        // ORIGINAL attachStore error must still propagate.
         let inner = InMemoryMigrationJournalStore()
-        // write sequence under disableNow (post S1/S6/S8 reorder):
+        // write sequence under disableNow (post S1/S6/S7/S8 reorder):
         // 1=preparing, 2=quarantining, 3=quarantining+folderName (a real
-        // file exists at storeURL, so copyStore's write runs too),
-        // 4=reconfiguringStore, then reconfigure throws → catch write is
-        // the 5th write.
+        // file exists at storeURL, and the fake is pointed at it via
+        // setStoreURL below, so tearDownStore's quarantine copy is real
+        // and its write runs too), 4=reconfiguringStore, then
+        // attachStore throws → catch write is the 5th write.
         let journal = ThrowingMigrationJournalStore(underlying: inner, throwOnWrite: 5)
         let (coordinator, recon, _) = makeCoordinator(startMode: .iCloudSync, journal: journal, quarantineRoot: dir)
-        await recon.failOnReconfigure(call: 1)
+        await recon.setStoreURL(storeURL)
+        await recon.failOnAttachStore(call: 1)
 
         do {
             try await coordinator.beginDisable(strategy: .now, storeURL: storeURL)
             Issue.record("expected beginDisable to throw")
         } catch let error as LillistError {
-            // The original reconfigure failure, not the catch-write
+            // The original attachStore failure, not the catch-write
             // failure, surfaces. Both are storeUnavailable here, so we
-            // assert the reason carries the reconfigure message.
+            // assert the reason carries the attachStore message.
             if case .storeUnavailable(let reason) = error {
-                #expect(reason.contains("fake reconfigure failure"))
+                #expect(reason.contains("fake attachStore failure"))
             } else {
                 Issue.record("unexpected error \(error)")
             }
