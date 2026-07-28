@@ -1,50 +1,58 @@
-# HANDOFF — Data & Sync Hardening, Wave 0 → Wave 1
+# HANDOFF — Data & Sync Hardening, Wave 1a → Wave 1b
 
 **Worktree:** `/Volumes/Code/mikeyward/Lillist/.claude/worktrees/data-sync-hardening`
 **Branch:** `hardening/data-sync-2026-07`
-**State:** Wave 0 (docs + stories, no code) **COMPLETE**. Waves 1-6 not started.
+**State:** Wave 0 (docs + stories) and Wave 1 plan `1a` (`trash-tree-integrity`)
+**COMPLETE**. Plans `1b`-`1d` and Waves 2-6 not started.
 
-## What landed this wave
+## What landed this wave (plan `1a`)
 
-- `docs/reviews/2026-07-28-data-sync-review.md` — the full 70-finding review
-  (25 stores/persistence, 26 sync machinery, 20 cross-process; `C4`/`X4`
-  merged as one independently-corroborated defect). Read this first for
-  *why* the program exists.
-- `docs/superpowers/plans/2026-07-28-data-sync-hardening-index.md` — the
-  **living ledger**. Read this second — it has the wave/plan table, shared-
-  file serial chains, resume protocol, story-ID cross-reference table, and
-  Mikey's manual-verification checklist. **This is the source of truth for
-  "what's next."**
-- All 70 findings filed as storyhook stories `LIL-7` through `LIL-76`.
-- One council-vote decision recorded (`C4`/`X4` story granularity — merged,
-  not split; audit trail at
-  `.council/c4-x4-merged-or-two-linked-stories/DECISION.md`).
+All 8 findings closed (`C1 C2 C3 H4 H7 M1 M2 M5` / stories `LIL-7 LIL-8
+LIL-9 LIL-22 LIL-25 LIL-45 LIL-46 LIL-49`), plus the `TreeIntegrityChecker`
+class-killer, wired into both apps' launch bootstrap. Full detail — per-
+finding fix design, state machine, `TreeIntegrityChecker` UML, the H7
+council decision — is in:
 
-## A blocker worth knowing about
+- Plan doc: `docs/superpowers/plans/2026-07-28-plan-1a-trash-tree-integrity.md`
+- Ledger's **Wave 1a closing report** section (in the index doc below) —
+  per-finding commit/test table, class-kill demo notes, and exactly what
+  `TaskStore.swift`/`CascadeReaper.swift`/`AutoPurgeJob.swift` now look like
+  for `1b` to build on.
 
-Storyhook's `story new` initially failed unconditionally in this worktree
-(`.storyhook/open/` — where the CLI writes active stories — wasn't
-git-tracked, since git doesn't commit empty directories and this project's
-prior stories were all archived). It was resolved mid-wave; the fix is
-committed. If a *future* fresh worktree of this repo somehow hits the same
-symptom, the ledger's *Current status* section has the full root-cause
-writeup and fix.
+Commit range: `8e13b98f..56100933` (13 commits). Verification: full
+`LillistCore` suite green (1134 tests, 216 suites) after every fix commit;
+both apps built successfully with unsigned `xcodebuild` (no
+`Signing.local.xcconfig` in this worktree).
+
+One find worth flagging explicitly: the `H7` regression test for
+`RecurrenceSpawner.deepCopy` reproduced a **real SIGSEGV** (stack overflow),
+not merely a hang — the fix needed a hard node-count cap in addition to the
+visited-objectID guard, because the function's own newly-created copies get
+wired back into the graph it's walking. See the closing report for the
+mechanism.
 
 ## Next action
 
-**Start Wave 1, plan `1a` (`trash-tree-integrity`)** — closes `C1 C2 C3 M1
-M2 H4 H7 M5` (stories `LIL-7`, `LIL-8`, `LIL-9`, `LIL-45`, `LIL-46`,
-`LIL-22`, `LIL-25`, `LIL-49`). It has no upstream dependency and owns the
-first link in the `TaskStore.swift` serial chain (four plans deep — `1a` →
-`1b` → `4b` → `5a`). Two binding product decisions apply here: `C2`
-(restoring a child whose parent is still trashed promotes it to root) and
-the `TreeIntegrityChecker` class-killer (adopt, per the ledger's verdicts
-table).
+**Start Wave 1, plan `1b` (`purge-cloudkit-retirement`)** — findings `C4`/`X4`
+(merged, `LIL-10`), `H3` (`LIL-21`), `X14` (`LIL-63`). It's next in the
+`TaskStore.swift` serial chain (`1a` → `1b` → `4b` → `5a`) — **re-read
+`TaskStore.swift`, `CascadeReaper.swift`, and `AutoPurgeJob.swift` before
+editing them**; `1a` changed all three (new `CascadeReaper.planPurge`,
+`TaskTreeRepair.promoteToRoot`, `assertParentNotTrashed`, two-arity
+`applySoftDelete`/`clearSoftDelete`). The ledger's closing report for `1a`
+spells out exactly what changed and what `1b` must preserve (promote-then-
+delete ordering in the purge path, in particular).
 
-Read the ledger's *Resume protocol* section for the full pre-flight
-(confirm worktree/branch, re-read the review + ledger, check story state,
-verify the prior wave's test-green claim, execute, update the ledger on
-completion).
+`1b`'s core question (`C4`/`X4`): batch-delete purge may not export
+deletions to CloudKit at all (`NSBatchDeleteRequest` bypasses the object
+graph `NSPersistentCloudKitContainer` normally tracks). Device verification
+is opportunistic for Mikey, **not** a gate — the fix proceeds regardless,
+per the documented Apple limitation with mirrored-context deletes (see the
+review doc and ledger's *Execution model* section).
+
+Read the ledger's *Resume protocol* section first (confirm worktree/branch,
+re-read the review + ledger, check story state, verify Wave 1a's claimed-
+green state, execute, update the ledger on completion).
 
 ## Standing worktree rules (unchanged)
 

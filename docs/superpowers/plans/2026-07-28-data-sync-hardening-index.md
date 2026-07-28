@@ -23,7 +23,19 @@ CloudKit, XCTest + Swift Testing, xcodegen, storyhook (prefix `LIL`).
 > **New here? Read this section first.** This file is the **living progress
 > tracker** — keep it current as plans land.
 
-**As of 2026-07-28 — Wave 0 COMPLETE.**
+**As of 2026-07-28 — Wave 0 and Wave 1 plan `1a` (`trash-tree-integrity`) COMPLETE.**
+
+- ✅ **Plan `1a` closed all 8 findings** (`C1 C2 C3 H4 H7 M1 M2 M5` /
+  `LIL-7 LIL-8 LIL-9 LIL-22 LIL-25 LIL-45 LIL-46 LIL-49`), added the
+  `TreeIntegrityChecker` class-killer, and wired its self-heal into both
+  apps' `bootstrap()`. Plan doc:
+  `docs/superpowers/plans/2026-07-28-plan-1a-trash-tree-integrity.md`.
+  Commit range `8e13b98f..56100933` (13 commits: 1 docs, 8 fix/feat, 4
+  `chore(stories)`). Full `LillistCore` suite green (1134 tests, 216
+  suites) after every fix commit; both apps verified with unsigned
+  `xcodebuild` builds (BUILD SUCCEEDED). See *Wave 1a closing report*
+  below for the per-finding breakdown, the class-kill demonstration, and
+  what Wave `1b` needs to know about `TaskStore.swift`'s current shape.
 
 - ✅ Review doc committed: `docs/reviews/2026-07-28-data-sync-review.md`
   (70 findings, faithfully reproduced from the source-of-truth plan; no
@@ -69,12 +81,76 @@ CloudKit, XCTest + Swift Testing, xcodegen, storyhook (prefix `LIL`).
   log* below for the final result and audit trail
   (`.council/c4-x4-merged-or-two-linked-stories/DECISION.md`).
 - ✅ **Story-ID cross-reference table filled in** — see below.
-- ⬜ Waves 1-6: not started.
+- ⬜ Waves 1 (plans `1b`-`1d`) through 6: not started.
 
-**Next action for whoever picks this up:** start Wave 1, plan `1a`
-(`trash-tree-integrity`) — it has no upstream dependency and is the first
-entry in the *Wave/plan table* below. Read the *Resume protocol* section
-first.
+**Next action for whoever picks this up:** start Wave 1, plan `1b`
+(`purge-cloudkit-retirement`) — it's next in the `TaskStore.swift` serial
+chain (`1a` → `1b` → `4b` → `5a`) and depends on `1a`'s purge-path shape
+(`CascadeReaper.planPurge(ofTrashedRoots:)`, `TaskTreeRepair`). Read the
+*Resume protocol* section first, then *Wave 1a closing report* below for
+what changed in `TaskStore.swift`/`CascadeReaper.swift`/`AutoPurgeJob.swift`
+that `1b` must build on rather than re-derive.
+
+---
+
+## Wave 1a closing report (`trash-tree-integrity`)
+
+Plan doc: `docs/superpowers/plans/2026-07-28-plan-1a-trash-tree-integrity.md`.
+
+| Finding | Story | Fix commit | Regression test(s) |
+|---|---|---|---|
+| `H7` | `LIL-25` | `2e95f293` | `TreeCycleGuardTests.swift` (6 tests) — one (`deepCopyTerminatesOnCycle`) found a **real SIGSEGV** (stack overflow), not just a hang: `RecurrenceSpawner.deepCopy`'s own newly-created copies fed back into what it was walking, needing a hard node-count cap beyond the visited-set. |
+| `M1` | `LIL-45` | `72f67668` | `TaskStoreTrashedParentGuardTests.swift` (5 tests) |
+| `C2`/`M2`/`H4` | `LIL-8`/`LIL-46`/`LIL-22` | `ed058fd4` | `TaskStoreRestoreStateMachineTests.swift` (6 tests) — one combined commit; the three findings are inseparable in `restore(id:)`'s small surface. |
+| `C1` | `LIL-7` | `d5c9d191` | `C1LiveDescendantPurgeTests.swift` (4 tests) |
+| `C3`/`M5` | `LIL-9`/`LIL-49` | `cf6447ab` | `TaskDuplicateReconcilerTests.swift` (existing cascade-deletion test updated to assert re-pointing instead + 9 new tests) |
+| `TreeIntegrityChecker` (class-killer) | — | `f40d7892` | `TreeIntegrityCheckerTests.swift` (8 tests) |
+| Bootstrap wiring | — | `56100933` | unsigned `xcodebuild` builds, both apps |
+
+**Class-kill demonstration (per the wave brief, not committed):** temporarily
+disabled the `C2` promote-to-root block in `TaskStore.restore`, reproduced
+the bug (a child restored under a still-trashed parent kept its stale
+parent link), then ran `TreeIntegrityChecker.scan` against that same
+context and confirmed it independently reported `.liveUnderTrashedAncestor`
+for the stranded child — proving the checker is a genuine class-level
+backstop, not merely a mirror of the point fix. The disabled block and the
+throwaway test were reverted before continuing; `git status` was clean
+before the next commit.
+
+**Council vote:** the `H7` cycle-break tie-breaker rule (`TreeIntegrityChecker`
+self-heal) — see *Council-vote log* below.
+
+**What Wave `1b` needs to know about `TaskStore.swift`'s current shape**
+(the serial chain's next link):
+- `batchPurge` now calls `CascadeReaper.planPurge(ofTrashedRoots:)` (not
+  the old `objectIDs(forDeleting:)`) and promotes `PurgePlan
+  .liveDescendantsToPromote` to root via `TaskTreeRepair.promoteToRoot(_:)`
+  **before** `CascadeReaper.batchDelete`. `1b`'s CloudKit-retirement rewrite
+  of the purge path must preserve this ordering (promote-then-delete), not
+  just port the old `objectIDs(forDeleting:)` call.
+- `restore(id:)` now does three things in sequence inside its `context.perform`
+  block: `clearSoftDelete` (clears `deletedAt` **and** `archivedAt`,
+  cascaded) → conditional promote-to-root if the parent is still trashed →
+  `nextPositionDetail`-based repositioning. `nextPositionDetail`'s predicate
+  now filters `deletedAt == nil` on both branches (root and parented) —
+  any new caller of `nextPositionDetail`/`nextPosition` inherits this
+  (correct; matches every other ordering query in the file).
+- `create`/`reparent`/`reorder` all call a new `assertParentNotTrashed(_:)`
+  helper (`TaskStore.swift`, near `validateTitle`) at the point a *new*
+  parent assignment is made — any new mutation path that assigns `.parent`
+  should call it too.
+- `applySoftDelete`/`clearSoftDelete` are now two-arity (public-shaped
+  wrapper + `visited: inout Set<NSManagedObjectID>` recursive worker) —
+  don't reintroduce the old single-arity recursive form.
+- New file `Packages/LillistCore/Sources/LillistCore/Persistence/TaskTreeRepair.swift`
+  — the shared `promoteToRoot(_:at:)` helper `CascadeReaper`'s caller and
+  `TreeIntegrityChecker` both use. `H3`/`X14` (`1b`'s scope) purge/notification
+  work should reuse it too if it needs to promote/detach a node.
+- New file `Packages/LillistCore/Sources/LillistCore/Persistence/TreeIntegrityChecker.swift`
+  — wired into both `AppEnvironment.bootstrap()`s right after
+  `taskDuplicateReconciler.start()` and before `autoPurgeJob.run()`. Don't
+  reorder relative to those two without re-reading the rationale comment at
+  each call site.
 
 ---
 
@@ -125,7 +201,7 @@ Wave 6 closeout. **Status** starts `pending` for everything except Wave 0.
 | Wave | Plan | Findings (IDs) | Status |
 |------|------|-----------------|--------|
 | 0 | *(docs + stories, no code)* | — | ✅ complete |
-| 1 | **1a** `trash-tree-integrity` | `C1 C2 C3 M1 M2 H4 H7 M5` | ⬜ pending |
+| 1 | **1a** `trash-tree-integrity` | `C1 C2 C3 M1 M2 H4 H7 M5` | ✅ complete |
 | 1 | **1b** `purge-cloudkit-retirement` | `C4`/`X4` (merged), `X14`, `H3` | ⬜ pending |
 | 1 | **1c** `store-location-unification` | `X1 X2 X15` (+ iOS silent `defaultOnDisk` fallback detail, folded into the `X1`/`X2` story bodies — no separate ID) | ⬜ pending |
 | 1 | **1d** `export-schema-completeness` | `X3 S9a X13 X18` | ⬜ pending |
@@ -323,6 +399,38 @@ defensible alternatives, Mikey unavailable). Full audit trails live under
    end of deliberation all three proposals recommended the identical filing
    action. Full audit trail:
    `.council/c4-x4-merged-or-two-linked-stories/DECISION.md`.
+
+2. **`H7` cycle-break tie-breaker rule** (Wave 1, plan `1a`, 2026-07-28) —
+   which deterministic rule should `TreeIntegrityChecker`'s self-heal use to
+   pick which node's parent link to sever when it finds a parent-cycle,
+   given the repair runs independently and uncoordinated on every process
+   that opens the store?
+   **Decision: sever the cycle member with the lexicographically-greatest
+   `id.uuidString`** — the same structural tie-break idiom `SiblingOrder`
+   already uses — by unanimous ranked-choice majority (3/3 first-place
+   votes in the runoff) after one deliberation round. Round 1 was a 1-2-0
+   split (`data-engineer` voted their own proposal; `software-architect`
+   and `skeptic` voted `software-architect`'s), but both proposals were
+   substantively the same rule differing only in supporting rationale. In
+   deliberation, `skeptic` went beyond relitigating the existing proposals
+   and read `TaskDuplicateReconciler.swift`, discovering the codebase
+   already documents a reachable scenario (issue #66) where `id.uuidString`
+   is *not* actually tie-free — withdrew their own round-1 `createdAt`-first
+   hybrid proposal entirely and converged on id-max as the primary rule,
+   but hardened it into a binding implementation requirement: an id-tie
+   (two cycle members sharing one `id`) must not be resolved via incidental
+   Core Data fetch order — the implementation skips breaking that specific
+   cycle and logs, deferring to `TaskDuplicateReconciler` to resolve the
+   duplicate first. `data-engineer` and `software-architect` independently
+   revised in the same direction (verifying the `Optional<Date>` vs.
+   non-optional `UUID` type asymmetry between `createdAt` and `id` from
+   source) but only `skeptic`'s revision closed the tie-free-implementation
+   gap, and all three seats ranked it first in the runoff. Dissent: none —
+   unanimous. Full audit trail:
+   `.council/h7-cycle-break-tiebreaker-rule/DECISION.md`. Implemented in
+   `TreeIntegrityChecker.breakCycle(_:)`
+   (`Packages/LillistCore/Sources/LillistCore/Persistence/TreeIntegrityChecker.swift`),
+   tested by `TreeIntegrityCheckerTests.repairSkipsAmbiguousIDTie`.
 
 ---
 
