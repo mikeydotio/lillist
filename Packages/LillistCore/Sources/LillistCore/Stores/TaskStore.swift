@@ -151,6 +151,7 @@ public final class TaskStore: @unchecked Sendable {
             try validateTitle(title)
             let result: (id: UUID, assigned: Double, observedMax: Double?) = try await context.perform { [self] in
                 let parentTask = try parent.map { try fetchManagedObject(id: $0, in: context) }
+                try assertParentNotTrashed(parentTask)
                 // Compute the position BEFORE inserting the new row, so the
                 // observed-edge fetch reflects real siblings — not the new task's
                 // own default 0.0. Behavior-preserving for `assigned`:
@@ -322,6 +323,7 @@ public final class TaskStore: @unchecked Sendable {
                 let newParent: LillistTask?
                 if let newParentID {
                     let candidate = try fetchManagedObject(id: newParentID, in: context)
+                    try assertParentNotTrashed(candidate)
                     if Validators.wouldCreateCycle(candidate: m, newParent: candidate) {
                         throw LillistError.validationFailed([
                             .init(field: "parent", message: "would create a cycle")
@@ -502,6 +504,7 @@ public final class TaskStore: @unchecked Sendable {
                 }
 
                 if m.parent?.objectID != newParent?.objectID {
+                    try assertParentNotTrashed(newParent)
                     if Validators.wouldCreateCycle(candidate: m, newParent: newParent) {
                         throw LillistError.validationFailed([
                             .init(field: "parent", message: "would create a cycle")
@@ -1104,6 +1107,23 @@ public final class TaskStore: @unchecked Sendable {
     /// the single source of truth for the rule; `validateTitle` delegates.
     public nonisolated static func isCommittableTitle(_ title: String) -> Bool {
         !title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
+    /// M1: `create`, `reparent`, and `reorder` (both `.infer` and
+    /// `.explicit`, at the point where a *new* parent assignment is about to
+    /// be made) all reject a soft-deleted target parent — mirroring the
+    /// soft-deleted-*anchor* guard in `reorder`. Left unguarded, any of
+    /// these entry points could directly construct the live-under-trashed
+    /// illegal state `C1`'s purge fix and `C2`'s restore fix exist to
+    /// prevent/repair. A CloudKit merge can still create this state (no
+    /// local guard reaches a remote write) — `TreeIntegrityChecker`'s
+    /// launch-time self-heal is the defense-in-depth backstop for that path.
+    func assertParentNotTrashed(_ parent: LillistTask?) throws {
+        if let parent, parent.deletedAt != nil {
+            throw LillistError.validationFailed([
+                .init(field: "parent", message: "parent is trashed")
+            ])
+        }
     }
 
     func validateTitle(_ title: String) throws {
