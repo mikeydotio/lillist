@@ -36,23 +36,27 @@ CloudKit, XCTest + Swift Testing, xcodegen, storyhook (prefix `LIL`).
   write-path command — `story new`, even bare with no flags — initially
   failed unconditionally with `{"error":"No such file or directory (os
   error 2)","exit_code":5}`, and `story doctor --fix` reported "nothing to
-  fix." Root cause: the main checkout's
-  `/Volumes/Code/mikeyward/Lillist/.storyhook/open/` (where the CLI writes
-  active/non-archived stories) is not git-tracked (git never commits empty
-  directories), and since all 5 of this project's prior stories were
-  archived/done, `open/` was empty at the commit this worktree branched
-  from — it simply didn't exist here, and the CLI had no path-creation
-  fallback. Per the Wave-0 brief's explicit instruction, no stories were
-  filed and the directory was not hand-patched; the blocker was flagged to
-  `team-lead` instead. It was subsequently resolved (an
-  `.storyhook/open/stories/.gitkeep` appeared in the worktree, currently
-  **untracked** — the next commit in this wave tracks it so future
-  worktrees inherit it rather than re-hitting this gap). One harmless
-  interim side effect (`.storyhook/next-id` bumped from committed `6` to
-  `11` by four failed probe attempts, zero stories created) was reverted via
-  `git checkout -- .storyhook/next-id` before the fix landed; a subsequent
-  real probe story (`LIL-6`) was created and cleanly `story delete`d to
-  confirm the fix before the real filing pass ran.
+  fix." **Root cause (confirmed by `team-lead` via independent reproduction
+  in a scratch repo):** the CLI requires `.storyhook/open/stories/` to exist
+  and has no path-creation fallback for it. That directory is not
+  git-tracked (git never commits empty directories), and since all 5 of
+  this project's prior stories are archived/done, `open/stories/` was empty
+  at the commit this worktree branched from — it simply didn't exist here.
+  This is an **upstream storyhook CLI defect**: any write command fails with
+  a bare `os error 2` when `open/stories/` is missing, there is no self-heal,
+  and `story doctor --fix` does not catch it — worth Mikey fixing in the
+  `story` CLI's own repo. Per the Wave-0 brief's explicit instruction, no
+  stories were filed and the directory was not hand-patched; the blocker was
+  flagged to `team-lead` instead, who created `.storyhook/open/stories/`
+  with a `.gitkeep` and verified the identical failure+repair in a scratch
+  worktree before handing it back. That `.gitkeep` is now committed (see
+  below) so future worktrees inherit the structure — the actual class-kill
+  for this defect. One harmless interim side effect
+  (`.storyhook/next-id` bumped from committed `6` to `11` by four failed
+  probe attempts, zero stories created) was reverted via `git checkout --
+  .storyhook/next-id` before the fix landed; a subsequent real probe story
+  (`LIL-6`) was created and cleanly `story delete`d to confirm the fix
+  before the real filing pass ran.
 - ✅ **Council vote resolved:** `C4` (stores sweep) and `X4` (cross-process
   sweep) describe the identical defect (same code change, same file, same
   verification caveat) and are filed as **one merged story** (`LIL-10`,
