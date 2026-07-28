@@ -248,10 +248,25 @@ public final class TaskStore: @unchecked Sendable {
 
     public func hardDelete(id: UUID) async throws {
         do {
-            try await context.perform { [self] in
+            let doomedTaskIDs: [UUID] = try await context.perform { [self] in
                 let m = try fetchManagedObject(id: id, in: context)
+                // H3: collect the full cascade closure's task ids BEFORE
+                // deleting, so pending OS notifications can be cancelled
+                // once the delete is durable. Unconditional traversal
+                // (unlike CascadeReaper.planPurge's trash-bounded barrier)
+                // — hardDelete permanently removes `m` and everything under
+                // it regardless of each descendant's own deletedAt state;
+                // there is no "spare a live descendant" concept here the
+                // way there is for a Trash purge.
+                let doomedTaskIDs: [UUID] = CascadeReaper.objectIDs(forDeleting: [m])
+                    .filter { $0.entity.name == "LillistTask" }
+                    .compactMap { (try? context.existingObject(with: $0) as? LillistTask)?.id }
                 context.delete(m)
                 try context.save()
+                return doomedTaskIDs
+            }
+            if let notificationScheduler, !doomedTaskIDs.isEmpty {
+                await notificationScheduler.cancelPending(forTaskIDs: doomedTaskIDs)
             }
             await recordCrumb("task.purge", success: true)
         } catch {
@@ -862,7 +877,8 @@ public final class TaskStore: @unchecked Sendable {
             predicateFormat: predicateFormat,
             arguments: arguments,
             context: persistence.makeBackgroundContext(),
-            viewContext: persistence.container.viewContext
+            viewContext: persistence.container.viewContext,
+            notificationScheduler: notificationScheduler
         )
     }
 

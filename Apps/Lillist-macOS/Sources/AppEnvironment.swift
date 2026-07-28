@@ -189,6 +189,11 @@ final class AppEnvironment {
         // Property injection per Plan 5: TaskStore reaches the scheduler
         // here, NOT through a singleton holder.
         self.taskStore.notificationScheduler = scheduler
+        // H3: AutoPurgeJob needs the scheduler too, so a retention-window
+        // purge cancels the pending OS notifications of every task it
+        // removes (reconcile(taskID:) can't be reused post-purge — the row
+        // is gone, so it would silently no-op).
+        self.autoPurgeJob.notificationScheduler = scheduler
 
         // Plan 9: wire each store's breadcrumb sink to the shared buffer
         // *after* it's created below. Done in two passes because the

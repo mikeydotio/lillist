@@ -70,7 +70,15 @@ enum TrashPurger {
     /// fresh (a descendant could have gone live in the window since Step 0
     /// or an earlier chunk), deletes the surviving roots (Core Data's own
     /// `Cascade` delete rule removes the rest of each root's subtree
-    /// automatically), and merges the deletions into `viewContext`.
+    /// automatically), merges the deletions into `viewContext`, and cancels
+    /// pending OS notifications for every purged task (H3).
+    ///
+    /// `notificationScheduler` is called **per chunk**, immediately after
+    /// that chunk's `viewContext` merge — not once at the very end of the
+    /// whole purge. This matters for partial-failure correctness: if a
+    /// later chunk throws, earlier chunks are already durably saved and
+    /// merged, and their notifications must already be cancelled by that
+    /// point rather than depending on the *entire* purge succeeding first.
     ///
     /// - Returns: The number of `LillistTask` rows purged in this chunk
     ///   (roots plus every cascade-reachable descendant task).
@@ -80,11 +88,12 @@ enum TrashPurger {
         predicateFormat: String,
         arguments: [any Sendable],
         context ctx: NSManagedObjectContext,
-        viewContext: NSManagedObjectContext
+        viewContext: NSManagedObjectContext,
+        notificationScheduler: (any NotificationReconciling)? = nil
     ) async throws -> Int {
         guard !chunk.isEmpty else { return 0 }
 
-        let (purgedTaskCount, allDeletable): (Int, [NSManagedObjectID]) = try await ctx.perform {
+        let (taskIDs, allDeletable): ([UUID], [NSManagedObjectID]) = try await ctx.perform {
             let predicate = NSPredicate(format: predicateFormat, argumentArray: arguments)
 
             // X14: re-validate against the ORIGINAL victim predicate at
@@ -96,7 +105,7 @@ enum TrashPurger {
                       predicate.evaluate(with: task) else { return nil }
                 return task
             }
-            guard !liveRoots.isEmpty else { return (0, []) }
+            guard !liveRoots.isEmpty else { return ([], []) }
 
             // C1: bound the cascade at any live descendant, promoting it to
             // root (and saving) before the delete below — recomputed fresh
@@ -112,14 +121,20 @@ enum TrashPurger {
                 try ctx.save()
             }
 
-            let purgedTaskCount = plan.deletable.reduce(into: 0) { count, objectID in
-                if objectID.entity.name == "LillistTask" { count += 1 }
+            // H3: collect every doomed task's id BEFORE deleting, so pending
+            // OS notifications can be cancelled once this chunk's delete is
+            // durable — never before, and never for a chunk whose save
+            // doesn't happen (a throw below propagates out of this
+            // `perform`, and the ids collected here never escape it).
+            let taskIDs: [UUID] = plan.deletable.compactMap { objectID in
+                guard objectID.entity.name == "LillistTask" else { return nil }
+                return (try? ctx.existingObject(with: objectID) as? LillistTask)?.id
             }
 
             for root in liveRoots { ctx.delete(root) }
             try ctx.save()
 
-            return (purgedTaskCount, plan.deletable)
+            return (taskIDs, plan.deletable)
         }
 
         guard !allDeletable.isEmpty else { return 0 }
@@ -136,7 +151,11 @@ enum TrashPurger {
             )
         }
 
-        return purgedTaskCount
+        if let notificationScheduler, !taskIDs.isEmpty {
+            await notificationScheduler.cancelPending(forTaskIDs: taskIDs)
+        }
+
+        return taskIDs.count
     }
 
     /// Composes `fetchCandidateRootObjectIDs` + `purgeChunk` over the full
@@ -149,6 +168,7 @@ enum TrashPurger {
         arguments: [any Sendable],
         context ctx: NSManagedObjectContext,
         viewContext: NSManagedObjectContext,
+        notificationScheduler: (any NotificationReconciling)? = nil,
         chunkSize: Int = defaultChunkSize
     ) async throws -> Int {
         let rootObjectIDs = try await fetchCandidateRootObjectIDs(
@@ -167,7 +187,8 @@ enum TrashPurger {
                 predicateFormat: predicateFormat,
                 arguments: arguments,
                 context: ctx,
-                viewContext: viewContext
+                viewContext: viewContext,
+                notificationScheduler: notificationScheduler
             )
             start = end
         }

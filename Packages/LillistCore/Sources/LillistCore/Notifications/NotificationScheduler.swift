@@ -276,9 +276,15 @@ public actor NotificationScheduler: NotificationReconciling {
     /// looking up specs) makes reconciliation correct even when a spec
     /// was just deleted in this reconcile cycle.
     private func isPendingForTask(_ request: UNNotificationRequest, taskID: UUID) -> Bool {
+        isPendingForAnyTask(request, in: [taskID.uuidString])
+    }
+
+    /// As `isPendingForTask`, widened to a set of task-id strings — the
+    /// batch-matching primitive `cancelPending(forTaskIDs:)` uses.
+    private func isPendingForAnyTask(_ request: UNNotificationRequest, in taskIDStrings: Set<String>) -> Bool {
         guard request.identifier.hasSuffix("#\(deviceFingerprint)") else { return false }
         guard let taskIDString = request.content.userInfo["taskID"] as? String else { return false }
-        return taskIDString == taskID.uuidString
+        return taskIDStrings.contains(taskIDString)
     }
 
     // MARK: - Bootstrap
@@ -312,6 +318,28 @@ public actor NotificationScheduler: NotificationReconciling {
         if !ids.isEmpty {
             await center.removePendingNotificationRequests(withIdentifiers: ids)
         }
+    }
+
+    /// H3: cancels every pending notification for each id in `taskIDs`,
+    /// without reading the tasks from the store — see the protocol's doc
+    /// comment for why `reconcile(taskID:)` cannot be reused for this after
+    /// a hard delete or purge.
+    ///
+    /// Fetches `pendingNotificationRequests()` exactly **once** regardless
+    /// of `taskIDs.count`, filters in memory, and issues one
+    /// `removePendingNotificationRequests(withIdentifiers:)` call for the
+    /// whole batch — deliberately not "call this once per task id," which
+    /// would mean N full OS-level pending-request fetches for an N-task
+    /// purge (thousands, for "Empty Trash" on a long-lived device).
+    public func cancelPending(forTaskIDs taskIDs: [UUID]) async {
+        guard !taskIDs.isEmpty else { return }
+        let idStrings = Set(taskIDs.map(\.uuidString))
+        let pending = await center.pendingNotificationRequests()
+        let toRemove = pending
+            .filter { isPendingForAnyTask($0, in: idStrings) }
+            .map(\.identifier)
+        guard !toRemove.isEmpty else { return }
+        await center.removePendingNotificationRequests(withIdentifiers: toRemove)
     }
 
     // MARK: - Preference change
