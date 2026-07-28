@@ -17,6 +17,13 @@ final class AppEnvironment {
     let persistenceHost: PersistenceHost
     let persistence: PersistenceController
     let storeURL: URL?
+    /// Data-sync-hardening `X1`: the result of the one-time legacy-store
+    /// migration `make()` runs before constructing `persistence`. Retained
+    /// (rather than only logged) so the outcome is discoverable — e.g. a
+    /// future Settings/diagnostics surface, or Mikey's manual-verification
+    /// pass — without needing to grep breadcrumbs. Logged via
+    /// `breadcrumbs` once that buffer exists, in `bootstrap()`.
+    let macAppGroupMigrationOutcome: MacAppGroupMigration.Outcome
     let syncModeStore: SyncModeStore
     let migrationJournalStore: any MigrationJournalStore
     let migrationCoordinator: MigrationCoordinator
@@ -116,6 +123,7 @@ final class AppEnvironment {
         persistenceHost: PersistenceHost,
         persistence: PersistenceController,
         storeURL: URL?,
+        macAppGroupMigrationOutcome: MacAppGroupMigration.Outcome,
         initialSyncMode: SyncMode,
         syncModeStore: SyncModeStore,
         migrationJournalStore: any MigrationJournalStore,
@@ -125,6 +133,7 @@ final class AppEnvironment {
         self.persistenceHost = persistenceHost
         self.persistence = persistence
         self.storeURL = storeURL
+        self.macAppGroupMigrationOutcome = macAppGroupMigrationOutcome
         self.syncModeStore = syncModeStore
         self.migrationJournalStore = migrationJournalStore
         self.currentSyncMode = initialSyncMode
@@ -373,10 +382,53 @@ final class AppEnvironment {
 
     /// Async-friendly constructor. Loads the Core Data store and wires up
     /// every store / scheduler used by the SwiftUI hierarchy.
+    ///
+    /// Data-sync-hardening `X1`: before this fix, macOS built its store
+    /// from `StoreConfiguration.defaultOnDisk` (the sandbox Application
+    /// Support container) unconditionally, never joining the App Group
+    /// the iOS app, widget, and extensions share. `make()` now runs a
+    /// one-time migration (`MacAppGroupMigration`) BEFORE constructing
+    /// any `PersistenceController` — a pure file-system operation on two
+    /// closed stores — then resolves the App-Group location through
+    /// `StoreLocation`, matching every other role. See
+    /// `docs/superpowers/plans/2026-07-28-plan-1c-store-location-unification.md`
+    /// for the full state machine and the both-stores-populated council
+    /// decision.
     static func make() async throws -> AppEnvironment {
         let syncModeStore = SyncModeStore(appGroupID: appGroupID)
         let initialMode = await syncModeStore.currentMode()
-        let baseConfig = try StoreConfiguration.defaultOnDisk.withSyncMode(initialMode)
+
+        let location = try StoreLocation.resolve(role: .mainApp, appGroupID: appGroupID)
+        let legacyConfig = try StoreConfiguration.defaultOnDisk
+        guard case .onDisk(let legacyURL) = legacyConfig.storeKind else {
+            preconditionFailure("StoreConfiguration.defaultOnDisk always returns an onDisk storeKind")
+        }
+        // Rooted at the App-Group Lillist directory — the same root the
+        // rest of the app's quarantine/backup subsystems use once
+        // `persistence` exists (see `quarantineRoot` further below).
+        let migrationQuarantine = QuarantineManager(rootDirectory: location.url.deletingLastPathComponent())
+        let migrationOutcome = try MacAppGroupMigration.migrateIfNeeded(
+            legacyURL: legacyURL,
+            groupURL: location.url,
+            syncMode: initialMode,
+            quarantine: migrationQuarantine
+        )
+        // `.conflictDetected`/`.migrationFailed` deliberately fall back to
+        // booting on the legacy store this launch — never a silent fork
+        // onto a NEW, third location, just a temporary continuation of
+        // today's behavior until the next launch's migration attempt (or,
+        // for `.conflictDetected` in `.localOnly` mode, until the App
+        // Group is manually reconciled — see the council decision).
+        let resolvedURL: URL
+        switch migrationOutcome {
+        case .notNeeded, .migrated, .migratedResolvingConflict:
+            resolvedURL = location.url
+        case .conflictDetected, .migrationFailed:
+            resolvedURL = legacyURL
+        }
+        var baseConfig = StoreConfiguration.onDisk(url: resolvedURL, syncMode: initialMode)
+        baseConfig.armsCloudKitMirroring = location.mayArmCloudKitMirroring
+
         // Stamp the Mac's distinct author so the diagnostics observer can tell
         // Mac-authored writes apart from iOS on the same iCloud account. Safe:
         // macOS has no RemoteChangeReconciler, so no local-vs-foreign filter
@@ -404,6 +456,7 @@ final class AppEnvironment {
             persistenceHost: host,
             persistence: persistence,
             storeURL: storeURL,
+            macAppGroupMigrationOutcome: migrationOutcome,
             initialSyncMode: initialMode,
             syncModeStore: syncModeStore,
             migrationJournalStore: journal,
@@ -416,6 +469,12 @@ final class AppEnvironment {
     /// One-shot async bootstrap: registers UNNotificationCategory set so
     /// snooze actions on the Lock Screen dispatch correctly.
     func bootstrap() async {
+        // Data-sync-hardening X1: record the store-migration outcome
+        // computed in make() (before breadcrumbs existed) now that the
+        // buffer is available — so a both-stores-populated conflict or a
+        // failed migration attempt is discoverable in crash reports, not
+        // silently invisible. Best-effort, matching every other step here.
+        try? await recordMacAppGroupMigrationOutcome()
         // Plan 21: copy the AppPreferences row's device-local fields
         // forward into App Group UserDefaults if we haven't already.
         // Idempotent; subsequent launches no-op.
@@ -497,6 +556,29 @@ final class AppEnvironment {
         // has no prior foreground-activation hook, so this observer is net-new.
         installActivationDrain()
         Task { [remindersImporter] in await remindersImporter.drainIfNeeded() }
+    }
+
+    /// Log `macAppGroupMigrationOutcome` as a breadcrumb. A no-op for the
+    /// steady-state `.notNeeded` case (nothing interesting happened); the
+    /// remaining cases are all things Mikey's manual-verification pass
+    /// (or a future diagnostics surface) should be able to discover —
+    /// especially `.conflictDetected`/`.migrationFailed`, which mean this
+    /// Mac is still running on the legacy store this launch.
+    private func recordMacAppGroupMigrationOutcome() async throws {
+        let description: String
+        switch macAppGroupMigrationOutcome {
+        case .notNeeded:
+            return
+        case .migrated(let quarantinedLegacyAt):
+            description = "macAppGroupMigration.migrated quarantinedLegacyAt=\(quarantinedLegacyAt.path)"
+        case .migratedResolvingConflict(let quarantinedAppGroupAt, let quarantinedLegacyAt, let legacy, let appGroup):
+            description = "macAppGroupMigration.migratedResolvingConflict quarantinedAppGroupAt=\(quarantinedAppGroupAt.path) quarantinedLegacyAt=\(quarantinedLegacyAt.path) legacy=\(legacy.sizeBytes)B appGroup=\(appGroup.sizeBytes)B"
+        case .conflictDetected(let legacy, let appGroup):
+            description = "macAppGroupMigration.conflictDetected (localOnly, no mutation) legacy=\(legacy.sizeBytes)B appGroup=\(appGroup.sizeBytes)B — booting on legacy store"
+        case .migrationFailed(let reason):
+            description = "macAppGroupMigration.migrationFailed reason=\(reason) — booting on legacy store"
+        }
+        try await breadcrumbs.record(action: description, success: true)
     }
 
     /// Rebuild the widget snapshot cache whenever the store changes. The
