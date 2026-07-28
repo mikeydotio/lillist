@@ -2,3 +2,6 @@
 {"kind":"StoryPrioritySet","at":"2026-07-28T16:32:21Z","priority":"critical"}
 {"kind":"StoryLabelsSet","at":"2026-07-28T16:32:21Z","labels":["plan-1a","sev-critical","sweep-stores"]}
 {"kind":"StoryDescriptionSet","at":"2026-07-28T16:32:21Z","description":"AutoPurgeJob.run + TaskStore.batchPurge fetch deletedAt != nil roots, then CascadeReaper.objectIDs(forDeleting:) recurses `children` with no deletedAt filter (CascadeReaper.swift:74-79). Failure scenario: reachable via C2 (restore a child while its parent stays trashed, then the parent's purge sweep reaps the child too) or via a CloudKit import adding a new child under an already-trashed parent. Silent, unrecoverable data loss. Severity: Critical. Wave/Plan: Wave 1, plan 1a trash-tree-integrity. Sweep: stores/persistence. Verified directly against source (checkmark in review doc)."}
+{"kind":"StoryCommentAdded","at":"2026-07-28T16:38:22Z","text":"[git] 4db049e: chore(stories): file 70 data-sync hardening stories (LIL-7..LIL-76)"}
+{"kind":"StoryStateChanged","at":"2026-07-28T16:38:22Z","state":"in-progress"}
+{"kind":"StoryStateChanged","at":"2026-07-28T16:39:48Z","state":"todo"}
