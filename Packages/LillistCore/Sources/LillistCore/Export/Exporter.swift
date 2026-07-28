@@ -3,6 +3,14 @@ import CoreData
 
 public final class Exporter: @unchecked Sendable {
     private let persistence: PersistenceController
+    /// Kept for API compatibility with existing call sites (both apps, the
+    /// CLI, and the test suite construct `Exporter` with this parameter).
+    /// No longer read from directly: `buildDocument` fetches `AppPreferences`
+    /// straight from its own background context by `PreferencesStore
+    /// .singletonID` instead of going through `PreferencesStore.read()`,
+    /// which used a *separate* context/round trip and was a live instance
+    /// of X18's exact defect (a torn read between preferences and every
+    /// other fetch).
     private let preferences: PreferencesStore
 
     public init(persistence: PersistenceController, preferences: PreferencesStore) {
@@ -38,7 +46,6 @@ public final class Exporter: @unchecked Sendable {
 
     private func buildDocument(assetsDir: URL) async throws -> ExportSchema.Document {
         let ctx = persistence.makeBackgroundContext()
-        let prefs = try await preferences.read()
 
         // Attachment bytes are read into value types INSIDE perform (via the
         // shared `BackupRecordProjector`); the files themselves are written to
@@ -49,6 +56,11 @@ public final class Exporter: @unchecked Sendable {
             let bytes: Data
         }
 
+        // X18: every fetch this export needs — including AppPreferences,
+        // which used to be read via a *separate* PreferencesStore.read()
+        // round trip on a different context before this block even started
+        // — lives inside this one ctx.perform block, so a concurrent write
+        // landing mid-export can't tear the bundle between data sources.
         let (document, pendingAssets): (ExportSchema.Document, [PendingAsset]) = try await ctx.perform {
             // Tasks (including trashed — full backup)
             let taskReq = NSFetchRequest<LillistTask>(entityName: "LillistTask")
@@ -72,7 +84,26 @@ public final class Exporter: @unchecked Sendable {
                 return projected.dto
             }
 
-            let prefsDTO = BackupRecordProjector.preferencesDTO(from: prefs)
+            // X3: recurrence series, reminders, and saved smart filters —
+            // previously entirely absent from the export.
+            let seriesReq = NSFetchRequest<Series>(entityName: "Series")
+            let seriesDTOs = try ctx.fetch(seriesReq).map(BackupRecordProjector.seriesDTO(from:))
+
+            let specReq = NSFetchRequest<NotificationSpec>(entityName: "NotificationSpec")
+            let specDTOs = try ctx.fetch(specReq).map(BackupRecordProjector.notificationSpecDTO(from:))
+
+            let filterReq = NSFetchRequest<SmartFilter>(entityName: "SmartFilter")
+            let filterDTOs = try ctx.fetch(filterReq).map(BackupRecordProjector.smartFilterDTO(from:))
+
+            // X18: fetched from this same ctx/perform, by the well-known
+            // singleton id, instead of PreferencesStore.read() (view
+            // context, separate round trip). An absent row (a store that
+            // was never touched) falls back to the model's own defaults.
+            let prefsReq = NSFetchRequest<AppPreferences>(entityName: "AppPreferences")
+            prefsReq.predicate = NSPredicate(format: "id == %@", PreferencesStore.singletonID as CVarArg)
+            prefsReq.fetchLimit = 1
+            let prefsRow = try ctx.fetch(prefsReq).first
+            let prefsDTO = prefsRow.map(BackupRecordProjector.preferencesDTO(from:)) ?? .fallback
 
             let doc = ExportSchema.Document(
                 version: ExportSchema.version,
@@ -81,7 +112,10 @@ public final class Exporter: @unchecked Sendable {
                 tags: tagDTOs,
                 journalEntries: journalDTOs,
                 attachments: attDTOs,
-                preferences: prefsDTO
+                preferences: prefsDTO,
+                series: seriesDTOs,
+                notificationSpecs: specDTOs,
+                smartFilters: filterDTOs
             )
             return (doc, pending)
         }

@@ -181,6 +181,78 @@ struct LocalBackupCoordinatorTests {
         })
     }
 
+    @Test("X3: a smart filter change refreshes the smartFilters sidecar")
+    func smartFilterChangeUpdatesSidecar() async throws {
+        let p = try await TestStore.make()
+        let dir = tempDir()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let (coord, _) = makeCoordinator(p, dir: dir)
+        coord.start()
+        defer { coord.stop() }
+
+        let filters = SmartFilterStore(persistence: p)
+        _ = try await filters.create(name: "Overdue", group: .init(combinator: .all, predicates: []))
+
+        let reader = BackupPackageReader(packageDirectory: dir)
+        #expect(await waitUntil {
+            ((try? reader.assembleDocument().smartFilters) ?? []).contains { $0.name == "Overdue" }
+        })
+    }
+
+    @Test("X3: a series creation refreshes the series sidecar and its seed task's file carries seriesID")
+    func seriesCreationUpdatesSidecarAndTaskFile() async throws {
+        let p = try await TestStore.make()
+        let dir = tempDir()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let (coord, _) = makeCoordinator(p, dir: dir)
+        coord.start()
+        defer { coord.stop() }
+
+        let tasks = TaskStore(persistence: p)
+        let series = SeriesStore(persistence: p)
+        let seedID = try await tasks.create(title: "Water plants")
+        let seriesID = try await series.create(
+            fromSeedTask: seedID,
+            rule: .calendar(.init(freq: .daily, interval: 1))
+        )
+
+        let reader = BackupPackageReader(packageDirectory: dir)
+        #expect(await waitUntil {
+            ((try? reader.assembleDocument().series) ?? []).contains { $0.id == seriesID }
+        })
+        // Series creation also mutates the seed task's own `series`
+        // relationship (LillistTask, not just Series) — the seed task's own
+        // file, refreshed via the local-save path (not the sidecar path),
+        // must carry the matching seriesID.
+        #expect(await waitUntil { readRecord(dir, seedID)?.task.seriesID == seriesID })
+    }
+
+    @Test("X3: a notification spec add/remove appears in its owning task's own backup file")
+    func notificationSpecChangeUpdatesTaskFile() async throws {
+        let p = try await TestStore.make()
+        let dir = tempDir()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let (coord, _) = makeCoordinator(p, dir: dir)
+        coord.start()
+        defer { coord.stop() }
+
+        let tasks = TaskStore(persistence: p)
+        let specs = NotificationSpecStore(persistence: p)
+        let taskID = try await tasks.create(title: "Pay rent")
+        let specID = try await specs.add(
+            taskID: taskID, kind: .offsetDeadline, offsetMinutes: 60, fireDate: Date(timeIntervalSince1970: 2_000_000_000)
+        )
+
+        #expect(await waitUntil {
+            readRecord(dir, taskID)?.notificationSpecs.contains { $0.id == specID } ?? false
+        })
+
+        try await specs.delete(id: specID)
+        #expect(await waitUntil {
+            (readRecord(dir, taskID)?.notificationSpecs.isEmpty) ?? false
+        })
+    }
+
     @Test("seedPackageIfEmpty backs up tasks that predate the coordinator")
     func seedBacksUpExisting() async throws {
         let p = try await TestStore.make()

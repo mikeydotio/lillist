@@ -219,6 +219,12 @@ public final class BackupRestoreService {
             if let sort = SortField(rawValue: dto.defaultTaskListSort) {
                 prefs.defaultTaskListSort = sort
             }
+            // X3 (discovered): defaultTagTintHex was never copied here, so
+            // every restore silently reset the account's tag-tint back to
+            // whatever the fresh post-wipe store defaulted to, discarding
+            // the backup's actual value even though it round-tripped
+            // correctly through export/import up to this point.
+            prefs.defaultTagTintHex = dto.defaultTagTintHex
         }
     }
 }

@@ -39,7 +39,54 @@ enum BackupRecordProjector {
             modifiedAt: m.modifiedAt,
             closedAt: m.closedAt,
             deletedAt: m.deletedAt,
-            schemaVersion: Int(m.schemaVersion)
+            schemaVersion: Int(m.schemaVersion),
+            archivedAt: m.archivedAt,
+            seriesID: m.series?.id
+        )
+    }
+
+    /// X3: `Series` had zero export mapping before this plan.
+    static func seriesDTO(from m: Series) -> ExportSchema.SeriesDTO {
+        ExportSchema.SeriesDTO(
+            id: m.id ?? UUID(),
+            seedTaskID: m.seedTask?.id,
+            rule: m.rule,
+            nextOccurrenceAfter: m.nextOccurrenceAfter
+        )
+    }
+
+    /// X3: `NotificationSpec` had zero export mapping before this plan.
+    static func notificationSpecDTO(from m: NotificationSpec) -> ExportSchema.NotificationSpecDTO {
+        ExportSchema.NotificationSpecDTO(
+            id: m.id ?? UUID(),
+            taskID: m.task?.id,
+            kind: Int(m.kindRaw),
+            offsetMinutes: m.offsetMinutes?.int32Value,
+            fireDate: m.fireDate,
+            lastFiredAt: m.lastFiredAt,
+            snoozedUntil: m.snoozedUntil,
+            createdAt: m.createdAt
+        )
+    }
+
+    /// `SmartFilter` had zero export mapping before this plan (discovered via
+    /// the model-derived completeness test). `predicateGroupJSON` decodes
+    /// leniently — `nil` on missing/malformed JSON — matching
+    /// `Series.rule`'s existing resilience pattern rather than throwing and
+    /// losing the rest of the row.
+    static func smartFilterDTO(from m: SmartFilter) -> ExportSchema.SmartFilterDTO {
+        let group = m.predicateGroupJSON.flatMap { try? SmartFilterStore.decode($0) }
+        return ExportSchema.SmartFilterDTO(
+            id: m.id ?? UUID(),
+            name: m.name ?? "",
+            predicateGroup: group,
+            tintColor: m.tintColor,
+            sortField: m.sortFieldRaw ?? SortField.deadline.rawValue,
+            sortAscending: m.sortAscending,
+            isPinned: m.isPinned,
+            position: m.position,
+            createdAt: m.createdAt,
+            modifiedAt: m.modifiedAt
         )
     }
 
@@ -102,16 +149,26 @@ enum BackupRecordProjector {
         return (dto, nil)
     }
 
-    /// Project the value-type `Prefs` into the export DTO subset.
-    static func preferencesDTO(from prefs: PreferencesStore.Prefs) -> ExportSchema.PreferencesDTO {
+    /// Project the `AppPreferences` singleton row directly — not via
+    /// `PreferencesStore.Prefs` — so callers can fetch it from their own
+    /// background context inside their own `ctx.perform` block (X18: a
+    /// separate `PreferencesStore.read()` round trip, on a different
+    /// context, is exactly the kind of un-synchronized read this finding is
+    /// about). Device-local fields Plan 21 partitioned into
+    /// `DevicePreferencesStore` (`crashPromptsEnabled`,
+    /// `hasCompletedOnboarding`, `quickCaptureEnabled`, `quickCaptureHotkey`,
+    /// `statusBarItemVisible`) are deliberately excluded — see
+    /// `ExportSchema.PreferencesDTO.defaultTagTintHex`'s doc comment.
+    static func preferencesDTO(from m: AppPreferences) -> ExportSchema.PreferencesDTO {
         ExportSchema.PreferencesDTO(
-            defaultAllDayHour: prefs.defaultAllDayHour,
-            defaultAllDayMinute: prefs.defaultAllDayMinute,
-            morningSummaryEnabled: prefs.morningSummaryEnabled,
-            morningSummaryHour: prefs.morningSummaryHour,
-            morningSummaryMinute: prefs.morningSummaryMinute,
-            trashRetentionDays: prefs.trashRetentionDays,
-            defaultTaskListSort: prefs.defaultTaskListSort.rawValue
+            defaultAllDayHour: m.defaultAllDayNotificationHour,
+            defaultAllDayMinute: m.defaultAllDayNotificationMinute,
+            morningSummaryEnabled: m.morningSummaryEnabled,
+            morningSummaryHour: m.morningSummaryHour,
+            morningSummaryMinute: m.morningSummaryMinute,
+            trashRetentionDays: m.trashRetentionDays,
+            defaultTaskListSort: m.defaultTaskListSortRaw ?? SortField.manualPosition.rawValue,
+            defaultTagTintHex: m.defaultTagTintHex ?? "#7F8FA6"
         )
     }
 }

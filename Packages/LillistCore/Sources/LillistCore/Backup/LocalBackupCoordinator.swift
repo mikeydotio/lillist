@@ -28,6 +28,11 @@ import CoreData
 /// `RemoteChangeReconciler`).
 public final class LocalBackupCoordinator: @unchecked Sendable {
     private let persistence: PersistenceController
+    /// Kept for API compatibility with existing call sites. No longer read
+    /// from directly — `reconcileFull()`/`refreshSidecars()` fetch
+    /// `AppPreferences` straight from their own background context instead
+    /// of going through `PreferencesStore.read()`; see those functions' doc
+    /// comments (X18 sibling fix).
     private let preferences: PreferencesStore
     private let store: TaskBackupStore
     private let tokenStore: PersistentHistoryTokenStore
@@ -138,9 +143,9 @@ public final class LocalBackupCoordinator: @unchecked Sendable {
             switch object.entity.name {
             case "LillistTask":
                 if let id = (object as? LillistTask)?.id { upserts.append(id) }
-            case "Tag", "AppPreferences":
+            case "Tag", "AppPreferences", "Series", "SmartFilter":
                 sidecarsDirty = true
-            case "JournalEntry", "Attachment":
+            case "JournalEntry", "Attachment", "NotificationSpec":
                 if let owner = ownerTaskID(of: object) { upserts.append(owner) }
             default:
                 break
@@ -150,9 +155,9 @@ public final class LocalBackupCoordinator: @unchecked Sendable {
             switch object.entity.name {
             case "LillistTask":
                 if let id = (object as? LillistTask)?.id { deletes.append(id) }
-            case "Tag", "AppPreferences":
+            case "Tag", "AppPreferences", "Series", "SmartFilter":
                 sidecarsDirty = true
-            case "JournalEntry", "Attachment":
+            case "JournalEntry", "Attachment", "NotificationSpec":
                 // A child removed without its task → the surviving task's record
                 // must drop it. If the owner was also deleted, its own delete in
                 // `deletes` wins (removal beats upsert in `applyLocalChange`).
@@ -174,6 +179,7 @@ public final class LocalBackupCoordinator: @unchecked Sendable {
         if let attachment = object as? Attachment {
             return attachment.task?.id ?? attachment.journalEntry?.task?.id
         }
+        if let spec = object as? NotificationSpec { return spec.task?.id }
         return nil
     }
 
@@ -234,8 +240,16 @@ public final class LocalBackupCoordinator: @unchecked Sendable {
                         switch change.changedObjectID.entity.name {
                         case "LillistTask":
                             if change.changeType != .delete { taskObjectIDs.append(change.changedObjectID) }
-                        case "Tag", "AppPreferences":
+                        case "Tag", "AppPreferences", "Series", "SmartFilter":
                             sidecarsDirty = true
+                        // NotificationSpec deliberately has no case here,
+                        // matching the pre-existing JournalEntry/Attachment
+                        // gap on this path: a remote change to a task-owned
+                        // child that doesn't also touch its owning task's
+                        // own row isn't picked up until some other event
+                        // touches that task. Pre-existing, not introduced
+                        // by this plan — out of scope here (flagged
+                        // separately, not one of X3/S9a/X13/X18).
                         default:
                             break
                         }
@@ -319,10 +333,14 @@ public final class LocalBackupCoordinator: @unchecked Sendable {
     }
 
     /// Rebuild the entire package from the live store. Reclaims orphans.
+    ///
+    /// X18 sibling: `preferences` used to be read via a separate
+    /// `PreferencesStore.read()` round trip (view context) *before* this
+    /// function's own `ctx.perform` block even started — the same torn-read
+    /// shape `Exporter.buildDocument` had. `AppPreferences` (along with
+    /// series/smart filters) is now fetched from the same background
+    /// context, inside the same `perform` block, as everything else.
     public func reconcileFull() async {
-        let prefs = try? await preferences.read()
-        let prefsDTO = prefs.map(BackupRecordProjector.preferencesDTO(from:)) ?? Self.fallbackPreferences
-
         let ctx = persistence.makeBackgroundContext()
         let payload: FullPayload = await ctx.perform {
             let taskReq = NSFetchRequest<LillistTask>(entityName: "LillistTask")
@@ -337,14 +355,30 @@ public final class LocalBackupCoordinator: @unchecked Sendable {
             }
             let tagReq = NSFetchRequest<Tag>(entityName: "Tag")
             let tags = ((try? ctx.fetch(tagReq)) ?? []).map(BackupRecordProjector.tagDTO(from:))
-            return FullPayload(records: records, assets: assets, tags: tags)
+            let seriesReq = NSFetchRequest<Series>(entityName: "Series")
+            let series = ((try? ctx.fetch(seriesReq)) ?? []).map(BackupRecordProjector.seriesDTO(from:))
+            let filterReq = NSFetchRequest<SmartFilter>(entityName: "SmartFilter")
+            let smartFilters = ((try? ctx.fetch(filterReq)) ?? []).map(BackupRecordProjector.smartFilterDTO(from:))
+
+            let prefsReq = NSFetchRequest<AppPreferences>(entityName: "AppPreferences")
+            prefsReq.predicate = NSPredicate(format: "id == %@", PreferencesStore.singletonID as CVarArg)
+            prefsReq.fetchLimit = 1
+            let prefsRow = (try? ctx.fetch(prefsReq))?.first
+            let prefsDTO = prefsRow.map(BackupRecordProjector.preferencesDTO(from:)) ?? .fallback
+
+            return FullPayload(
+                records: records, assets: assets, tags: tags,
+                series: series, smartFilters: smartFilters, preferences: prefsDTO
+            )
         }
 
         try? await store.replaceAll(
             records: payload.records,
             assets: payload.assets,
             tags: payload.tags,
-            preferences: prefsDTO,
+            series: payload.series,
+            smartFilters: payload.smartFilters,
+            preferences: payload.preferences,
             cloudKitSchemaVersion: CloudKitSchema.currentVersion,
             updatedAt: Date()
         )
@@ -354,6 +388,9 @@ public final class LocalBackupCoordinator: @unchecked Sendable {
         let records: [BackupPackageSchema.TaskBackupRecord]
         let assets: [TaskBackupStore.PendingAsset]
         let tags: [ExportSchema.TagDTO]
+        let series: [ExportSchema.SeriesDTO]
+        let smartFilters: [ExportSchema.SmartFilterDTO]
+        let preferences: ExportSchema.PreferencesDTO
     }
 
     // MARK: - Projection (shared by all paths)
@@ -396,6 +433,10 @@ public final class LocalBackupCoordinator: @unchecked Sendable {
             .sorted { ($0.createdAt ?? .distantPast, $0.id?.uuidString ?? "") < ($1.createdAt ?? .distantPast, $1.id?.uuidString ?? "") }
         let journals = journalMOs.map(BackupRecordProjector.journalEntryDTO(from:))
 
+        let specMOs = ((m.notificationSpecs as? Set<NotificationSpec>) ?? [])
+            .sorted { ($0.createdAt ?? .distantPast, $0.id?.uuidString ?? "") < ($1.createdAt ?? .distantPast, $1.id?.uuidString ?? "") }
+        let specs = specMOs.map(BackupRecordProjector.notificationSpecDTO(from:))
+
         var attachmentMOs = Array((m.attachments as? Set<Attachment>) ?? [])
         for entry in journalMOs {
             attachmentMOs.append(contentsOf: (entry.attachments as? Set<Attachment>) ?? [])
@@ -417,22 +458,50 @@ public final class LocalBackupCoordinator: @unchecked Sendable {
             cloudKitSchemaVersion: Int(m.schemaVersion),
             task: task,
             journalEntries: journals,
-            attachments: attachments
+            attachments: attachments,
+            notificationSpecs: specs
         )
         return (record, assets)
     }
 
     // MARK: - Sidecars + manifest
 
+    /// X18 sibling — see `reconcileFull()`'s doc comment: `AppPreferences`,
+    /// tags, series, and smart filters are all fetched from the same
+    /// background context inside one `perform` block, replacing a separate
+    /// `PreferencesStore.read()` round trip that ran before this function's
+    /// own fetch even started.
     private func refreshSidecars() async throws {
-        let prefs = try? await preferences.read()
-        let prefsDTO = prefs.map(BackupRecordProjector.preferencesDTO(from:)) ?? Self.fallbackPreferences
         let ctx = persistence.makeBackgroundContext()
-        let tags: [ExportSchema.TagDTO] = await ctx.perform {
-            let req = NSFetchRequest<Tag>(entityName: "Tag")
-            return ((try? ctx.fetch(req)) ?? []).map(BackupRecordProjector.tagDTO(from:))
+        let sidecars: Sidecars = await ctx.perform {
+            let tagReq = NSFetchRequest<Tag>(entityName: "Tag")
+            let tags = ((try? ctx.fetch(tagReq)) ?? []).map(BackupRecordProjector.tagDTO(from:))
+            let seriesReq = NSFetchRequest<Series>(entityName: "Series")
+            let series = ((try? ctx.fetch(seriesReq)) ?? []).map(BackupRecordProjector.seriesDTO(from:))
+            let filterReq = NSFetchRequest<SmartFilter>(entityName: "SmartFilter")
+            let smartFilters = ((try? ctx.fetch(filterReq)) ?? []).map(BackupRecordProjector.smartFilterDTO(from:))
+
+            let prefsReq = NSFetchRequest<AppPreferences>(entityName: "AppPreferences")
+            prefsReq.predicate = NSPredicate(format: "id == %@", PreferencesStore.singletonID as CVarArg)
+            prefsReq.fetchLimit = 1
+            let prefsRow = (try? ctx.fetch(prefsReq))?.first
+            let prefsDTO = prefsRow.map(BackupRecordProjector.preferencesDTO(from:)) ?? .fallback
+
+            return Sidecars(tags: tags, series: series, smartFilters: smartFilters, preferences: prefsDTO)
         }
-        try await store.writeSidecars(tags: tags, preferences: prefsDTO)
+        try await store.writeSidecars(
+            tags: sidecars.tags,
+            series: sidecars.series,
+            smartFilters: sidecars.smartFilters,
+            preferences: sidecars.preferences
+        )
+    }
+
+    private struct Sidecars: Sendable {
+        let tags: [ExportSchema.TagDTO]
+        let series: [ExportSchema.SeriesDTO]
+        let smartFilters: [ExportSchema.SmartFilterDTO]
+        let preferences: ExportSchema.PreferencesDTO
     }
 
     private func updateManifest() async throws {
@@ -444,10 +513,4 @@ public final class LocalBackupCoordinator: @unchecked Sendable {
             taskCount: count
         ))
     }
-
-    private static let fallbackPreferences = ExportSchema.PreferencesDTO(
-        defaultAllDayHour: 9, defaultAllDayMinute: 0,
-        morningSummaryEnabled: true, morningSummaryHour: 9, morningSummaryMinute: 0,
-        trashRetentionDays: 30, defaultTaskListSort: "manualPosition"
-    )
 }

@@ -35,7 +35,10 @@ struct BackupRestoreServiceTests {
         try await tasks.assignTag(taskID: task, tagID: tag)
         _ = try await journals.appendNote(taskID: task, body: "a note")
         _ = try await attach.addFile(taskID: task, filename: "blob.bin", uti: "public.data", data: Data([0xAB, 0xCD, 0xEF]))
-        try await prefs.update { $0.trashRetentionDays = 14 }
+        try await prefs.update {
+            $0.trashRetentionDays = 14
+            $0.defaultTagTintHex = "#123ABC"
+        }
 
         let store = TaskBackupStore(packageDirectory: packageDir)
         let coord = LocalBackupCoordinator(
@@ -114,6 +117,10 @@ struct BackupRestoreServiceTests {
 
         let restoredPrefs = try await PreferencesStore(persistence: target).read()
         #expect(restoredPrefs.trashRetentionDays == 14)
+        // X3 (discovered): applyPreferences never copied defaultTagTintHex,
+        // so a restore silently reset it even though it round-tripped
+        // correctly through export/import up to that point.
+        #expect(restoredPrefs.defaultTagTintHex == "#123ABC")
     }
 
     @Test("issue #71: a successful restore broadcasts a resetAndReseed control event to known peers")

@@ -23,6 +23,12 @@ public actor TaskBackupStore {
     private let manifestURL: URL
     private let tagsURL: URL
     private let preferencesURL: URL
+    /// X3: series/smart-filter sidecars, alongside `tagsURL`/`preferencesURL`
+    /// — shared, account-level entities that (unlike reminders, which are
+    /// task-owned and live in each `TaskBackupRecord`) aren't owned by any
+    /// one task file.
+    private let seriesURL: URL
+    private let smartFiltersURL: URL
 
     /// A binary attachment blob staged for the package's `assets/` folder.
     public struct PendingAsset: Sendable, Equatable {
@@ -42,6 +48,8 @@ public actor TaskBackupStore {
         self.manifestURL = packageDirectory.appendingPathComponent("manifest.json")
         self.tagsURL = packageDirectory.appendingPathComponent("tags.json")
         self.preferencesURL = packageDirectory.appendingPathComponent("preferences.json")
+        self.seriesURL = packageDirectory.appendingPathComponent("series.json")
+        self.smartFiltersURL = packageDirectory.appendingPathComponent("smartFilters.json")
     }
 
     // MARK: - Encoding
@@ -138,6 +146,8 @@ public actor TaskBackupStore {
         records: [BackupPackageSchema.TaskBackupRecord],
         assets: [PendingAsset],
         tags: [ExportSchema.TagDTO],
+        series: [ExportSchema.SeriesDTO],
+        smartFilters: [ExportSchema.SmartFilterDTO],
         preferences: ExportSchema.PreferencesDTO,
         cloudKitSchemaVersion: Int,
         updatedAt: Date
@@ -147,7 +157,7 @@ public actor TaskBackupStore {
         try? fm.removeItem(at: assetsDirectory)
         try prepareDirectories()
         try upsert(records, assets: assets)
-        try writeSidecars(tags: tags, preferences: preferences)
+        try writeSidecars(tags: tags, series: series, smartFilters: smartFilters, preferences: preferences)
         try writeManifest(BackupPackageSchema.Manifest(
             backupSchemaVersion: BackupPackageSchema.version,
             cloudKitSchemaVersion: cloudKitSchemaVersion,
@@ -156,11 +166,19 @@ public actor TaskBackupStore {
         ))
     }
 
-    /// Write the shared `tags.json` + `preferences.json` sidecars atomically.
-    public func writeSidecars(tags: [ExportSchema.TagDTO], preferences: ExportSchema.PreferencesDTO) throws {
+    /// Write the shared `tags.json` + `series.json` + `smartFilters.json` +
+    /// `preferences.json` sidecars atomically.
+    public func writeSidecars(
+        tags: [ExportSchema.TagDTO],
+        series: [ExportSchema.SeriesDTO],
+        smartFilters: [ExportSchema.SmartFilterDTO],
+        preferences: ExportSchema.PreferencesDTO
+    ) throws {
         try prepareDirectories()
         let encoder = Self.makeEncoder()
         try encoder.encode(tags).write(to: tagsURL, options: [.atomic])
+        try encoder.encode(series).write(to: seriesURL, options: [.atomic])
+        try encoder.encode(smartFilters).write(to: smartFiltersURL, options: [.atomic])
         try encoder.encode(preferences).write(to: preferencesURL, options: [.atomic])
     }
 
