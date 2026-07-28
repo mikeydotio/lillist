@@ -1,5 +1,0 @@
-{"kind":"StoryCreated","at":"2026-07-28T16:32:21Z","title":"X18: Export performs 4 independent fetches against a live-mirroring store with no quiesce","state":"todo"}
-{"kind":"StoryPrioritySet","at":"2026-07-28T16:32:21Z","priority":"medium"}
-{"kind":"StoryLabelsSet","at":"2026-07-28T16:32:21Z","labels":["plan-1d","sev-medium","sweep-crossproc"]}
-{"kind":"StoryDescriptionSet","at":"2026-07-28T16:32:21Z","description":"Produces a torn bundle (orphan journal entries the importer then drops - permanently, via S9b's reseed path). Severity: Medium. Wave/Plan: Wave 1, plan 1d export-schema-completeness. Sweep: cross-process. Fix: exporter takes one consistent snapshot in a single perform."}
-{"kind":"StoryStateChanged","at":"2026-07-28T20:06:49Z","state":"in-progress"}
