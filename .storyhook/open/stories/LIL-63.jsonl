@@ -2,3 +2,4 @@
 {"kind":"StoryPrioritySet","at":"2026-07-28T16:32:21Z","priority":"medium"}
 {"kind":"StoryLabelsSet","at":"2026-07-28T16:32:21Z","labels":["plan-1b","sev-medium","sweep-crossproc"]}
 {"kind":"StoryDescriptionSet","at":"2026-07-28T16:32:21Z","description":"It can consume a task that was restored mid-flight (which X4/C4 then resurrects from the zone). Severity: Medium. Wave/Plan: Wave 1, plan 1b purge-cloudkit-retirement. Sweep: cross-process."}
+{"kind":"StoryStateChanged","at":"2026-07-28T18:28:29Z","state":"in-progress"}
