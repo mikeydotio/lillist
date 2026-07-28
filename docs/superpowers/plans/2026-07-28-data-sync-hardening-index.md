@@ -23,9 +23,9 @@ CloudKit, XCTest + Swift Testing, xcodegen, storyhook (prefix `LIL`).
 > **New here? Read this section first.** This file is the **living progress
 > tracker** — keep it current as plans land.
 
-**As of 2026-07-28 — Wave 0 and Wave 1 plans `1a` (`trash-tree-integrity`),
-`1b` (`purge-cloudkit-retirement`), and `1c` (`store-location-unification`)
-COMPLETE.**
+**As of 2026-07-28 — Wave 0 and all of Wave 1 (`1a` `trash-tree-integrity`,
+`1b` `purge-cloudkit-retirement`, `1c` `store-location-unification`, `1d`
+`export-schema-completeness`) COMPLETE. Wave 2 next.**
 
 - ✅ **Plan `1a` closed all 8 findings** (`C1 C2 C3 H4 H7 M1 M2 M5` /
   `LIL-7 LIL-8 LIL-9 LIL-22 LIL-25 LIL-45 LIL-46 LIL-49`), added the
@@ -77,6 +77,32 @@ COMPLETE.**
   finding breakdown, the both-stores-populated council decision, and what
   `3a` (which continues the `AppEnvironment.swift` shared-file chain)
   needs to know.
+- ✅ **Plan `1d` closed all 4 findings** (`X3`, `S9a`, `X13`, `X18` /
+  `LIL-17`, `LIL-30`, `LIL-44`, `LIL-67`) — plus two more silent drops the
+  model-derived completeness test surfaced beyond X3's own text:
+  `SmartFilter` had **zero** export/backup mapping at all, and
+  `AppPreferences.defaultTagTintHex` (real, CloudKit-synced, distinct from
+  Plan 21's five device-local fields) was never mapped. `ExportSchema`
+  bumped to v2 with new `SeriesDTO`/`NotificationSpecDTO`/`SmartFilterDTO`
+  and `TaskDTO.archivedAt`/`.seriesID`, all decode-with-default on older
+  bundles; `BackupPackageSchema` bumped to v2 to match
+  (`TaskBackupRecord.notificationSpecs` + new `series.json`/
+  `smartFilters.json` sidecars). `Importer.apply` extends X13's
+  skip-respecting, bundle-then-store-fallback discipline to the two new
+  relationships (`Series.seedTask`, `Task.series`) from the start.
+  `lastFiredAt` round-trips as-is (decided directly — real CloudKit-synced
+  cross-device de-dup state, not device-local; see the plan doc). Plan doc:
+  `docs/superpowers/plans/2026-07-28-plan-1d-export-schema-completeness.md`.
+  Commit range `8d1472fb..2b1b7ad2` (7 commits: 1 docs, 2 fix, 1 feat, 1
+  test, 2 `chore(stories)`). Full `LillistCore` suite green (1195 tests,
+  225 suites — up from `1c`'s 1177/222 baseline) after every commit;
+  `lillist-cli` builds; both apps verified with unsigned `xcodebuild`
+  builds (BUILD SUCCEEDED). See *Wave 1d closing report* below for the
+  per-finding breakdown, the version-compat matrix, and what `2b`
+  (`backup-restore-correctness`, the chain's next link) needs to know.
+  **No CloudKit-visible schema implications** — every change is to the
+  export/backup file format and in-process logic; the Core Data model is
+  unchanged.
 - ✅ Review doc committed: `docs/reviews/2026-07-28-data-sync-review.md`
   (70 findings, faithfully reproduced from the source-of-truth plan; no
   severity softened, nothing dropped).
@@ -121,17 +147,31 @@ COMPLETE.**
   log* below for the final result and audit trail
   (`.council/c4-x4-merged-or-two-linked-stories/DECISION.md`).
 - ✅ **Story-ID cross-reference table filled in** — see below.
-- ⬜ Wave 1 plan `1d`, Waves 2 through 6: not started.
+- ✅ **Wave 1 is now fully complete** (`1a`, `1b`, `1c`, `1d`). Waves 2
+  through 6 not started.
+- 🚩 **Discovered, out-of-scope defect flagged during `1d` (not fixed,
+  not one of the 70 cataloged findings):** `CrashReportingSection` (iOS
+  `DebugPage`) and `CrashReportingPane` (macOS) still bind
+  `PreferencesStore.Prefs.crashPromptsEnabled` (the Core-Data-backed
+  field) for the Settings toggle and persist via `PreferencesStore
+  .update`, while `AppEnvironment.crashPromptsEnabled` (what
+  `CrashReporterHost` actually reads at boot) initializes from
+  `DevicePreferencesStore` — and the toggle's `.onChange` only mirrors the
+  new value into the in-memory `environment.crashPromptsEnabled`, never
+  persisting to `DevicePreferencesStore`. Looks like a real defect: a
+  user's crash-prompt choice may not survive relaunch. Flagged to
+  `team-lead` for triage into an existing or new finding (likely
+  preferences-partition territory near `3a`/`5a`); not touched here to
+  avoid conflating an unrelated behavior change with `1d`'s scope.
 
-**Next action for whoever picks this up:** start Wave 1, plan `1d`
-(`export-schema-completeness`) — findings `X3 S9a X13 X18`. It does not sit
-on the `TaskStore.swift` serial chain; its hotspots are `Importer.swift`,
-`Exporter.swift`, `ExportSchema.swift`, `BackupSchema.swift` (see the
-*Shared-file serial chains* section, chain 7 — `1d` is the first link,
-`2b` the second). Read the *Resume protocol* section first, then *Wave 1c
-closing report* below for the `StoreLocation`/`MacAppGroupMigration` shape
-now in place, which `3a` (the next plan to touch `AppEnvironment.swift`)
-needs to build on without reintroducing a path divergence.
+**Next action for whoever picks this up:** start Wave 2, plan `2a`
+(`migration-transitions`) — findings `S1 S5 S6 S8 S11 S12 S14 S15 S16 S17`.
+Its hotspots are `MigrationCoordinator.swift` and `PersistenceHost.swift`
+(see the *Shared-file serial chains* section, chains 2 and 3 — `2a` is the
+first link in both; `2b` follows, then `3a`). Read the *Resume protocol*
+section first, then *Wave 1d closing report* below for the `ExportSchema`/
+`BackupPackageSchema` v2 shape now in place, which `2b`
+(`backup-restore-correctness`, chain 7's next link) needs to build on.
 
 ---
 
@@ -342,6 +382,111 @@ out as a separate line item in the plan doc's commit plan, same pattern
 
 ---
 
+## Wave 1d closing report (`export-schema-completeness`)
+
+Plan doc: `docs/superpowers/plans/2026-07-28-plan-1d-export-schema-completeness.md`.
+
+| Finding | Story | Fix commit | Regression test(s) |
+|---|---|---|---|
+| `X13` | `LIL-44` | `2d99e623` | `X13SkipExistingParentTests.swift` (6 tests) — skip-respecting + destination-store-fallback parent resolution, for both tasks and tags. |
+| `S9a` | `LIL-30` | `2e4f1856` | `DataStoreResetServiceTests.resetAndReseedPreservesAttachmentBytes` (new `RealWipingResetHost` fake — the shared `FakePersistenceReconfigurer` never actually clears the store, which would make a naive before/after check pass regardless of the bug). `Importer.importBundle` itself had no `assetsDirectory` parameter at all; also fixed the two sibling callers with the identical gap — the iOS/macOS Settings "Import a Backup" flows (`AdvancedSection.swift`/`AdvancedPane.swift`). |
+| `X3` + `X18` (one commit — see the plan doc's *X18* section for why they turned out inseparable) | `LIL-17`, `LIL-67` | `16bb7125` | `X3ExportSchemaCompletenessTests.swift` (7 tests: full round trip, v1-bundle decode-with-defaults, forward-incompatibility unchanged, orphan/dangling-seed handling, skip-discipline for the two new relationships) + 3 new `LocalBackupCoordinatorTests` cases (series/smartFilter sidecar refresh, notificationSpec task-file routing) + extended `BackupRestoreServiceTests.fullRestoreRoundTrip` (`defaultTagTintHex`, verified red→green by temporarily reverting the one-line `applyPreferences` fix). |
+| Model-derived completeness class-killer | — | `ff8ac9e4` | `ExportSchemaCompletenessTests.swift` (1 test, walks every entity) — kill demonstrated locally (removed `SmartFilter`'s mapping entry, confirmed the failure names `SmartFilter` specifically, restored, `git status` clean). |
+
+**Commit range:** `8d1472fb..2b1b7ad2` — 1 docs, 2 fix (`2d99e623` X13,
+`2e4f1856` S9a), 1 feat (`16bb7125` X3+X18), 1 test (`ff8ac9e4`
+class-killer), 2 `chore(stories)` (`57d7fd71`, `2b1b7ad2`). Full
+`LillistCore` suite green (1195 tests, 225 suites, up from `1c`'s
+1177/222 baseline) after every commit; `lillist-cli` builds; both apps
+verified with unsigned `xcodebuild` builds (BUILD SUCCEEDED).
+
+**Scope grew beyond the four named findings.** Walking the full Core Data
+model against `ExportSchema` (required to build the completeness test)
+surfaced two more silent drops the wave brief's "any other silently-dropped
+attribute/relationship you find" clause explicitly anticipated:
+`SmartFilter` had **zero** export/backup mapping at all (same severity
+class as `Series` — it's an equally `syncable="YES"` CloudKit entity), and
+`AppPreferences.defaultTagTintHex` — a real, synced, account-level field,
+distinct from the five fields Plan 21 deliberately partitioned into
+device-local `DevicePreferencesStore` — was never mapped. Both fixed in the
+same `X3` commit. A third gap surfaced by writing the round-trip test
+itself: `BackupRestoreService.applyPreferences` never copied
+`defaultTagTintHex` either, even after it started round-tripping correctly
+through export/import — fixed in the same commit, verified red→green.
+
+**Version-compat matrix (verified, not just asserted):** `ExportSchema
+.version` 1→2, `BackupPackageSchema.version` 1→2. A v1-shaped JSON document
+(no `series`/`notificationSpecs`/`smartFilters`/`archivedAt`/`seriesID`/
+`defaultTagTintHex` keys) decodes cleanly via the v2 `Importer`, defaulting
+absent keys to `[]`/`nil`/the model's own defaults — proven with a
+hand-written v1 JSON fixture, not just a Swift-level default value. The
+existing forward-incompatibility guard (`document.version <=
+ExportSchema.version`, else `.unsupportedExportVersion`) is unchanged and
+still correctly rejects a v2 bundle carrying the new fields when the guard
+is exercised at `ExportSchema.version + 1`.
+
+**`lastFiredAt` — decided directly, no council needed:** round-trips as-is;
+import does not reset it. It's already a real CloudKit-mirrored
+cross-device de-dup field (`NotificationScheduler.computeDesiredRequests`'s
+`lastFired >= fireDate - 60s` guard, only ever consulted when `fireDate >
+Date()`), and `resetAndReseedFromThisDevice` converging every device on
+this device's exact state is the field's *correct* behavior — the
+counter-argument doesn't survive contact with the guard's own short-circuit,
+so this didn't meet the "2+ defensible alternatives" bar. Full reasoning in
+the plan doc.
+
+**X18's real shape, reconciled with the review's literal text:** the
+review describes "4 independent fetches"; `Exporter.swift`'s four fetches
+(task/tag/journal/attachment) were already inside one `ctx.perform` block
+*before* this plan touched anything — an earlier, unrelated refactor
+(`25b8de94`) had already restructured them that way. What was NOT already
+fixed: `preferences.read()` ran via a *separate* `PreferencesStore` round
+trip on the view context, before that `ctx.perform` block even started — a
+live instance of the exact torn-bundle defect X18 describes, just
+uncounted by the review's "4". Fixed by fetching `AppPreferences` directly
+from the same background context, inside the same `perform` block, as
+every other fetch (including the three `1d` adds). Sibling-swept the
+identical pattern in `LocalBackupCoordinator.reconcileFull()`/
+`refreshSidecars()`, which had the same shape — not itself one of the 70
+findings, fixed per "fix any hits unless distant and unrelated."
+
+**No CloudKit-visible schema implications.** The Core Data model
+(`LillistModel.xcdatamodeld`) is unchanged — every change in `1d` is to the
+export/backup *file format* (`ExportSchema`, `BackupPackageSchema`, both
+plain Codable structs serialized to JSON) and to `Importer`/`Exporter`/
+`LocalBackupCoordinator`/`BackupRestoreService`'s in-process logic. Nothing
+to deploy Development→Production in the CloudKit Console for this plan.
+
+**What `2b` (`backup-restore-correctness`, next link in chain 7) needs to
+know about the current shape:**
+- `ExportSchema.Document`/`TaskDTO`/`PreferencesDTO` and
+  `BackupPackageSchema.TaskBackupRecord` each now have a custom
+  `init(from:)` for backward-compat decoding — extend the same
+  `CodingKeys` + `decodeIfPresent(...) ??` pattern for any new field `2b`
+  adds, rather than reverting to synthesized Codable.
+- `Importer.apply`'s pass order is now: tags → tag.parent → tasks →
+  task.parent → series → series.seedTask → task.series → journal entries →
+  attachments → notification specs → smart filters → save. Any new
+  cross-referencing relationship `2b` introduces should slot into this
+  same create-then-wire sequence, respecting the skip-tracking discipline
+  (`skippedTagIDs`/`skippedTaskIDs`/`skippedSeriesIDs`) already
+  established for tags/tasks/series.
+- `TaskBackupStore.writeSidecars`/`.replaceAll` and `BackupPackageReader`
+  now handle four sidecars (`tags.json`, `series.json`,
+  `smartFilters.json`, `preferences.json`) plus the per-task files
+  (`notificationSpecs` lives there, not a sidecar — it's task-owned).
+  `BackupRestoreService.applyPreferences` copies every `PreferencesDTO`
+  field individually (not a struct assignment) — a new `PreferencesDTO`
+  field needs an explicit line added there too, a gap this plan's own
+  `defaultTagTintHex` fix closed but a future field could reopen.
+- `Exporter`/`LocalBackupCoordinator` both kept their `preferences:
+  PreferencesStore` constructor parameter for API compatibility, but
+  neither reads from it anymore for the atomic-fetch paths — see each
+  type's doc comments before reaching for `preferences.read()` in new code
+  added to either type.
+
+---
+
 ## Execution model (per Mikey's directives, 2026-07-28)
 
 - **One dedicated worktree** on a long-running branch:
@@ -392,7 +537,7 @@ Wave 6 closeout. **Status** starts `pending` for everything except Wave 0.
 | 1 | **1a** `trash-tree-integrity` | `C1 C2 C3 M1 M2 H4 H7 M5` | ✅ complete |
 | 1 | **1b** `purge-cloudkit-retirement` | `C4`/`X4` (merged), `X14`, `H3` | ✅ complete |
 | 1 | **1c** `store-location-unification` | `X1 X2 X15` (+ iOS silent `defaultOnDisk` fallback detail, folded into the `X1`/`X2` story bodies — no separate ID) | ✅ complete |
-| 1 | **1d** `export-schema-completeness` | `X3 S9a X13 X18` | ⬜ pending |
+| 1 | **1d** `export-schema-completeness` | `X3 S9a X13 X18` | ✅ complete |
 | 2 | **2a** `migration-transitions` | `S1 S5 S6 S8 S11 S12 S14 S15 S16 S17` | ⬜ pending |
 | 2 | **2b** `backup-restore-correctness` | `S2 S4 S7 S9b S23` | ⬜ pending |
 | 3 | **3a** `account-identity-and-status` | `S3 S13 S21 S24` | ⬜ pending |
@@ -425,7 +570,7 @@ landing wave's plan doc (house rule) before implementation:
 | `TreeIntegrityChecker` (launch self-heal + post-mutation assertions) | Adopt | 1a |
 | `DrainGate` extraction (public) + `WatermarkRegistry` (min-watermark prune) | Adopt, split | 4a + 5c |
 | Full `MutationContext` re-architecture | **Reject** → `withMutationRollback` helper + conformance test + logged tech debt | 5a |
-| Model-derived export-completeness test (walks `NSManagedObjectModel`) | Adopt | 1d |
+| Model-derived export-completeness test (walks `NSManagedObjectModel`) | Adopt — delivered | 1d |
 
 Other new public types requiring a proposal+UML in-wave: `DestructiveOpGate`
 (2a), `AccountIdentityStore` (3a).
@@ -472,10 +617,16 @@ structure — each earlier plan in the chain will have moved line numbers.
    the forward-reference proves awkward in practice — flag this at Wave 3
    kickoff if so).
 7. **`Importer.swift` + `Exporter.swift` + `ExportSchema.swift` +
-   `BackupSchema.swift`** — `1d` (adds Series/NotificationSpec/archivedAt
-   DTOs + model-derived completeness test) → `2b` (backup/restore consumes
-   the completed schema for its restore-in-progress guard and min-over-
-   records check).
+   `BackupSchema.swift`** — `1d` ✅ done (`ExportSchema`/`BackupPackageSchema`
+   both at v2; `SeriesDTO`/`NotificationSpecDTO`/`SmartFilterDTO` +
+   `TaskDTO.archivedAt`/`.seriesID` + `PreferencesDTO.defaultTagTintHex`,
+   all decode-with-default on older bundles; `Importer.apply`'s pass order
+   is now tags→tag.parent→tasks→task.parent→series→series.seedTask→
+   task.series→journal entries→attachments→notification specs→smart
+   filters→save; model-derived completeness test landed) → `2b`
+   (backup/restore consumes the completed schema for its
+   restore-in-progress guard and min-over-records check — see the *Wave 1d
+   closing report* for exactly what shape to build on).
 
 ---
 
@@ -705,9 +856,10 @@ are tracked here so nothing is silently dropped.
 - [ ] Two-device reset propagation, including the stale-event UX (`3b`).
 - [ ] Real-widget verification: completing a task cancels its reminder; a
       local edit refreshes the widget (Waves 4-5).
-- [ ] If `1d` adds any new CloudKit record types/fields: a standing
-      Development → Production schema deploy in the Console is required
-      before a Production build can use them.
+- [x] `1d` does **not** add any new CloudKit record types/fields — verified
+      (its changes are to the export/backup file format and in-process
+      logic only; the Core Data model is unchanged). No schema deploy
+      needed for this plan.
 - [ ] iCloud-dependent app-hosted/UI tests — standing CI-scope rule, verified
       manually per wave (same posture as the Foundation Hardening program).
 
