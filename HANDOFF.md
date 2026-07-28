@@ -1,61 +1,53 @@
-# HANDOFF — issue #18 (macOS row gestures: unverified SwiftUI arbitration model)
+# HANDOFF — Data & Sync Hardening, Wave 0 → Wave 1
 
-**State:** harness authored and **compiling** (`xcodebuild build-for-testing` green);
-DRY consolidation done and unit-verified; PR open (link on issue #18). This session ran
-in a linked worktree, so per policy it stops after the PR — the behavioral verdict run,
-merge, versioning, and deploy happen from `main` / on Mikey's Mac.
+**Worktree:** `/Volumes/Code/mikeyward/Lillist/.claude/worktrees/data-sync-hardening`
+**Branch:** `hardening/data-sync-2026-07`
+**State:** Wave 0 (docs + stories, no code) **COMPLETE**. Waves 1-6 not started.
 
-## The reframe
+## What landed this wave
 
-#18 is tech debt, **not a live defect** and never reopened. PR #17 bridged the *iOS* row
-gestures to UIKit recognizers but froze the macOS `#else` branches on the SwiftUI
-arbitration model iOS's #12 RCA falsified. Key finding: macOS's event model makes the iOS
-root cause **structurally impossible** — scrolling is scroll-wheel/trackpad input routed to
-`NSScrollView`, while a `DragGesture` fires only on mouse-button-down + move (different
-event streams that never compete). So the debt was *unverified + unguarded*, not broken.
-Resolution chosen (with Mikey): **verify-first**, not a speculative AppKit bridge.
+- `docs/reviews/2026-07-28-data-sync-review.md` — the full 70-finding review
+  (25 stores/persistence, 26 sync machinery, 20 cross-process; `C4`/`X4`
+  merged as one independently-corroborated defect). Read this first for
+  *why* the program exists.
+- `docs/superpowers/plans/2026-07-28-data-sync-hardening-index.md` — the
+  **living ledger**. Read this second — it has the wave/plan table, shared-
+  file serial chains, resume protocol, story-ID cross-reference table, and
+  Mikey's manual-verification checklist. **This is the source of truth for
+  "what's next."**
+- All 70 findings filed as storyhook stories `LIL-7` through `LIL-76`.
+- One council-vote decision recorded (`C4`/`X4` story granularity — merged,
+  not split; audit trail at
+  `.council/c4-x4-merged-or-two-linked-stories/DECISION.md`).
 
-## What landed (this branch)
+## A blocker worth knowing about
 
-- **macOS real-input gesture harness** in `Lillist-macOSUITests` — the regression guard the
-  macOS branch never had: `MacListScrollUITests` (scroll-wheel from row body scrolls the
-  list — the macOS #12 analogue), `MacReorderUITests` (vertical click-drag reorders +
-  persists; horizontal doesn't), `MacSwipeUITests` (horizontal reveals Delete + deletes +
-  persists; vertical doesn't reveal), `MacRowTapOpenUITests` (click opens the right task).
-- **`MacUITestHelpers`** extended with gesture-harness launches, element-agnostic row
-  location, stable-order reads, and a macOS drag/scroll driver.
-- **`--ui-test-seed-many` + `--ui-test-seed-count <N>`** launch seam in the macOS `LillistApp`.
-- **DRY consolidation:** `SwipeableRow`'s macOS branch now derives its axis from the shared
-  `DragAxisArbiter` at a new `macSwipeAxisCommitDistance` (10) token — proven
-  behavior-preserving by an exhaustive grid test in `DragAxisArbiterTests` (host-runnable).
-- Docs: `DragReorderable`/`SwipeableRow` headers, the RCA `#18 update` note, an
-  engineering-notes entry, this handoff.
+Storyhook's `story new` initially failed unconditionally in this worktree
+(`.storyhook/open/` — where the CLI writes active stories — wasn't
+git-tracked, since git doesn't commit empty directories and this project's
+prior stories were all archived). It was resolved mid-wave; the fix is
+committed. If a *future* fresh worktree of this repo somehow hits the same
+symptom, the ledger's *Current status* section has the full root-cause
+writeup and fix.
 
-## Verified here (agent-runnable)
+## Next action
 
-- macOS `build-for-testing` **SUCCEEDED** (app + `Lillist-macOSUITests` + LillistUI compile,
-  warnings-as-errors); iOS `build` **SUCCEEDED** (shared change is macOS-only).
-- `swift test` LillistUI (skip Snapshot/Tour) green incl. the new `DragAxisArbiterTests`
-  equivalence grid; LillistCore untouched (full run for hygiene).
+**Start Wave 1, plan `1a` (`trash-tree-integrity`)** — closes `C1 C2 C3 M1
+M2 H4 H7 M5` (stories `LIL-7`, `LIL-8`, `LIL-9`, `LIL-45`, `LIL-46`,
+`LIL-22`, `LIL-25`, `LIL-49`). It has no upstream dependency and owns the
+first link in the `TaskStore.swift` serial chain (four plans deep — `1a` →
+`1b` → `4b` → `5a`). Two binding product decisions apply here: `C2`
+(restoring a child whose parent is still trashed promotes it to root) and
+the `TreeIntegrityChecker` class-killer (adopt, per the ledger's verdicts
+table).
 
-## Remaining steps (Mikey, on-device / from `main`)
+Read the ledger's *Resume protocol* section for the full pre-flight
+(confirm worktree/branch, re-read the review + ledger, check story state,
+verify the prior wave's test-green claim, execute, update the ledger on
+completion).
 
-1. **Gate 4 — run the harness on a signed Mac with a live window server** (physical console,
-   not headless SSH): the XCUITest runner cannot initialize over SSH
-   (`LAError -4 "System authentication is running"`), so it did not execute here.
-   ```
-   xcodebuild test -workspace Lillist.xcworkspace -scheme Lillist-macOS \
-     -destination 'platform=macOS' -only-testing:Lillist-macOSUITests
-   ```
-   - **Green (expected):** the debt is discharged by verification — the harness is the
-     standing guard. Merge the PR (closes #18). Consider tightening the header wording from
-     "guarded by" to "verified by".
-   - **Red:** a genuine macOS gesture defect — the trigger has fired for real. *Then* bridge
-     the affected macOS branch to `NSGestureRecognizerRepresentable` (macOS 15+) mirroring
-     the iOS bridge, red→green. (Design only if needed.)
-2. **Merge the PR** (merge commit; verify; delete branch).
+## Standing worktree rules (unchanged)
 
-## Related issues still open
-
-- **#19** — bridged reorder's window-space translation anchor assumes no mid-drag list
-  movement; redesign before edge auto-scroll is built. (Untouched here.)
+No merge, no `/semver bump`, no `/deployit deploy` from this worktree.
+One PR opens at the very end of Wave 6 — this session stops after opening
+it, per policy.

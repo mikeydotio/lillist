@@ -83,6 +83,22 @@ in-house crash reporter.
   not in CI). The plans under `docs/superpowers/plans/` are now **archaeology**,
   not an active to-do list. CI (`.github/workflows/ci.yml`) now enforces the
   test/build matrix post-push on `main` (see *Build & test*).
+- **Active program — Data & Sync Hardening (in progress, kicked off
+  2026-07-28):** the 2026-07-28 review
+  (`docs/reviews/2026-07-28-data-sync-review.md`, 70 findings across the
+  stores/persistence, sync machinery, and cross-process sweeps) and its
+  14-plan/7-wave remediation program. **Mini-roadmap:** Wave 0 (docs +
+  70 storyhook stories `LIL-7`..`LIL-76`) ✅ done; Waves 1–6 (trash/restore
+  integrity, purge/CloudKit retirement, store-location unification, export
+  completeness, migration/backup/reset correctness, account identity,
+  history/notification/recurrence discipline, mutation-scope + widget +
+  watermark hygiene, completeness sweep) ⬜ pending. Runs in one long-lived
+  worktree/branch (`hardening/data-sync-2026-07`, not `main`), one PR at the
+  end. The living ledger
+  `docs/superpowers/plans/2026-07-28-data-sync-hardening-index.md` is the
+  current source of truth — update its wave/plan table as each plan lands,
+  not this paragraph (bump this one line to **COMPLETE** only when the PR
+  merges).
 
 ## Build & test
 
