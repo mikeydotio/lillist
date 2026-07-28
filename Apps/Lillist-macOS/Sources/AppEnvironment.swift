@@ -425,6 +425,19 @@ final class AppEnvironment {
         // launch), then begin observing live remote changes.
         await taskDuplicateReconciler.reconcileNow()
         taskDuplicateReconciler.start()
+        // Data-sync-hardening plan 1a: self-heal any illegal tree state a
+        // CloudKit merge produced (parent cycles, live-under-trashed nodes,
+        // position ties) — runs after duplicate reconcile (so a stale
+        // duplicate can't masquerade as a cycle-break tie or a false
+        // live-under-trashed positive) and before autoPurgeJob below (so
+        // purge never sees an illegal state to begin with). Best-effort,
+        // matching every other step here — a failed repair must never
+        // block launch.
+        await persistence.container.viewContext.perform { [self] in
+            guard let violations = try? TreeIntegrityChecker.repair(in: persistence.container.viewContext),
+                  !violations.isEmpty else { return }
+            try? persistence.container.viewContext.save()
+        }
         // Issue #71: catch up on any reset broadcast that arrived while the
         // app wasn't running, then begin observing live ones.
         await resetSignalMonitor.checkAndApply()
