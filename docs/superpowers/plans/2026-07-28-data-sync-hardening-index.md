@@ -187,14 +187,51 @@ CloudKit, XCTest + Swift Testing, xcodegen, storyhook (prefix `LIL`).
   cross-reference table* below. Not touched here to avoid conflating an
   unrelated behavior change with `1d`'s own scope.
 
-**Next action for whoever picks this up:** start Wave 2, plan `2a`
-(`migration-transitions`) — findings `S1 S5 S6 S8 S11 S12 S14 S15 S16 S17`.
-Its hotspots are `MigrationCoordinator.swift` and `PersistenceHost.swift`
-(see the *Shared-file serial chains* section, chains 2 and 3 — `2a` is the
-first link in both; `2b` follows, then `3a`). Read the *Resume protocol*
-section first, then *Wave 1d closing report* below for the `ExportSchema`/
-`BackupPackageSchema` v2 shape now in place, which `2b`
-(`backup-restore-correctness`, chain 7's next link) needs to build on.
+- ✅ **Plan `2a` closed all 10 findings** (`S1 S5 S6 S8 S11 S12 S14 S15 S16
+  S17` / `LIL-11 LIL-26 LIL-27 LIL-29 LIL-34 LIL-35 LIL-52 LIL-53 LIL-54
+  LIL-55`) — `MigrationCoordinator.runMigration` redesigned per-op around
+  one connected fix (see the plan doc's state-machine table): `S1`
+  actually wipes local data before re-attaching mirroring
+  (`replaceLocalWithICloud`); `S6` erases the iCloud zone before
+  reconfigure re-attaches mirroring (`replaceICloudWithLocal`); `S5`
+  waits for quiesce before detaching (`syncFirstThenDisable`); `S8`
+  defers `syncModeStore.setMode` to the finalize step, after every
+  destructive step succeeds; `S11` adds the new `DestructiveOpGate`
+  public type (shared between `MigrationCoordinator` and
+  `DataStoreResetService`, wired via one instance in both apps'
+  `AppEnvironment`); `S12` adds the missing reattach-on-failure handler
+  for `rebuildEmptyStore` and makes `PersistenceHost.flushAndSwap` throw
+  instead of silently succeeding with zero attached stores; `S14` makes
+  every `waitForQuiesce` caller honor `.timedOut` (asymmetrically —
+  pre-destructive callers fail closed, post-destructive callers log and
+  proceed) and fixes the monitor itself (`.setup` counts as activity,
+  per-waiter isolation instead of one shared clock); `S15` makes
+  `MigrationGate` and the coordinator's reentrancy guard fail closed on
+  an undecodable journal instead of conflating it with idle; `S16` shows
+  the crash-recovery sheet immediately for any in-flight journal, not
+  just a stale one; `S17` routes the iCloud-unavailable launch screen's
+  mode swap through the coordinator instead of an ungated, reversed-order
+  direct call. Plan doc:
+  `docs/superpowers/plans/2026-07-28-plan-2a-migration-transitions.md`.
+  Commit range `dce3b354..568f7807` (7 commits: 1 docs, 5 fix/feat, 1
+  `chore(stories)`). Full `LillistCore` suite green **twice in a row**
+  (1217 tests, 228 suites, exit 0, no failure markers either run — up
+  from `1d`'s 1195/225 baseline); both apps verified with unsigned
+  `xcodebuild` builds (BUILD SUCCEEDED). No council votes needed — see
+  the plan doc's own section 9 for why every design question resolved to
+  one defensible answer. See *Wave 2a closing report* below for what `2b`
+  needs to know about the current shape of `MigrationCoordinator.swift`/
+  `PersistenceHost.swift`.
+
+**Next action for whoever picks this up:** start Wave 2, plan `2b`
+(`backup-restore-correctness`) — findings `S2 S4 S7 S9b S23`. Its
+hotspots are `MigrationCoordinator.swift`, `PersistenceHost.swift`, and
+the backup/restore types (see the *Shared-file serial chains* section,
+chains 2 and 3 — `2a` ✅ done is the first link in both; `2b` is next,
+then `3a`). Read the *Resume protocol* section first, then *Wave 2a
+closing report* below for what `2a` left in place (quarantine mechanism
+unchanged, `S7`'s WAL-active-store concern still open, `DestructiveOpGate`
+wiring pattern to reuse).
 
 ---
 
@@ -531,6 +568,109 @@ know about the current shape:**
 
 ---
 
+## Wave 2a closing report (`migration-transitions`)
+
+Plan doc: `docs/superpowers/plans/2026-07-28-plan-2a-migration-transitions.md`
+— contains the full target state machine (phases × crash-recovery behavior
+per op), the `DestructiveOpGate` type proposal with UML, the quiesce
+semantics table, and the `S6` ordering rationale. Read it before touching
+`MigrationCoordinator.swift` again.
+
+| Finding | Story | Fix commit | Regression test(s) |
+|---|---|---|---|
+| `S11` (foundation) | `LIL-34` | `071c9440` | `DestructiveOpGateTests.swift` (6 tests) — new standalone type, no consumers wired yet. |
+| `S14` (monitor internals) | `LIL-52` | `38c7d1cf` | `SyncQuiesceMonitorTests.swift` — inverts `setupEventsAreIgnored` (renamed `setupEventsCountAsActivity`, now asserts `.timedOut` under churn) + new `concurrentWaitersDoNotInterleave`. |
+| `S1`, `S5`, `S6`, `S8`, `S11` (coordinator wiring), `S12` (coordinator half), `S14` (coordinator call sites), `S15` (coordinator half) | `LIL-11`, `LIL-26`, `LIL-27`, `LIL-29`, `LIL-34`, `LIL-35`, `LIL-52`, `LIL-53` | `1156c808` | `MigrationRunnerExecutingTests.swift` (+6: S1 class-kill via `RealWipingReconfigurer`, S12 reattach, S5 happy-path + timeout-fails-closed, S14 post-destructive timeout-completes) + `MigrationCoordinatorRestoreTests.swift` (+1: S15 corrupt-journal via new `CorruptMigrationJournalStore`) + `MigrationGateTests.swift` (+1: S15) + two finding-driven rewrites in `MigrationCoordinatorTests.swift`/`MigrationRecoveryTests.swift` (see below). One combined commit — `runMigration`'s per-op step sequence is one connected redesign, not independently separable patches (see plan doc §3). |
+| `S11` (reset service), `S12` (reset service half), `S14` (reset service call site), `S15` (n/a — reset service has no journal) | `LIL-34`, `LIL-35`, `LIL-52` | `b63f0f52` | `DataStoreResetServiceTests.swift` (+2: S12 reattach-on-rebuild-failure, S14 post-rebuild timeout-completes) + new `CrossTypeDestructiveOpGateTests.swift` (3 tests, both directions) + new `ResetSignalMonitorGateTests.swift` (2 tests, end-to-end through a real gated `DataStoreResetService`, not just a synthetic throwing closure). |
+| `S11` (production wiring), `S16`, `S17` | `LIL-34`, `LIL-54`, `LIL-55` | `02a183ac` | App-level — no host-side unit test target reaches `OnboardingPresentationModifier` (private to each `LillistApp.swift`, UI-tested only via full XCUITest); verified by unsigned `xcodebuild build` for both apps (BUILD SUCCEEDED) + the reasoning captured in the plan doc §6/§7. |
+
+**Commit range:** `dce3b354..568f7807` — 1 docs (`dce3b354`), 5 fix/feat
+(`071c9440` S11 foundation, `38c7d1cf` S14 monitor, `1156c808` the big
+coordinator redesign, `b63f0f52` reset-service wiring + S12 half, `02a183ac`
+app wiring + S16/S17), 1 `chore(stories)` (`568f7807`). Full `LillistCore`
+suite green **twice in a row** with unmasked exit codes and a clean grep
+for the failure markers (1217 tests, 228 suites — up from `1d`'s 1195/225
+baseline); both apps verified with unsigned `xcodebuild` builds (BUILD
+SUCCEEDED).
+
+**Two finding-driven test rewrites (two-hats — landed in the same commit
+as their fix, not separately, since there is no way to land the fix and
+keep the old assertion):**
+- `MigrationCoordinatorTests.runMigrationRejectsLowDiskSpace` asserted
+  `host.currentMode`/`modeStore.currentMode()` had already flipped to the
+  target post-failure — that assertion *was* the `S8` bug. Now asserts
+  both stay at the original mode (and, per `S6`'s reorder, that reconfigure
+  never even ran before the disk-space pre-flight threw).
+- `MigrationRunnerExecutingTests`'s `replaceICloudWithLocalExecutes` test
+  (renamed, was "reconfigure precedes erase") asserted the exact ordering
+  `S6` reports as the bug. Now asserts erase precedes reconfigure.
+- `MigrationRecoveryTests.secondaryWriteFailureDoesNotMask`'s
+  `throwOnWrite` index moved from `3` to `5` — the new per-op step
+  sequence writes the journal more times before `disableNow` reaches
+  `reconfigure` (quarantine now writes twice: once before the copy, once
+  with the folder name after).
+
+**No council votes.** See the plan doc's section 9 — every design question
+that came up (`S6`'s erase-before-reconfigure ordering, whether
+`replaceLocalWithICloud`'s teardown/rebuild sub-steps needed a new
+persisted journal state, `S16`'s staleness-gate removal, `DestructiveOpGate`'s
+class-vs-actor shape) resolved to one defensible answer once traced
+against the existing code's own documented invariants and constraints —
+none met the "two genuinely defensible alternatives" bar the wave brief
+set as the council-invocation criterion.
+
+**Deviation from the wave brief's suggested commit shape:** the brief
+implied per-finding commits; the actual landed shape groups by
+*mechanism* instead (foundation type, monitor internals, coordinator
+redesign, reset-service wiring, app wiring) because most of the 10
+findings are not independently separable within `runMigration`'s single
+per-op step sequence — see the commit-message rationale in `1156c808`.
+Every finding still has a named regression test and is traceable to its
+landing commit via the table above.
+
+**What `2b` (`backup-restore-correctness`, next link on chains 2 and 3)
+needs to know about the current shape:**
+- `MigrationCoordinator.host` is now typed `any PersistenceReconfiguring &
+  PersistenceResetting` (was just `PersistenceReconfiguring`) — both
+  production conformers (`PersistenceHost`) and the test fake
+  (`FakePersistenceReconfigurer`) already satisfied both protocols, so
+  this widening required no other changes. Any new conformer needs both.
+- `restoreFromBackup` now acquires `destructiveOpGate` (as `Owner.restore`)
+  before doing anything — keep that acquire/release wrapping in place when
+  `2b` reorders `restoreFromBackup`'s internals (its ordering bugs, `S2`,
+  are explicitly `2b`'s scope, not touched here).
+- The quarantine-copy MECHANISM itself (`quarantine.copyStore(at:)` on a
+  live, possibly-just-reopened store) is UNCHANGED — `S7`'s "WAL-active
+  re-opened store" concern is real and untouched. `2a` only changed *when*
+  the copy runs relative to erase/reconfigure for `replaceICloudWithLocal`
+  (now before both), never *how* the copy itself is taken.
+- `replaceLocalWithICloud` quarantines via `host.tearDownStore(backupVia:)`
+  instead — a different (and safer: connection already closed before the
+  copy) mechanism than the other three ops still use directly via
+  `quarantine.copyStore(at:)`. If `2b` unifies quarantine timing/mechanism
+  across all four ops, this asymmetry is the one to reconcile; the plan
+  doc's crash-recovery matrix (§3.4) explains why each op's current timing
+  is correct for what it needs today.
+- `MigrationJournal.State` did NOT gain a new persisted case for `S1`'s
+  teardown/rebuild sub-steps — both reuse `.reconfiguringStore`. See the
+  plan doc §3.2 for the reasoning (no recovery-behavior difference hinges
+  on which sub-step crashed). If `2b`'s restore work reveals a case where
+  it actually would, revisit then.
+- New injectable constructor params on both `MigrationCoordinator` and
+  `DataStoreResetService`: `quiesceMinQuietWindow`/`quiesceHardTimeout`
+  (default 5s/300s, unchanged from the prior hardcoded values). Reuse this
+  pattern rather than hardcoding a new literal if `2b` adds another
+  `waitForQuiesce` call site that needs a deterministic-timeout test.
+- `DestructiveOpGate` (`Sync/DestructiveOpGate.swift`) is the new shared
+  serialization point for every destructive operation against
+  `PersistenceHost`. Both apps' `AppEnvironment` construct exactly ONE
+  instance and inject it into `migrationCoordinator` and `dataStoreReset` —
+  if `2b`'s restore work needs its own destructive sequence, acquire this
+  same gate (`Owner.restore` already covers `restoreFromBackup`; add a new
+  `Owner` case only if a genuinely distinct operation shape emerges).
+
+---
+
 ## Execution model (per Mikey's directives, 2026-07-28)
 
 - **One dedicated worktree** on a long-running branch:
@@ -582,7 +722,7 @@ Wave 6 closeout. **Status** starts `pending` for everything except Wave 0.
 | 1 | **1b** `purge-cloudkit-retirement` | `C4`/`X4` (merged), `X14`, `H3` | ✅ complete |
 | 1 | **1c** `store-location-unification` | `X1 X2 X15` (+ iOS silent `defaultOnDisk` fallback detail, folded into the `X1`/`X2` story bodies — no separate ID) | ✅ complete |
 | 1 | **1d** `export-schema-completeness` | `X3 S9a X13 X18` | ✅ complete |
-| 2 | **2a** `migration-transitions` | `S1 S5 S6 S8 S11 S12 S14 S15 S16 S17` | ⬜ pending |
+| 2 | **2a** `migration-transitions` | `S1 S5 S6 S8 S11 S12 S14 S15 S16 S17` | ✅ complete |
 | 2 | **2b** `backup-restore-correctness` | `S2 S4 S7 S9b S23` | ⬜ pending |
 | 3 | **3a** `account-identity-and-status` | `S3 S13 S21 S24` | ⬜ pending |
 | 3 | **3b** `reset-propagation-safety` | `S10 S18 S19 S20 S22 X11 S9c` | ⬜ pending |
@@ -615,9 +755,10 @@ landing wave's plan doc (house rule) before implementation:
 | `DrainGate` extraction (public) + `WatermarkRegistry` (min-watermark prune) | Adopt, split | 4a + 5c |
 | Full `MutationContext` re-architecture | **Reject** → `withMutationRollback` helper + conformance test + logged tech debt | 5a |
 | Model-derived export-completeness test (walks `NSManagedObjectModel`) | Adopt — delivered | 1d |
+| `DestructiveOpGate` (shared, synchronous-acquire lock replacing `MigrationCoordinator.isMigrating`/`DataStoreResetService.isResetting`) | Adopt — delivered | 2a |
 
-Other new public types requiring a proposal+UML in-wave: `DestructiveOpGate`
-(2a), `AccountIdentityStore` (3a).
+Other new public types requiring a proposal+UML in-wave: `AccountIdentityStore`
+(3a).
 
 ---
 
@@ -632,12 +773,19 @@ structure — each earlier plan in the chain will have moved line numbers.
    `CascadeReaper.objectIDs(forDeleting:)`) → `4b` (descendant notification
    reconcile — next link) → `5a` (mutation-rollback helper adopted across
    its mutators). Four plans, one file — serialize strictly in this order.
-2. **`MigrationCoordinator.swift`** — `2a` (migration transitions: honors
-   `.timedOut`, counts `.setup`, de-interleaves waiters, mode-store-advances-
-   only-on-success, `DestructiveOpGate`) → `2b` (backup/restore: close-before-
-   file-ops, quarantine-from-closed-store, staged restore package) → `3a`
+2. **`MigrationCoordinator.swift`** — `2a` ✅ done (`host` widened to
+   `PersistenceReconfiguring & PersistenceResetting`; per-op step sequence
+   redesigned — see the plan doc's state-machine table; `destructiveOpGate`
+   stored property replaces `isMigrating`; `quiesceMinQuietWindow`/
+   `quiesceHardTimeout` are now injectable constructor params;
+   `restoreFromBackup` also acquires the gate, as `Owner.restore`) → `2b`
+   (backup/restore: close-before-file-ops, quarantine-from-closed-store,
+   staged restore package — `2a` left the quarantine COPY mechanism itself
+   unchanged, `S7`'s WAL-active-store concern is still open) → `3a`
    (account-identity guard wired into the pre-erase check). Three plans.
-3. **`PersistenceHost.swift`** — `2a` → `2b`. Two plans, `2a` first.
+3. **`PersistenceHost.swift`** — `2a` ✅ done (`flushAndSwap` throws instead
+   of silently succeeding with zero attached stores) → `2b`. Two plans,
+   `2a` first.
 4. **`RemoteChangeReconciler.swift`** — `4a` (`DrainGate`/watermark-after-
    success pattern extracted and adopted) → `4b` (spec insert/delete +
    soft-delete reconcile added on top of `4a`'s corrected watermark

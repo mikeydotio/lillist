@@ -1,106 +1,134 @@
-# HANDOFF — Data & Sync Hardening, Wave 1d → Wave 2a
+# HANDOFF — Data & Sync Hardening, Wave 2a → Wave 2b
 
 **Worktree:** `/Volumes/Code/mikeyward/Lillist/.claude/worktrees/data-sync-hardening`
 **Branch:** `hardening/data-sync-2026-07`
-**State:** Wave 0 (docs + stories) and **all of Wave 1** (`1a`
-`trash-tree-integrity`, `1b` `purge-cloudkit-retirement`, `1c`
-`store-location-unification`, `1d` `export-schema-completeness`) are
-**COMPLETE**. Waves 2 through 6 not started.
+**State:** Wave 0 (docs + stories), all of Wave 1 (`1a`-`1d`), and now
+**Wave 2 plan `2a` (`migration-transitions`) are COMPLETE**. Plan `2b`
+(`backup-restore-correctness`) is next; Waves 3-6 not started.
 
-## What landed this wave (plan `1d`)
+## What landed this wave (plan `2a`)
 
-All 4 findings closed (`X3`, `S9a`, `X13`, `X18` / stories `LIL-17`,
-`LIL-30`, `LIL-44`, `LIL-67`). Scope grew beyond the four named findings:
-walking the full Core Data model against `ExportSchema` (required to build
-the completeness test) surfaced two more silent drops — `SmartFilter` had
-**zero** export/backup mapping at all, and `AppPreferences
-.defaultTagTintHex` (a real, CloudKit-synced field, distinct from Plan 21's
-five device-local fields) was never mapped. Both fixed alongside `X3`. A
-third gap surfaced while writing the round-trip test itself:
-`BackupRestoreService.applyPreferences` never copied `defaultTagTintHex`
-either — fixed in the same commit, verified red→green by temporarily
-reverting the one-line fix.
+All 10 findings closed (`S1 S5 S6 S8 S11 S12 S14 S15 S16 S17` / stories
+`LIL-11 LIL-26 LIL-27 LIL-29 LIL-34 LIL-35 LIL-52 LIL-53 LIL-54 LIL-55`).
+`MigrationCoordinator.runMigration` was redesigned per-op around one
+connected fix — see the plan doc's full state-machine table
+(`docs/superpowers/plans/2026-07-28-plan-2a-migration-transitions.md`,
+section 3) before touching this function again.
 
-`ExportSchema.version` and `BackupPackageSchema.version` both bumped 1→2.
-New `SeriesDTO`/`NotificationSpecDTO`/`SmartFilterDTO`;
-`TaskDTO.archivedAt`/`.seriesID`; `PreferencesDTO.defaultTagTintHex`. Every
-addition decode-with-default on an older bundle (verified with a
-hand-written v1 JSON fixture, not just a Swift default value); the
-forward-incompatibility guard is unchanged and still correctly rejects a
-newer bundle. `Importer.apply` extends `X13`'s skip-respecting,
-bundle-then-store-fallback discipline to the two new relationships
-(`Series.seedTask`, `Task.series`) from the start — a fresh relationship
-never reproduces the shape `X13` just fixed for `.parent`.
+- **`S1`**: `replaceLocalWithICloud` now tears down → quarantines the
+  pre-wipe store → destroys+rebuilds empty → THEN reconfigures, so
+  mirroring only ever downloads into a genuinely empty store instead of
+  merging local rows into iCloud. Class-killed with a real store
+  (`RealWipingReconfigurer` fake) proving rows are actually gone, not
+  merely reconfigured in place.
+- **`S6`**: `replaceICloudWithLocal` now erases the iCloud zone BEFORE
+  reconfigure re-attaches mirroring (was: erase after attach). No teardown
+  needed for this direction — it always starts `.localOnly`, so there's no
+  live mirroring delegate to race the erase; see the plan doc for why this
+  didn't need a council vote despite the brief flagging it as a possible
+  2-sided call.
+- **`S5`**: `syncFirstThenDisable` now waits for quiesce BEFORE detaching
+  mirroring (was identical to `disableNow`). A timeout here FAILS the step
+  closed (pre-destructive — nothing to revert yet).
+- **`S8`**: `syncModeStore` advances ONLY in the finalize step, after every
+  destructive step already succeeded. No explicit "revert on failure" is
+  needed — mode structurally never advances before success, so a failure
+  always leaves it at `previousMode`.
+- **`S11`**: new public type `DestructiveOpGate` (`Sync/DestructiveOpGate.swift`)
+  — `@MainActor final class`, synchronous `acquire(for:)`/`release()`,
+  replaces `MigrationCoordinator.isMigrating` and
+  `DataStoreResetService.isResetting`. **Both apps' `AppEnvironment`
+  construct ONE shared instance and inject it into both types** — without
+  that wiring the fix is inert (each type defaults to a private instance).
+  `ResetSignalMonitor` needed no code change — its existing
+  apply/acknowledge ordering already retries a failed-to-apply event on
+  the next tick, verified end-to-end with a real gated
+  `DataStoreResetService`.
+- **`S12`**: `rebuildEmptyStore` failures now get the same
+  reattach-then-rethrow handling the zone-erase step already had, in both
+  `DataStoreResetService.performReset` and the new `replaceLocalWithICloud`
+  path. `PersistenceHost.flushAndSwap` throws instead of silently
+  "succeeding" with zero attached stores.
+- **`S14`**: every `waitForQuiesce` call site now branches on the result.
+  Pre-destructive callers (`syncFirstThenDisable`) fail on timeout;
+  post-destructive callers (both enable ops, `DataStoreResetService`) log
+  and proceed — matches `QuiesceResult.timedOut`'s own pre-existing "still
+  syncing in background" doc comment. `SyncQuiesceMonitor` itself: every
+  event type (including `.setup`, previously ignored) now counts as
+  activity, and concurrent waiters no longer share one clock (per-waiter
+  `[UUID: Date]`, not a single `Date`). Quiesce timing
+  (`quiesceMinQuietWindow`/`quiesceHardTimeout`) is now injectable on both
+  `MigrationCoordinator` and `DataStoreResetService` — default unchanged
+  (5s/300s), but tests can now exercise the timeout branch in milliseconds.
+- **`S15`**: `MigrationGate.evaluate()` and `runMigration`'s reentrancy
+  check both now distinguish "journal file absent" (idle, unaffected —
+  `FileMigrationJournalStore.read()` already handled this correctly) from
+  "file present but undecodable" (fails closed) — previously conflated via
+  `try?`.
+- **`S16`**: the recovery sheet now appears immediately for ANY in-flight
+  journal at launch, not just a stale (>600s) one. Only the main app ever
+  runs `MigrationCoordinator` (verified: zero call sites in `Extensions/`),
+  so a non-idle journal at launch can never belong to a migration
+  genuinely still completing elsewhere — the staleness gate was solving a
+  race that doesn't exist in this codebase.
+- **`S17`**: the iCloud-unavailable launch screen's mode swap now routes
+  through `migrationCoordinator.beginDisable(strategy: .now, storeURL:)`
+  instead of a raw `setMode`-then-`reconfigure` pair run in reversed
+  order. On failure, surfaces the coordinator's own `.failed` journal via
+  the same recovery sheet.
 
-`X13` fix: the second pass wiring `.parent` ran unconditionally over every
-DTO, including rows `.skipExisting` explicitly left alone, and only ever
-resolved a parent within the bundle's own row set (never the destination
-store) — both fixed, for tasks and tags.
+**Two finding-driven test rewrites** (inverting assertions that codified
+the bugs being fixed — cannot land the fix and keep the old assertion):
+`MigrationCoordinatorTests.runMigrationRejectsLowDiskSpace` asserted mode
+had already flipped post-failure (the `S8` bug); the `S6` ordering test
+asserted reconfigure-then-erase under its old name.
+`MigrationRecoveryTests.secondaryWriteFailureDoesNotMask`'s `throwOnWrite`
+index was retimed to the new (longer) write sequence.
 
-`S9a` fix: `Importer.importBundle(at:conflictPolicy:)` had no
-`assetsDirectory` parameter *at all*, so every caller — not just
-`resetAndReseedFromThisDevice` — silently dropped every attachment on
-import. Added the parameter and wired it at all three real call sites,
-including two more sibling instances found by grep: the iOS/macOS Settings
-"Import a Backup" flows.
+**No council votes needed** — see the plan doc section 9 for why every
+design question in this plan resolved to one defensible answer once
+traced against the existing code's own invariants.
 
-`X18` fix: the review's literal "4 independent fetches" description didn't
-match the current code (already consolidated into one `ctx.perform` block
-by an earlier, unrelated refactor). What *was* still broken: `Exporter`
-read `AppPreferences` via a separate `PreferencesStore.read()` round trip,
-on a different context, before that `ctx.perform` block even started — a
-live instance of the same torn-bundle defect, just for preferences.
-Fixed by fetching `AppPreferences` directly inside the same background
-context/perform block as every other fetch. Sibling-swept the identical
-pattern in `LocalBackupCoordinator`.
+Commit range: `dce3b354..568f7807` (7 commits: 1 docs, 5 fix/feat, 1
+`chore(stories)`). Full `LillistCore` suite green **twice in a row** (1217
+tests, 228 suites, exit 0, no failure markers either run — up from `1d`'s
+1195/225 baseline); both apps verified with unsigned `xcodebuild` builds
+(BUILD SUCCEEDED).
 
-Class-killer delivered: `ExportSchemaCompletenessTests.modelCompleteness`
-walks every entity in the live Core Data model and asserts each
-attribute/relationship is mapped into a DTO field (directly or via a
-documented rename) or on an explicit, rationale'd exclusion list. Kill
-demonstrated locally (not committed): removed `SmartFilter`'s mapping
-entry, confirmed the failure names `SmartFilter` specifically, restored.
+## What `2b` needs to know
 
-**Discovered, flagged, NOT fixed (out of `1d`'s scope):**
-`CrashReportingSection`/`CrashReportingPane` still bind
-`PreferencesStore.Prefs.crashPromptsEnabled` (Core-Data-backed) for the
-Settings toggle, while `AppEnvironment.crashPromptsEnabled` (what
-`CrashReporterHost` actually reads at boot) initializes from
-`DevicePreferencesStore` and the toggle never persists back to it — a
-user's crash-prompt choice may not survive relaunch. Reported to
-`team-lead` for triage into an existing or new finding.
+Per the ledger's shared-file serial chains #2/#3, `2a` was the first plan
+to touch `MigrationCoordinator.swift`/`PersistenceHost.swift` — re-Read
+both before editing; line numbers have moved.
 
-Full detail — per-finding fix commits/tests, the version-compat matrix,
-the `lastFiredAt` decision, what `2b` needs to know about
-`ExportSchema`/`BackupPackageSchema`'s current shape — is in:
-
-- Plan doc: `docs/superpowers/plans/2026-07-28-plan-1d-export-schema-completeness.md`
-- Ledger's **Wave 1d closing report** section (in the index doc below).
-
-Commit range: `8d1472fb..2b1b7ad2` (7 commits: 1 docs, 2 fix, 1 feat, 1
-test, 2 `chore(stories)`). Verification: full `LillistCore` suite green
-(1195 tests, 225 suites, up from `1c`'s 1177/222 baseline) after every
-commit; `lillist-cli` builds; both apps verified with unsigned `xcodebuild`
-builds (BUILD SUCCEEDED). No CloudKit-visible schema implications — the
-Core Data model is unchanged.
-
-## Next action
-
-**Start Wave 2, plan `2a` (`migration-transitions`)** — findings `S1 S5 S6
-S8 S11 S12 S14 S15 S16 S17`. Its hotspots are `MigrationCoordinator.swift`
-and `PersistenceHost.swift` (see the ledger's *Shared-file serial chains*,
-chains 2 and 3 — `2a` is the first link in both; `2b` follows on chain 2,
-then `3a`). `2a` is also the first plan to introduce the new
-`DestructiveOpGate` public type — per house rules, that needs a
-type-system proposal + UML diagram in its plan doc before implementation
-(see the ledger's *Class-killer verdicts* table).
-
-Read the ledger's *Resume protocol* section first (confirm worktree/branch,
-re-read the review + ledger, check story state, verify Wave 1's
-claimed-green state, execute, update the ledger on completion), then the
-*Wave 1d closing report* for the `ExportSchema`/`BackupPackageSchema` v2
-shape now in place, which `2b` (not `2a`, but worth knowing about early
-since it's the next link on chain 7) will build on.
+- `MigrationCoordinator.host` is now typed `any PersistenceReconfiguring &
+  PersistenceResetting` (was just `PersistenceReconfiguring`) — any new
+  conformer needs both. `restoreFromBackup` (S2/S4/S7's territory) now
+  acquires `destructiveOpGate` too (`Owner.restore`) — keep that wrapping
+  when reordering its internals.
+- The quarantine-copy mechanism itself (`quarantine.copyStore(at:)` on a
+  live, possibly-just-reopened store) is UNCHANGED — `S7`'s "WAL-active
+  re-opened store" concern is real and untouched, left for `2b` exactly as
+  scoped. `2a` only changed *when* the copy runs relative to erase/reconfigure
+  for `replaceICloudWithLocal`, never *how* it's taken.
+- `replaceLocalWithICloud` now quarantines via `host.tearDownStore(backupVia:)`
+  instead of `quarantine.copyStore(at:)` directly — a different (and safer:
+  connection already closed) mechanism than the other three ops still use.
+  If `2b` unifies quarantine timing/mechanism across all four ops, this
+  asymmetry is the one to reconcile.
+- `MigrationJournal.State` did NOT gain a new case for the S1
+  teardown/rebuild sub-steps (reuses `.reconfiguringStore`) — see the plan
+  doc section 3.2 for why finer granularity wasn't needed. If `2b`'s work
+  reveals a real behavior difference recovery should make based on which
+  sub-step crashed, revisit that decision then, not preemptively.
+- New quiesce-timing injection points (`quiesceMinQuietWindow`/
+  `quiesceHardTimeout`) on both `MigrationCoordinator` and
+  `DataStoreResetService` — reuse this pattern rather than hardcoding new
+  literals if `2b` adds another `waitForQuiesce` call site.
+- `DestructiveOpGate` is a new class-killer type (Adopt verdict) — `3a`'s
+  account-identity guard is the next plan expected to touch it (per the
+  ledger's *Class-killer verdicts* table); read `DestructiveOpGate.swift`'s
+  doc comments before adding a third `Owner` case shape.
 
 ## Standing worktree rules (unchanged)
 
