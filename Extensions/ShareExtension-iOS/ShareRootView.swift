@@ -78,7 +78,7 @@ struct ShareRootView: View {
             // flight the resolver throws storeUnavailable and we surface
             // the message below so the user can retry.
             let appGroupID = "group.app.lillist"
-            guard let resolver = GatedPersistenceResolver(appGroupID: appGroupID) else {
+            guard let resolver = GatedPersistenceResolver(appGroupID: appGroupID, role: .extensionProcess) else {
                 saveError = "App Group container is not available."
                 return
             }

@@ -2,3 +2,4 @@
 {"kind":"StoryPrioritySet","at":"2026-07-28T16:32:21Z","priority":"medium"}
 {"kind":"StoryLabelsSet","at":"2026-07-28T16:32:21Z","labels":["plan-1c","sev-medium","sweep-crossproc"]}
 {"kind":"StoryDescriptionSet","at":"2026-07-28T16:32:21Z","description":"The widget process operates under a ~30MB memory budget the engineering notes already flag as unaffordable for this. Severity: Medium. Wave/Plan: Wave 1, plan 1c store-location-unification. Sweep: cross-process. Fix: only apps arm mirroring - widget/extensions/CLI open without cloudKitContainerOptions."}
+{"kind":"StoryStateChanged","at":"2026-07-28T19:28:03Z","state":"in-progress"}

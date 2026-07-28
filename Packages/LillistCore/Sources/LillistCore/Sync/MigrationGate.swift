@@ -38,22 +38,20 @@ public struct MigrationGate: Sendable {
     /// `StoreConfiguration` for the App Group on-disk store, or
     /// throw a `LillistError.storeUnavailable(reason:)` when the
     /// gate says abort.
+    ///
+    /// - Parameter role: which process is asking — routed through
+    ///   `StoreLocation` so mirroring is only armed for `.mainApp`
+    ///   (data-sync-hardening `X15`).
     public func resolveStoreConfiguration(
-        appGroupID: String
+        appGroupID: String,
+        role: StoreLocation.Role
     ) async throws -> StoreConfiguration {
         switch await evaluate() {
         case .abort(let message):
             throw LillistError.storeUnavailable(reason: message)
         case .proceed(let mode):
-            guard let config = StoreConfiguration.appGroupOnDisk(
-                groupID: appGroupID,
-                syncMode: mode
-            ) else {
-                throw LillistError.storeUnavailable(
-                    reason: "App Group container '\(appGroupID)' is not available."
-                )
-            }
-            return config
+            let location = try StoreLocation.resolve(role: role, appGroupID: appGroupID)
+            return location.makeConfiguration(syncMode: mode)
         }
     }
 }

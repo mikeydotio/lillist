@@ -44,7 +44,7 @@ enum WidgetIntentSupport {
     }
 
     static func makePersistence() async throws -> PersistenceController {
-        guard let resolver = GatedPersistenceResolver(appGroupID: appGroupID) else {
+        guard let resolver = GatedPersistenceResolver(appGroupID: appGroupID, role: .widget) else {
             throw LillistError.storeUnavailable(
                 reason: "App Group container '\(appGroupID)' is not available."
             )

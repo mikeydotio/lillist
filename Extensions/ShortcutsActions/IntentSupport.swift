@@ -73,7 +73,7 @@ enum IntentSupport {
     /// resulting `PersistenceController` is cached — and only while the
     /// resolver keeps resolving the same `syncMode`.
     static func makePersistence() async throws -> PersistenceController {
-        guard let resolver = GatedPersistenceResolver(appGroupID: appGroupID) else {
+        guard let resolver = GatedPersistenceResolver(appGroupID: appGroupID, role: .extensionProcess) else {
             throw LillistError.storeUnavailable(
                 reason: "App Group container '\(appGroupID)' is not available."
             )

@@ -17,6 +17,7 @@ final class GatedPersistenceResolverTests: XCTestCase {
         await modeStore.setMode(.localOnly)
         let resolver = GatedPersistenceResolver(
             appGroupID: appGroupID,
+            role: .extensionProcess,
             journal: journal,
             modeStore: modeStore
         )
@@ -33,6 +34,7 @@ final class GatedPersistenceResolverTests: XCTestCase {
         let modeStore = SyncModeStore(suiteName: appGroupID)
         let resolver = GatedPersistenceResolver(
             appGroupID: appGroupID,
+            role: .extensionProcess,
             journal: journal,
             modeStore: modeStore
         )
@@ -56,6 +58,7 @@ final class GatedPersistenceResolverTests: XCTestCase {
         await modeStore.setMode(.localOnly)
         let resolver = GatedPersistenceResolver(
             appGroupID: appGroupID,
+            role: .extensionProcess,
             journal: journal,
             modeStore: modeStore
         )
@@ -72,5 +75,31 @@ final class GatedPersistenceResolverTests: XCTestCase {
         let id = try await store.create(title: "gate ok")
         let record = try await store.fetch(id: id)
         XCTAssertEqual(record.title, "gate ok")
+    }
+
+    func test_X15_extensionAndWidgetRolesSuppressMirroring_mainAppDoesNot() async throws {
+        let journal = InMemoryMigrationJournalStore(initial: .idle)
+        let modeStore = SyncModeStore(suiteName: appGroupID)
+        await modeStore.setMode(.iCloudSync)
+
+        for role: StoreLocation.Role in [.extensionProcess, .widget, .cli] {
+            let resolver = GatedPersistenceResolver(
+                appGroupID: appGroupID,
+                role: role,
+                journal: journal,
+                modeStore: modeStore
+            )
+            let config = try await resolver.resolveStoreConfiguration()
+            XCTAssertFalse(config.armsCloudKitMirroring, "role \(role) must not arm mirroring")
+        }
+
+        let mainAppResolver = GatedPersistenceResolver(
+            appGroupID: appGroupID,
+            role: .mainApp,
+            journal: journal,
+            modeStore: modeStore
+        )
+        let mainAppConfig = try await mainAppResolver.resolveStoreConfiguration()
+        XCTAssertTrue(mainAppConfig.armsCloudKitMirroring)
     }
 }
