@@ -246,7 +246,15 @@ struct AdvancedPane: View {
         defer { isImporting = false }
         let importer = Importer(persistence: environment.persistence)
         do {
-            importSummary = try await importer.importBundle(at: url, conflictPolicy: .skipExisting)
+            // S9a sibling: without assetsDirectory the importer's
+            // attachment-restore branch never runs and every attachment is
+            // silently dropped — Exporter.export(to:) always writes an
+            // assets/ folder alongside lillist.json under the picked url.
+            importSummary = try await importer.importBundle(
+                at: url,
+                conflictPolicy: .skipExisting,
+                assetsDirectory: url.appendingPathComponent("assets", isDirectory: true)
+            )
             lastExportError = nil
         } catch {
             lastExportError = "Import failed: \(error.localizedDescription)"

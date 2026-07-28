@@ -70,13 +70,23 @@ public actor Importer {
     /// Import a previously-exported bundle at `bundleURL`. The bundle
     /// is expected to be the directory the Exporter writes — with
     /// `lillist.json` at the top level.
-    public func importBundle(at bundleURL: URL, conflictPolicy: ConflictPolicy) async throws -> ImportSummary {
+    /// - Parameter assetsDirectory: when non-nil, attachments are restored
+    ///   from this folder — see `apply(document:policy:assetsDirectory:)`.
+    ///   Nil (the default) skips attachment rows entirely. Callers that know
+    ///   the bundle was written by `Exporter.export(to:)` (which always
+    ///   creates an `assets/` folder alongside `lillist.json`) should pass
+    ///   `bundleURL.appendingPathComponent("assets", isDirectory: true)`.
+    public func importBundle(
+        at bundleURL: URL,
+        conflictPolicy: ConflictPolicy,
+        assetsDirectory: URL? = nil
+    ) async throws -> ImportSummary {
         let docURL = bundleURL.appendingPathComponent("lillist.json")
         let data = try Data(contentsOf: docURL)
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .iso8601
         let document = try decoder.decode(ExportSchema.Document.self, from: data)
-        return try await apply(document: document, policy: conflictPolicy)
+        return try await apply(document: document, policy: conflictPolicy, assetsDirectory: assetsDirectory)
     }
 
     /// Apply a decoded export `document` to the store.

@@ -1,6 +1,7 @@
 import Testing
 import Foundation
 import CloudKit
+import CoreData
 @testable import LillistCore
 
 /// `DataStoreResetService` orchestration, exercised end-to-end against
@@ -270,6 +271,57 @@ struct DataStoreResetServiceTests {
         #expect(pending.first?.kind == .resetAndReseed)
     }
 
+    @Test("resetAndReseedFromThisDevice: an attachment's bytes survive the reseed round trip (S9a)")
+    @MainActor
+    func resetAndReseedPreservesAttachmentBytes() async throws {
+        // S9a: importBundle(at:conflictPolicy:) was called without
+        // assetsDirectory, so the Importer's attachment-restore branch never
+        // ran and every attachment was silently dropped on reseed.
+        //
+        // FakePersistenceReconfigurer (used by every other test in this
+        // suite) never actually clears the underlying store, so a plain
+        // before/after row check here would pass regardless of the bug —
+        // the never-wiped original row would still be sitting there. This
+        // test uses `RealWipingResetHost` instead, which genuinely deletes
+        // every row in `tearDownStore`, so the post-reseed state can only
+        // come from the reimport — the actual mechanism this finding is
+        // about.
+        let persistence = try await TestStore.make()
+        let preferences = PreferencesStore(persistence: persistence)
+        _ = try await preferences.read()
+        let tasks = TaskStore(persistence: persistence)
+        let attachments = AttachmentStore(persistence: persistence)
+        let seededID = try await tasks.create(title: "Buy milk")
+        let bytes = Data([0xDE, 0xAD, 0xBE, 0xEF])
+        let attachmentID = try await attachments.addFile(
+            taskID: seededID, filename: "receipt.bin", uti: "public.data", data: bytes
+        )
+
+        let host = RealWipingResetHost(persistence: persistence, initialMode: .iCloudSync)
+        let eraser = FakeCloudKitZoneEraser()
+        let service = DataStoreResetService(
+            host: host,
+            quarantine: QuarantineManager(rootDirectory: tempDir()),
+            zoneEraser: eraser,
+            quiesceMonitor: SyncQuiesceMonitor(bridge: CloudKitEventBridge()),
+            notificationScheduler: nil,
+            cloudKitContainerIdentifier: "iCloud.test",
+            exporter: Exporter(persistence: persistence, preferences: preferences),
+            importer: Importer(persistence: persistence)
+        )
+
+        try await service.resetAndReseedFromThisDevice()
+
+        let survivor = try await attachments.fetch(id: attachmentID)
+        #expect(survivor.byteSize == Int64(bytes.count))
+        let restoredBytes = try await attachments.downloadData(id: attachmentID)
+        #expect(restoredBytes == bytes)
+        // The task itself must also have round-tripped — proves the wipe
+        // was real (not merely a no-op the never-cleared original satisfied).
+        let survivingTask = try await tasks.fetch(id: seededID)
+        #expect(survivingTask.title == "Buy milk")
+    }
+
     @Test("resetAndReseedFromThisDevice: cleans up its temp export directory")
     @MainActor
     func resetAndReseedCleansUpTempDirectory() async throws {
@@ -311,4 +363,42 @@ private actor ThrowingZoneEraser: CloudKitZoneEraser {
     }
 
     private func bump() { callCount += 1 }
+}
+
+/// A `PersistenceResetting` conformer that genuinely deletes every row in
+/// `persistence` on `tearDownStore`, instead of merely recording that the
+/// step happened (`FakePersistenceReconfigurer`'s behavior, which every
+/// other test in this suite relies on for pure ordering/branching
+/// assertions). Used where a test must prove data did NOT survive a step it
+/// doesn't otherwise control — e.g. S9a's attachment-restore regression,
+/// where a never-actually-wiped store would satisfy a naive before/after
+/// row check regardless of whether the bug is present.
+private actor RealWipingResetHost: PersistenceResetting {
+    private let persistence: PersistenceController
+    private let mode: SyncMode
+
+    init(persistence: PersistenceController, initialMode: SyncMode) {
+        self.persistence = persistence
+        self.mode = initialMode
+    }
+
+    var currentMode: SyncMode { mode }
+
+    func tearDownStore(backupVia quarantine: QuarantineManager?) async throws -> QuarantineManager.QuarantinedBackup? {
+        let ctx = persistence.container.viewContext
+        try await ctx.perform {
+            for entityName in ["Attachment", "JournalEntry", "NotificationSpec", "LillistTask", "Tag", "Series", "SmartFilter"] {
+                let req = NSFetchRequest<NSManagedObject>(entityName: entityName)
+                for row in try ctx.fetch(req) {
+                    ctx.delete(row)
+                }
+            }
+            if ctx.hasChanges { try ctx.save() }
+        }
+        return nil
+    }
+
+    func rebuildEmptyStore() async throws {}
+
+    func reattachStore() async throws {}
 }

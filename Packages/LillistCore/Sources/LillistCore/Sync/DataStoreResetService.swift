@@ -198,8 +198,18 @@ public final class DataStoreResetService {
             try await performReset(.everywhere)
 
             // 3. re-seed the freshly-emptied store from the snapshot; it
-            //    re-exports to CloudKit normally from here.
-            _ = try await importer.importBundle(at: tempDir, conflictPolicy: .replaceExisting)
+            //    re-exports to CloudKit normally from here. assetsDirectory
+            //    must be passed (S9a) — Exporter.export(to:) writes
+            //    attachment bytes under "<tempDir>/assets/", and the
+            //    importer's attachment-restore branch is gated on this
+            //    parameter being present; without it every attachment is
+            //    silently dropped. Mirrors BackupRestoreService.restore(from:)'s
+            //    equivalent, already-correct call (reader.assetsDirectory).
+            _ = try await importer.importBundle(
+                at: tempDir,
+                conflictPolicy: .replaceExisting,
+                assetsDirectory: tempDir.appendingPathComponent("assets", isDirectory: true)
+            )
 
             // 4. propagate, so peers know to discard their own state and
             //    re-download rather than resurrecting it.
