@@ -842,14 +842,10 @@ public final class TaskStore: @unchecked Sendable {
     }
 
     /// Hard-deletes every `LillistTask` matching `predicateFormat` off the
-    /// main-queue `viewContext`, on a background context, in a single
-    /// `NSBatchDeleteRequest`.
-    ///
-    /// The predicate is rebuilt *inside* the `@Sendable` background-context
-    /// closure from its Sendable format string + argument list — an
-    /// `NSPredicate` is not `Sendable` and so cannot be captured across the
-    /// actor boundary (the same hoist-and-rebuild pattern `PersistenceHost`
-    /// uses for `NSPersistentStoreDescription`).
+    /// main-queue `viewContext`, on a background context, via chunked
+    /// managed-object-context deletes (`TrashPurger`) — never
+    /// `NSBatchDeleteRequest`, which bypasses `NSPersistentCloudKitContainer`'s
+    /// export tracking (C4/X4).
     ///
     /// - Parameters:
     ///   - predicateFormat: `NSPredicate(format:)` string selecting the
@@ -862,57 +858,12 @@ public final class TaskStore: @unchecked Sendable {
         predicateFormat: String,
         arguments: [any Sendable]
     ) async throws -> Int {
-        let ctx = persistence.makeBackgroundContext()
-        let viewContext = persistence.container.viewContext
-        let deletedIDs: [NSManagedObjectID] = try await ctx.perform {
-            let predicate = NSPredicate(
-                format: predicateFormat,
-                argumentArray: arguments
-            )
-            let req = NSFetchRequest<LillistTask>(entityName: "LillistTask")
-            req.predicate = predicate
-            let matched = try ctx.fetch(req)
-            let roots = matched.filter { task in
-                guard let parent = task.parent else { return true }
-                return !predicate.evaluate(with: parent)
-            }
-            // `NSBatchDeleteRequest` bypasses Core Data's Cascade delete
-            // rules, so expand each root to every cascade-reachable
-            // objectID (descendants, journal entries, attachments,
-            // notification specs), then delete that closure entity-by-entity
-            // (a single batch is restricted to one entity). The returned IDs
-            // are merged into the viewContext below so it invalidates the
-            // corresponding in-memory objects and callers see no dangling
-            // faults.
-            //
-            // C1: a root's cascade can include a *live* descendant (from a
-            // CloudKit merge, or — pre-M1/C2 — a stray local mutation). The
-            // model's `children` relationship cascades at the SQLite row
-            // level even for batch deletes, so simply excluding a live
-            // descendant from the deletable set does not spare it — its
-            // `parent` link must be severed first. Promote every such node
-            // to root and save *before* the batch delete runs.
-            let plan = CascadeReaper.planPurge(ofTrashedRoots: roots)
-            if !plan.liveDescendantsToPromote.isEmpty {
-                for objectID in plan.liveDescendantsToPromote {
-                    if let child = try? ctx.existingObject(with: objectID) as? LillistTask {
-                        TaskTreeRepair.promoteToRoot(child)
-                    }
-                }
-                try ctx.save()
-            }
-            return try CascadeReaper.batchDelete(objectIDs: plan.deletable, in: ctx)
-        }
-        guard !deletedIDs.isEmpty else { return 0 }
-        await viewContext.perform {
-            NSManagedObjectContext.mergeChanges(
-                fromRemoteContextSave: [NSDeletedObjectsKey: deletedIDs],
-                into: [viewContext]
-            )
-        }
-        return await ctx.perform {
-            deletedIDs.filter { $0.entity.name == "LillistTask" }.count
-        }
+        try await TrashPurger.purge(
+            predicateFormat: predicateFormat,
+            arguments: arguments,
+            context: persistence.makeBackgroundContext(),
+            viewContext: persistence.container.viewContext
+        )
     }
 
     /// H7: recursing only into children whose `deletedAt` doesn't already

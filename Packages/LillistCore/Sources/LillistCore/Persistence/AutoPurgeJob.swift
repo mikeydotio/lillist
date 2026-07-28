@@ -16,43 +16,14 @@ public final class AutoPurgeJob: @unchecked Sendable {
     public func run(now: Date = Date()) async throws -> Int {
         let prefs = try await preferences.read()
         let cutoff = now.addingTimeInterval(-Double(prefs.trashRetentionDays) * 86400)
-        let ctx = persistence.makeBackgroundContext()
-        let viewContext = persistence.container.viewContext
-        let deletedIDs: [NSManagedObjectID] = try await ctx.perform {
-            let req = NSFetchRequest<LillistTask>(entityName: "LillistTask")
-            req.predicate = NSPredicate(format: "deletedAt != nil AND deletedAt < %@", cutoff as NSDate)
-            let victims = try ctx.fetch(req)
-            // Batch delete skips Cascade rules, so expand victims to the full
-            // cascade closure and delete it entity-by-entity (a single batch
-            // is restricted to one entity). The IDs are merged into the
-            // viewContext below.
-            //
-            // C1: bound the cascade at any live descendant (see the matching
-            // comment in `TaskStore.batchPurge`) — promote it to root and
-            // save before the batch delete runs, rather than merely
-            // excluding it from the deletable set (which would not spare it;
-            // the model's Cascade delete rule still reaches it at the SQLite
-            // row level for a batch delete).
-            let plan = CascadeReaper.planPurge(ofTrashedRoots: victims)
-            if !plan.liveDescendantsToPromote.isEmpty {
-                for objectID in plan.liveDescendantsToPromote {
-                    if let child = try? ctx.existingObject(with: objectID) as? LillistTask {
-                        TaskTreeRepair.promoteToRoot(child)
-                    }
-                }
-                try ctx.save()
-            }
-            return try CascadeReaper.batchDelete(objectIDs: plan.deletable, in: ctx)
-        }
-        guard !deletedIDs.isEmpty else { return 0 }
-        await viewContext.perform {
-            NSManagedObjectContext.mergeChanges(
-                fromRemoteContextSave: [NSDeletedObjectsKey: deletedIDs],
-                into: [viewContext]
-            )
-        }
-        return await ctx.perform {
-            deletedIDs.filter { $0.entity.name == "LillistTask" }.count
-        }
+        // Chunked managed-object-context deletes (TrashPurger), never
+        // NSBatchDeleteRequest — batch deletes bypass
+        // NSPersistentCloudKitContainer's export tracking (C4/X4).
+        return try await TrashPurger.purge(
+            predicateFormat: "deletedAt != nil AND deletedAt < %@",
+            arguments: [cutoff],
+            context: persistence.makeBackgroundContext(),
+            viewContext: persistence.container.viewContext
+        )
     }
 }
