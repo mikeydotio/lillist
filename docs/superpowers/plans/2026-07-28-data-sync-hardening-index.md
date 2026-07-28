@@ -23,7 +23,8 @@ CloudKit, XCTest + Swift Testing, xcodegen, storyhook (prefix `LIL`).
 > **New here? Read this section first.** This file is the **living progress
 > tracker** — keep it current as plans land.
 
-**As of 2026-07-28 — Wave 0 and Wave 1 plan `1a` (`trash-tree-integrity`) COMPLETE.**
+**As of 2026-07-28 — Wave 0 and Wave 1 plans `1a` (`trash-tree-integrity`) and
+`1b` (`purge-cloudkit-retirement`) COMPLETE.**
 
 - ✅ **Plan `1a` closed all 8 findings** (`C1 C2 C3 H4 H7 M1 M2 M5` /
   `LIL-7 LIL-8 LIL-9 LIL-22 LIL-25 LIL-45 LIL-46 LIL-49`), added the
@@ -35,7 +36,25 @@ CloudKit, XCTest + Swift Testing, xcodegen, storyhook (prefix `LIL`).
   suites) after every fix commit; both apps verified with unsigned
   `xcodebuild` builds (BUILD SUCCEEDED). See *Wave 1a closing report*
   below for the per-finding breakdown, the class-kill demonstration, and
-  what Wave `1b` needs to know about `TaskStore.swift`'s current shape.
+  what Wave `1b` needed to know about `TaskStore.swift`'s shape.
+
+- ✅ **Plan `1b` closed all 3 findings** (`C4`/`X4` merged, `H3`, `X14` /
+  `LIL-10`, `LIL-21`, `LIL-63`) — retired `NSBatchDeleteRequest` from both
+  trash-purge paths in favor of chunked managed-object-context deletes
+  (new shared `TrashPurger`), added delete-time predicate revalidation,
+  and added OS-notification cancellation for `hardDelete`/`purgeAll`/
+  `AutoPurgeJob`. Plan doc:
+  `docs/superpowers/plans/2026-07-28-plan-1b-purge-cloudkit-retirement.md`.
+  Commit range `bcfa04ac..33170218` (4 commits: 1 docs, 2 fix, 2
+  `chore(stories)`). Full `LillistCore` suite green (1144 tests, 219
+  suites — up from `1a`'s 1134/216 baseline); both apps verified with
+  unsigned `xcodebuild` builds (BUILD SUCCEEDED). See *Wave 1b closing
+  report* below for the per-finding breakdown, the `CascadeReaper` fate
+  verdict, and what Wave `1c`/`1d`/`4b`/`5a` need to know about
+  `TaskStore.swift`'s current shape. **Correction:** the wave-1b brief
+  cited wrong story IDs for `H3`/`X14` (`LIL-23`/`LIL-48`, which actually
+  belong to `H5`/`M4` under `plan-5a`) — the correct IDs, `LIL-21`/`LIL-63`,
+  matched the ledger's own cross-reference table and were used throughout.
 
 - ✅ Review doc committed: `docs/reviews/2026-07-28-data-sync-review.md`
   (70 findings, faithfully reproduced from the source-of-truth plan; no
@@ -81,15 +100,18 @@ CloudKit, XCTest + Swift Testing, xcodegen, storyhook (prefix `LIL`).
   log* below for the final result and audit trail
   (`.council/c4-x4-merged-or-two-linked-stories/DECISION.md`).
 - ✅ **Story-ID cross-reference table filled in** — see below.
-- ⬜ Waves 1 (plans `1b`-`1d`) through 6: not started.
+- ⬜ Wave 1 plans `1c`-`1d`, Waves 2 through 6: not started.
 
-**Next action for whoever picks this up:** start Wave 1, plan `1b`
-(`purge-cloudkit-retirement`) — it's next in the `TaskStore.swift` serial
-chain (`1a` → `1b` → `4b` → `5a`) and depends on `1a`'s purge-path shape
-(`CascadeReaper.planPurge(ofTrashedRoots:)`, `TaskTreeRepair`). Read the
-*Resume protocol* section first, then *Wave 1a closing report* below for
-what changed in `TaskStore.swift`/`CascadeReaper.swift`/`AutoPurgeJob.swift`
-that `1b` must build on rather than re-derive.
+**Next action for whoever picks this up:** start Wave 1, plan `1c`
+(`store-location-unification`) — findings `X1 X2 X15`. It does not sit on
+the `TaskStore.swift` serial chain (that chain's next link is `4b`, after
+`1b`'s purge-path changes); `1c`'s hotspot is `AppEnvironment.swift` (both
+platforms) and the store-location resolvers (`StoreConfiguration`,
+`StoreLocator`, `appGroupOnDisk`/`defaultOnDisk`). Read the *Resume
+protocol* section first, then *Wave 1b closing report* below for what
+`1b` changed in `TaskStore.swift`/`AutoPurgeJob.swift`/
+`NotificationReconciling.swift` that later plans in the `TaskStore.swift`
+chain (`4b`, `5a`) must build on.
 
 ---
 
@@ -154,6 +176,71 @@ self-heal) — see *Council-vote log* below.
 
 ---
 
+## Wave 1b closing report (`purge-cloudkit-retirement`)
+
+Plan doc: `docs/superpowers/plans/2026-07-28-plan-1b-purge-cloudkit-retirement.md`.
+
+| Finding | Story | Fix commit | Regression test(s) |
+|---|---|---|---|
+| `C4`/`X4` | `LIL-10` | `c2284a1a` | `C4X4PurgeMirroringTests.swift` (2 tests) — asserts the mechanism (a real `NSManagedObjectContextDidSave` carrying the purged row in `NSDeletedObjectsKey`), not just end-state row counts. |
+| `X14` | `LIL-63` | `c2284a1a` (same commit as `C4`/`X4` — the chunking that creates the race and the recheck that closes it are one mechanism, not separable behavior) | `X14PurgeRevalidationTests.swift` (2 tests) — deterministic restore-mid-flight + re-trash-past-cutoff races, driven via `TrashPurger`'s two decomposed steps directly (no sleep, no test-only hook — same hand-ordered-real-contexts technique as `TagStoreFindOrCreateRaceTests`). |
+| `H3` | `LIL-21` | `a4af7b8c` | `H3PurgeNotificationCancellationTests.swift` (6 tests) — separate commit from `C4`/`X4`/`X14` (two hats: new behavior vs. mechanism swap). |
+
+**Story-ID correction (flagged to `team-lead`, logged here for the audit
+trail):** the wave-1b brief cited `H3`→`LIL-23` and `X14`→`LIL-48`. Both
+were wrong — those IDs belong to `H5`/`M4` under `plan-5a`. The correct
+IDs, matching both `story show` and this ledger's own cross-reference
+table, are `H3`→`LIL-21` and `X14`→`LIL-63`; all `1b` commits close the
+correct stories.
+
+**`CascadeReaper`'s fate — decided directly, no council needed (see the
+plan doc for the full reasoning):**
+- `objectIDs(forDeleting:)` — **kept, and got a real caller for the first
+  time.** Before `1b` its only caller was its own unit tests. `H3`'s
+  `TaskStore.hardDelete` fix needs exactly its unconditional (no
+  live/trashed barrier) cascade-closure semantics to collect the
+  notification-cancellation id set.
+- `planPurge(ofTrashedRoots:)` — kept unchanged, still the source of `1a`'s
+  C1 barrier logic, now also feeding `H3`'s doomed-task-id collection.
+- `batchDelete(objectIDs:in:)` — **deleted.** Zero callers once both purge
+  paths moved to `TrashPurger`; it was literally the `NSBatchDeleteRequest`
+  wrapper this plan retires, so leaving it in place unused would be the
+  exact attractive nuisance a future contributor could reach for again.
+
+**What Wave `1c`/`1d`/`4b`/`5a` need to know about the current shape**
+(the `TaskStore.swift` serial chain's next link is `4b`; `1c`/`1d` don't
+sit on this chain but touch adjacent files):
+- `TaskStore.batchPurge` is now a thin wrapper around the new
+  `TrashPurger.purge(predicateFormat:arguments:context:viewContext:notificationScheduler:)`
+  (`Persistence/TrashPurger.swift`) — it no longer contains any purge logic
+  itself. `AutoPurgeJob.run` calls the same `TrashPurger.purge`. Any future
+  change to purge behavior (barrier logic, chunking, revalidation,
+  notification cancellation) belongs in `TrashPurger`, not duplicated back
+  into either call site.
+- `TrashPurger.purgeChunk`/`fetchCandidateRootObjectIDs` are exposed
+  (`internal`, not `private`) specifically so tests can drive them
+  independently for race-condition coverage — follow that precedent rather
+  than adding test-only hooks to production code if a future plan needs to
+  test another mid-flight race.
+- `TaskStore.hardDelete` now collects a doomed-task-id closure via
+  `CascadeReaper.objectIDs(forDeleting:)` before deleting, and calls
+  `notificationScheduler?.cancelPending(forTaskIDs:)` after a successful
+  save — the same collect-before/cancel-after ordering pattern any future
+  destructive mutation should follow.
+- `NotificationReconciling` now has two methods:
+  `reconcile(taskID:)` (existing; requires the row to still exist) and
+  `cancelPending(forTaskIDs:)` (new; H3 — works whether or not the row
+  exists, batches into one OS round trip). `NotificationScheduler` is the
+  only conformer; any new one must implement both.
+- `AutoPurgeJob` gained a `public var notificationScheduler:
+  (any NotificationReconciling)?`, property-injected exactly like
+  `TaskStore`'s. Both `AppEnvironment.swift`s wire it right after
+  `taskStore.notificationScheduler = scheduler` — `4b`'s notification work
+  should follow the same wiring point for any other store/job that needs
+  scheduler access.
+
+---
+
 ## Execution model (per Mikey's directives, 2026-07-28)
 
 - **One dedicated worktree** on a long-running branch:
@@ -202,7 +289,7 @@ Wave 6 closeout. **Status** starts `pending` for everything except Wave 0.
 |------|------|-----------------|--------|
 | 0 | *(docs + stories, no code)* | — | ✅ complete |
 | 1 | **1a** `trash-tree-integrity` | `C1 C2 C3 M1 M2 H4 H7 M5` | ✅ complete |
-| 1 | **1b** `purge-cloudkit-retirement` | `C4`/`X4` (merged), `X14`, `H3` | ⬜ pending |
+| 1 | **1b** `purge-cloudkit-retirement` | `C4`/`X4` (merged), `X14`, `H3` | ✅ complete |
 | 1 | **1c** `store-location-unification` | `X1 X2 X15` (+ iOS silent `defaultOnDisk` fallback detail, folded into the `X1`/`X2` story bodies — no separate ID) | ⬜ pending |
 | 1 | **1d** `export-schema-completeness` | `X3 S9a X13 X18` | ⬜ pending |
 | 2 | **2a** `migration-transitions` | `S1 S5 S6 S8 S11 S12 S14 S15 S16 S17` | ⬜ pending |
@@ -249,9 +336,11 @@ Other new public types requiring a proposal+UML in-wave: `DestructiveOpGate`
 Every plan sharing a hotspot file **re-Reads it first** and anchors by code
 structure — each earlier plan in the chain will have moved line numbers.
 
-1. **`TaskStore.swift`** — `1a` (trash/restore state machine) → `1b` (purge
-   rewrite reuses 1a's descendant-aware queries) → `4b` (descendant
-   notification reconcile) → `5a` (mutation-rollback helper adopted across
+1. **`TaskStore.swift`** — `1a` (trash/restore state machine) → `1b` ✅ done
+   (purge logic extracted into `TrashPurger`; `batchPurge` is now a thin
+   wrapper; `hardDelete` collects a notification-cancellation closure via
+   `CascadeReaper.objectIDs(forDeleting:)`) → `4b` (descendant notification
+   reconcile — next link) → `5a` (mutation-rollback helper adopted across
    its mutators). Four plans, one file — serialize strictly in this order.
 2. **`MigrationCoordinator.swift`** — `2a` (migration transitions: honors
    `.timedOut`, counts `.setup`, de-interleaves waiters, mode-store-advances-

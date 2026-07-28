@@ -4663,3 +4663,81 @@ around the requirement everywhere it bites.
   table in `.deployit/config.toml`. None of the three depend on each other
   surviving, so they can be pulled independently as the toolchain
   landscape shifts.
+
+## 2026-07-28 — Data & Sync Hardening plan 1b: retiring `NSBatchDeleteRequest` from trash purge
+
+Supersedes the mechanism described in the 2026-06-04-era "Batch delete
+skips delete rules — and the result set lies" entry above for `TaskStore.
+batchPurge`/`AutoPurgeJob` specifically (that entry is left in place as
+historical record of the problem `CascadeReaper.batchDelete` worked around
+— `TaskDuplicateReconciler`'s plain-`context.delete` doc comment already
+called out *why* a batch delete was the wrong tool). Findings `C4`/`X4`
+(review 2026-07-28) established the actual defect: `NSBatchDeleteRequest`
+never calls `context.save()`, so `NSPersistentCloudKitContainer` never
+observes the deletion and never exports a tombstone — a purged task's
+`CKRecord` survives in the zone and can resurrect on the next import.
+Suspected live in Production data since the 2026-06-24 cutover.
+
+- **The fix is a mechanism swap, not a new algorithm.** `TaskStore.
+  hardDelete` already deleted correctly (`context.delete(_:)` + `save()`)
+  and was never part of the defect — it's the existence proof that a
+  normal context delete plus the model's `Cascade` delete rules produce
+  the same end state `CascadeReaper`'s manual traversal computes. The new
+  shared `TrashPurger` (`Persistence/TrashPurger.swift`) makes
+  `batchPurge`/`AutoPurgeJob.run` do the same thing at scale: delete the
+  (barrier-bounded) root objects directly and let Core Data's own Cascade
+  rule remove each root's subtree, rather than manually enumerating and
+  batch-deleting the full closure.
+- **Chunked, not one giant save.** 200 roots per `ctx.save()`
+  (`TrashPurger.defaultChunkSize`) — doubles `TaskStore.
+  listFetchBatchSize` (100), no other numeric precedent existed for a
+  delete-chunk size in this codebase. Chunking reintroduced a real
+  suspension point between "fetch candidates" and "delete them" that the
+  single-`perform`-block original didn't meaningfully have — `X14`'s
+  delete-time predicate revalidation exists specifically to close that
+  window (a restore or a re-trash-past-cutoff between chunks must survive,
+  re-checked fresh per chunk, not just "still has `deletedAt`").
+- **The `viewContext` merge mechanism is unchanged on purpose.** Still an
+  explicit `NSManagedObjectContext.mergeChanges(fromRemoteContextSave:
+  [NSDeletedObjectsKey: …], into: [viewContext])`, awaited on
+  `viewContext`'s own queue, keyed on the *full* cascade closure (all four
+  entity types, not just the roots — otherwise cascaded descendants
+  dangle as stale in-memory faults, the same trap the old batch-delete
+  merge existed to avoid). Relying instead on `viewContext.
+  automaticallyMergesChangesFromParent` (already `true`) was considered
+  and rejected: Core Data's own doc for that flag doesn't guarantee the
+  async merge has *run* by the time the posting `ctx.perform` call
+  returns, and every existing purge test reads `viewContext` immediately
+  after `purgeAll()`/`AutoPurgeJob.run()` returns — swapping to the
+  implicit mechanism would make those tests newly, rarely flaky rather
+  than deterministic.
+- **Regression-testing "does this actually export to CloudKit" without a
+  real CloudKit account:** assert the *mechanism* (a real
+  `NSManagedObjectContextDidSave` notification carrying the purged row's
+  objectID in `NSDeletedObjectsKey` — the exact thing `NSBatchDeleteRequest`
+  never produces, which is why the old code needed a *synthetic* merge
+  call instead of ever observing a real save notification), not just
+  end-state row counts (which can't distinguish a batch delete from a
+  context delete — both leave the count at zero). See
+  `C4X4PurgeMirroringTests.swift`.
+- **`H3`'s notification cancellation can't reuse `reconcile(taskID:)`.**
+  Every other mutation (`update`, `transition`, `softDelete`, `restore`)
+  calls `notificationScheduler?.reconcile(taskID:)` after its save, and it
+  works because the row still exists at that point. After a hard delete
+  the row is gone, so `reconcile`'s internal fetch throws `.notFound` and
+  its own top-level `catch` silently swallows it — a guaranteed-missed
+  cancellation, not a safe no-op. `NotificationReconciling.
+  cancelPending(forTaskIDs:)` (new) matches purely via
+  `request.content.userInfo["taskID"]`, so it works whether or not the row
+  still exists, and it's called once per chunk with the *whole* batch of
+  ids rather than once per task — an N-task purge does one
+  `pendingNotificationRequests()` fetch and one
+  `removePendingNotificationRequests` call, not N of each.
+- **`CascadeReaper.batchDelete(objectIDs:in:)` is deleted; `objectIDs(forDeleting:)`
+  is kept and got a real production caller for the first time** (it had
+  none before this plan — only its own unit tests). `TaskStore.hardDelete`
+  needs exactly its *unconditional* cascade-closure semantics (no
+  live/trashed barrier — hardDelete removes a specific task and everything
+  under it regardless of each descendant's own `deletedAt`) to collect the
+  H3 notification-cancellation closure. `planPurge` is unchanged, still the
+  source of `1a`'s C1 barrier logic.
