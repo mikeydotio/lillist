@@ -23,8 +23,9 @@ CloudKit, XCTest + Swift Testing, xcodegen, storyhook (prefix `LIL`).
 > **New here? Read this section first.** This file is the **living progress
 > tracker** — keep it current as plans land.
 
-**As of 2026-07-28 — Wave 0 and Wave 1 plans `1a` (`trash-tree-integrity`) and
-`1b` (`purge-cloudkit-retirement`) COMPLETE.**
+**As of 2026-07-28 — Wave 0 and Wave 1 plans `1a` (`trash-tree-integrity`),
+`1b` (`purge-cloudkit-retirement`), and `1c` (`store-location-unification`)
+COMPLETE.**
 
 - ✅ **Plan `1a` closed all 8 findings** (`C1 C2 C3 H4 H7 M1 M2 M5` /
   `LIL-7 LIL-8 LIL-9 LIL-22 LIL-25 LIL-45 LIL-46 LIL-49`), added the
@@ -56,6 +57,26 @@ CloudKit, XCTest + Swift Testing, xcodegen, storyhook (prefix `LIL`).
   belong to `H5`/`M4` under `plan-5a`) — the correct IDs, `LIL-21`/`LIL-63`,
   matched the ledger's own cross-reference table and were used throughout.
 
+- ✅ **Plan `1c` closed all 3 findings** (`X1`, `X2`, `X15` / `LIL-15`,
+  `LIL-16`, `LIL-64`) plus the iOS silent `defaultOnDisk` fallback detail
+  folded into `LIL-15` — added the canonical `StoreLocation` resolver
+  (four roles: `mainApp`/`extensionProcess`/`widget`/`cli`, all pinned to
+  the identical `<group>/Lillist/Lillist.sqlite` path; only `mainApp` may
+  arm CloudKit mirroring via the new `StoreConfiguration
+  .armsCloudKitMirroring` field), wired all six processes through it, and
+  added `MacAppGroupMigration` — a one-time, pure-file-system migration of
+  macOS's legacy sandbox store into the App Group, run before any
+  `PersistenceController` opens. Plan doc:
+  `docs/superpowers/plans/2026-07-28-plan-1c-store-location-unification.md`.
+  Commit range `07545d4d..e9b57e43` (10 commits: 1 docs, 6 feat/fix, 3
+  `chore(stories)`). Full `LillistCore` suite green (1177 tests, 222
+  suites — up from `1b`'s 1144/219 baseline) after every commit; `lillist-cli`
+  builds; both apps verified with unsigned `xcodebuild` builds (BUILD
+  SUCCEEDED, including the widget and Share/Shortcuts extension targets
+  this plan touched). See *Wave 1c closing report* below for the per-
+  finding breakdown, the both-stores-populated council decision, and what
+  `3a` (which continues the `AppEnvironment.swift` shared-file chain)
+  needs to know.
 - ✅ Review doc committed: `docs/reviews/2026-07-28-data-sync-review.md`
   (70 findings, faithfully reproduced from the source-of-truth plan; no
   severity softened, nothing dropped).
@@ -100,18 +121,17 @@ CloudKit, XCTest + Swift Testing, xcodegen, storyhook (prefix `LIL`).
   log* below for the final result and audit trail
   (`.council/c4-x4-merged-or-two-linked-stories/DECISION.md`).
 - ✅ **Story-ID cross-reference table filled in** — see below.
-- ⬜ Wave 1 plans `1c`-`1d`, Waves 2 through 6: not started.
+- ⬜ Wave 1 plan `1d`, Waves 2 through 6: not started.
 
-**Next action for whoever picks this up:** start Wave 1, plan `1c`
-(`store-location-unification`) — findings `X1 X2 X15`. It does not sit on
-the `TaskStore.swift` serial chain (that chain's next link is `4b`, after
-`1b`'s purge-path changes); `1c`'s hotspot is `AppEnvironment.swift` (both
-platforms) and the store-location resolvers (`StoreConfiguration`,
-`StoreLocator`, `appGroupOnDisk`/`defaultOnDisk`). Read the *Resume
-protocol* section first, then *Wave 1b closing report* below for what
-`1b` changed in `TaskStore.swift`/`AutoPurgeJob.swift`/
-`NotificationReconciling.swift` that later plans in the `TaskStore.swift`
-chain (`4b`, `5a`) must build on.
+**Next action for whoever picks this up:** start Wave 1, plan `1d`
+(`export-schema-completeness`) — findings `X3 S9a X13 X18`. It does not sit
+on the `TaskStore.swift` serial chain; its hotspots are `Importer.swift`,
+`Exporter.swift`, `ExportSchema.swift`, `BackupSchema.swift` (see the
+*Shared-file serial chains* section, chain 7 — `1d` is the first link,
+`2b` the second). Read the *Resume protocol* section first, then *Wave 1c
+closing report* below for the `StoreLocation`/`MacAppGroupMigration` shape
+now in place, which `3a` (the next plan to touch `AppEnvironment.swift`)
+needs to build on without reintroducing a path divergence.
 
 ---
 
@@ -241,6 +261,87 @@ sit on this chain but touch adjacent files):
 
 ---
 
+## Wave 1c closing report (`store-location-unification`)
+
+Plan doc: `docs/superpowers/plans/2026-07-28-plan-1c-store-location-unification.md`.
+
+| Finding | Story | Fix commit(s) | Regression test(s) |
+|---|---|---|---|
+| `X2` | `LIL-16` | `397f3ddb` | `StoreLocationTests.swift` (11 tests) + `StoreLocatorTests.swift`'s new `x2_resolvesCanonicalPathNotOwnThirdPath` — asserts the CLI's "store not found" message now points at the canonical `<group>/Lillist/Lillist.sqlite` path, not its old third path. |
+| `X15` | `LIL-64` | `397f3ddb` (CLI role), `73c2fbf8` (extension/widget role wiring) | `PersistenceControllerCloudKitTests.swift`'s new `armsCloudKitMirroring`-gating tests + `GatedPersistenceResolverTests.test_X15_extensionAndWidgetRolesSuppressMirroring_mainAppDoesNot`. |
+| `X1` (iOS half — folded-in silent-fallback detail) | `LIL-15` | `621e6ded` | Covered by `StoreLocationTests`'s container-unreachable-throws coverage; iOS's `AppEnvironment.make()` now routes through the same throwing resolver, no bespoke test needed (behavior change is "stop catching and forking," not new logic). |
+| `X1` (macOS half — the App-Group migration) | `LIL-15` | `c7538745` | `MacAppGroupMigrationTests.swift` (10 tests) — every state-machine branch (`notNeeded`/`migrated`/`migratedResolvingConflict`/`conflictDetected`/`migrationFailed`), sidecar handling, and the `verifyStagedCopy`/`footprint` seams directly. |
+| Keystone (serves `X1`/`X2`/`X5`/`X7`/`X15`/`X20`, no separate finding) | — | `e9b57e43` | `MultiProcessStoreHarnessTests.swift` (4 tests) — two `PersistenceController`s on one on-disk file prove write-visibility; the path-pin test proves all four roles resolve identically. |
+
+**Commit range:** `07545d4d..e9b57e43` — 1 docs, 6 feat/fix (`397f3ddb`
+`73c2fbf8` `070ba738` `621e6ded` `c7538745` `e9b57e43`), 3 `chore(stories)`
+(`91f49d2e` `18fabaf4` `bcfd091c`). Full `LillistCore`
+suite green (1177 tests, 222 suites, up from `1b`'s 1144/219 baseline) after
+every commit; `lillist-cli` builds; both apps verified with unsigned
+`xcodebuild` builds (BUILD SUCCEEDED, including the `LillistWidget`/
+`LillistWidget-macOS`, `ShareExtension-iOS`, and `ShortcutsActions` targets
+this plan touched).
+
+**Class-killer delivered:** `StoreLocation`
+(`Packages/LillistCore/Sources/LillistCore/Persistence/StoreLocation.swift`)
+— a `Role` enum (`mainApp`/`extensionProcess`/`widget`/`cli`) whose
+`resolve(role:appGroupID:containerProvider:fileManager:)` is now the single
+authority every one of the six processes calls for "where is the store,"
+and whose `makeConfiguration(syncMode:)` is the single authority for "may
+this process arm CloudKit mirroring." `StoreConfiguration.appGroupOnDisk`
+(the pre-`1c` ad-hoc App-Group path builder) was retired once its last
+caller (iOS) moved to `StoreLocation` — same "don't leave an attractive
+nuisance" precedent `1b` applied to `CascadeReaper.batchDelete`.
+
+**Both-stores-populated council decision (`X1`'s macOS-migration edge
+case):** SyncMode-conditioned policy — `.iCloudSync` quarantines the
+pre-existing App-Group store and migrates legacy into its place;
+`.localOnly` makes zero file mutation (no CloudKit safety net exists for
+the App-Group store in that mode, so quarantining it would be
+unconditional, permanent data loss). Full audit trail, including the
+round-1 2-1 split and the source-grounded deliberation that resolved it:
+`.council/macos-migration-both-stores-populated/DECISION.md`. Logged below
+in the *Council-vote log*.
+
+**Deviation from the plan doc's commit plan:** the plan doc sketched 6 code
+commits; the landed shape is 6 code commits (matching count, different
+composition — the plan's items 2/3 [`StoreLocation` + CLI wiring, then
+`armsCloudKitMirroring` + role wiring] each landed as planned, but a 7th
+originally-unplanned commit, `fix(core): disambiguate QuarantineManager
+folder names for same-second calls`, was inserted between the iOS fix and
+the macOS migration once the council-vote deliberation surfaced the
+folder-collision hazard — the plan doc's *binding implementation
+requirement #3* already called this out as a requirement, just not as its
+own numbered commit-plan step) + 3 `chore(stories)` commits (not spelled
+out as a separate line item in the plan doc's commit plan, same pattern
+`1a`/`1b` used). No scope changed, only the commit breakdown.
+
+**What `3a` (`account-identity-and-status`, the next plan to touch
+`AppEnvironment.swift` per the shared-file-chain note) needs to know:**
+- Both `AppEnvironment.swift`s' `make()` now resolve the store through
+  `StoreLocation.resolve(role: .mainApp, ...)` — iOS unconditionally,
+  macOS after `MacAppGroupMigration.migrateIfNeeded` runs. Any future
+  change to *how* the store path is resolved belongs in `StoreLocation`,
+  never reintroduced ad-hoc in either `AppEnvironment.swift`.
+- macOS's `AppEnvironment` gained a new stored property,
+  `macAppGroupMigrationOutcome: MacAppGroupMigration.Outcome`, threaded
+  through `private init` and logged via `breadcrumbs` in `bootstrap()`
+  (the very first line, before `preferencesPartitionMigrator.runIfNeeded()`).
+  If `3a`'s account-identity guard needs to run before other bootstrap
+  steps too, re-read this ordering — don't just prepend blindly.
+- `GatedPersistenceResolver` and `MigrationGate.resolveStoreConfiguration`
+  both now take a required `role: StoreLocation.Role` parameter. Any new
+  caller (e.g. if `3a` adds a new extension/process) must pick the correct
+  role — there is no default.
+- `QuarantineManager.quarantineStore(at:label:)`/`copyStore(at:label:)`
+  gained an optional `label` parameter (nil preserves prior behavior) to
+  avoid a same-second folder-name collision when a caller makes more than
+  one quarantine/copy call in one synchronous run. `3a`'s account-switch
+  guard, if it ever needs multiple quarantine calls in one flow, should use
+  distinct labels rather than rediscovering this collision.
+
+---
+
 ## Execution model (per Mikey's directives, 2026-07-28)
 
 - **One dedicated worktree** on a long-running branch:
@@ -290,7 +391,7 @@ Wave 6 closeout. **Status** starts `pending` for everything except Wave 0.
 | 0 | *(docs + stories, no code)* | — | ✅ complete |
 | 1 | **1a** `trash-tree-integrity` | `C1 C2 C3 M1 M2 H4 H7 M5` | ✅ complete |
 | 1 | **1b** `purge-cloudkit-retirement` | `C4`/`X4` (merged), `X14`, `H3` | ✅ complete |
-| 1 | **1c** `store-location-unification` | `X1 X2 X15` (+ iOS silent `defaultOnDisk` fallback detail, folded into the `X1`/`X2` story bodies — no separate ID) | ⬜ pending |
+| 1 | **1c** `store-location-unification` | `X1 X2 X15` (+ iOS silent `defaultOnDisk` fallback detail, folded into the `X1`/`X2` story bodies — no separate ID) | ✅ complete |
 | 1 | **1d** `export-schema-completeness` | `X3 S9a X13 X18` | ⬜ pending |
 | 2 | **2a** `migration-transitions` | `S1 S5 S6 S8 S11 S12 S14 S15 S16 S17` | ⬜ pending |
 | 2 | **2b** `backup-restore-correctness` | `S2 S4 S7 S9b S23` | ⬜ pending |
@@ -354,10 +455,12 @@ structure — each earlier plan in the chain will have moved line numbers.
    discipline). `4a` **must** land first — never widen a reconcile mechanism
    that still silently loses work.
 5. **`AppEnvironment.swift`** (both iOS and macOS copies — distinct regions,
-   serialize per-platform) — `1c` (canonical `StoreLocation` wiring; macOS
-   App-Group migration) → `3a` (account identity store wiring) → `4b`
-   (notification scheduler reaching extension/widget/CLI paths via 1c's
-   standardized construction).
+   serialize per-platform) — `1c` ✅ done (canonical `StoreLocation` wiring;
+   macOS App-Group migration; macOS's `AppEnvironment` gained a new
+   `macAppGroupMigrationOutcome` stored property logged at the top of
+   `bootstrap()` — see the *Wave 1c closing report* for exactly where) →
+   `3a` (account identity store wiring) → `4b` (notification scheduler
+   reaching extension/widget/CLI paths via 1c's standardized construction).
 6. **`HistoryPruner.swift` + the three history-token `UserDefaults` keys** —
    `3b` (reset clears watermarks + widget cache; `WatermarkRegistry` doubles
    as the reset-clear enumeration) ↔ `5c` (formalizes the registry itself,
@@ -520,6 +623,59 @@ defensible alternatives, Mikey unavailable). Full audit trails live under
    `TreeIntegrityChecker.breakCycle(_:)`
    (`Packages/LillistCore/Sources/LillistCore/Persistence/TreeIntegrityChecker.swift`),
    tested by `TreeIntegrityCheckerTests.repairSkipsAmbiguousIDTie`.
+
+3. **macOS both-stores-populated migration policy** (Wave 1, plan `1c`,
+   2026-07-28) — when the one-time `MacAppGroupMigration` finds BOTH the
+   legacy Application-Support store and the App-Group store already
+   populated (reachable if this Mac's widget ever ran under the `X1` bug
+   and pulled a full CloudKit replica into the App-Group location before
+   the fix landed), what should it do?
+   **Decision: branch on the device's persisted `SyncMode`** — by
+   unanimous ranked-choice majority (3/3 first-place votes) after one
+   deliberation round. Round 1 was a 2-1 split: `data-engineer` voted for
+   their own "defer indefinitely, mutate nothing, hand off a typed
+   conflict signal" proposal; `software-architect` and `skeptic` both
+   voted for `software-architect`'s "quarantine + migrate, legacy wins"
+   proposal. Neither round-1 proposal survived deliberation unchanged.
+   `software-architect` went beyond re-arguing the tradeoff and actually
+   read `Extensions/LillistWidget/AdvanceTaskStatusFromWidget.swift` →
+   `WidgetIntentSupport` → `GatedPersistenceResolver`/`MigrationGate` →
+   `StoreConfiguration.appGroupOnDisk`, discovering that in `.localOnly`
+   sync mode the App-Group store has **no CloudKit mirror at all** —
+   `cloudKitContainerOptions` is never attached — so the original
+   "CloudKit re-flows anything unique to the losing store" risk-bounding
+   argument for "legacy wins" was categorically false in that mode, where
+   quarantining the App-Group store would be irreversible, unconditional
+   loss of a real user action (e.g. a task completed via the widget).
+   Revised into a `SyncMode`-conditioned hybrid: `.iCloudSync` keeps
+   "quarantine App-Group store, migrate legacy into its place" (CloudKit's
+   mirroring genuinely is the convergence mechanism there); `.localOnly`
+   switches to "zero file mutation, typed `.conflictDetected` outcome,
+   keep booting on legacy" (no convergence mechanism exists to bound the
+   risk). `data-engineer`, who had defended indefinite deferral as
+   categorically safest, conceded in deliberation that unbounded deferral
+   without a forcing function is itself a data-integrity failure mode (the
+   migration-equivalent of an untested backup) and dropped their
+   opposition once the revised proposal addressed the specific case
+   (`.localOnly`) where their concern was actually valid. `skeptic`
+   independently surfaced two binding implementation requirements during
+   the same round — a `QuarantineManager` same-second folder-naming
+   collision (confirmed in source: `Int(clock().timeIntervalSince1970)`
+   granularity, `moveItem`/`copyItem` throw on an existing destination,
+   and the conflict path makes up to three quarantine/copy calls in one
+   synchronous run) and a correction to the original "widget-only edits
+   are low-risk" framing (undercut by `X15`'s own ~30MB widget memory
+   budget concern, filed in this same plan) — that don't change the
+   winning direction but are binding on the implementation. All three
+   seats ranked the revised hybrid first, unanimously, in the runoff.
+   Dissent: none in the final vote. Full audit trail:
+   `.council/macos-migration-both-stores-populated/DECISION.md`.
+   Implemented in `MacAppGroupMigration.migrateIfNeeded`
+   (`Packages/LillistCore/Sources/LillistCore/Persistence/MacAppGroupMigration.swift`),
+   tested by `MacAppGroupMigrationTests.swift`'s
+   `migratedResolvingConflict_iCloudSync`/`conflictDetected_localOnly_noMutation`.
+   The folder-collision finding was fixed separately in `QuarantineManager`
+   (commit `070ba738`) ahead of the migration landing.
 
 ---
 
