@@ -1,0 +1,4 @@
+{"kind":"StoryCreated","at":"2026-07-28T16:32:21Z","title":"S14: waitForQuiesce's result is discarded","state":"todo"}
+{"kind":"StoryPrioritySet","at":"2026-07-28T16:32:21Z","priority":"medium"}
+{"kind":"StoryLabelsSet","at":"2026-07-28T16:32:21Z","labels":["plan-2a","sev-medium","sweep-sync"]}
+{"kind":"StoryDescriptionSet","at":"2026-07-28T16:32:21Z","description":"A 300-second timeout is reported as success. Separately, quiesce can declare 'settled' before sync has even started (.setup events don't bump the quiet window), and the single shared monitor interleaves multiple concurrent waiters. Severity: Medium. Wave/Plan: Wave 2, plan 2a migration-transitions. Sweep: sync machinery."}

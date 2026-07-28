@@ -1,0 +1,4 @@
+{"kind":"StoryCreated","at":"2026-07-28T16:32:21Z","title":"S4: restore(from: .livePackage) reads the package after the destructive wipe","state":"todo"}
+{"kind":"StoryPrioritySet","at":"2026-07-28T16:32:21Z","priority":"critical"}
+{"kind":"StoryLabelsSet","at":"2026-07-28T16:32:21Z","labels":["plan-2b","sev-critical","sweep-sync"]}
+{"kind":"StoryDescriptionSet","at":"2026-07-28T16:32:21Z","description":"A remote-change tick landing during the reset's quiesce window makes LocalBackupCoordinator.processRemoteChange prune the now-'stale' package to empty (BackupRestoreService.swift:100-127, LocalBackupCoordinator.swift:261-265). Failure scenario: restore reports success with zero tasks, and the backup package that would have let the user retry is itself destroyed in the process. Severity: Critical. Wave/Plan: Wave 2, plan 2b backup-restore-correctness. Sweep: sync machinery."}

@@ -1,0 +1,4 @@
+{"kind":"StoryCreated","at":"2026-07-28T16:32:21Z","title":"M4: PreferencesStore.read() performs writes","state":"todo"}
+{"kind":"StoryPrioritySet","at":"2026-07-28T16:32:21Z","priority":"medium"}
+{"kind":"StoryLabelsSet","at":"2026-07-28T16:32:21Z","labels":["plan-5a","sev-medium","sweep-stores"]}
+{"kind":"StoryDescriptionSet","at":"2026-07-28T16:32:21Z","description":"fetchOrCreateSingleton saves inside a nominal read path, and normalizeSingletons can promote a stale legacy row over the canonical singleton (~32% of legacy UUIDs sort below the fixed singleton ID by raw byte comparison). Severity: Medium. Wave/Plan: Wave 5, plan 5a mutation-scope-discipline. Sweep: stores/persistence. Fix: PreferencesStore.read() becomes read-only; deterministic normalize tie-break."}

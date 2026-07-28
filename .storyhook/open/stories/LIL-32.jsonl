@@ -1,0 +1,4 @@
+{"kind":"StoryCreated","at":"2026-07-28T16:32:21Z","title":"S9c: Reseed broadcast fires before re-export quiesces","state":"todo"}
+{"kind":"StoryPrioritySet","at":"2026-07-28T16:32:21Z","priority":"high"}
+{"kind":"StoryLabelsSet","at":"2026-07-28T16:32:21Z","labels":["plan-3b","sev-high","sweep-sync"]}
+{"kind":"StoryDescriptionSet","at":"2026-07-28T16:32:21Z","description":"Peers that receive the 'reseed complete' signal and redownload immediately can pull a PARTIAL zone, mid-upload. One of three distinct failure modes split from the original S9 finding (S9a/S9b/S9c). Severity: High. Wave/Plan: Wave 3, plan 3b reset-propagation-safety. Sweep: sync machinery."}

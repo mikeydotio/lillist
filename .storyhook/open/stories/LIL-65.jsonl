@@ -1,0 +1,4 @@
+{"kind":"StoryCreated","at":"2026-07-28T16:32:21Z","title":"X16: AfterCompletionRule.interval is unvalidated","state":"todo"}
+{"kind":"StoryPrioritySet","at":"2026-07-28T16:32:21Z","priority":"medium"}
+{"kind":"StoryLabelsSet","at":"2026-07-28T16:32:21Z","labels":["plan-4c","sev-medium","sweep-crossproc"]}
+{"kind":"StoryDescriptionSet","at":"2026-07-28T16:32:21Z","description":"CalendarRule has a clamp, this sibling rule does not; a 0/negative interval spawns permanently-overdue tasks on every close. Severity: Medium. Wave/Plan: Wave 4, plan 4c recurrence-correctness. Sweep: cross-process. Fix: interval clamp (sibling of CalendarRule's)."}

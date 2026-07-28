@@ -1,0 +1,4 @@
+{"kind":"StoryCreated","at":"2026-07-28T16:32:21Z","title":"S18: QuarantineManager.cleanupExpired() is never called in production","state":"todo"}
+{"kind":"StoryPrioritySet","at":"2026-07-28T16:32:21Z","priority":"medium"}
+{"kind":"StoryLabelsSet","at":"2026-07-28T16:32:21Z","labels":["plan-3b","sev-medium","sweep-sync"]}
+{"kind":"StoryDescriptionSet","at":"2026-07-28T16:32:21Z","description":"Store copies accumulate unbounded until disk-full failure starts taking down every future migration; folder names also collide at 1-second granularity. Severity: Medium. Wave/Plan: Wave 3, plan 3b reset-propagation-safety. Sweep: sync machinery."}

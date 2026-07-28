@@ -1,0 +1,4 @@
+{"kind":"StoryCreated","at":"2026-07-28T16:32:21Z","title":"S11: Migration and reset can run concurrently","state":"todo"}
+{"kind":"StoryPrioritySet","at":"2026-07-28T16:32:21Z","priority":"high"}
+{"kind":"StoryLabelsSet","at":"2026-07-28T16:32:21Z","labels":["plan-2a","sev-high","sweep-sync"]}
+{"kind":"StoryDescriptionSet","at":"2026-07-28T16:32:21Z","description":"Each service has its own reentrancy guard, but both operate on the same PersistenceHost; ResetSignalMonitor is fully automatic and migration-unaware, so tearDownStore can race flushAndSwap's critical section. Severity: High. Wave/Plan: Wave 2, plan 2a migration-transitions. Sweep: sync machinery. Class-killer: shared DestructiveOpGate replaces the two private reentrancy guards and makes ResetSignalMonitor migration-aware."}

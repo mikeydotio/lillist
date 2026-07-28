@@ -1,0 +1,4 @@
+{"kind":"StoryCreated","at":"2026-07-28T16:32:21Z","title":"S9b: Crash mid-reseed is total local loss","state":"todo"}
+{"kind":"StoryPrioritySet","at":"2026-07-28T16:32:21Z","priority":"high"}
+{"kind":"StoryLabelsSet","at":"2026-07-28T16:32:21Z","labels":["plan-2b","sev-high","sweep-sync"]}
+{"kind":"StoryDescriptionSet","at":"2026-07-28T16:32:21Z","description":"The reseed sequence is export -> wipe -> import with NO JOURNAL and a temp-dir bundle; a crash at any point after the wipe leaves nothing to recover from. One of three distinct failure modes split from the original S9 finding (S9a/S9b/S9c). Severity: High. Wave/Plan: Wave 2, plan 2b backup-restore-correctness. Sweep: sync machinery."}

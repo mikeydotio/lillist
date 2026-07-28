@@ -1,0 +1,4 @@
+{"kind":"StoryCreated","at":"2026-07-28T16:32:21Z","title":"M6: reorder with .explicit(parent) plus a single anchor from a different sibling group computes the wrong position","state":"todo"}
+{"kind":"StoryPrioritySet","at":"2026-07-28T16:32:21Z","priority":"medium"}
+{"kind":"StoryLabelsSet","at":"2026-07-28T16:32:21Z","labels":["plan-5a","sev-medium","sweep-stores"]}
+{"kind":"StoryDescriptionSet","at":"2026-07-28T16:32:21Z","description":"TaskStore.swift:409-413. Severity: Medium. Wave/Plan: Wave 5, plan 5a mutation-scope-discipline. Sweep: stores/persistence."}

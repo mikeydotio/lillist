@@ -1,0 +1,4 @@
+{"kind":"StoryCreated","at":"2026-07-28T16:32:21Z","title":"S12: A failed rebuildEmptyStore leaves a store-less coordinator","state":"todo"}
+{"kind":"StoryPrioritySet","at":"2026-07-28T16:32:21Z","priority":"high"}
+{"kind":"StoryLabelsSet","at":"2026-07-28T16:32:21Z","labels":["plan-2a","sev-high","sweep-sync"]}
+{"kind":"StoryDescriptionSet","at":"2026-07-28T16:32:21Z","description":"Unlike the zone-erase failure path, there is no reattach handler on this step - every fetch and save fails until the next relaunch. Related: flushAndSwap can silently 'succeed' with zero attached stores and still advance currentMode. Severity: High. Wave/Plan: Wave 2, plan 2a migration-transitions. Sweep: sync machinery."}

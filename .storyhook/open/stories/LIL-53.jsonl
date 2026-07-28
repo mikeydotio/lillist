@@ -1,0 +1,4 @@
+{"kind":"StoryCreated","at":"2026-07-28T16:32:21Z","title":"S15: A corrupt or unparseable journal reads as .idle (fail-open)","state":"todo"}
+{"kind":"StoryPrioritySet","at":"2026-07-28T16:32:21Z","priority":"medium"}
+{"kind":"StoryLabelsSet","at":"2026-07-28T16:32:21Z","labels":["plan-2a","sev-medium","sweep-sync"]}
+{"kind":"StoryDescriptionSet","at":"2026-07-28T16:32:21Z","description":"In both MigrationGate and the coordinator's own reentrancy guard. Severity: Medium. Wave/Plan: Wave 2, plan 2a migration-transitions. Sweep: sync machinery."}

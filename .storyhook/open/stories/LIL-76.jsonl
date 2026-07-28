@@ -1,0 +1,4 @@
+{"kind":"StoryCreated","at":"2026-07-28T16:32:21Z","title":"L7: HistoryPruner prunes to the current token, not the minimum consumer watermark","state":"todo"}
+{"kind":"StoryPrioritySet","at":"2026-07-28T16:32:21Z","priority":"low"}
+{"kind":"StoryLabelsSet","at":"2026-07-28T16:32:21Z","labels":["plan-5c","sev-low","sweep-stores"]}
+{"kind":"StoryDescriptionSet","at":"2026-07-28T16:32:21Z","description":"Safe today only by bootstrap ordering; a latent trap corroborated and upgraded to a real, reachable defect by X12. Its written tokenDefaultsKey is never read by anything. Severity: Low (upgraded in practice by X12's corroboration - fix together). Wave/Plan: Wave 5, plan 5c watermark-registry-pruning. Sweep: stores/persistence."}

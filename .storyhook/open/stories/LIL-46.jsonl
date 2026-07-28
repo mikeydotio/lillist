@@ -1,0 +1,4 @@
+{"kind":"StoryCreated","at":"2026-07-28T16:32:21Z","title":"M2: Archived + trashed can coexist; restore never clears archivedAt","state":"todo"}
+{"kind":"StoryPrioritySet","at":"2026-07-28T16:32:21Z","priority":"medium"}
+{"kind":"StoryLabelsSet","at":"2026-07-28T16:32:21Z","labels":["plan-1a","sev-medium","sweep-stores"]}
+{"kind":"StoryDescriptionSet","at":"2026-07-28T16:32:21Z","description":"A restored task is invisible in every filter surface (TaskStore.swift:669-754). Severity: Medium. Wave/Plan: Wave 1, plan 1a trash-tree-integrity. Sweep: stores/persistence."}

@@ -1,0 +1,4 @@
+{"kind":"StoryCreated","at":"2026-07-28T16:32:21Z","title":"M5: TaskDuplicateReconciler swallows all errors and saves the shared viewContext","state":"todo"}
+{"kind":"StoryPrioritySet","at":"2026-07-28T16:32:21Z","priority":"medium"}
+{"kind":"StoryLabelsSet","at":"2026-07-28T16:32:21Z","labels":["plan-1a","sev-medium","sweep-stores"]}
+{"kind":"StoryDescriptionSet","at":"2026-07-28T16:32:21Z","description":"Failures are invisible, and the save can commit unrelated pending work from other stores (see H5/X19). Severity: Medium. Wave/Plan: Wave 1, plan 1a trash-tree-integrity. Sweep: stores/persistence. Fix: errors fail loud."}

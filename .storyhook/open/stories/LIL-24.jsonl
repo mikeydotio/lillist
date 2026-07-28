@@ -1,0 +1,4 @@
+{"kind":"StoryCreated","at":"2026-07-28T16:32:21Z","title":"H6: RemoteChangeReconciler advances the history watermark before/regardless of work success","state":"todo"}
+{"kind":"StoryPrioritySet","at":"2026-07-28T16:32:21Z","priority":"high"}
+{"kind":"StoryLabelsSet","at":"2026-07-28T16:32:21Z","labels":["plan-4a","sev-high","sweep-stores"]}
+{"kind":"StoryDescriptionSet","at":"2026-07-28T16:32:21Z","description":"RemoteChangeReconciler.swift:124-135 - a reconcile that fails for any reason is lost PERMANENTLY, since the watermark has already moved past it. Contrast: LocalBackupCoordinator gets this right (advances only after successful apply) - the pattern to copy. Severity: High. Wave/Plan: Wave 4, plan 4a history-consumer-discipline (lands BEFORE 4b - never widen a mechanism that silently loses work). Sweep: stores/persistence. Class-killer: extract DrainGate (public), adopt in all remote-change consumers."}

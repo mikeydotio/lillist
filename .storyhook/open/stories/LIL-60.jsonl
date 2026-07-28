@@ -1,0 +1,4 @@
+{"kind":"StoryCreated","at":"2026-07-28T16:32:21Z","title":"S22: ResetSignalMonitor.isApplying is an unsynchronized bool touched from nonisolated Tasks","state":"todo"}
+{"kind":"StoryPrioritySet","at":"2026-07-28T16:32:21Z","priority":"medium"}
+{"kind":"StoryLabelsSet","at":"2026-07-28T16:32:21Z","labels":["plan-3b","sev-medium","sweep-sync"]}
+{"kind":"StoryDescriptionSet","at":"2026-07-28T16:32:21Z","description":"A real race, damage capped by a downstream guard. ControlInbox silently discards undecodable events forever, and AppliedEventStore grows unbounded. Severity: Medium. Wave/Plan: Wave 3, plan 3b reset-propagation-safety. Sweep: sync machinery. Fix: isApplying -> actor; undecodable events quarantined."}

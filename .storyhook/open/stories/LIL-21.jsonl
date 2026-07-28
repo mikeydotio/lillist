@@ -1,0 +1,4 @@
+{"kind":"StoryCreated","at":"2026-07-28T16:32:21Z","title":"H3: Hard delete/purge never cancels pending OS notifications","state":"todo"}
+{"kind":"StoryPrioritySet","at":"2026-07-28T16:32:21Z","priority":"high"}
+{"kind":"StoryLabelsSet","at":"2026-07-28T16:32:21Z","labels":["plan-1b","sev-high","sweep-stores"]}
+{"kind":"StoryDescriptionSet","at":"2026-07-28T16:32:21Z","description":"A purged task's reminder fires later anyway, and its deep link dangles (hardDelete, purgeAll, AutoPurgeJob). Severity: High. Wave/Plan: Wave 1, plan 1b purge-cloudkit-retirement (separate commit from the batch-delete fix - two hats). Sweep: stores/persistence."}

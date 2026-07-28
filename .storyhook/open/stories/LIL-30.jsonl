@@ -1,0 +1,4 @@
+{"kind":"StoryCreated","at":"2026-07-28T16:32:21Z","title":"S9a: Reset/reseed drops all attachments","state":"todo"}
+{"kind":"StoryPrioritySet","at":"2026-07-28T16:32:21Z","priority":"high"}
+{"kind":"StoryLabelsSet","at":"2026-07-28T16:32:21Z","labels":["plan-1d","sev-high","sweep-sync"]}
+{"kind":"StoryDescriptionSet","at":"2026-07-28T16:32:21Z","description":"resetAndReseedFromThisDevice calls importBundle WITHOUT an assetsDirectory; the Importer's attachment-restore branch is gated on that parameter being present. (BackupRestoreService passes it correctly - this is a divergence between two callers of the same import path, not a fundamental import limitation.) One of three distinct failure modes split from the original S9 finding (S9a/S9b/S9c). Severity: High. Wave/Plan: Wave 1, plan 1d export-schema-completeness. Sweep: sync machinery."}

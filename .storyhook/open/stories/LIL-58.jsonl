@@ -1,0 +1,4 @@
+{"kind":"StoryCreated","at":"2026-07-28T16:32:21Z","title":"S20: ResetPropagator.broadcast silently no-ops on a cold KVS roster","state":"todo"}
+{"kind":"StoryPrioritySet","at":"2026-07-28T16:32:21Z","priority":"medium"}
+{"kind":"StoryLabelsSet","at":"2026-07-28T16:32:21Z","labels":["plan-3b","sev-medium","sweep-sync"]}
+{"kind":"StoryDescriptionSet","at":"2026-07-28T16:32:21Z","description":"e.g. a fresh install - 'Erase everywhere' wipes local data and the zone, notifies nobody, and reports success regardless. Severity: Medium. Wave/Plan: Wave 3, plan 3b reset-propagation-safety. Sweep: sync machinery."}

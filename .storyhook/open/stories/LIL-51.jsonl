@@ -1,0 +1,4 @@
+{"kind":"StoryCreated","at":"2026-07-28T16:32:21Z","title":"M7: AttachmentStore.delete orphans its auto-created JournalEntry","state":"todo"}
+{"kind":"StoryPrioritySet","at":"2026-07-28T16:32:21Z","priority":"medium"}
+{"kind":"StoryLabelsSet","at":"2026-07-28T16:32:21Z","labels":["plan-5a","sev-medium","sweep-stores"]}
+{"kind":"StoryDescriptionSet","at":"2026-07-28T16:32:21Z","description":"A Nullify relationship - JournalStore refuses to delete auto-created entries as 'non-user-editable', leaving a permanent blank journal row. Severity: Medium. Wave/Plan: Wave 5, plan 5a mutation-scope-discipline. Sweep: stores/persistence."}

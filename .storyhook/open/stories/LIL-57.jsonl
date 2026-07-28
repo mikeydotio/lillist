@@ -1,0 +1,4 @@
+{"kind":"StoryCreated","at":"2026-07-28T16:32:21Z","title":"S19: A partial zone-erase failure is not resumable","state":"todo"}
+{"kind":"StoryPrioritySet","at":"2026-07-28T16:32:21Z","priority":"medium"}
+{"kind":"StoryLabelsSet","at":"2026-07-28T16:32:21Z","labels":["plan-3b","sev-medium","sweep-sync"]}
+{"kind":"StoryDescriptionSet","at":"2026-07-28T16:32:21Z","description":"'Try Again' never re-runs the erase step. CloudKitErrorClassifier lacks zoneNotFound/userDeletedZone cases, leaving a permanent red sync badge with no re-upload path. There is also no 'iCloud not empty' guard before a replaceLocal direction proceeds. Severity: Medium. Wave/Plan: Wave 3, plan 3b reset-propagation-safety. Sweep: sync machinery."}

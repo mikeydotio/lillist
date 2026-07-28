@@ -1,0 +1,4 @@
+{"kind":"StoryCreated","at":"2026-07-28T16:32:21Z","title":"L5: archive/unarchive fail the whole batch on one missing ID","state":"todo"}
+{"kind":"StoryPrioritySet","at":"2026-07-28T16:32:21Z","priority":"low"}
+{"kind":"StoryLabelsSet","at":"2026-07-28T16:32:21Z","labels":["plan-5a","sev-low","sweep-stores"]}
+{"kind":"StoryDescriptionSet","at":"2026-07-28T16:32:21Z","description":"No partial-success path. Severity: Low. Wave/Plan: Wave 5, plan 5a mutation-scope-discipline. Sweep: stores/persistence."}
