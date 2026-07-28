@@ -38,6 +38,16 @@ public final class LocalBackupCoordinator: @unchecked Sendable {
     private let tokenStore: PersistentHistoryTokenStore
     private let snapshotManager: BackupSnapshotManager?
     private let localAuthor: String
+    /// Shared with `MigrationCoordinator`/`DataStoreResetService` (`S11`).
+    /// `nil` (the default) preserves prior behavior for tests/legacy
+    /// callers. When set, `processRemoteChange` skips its prune step
+    /// while any destructive op (migration, reset, restore) holds the
+    /// gate (`S4`/`S23`) — a remote-change notification landing during a
+    /// reset/restore's quiesce window would otherwise see the
+    /// freshly-emptied live store and read that as "every task was
+    /// deleted elsewhere," pruning the live backup package's files right
+    /// along with it.
+    private let destructiveOpGate: DestructiveOpGate?
 
     private var didSaveObserver: NSObjectProtocol?
     private var remoteObserver: NSObjectProtocol?
@@ -48,7 +58,8 @@ public final class LocalBackupCoordinator: @unchecked Sendable {
         store: TaskBackupStore,
         tokenStore: PersistentHistoryTokenStore,
         snapshotManager: BackupSnapshotManager? = nil,
-        localAuthor: String = PersistenceController.localTransactionAuthor
+        localAuthor: String = PersistenceController.localTransactionAuthor,
+        destructiveOpGate: DestructiveOpGate? = nil
     ) {
         self.persistence = persistence
         self.preferences = preferences
@@ -56,6 +67,7 @@ public final class LocalBackupCoordinator: @unchecked Sendable {
         self.tokenStore = tokenStore
         self.snapshotManager = snapshotManager
         self.localAuthor = localAuthor
+        self.destructiveOpGate = destructiveOpGate
     }
 
     /// One-call launch entry point: start observing, seed the package if it has
@@ -272,11 +284,22 @@ public final class LocalBackupCoordinator: @unchecked Sendable {
             if !projected.records.isEmpty {
                 try await store.upsert(projected.records, assets: projected.assets)
             }
-            // Prune files for tasks no longer present in the live store.
-            let live = await liveTaskIDs()
-            let onDisk = (try? await store.taskFileIDs()) ?? []
-            let stale = Array(onDisk.subtracting(live))
-            if !stale.isEmpty { try await store.remove(taskIDs: stale) }
+            // S4/S23: never prune while a destructive op (migration,
+            // reset, restore) holds the shared gate — see
+            // `destructiveOpGate`'s doc comment. The upsert above still
+            // runs (additive, safe even mid-op); only the deletion step
+            // is dangerous. The op's own post-completion
+            // `reconcileFull()` call (`DataStoreResetService`/
+            // `BackupRestoreService`) is what correctly resyncs the
+            // package to the post-op truth instead.
+            let destructiveOpInFlight = await destructiveOpGate?.currentOwner != nil
+            if !destructiveOpInFlight {
+                // Prune files for tasks no longer present in the live store.
+                let live = await liveTaskIDs()
+                let onDisk = (try? await store.taskFileIDs()) ?? []
+                let stale = Array(onDisk.subtracting(live))
+                if !stale.isEmpty { try await store.remove(taskIDs: stale) }
+            }
             if diff.sidecarsDirty { try await refreshSidecars() }
             try await updateManifest()
         } catch {

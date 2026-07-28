@@ -304,4 +304,68 @@ struct LocalBackupCoordinatorTests {
         // Every created file must eventually be removed by its delete.
         #expect(await waitUntil(timeout: 10.0) { (try? await store.taskFileCount()) == 0 })
     }
+
+    // MARK: - S4/S23: processRemoteChange never prunes mid-destructive-op
+
+    @Test("processRemoteChange skips pruning while the destructive-op gate is held, and prunes once released (S4/S23)")
+    @MainActor
+    func processRemoteChangeSkipsPruneWhileGateHeld() async throws {
+        // The live store is left completely empty (TestStore.make()) —
+        // this test seeds the PACKAGE directly via store.upsert, never
+        // going through the coordinator's own live-change observers, so
+        // there is no risk of an observer-dispatched processRemoteChange
+        // task racing the explicit, controlled calls below (a real risk:
+        // NSPersistentStoreRemoteChange can fire from a plain local save
+        // too, and coord.stop() only unregisters FUTURE notifications —
+        // it can't cancel a Task already spawned from an earlier one).
+        // An empty live store with one on-disk task file is exactly the
+        // "stale file, no live counterpart" precondition the prune step
+        // reacts to — however it came to exist in production.
+        let p = try await TestStore.make()
+        let dir = tempDir()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let store = TaskBackupStore(packageDirectory: dir)
+        let dto = ExportSchema.TaskDTO(
+            id: UUID(), title: "Stale file with no live counterpart", notes: "", status: 0,
+            start: nil, startHasTime: false, deadline: nil, deadlineHasTime: false,
+            position: 1, isPinned: false, parentID: nil, tagIDs: [],
+            createdAt: nil, modifiedAt: nil, closedAt: nil, deletedAt: nil,
+            schemaVersion: CloudKitSchema.currentVersion
+        )
+        try await store.upsert([
+            BackupPackageSchema.TaskBackupRecord(
+                backupSchemaVersion: BackupPackageSchema.version,
+                cloudKitSchemaVersion: dto.schemaVersion,
+                task: dto, journalEntries: [], attachments: []
+            )
+        ], assets: [])
+        #expect(try await store.taskFileCount() == 1)
+
+        let tokens = PersistentHistoryTokenStore(
+            suiteName: "backup-test-\(UUID().uuidString)",
+            key: PersistentHistoryTokenStore.backupKey
+        )
+        let gate = DestructiveOpGate()
+        let coord = LocalBackupCoordinator(
+            persistence: p,
+            preferences: PreferencesStore(persistence: p),
+            store: store,
+            tokenStore: tokens,
+            destructiveOpGate: gate
+        )
+
+        // Hold the gate (simulating an in-flight reset/restore) and call
+        // processRemoteChange directly — the prune step must be skipped
+        // even though the live store has zero matching rows.
+        try gate.acquire(for: .restore)
+        await coord.processRemoteChange()
+        #expect(try await store.taskFileCount() == 1)
+
+        // Release the gate and call again — now the same stale file must
+        // be pruned, proving the guard is a genuine gate (not a permanent
+        // disable) and the mechanism itself still works.
+        gate.release()
+        await coord.processRemoteChange()
+        #expect(try await store.taskFileCount() == 0)
+    }
 }

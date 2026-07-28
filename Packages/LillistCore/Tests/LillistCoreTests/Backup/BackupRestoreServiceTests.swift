@@ -198,6 +198,43 @@ struct BackupRestoreServiceTests {
         #expect(await count("LillistTask", in: target) == 1)
     }
 
+    // MARK: - S4: live-package restore must survive a mid-reset prune
+
+    /// A `BackupDataResetting` that deletes the entire live package
+    /// directory during `resetAllData()` — the worst-case, deterministic
+    /// stand-in for S4's real trigger (a remote-change notification
+    /// landing mid-reset drives `LocalBackupCoordinator.processRemoteChange`
+    /// to prune every package file as "stale" against the now-empty live
+    /// store).
+    final class PackageWipingResetter: BackupDataResetting {
+        let packageDirectory: URL
+        init(packageDirectory: URL) { self.packageDirectory = packageDirectory }
+        func resetAllData() async throws {
+            try? FileManager.default.removeItem(at: packageDirectory)
+        }
+    }
+
+    @Test("S4: restore(from: .livePackage) survives the live package being destroyed mid-reset")
+    func liveRestoreSurvivesPackagePruneDuringReset() async throws {
+        let dir = tempDir("pkg")
+        defer { try? FileManager.default.removeItem(at: dir) }
+        _ = try await buildPopulatedPackage(into: dir)
+
+        let target = try await TestStore.make()
+        let resetter = PackageWipingResetter(packageDirectory: dir)
+        let service = makeService(into: target, packageDir: dir, reset: resetter)
+
+        let summary = try await service.restore(from: .livePackage)
+
+        // Even though resetAllData() (simulating S4's mid-reset prune)
+        // deleted the ENTIRE live package directory, the restore still
+        // recovers the pre-wipe data — proving it was staged BEFORE the
+        // destructive step ran, not read from the live path afterward.
+        #expect(summary.tasksInserted == 1)
+        #expect(await count("LillistTask", in: target) == 1)
+        #expect(await count("Tag", in: target) == 1)
+    }
+
     @Test("a schema-mismatched package is refused and never resets")
     func incompatibleRefused() async throws {
         let dir = tempDir("pkg")

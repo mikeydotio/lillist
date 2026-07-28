@@ -372,7 +372,8 @@ final class AppEnvironment {
             preferences: preferencesStore,
             store: TaskBackupStore(packageDirectory: backupPackageDirectory),
             tokenStore: PersistentHistoryTokenStore(appGroupID: Self.appGroupID, key: PersistentHistoryTokenStore.backupKey),
-            snapshotManager: backupSnapshotManager
+            snapshotManager: backupSnapshotManager,
+            destructiveOpGate: destructiveOpGate
         )
         self.backupRestoreService = BackupRestoreService(
             reset: self.dataStoreReset,

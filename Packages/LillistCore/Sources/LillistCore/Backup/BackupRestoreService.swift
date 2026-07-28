@@ -183,12 +183,40 @@ public final class BackupRestoreService {
     private func resolveReader(_ source: RestoreSource) throws -> ResolvedReader {
         switch source {
         case .livePackage:
-            return ResolvedReader(reader: BackupPackageReader(packageDirectory: packageDirectory), tempDirectory: nil)
+            // S4: stage a COPY of the live package before any destructive
+            // step runs, rather than reading packageDirectory in place
+            // after the wipe. Without this, a remote-change notification
+            // landing during the reset's quiesce window drives
+            // LocalBackupCoordinator.processRemoteChange, which diffs the
+            // now-empty live store against the package's on-disk files
+            // and prunes every one of them as "stale" — the restore then
+            // reads (and imports) nothing, destroying the very package
+            // that would have let the user retry. Mirrors the
+            // .snapshotZip case below (unzip-to-temp), which was already
+            // immune to this for the same reason.
+            let temp = FileManager.default.temporaryDirectory
+                .appendingPathComponent("lillist-restore-live-\(UUID().uuidString)", isDirectory: true)
+            try FileManager.default.createDirectory(at: temp, withIntermediateDirectories: true)
+            try Self.copyPackageContents(from: packageDirectory, to: temp)
+            return ResolvedReader(reader: BackupPackageReader(packageDirectory: temp), tempDirectory: temp)
         case .snapshotZip(let zipURL):
             let temp = FileManager.default.temporaryDirectory
                 .appendingPathComponent("lillist-restore-\(UUID().uuidString)", isDirectory: true)
             try BackupSnapshotManager.unzip(zipURL, to: temp)
             return ResolvedReader(reader: BackupPackageReader(packageDirectory: temp), tempDirectory: temp)
+        }
+    }
+
+    /// Copy every top-level child of `source` into `destination` (which
+    /// must already exist). A no-op — not an error — when `source` itself
+    /// doesn't exist yet, matching `BackupPackageReader`'s own tolerant
+    /// missing-file handling (a package that has never been written to is
+    /// a legitimate, empty-restore state, not a failure).
+    private static func copyPackageContents(from source: URL, to destination: URL) throws {
+        let fm = FileManager.default
+        guard fm.fileExists(atPath: source.path) else { return }
+        for child in try fm.contentsOfDirectory(at: source, includingPropertiesForKeys: nil) {
+            try fm.copyItem(at: child, to: destination.appendingPathComponent(child.lastPathComponent))
         }
     }
 
