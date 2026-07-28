@@ -743,6 +743,22 @@ public final class TaskStore: @unchecked Sendable {
                 let m = try fetchManagedObject(id: id, in: context)
                 guard let deletedAt = m.deletedAt else { return }
                 clearSoftDelete(from: m, matchingDeletedAt: deletedAt)
+                // C2 (binding product decision, 2026-07-28): a child restored
+                // while its own parent is still trashed is promoted to root,
+                // severing the link — left alone it lands in an unreachable
+                // limbo (invisible in the parent's listing, since the parent
+                // is still hidden) that becomes C1's next purge victim.
+                if let parent = m.parent, parent.deletedAt != nil {
+                    m.parent = nil
+                }
+                // H4: a stale pre-trash position can collide with a live
+                // sibling that moved into it via recompaction while this
+                // task sat in the trash. Always reassign a fresh position
+                // among the (possibly new, per the promotion above) live
+                // sibling group — the same edge-placement helper `create`
+                // uses, now that `nextPositionDetail` itself ignores trashed
+                // siblings when computing the edge.
+                m.position = try nextPositionDetail(forParent: m.parent, placement: .bottom).assigned
                 try context.save()
             }
             if let scheduler = notificationScheduler {
@@ -917,6 +933,13 @@ public final class TaskStore: @unchecked Sendable {
     private func clearSoftDelete(from m: LillistTask, matchingDeletedAt: Date, visited: inout Set<NSManagedObjectID>) {
         guard visited.insert(m.objectID).inserted else { return }
         m.deletedAt = nil
+        // M2: a restored task must be unconditionally visible. Clearing
+        // only `deletedAt` can leave it in the archived-but-not-deleted
+        // state, invisible in the surfaces that don't show the archive.
+        // Applied to every node this cascade restores (root + matching
+        // descendants) so a subtree that was independently archived before
+        // being swept into the trash also resurfaces in full.
+        m.archivedAt = nil
         m.modifiedAt = Date()
         m.stampCurrentSchemaVersion()
         if let children = m.children as? Set<LillistTask> {
@@ -1009,10 +1032,17 @@ public final class TaskStore: @unchecked Sendable {
         placement: NewTaskPlacement = .bottom
     ) throws -> (assigned: Double, observedMax: Double?) {
         let req = NSFetchRequest<LillistTask>(entityName: "LillistTask")
+        // H4: ignore trashed siblings when computing the edge — consistent
+        // with `recompactSiblings`/`childrenFetchRequest`, which already
+        // filter this way. A trashed sibling is logically absent from the
+        // ordering domain everywhere else in this file; this was the one
+        // holdout, and it's what let a restored task's stale position
+        // collide with a live sibling that moved into that slot via
+        // recompaction while the restored task sat in the trash.
         if let parent {
-            req.predicate = NSPredicate(format: "parent == %@", parent)
+            req.predicate = NSPredicate(format: "parent == %@ AND deletedAt == nil", parent)
         } else {
-            req.predicate = NSPredicate(format: "parent == nil")
+            req.predicate = NSPredicate(format: "parent == nil AND deletedAt == nil")
         }
         // For `.bottom` we need the largest position (sort desc); for `.top`
         // the smallest (sort asc). Either way we fetch a single edge row.
