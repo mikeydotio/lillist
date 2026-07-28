@@ -532,7 +532,18 @@ are tracked here so nothing is silently dropped.
 - [ ] CloudKit Console: audit the Production zone for orphaned/purged
       records (`C4`/`X4`) — once, at leisure; re-check after Wave 1's `1b`
       `purge-cloudkit-retirement` merges and deploys.
-- [ ] macOS pre/post store-location migration with data intact (`1c`).
+- [ ] macOS pre/post store-location migration with data intact (`1c`):
+      (a) simple case — a Mac with only the legacy Application-Support
+      store migrates cleanly into the App Group on first launch after this
+      fix, data intact, legacy quarantined not deleted; (b) conflict case —
+      a Mac where the widget already populated the App-Group store (i.e.
+      one that hit the `X1` bug pre-fix) with the legacy store also
+      present: confirm the `iCloudSync` branch lands on the legacy store's
+      content with the App-Group original recoverable from quarantine, and
+      the `localOnly` branch makes no mutation at all (still boots on
+      legacy). See the council decision:
+      `.council/macos-migration-both-stores-populated/DECISION.md` and
+      `docs/superpowers/plans/2026-07-28-plan-1c-store-location-unification.md`.
 - [ ] End-to-end sync-mode switches on live iCloud (Wave 2).
 - [ ] Account switch with a second Apple ID (`3a`).
 - [ ] Two-device reset propagation, including the stale-event UX (`3b`).
