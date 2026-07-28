@@ -2,3 +2,4 @@
 {"kind":"StoryPrioritySet","at":"2026-07-28T16:32:21Z","priority":"critical"}
 {"kind":"StoryLabelsSet","at":"2026-07-28T16:32:21Z","labels":["plan-2b","sev-critical","sweep-sync"]}
 {"kind":"StoryDescriptionSet","at":"2026-07-28T16:32:21Z","description":"It moves the live store file out from under an OPEN coordinator, and reconfigure(to: prev) no-ops when prev == currentMode - a crash landing at .preparing leaves the app writing to an unlinked inode (MigrationCoordinator.swift:170-189, PersistenceHost.swift:124). Failure scenario: restored data is invisible, the journal is cleared, and the user is told recovery succeeded. Severity: Critical. Wave/Plan: Wave 2, plan 2b backup-restore-correctness. Sweep: sync machinery. Verified directly against source."}
+{"kind":"StoryStateChanged","at":"2026-07-28T22:35:29Z","state":"in-progress"}
