@@ -61,6 +61,12 @@ public final class TaskDuplicateReconciler: @unchecked Sendable {
     private let persistence: PersistenceController
     private var observer: NSObjectProtocol?
 
+    /// Optional diagnostic sink. When non-nil, a reconcile failure (M5)
+    /// emits a structured `DiagnosticEvent` in addition to the
+    /// unconditional `os.Logger` line — mirrors `TaskStore`'s
+    /// property-injected `diagnosticLog`.
+    public var diagnosticLog: DiagnosticSink?
+
     public init(persistence: PersistenceController) {
         self.persistence = persistence
     }
@@ -93,9 +99,38 @@ public final class TaskDuplicateReconciler: @unchecked Sendable {
     /// also call it once at launch — the catch-up pass for duplicates that
     /// arrived while the app wasn't running (e.g. a restore, then relaunch).
     public func reconcileNow() async {
+        await reconcileNow(mirrorIdentifier: persistence.container as? NSPersistentCloudKitContainer)
+    }
+
+    /// Test seam for M5: exercises the real error-handling path with an
+    /// injected mirror identifier, since a live `NSPersistentCloudKitContainer`
+    /// (what `reconcileNow()` derives its identifier from) isn't available
+    /// under unsigned `swift test` / the in-memory test store.
+    func reconcileNow(mirrorIdentifier: (any MirroredObjectIdentifying)?) async {
         let ctx = persistence.container.viewContext
-        let identifier = persistence.container as? NSPersistentCloudKitContainer
-        _ = try? await Self.reconcileDuplicates(in: ctx, mirrorIdentifier: identifier)
+        do {
+            _ = try await Self.reconcileDuplicates(in: ctx, mirrorIdentifier: mirrorIdentifier)
+        } catch {
+            // M5: this used to be `_ = try? await ...` — a reconcile
+            // failure vanished silently, and the underlying save can also
+            // commit unrelated pending work staged on the shared
+            // `viewContext` by whatever else was mid-mutation (H5/X19,
+            // Wave 5a's broader shared-context save-discipline finding —
+            // out of scope to fix generally here, but this call site must
+            // not additionally hide its own failure). Fail loud: always
+            // log, and emit a diagnostic when a sink is wired.
+            LillistLog.store.error("TaskDuplicateReconciler.reconcileNow failed: \(String(describing: error), privacy: .public)")
+            if let sink = diagnosticLog {
+                await sink.log(DiagnosticEvent(
+                    at: Date(),
+                    seq: 0,
+                    process: .app,
+                    category: .data,
+                    name: "taskDuplicateReconciler.reconcileFailed",
+                    payload: ["error": .string(String(describing: error))]
+                ))
+            }
+        }
     }
 
     /// Pure-ish core: find every `LillistTask` id shared by more than one
@@ -132,6 +167,7 @@ public final class TaskDuplicateReconciler: @unchecked Sendable {
                     continue   // ambiguous (0 or 2+ mirrored) — do nothing, don't guess
                 }
                 for loser in group where loser.objectID != survivor.objectID {
+                    merge(loser: loser, into: survivor)
                     ctx.delete(loser)
                     deletedCount += 1
                 }
@@ -141,5 +177,59 @@ public final class TaskDuplicateReconciler: @unchecked Sendable {
             }
             return deletedCount
         }
+    }
+
+    /// C3: before `ctx.delete(loser)` runs, re-point every relationship the
+    /// model's `Cascade` delete rule would otherwise sweep away with the
+    /// loser — children, journal entries, attachments, notification specs —
+    /// onto `survivor`. After this, the loser's cascade closure is empty, so
+    /// deleting it destroys only the duplicate row itself, not the subtree
+    /// hanging off it.
+    ///
+    /// Also field-merges `survivor`'s content, row-level last-write-wins on
+    /// `modifiedAt`: if `loser` was edited more recently, its content
+    /// (`title`, `notes`, `status`, `start`/`startHasTime`,
+    /// `deadline`/`deadlineHasTime`, `isPinned`, `closedAt`, `archivedAt`,
+    /// `deletedAt`) becomes the merged truth; otherwise `survivor`'s own
+    /// fields stand. This is a row-granularity LWW, not true per-property
+    /// CRDT merge — Core Data tracks one `modifiedAt` per row, not a
+    /// per-property version vector, so "per property" in practice means
+    /// every field traces back to whichever *row* was edited more recently.
+    /// `position` and `parent` are deliberately **excluded**: they describe
+    /// the survivor's structural placement, not content, and blending them
+    /// from a different row risks reintroducing exactly the
+    /// position-collision and tree-consistency defects the rest of this
+    /// hardening program fixes.
+    private static func merge(loser: LillistTask, into survivor: LillistTask) {
+        if let children = loser.children as? Set<LillistTask> {
+            for child in children { child.parent = survivor }
+        }
+        if let entries = loser.journalEntries as? Set<JournalEntry> {
+            for entry in entries { entry.task = survivor }
+        }
+        if let attachments = loser.attachments as? Set<Attachment> {
+            for attachment in attachments { attachment.task = survivor }
+        }
+        if let specs = loser.notificationSpecs as? Set<NotificationSpec> {
+            for spec in specs { spec.task = survivor }
+        }
+
+        let loserModifiedAt = loser.modifiedAt ?? .distantPast
+        let survivorModifiedAt = survivor.modifiedAt ?? .distantPast
+        if loserModifiedAt > survivorModifiedAt {
+            survivor.title = loser.title
+            survivor.notes = loser.notes
+            survivor.statusRaw = loser.statusRaw
+            survivor.start = loser.start
+            survivor.startHasTime = loser.startHasTime
+            survivor.deadline = loser.deadline
+            survivor.deadlineHasTime = loser.deadlineHasTime
+            survivor.isPinned = loser.isPinned
+            survivor.closedAt = loser.closedAt
+            survivor.archivedAt = loser.archivedAt
+            survivor.deletedAt = loser.deletedAt
+            survivor.modifiedAt = loser.modifiedAt
+        }
+        survivor.stampCurrentSchemaVersion()
     }
 }
