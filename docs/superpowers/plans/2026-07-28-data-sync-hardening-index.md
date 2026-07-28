@@ -76,7 +76,20 @@ CloudKit, XCTest + Swift Testing, xcodegen, storyhook (prefix `LIL`).
   this plan touched). See *Wave 1c closing report* below for the per-
   finding breakdown, the both-stores-populated council decision, and what
   `3a` (which continues the `AppEnvironment.swift` shared-file chain)
-  needs to know.
+  needs to know. **Correction (found post-close, 2026-07-28, fixed in
+  `d4f942f8`):** `1c`'s own new `X15` test
+  (`GatedPersistenceResolverTests.test_X15_...`) exposed a pre-existing
+  fixture defect — every test in that file shared one literal
+  `UserDefaults(suiteName:)` string for `SyncModeStore`, real disk-backed
+  cross-process state that raced under `swift test --parallel`'s
+  separate-worker-process model. This plan's "full suite green" claim
+  above was **true in aggregate** (the race didn't always fire, and when
+  it didn't, the run genuinely was green) but the verification method
+  itself (piping through `tail`, reading only the swift-testing summary
+  line) could not have caught it reliably even when it did fire — see the
+  new *Verification protocol* bullet under *Known constraints* below,
+  binding on every later wave. Filed as `LIL-79`, fixed by giving every
+  test its own fresh UUID-suffixed identifier (no product code changed).
 - ✅ **Plan `1d` closed all 4 findings** (`X3`, `S9a`, `X13`, `X18` /
   `LIL-17`, `LIL-30`, `LIL-44`, `LIL-67`) — plus two more silent drops the
   model-derived completeness test surfaced beyond X3's own text:
@@ -102,7 +115,14 @@ CloudKit, XCTest + Swift Testing, xcodegen, storyhook (prefix `LIL`).
   (`backup-restore-correctness`, the chain's next link) needs to know.
   **No CloudKit-visible schema implications** — every change is to the
   export/backup file format and in-process logic; the Core Data model is
-  unchanged.
+  unchanged. **Correction:** `1d`'s "full `LillistCore` suite green" claim
+  above was verified with the same insufficient method flagged in `1c`'s
+  correction note above (swift-testing summary line only, output piped
+  through `tail`) — the `LIL-79` race living in `GatedPersistenceResolverTests`
+  (a `1c`-owned file `1d` never touched) was present in every suite run
+  this plan made, undetected for the same structural reason. No `1d` code
+  is implicated; noted here only so this row doesn't read as having used a
+  verification method later found insufficient without saying so.
 - ✅ Review doc committed: `docs/reviews/2026-07-28-data-sync-review.md`
   (70 findings, faithfully reproduced from the source-of-truth plan; no
   severity softened, nothing dropped).
@@ -324,6 +344,27 @@ every commit; `lillist-cli` builds; both apps verified with unsigned
 `xcodebuild` builds (BUILD SUCCEEDED, including the `LillistWidget`/
 `LillistWidget-macOS`, `ShareExtension-iOS`, and `ShortcutsActions` targets
 this plan touched).
+
+**Post-close addendum (`LIL-79`, fixed in `d4f942f8`):** the `X15`
+regression test added in `73c2fbf8`
+(`GatedPersistenceResolverTests.test_X15_extensionAndWidgetRolesSuppress
+MirroringMainAppDoesNot`) wrote `.iCloudSync` into a `UserDefaults`
+suite name every other test in that file also shared — a pre-existing
+fixture weakness the three earlier tests never exposed because they all
+wrote the same value (`.localOnly`). Under `swift test --parallel`'s
+separate-worker-process model this raced, reproduced twice by
+`team-lead` post-close. Fixed by giving every test in the file its own
+fresh UUID-suffixed suite name (matching the pattern already used
+everywhere else in this test target); no production code changed.
+Verified via a deliberate toggle-the-failure probe (confirmed `swift
+test --parallel`'s exit code and its `Test Suite … failed` /
+`Note: Some test targets reported failures` markers are trustworthy —
+the swift-testing summary line alone is not, since it excludes
+`XCTestCase` results) plus two full-suite green runs with unmasked exit
+codes (1195 tests/225 suites + 89 `XCTestCase` methods, exit 0, no
+failure markers, both runs) and five additional stress runs of the
+affected file alone. See the *Verification protocol* bullet under
+*Known constraints* — binding on every later wave.
 
 **Class-killer delivered:** `StoreLocation`
 (`Packages/LillistCore/Sources/LillistCore/Persistence/StoreLocation.swift`)
@@ -879,3 +920,23 @@ are tracked here so nothing is silently dropped.
   device verification timing; see *Execution model* above.
 - **`X20`'s flip-flop stress test** is additional hardening on top of `5a`'s
   fix, called out again in `6a`'s scope — one story (owned by `5a`), not two.
+- **Verification protocol (added after `LIL-79`, binding on every later
+  wave):** `swift test`'s swift-testing summary line ("Test run with N
+  tests in M suites passed") does **not** include `XCTestCase`-based test
+  results — under `--parallel` specifically, passing `XCTestCase` tests
+  print only progress lines (`[N/M] Testing Bundle.Class/method`), no
+  per-test pass/fail confirmation and no XCTest bundle summary, so a
+  visual scan of "did the last lines say passed" is not sufficient. Every
+  suite-verification claim in this ledger (and every wave's closing
+  report) must capture the real process exit code — never pipe through
+  `tail`/`grep -m1`/`head`, which discard it — and additionally grep the
+  full captured output for `Test Suite .* failed` and `Note: Some test
+  targets reported failures` (the two markers XCTest emits on a real
+  failure, confirmed via a deliberate toggle-the-failure probe during the
+  `LIL-79` fix). Minimum command shape:
+  `swift test --package-path Packages/LillistCore --parallel --num-workers 2 > /tmp/suite.log 2>&1; echo EXIT:$?`
+  then `grep -E "Test Suite .* failed|Note: Some test targets reported failures" /tmp/suite.log`.
+  Run twice when a change touches shared test fixture state (in-process
+  singletons, `UserDefaults(suiteName:)`, shared temp directories) to
+  derisk parallel-worker races — see the `LIL-79` postmortem in the
+  `1c` correction note above for the shape of defect this catches.
