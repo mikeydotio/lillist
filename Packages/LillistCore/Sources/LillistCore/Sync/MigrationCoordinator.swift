@@ -208,10 +208,45 @@ public final class MigrationCoordinator {
         }
         LillistLog.sync.notice("restoreFromBackup restoring quarantined store")
         emit(.removingLocalStore)
-        try quarantine.restore(quarantinedStore: backup, to: targetURL)
         let prev = entry.previousMode ?? .localOnly
+        do {
+            // S2: close the live store's connection BEFORE touching any
+            // file on disk. The prior implementation moved the live file
+            // out from under an OPEN coordinator and only reconfigured
+            // afterwards — a crash (or even just `prev == currentMode`,
+            // which makes `reconfigure(to:)` a silent same-mode no-op)
+            // left the app writing into an unlinked/quarantined inode
+            // while the journal and mode store both already claimed
+            // success. No backup is requested here (`backupVia: nil`) —
+            // `quarantine.restore` below already quarantines whatever is
+            // currently at `targetURL` before copying the recovery
+            // backup in.
+            _ = try await host.tearDownStore(backupVia: nil)
+            try quarantine.restore(quarantinedStore: backup, to: targetURL)
+            emit(.reconfiguringStore)
+            // Forced attach, not `reconfigure(to:)`: the file at
+            // `targetURL` was just replaced out from under the
+            // coordinator, so even a same-mode restore
+            // (`prev == currentMode`) must open a fresh connection —
+            // `reconfigure`'s same-mode guard would otherwise no-op and
+            // leave the coordinator permanently detached.
+            try await host.attachStore(at: prev)
+        } catch {
+            // Best-effort reattach so a failure at any point in this
+            // sequence never leaves the coordinator permanently
+            // store-less (mirrors S12's reattach-on-failure pattern).
+            // The journal is deliberately left untouched here — it's
+            // already `.failed` from the migration this is recovering,
+            // and the recovery sheet should still offer another attempt.
+            try? await host.reattachStore()
+            throw error
+        }
+        // S8-pattern: flip the mode store only AFTER the destructive
+        // file-swap and reattach both succeeded — never before. (This
+        // mirrors runMigration's own S8 fix; restoreFromBackup had the
+        // identical ordering bug in its own right, fixed here as part of
+        // the same method rewrite.)
         await syncModeStore.setMode(prev)
-        try await host.reconfigure(to: prev)
         try journal.clear()
         emit(.completed)
         LillistLog.sync.notice("restoreFromBackup completed mode=\(prev.rawValue, privacy: .public)")

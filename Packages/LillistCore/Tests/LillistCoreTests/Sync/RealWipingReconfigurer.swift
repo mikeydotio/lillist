@@ -23,6 +23,7 @@ actor RealWipingReconfigurer: PersistenceReconfiguring, PersistenceResetting {
     private let persistence: PersistenceController
     private(set) var mode: SyncMode
     private(set) var reconfigureCalls: [SyncMode] = []
+    private(set) var attachCalls: [SyncMode] = []
     private(set) var resetSteps: [String] = []
 
     init(persistence: PersistenceController, initialMode: SyncMode) {
@@ -58,5 +59,11 @@ actor RealWipingReconfigurer: PersistenceReconfiguring, PersistenceResetting {
 
     func reattachStore() async throws {
         resetSteps.append("reattach")
+    }
+
+    func attachStore(at newMode: SyncMode) async throws {
+        resetSteps.append("attach")
+        attachCalls.append(newMode)
+        mode = newMode
     }
 }

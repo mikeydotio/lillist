@@ -447,4 +447,6 @@ private actor RealWipingResetHost: PersistenceResetting {
     func rebuildEmptyStore() async throws {}
 
     func reattachStore() async throws {}
+
+    func attachStore(at newMode: SyncMode) async throws {}
 }

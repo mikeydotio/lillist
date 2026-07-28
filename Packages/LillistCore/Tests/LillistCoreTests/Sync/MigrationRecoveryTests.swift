@@ -166,6 +166,79 @@ struct MigrationRecoveryTests {
         #expect(try journal.read() == .idle)
     }
 
+    @Test("restoreFromBackup at the SAME mode still reopens a fresh connection (S2)")
+    @MainActor
+    func restoreSameModeStillReattaches() async throws {
+        // The exact crash scenario S2 reports: previousMode == the mode
+        // the coordinator is already reading. Before the fix,
+        // `host.reconfigure(to: prev)` would have been a silent no-op
+        // here — nothing would ever have called tearDownStore or
+        // attachStore, and the coordinator would have kept its stale
+        // pre-restore connection.
+        let dir = tempDir()
+        let liveURL = dir.appendingPathComponent("Lillist.sqlite")
+        try Data("backup-content".utf8).write(to: liveURL)
+        let quarantine = QuarantineManager(rootDirectory: dir)
+        _ = try quarantine.copyStore(at: liveURL)
+        try FileManager.default.removeItem(at: liveURL)
+
+        let journal = InMemoryMigrationJournalStore(initial: MigrationJournal(
+            state: .reconfiguringStore,
+            operation: .syncFirstThenDisable,
+            previousMode: .localOnly
+        ))
+        // startMode == previousMode: both .localOnly.
+        let (coordinator, recon, _) = makeCoordinator(startMode: .localOnly, journal: journal, quarantineRoot: dir)
+
+        try await coordinator.restoreFromBackup(filename: "Lillist.sqlite", targetURL: liveURL)
+
+        #expect(try String(contentsOf: liveURL, encoding: .utf8) == "backup-content")
+        #expect(await recon.mode == .localOnly)
+        // The new mechanism ran even though the mode never changed —
+        // this is the observable proof the same-mode no-op is gone.
+        #expect(await recon.resetSteps == ["tearDown"])
+        #expect(await recon.attachCalls == [.localOnly])
+        // The OLD mechanism (reconfigure) must never fire for this path.
+        #expect(await recon.reconfigureCalls == [])
+        #expect(try journal.read() == .idle)
+    }
+
+    @Test("restoreFromBackup: a failed attachStore best-effort reattaches and leaves the journal untouched (S2)")
+    @MainActor
+    func restoreAttachFailureReattachesWithoutClobberingJournal() async throws {
+        let dir = tempDir()
+        let liveURL = dir.appendingPathComponent("Lillist.sqlite")
+        try Data("backup-content".utf8).write(to: liveURL)
+        let quarantine = QuarantineManager(rootDirectory: dir)
+        _ = try quarantine.copyStore(at: liveURL)
+        try FileManager.default.removeItem(at: liveURL)
+
+        let preexisting = MigrationJournal(
+            state: .failed,
+            operation: .replaceICloudWithLocal,
+            previousMode: .iCloudSync,
+            failureReason: "original migration crash"
+        )
+        let journal = InMemoryMigrationJournalStore(initial: preexisting)
+        let (coordinator, recon, _) = makeCoordinator(startMode: .localOnly, journal: journal, quarantineRoot: dir)
+        await recon.failOnAttachStore(call: 1)
+
+        await #expect(throws: LillistError.self) {
+            try await coordinator.restoreFromBackup(filename: "Lillist.sqlite", targetURL: liveURL)
+        }
+
+        // tearDown ran, attachStore failed, and the catch's best-effort
+        // reattach ran too — the coordinator must never be left
+        // store-less on this failure path (mirrors S12's pattern).
+        #expect(await recon.resetSteps == ["tearDown", "reattach"])
+        // The journal is left EXACTLY as it was — restoreFromBackup never
+        // writes to it on failure, so the recovery sheet's existing
+        // .failed entry (and its original failureReason) survives for
+        // another attempt, rather than being silently cleared or
+        // overwritten with a new, less-informative failure.
+        #expect(try journal.read() == preexisting)
+    }
+
     @Test("A secondary journal-write failure in the catch does not mask the original error")
     @MainActor
     func secondaryWriteFailureDoesNotMask() async throws {

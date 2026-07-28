@@ -372,4 +372,29 @@ public actor PersistenceHost: PersistenceReconfiguring, PersistenceResetting {
             try Self.addStore(desc, to: coordinator)
         }
     }
+
+    /// Attach a fresh store at an explicit `mode`. See
+    /// `PersistenceResetting.attachStore(at:)`.
+    public func attachStore(at mode: SyncMode) async throws {
+        guard storeURL != nil else {
+            throw LillistError.storeUnavailable(reason: "Cannot attach an in-memory store to a URL-based mode.")
+        }
+        let ctx = controller.container.viewContext
+        let coordinator = controller.container.persistentStoreCoordinator
+        let config = configuration(for: mode)
+        try await ctx.perform {
+            guard coordinator.persistentStores.isEmpty else {
+                throw LillistError.storeUnavailable(
+                    reason: "attachStore(at:) requires a fully detached coordinator; a store is already attached. Call tearDownStore first."
+                )
+            }
+            let desc = PersistenceController.makeStoreDescription(for: config)
+            try Self.addStore(desc, to: coordinator)
+            // The on-disk file at this URL may have just changed out from
+            // under us (S2's restore case) — drop any registered objects
+            // so a reader never sees rows from whatever was here before.
+            ctx.reset()
+        }
+        currentMode = mode
+    }
 }
