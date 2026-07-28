@@ -1,6 +1,19 @@
 import Foundation
 import os
 
+/// Result of `DataStoreResetService.recoverInterruptedReseed()` (`S9b`).
+public enum ReseedRecoveryOutcome: Sendable, Equatable {
+    /// No reseed was in flight — a normal launch.
+    case notInterrupted
+    /// A reseed was interrupted before the wipe reached the live store;
+    /// the original data is intact and untouched, so the stale journal
+    /// entry and staged directory were simply discarded.
+    case discardedSafely
+    /// A reseed was interrupted after the wipe; the staged bundle was the
+    /// only remaining copy and has been re-imported successfully.
+    case resumed
+}
+
 /// Performs an **irreversible data-store reset** for recovering from a
 /// suspected-corrupt store, or for deliberately re-converging every
 /// device on this iCloud account. Four flavors, all of which back up to
@@ -75,6 +88,14 @@ public final class DataStoreResetService {
     /// Re-import target for `resetAndReseedFromThisDevice()`. `nil` makes
     /// that method throw rather than silently reseed nothing.
     private let importer: Importer?
+    /// Durable crash-recovery record for `resetAndReseedFromThisDevice()`
+    /// (`S9b`) — see `ReseedJournal`'s header comment for why this is a
+    /// dedicated type, not a reused `MigrationJournal`. Defaults to a
+    /// fresh in-memory instance (matching `destructiveOpGate`'s own
+    /// default pattern) so every existing test is unaffected;
+    /// `AppEnvironment` injects a real `FileReseedJournalStore` so the
+    /// record survives a crash.
+    private let reseedJournal: any ReseedJournalStore
 
     /// Shared lock serializing this service against `MigrationCoordinator`
     /// (and `restoreFromBackup`) — both mutate the same `PersistenceHost`
@@ -108,6 +129,7 @@ public final class DataStoreResetService {
         exporter: Exporter? = nil,
         importer: Importer? = nil,
         destructiveOpGate: DestructiveOpGate = DestructiveOpGate(),
+        reseedJournal: any ReseedJournalStore = InMemoryReseedJournalStore(),
         quiesceMinQuietWindow: TimeInterval = 5,
         quiesceHardTimeout: TimeInterval = 300
     ) {
@@ -123,6 +145,7 @@ public final class DataStoreResetService {
         self.exporter = exporter
         self.importer = importer
         self.destructiveOpGate = destructiveOpGate
+        self.reseedJournal = reseedJournal
         self.quiesceMinQuietWindow = quiesceMinQuietWindow
         self.quiesceHardTimeout = quiesceHardTimeout
     }
@@ -188,11 +211,24 @@ public final class DataStoreResetService {
 
     /// "Erase data from all devices and restore all from this device's
     /// backup" (issue #71). Snapshots this device's *current* data to a
-    /// throwaway temp directory, wipes local + iCloud via `resetAllData()`'s
-    /// exact steps, re-imports the snapshot into the freshly-emptied store,
-    /// then propagates — every other known device discards its own local
-    /// state and re-downloads, converging on **this device's** data (not
-    /// empty) once the re-imported rows finish exporting.
+    /// **durable** staging directory, wipes local + iCloud via
+    /// `resetAllData()`'s exact steps, re-imports the snapshot into the
+    /// freshly-emptied store, then propagates — every other known device
+    /// discards its own local state and re-downloads, converging on
+    /// **this device's** data (not empty) once the re-imported rows
+    /// finish exporting.
+    ///
+    /// `S9b`: every step is journaled to `reseedJournal` and the export
+    /// is staged under `quarantine.rootDirectory` (durable, App-Group-
+    /// rooted) instead of `FileManager.default.temporaryDirectory`
+    /// (OS-purgeable — this project's own `CLAUDE.md` documents
+    /// Spotlight's `mds_stores` indexing backlog as a real trigger for
+    /// exactly this kind of churn on a `$TMPDIR` directory). A crash
+    /// after the wipe is recoverable via `recoverInterruptedReseed()` —
+    /// see that method and `ReseedJournal`'s header comment for the
+    /// recovery design. The staged directory is removed only on full
+    /// success; a failure at any point leaves it (and the journal entry)
+    /// in place as the recovery anchor.
     ///
     /// Throws `storeUnavailable` if constructed without an `exporter`/
     /// `importer` (both required for this flow only — every other method
@@ -204,35 +240,126 @@ public final class DataStoreResetService {
             )
         }
         try await withReentrancyGuard(label: "resetAndReseedFromThisDevice") {
-            let tempDir = FileManager.default.temporaryDirectory
-                .appendingPathComponent("lillist-reseed-\(UUID().uuidString)", isDirectory: true)
-            try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
-            defer { try? FileManager.default.removeItem(at: tempDir) }
+            let stagingRoot = quarantine.rootDirectory.appendingPathComponent("Reseed", isDirectory: true)
+            let stageDir = stagingRoot.appendingPathComponent(UUID().uuidString, isDirectory: true)
+            try FileManager.default.createDirectory(at: stageDir, withIntermediateDirectories: true)
 
-            // 1. snapshot this device's current data BEFORE anything is wiped.
-            try await exporter.export(to: tempDir)
-
-            // 2. wipe local + iCloud (same steps resetAllData() runs).
-            try await performReset(.everywhere)
-
-            // 3. re-seed the freshly-emptied store from the snapshot; it
-            //    re-exports to CloudKit normally from here. assetsDirectory
-            //    must be passed (S9a) — Exporter.export(to:) writes
-            //    attachment bytes under "<tempDir>/assets/", and the
-            //    importer's attachment-restore branch is gated on this
-            //    parameter being present; without it every attachment is
-            //    silently dropped. Mirrors BackupRestoreService.restore(from:)'s
-            //    equivalent, already-correct call (reader.assetsDirectory).
-            _ = try await importer.importBundle(
-                at: tempDir,
-                conflictPolicy: .replaceExisting,
-                assetsDirectory: tempDir.appendingPathComponent("assets", isDirectory: true)
+            var entry = ReseedJournal(
+                phase: .exporting,
+                startedAt: Date(),
+                lastHeartbeatAt: Date(),
+                stagedBundlePath: stageDir.path,
+                localDataWiped: false
             )
+            try reseedJournal.write(entry)
 
-            // 4. propagate, so peers know to discard their own state and
-            //    re-download rather than resurrecting it.
-            propagator?.broadcast(.resetAndReseed)
+            do {
+                // 1. snapshot this device's current data BEFORE anything
+                //    is wiped, into the durable staging directory.
+                try await exporter.export(to: stageDir)
+
+                // 2. wipe local + iCloud (same steps resetAllData() runs).
+                entry.phase = .wiping
+                entry.lastHeartbeatAt = Date()
+                try reseedJournal.write(entry)
+                try await performReset(.everywhere)
+                entry.localDataWiped = true
+                entry.lastHeartbeatAt = Date()
+                try reseedJournal.write(entry)
+
+                // 3. re-seed the freshly-emptied store from the staged
+                //    snapshot; it re-exports to CloudKit normally from
+                //    here. assetsDirectory must be passed (S9a) —
+                //    Exporter.export(to:) writes attachment bytes under
+                //    "<stageDir>/assets/", and the importer's
+                //    attachment-restore branch is gated on this parameter
+                //    being present; without it every attachment is
+                //    silently dropped. Mirrors
+                //    BackupRestoreService.restore(from:)'s equivalent,
+                //    already-correct call (reader.assetsDirectory).
+                entry.phase = .importing
+                entry.lastHeartbeatAt = Date()
+                try reseedJournal.write(entry)
+                _ = try await importer.importBundle(
+                    at: stageDir,
+                    conflictPolicy: .replaceExisting,
+                    assetsDirectory: stageDir.appendingPathComponent("assets", isDirectory: true)
+                )
+
+                // 4. propagate, so peers know to discard their own state
+                //    and re-download rather than resurrecting it.
+                propagator?.broadcast(.resetAndReseed)
+
+                // 5. success: the staged bundle and journal entry have
+                //    served their purpose — clean both up so a future
+                //    launch doesn't mistake this durable-but-now-stale
+                //    directory for a crashed reseed.
+                try? reseedJournal.clear()
+                try? FileManager.default.removeItem(at: stageDir)
+            } catch {
+                entry.phase = .failed
+                entry.failureReason = "\(error)"
+                entry.lastHeartbeatAt = Date()
+                try? reseedJournal.write(entry)
+                throw error
+            }
         }
+    }
+
+    /// Detects and, when safe, resolves an interrupted
+    /// `resetAndReseedFromThisDevice()` from a prior launch (`S9b`). Call
+    /// once, early at launch, before any UI assumes the store reflects
+    /// steady state.
+    ///
+    /// - If the journal is idle, this is a no-op (`.notInterrupted`).
+    /// - If the wipe never reached the live store
+    ///   (`localDataWiped == false`), the original data is intact and
+    ///   untouched — the journal entry and the stale staged directory are
+    ///   simply discarded (`.discardedSafely`).
+    /// - If the wipe already ran (`localDataWiped == true`), the live
+    ///   store has nothing but the staged bundle — this re-runs the
+    ///   import from `stagedBundlePath` (idempotent under
+    ///   `.replaceExisting`, whether or not the interrupted run got
+    ///   partway through its own import) and reports `.resumed` on
+    ///   success.
+    @discardableResult
+    public func recoverInterruptedReseed() async throws -> ReseedRecoveryOutcome {
+        let entry = try reseedJournal.read()
+        guard entry.isInFlight else { return .notInterrupted }
+
+        try destructiveOpGate.acquire(for: .reset("recoverInterruptedReseed"))
+        defer { destructiveOpGate.release() }
+
+        guard entry.localDataWiped else {
+            try? reseedJournal.clear()
+            if let path = entry.stagedBundlePath {
+                try? FileManager.default.removeItem(at: URL(fileURLWithPath: path))
+            }
+            return .discardedSafely
+        }
+        guard let path = entry.stagedBundlePath else {
+            // Shouldn't happen (localDataWiped implies the export step
+            // completed and recorded a path) — surface it rather than
+            // silently treating a wiped store with nothing to recover
+            // from as success.
+            throw LillistError.storeUnavailable(
+                reason: "A reseed was interrupted after wiping local data, but its staged backup path is missing from the recovery journal."
+            )
+        }
+        guard let importer else {
+            throw LillistError.storeUnavailable(
+                reason: "Can't resume the interrupted reseed: the import subsystem wasn't configured."
+            )
+        }
+        let stageDir = URL(fileURLWithPath: path)
+        _ = try await importer.importBundle(
+            at: stageDir,
+            conflictPolicy: .replaceExisting,
+            assetsDirectory: stageDir.appendingPathComponent("assets", isDirectory: true)
+        )
+        try? reseedJournal.clear()
+        try? FileManager.default.removeItem(at: stageDir)
+        return .resumed
     }
 
     /// Runs `operation` under the shared destructive-op gate (`S11`): a

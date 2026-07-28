@@ -368,30 +368,214 @@ struct DataStoreResetServiceTests {
         #expect(survivingTask.title == "Buy milk")
     }
 
-    @Test("resetAndReseedFromThisDevice: cleans up its temp export directory")
+    @Test("resetAndReseedFromThisDevice: cleans up its durable staging directory and journal on success (S9b)")
     @MainActor
     func resetAndReseedCleansUpTempDirectory() async throws {
+        // S9b: staging moved from FileManager.default.temporaryDirectory
+        // (OS-purgeable) to quarantine.rootDirectory/Reseed/<uuid>
+        // (durable) — this test now proves that durable location is
+        // cleaned up on success, not the old temp-dir location (which
+        // this flow no longer touches at all).
         let persistence = try await TestStore.make()
         let preferences = PreferencesStore(persistence: persistence)
         _ = try await preferences.read()
         let host = FakePersistenceReconfigurer(initialMode: .iCloudSync)
         let eraser = FakeCloudKitZoneEraser()
-        let tempRoot = FileManager.default.temporaryDirectory
-        let before = (try? FileManager.default.contentsOfDirectory(atPath: tempRoot.path).filter {
-            $0.hasPrefix("lillist-reseed-")
-        }) ?? []
+        let quarantineRoot = tempDir()
+        let reseedJournal = InMemoryReseedJournalStore()
 
-        let service = makeService(
-            startMode: .iCloudSync, host: host, eraser: eraser,
+        let service = DataStoreResetService(
+            host: host,
+            quarantine: QuarantineManager(rootDirectory: quarantineRoot),
+            zoneEraser: eraser,
+            quiesceMonitor: SyncQuiesceMonitor(bridge: CloudKitEventBridge()),
+            notificationScheduler: nil,
+            cloudKitContainerIdentifier: "iCloud.test",
             exporter: Exporter(persistence: persistence, preferences: preferences),
-            importer: Importer(persistence: persistence)
+            importer: Importer(persistence: persistence),
+            reseedJournal: reseedJournal
         )
         try await service.resetAndReseedFromThisDevice()
 
-        let after = (try? FileManager.default.contentsOfDirectory(atPath: tempRoot.path).filter {
-            $0.hasPrefix("lillist-reseed-")
-        }) ?? []
-        #expect(after.count == before.count)
+        let reseedRoot = quarantineRoot.appendingPathComponent("Reseed", isDirectory: true)
+        let remaining = (try? FileManager.default.contentsOfDirectory(atPath: reseedRoot.path)) ?? []
+        #expect(remaining.isEmpty)
+        #expect(try reseedJournal.read() == .idle)
+    }
+
+    // MARK: - S9b: reseed durability + recovery
+
+    @Test("resetAndReseedFromThisDevice: a failure BEFORE the wipe completes leaves localDataWiped=false and the staged bundle intact (S9b)")
+    @MainActor
+    func resetAndReseedPreWipeFailureLeavesLocalDataWipedFalse() async throws {
+        let persistence = try await TestStore.make()
+        let preferences = PreferencesStore(persistence: persistence)
+        _ = try await preferences.read()
+        let tasks = TaskStore(persistence: persistence)
+        _ = try await tasks.create(title: "must survive an aborted reseed")
+
+        let host = FakePersistenceReconfigurer(initialMode: .iCloudSync)
+        // The erase fails — performReset re-attaches and rethrows BEFORE
+        // rebuildEmptyStore ever runs, so the live store's data is
+        // genuinely untouched.
+        let eraser = ThrowingZoneEraser()
+        let quarantineRoot = tempDir()
+        let reseedJournal = InMemoryReseedJournalStore()
+        let service = DataStoreResetService(
+            host: host,
+            quarantine: QuarantineManager(rootDirectory: quarantineRoot),
+            zoneEraser: eraser,
+            quiesceMonitor: SyncQuiesceMonitor(bridge: CloudKitEventBridge()),
+            notificationScheduler: nil,
+            cloudKitContainerIdentifier: "iCloud.test",
+            exporter: Exporter(persistence: persistence, preferences: preferences),
+            importer: Importer(persistence: persistence),
+            reseedJournal: reseedJournal
+        )
+
+        await #expect(throws: LillistError.self) {
+            try await service.resetAndReseedFromThisDevice()
+        }
+
+        let entry = try reseedJournal.read()
+        #expect(entry.phase == .failed)
+        #expect(entry.localDataWiped == false)
+        let stagedPath = try #require(entry.stagedBundlePath)
+        // The staged bundle is the recovery anchor on failure — it must
+        // NOT be cleaned up (only a full success removes it).
+        #expect(FileManager.default.fileExists(atPath: stagedPath))
+    }
+
+    @Test("recoverInterruptedReseed: an idle journal is a no-op (S9b)")
+    @MainActor
+    func recoverInterruptedReseedNoOpWhenIdle() async throws {
+        let host = FakePersistenceReconfigurer(initialMode: .localOnly)
+        let reseedJournal = InMemoryReseedJournalStore()
+        let service = DataStoreResetService(
+            host: host,
+            quarantine: QuarantineManager(rootDirectory: tempDir()),
+            zoneEraser: FakeCloudKitZoneEraser(),
+            quiesceMonitor: SyncQuiesceMonitor(bridge: CloudKitEventBridge()),
+            notificationScheduler: nil,
+            cloudKitContainerIdentifier: "iCloud.test",
+            reseedJournal: reseedJournal
+        )
+
+        let outcome = try await service.recoverInterruptedReseed()
+
+        #expect(outcome == .notInterrupted)
+        #expect(await host.resetSteps == [])
+    }
+
+    @Test("recoverInterruptedReseed: discards safely when the wipe never reached the live store (S9b)")
+    @MainActor
+    func recoverInterruptedReseedDiscardsWhenNotWiped() async throws {
+        let host = FakePersistenceReconfigurer(initialMode: .localOnly)
+        let stageDir = tempDir()
+        try FileManager.default.createDirectory(at: stageDir, withIntermediateDirectories: true)
+        try Data("stale export".utf8).write(to: stageDir.appendingPathComponent("marker"))
+        let reseedJournal = InMemoryReseedJournalStore(initial: ReseedJournal(
+            phase: .exporting,
+            startedAt: Date(),
+            lastHeartbeatAt: Date(),
+            stagedBundlePath: stageDir.path,
+            localDataWiped: false
+        ))
+        let service = DataStoreResetService(
+            host: host,
+            quarantine: QuarantineManager(rootDirectory: tempDir()),
+            zoneEraser: FakeCloudKitZoneEraser(),
+            quiesceMonitor: SyncQuiesceMonitor(bridge: CloudKitEventBridge()),
+            notificationScheduler: nil,
+            cloudKitContainerIdentifier: "iCloud.test",
+            reseedJournal: reseedJournal
+        )
+
+        let outcome = try await service.recoverInterruptedReseed()
+
+        #expect(outcome == .discardedSafely)
+        // The live store was never touched — no destructive step ran.
+        #expect(await host.resetSteps == [])
+        #expect(try reseedJournal.read() == .idle)
+        #expect(FileManager.default.fileExists(atPath: stageDir.path) == false)
+    }
+
+    @Test("recoverInterruptedReseed: resumes the import when the wipe already ran, restoring real data (S9b class-kill)")
+    @MainActor
+    func recoverInterruptedReseedResumesImportAfterWipe() async throws {
+        let persistence = try await TestStore.make()
+        let preferences = PreferencesStore(persistence: persistence)
+        _ = try await preferences.read()
+        let tasks = TaskStore(persistence: persistence)
+        let seededID = try await tasks.create(title: "Buy milk")
+
+        // Export the pre-wipe data into a durable stage dir, exactly as
+        // resetAndReseedFromThisDevice would have before a crash.
+        let stageDir = tempDir()
+        try FileManager.default.createDirectory(at: stageDir, withIntermediateDirectories: true)
+        try await Exporter(persistence: persistence, preferences: preferences).export(to: stageDir)
+
+        // Simulate "the wipe already happened": RealWipingResetHost's
+        // tearDownStore genuinely deletes every row, matching the exact
+        // state a real crash-after-wipe would leave.
+        let host = RealWipingResetHost(persistence: persistence, initialMode: .iCloudSync)
+        _ = try await host.tearDownStore(backupVia: nil)
+        let survivorBeforeRecovery = try? await tasks.fetch(id: seededID)
+        #expect(survivorBeforeRecovery == nil)  // genuinely wiped
+
+        let reseedJournal = InMemoryReseedJournalStore(initial: ReseedJournal(
+            phase: .importing,
+            startedAt: Date(),
+            lastHeartbeatAt: Date(),
+            stagedBundlePath: stageDir.path,
+            localDataWiped: true
+        ))
+        let service = DataStoreResetService(
+            host: host,
+            quarantine: QuarantineManager(rootDirectory: tempDir()),
+            zoneEraser: FakeCloudKitZoneEraser(),
+            quiesceMonitor: SyncQuiesceMonitor(bridge: CloudKitEventBridge()),
+            notificationScheduler: nil,
+            cloudKitContainerIdentifier: "iCloud.test",
+            importer: Importer(persistence: persistence),
+            reseedJournal: reseedJournal
+        )
+
+        let outcome = try await service.recoverInterruptedReseed()
+
+        #expect(outcome == .resumed)
+        #expect(try reseedJournal.read() == .idle)
+        #expect(FileManager.default.fileExists(atPath: stageDir.path) == false)
+        let recovered = try await tasks.fetch(id: seededID)
+        #expect(recovered.title == "Buy milk")
+    }
+
+    @Test("recoverInterruptedReseed: a wiped journal with no staged path throws instead of silently losing data (S9b)")
+    @MainActor
+    func recoverInterruptedReseedThrowsWhenPathMissing() async throws {
+        let host = FakePersistenceReconfigurer(initialMode: .localOnly)
+        let reseedJournal = InMemoryReseedJournalStore(initial: ReseedJournal(
+            phase: .failed,
+            startedAt: Date(),
+            lastHeartbeatAt: Date(),
+            stagedBundlePath: nil,
+            localDataWiped: true
+        ))
+        let service = DataStoreResetService(
+            host: host,
+            quarantine: QuarantineManager(rootDirectory: tempDir()),
+            zoneEraser: FakeCloudKitZoneEraser(),
+            quiesceMonitor: SyncQuiesceMonitor(bridge: CloudKitEventBridge()),
+            notificationScheduler: nil,
+            cloudKitContainerIdentifier: "iCloud.test",
+            reseedJournal: reseedJournal
+        )
+
+        await #expect(throws: LillistError.self) {
+            try await service.recoverInterruptedReseed()
+        }
+        // The (corrupt) journal is left as-is — never silently cleared.
+        #expect(try reseedJournal.read().phase == .failed)
     }
 }
 

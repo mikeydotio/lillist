@@ -267,6 +267,12 @@ final class AppEnvironment {
         let quarantineRoot = storeURL.map { $0.deletingLastPathComponent() }
             ?? FileManager.default.temporaryDirectory
         let quarantine = QuarantineManager(rootDirectory: quarantineRoot)
+        // data-sync-hardening S9b: durable crash-recovery journal for
+        // resetAndReseedFromThisDevice — rooted alongside the quarantine
+        // (same App-Group-anchored directory the reseed's own staged
+        // bundle lives under), never FileManager.default.temporaryDirectory.
+        let reseedJournal = FileReseedJournalStore(appGroupID: Self.appGroupID)
+            ?? FileReseedJournalStore(url: quarantineRoot.appendingPathComponent("reseed.json"))
         let quiesceMonitor = SyncQuiesceMonitor(bridge: persistence.cloudKitEventBridge)
         // data-sync-hardening S11: ONE shared gate, injected into both
         // the migration coordinator and the reset service below, so a
@@ -339,7 +345,8 @@ final class AppEnvironment {
             propagator: resetPropagator,
             exporter: Exporter(persistence: persistence, preferences: preferencesStore),
             importer: Importer(persistence: persistence),
-            destructiveOpGate: destructiveOpGate
+            destructiveOpGate: destructiveOpGate,
+            reseedJournal: reseedJournal
         )
         self.resetSignalMonitor = ResetSignalMonitor(
             inbox: controlInbox,
@@ -480,6 +487,11 @@ final class AppEnvironment {
     /// One-shot async bootstrap: registers UNNotificationCategory set so
     /// snooze actions on the Lock Screen dispatch correctly.
     func bootstrap() async {
+        // Data-sync-hardening S9b: resolve any resetAndReseedFromThisDevice
+        // interrupted by a crash on a prior launch — before anything else
+        // assumes the store reflects steady state. Best-effort, matching
+        // every other step here.
+        _ = try? await dataStoreReset.recoverInterruptedReseed()
         // Data-sync-hardening X1: record the store-migration outcome
         // computed in make() (before breadcrumbs existed) now that the
         // buffer is available — so a both-stores-populated conflict or a
