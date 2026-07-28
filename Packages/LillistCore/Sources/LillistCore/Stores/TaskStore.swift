@@ -880,24 +880,45 @@ public final class TaskStore: @unchecked Sendable {
         }
     }
 
+    /// H7: recursing only into children whose `deletedAt` doesn't already
+    /// match what this pass is about to stamp is self-limiting against a
+    /// mutual cycle in the common case (a revisited node's `deletedAt`
+    /// already equals `now` by the time the cycle loops back to it, so the
+    /// `where` clause excludes it). The explicit `visited` set is defense in
+    /// depth against that guarantee ever being weakened by a future change
+    /// to this recursion's shape — see `TreeCycleGuardTests`.
     private func applySoftDelete(to m: LillistTask, at now: Date) {
+        var visited: Set<NSManagedObjectID> = []
+        applySoftDelete(to: m, at: now, visited: &visited)
+    }
+
+    private func applySoftDelete(to m: LillistTask, at now: Date, visited: inout Set<NSManagedObjectID>) {
+        guard visited.insert(m.objectID).inserted else { return }
         m.deletedAt = now
         m.modifiedAt = now
         m.stampCurrentSchemaVersion()
         if let children = m.children as? Set<LillistTask> {
             for child in children where child.deletedAt == nil {
-                applySoftDelete(to: child, at: now)
+                applySoftDelete(to: child, at: now, visited: &visited)
             }
         }
     }
 
+    /// H7: same self-limiting shape and same defense-in-depth rationale as
+    /// `applySoftDelete` above.
     private func clearSoftDelete(from m: LillistTask, matchingDeletedAt: Date) {
+        var visited: Set<NSManagedObjectID> = []
+        clearSoftDelete(from: m, matchingDeletedAt: matchingDeletedAt, visited: &visited)
+    }
+
+    private func clearSoftDelete(from m: LillistTask, matchingDeletedAt: Date, visited: inout Set<NSManagedObjectID>) {
+        guard visited.insert(m.objectID).inserted else { return }
         m.deletedAt = nil
         m.modifiedAt = Date()
         m.stampCurrentSchemaVersion()
         if let children = m.children as? Set<LillistTask> {
             for child in children where child.deletedAt == matchingDeletedAt {
-                clearSoftDelete(from: child, matchingDeletedAt: matchingDeletedAt)
+                clearSoftDelete(from: child, matchingDeletedAt: matchingDeletedAt, visited: &visited)
             }
         }
     }

@@ -57,8 +57,9 @@ enum RecurrenceSpawner {
         }
 
         if let kids = seed.children as? Set<LillistTask> {
+            var visited: Set<NSManagedObjectID> = []
             for kid in kids where kid.deletedAt == nil {
-                deepCopy(kid, into: spawn, in: context)
+                deepCopy(kid, into: spawn, in: context, visited: &visited)
             }
         }
 
@@ -68,11 +69,37 @@ enum RecurrenceSpawner {
         return spawnID
     }
 
+    /// H7: unlike `applySoftDelete`/`clearSoftDelete`, this walk never
+    /// mutates `source` (it only reads it while creating new `copy` rows),
+    /// so a parent-cycle in the seed's subtree — reachable via a CloudKit
+    /// merge even though no local mutation path can create one once M1/H7
+    /// land — is not self-limiting here. The `visited` set, threaded
+    /// through the recursion and shared across the whole spawn (not
+    /// per-branch), is required, not defense in depth: without it this
+    /// recurses (and allocates a new `LillistTask` row) forever.
     private static func deepCopy(
         _ source: LillistTask,
         into newParent: LillistTask,
-        in context: NSManagedObjectContext
+        in context: NSManagedObjectContext,
+        visited: inout Set<NSManagedObjectID>
     ) {
+        guard visited.insert(source.objectID).inserted else { return }
+        // H7 defense-in-depth beyond the visited-set: `spawn.parent =
+        // seed.parent` (below) means a corrupted `seed.parent` — pointing
+        // into a cycle among `seed`'s own descendants — makes `spawn`
+        // itself reachable from that cycle. Each `copy` this function
+        // creates is wired via `copy.parent = newParent`, so on a cyclic
+        // source graph that newly-wired shape re-exposes an *isomorphic
+        // copy* of the same cycle one level deeper with brand-new
+        // objectIDs — a same-object `visited` set can't catch that, because
+        // every object really is new. This hard cap is the actual
+        // backstop; no legitimate subtree in a personal task manager
+        // approaches it (the crash-reproduction that motivated this cap
+        // hit thousands of frames before this catches it).
+        guard visited.count <= 1_000 else {
+            LillistLog.store.error("RecurrenceSpawner.deepCopy aborted after copying 1000 nodes — likely a corrupted parent-cycle reachable via the spawned instance's inherited parent (H7)")
+            return
+        }
         let copy = LillistTask(context: context)
         copy.id = UUID()
         copy.title = source.title
@@ -92,7 +119,7 @@ enum RecurrenceSpawner {
 
         if let kids = source.children as? Set<LillistTask> {
             for kid in kids where kid.deletedAt == nil {
-                deepCopy(kid, into: copy, in: context)
+                deepCopy(kid, into: copy, in: context, visited: &visited)
             }
         }
     }

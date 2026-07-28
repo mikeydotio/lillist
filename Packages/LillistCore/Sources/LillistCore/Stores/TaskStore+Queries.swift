@@ -82,8 +82,13 @@ extension TaskStore {
             for task in tasks {
                 guard let id = task.id else { continue }
                 var trail: [String] = []
+                // H7: a CloudKit merge can leave a parent-cycle in the
+                // ancestor chain; a plain `while let` walk with no guard
+                // would loop forever. Stop (returning whatever trail was
+                // accumulated so far) the moment a node repeats.
+                var visited: Set<NSManagedObjectID> = [task.objectID]
                 var cursor = task.parent
-                while let p = cursor {
+                while let p = cursor, visited.insert(p.objectID).inserted {
                     trail.append(p.title ?? "")
                     cursor = p.parent
                 }
