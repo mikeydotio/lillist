@@ -268,6 +268,15 @@ final class AppEnvironment {
             ?? FileManager.default.temporaryDirectory
         let quarantine = QuarantineManager(rootDirectory: quarantineRoot)
         let quiesceMonitor = SyncQuiesceMonitor(bridge: persistence.cloudKitEventBridge)
+        // data-sync-hardening S11: ONE shared gate, injected into both
+        // the migration coordinator and the reset service below, so a
+        // migration and a reset (including one ResetSignalMonitor
+        // applies automatically from a peer broadcast) can never run
+        // concurrently against the same persistenceHost. Each type
+        // defaults to its own private gate when none is passed — this
+        // explicit shared instance is what actually closes the
+        // cross-type window in production.
+        let destructiveOpGate = DestructiveOpGate()
         self.pauseReasonClassifier = PauseReasonClassifier(
             accountMonitor: accountStateMonitor,
             networkMonitor: ConstantNetworkReachability(reachable: true)
@@ -293,7 +302,8 @@ final class AppEnvironment {
             syncModeStore: syncModeStore,
             breadcrumbs: breadcrumbs,
             cloudKitContainerIdentifier: ckContainerID,
-            localStoreRowCount: localStoreRowCount
+            localStoreRowCount: localStoreRowCount,
+            destructiveOpGate: destructiveOpGate
         )
         // Issue #71: the reset-propagation control channel, over iCloud
         // Key-Value Store — a separate iCloud subsystem from the Core
@@ -328,7 +338,8 @@ final class AppEnvironment {
             breadcrumbs: breadcrumbs,
             propagator: resetPropagator,
             exporter: Exporter(persistence: persistence, preferences: preferencesStore),
-            importer: Importer(persistence: persistence)
+            importer: Importer(persistence: persistence),
+            destructiveOpGate: destructiveOpGate
         )
         self.resetSignalMonitor = ResetSignalMonitor(
             inbox: controlInbox,

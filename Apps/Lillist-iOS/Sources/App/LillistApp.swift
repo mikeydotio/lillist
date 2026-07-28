@@ -271,9 +271,33 @@ private struct OnboardingPresentationModifier: ViewModifier {
                 case .iCloudUnavailable:
                     ICloudUnavailableScreen {
                         Task {
-                            await environment.syncModeStore.setMode(.localOnly)
-                            try? await environment.persistenceHost.reconfigure(to: .localOnly)
-                            launch = .onboarding
+                            // data-sync-hardening S17: this is semantically a
+                            // disableNow transition (iCloudSync -> localOnly,
+                            // immediate — there's no iCloud account to sync
+                            // with) that happens to run before onboarding.
+                            // Route it through the coordinator instead of a
+                            // raw setMode+reconfigure pair: journaled,
+                            // gated, notification-cancelled, and correctly
+                            // ordered (reconfigure before setMode, matching
+                            // every other transition — the direct calls this
+                            // replaced ran them backwards).
+                            let url = environment.storeURL
+                                ?? FileManager.default.temporaryDirectory.appendingPathComponent("Lillist.sqlite")
+                            do {
+                                try await environment.migrationCoordinator.beginDisable(strategy: .now, storeURL: url)
+                                launch = .onboarding
+                            } catch {
+                                // Surface the coordinator's own recovery path
+                                // rather than silently proceeding to
+                                // onboarding on an inconsistent store — the
+                                // coordinator already left a .failed journal
+                                // entry for this failure.
+                                if let journal = try? environment.migrationJournalStore.read(), journal.isInFlight {
+                                    launch = .recovery(journal)
+                                } else {
+                                    launch = nil
+                                }
+                            }
                         }
                     }
                     .interactiveDismissDisabled(true)
@@ -312,14 +336,17 @@ private struct OnboardingPresentationModifier: ViewModifier {
         }
         let journal = try? environment.migrationJournalStore.read()
         if let journal, journal.isInFlight {
-            // Only offer recovery for a *stale* (crashed) migration. A
-            // fresh in-flight journal belongs to a migration that may still
-            // be completing in another process/launch; surfacing recovery
-            // would race it. The MigrationGate keeps blocking new work
-            // either way.
-            if journal.isStale() {
-                launch = .recovery(journal)
-            }
+            // data-sync-hardening S16: show the recovery path immediately
+            // for ANY in-flight journal, not just a stale one. Only the
+            // main app ever runs MigrationCoordinator — no extension calls
+            // beginEnable/beginDisable — so a non-idle journal found at
+            // launch can never belong to a migration genuinely still
+            // completing in another live process; it's always a previous,
+            // now-dead process's leftover state. MigrationGate already
+            // blocks every extension unconditionally on any non-idle
+            // journal — leaving the user with no explanation for up to
+            // 600+ seconds (the old staleness threshold) was the bug.
+            launch = .recovery(journal)
             return
         }
         let done = await environment.onboardingState.hasCompletedOnboarding()
