@@ -149,20 +149,23 @@ CloudKit, XCTest + Swift Testing, xcodegen, storyhook (prefix `LIL`).
 - ✅ **Story-ID cross-reference table filled in** — see below.
 - ✅ **Wave 1 is now fully complete** (`1a`, `1b`, `1c`, `1d`). Waves 2
   through 6 not started.
-- 🚩 **Discovered, out-of-scope defect flagged during `1d` (not fixed,
-  not one of the 70 cataloged findings):** `CrashReportingSection` (iOS
-  `DebugPage`) and `CrashReportingPane` (macOS) still bind
-  `PreferencesStore.Prefs.crashPromptsEnabled` (the Core-Data-backed
-  field) for the Settings toggle and persist via `PreferencesStore
-  .update`, while `AppEnvironment.crashPromptsEnabled` (what
-  `CrashReporterHost` actually reads at boot) initializes from
+- ✅ **Discovered, out-of-scope defect from `1d` — filed as `LIL-77`, not
+  fixed here (not one of the 70 cataloged findings):**
+  `CrashReportingSection` (iOS `DebugPage`) and `CrashReportingPane`
+  (macOS) still bind `PreferencesStore.Prefs.crashPromptsEnabled` (the
+  Core-Data-backed field) for the Settings toggle and persist via
+  `PreferencesStore.update`, while `AppEnvironment.crashPromptsEnabled`
+  (what `CrashReporterHost` actually reads at boot) initializes from
   `DevicePreferencesStore` — and the toggle's `.onChange` only mirrors the
   new value into the in-memory `environment.crashPromptsEnabled`, never
   persisting to `DevicePreferencesStore`. Looks like a real defect: a
-  user's crash-prompt choice may not survive relaunch. Flagged to
-  `team-lead` for triage into an existing or new finding (likely
-  preferences-partition territory near `3a`/`5a`); not touched here to
-  avoid conflating an unrelated behavior change with `1d`'s scope.
+  user's crash-prompt choice may not survive relaunch. Per `team-lead`'s
+  triage, filed as `LIL-77` (labels `plan-6a` — a completeness-sweep
+  residual, not preferences-partition work that would bloat `3a`/`5a` —
+  plus `discovered-during-1d`), with the full binding trail in the story
+  body; added to `6a`'s row in the *Wave/plan table* and the *Story-ID
+  cross-reference table* below. Not touched here to avoid conflating an
+  unrelated behavior change with `1d`'s own scope.
 
 **Next action for whoever picks this up:** start Wave 2, plan `2a`
 (`migration-transitions`) — findings `S1 S5 S6 S8 S11 S12 S14 S15 S16 S17`.
@@ -548,7 +551,7 @@ Wave 6 closeout. **Status** starts `pending` for everything except Wave 0.
 | 5 | **5a** `mutation-scope-discipline` | `H5 M4 M6 M7 L3 L4 L5 X19 X20` | ⬜ pending |
 | 5 | **5b** `widget-snapshot-correctness` | `X5 X6` | ⬜ pending |
 | 5 | **5c** `watermark-registry-pruning` | `X12 L7` | ⬜ pending |
-| 6 | **6a** `completeness-and-lows` + closeout | `L1 L2 L6` + export round-trip equality suite + `X20` flip-flop stress (builds atop 5a's fix, not a new finding) + any residuals from Waves 1-5 | ⬜ pending |
+| 6 | **6a** `completeness-and-lows` + closeout | `L1 L2 L6` + export round-trip equality suite + `X20` flip-flop stress (builds atop 5a's fix, not a new finding) + any residuals from Waves 1-5, incl. `LIL-77` (discovered during `1d`, not one of the 70 findings) | ⬜ pending |
 
 **Finding-count check:** 70 unique findings (`C1`-`C4`, `H1`-`H7`, `M1`-`M7`,
 `L1`-`L7` from the stores sweep = 25; `S1`-`S4`, `S5`-`S13` with `S9` split
@@ -700,7 +703,7 @@ LIL-N` alone. Grouped here by plan, in wave order, for quick lookup —
 | **5a** mutation-scope-discipline | `H5`→`LIL-23`, `M4`→`LIL-48`, `M6`→`LIL-50`, `M7`→`LIL-51`, `L3`→`LIL-72`, `L4`→`LIL-73`, `L5`→`LIL-74`, `X19`→`LIL-68`, `X20`→`LIL-69` |
 | **5b** widget-snapshot-correctness | `X5`→`LIL-18`, `X6`→`LIL-37` |
 | **5c** watermark-registry-pruning | `X12`→`LIL-43`, `L7`→`LIL-76` |
-| **6a** completeness-and-lows | `L1`→`LIL-70`, `L2`→`LIL-71`, `L6`→`LIL-75` |
+| **6a** completeness-and-lows | `L1`→`LIL-70`, `L2`→`LIL-71`, `L6`→`LIL-75`, discovered-during-`1d` residual→`LIL-77` (not one of the 70 review findings — see *Current status* above for the discovery trail) |
 
 **Verification:** 70 findings → 70 stories, one-to-one (the `C4`/`X4` merge
 is the one many-to-one mapping, per the council decision above). Cross-
