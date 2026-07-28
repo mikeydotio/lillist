@@ -1,4 +1,0 @@
-{"kind":"StoryCreated","at":"2026-07-28T16:32:21Z","title":"S16: Fresh-crash recovery has no UI affordance","state":"todo"}
-{"kind":"StoryPrioritySet","at":"2026-07-28T16:32:21Z","priority":"medium"}
-{"kind":"StoryLabelsSet","at":"2026-07-28T16:32:21Z","labels":["plan-2a","sev-medium","sweep-sync"]}
-{"kind":"StoryDescriptionSet","at":"2026-07-28T16:32:21Z","description":"The recovery sheet only appears for STALE (>600s) journals, but MigrationGate blocks extensions on ANY non-idle journal - extensions are bricked for up to 600+ seconds with nothing telling the user why. The main app never consults the gate at all. Severity: Medium. Wave/Plan: Wave 2, plan 2a migration-transitions. Sweep: sync machinery."}

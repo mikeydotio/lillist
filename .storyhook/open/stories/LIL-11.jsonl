@@ -1,4 +1,0 @@
-{"kind":"StoryCreated","at":"2026-07-28T16:32:21Z","title":"S1: replaceLocalWithICloud never deletes local data","state":"todo"}
-{"kind":"StoryPrioritySet","at":"2026-07-28T16:32:21Z","priority":"critical"}
-{"kind":"StoryLabelsSet","at":"2026-07-28T16:32:21Z","labels":["plan-2a","sev-critical","sweep-sync"]}
-{"kind":"StoryDescriptionSet","at":"2026-07-28T16:32:21Z","description":"runMigration (MigrationCoordinator.swift:245-348) has no op-specific wipe step - it just attaches mirroring. Local rows upload and MERGE with iCloud, even though the UI promises this action 'permanently replaces this device's data'. MigrationPhase.removingLocalStore exists as a case but is never emitted by any migration path - the designed step was never wired up. Severity: Critical. Wave/Plan: Wave 2, plan 2a migration-transitions. Sweep: sync machinery. Verified directly against source."}

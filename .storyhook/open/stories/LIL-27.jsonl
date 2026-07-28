@@ -1,4 +1,0 @@
-{"kind":"StoryCreated","at":"2026-07-28T16:32:21Z","title":"S6: Zone erase runs after mirroring re-attaches, with no post-erase re-seed","state":"todo"}
-{"kind":"StoryPrioritySet","at":"2026-07-28T16:32:21Z","priority":"high"}
-{"kind":"StoryLabelsSet","at":"2026-07-28T16:32:21Z","labels":["plan-2a","sev-high","sweep-sync"]}
-{"kind":"StoryDescriptionSet","at":"2026-07-28T16:32:21Z","description":"Remote data can merge back in before the erase completes, and export metadata may already believe the (about to be erased) rows were uploaded - leaving iCloud either empty or a UNION, never the intended replacement. Contrast: DataStoreResetService erases while fully torn down, then rebuilds - the correct ordering. Severity: High. Wave/Plan: Wave 2, plan 2a migration-transitions. Sweep: sync machinery."}

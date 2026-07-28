@@ -1,4 +1,0 @@
-{"kind":"StoryCreated","at":"2026-07-28T16:32:21Z","title":"S5: syncFirstThenDisable is identical to disableNow","state":"todo"}
-{"kind":"StoryPrioritySet","at":"2026-07-28T16:32:21Z","priority":"high"}
-{"kind":"StoryLabelsSet","at":"2026-07-28T16:32:21Z","labels":["plan-2a","sev-high","sweep-sync"]}
-{"kind":"StoryDescriptionSet","at":"2026-07-28T16:32:21Z","description":"No quiesce wait fires when the target mode is localOnly; 'sync one final time first' never actually syncs, and unexported edits are stranded on the device forever. Severity: High. Wave/Plan: Wave 2, plan 2a migration-transitions. Sweep: sync machinery."}

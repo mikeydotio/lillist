@@ -1,4 +1,0 @@
-{"kind":"StoryCreated","at":"2026-07-28T16:32:21Z","title":"S17: iCloud-unavailable launch screen performs an ungated, unjournaled mode swap with reversed ordering","state":"todo"}
-{"kind":"StoryPrioritySet","at":"2026-07-28T16:32:21Z","priority":"medium"}
-{"kind":"StoryLabelsSet","at":"2026-07-28T16:32:21Z","labels":["plan-2a","sev-medium","sweep-sync"]}
-{"kind":"StoryDescriptionSet","at":"2026-07-28T16:32:21Z","description":"setMode runs before reconfigure, everywhere else it's the other way around. Severity: Medium. Wave/Plan: Wave 2, plan 2a migration-transitions. Sweep: sync machinery."}

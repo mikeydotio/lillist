@@ -1,4 +1,0 @@
-{"kind":"StoryCreated","at":"2026-07-28T16:32:21Z","title":"S8: SyncModeStore advances before destructive work runs, never reverted on failure","state":"todo"}
-{"kind":"StoryPrioritySet","at":"2026-07-28T16:32:21Z","priority":"high"}
-{"kind":"StoryLabelsSet","at":"2026-07-28T16:32:21Z","labels":["plan-2a","sev-high","sweep-sync"]}
-{"kind":"StoryDescriptionSet","at":"2026-07-28T16:32:21Z","description":"'Try Again' only clears the journal. A failed replaceICloudWithLocal leaves mirroring live and actively merging, while the mode store claims the operation succeeded. Severity: High. Wave/Plan: Wave 2, plan 2a migration-transitions. Sweep: sync machinery."}
