@@ -9,9 +9,31 @@ import XCTest
 /// callers constructed the gate inline against the real App Group container.
 final class GatedPersistenceResolverTests: XCTestCase {
 
-    private let appGroupID = "group.app.lillist.tests.gate"
+    /// A fresh identifier per test invocation, matching the established
+    /// UUID-suffixed-suite + `removePersistentDomain` precedent used
+    /// throughout this test target (`MigrationCoordinatorTests`,
+    /// `MigrationGateTests`, `SyncModeStoreTests`, etc.).
+    ///
+    /// Every test in this file used to share one literal
+    /// `"group.app.lillist.tests.gate"` string for BOTH the
+    /// `SyncModeStore(suiteName:)` backing (real, disk-backed,
+    /// cross-process `UserDefaults` state keyed by that string) and the
+    /// `appGroupID` handed to `GatedPersistenceResolver` (which reaches
+    /// real `StoreLocation.resolve`'s unsandboxed `containerURL` lookup).
+    /// Under `swift test --parallel`, XCTest cases run in separate worker
+    /// processes — sharing one suite name let one test's `setMode(_:)`
+    /// write land between another test's `setMode(_:)` + read, producing
+    /// a nondeterministic assertion failure (LIL-79). Every test now gets
+    /// its own identifier, eliminating the shared-state surface entirely
+    /// rather than trying to serialize around it.
+    private func freshAppGroupID() -> String {
+        let id = "group.app.lillist.tests.gate-\(UUID().uuidString)"
+        UserDefaults(suiteName: id)?.removePersistentDomain(forName: id)
+        return id
+    }
 
     func test_idleJournal_resolvesConfigForCurrentMode() async throws {
+        let appGroupID = freshAppGroupID()
         let journal = InMemoryMigrationJournalStore(initial: .idle)
         let modeStore = SyncModeStore(suiteName: appGroupID)
         await modeStore.setMode(.localOnly)
@@ -28,6 +50,7 @@ final class GatedPersistenceResolverTests: XCTestCase {
     }
 
     func test_inFlightJournal_throwsStoreUnavailableWithGateMessage() async throws {
+        let appGroupID = freshAppGroupID()
         let journal = InMemoryMigrationJournalStore(
             initial: MigrationJournal(state: .reconfiguringStore)
         )
@@ -53,6 +76,7 @@ final class GatedPersistenceResolverTests: XCTestCase {
     func test_makePersistence_idleJournal_returnsUsableController() async throws {
         // The `makeController` seam lets us assert end-to-end resolution +
         // controller construction without standing up the real App Group.
+        let appGroupID = freshAppGroupID()
         let journal = InMemoryMigrationJournalStore(initial: .idle)
         let modeStore = SyncModeStore(suiteName: appGroupID)
         await modeStore.setMode(.localOnly)
@@ -78,6 +102,7 @@ final class GatedPersistenceResolverTests: XCTestCase {
     }
 
     func test_X15_extensionAndWidgetRolesSuppressMirroring_mainAppDoesNot() async throws {
+        let appGroupID = freshAppGroupID()
         let journal = InMemoryMigrationJournalStore(initial: .idle)
         let modeStore = SyncModeStore(suiteName: appGroupID)
         await modeStore.setMode(.iCloudSync)
