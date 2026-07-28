@@ -76,12 +76,24 @@ public final class DataStoreResetService {
     /// that method throw rather than silently reseed nothing.
     private let importer: Importer?
 
-    /// In-process reentrancy guard, shared by every public entry point
-    /// via `withReentrancyGuard(_:)` — a second reset while one is
-    /// running would race the store teardown (or, for the reseed flow,
-    /// race its own export/reimport steps). Set synchronously before the
-    /// first suspension, cleared on every exit.
-    private var isResetting = false
+    /// Shared lock serializing this service against `MigrationCoordinator`
+    /// (and `restoreFromBackup`) — both mutate the same `PersistenceHost`
+    /// and must never run concurrently (`S11`). Defaults to a private
+    /// instance so every existing single-type test is unaffected;
+    /// `AppEnvironment` constructs ONE instance and injects it into both
+    /// types to close the cross-type window in production. Replaces the
+    /// prior type-local `isResetting` boolean, which only ever closed
+    /// this type's *own* reentrancy window — every public entry point
+    /// still shares one acquire via `withReentrancyGuard(label:_:)`, so a
+    /// second reset while one is running still can't race the store
+    /// teardown (or, for the reseed flow, its own export/reimport steps).
+    private let destructiveOpGate: DestructiveOpGate
+    /// `waitForQuiesce`'s quiet-window/hard-timeout pair — see
+    /// `MigrationCoordinator`'s identical property for the full
+    /// rationale. Injectable so tests can exercise the `.timedOut`
+    /// branch (S14) in milliseconds instead of waiting 300 real seconds.
+    private let quiesceMinQuietWindow: TimeInterval
+    private let quiesceHardTimeout: TimeInterval
 
     public init(
         host: any PersistenceResetting,
@@ -94,7 +106,10 @@ public final class DataStoreResetService {
         breadcrumbs: BreadcrumbBuffer? = nil,
         propagator: ResetPropagator? = nil,
         exporter: Exporter? = nil,
-        importer: Importer? = nil
+        importer: Importer? = nil,
+        destructiveOpGate: DestructiveOpGate = DestructiveOpGate(),
+        quiesceMinQuietWindow: TimeInterval = 5,
+        quiesceHardTimeout: TimeInterval = 300
     ) {
         self.host = host
         self.quarantine = quarantine
@@ -107,6 +122,9 @@ public final class DataStoreResetService {
         self.propagator = propagator
         self.exporter = exporter
         self.importer = importer
+        self.destructiveOpGate = destructiveOpGate
+        self.quiesceMinQuietWindow = quiesceMinQuietWindow
+        self.quiesceHardTimeout = quiesceHardTimeout
     }
 
     /// What a reset should do with the CloudKit side of the store.
@@ -130,7 +148,7 @@ public final class DataStoreResetService {
     /// the user-facing "Erase data from all devices and start over" action,
     /// for the propagating version issue #71 added.
     public func resetAllData() async throws {
-        try await withReentrancyGuard {
+        try await withReentrancyGuard(label: "resetAllData") {
             try await performReset(.everywhere)
         }
     }
@@ -150,7 +168,7 @@ public final class DataStoreResetService {
     /// to download, so this would be a plain (unrecoverable-from-cloud) wipe
     /// — the caller should use `resetAllData()` if that is the intent.
     public func resetAndRedownload() async throws {
-        try await withReentrancyGuard {
+        try await withReentrancyGuard(label: "resetAndRedownload") {
             try await performReset(.redownload)
         }
     }
@@ -162,7 +180,7 @@ public final class DataStoreResetService {
     /// propagation (besides refreshing this device's roster entry) when no
     /// `propagator` was injected or no peers are known yet.
     public func resetEverywhereToEmpty() async throws {
-        try await withReentrancyGuard {
+        try await withReentrancyGuard(label: "resetEverywhereToEmpty") {
             try await performReset(.everywhere)
             propagator?.broadcast(.resetToEmpty)
         }
@@ -185,7 +203,7 @@ public final class DataStoreResetService {
                 reason: "Reset & Re-seed needs the export/import subsystem, which wasn't configured."
             )
         }
-        try await withReentrancyGuard {
+        try await withReentrancyGuard(label: "resetAndReseedFromThisDevice") {
             let tempDir = FileManager.default.temporaryDirectory
                 .appendingPathComponent("lillist-reseed-\(UUID().uuidString)", isDirectory: true)
             try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
@@ -217,19 +235,20 @@ public final class DataStoreResetService {
         }
     }
 
-    /// Runs `operation` under the shared reentrancy guard: a second call
-    /// while one is in flight throws immediately rather than racing the
-    /// first one's store teardown (or, for the reseed flow, its own
-    /// export/reimport steps). Centralized here — rather than inside
-    /// `performReset` — so `resetAndReseedFromThisDevice()` can guard its
-    /// *entire* export→wipe→reimport→broadcast sequence as one atomic unit,
-    /// not just the inner wipe.
-    private func withReentrancyGuard<T>(_ operation: () async throws -> T) async throws -> T {
-        guard !isResetting else {
-            throw LillistError.storeUnavailable(reason: "A data-store reset is already in progress.")
-        }
-        isResetting = true
-        defer { isResetting = false }
+    /// Runs `operation` under the shared destructive-op gate (`S11`): a
+    /// second call while one is in flight — from THIS type, from
+    /// `MigrationCoordinator`, or from `restoreFromBackup` — throws
+    /// immediately rather than racing the first one's store teardown (or,
+    /// for the reseed flow, its own export/reimport steps). Centralized
+    /// here — rather than inside `performReset` — so
+    /// `resetAndReseedFromThisDevice()` can guard its *entire*
+    /// export→wipe→reimport→broadcast sequence as one atomic unit, not
+    /// just the inner wipe. `label` names the specific entry point for a
+    /// diagnosable "already in progress" message if a blocked caller
+    /// needs to know what's holding the gate.
+    private func withReentrancyGuard<T>(label: String, _ operation: () async throws -> T) async throws -> T {
+        try destructiveOpGate.acquire(for: .reset(label))
+        defer { destructiveOpGate.release() }
         return try await operation()
     }
 
@@ -298,13 +317,34 @@ public final class DataStoreResetService {
                 }
             }
 
-            // 5. destroy + rebuild empty
-            try await host.rebuildEmptyStore()
+            // 5. destroy + rebuild empty. S12: unlike the erase-failure
+            //    path above, this step had no reattach handler at all —
+            //    a failure here left the coordinator store-less until
+            //    the next relaunch. Mirror the erase handling: re-attach
+            //    best-effort, then surface the failure.
+            do {
+                try await host.rebuildEmptyStore()
+            } catch {
+                try? await host.reattachStore()
+                throw error
+            }
 
             // 6. let CloudKit settle (iCloudSync only). For `.redownload`
-            //    this is the window in which the surviving zone re-imports.
+            //    this is the window in which the surviving zone
+            //    re-imports. S14: the destructive work above already
+            //    succeeded, so a `.timedOut` result is logged, not
+            //    fatal — there is nothing left to revert, and the
+            //    mirroring delegate keeps draining the queue in the
+            //    background after this call returns (matches
+            //    `QuiesceResult.timedOut`'s own documented contract).
             if mode == .iCloudSync {
-                _ = await quiesceMonitor.waitForQuiesce(minQuietWindow: 5, hardTimeout: 300)
+                let result = await quiesceMonitor.waitForQuiesce(
+                    minQuietWindow: quiesceMinQuietWindow, hardTimeout: quiesceHardTimeout
+                )
+                if result == .timedOut {
+                    LillistLog.sync.notice("data store reset quiesce timed out post-completion — proceeding, sync continues in background")
+                    await breadcrumb("data store reset quiesce timed out, proceeding (still syncing in background)")
+                }
             }
 
             LillistLog.sync.notice("data store reset completed")

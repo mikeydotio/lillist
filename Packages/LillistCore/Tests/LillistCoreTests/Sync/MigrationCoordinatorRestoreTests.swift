@@ -239,4 +239,47 @@ struct MigrationCoordinatorRestoreTests {
         #expect(await fakeEraser.callCount == 0)
         #expect(await host.currentMode == .localOnly)
     }
+
+    @Test("runMigration fails closed on a corrupt/undecodable journal, distinct from idle (S15)")
+    @MainActor
+    func rejectsMigrationOnCorruptJournal() async throws {
+        // Before S15, `try? journal.read()` made a decode failure
+        // indistinguishable from "no journal" — silently SKIPPING the
+        // reentrancy check and starting a brand new migration on top of
+        // whatever state produced the corruption. This must now fail
+        // closed instead. Uses FakePersistenceReconfigurer (not a live
+        // PersistenceHost) — the failure happens synchronously before
+        // any host interaction, so no live container is needed.
+        let dir = Self.tempDir()
+        let storeURL = dir.appendingPathComponent("Lillist.sqlite")
+        let host = FakePersistenceReconfigurer(initialMode: .localOnly)
+        let journal = CorruptMigrationJournalStore()
+        let quarantine = QuarantineManager(rootDirectory: dir)
+        let fakeEraser = FakeCloudKitZoneEraser()
+        let bridge = CloudKitEventBridge()
+        let quiesce = SyncQuiesceMonitor(bridge: bridge)
+        let suite = "MigrationCoordinatorRestoreTests-\(UUID().uuidString)"
+        UserDefaults(suiteName: suite)?.removePersistentDomain(forName: suite)
+        let modeStore = SyncModeStore(suiteName: suite)
+        await modeStore.setMode(.localOnly)
+
+        let coordinator = MigrationCoordinator(
+            host: host,
+            journal: journal,
+            quarantine: quarantine,
+            zoneEraser: fakeEraser,
+            quiesceMonitor: quiesce,
+            notificationScheduler: nil,
+            syncModeStore: modeStore
+        )
+
+        await #expect(throws: LillistError.self) {
+            try await coordinator.beginEnable(direction: .replaceICloud, storeURL: storeURL)
+        }
+        // No destructive work ran — the coordinator must never have
+        // proceeded past the unreadable-journal check.
+        #expect(await fakeEraser.callCount == 0)
+        #expect(await host.currentMode == .localOnly)
+        #expect(await modeStore.currentMode() == .localOnly)
+    }
 }

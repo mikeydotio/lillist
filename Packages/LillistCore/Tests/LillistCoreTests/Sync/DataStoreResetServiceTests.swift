@@ -72,6 +72,32 @@ struct DataStoreResetServiceTests {
         #expect(await eraser.lastContainerID == "iCloud.test")
     }
 
+    @Test("iCloudSync: a post-rebuild quiesce timeout still COMPLETES the reset (S14 — nothing left to revert)")
+    @MainActor
+    func postRebuildQuiesceTimeoutStillCompletes() async throws {
+        let host = FakePersistenceReconfigurer(initialMode: .iCloudSync)
+        let eraser = FakeCloudKitZoneEraser()
+        // No events ever fire, and hardTimeout sits below minQuietWindow,
+        // so the wait can only ever time out — the destructive work
+        // (tear down + erase + rebuild) already succeeded by that point,
+        // so this must still complete rather than throw.
+        let service = DataStoreResetService(
+            host: host,
+            quarantine: QuarantineManager(rootDirectory: tempDir()),
+            zoneEraser: eraser,
+            quiesceMonitor: SyncQuiesceMonitor(bridge: CloudKitEventBridge()),
+            notificationScheduler: nil,
+            cloudKitContainerIdentifier: "iCloud.test",
+            quiesceMinQuietWindow: 1.0,
+            quiesceHardTimeout: 0.05
+        )
+
+        try await service.resetAllData()
+
+        #expect(await host.resetSteps == ["tearDown", "rebuild"])
+        #expect(await eraser.callCount == 1)
+    }
+
     @Test("iCloudSync: a failed zone erase re-attaches the store and never rebuilds")
     @MainActor
     func eraseFailureReattachesAndRethrows() async throws {
@@ -87,6 +113,26 @@ struct DataStoreResetServiceTests {
         // original store and must NOT have destroyed/rebuilt anything.
         #expect(await host.resetSteps == ["tearDown", "reattach"])
         #expect(await eraser.callCount == 1)
+    }
+
+    @Test("localOnly: a failed rebuildEmptyStore re-attaches before rethrowing (S12)")
+    @MainActor
+    func rebuildFailureReattachesAndRethrows() async throws {
+        // Unlike the erase-failure path above, this step had NO reattach
+        // handler at all before S12 — a failure here left the
+        // coordinator store-less until the next relaunch.
+        let host = FakePersistenceReconfigurer(initialMode: .localOnly)
+        await host.failOnRebuild()
+        let eraser = FakeCloudKitZoneEraser()
+        let service = makeService(startMode: .localOnly, host: host, eraser: eraser)
+
+        await #expect(throws: LillistError.self) {
+            try await service.resetAllData()
+        }
+
+        #expect(await host.resetSteps == ["tearDown", "rebuild", "reattach"])
+        // localOnly never erases, regardless of the rebuild failure.
+        #expect(await eraser.callCount == 0)
     }
 
     @Test("account-changed pre-flight aborts before any teardown or erase")
