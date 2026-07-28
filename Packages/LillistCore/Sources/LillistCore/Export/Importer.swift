@@ -127,12 +127,16 @@ public actor Importer {
             var errors: [String] = []
 
             var tagByID: [UUID: Tag] = [:]
+            // X13: rows `.skipExisting` explicitly left alone must never be
+            // touched by the second pass below — not even their `.parent`.
+            var skippedTagIDs: Set<UUID> = []
             for dto in document.tags {
                 do {
                     if let existing = try self.fetchTag(id: dto.id, ctx: ctx) {
                         switch policy {
                         case .skipExisting:
                             tagsSkipped += 1
+                            skippedTagIDs.insert(dto.id)
                         case .replaceExisting:
                             self.applyTag(dto, into: existing)
                             tagsUpdated += 1
@@ -156,12 +160,23 @@ public actor Importer {
                 }
             }
             // Second pass to wire tag.parent (now that all rows exist).
+            // X13: skip rows this pass didn't write, and fall back to the
+            // destination store when the parent isn't part of this bundle —
+            // a parent absent from the bundle but present in the store must
+            // not be treated as "missing" (which would silently promote an
+            // otherwise-valid child to root).
             for dto in document.tags {
-                guard let row = tagByID[dto.id], let parentID = dto.parentID else { continue }
-                row.parent = tagByID[parentID]
+                guard !skippedTagIDs.contains(dto.id),
+                      let row = tagByID[dto.id],
+                      let parentID = dto.parentID
+                else { continue }
+                row.parent = tagByID[parentID] ?? (try? self.fetchTag(id: parentID, ctx: ctx))
             }
 
             var taskByID: [UUID: LillistTask] = [:]
+            // X13: same discipline as tags above — skipped rows are never
+            // touched by the second pass.
+            var skippedTaskIDs: Set<UUID> = []
             for dto in document.tasks {
                 do {
                     if let existing = try self.fetchTask(id: dto.id, ctx: ctx) {
@@ -175,6 +190,7 @@ public actor Importer {
                         switch action {
                         case .skip:
                             tasksSkipped += 1
+                            skippedTaskIDs.insert(dto.id)
                         case .update:
                             self.applyTask(dto, into: existing, tagByID: tagByID)
                             tasksUpdated += 1
@@ -191,9 +207,14 @@ public actor Importer {
                     errors.append("task \(dto.id): \(error.localizedDescription)")
                 }
             }
+            // X13: skip rows this pass didn't write, and fall back to the
+            // destination store when the parent isn't part of this bundle.
             for dto in document.tasks {
-                guard let row = taskByID[dto.id], let parentID = dto.parentID else { continue }
-                row.parent = taskByID[parentID]
+                guard !skippedTaskIDs.contains(dto.id),
+                      let row = taskByID[dto.id],
+                      let parentID = dto.parentID
+                else { continue }
+                row.parent = taskByID[parentID] ?? (try? self.fetchTask(id: parentID, ctx: ctx))
             }
 
             var journalByID: [UUID: JournalEntry] = [:]
