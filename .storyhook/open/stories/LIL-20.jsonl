@@ -1,4 +1,0 @@
-{"kind":"StoryCreated","at":"2026-07-28T16:32:21Z","title":"H2: Soft-delete/restore reconcile OS notifications for the root task only","state":"todo"}
-{"kind":"StoryPrioritySet","at":"2026-07-28T16:32:21Z","priority":"high"}
-{"kind":"StoryLabelsSet","at":"2026-07-28T16:32:21Z","labels":["plan-4b","sev-high","sweep-stores"]}
-{"kind":"StoryDescriptionSet","at":"2026-07-28T16:32:21Z","description":"Cascaded descendants keep pending notifications (which then fire for a trashed task) or lose them on restore (TaskStore.swift:726-728,745-747). Severity: High. Wave/Plan: Wave 4, plan 4b notification-truthfulness. Sweep: stores/persistence. Verified directly against source."}

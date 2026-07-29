@@ -1,4 +1,0 @@
-{"kind":"StoryCreated","at":"2026-07-28T16:32:21Z","title":"X9: Cross-device notification-spec changes are never reconciled","state":"todo"}
-{"kind":"StoryPrioritySet","at":"2026-07-28T16:32:21Z","priority":"high"}
-{"kind":"StoryLabelsSet","at":"2026-07-28T16:32:21Z","labels":["plan-4b","sev-high","sweep-crossproc"]}
-{"kind":"StoryDescriptionSet","at":"2026-07-28T16:32:21Z","description":"RemoteChangeReconciler filters to lastFiredAt changes only - spec inserts, spec deletes, and task soft-deletes made on another device leave local OS notifications wrong in BOTH directions. restoreSteadyState runs only during migration, never on ordinary sync. Severity: High. Wave/Plan: Wave 4, plan 4b notification-truthfulness. Sweep: cross-process."}

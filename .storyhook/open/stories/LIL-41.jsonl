@@ -1,4 +1,0 @@
-{"kind":"StoryCreated","at":"2026-07-28T16:32:21Z","title":"X10: All-day scheduler default hardcoded 09:00, never hydrated from prefs; reconcile rewrites correct triggers back","state":"todo"}
-{"kind":"StoryPrioritySet","at":"2026-07-28T16:32:21Z","priority":"high"}
-{"kind":"StoryLabelsSet","at":"2026-07-28T16:32:21Z","labels":["plan-4b","sev-high","sweep-crossproc"]}
-{"kind":"StoryDescriptionSet","at":"2026-07-28T16:32:21Z","description":"The all-day scheduler default is hardcoded 09:00 at construction, never hydrated from user preferences at launch - and worse, the reconcile pass actively REWRITES correct pending triggers back to 09:00. Compounding: per-device timeZone defeats cross-device all-day dedup, so both devices fire. Severity: High. Wave/Plan: Wave 4, plan 4b notification-truthfulness. Sweep: cross-process."}
