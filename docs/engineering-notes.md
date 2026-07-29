@@ -4050,7 +4050,9 @@ future contributor will otherwise re-learn:
    gain it together — never a macOS-only Preferences pane (that would re-break
    parity). The underlying store ops and their guards survive untouched
    (`SidebarContextMenuTests`, `PinnedSidebarIntegrationTests` are pure
-   LillistCore), so re-exposing it is UI-only. See `HANDOFF.md`.
+   LillistCore), so re-exposing it is UI-only. See the then-current root
+   `HANDOFF.md` (the root handoff is a rolling, per-program file; retired
+   copies are archived under `docs/superpowers/handoffs/`).
 
 4. **Window posture: `.contentMinSize`, not `.contentSize`.** `.contentSize`
    locks both window edges to the content's intrinsic size (no free resize);

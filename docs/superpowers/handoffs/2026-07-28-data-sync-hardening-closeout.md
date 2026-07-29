@@ -1,11 +1,16 @@
-# HANDOFF — Data & Sync Hardening: PROGRAM COMPLETE, PR not yet opened
+# Closeout handoff — Data & Sync Hardening
 
-**Worktree:** `/Volumes/Code/mikeyward/Lillist/.claude/worktrees/data-sync-hardening`
-**Branch:** `hardening/data-sync-2026-07`
+> **Archived 2026-07-29.** This was the repo-root `HANDOFF.md` while the
+> program was in flight. The program branch `hardening/data-sync-2026-07`
+> merged to `main` via **PR #77** on 2026-07-29, so this file is now the
+> program's closing handoff — historical record, not an active to-do. The
+> two standing items in *What still needs Mikey* below are the only live
+> content; everything else describes work already landed.
+
+**Branch:** `hardening/data-sync-2026-07` (merged, PR #77)
 **State:** All 70 findings from `docs/reviews/2026-07-28-data-sync-review.md`
-are closed across Waves 0–6. This was the program's last wave (`6a`
-`completeness-and-lows` + closeout). **Nothing left to fix.** The only
-remaining step is opening the one program PR — see below.
+are closed across Waves 0–6. The program's last wave was `6a`
+(`completeness-and-lows` + closeout). **Nothing left to fix.**
 
 ## What landed in Wave 6
 
@@ -65,17 +70,18 @@ switches, a second-Apple-ID account switch, two-device reset propagation,
 real-widget checks) — none of it gates anything; it's for Mikey to run at
 leisure with real devices/accounts.
 
-## Next step — open the one program PR, then stop
+## How it landed
 
-Per this worktree's standing rule (deploys/merges only run from `main`,
-never from a linked worktree): push this branch, open one PR summarizing
-the whole program (link the review doc + the ledger), and **stop** — no
-merge, no version bump, no deploy from here. The orchestrator/Mikey reviews
-and merges from `main`.
+The branch pushed and opened one PR summarizing the whole program (linking
+the review doc + the ledger); Mikey merged it from `main` as **PR #77** on
+2026-07-29 — merge commit `8f1b6fc0`, 238 files, ~29.6k insertions. The
+post-merge docs tidy (this archive, the CLAUDE.md program entry, the
+ledger's status banner) followed in a separate PR, alongside the `v0.19.0`
+minor bump and the iOS/macOS deploys.
 
 ## If you're picking this up fresh
 
-Read, in order: this file → the ledger's *Current status* banner (now reads
+Read, in order: this file → the ledger's *Current status* banner (reads
 PROGRAM COMPLETE) → the *Wave 6 closing report* → the plan doc above. There
 is no next wave. If something in production surfaces a NEW defect, it's a
 new investigation (or, if it retriggers `LIL-83`/`LIL-90`'s known
