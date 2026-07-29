@@ -4741,3 +4741,172 @@ Suspected live in Production data since the 2026-06-24 cutover.
   under it regardless of each descendant's own `deletedAt`) to collect the
   H3 notification-cancellation closure. `planPurge` is unchanged, still the
   source of `1a`'s C1 barrier logic.
+
+## 2026-07-29 — `swift test`'s summary line silently drops XCTest results; verify exit code + a failure-marker grep, never a visual scan
+
+Discovered mid-program (data-sync-hardening plan `1c`, filed as `LIL-79`):
+`swift test --parallel`'s printed summary — `"Test run with N tests in M
+suites passed"` — is emitted by the **swift-testing** framework and counts
+**only swift-testing tests**. `XCTestCase`-based tests (this package's 89
+XCTest tests, mostly Core Data live-store cases) print progress lines only
+(`[N/M] Testing Bundle.Class/method`) under `--parallel` — no per-test
+pass/fail confirmation, no XCTest-bundle summary line, nothing that visually
+reads as "89 XCTest tests also passed." A verification pass that piped
+output through `tail`/`grep -m1` and read only the swift-testing summary
+line could therefore report "full suite green" while an `XCTestCase`
+failure sat, unremarked, earlier in the same log. This is exactly what
+happened: `1c`'s own new `X15` test exposed a fixture race
+(`GatedPersistenceResolverTests`' UserDefaults suite name was shared,
+literal, and not worker-process-unique, so `swift test --parallel`'s
+separate-process workers raced it) that the tail-piped verification method
+used up to that point could not have caught even on a run where it fired.
+
+**Binding protocol since:** capture full output, check the real process
+exit code, and grep for both markers XCTest emits on a real failure —
+never trust the swift-testing summary line alone:
+
+```bash
+swift test --package-path Packages/LillistCore --parallel --num-workers 2 \
+  > /tmp/suite.log 2>&1; echo EXIT:$?
+grep -E "Test Suite .* failed|Note: Some test targets reported failures" /tmp/suite.log
+```
+
+Confirmed via a deliberate toggle-the-failure probe during the `LIL-79` fix
+(these are the two lines an actual `XCTestCase` failure reliably prints,
+independent of the swift-testing summary). Run twice when a change touches
+shared test-fixture state (in-process singletons, `UserDefaults(suiteName:)`,
+shared temp directories) to derisk parallel-worker races the same way the
+`LIL-79` fixture did — a suite-name collision won't necessarily fire on
+every run.
+
+## 2026-07-29 — Six processes, one store: `StoreLocation` is the only sanctioned path resolver
+
+Before data-sync-hardening plan `1c` (findings `X1`/`X2`), the app-group
+store path was independently re-derived in at least three places that
+disagreed: the macOS app used `StoreConfiguration.defaultOnDisk` (the
+sandbox container, never the App Group at all — its widget opened a
+second, empty `Lillist.sqlite` and, in iCloud mode, mirrored the *entire
+account* into that throwaway file), while the `lillist` CLI built
+`<group>/Library/Application Support/Lillist/Lillist.sqlite` against iOS's
+`<group>/Lillist/Lillist.sqlite`. **No test opened two `PersistenceController`s
+against one on-disk file**, so none of this was visible to CI or to any
+single-process test run — a structural blind spot, not a logic bug any one
+process's own tests could have caught.
+
+- `Persistence/StoreLocation.swift`'s `resolve(role:containerProvider:)` is
+  now the **only** sanctioned way any of the six processes (iOS app, macOS
+  app, iOS widget, macOS widget, Share Extension, Shortcuts extension,
+  `lillist` CLI) computes the store's on-disk path — four `Role`s
+  (`mainApp`/`extensionProcess`/`widget`/`cli`), all pinned to the
+  identical `<group>/Lillist/Lillist.sqlite`. Only `mainApp` may set
+  `StoreConfiguration.armsCloudKitMirroring = true` — every other role
+  opens read/write but never arms mirroring, so a widget or extension can
+  never accidentally become a second CloudKit-mirroring delegate racing
+  the main app's.
+  `MultiProcessStoreHarnessTests.everyRoleResolvesToIdenticalPath`/
+  `pathPinHoldsUnderInterleaving` are the direct regression proof and the
+  reusable **keystone** for testing this six-process topology at all —
+  every later plan that needed to prove real cross-process behavior
+  (`5b`'s widget snapshot tests, `6a`'s `LIL-87`/`X20` tests) built on this
+  same "two independently-constructed `PersistenceController`s sharing one
+  on-disk file" shape rather than reinventing it.
+- Two independently-constructed `NSPersistentCloudKitContainer`s over one
+  file do **not** reliably deliver `.NSPersistentStoreRemoteChange` to each
+  other the way two contexts of the *same* container do — a fresh
+  `PersistenceController`'s first fetch already sees another controller's
+  already-committed write without needing the notification (confirmed
+  empirically during `5b`), but relying on the notification firing between
+  two *separate* controllers is not a safe test assumption. Force a
+  coordinator-level `viewContext.refreshAllObjects()` instead of waiting on
+  the notification when a test needs to observe a sibling controller's
+  write.
+
+## 2026-07-29 — Deterministic UUIDv5 identity is the idempotency mechanism for cross-process/cross-device duplicate collapse — but only because a same-`id` reconciler already exists
+
+Data-sync-hardening `X7` (recurrence spawns had no idempotency key — a
+concurrent widget/app interaction or two devices closing the same task
+near-simultaneously could double-spawn the identical occurrence under
+distinct random UUIDs) established the pattern:
+`DeterministicUUID.v5(namespace:name:)` (RFC 4122 name-based UUID,
+`CryptoKit.Insecure.SHA1` — "insecure" names the algorithm's unsuitability
+for cryptographic collision resistance, not its unsuitability here) derives
+`spawn.id` from `(series.id, occurrence date)` instead of `UUID()` — the
+exact value two racing processes both independently compute from data they
+already share (the series' own `id`, its pre-advance
+`nextOccurrenceAfter`), so two independent spawns of "the same" occurrence
+collide on `id` instead of silently duplicating.
+
+**The load-bearing subtlety a future contributor could miss:** making two
+independently-created rows share an `id` does **not**, by itself, cause
+`NSPersistentCloudKitContainer` to merge them into one CKRecord —
+CloudKit's record identity for a mirrored store is derived from Core Data's
+own internal per-row identity token, not from an app-defined `id`
+*attribute*. Two processes racing this fix still produce two distinct rows
+with the same `id` attribute value. The fix only WORKS because
+`TaskDuplicateReconciler` (`1a`'s `M5`) already exists as an app-level,
+`id`-attribute-keyed merge pass — deterministic UUIDs give the reconciler a
+recognizable pair to collapse; without a reconciler already watching for
+same-`id` duplicates, a deterministic UUID alone would just be two
+duplicate rows that happen to share a field. Verified end-to-end during
+`4c`, not assumed: the reconciler was shown to actually merge the resulting
+same-id pair, not just that the ids matched.
+
+## 2026-07-29 — Wall-clock-timed test assertions flake under `--parallel` contention as a *class*, distinct from the SIGSEGV worker-crash class
+
+The 2026-06-04 "Intermittent SIGSEGV under heavy parallel in-memory store
+creation" entry above documents one contention-driven flake class (a
+crashed test-runner subprocess, no per-test failure line). Data-sync-
+hardening's later waves (`5a` through `6a`) surfaced a **second, distinct**
+class as the suite grew from 1134 to 1451 tests: individually-passing tests
+whose assertions compare against a real wall-clock budget (a fixed
+`Task.sleep` margin, a `Date()` the test captured independently at a
+different point than the code path being asserted on) start failing at an
+elevated rate purely from CPU scheduling pressure — no logic defect, no
+crash, just insufficient timing margin under contention that was
+comfortable in isolation. Three NAMED instances hit repeatedly across
+`4b`/`5a`/`5c`/`6a`'s own verification runs before `6a` hardened all three
+(tracked as `LIL-84`): `SyncQuiesceMonitorTests`' 300ms-quiet-window/
+500ms-hard-timeout pair, `X16AfterCompletionIntervalClampTests`' spawn-vs-
+`beforeClose` boundary check, and `5b`'s `WidgetRefreshControllerTests`
+debounce-coalescing test.
+
+- **Two independently-effective mitigation shapes, chosen per what
+  actually made a given test wall-clock-*sensitive*, not one mechanical
+  treatment applied everywhere:**
+  1. **Extract the pure decision and simulate it.** Where the thing under
+     test is fundamentally an algorithm over elapsed time (the quiesce
+     pair), pull the one real-time-dependent comparison out into a named,
+     directly-callable function (zero behavior change to the production
+     caller — same `Date()`/`Task.sleep` structure, just an inline
+     expression given a name), then drive that function through a
+     synthetic, caller-supplied event/time schedule in the test instead of
+     a real clock. Zero real elapsed time, so zero contention sensitivity,
+     and it proves the actual decision logic (not just "eventually settled
+     within some margin").
+  2. **Stop sampling two clocks independently.** Where a test compared two
+     values it captured from *separate* `Date()` calls at different points
+     in the call stack (the `X16` boundary: a test-side `Date()` captured
+     before calling `transition()`, compared against the spawn's `start`),
+     the race isn't really about timing margin at all — it's that the two
+     compared values have no causal relationship. Fetching the actual
+     persisted value the second one is *derived from* (the task's own
+     `closedAt`, not an independently-sampled `Date()`) and comparing
+     against THAT removes the race entirely, and is simply a more correct
+     test regardless of contention.
+  3. **When neither applies, widen the margin — deliberately, not
+     apologetically.** `5b`'s debounce test's mechanism (real
+     `Task.sleep`-based coalescing) can't be virtualized without touching
+     production's timer, so the fix is headroom: 100ms → 500ms debounce
+     window, 20ms → 5ms inter-save gaps, ~5x → ~20x margin. The
+     debounce-coalescing behavior asserted is unchanged; only the safety
+     margin against scheduler jitter grew.
+- **A test that failed once, "fixed," and flaked again is not necessarily
+  a regression** — `5b`'s own debounce test was hardened twice already
+  (see that plan's closing report) before `5c`'s verification run hit it a
+  third time on an unusually contended machine. Each occurrence was
+  confirmed a genuine instance of this class (via isolated re-run or the
+  documented serial tiebreaker) before being retried/patched — never
+  assumed. `6a`'s fix (above) is the first attempt to widen the margin
+  itself rather than only re-running; if it flakes a fourth time, that's
+  the signal this specific test needs shape (1) or (2) above instead of
+  more headroom.
