@@ -35,7 +35,7 @@ struct SeriesStoreRollbackTests {
             let req = NSFetchRequest<Series>(entityName: "Series")
             req.predicate = NSPredicate(format: "id == %@", seriesID as CVarArg)
             let m = try! bg.fetch(req).first!
-            m.rule = RecurrenceRule.calendar(.init(freq: .weekly, interval: 2))
+            try! m.setRule(RecurrenceRule.calendar(.init(freq: .weekly, interval: 2)))
             try! bg.save()
         }
 

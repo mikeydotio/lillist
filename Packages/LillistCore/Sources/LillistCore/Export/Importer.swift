@@ -51,6 +51,16 @@ public actor Importer {
         public let smartFiltersInserted: Int
         public let smartFiltersUpdated: Int
         public let smartFiltersSkipped: Int
+        /// Discovered during the 6a completeness sweep's export/import
+        /// round-trip test: `apply` never touched `document.preferences` at
+        /// all, so an export -> wipe -> import cycle silently reverted
+        /// every account-level preference (trash retention, morning
+        /// summary time, default tag tint, ...) to its hardcoded default.
+        /// `true` once this document's preferences have been applied to
+        /// the destination's singleton `AppPreferences` row (`false` only
+        /// when `.skipExisting` left an already-materialized row alone —
+        /// see `applyPreferences`'s doc comment).
+        public let preferencesApplied: Bool
         public let errors: [String]
 
         public init(
@@ -72,6 +82,7 @@ public actor Importer {
             smartFiltersInserted: Int = 0,
             smartFiltersUpdated: Int = 0,
             smartFiltersSkipped: Int = 0,
+            preferencesApplied: Bool = false,
             errors: [String] = []
         ) {
             self.tasksInserted = tasksInserted
@@ -92,6 +103,7 @@ public actor Importer {
             self.smartFiltersInserted = smartFiltersInserted
             self.smartFiltersUpdated = smartFiltersUpdated
             self.smartFiltersSkipped = smartFiltersSkipped
+            self.preferencesApplied = preferencesApplied
             self.errors = errors
         }
     }
@@ -278,14 +290,14 @@ public actor Importer {
                         case .replaceExisting, .recencyWins:
                             // Series carries no modifiedAt; fall back to
                             // "incoming wins", matching Tag's precedent.
-                            self.applySeries(dto, into: existing)
+                            try self.applySeries(dto, into: existing)
                             seriesUpdated += 1
                         }
                         seriesByID[dto.id] = existing
                     } else {
                         let row = Series(context: ctx)
                         row.id = dto.id
-                        self.applySeries(dto, into: row)
+                        try self.applySeries(dto, into: row)
                         seriesInserted += 1
                         seriesByID[dto.id] = row
                     }
@@ -450,6 +462,16 @@ public actor Importer {
                 }
             }
 
+            // Preferences — a singleton row, not a collection, so there's
+            // no per-row insert/update/skip count to track: only whether
+            // this document's preferences were applied at all.
+            var preferencesApplied = false
+            do {
+                preferencesApplied = try self.applyPreferences(document.preferences, policy: policy, ctx: ctx)
+            } catch {
+                errors.append("preferences: \(error.localizedDescription)")
+            }
+
             do {
                 try ctx.save()
             } catch {
@@ -475,6 +497,7 @@ public actor Importer {
                 smartFiltersInserted: filtersInserted,
                 smartFiltersUpdated: filtersUpdated,
                 smartFiltersSkipped: filtersSkipped,
+                preferencesApplied: preferencesApplied,
                 errors: errors
             )
         }
@@ -568,8 +591,17 @@ public actor Importer {
         }
     }
 
-    private nonisolated func applySeries(_ dto: ExportSchema.SeriesDTO, into row: Series) {
-        row.rule = dto.rule
+    /// `Series.rule` is a read-only computed property (L6) — `setRule(_:)`
+    /// throws on an encode failure rather than silently clearing the rule,
+    /// so this method must too. Its two call sites already run inside a
+    /// per-row `do`/`catch` that appends to `errors`, matching every other
+    /// entity's import discipline.
+    private nonisolated func applySeries(_ dto: ExportSchema.SeriesDTO, into row: Series) throws {
+        if let rule = dto.rule {
+            try row.setRule(rule)
+        } else {
+            row.ruleJSON = nil
+        }
         row.nextOccurrenceAfter = dto.nextOccurrenceAfter
         // seedTask is wired by the caller's second pass, once every task
         // row (bundle-inserted or destination-store-resident) is resolvable.
@@ -606,6 +638,44 @@ public actor Importer {
         row.position = dto.position
         row.createdAt = dto.createdAt
         row.modifiedAt = dto.modifiedAt
+    }
+
+    /// Restores `dto` into the destination's singleton `AppPreferences` row
+    /// (creating it if absent), returning whether it was applied.
+    ///
+    /// `AppPreferences` carries no `modifiedAt` (same as `Series`/`Tag`), so
+    /// there's no timestamp to arbitrate a `.recencyWins` decision — this
+    /// follows their established "incoming wins" fallback for both
+    /// `.replaceExisting` and `.recencyWins`. `.skipExisting` only skips
+    /// when a row already exists to skip: an absent singleton (a store
+    /// that's never been touched) still gets populated, matching every
+    /// other entity's "insert always happens, .skipExisting only guards
+    /// updates" shape.
+    private nonisolated func applyPreferences(
+        _ dto: ExportSchema.PreferencesDTO,
+        policy: ConflictPolicy,
+        ctx: NSManagedObjectContext
+    ) throws -> Bool {
+        let req = NSFetchRequest<AppPreferences>(entityName: "AppPreferences")
+        req.predicate = NSPredicate(format: "id == %@", PreferencesStore.singletonID as CVarArg)
+        req.fetchLimit = 1
+        let existing = try ctx.fetch(req).first
+        if existing != nil, policy == .skipExisting { return false }
+
+        let row = existing ?? {
+            let new = AppPreferences(context: ctx)
+            new.id = PreferencesStore.singletonID
+            return new
+        }()
+        row.defaultAllDayNotificationHour = dto.defaultAllDayHour
+        row.defaultAllDayNotificationMinute = dto.defaultAllDayMinute
+        row.morningSummaryEnabled = dto.morningSummaryEnabled
+        row.morningSummaryHour = dto.morningSummaryHour
+        row.morningSummaryMinute = dto.morningSummaryMinute
+        row.trashRetentionDays = dto.trashRetentionDays
+        row.defaultTaskListSortRaw = dto.defaultTaskListSort
+        row.defaultTagTintHex = dto.defaultTagTintHex
+        return true
     }
 
     private nonisolated func fetchTag(id: UUID, ctx: NSManagedObjectContext) throws -> Tag? {

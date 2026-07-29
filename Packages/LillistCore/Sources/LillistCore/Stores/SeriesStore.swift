@@ -25,7 +25,7 @@ public final class SeriesStore: @unchecked Sendable {
             let task = try TaskStore(persistence: persistence).fetchManagedObject(id: seedTaskID, in: context)
             let series = Series(context: context)
             series.id = UUID()
-            series.rule = rule
+            try series.setRule(rule)
             series.seedTask = task
             // Membership: the seed is also part of `instances`.
             task.series = series
@@ -67,7 +67,7 @@ public final class SeriesStore: @unchecked Sendable {
     public func update(id: UUID, rule: RecurrenceRule) async throws {
         try await withMutationRollback(context: context) { [self] in
             let m = try fetchManagedObject(id: id, in: context)
-            m.rule = rule
+            try m.setRule(rule)
             let anchor = m.seedTask?.start ?? m.seedTask?.createdAt ?? Date()
             m.nextOccurrenceAfter = Self.computeNextOccurrence(rule: rule, after: anchor)
         }
@@ -109,7 +109,7 @@ public final class SeriesStore: @unchecked Sendable {
 
             let newSeries = Series(context: context)
             newSeries.id = UUID()
-            newSeries.rule = rule
+            try newSeries.setRule(rule)
             newSeries.seedTask = task
             task.series = newSeries
             let anchor = task.start ?? task.createdAt ?? Date()

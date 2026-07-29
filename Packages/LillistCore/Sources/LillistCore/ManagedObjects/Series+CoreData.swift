@@ -26,21 +26,30 @@ extension Series {
 }
 
 extension Series {
-    /// Typed accessor over `ruleJSON`. Returns `nil` if the JSON is missing
-    /// or malformed (caller should treat that as a data-corruption signal).
+    /// Typed read accessor over `ruleJSON`. Returns `nil` if the JSON is
+    /// missing or malformed (caller should treat that as a data-corruption
+    /// signal). Read-only — see `setRule(_:)` for why the write side is a
+    /// throwing method rather than this property's setter (L6).
     public var rule: RecurrenceRule? {
-        get {
-            guard let json = ruleJSON, let data = json.data(using: .utf8) else { return nil }
-            return try? JSONDecoder().decode(RecurrenceRule.self, from: data)
+        guard let json = ruleJSON, let data = json.data(using: .utf8) else { return nil }
+        return try? JSONDecoder().decode(RecurrenceRule.self, from: data)
+    }
+
+    /// Encodes `newValue` into `ruleJSON`, throwing on failure instead of
+    /// silently clearing the rule (L6). The former `rule` setter used
+    /// `try?` and fell back to `ruleJSON = nil` on any encode error —
+    /// symptom-masking that would permanently drop a series' recurrence
+    /// data with no signal, unlike this codebase's sibling JSON-column
+    /// pattern (`SmartFilterStore.encode(_:)`/`.decode(_:)`), which already
+    /// throws. `ruleJSON` is left untouched until the encode succeeds, so a
+    /// failure can never overwrite a previously-valid rule with `nil`.
+    public func setRule(_ newValue: RecurrenceRule) throws {
+        let data = try JSONEncoder().encode(newValue)
+        guard let str = String(data: data, encoding: .utf8) else {
+            throw LillistError.validationFailed([
+                .init(field: "rule", message: "encoded JSON was not valid UTF-8")
+            ])
         }
-        set {
-            if let newValue,
-               let data = try? JSONEncoder().encode(newValue),
-               let str = String(data: data, encoding: .utf8) {
-                ruleJSON = str
-            } else {
-                ruleJSON = nil
-            }
-        }
+        ruleJSON = str
     }
 }
