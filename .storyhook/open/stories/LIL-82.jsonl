@@ -1,5 +1,0 @@
-{"kind":"StoryCreated","at":"2026-07-29T04:05:56Z","title":"TaskDuplicateReconciler.diagnosticLog is never wired in either AppEnvironment","state":"todo"}
-{"kind":"StoryPrioritySet","at":"2026-07-29T04:05:56Z","priority":"low"}
-{"kind":"StoryLabelsSet","at":"2026-07-29T04:05:56Z","labels":["discovered-during-4a","plan-6a"]}
-{"kind":"StoryDescriptionSet","at":"2026-07-29T04:05:56Z","description":"Discovered during Wave 4a (flagged in its closing report, filed by orchestrator). The diagnosticLog property added by 1a's M5 fix exists on TaskDuplicateReconciler but nothing assigns it in either app's AppEnvironment, so a duplicate-merge failure today only logs via os.Logger and never reaches the structured diagnostic stream. Fix: one-line wiring in both AppEnvironments (mirror the RemoteChangeReconciler.diagnosticLog wiring 4a added on iOS). Belongs to the 6a completeness sweep."}
-{"kind":"StoryStateChanged","at":"2026-07-29T10:35:00Z","state":"in-progress"}

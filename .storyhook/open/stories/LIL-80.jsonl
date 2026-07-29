@@ -1,5 +1,0 @@
-{"kind":"StoryCreated","at":"2026-07-29T00:14:02Z","title":"restoreFromBackup (SQLite migration-crash recovery) never resyncs the JSON backup package after the file swap","state":"todo"}
-{"kind":"StoryPrioritySet","at":"2026-07-29T00:14:02Z","priority":"medium"}
-{"kind":"StoryLabelsSet","at":"2026-07-29T00:14:02Z","labels":["discovered-during-2b","plan-6a"]}
-{"kind":"StoryDescriptionSet","at":"2026-07-29T00:14:02Z","description":"Discovered during Wave 2b (flagged in its closing report, filed by orchestrator). MigrationCoordinator.restoreFromBackup swaps the SQLite store file directly with no Core Data save, so LocalBackupCoordinator's observers never fire and the live JSON backup package is left describing the pre-restore store. Same defect class as the S23 stale-package gap that 2b fixed for the JSON-package restore subsystem (BackupPackageReconciling now exists as the chokepoint pattern to reuse — inject it into restoreFromBackup's success path). Not one of the original 70 findings. Belongs to the 6a completeness sweep."}
-{"kind":"StoryStateChanged","at":"2026-07-29T10:35:00Z","state":"in-progress"}

@@ -1,5 +1,0 @@
-{"kind":"StoryCreated","at":"2026-07-28T16:32:21Z","title":"L6: Series.rule's setter nils the rule on encode failure","state":"todo"}
-{"kind":"StoryPrioritySet","at":"2026-07-28T16:32:21Z","priority":"low"}
-{"kind":"StoryLabelsSet","at":"2026-07-28T16:32:21Z","labels":["plan-6a","sev-low","sweep-stores"]}
-{"kind":"StoryDescriptionSet","at":"2026-07-28T16:32:21Z","description":"Symptom-masking try? that silently drops recurrence data instead of surfacing the encode error. Severity: Low. Wave/Plan: Wave 6, plan 6a completeness-and-lows. Sweep: stores/persistence."}
-{"kind":"StoryStateChanged","at":"2026-07-29T10:35:00Z","state":"in-progress"}
