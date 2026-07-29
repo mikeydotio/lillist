@@ -26,9 +26,51 @@ CloudKit, XCTest + Swift Testing, xcodegen, storyhook (prefix `LIL`).
 **As of 2026-07-29 — Wave 0, all of Wave 1 (`1a` `trash-tree-integrity`,
 `1b` `purge-cloudkit-retirement`, `1c` `store-location-unification`, `1d`
 `export-schema-completeness`), all of Wave 2 (`2a` `migration-transitions`,
-`2b` `backup-restore-correctness`), and all of Wave 3 (`3a`
-`account-identity-and-status`, `3b` `reset-propagation-safety`) COMPLETE.
-Wave 4's first plan, `4a` `history-consumer-discipline`, next.**
+`2b` `backup-restore-correctness`), all of Wave 3 (`3a`
+`account-identity-and-status`, `3b` `reset-propagation-safety`), and Wave 4's
+first plan `4a` `history-consumer-discipline` COMPLETE. Wave 4's second plan,
+`4b` `notification-truthfulness`, next.**
+
+- ✅ **Plan `4a` closed both findings** (`H6`, `M3` / `LIL-24`, `LIL-47`) —
+  `RemoteChangeReconciler.processPendingHistory` now advances its history
+  watermark only after the affected-task computation *and* the consuming
+  callback have both completed, mirroring `LocalBackupCoordinator
+  .processRemoteChange`'s verified-correct pattern; the old `try? ... ?? []`
+  swallow around `affectedTaskIDs` became a real `do`/`catch` that fails
+  loud (new `diagnosticLog` property, same M5 shape) and leaves the
+  watermark untouched on failure. Also fixed the hardcoded `localAuthor:
+  PersistenceController.localTransactionAuthor` comparison to use
+  `persistence.transactionAuthor` (this specific controller's own stamped
+  value) — decided directly, no council needed: extension-authored writes
+  stay classified as foreign (a same-device but separate-process write is
+  still unobserved by this process's in-memory scheduler state), so the fix
+  only changes "this instance's own writes vs. a hardcoded default." `M3`'s
+  class-killer: `DiagnosticHistoryObserver`'s private nested `DrainGate`
+  actor extracted into a public `Persistence/DrainGate.swift` type (pure
+  refactor, zero behavior change, ported verbatim) and adopted in both
+  `RemoteChangeReconciler` (fixes a genuine "double-process, watermark
+  regression" correctness race — proven by a regression test showing 24
+  concurrent calls reconcile 192 task-ids, 24× over, before the fix,
+  exactly 8 after) and `TaskDuplicateReconciler` (a non-functional
+  "main-queue full-table-scan thrash" fix only — each full scan is
+  individually atomic via `ctx.perform`'s per-context serialization, so
+  correctness was never at risk here; proven by a call-counting mirror
+  identifier showing 24 concurrent calls run 24 independent full-table
+  scans before the fix, a small bounded number after). Plan doc:
+  `docs/superpowers/plans/2026-07-28-plan-4a-history-consumer-discipline.md`.
+  Commit range `40bd3895..a809d74b` (4 commits: 1 fix (H6), 1 refactor
+  (DrainGate extraction), 1 fix (M3 adoption), 1 `chore(stories)`). Full
+  `LillistCore` suite green **twice in a row** with unmasked exit codes and
+  a clean grep for the failure markers (1324 tests, 233 suites — up from
+  `3b`'s 1314/232 baseline); one `SIGSEGV`/signal-11 flake hit on the first
+  full-suite attempt after the DrainGate refactor commit — matches the
+  documented parallel-test-flake class, cleared on retry per the documented
+  policy, then re-confirmed clean twice more for the M3 commit. Unsigned
+  `xcodebuild` build for `Lillist-iOS` (BUILD SUCCEEDED) — the only
+  app-target file touched was iOS `AppEnvironment.swift`'s one-line
+  `diagnosticLog` wiring; macOS was not touched (it has no
+  `RemoteChangeReconciler` yet — `4b`'s job). See *Wave 4a closing report*
+  below for what `4b` needs to know.
 
 - ✅ **Plan `1a` closed all 8 findings** (`C1 C2 C3 H4 H7 M1 M2 M5` /
   `LIL-7 LIL-8 LIL-9 LIL-22 LIL-25 LIL-45 LIL-46 LIL-49`), added the
@@ -332,17 +374,15 @@ Wave 4's first plan, `4a` `history-consumer-discipline`, next.**
   *Wave 3b closing report* below for the council-vote outcome (180-day
   expiry, unanimous 3/3 round 1) and what `4a` needs to know.
 
-**Next action for whoever picks this up:** start Wave 4's first plan, `4a`
-(`history-consumer-discipline`) — findings `H6 M3`. Its hotspot is
-`RemoteChangeReconciler.swift` (chain 4 in *Shared-file serial chains* below:
-`4a` must land first, before `4b` widens the reconcile mechanism — see that
-chain's note). `4a` also opens chain 6 (`HistoryPruner.swift` + the three
-history-token `UserDefaults` keys) alongside `5c`, which formalizes the
-`WatermarkRegistry` `3b`'s `HistoryWatermarks` type deliberately stubbed
-against (see the *Wave 3b closing report* below for the exact seam `5c`
-should replace). Read the *Resume protocol* section first, then the *Wave 3b
-closing report* for what's now wired into `ResetSignalMonitor`/
-`DataStoreResetService`/`MigrationCoordinator`/both `AppEnvironment.swift`s.
+**Next action for whoever picks this up:** start Wave 4's second plan, `4b`
+(`notification-truthfulness`) — findings `H2 X8 X9 X10`. Its hotspot is the
+same `RemoteChangeReconciler.swift` `4a` just hardened (chain 4 in
+*Shared-file serial chains* below) — `4b` widens the diffing to spec
+inserts/deletes and task soft-deletes, and per `X8`/`X9` will likely give
+macOS its first `RemoteChangeReconciler` instance too. Read the *Resume
+protocol* section first, then the *Wave 4a closing report* below for the
+exact shape `4b` must build on (the `drainOnce()` split, the
+`persistence.transactionAuthor` fix, the new `diagnosticLog` property).
 
 ---
 
@@ -1228,6 +1268,124 @@ to know:**
 
 ---
 
+## Wave 4a closing report (`history-consumer-discipline`)
+
+Plan doc: `docs/superpowers/plans/2026-07-28-plan-4a-history-consumer-discipline.md`
+— contains the full watermark-ordering sequence diagram, the `DrainGate`
+class diagram, and the `transactionAuthor` semantics decision writeup.
+Deliberately the smallest plan in the program (two findings, one shared
+mechanism).
+
+| Finding | Story | Fix commit | Regression test(s) |
+|---|---|---|---|
+| `H6` | `LIL-24` | `40bd3895` | `RemoteChangeReconcilerTests.swift` (+2): `watermarkAdvancesOnlyAfterCallbackCompletes` (an actor spy reads `tokenStore.lastToken` from *inside* the callback and asserts it's still `nil` — proves the ordering mechanism directly, not just end-state) + `usesInstanceTransactionAuthorNotHardcodedDefault` (a controller built with `macAppTransactionAuthor` writes `lastFiredAt` through its own context; asserts `onAffectedTasks` is never called — red under the old hardcoded-`localTransactionAuthor` comparison). |
+| `M3` (`RemoteChangeReconciler` half) | `LIL-47` | `5078cbfd` (extraction) + `84f77d85` (adoption) | `DrainGateTests.swift` (6 tests, the extracted type's own contract) + `RemoteChangeReconcilerTests.concurrentCallsProcessEachChangeExactlyOnce` — 24 concurrent `processPendingHistory()` calls; verified genuinely red first (192 = 24×8 task-ids reconciled, one full independent pass per call) by temporarily reverting the source file to the pre-M3 commit, then green (exactly 8) after re-applying. |
+| `M3` (`TaskDuplicateReconciler` half) | `LIL-47` | `84f77d85` | `TaskDuplicateReconcilerTests.concurrentCallsCollapseIntoBoundedPasses` — an intentionally ambiguous/never-resolving duplicate group + a call-counting `MirroredObjectIdentifying` wrapper; verified red first (24 concurrent calls → exactly 24 full-table passes, one per call, no coalescing), green after (a small, bounded count). |
+
+**Commit range:** `40bd3895..a809d74b` — 1 fix (`40bd3895` H6), 1 refactor
+(`5078cbfd` DrainGate extraction), 1 fix (`84f77d85` M3 adoption in both
+consumers), 1 `chore(stories)` (`a809d74b`). Full `LillistCore` suite green
+**twice in a row** with unmasked exit codes and a clean grep for the failure
+markers (1324 tests, 233 suites — up from `3b`'s 1314/232 baseline). One
+`SIGSEGV`/signal-11 crash (`exited with unexpected signal code 11`) hit on
+the first full-suite attempt right after the DrainGate refactor commit —
+matches the documented parallel-test-flake class (CLAUDE.md's "heavy
+concurrent in-memory store creation intermittently SIGSEGVs inside Core
+Data" note), cleared on retry, then the M3 commit's own two-in-a-row
+verification ran clean with no further flakes. Unsigned `xcodebuild` build
+for `Lillist-iOS` (BUILD SUCCEEDED) — the only app-target file touched.
+
+**Two-hats discipline, strictly separated across three code commits** (per
+the wave brief's explicit "one commit per completed red→green cycle"
+requirement): `40bd3895` is the H6 behavior fix in isolation (no `DrainGate`
+yet — `processPendingHistory` still runs unguarded, single-flight, exactly
+as before this plan except for the ordering/author/fail-loud fix);
+`5078cbfd` is a pure mechanism move with zero behavior change
+(`DiagnosticHistoryObserverTests` pass unchanged); `84f77d85` is the M3
+behavior fix, adopting the now-extracted gate in both consumers. Each commit
+was verified independently before the next began.
+
+**Verification method for both M3 regression tests — red confirmed against
+the actual pre-fix code, not assumed:** for `RemoteChangeReconciler`, the
+already-committed post-H6 version of the source file was checked out via
+`git checkout HEAD -- <file>` (safe: the M3 changes existed only as an
+uncommitted working-tree diff at that point, saved first via `git diff HEAD
+-- <file> > /tmp/rcr_m3.patch` and re-applied with `git apply` after
+confirming red), then the M3 test was run and failed exactly as predicted
+before the source changes were restored. `TaskDuplicateReconciler`'s test
+was written and run against the then-current (pre-fix, no gate) source
+directly, since that file had no other uncommitted changes to protect.
+
+**The `transactionAuthor` decision (H6, §1b of the plan doc) — decided
+directly, no council invoked:** `processPendingHistory` now compares against
+`persistence.transactionAuthor` (this specific `PersistenceController`
+instance's own stamped value) instead of the hardcoded
+`PersistenceController.localTransactionAuthor` default. Same-device,
+cross-process writes (a future extension-authored `NotificationSpec`
+change) stay classified as **foreign** — this process's in-memory
+`NotificationScheduler` state cannot have observed a write a different OS
+process made, so the correct binary is "authored by this specific
+controller instance" vs. everything else, which is exactly what the fix
+produces. No production behavior changed today (only iOS constructs a
+`RemoteChangeReconciler`, always with the default author) — this closes a
+latent footgun for `4b`, which is expected to give macOS its own instance
+with `macAppTransactionAuthor`.
+
+**Correctness vs. thrash for `TaskDuplicateReconciler`'s M3 half — verified
+against the actual mechanism, not assumed:** `NSManagedObjectContext.perform`
+serializes execution on the context's own private queue, so concurrent
+calls into `reconcileDuplicates` (one `ctx.perform` block each) cannot
+interleave or corrupt state even without `DrainGate` — confirmed by the
+regression test's own shape (an *ambiguous, never-resolving* duplicate
+group was needed to get a stable, repeatable call count; a resolvable one
+would only ever call the mirror identifier once regardless of concurrency,
+since the first pass to run would merge it away for every later pass). The
+fix here is real but non-functional (thrash reduction), unlike
+`RemoteChangeReconciler`'s half, where the watermark write sits *outside*
+the `ctx.perform` block it reads from and the race is a genuine correctness
+defect.
+
+**Discovered, out-of-scope residual — not fixed here (flagged per the
+`LIL-77`/`LIL-81` precedent):** `TaskDuplicateReconciler.diagnosticLog`
+(added by `1a`'s M5 fix) is never wired in either `AppEnvironment.swift` —
+`taskDuplicateReconciler` is constructed and started in both apps, but
+nothing ever assigns its `diagnosticLog`, so an M5 reconcile failure today
+logs via `os.Logger` only and never reaches the structured diagnostic
+stream. Adjacent to this plan's own `RemoteChangeReconciler.diagnosticLog`
+wiring but a distinct, pre-existing gap from a different wave's fix — not
+part of either `H6` or `M3`'s mechanism, left for the `6a` completeness
+sweep.
+
+**What `4b` (`notification-truthfulness`) needs to know:**
+- `RemoteChangeReconciler.processPendingHistory()`'s body is now `private
+  func drainOnce()`, wrapped by an acquire/loop pair reading
+  `drainGate.tryAcquire()`/`finishOrRerun()`. `4b`'s widened diffing (spec
+  inserts/deletes, task soft-deletes per `X9`) belongs inside `drainOnce()`,
+  not as a parallel code path — it inherits the watermark-after-success
+  ordering and the serialization for free only if it stays inside that
+  function.
+- `affectedTaskIDs`'s `localAuthor` parameter is now called with
+  `persistence.transactionAuthor` at the one production callsite. Any new
+  callsite `4b` adds must do the same — never reintroduce the hardcoded
+  `PersistenceController.localTransactionAuthor` default.
+- `RemoteChangeReconciler` now has a `public var diagnosticLog:
+  DiagnosticSink?`, wired in iOS `AppEnvironment.swift` only (macOS still
+  has no `RemoteChangeReconciler` — per the ledger's chain-4 note and `X9`,
+  `4b` is where that changes). Wire the same property when macOS gains one,
+  mirroring the iOS wiring right after `diagnosticLog`'s own construction.
+- `Persistence/DrainGate.swift` is the shared serialization primitive for
+  *any* `NSPersistentStoreRemoteChange` consumer — one instance per
+  consumer instance, never a shared singleton (matches
+  `DiagnosticHistoryObserver`'s existing per-instance ownership). A macOS
+  `RemoteChangeReconciler` instance `4b` constructs gets its own.
+- `TaskDuplicateReconciler.reconcileNow()` (zero-arg) and
+  `reconcileNow(mirrorIdentifier:)` (the test seam) both route through the
+  same `DrainGate` now — the seam is where the gate lives, so a test
+  driving it directly still exercises the real serialization. Don't add a
+  new entry point that bypasses it.
+
+---
+
 ## Execution model (per Mikey's directives, 2026-07-28)
 
 - **One dedicated worktree** on a long-running branch:
@@ -1283,7 +1441,7 @@ Wave 6 closeout. **Status** starts `pending` for everything except Wave 0.
 | 2 | **2b** `backup-restore-correctness` | `S2 S4 S7 S9b S23` | ✅ complete |
 | 3 | **3a** `account-identity-and-status` | `S3 S13 S21 S24` | ✅ complete |
 | 3 | **3b** `reset-propagation-safety` | `S10 S18 S19 S20 S22 X11 S9c` | ✅ complete |
-| 4 | **4a** `history-consumer-discipline` | `H6 M3` | ⬜ pending |
+| 4 | **4a** `history-consumer-discipline` | `H6 M3` | ✅ complete |
 | 4 | **4b** `notification-truthfulness` | `H2 X8 X9 X10` | ⬜ pending |
 | 4 | **4c** `recurrence-correctness` | `H1 X7 X16 X17` | ⬜ pending |
 | 5 | **5a** `mutation-scope-discipline` | `H5 M4 M6 M7 L3 L4 L5 X19 X20` | ⬜ pending |
@@ -1365,11 +1523,16 @@ structure — each earlier plan in the chain will have moved line numbers.
    `attachStore(at:)` on `PersistenceResetting` — attaches fresh at an
    explicit mode, always updating `currentMode`, never a no-op; all four
    conformers implement it). Two plans, both done.
-4. **`RemoteChangeReconciler.swift`** — `4a` (`DrainGate`/watermark-after-
-   success pattern extracted and adopted) → `4b` (spec insert/delete +
-   soft-delete reconcile added on top of `4a`'s corrected watermark
-   discipline). `4a` **must** land first — never widen a reconcile mechanism
-   that still silently loses work.
+4. **`RemoteChangeReconciler.swift`** — `4a` ✅ done (`processPendingHistory`'s
+   body is now `private func drainOnce()`, wrapped by a `DrainGate`
+   acquire/loop pair; the watermark advances only after `affectedTaskIDs`
+   AND `onAffectedTasks` have both completed; `localAuthor` is now
+   `persistence.transactionAuthor`, not the hardcoded
+   `PersistenceController.localTransactionAuthor`; new `public var
+   diagnosticLog: DiagnosticSink?`) → `4b` (spec insert/delete + soft-delete
+   reconcile added on top of `4a`'s corrected watermark discipline, inside
+   `drainOnce()` — see the *Wave 4a closing report* for the exact shape and
+   what `4b` needs to preserve).
 5. **`AppEnvironment.swift`** (both iOS and macOS copies — distinct regions,
    serialize per-platform) — `1c` ✅ done (canonical `StoreLocation` wiring;
    macOS App-Group migration; macOS's `AppEnvironment` gained a new
