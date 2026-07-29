@@ -421,6 +421,31 @@ public final class TaskStore: @unchecked Sendable {
                     ])
                 }
 
+                // M6: the check above only fires when BOTH anchors are
+                // present. A single anchor under `.explicit(parent)` needs
+                // the same guard against the target parent — an anchor's
+                // `position` is only meaningful within its OWN sibling
+                // group, so computing a position from an anchor in a
+                // DIFFERENT group (relative to the explicit target) is
+                // never correct: it can silently collide with an existing
+                // sibling there, or land at a value with no relation to
+                // that group's numbering. Mirrors the both-anchors case's
+                // own behavior exactly — unconditional throw, no heal
+                // attempt — and runs before the tie/inversion heal below so
+                // a wrong-group anchor never reaches recompaction.
+                if case .explicit(let pid) = reparent {
+                    if let a = afterTask, beforeTask == nil, a.parent?.id != pid {
+                        throw LillistError.validationFailed([
+                            .init(field: "neighbors", message: "anchor does not belong to the target parent")
+                        ])
+                    }
+                    if let b = beforeTask, afterTask == nil, b.parent?.id != pid {
+                        throw LillistError.validationFailed([
+                            .init(field: "neighbors", message: "anchor does not belong to the target parent")
+                        ])
+                    }
+                }
+
                 // Heal-then-recheck: if anchors are tied or inverted, attempt to
                 // heal by recompacting siblings in canonical SiblingOrder.
                 // `recompactSiblings` mutates the managed objects in-memory within
