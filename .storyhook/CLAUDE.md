@@ -104,3 +104,38 @@ story prioritize LIL-6 medium
 | Session handoff | `story handoff --since 2h` |
 
 Run `story help <command>` for detailed usage on any command, or `story help --compact` for the full reference.
+
+## Gotchas
+
+- **Fresh worktrees need `.storyhook/open/stories/` to exist, and nothing
+  self-heals it.** Every write-path command (`story new`, even bare with no
+  flags) fails unconditionally with `{"error":"No such file or directory
+  (os error 2)","exit_code":5}` if that directory is missing —
+  `story doctor --fix` does not catch it. Git never commits empty
+  directories, so a project whose entire story backlog happens to be
+  archived/done at the commit a worktree branches from will silently lack
+  `open/stories/` in that worktree, with no error until the first write.
+  Discovered and root-caused during the data-sync-hardening program's Wave
+  0 (independently reproduced in a scratch repo before concluding it was a
+  genuine upstream defect, not a one-off). The class-kill: a committed
+  `.gitkeep` in `.storyhook/open/stories/` guarantees the directory exists
+  in every future worktree/clone — already committed in this repo, so this
+  specific project won't hit it again, but any OTHER storyhook-initialized
+  repo whose backlog reaches all-archived could. Worth filing upstream, in
+  the `story` CLI's own repo: either self-heal the missing directory (the
+  same fix `story doctor --fix` should have made unnecessary), or fail with
+  an actionable message instead of a bare OS error code.
+- **The commit-message hook parses `LIL-N` tokens ANYWHERE in a commit
+  message, not only in a recognized `Closes LIL-N`/`Fixes LIL-N` trailer —
+  and auto-flips story state on a match.** A commit message that merely
+  *mentions* a story ID in prose (e.g., summarizing multiple stories closed
+  in one wave, or referencing a sibling story for context) risks an
+  unintended state flip on a story the commit didn't actually close.
+  **Write `Closes LIL-N` only in the commit that actually closes that
+  story, and avoid writing bare `LIL-N` tokens elsewhere in commit
+  messages** (spell it out — "story LIL-70" reads fine and doesn't match
+  the hook's pattern as reliably as a bare `LIL-70` does; when in doubt,
+  verify with `story list` after the commit that no unrelated story moved).
+  Worth filing upstream too: the hook should require a recognized keyword
+  prefix (`Closes`/`Fixes`/`Resolves`) directly before the token, not match
+  a bare `LIL-N` pattern anywhere in the message body.
