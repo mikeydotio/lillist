@@ -37,7 +37,13 @@ public typealias AccountStateProviding = @Sendable () async -> iCloudAccountStat
 
 @MainActor
 public final class MigrationCoordinator {
-    private let host: any PersistenceReconfiguring
+    /// Widened to `& PersistenceResetting` (S1): `replaceLocalWithICloud`
+    /// now tears down and rebuilds the local store empty before
+    /// re-attaching mirroring, reusing the same primitives
+    /// `DataStoreResetService` uses for a destructive reset. Both
+    /// production conformers (`PersistenceHost`) and the test fake
+    /// (`FakePersistenceReconfigurer`) already satisfy both protocols.
+    private let host: any PersistenceReconfiguring & PersistenceResetting
     private let journal: any MigrationJournalStore
     private let quarantine: QuarantineManager
     private let zoneEraser: CloudKitZoneEraser
@@ -61,18 +67,71 @@ public final class MigrationCoordinator {
     /// Optional account-identity probe consulted before the irreversible
     /// CloudKit zone erase. `nil` → no pre-flight (legacy behavior).
     private let accountStateProvider: AccountStateProviding?
+    /// Shared lock serializing this coordinator against
+    /// `DataStoreResetService` (and `restoreFromBackup`, below) — both
+    /// mutate the same `PersistenceHost` and must never run concurrently
+    /// (`S11`). Defaults to a private instance so every existing
+    /// single-type test is unaffected; `AppEnvironment` constructs ONE
+    /// instance and injects it into both types to close the cross-type
+    /// window in production. Replaces the prior type-local `isMigrating`
+    /// boolean, which only ever closed this type's *own* reentrancy
+    /// window.
+    private let destructiveOpGate: DestructiveOpGate
+    /// `waitForQuiesce`'s quiet-window/hard-timeout pair. Production
+    /// default matches the pre-existing hardcoded values (5s / 300s —
+    /// `MigrationJournal.staleThreshold`'s doc comment is written against
+    /// this 300s ceiling, so don't change the default without revisiting
+    /// that too). Injectable so tests can exercise the `.timedOut` branch
+    /// (S5/S14) deterministically in milliseconds instead of waiting 300
+    /// real seconds.
+    private let quiesceMinQuietWindow: TimeInterval
+    private let quiesceHardTimeout: TimeInterval
+    /// `S21`: clears `SyncStatusMonitor`'s stall counters/forensics after a
+    /// successful reconfigure or restore — nothing previously told the
+    /// monitor "the store just changed, whatever streak it was tracking no
+    /// longer applies." Called only on success (never on failure — a
+    /// failed op hasn't actually changed the store's sync health). `nil`
+    /// preserves prior behavior for every existing test/legacy caller.
+    private let syncStatusReset: (@Sendable () async -> Void)?
+    /// Data-sync-hardening `X11`: clears every persistent-history
+    /// watermark after a destroy/rebuild — see `WatermarkRegistry`'s own
+    /// doc comment. Called only for `.replaceLocalWithICloud`, the one
+    /// migration op that actually destroys/rebuilds the local store (the
+    /// other three tear down and reattach the *same* file, so their
+    /// watermarks stay valid). Not `@Sendable`: this type is already
+    /// `@MainActor`-isolated.
+    private let historyWatermarksReset: (() async -> Void)?
+    /// Data-sync-hardening `X11`: clears + regenerates the widget snapshot
+    /// cache and reloads timelines. Same `.replaceLocalWithICloud`-only
+    /// gating as `historyWatermarksReset` — see that property's doc
+    /// comment.
+    private let widgetCacheReset: (() async -> Void)?
+    /// Data-sync-hardening `S19`: reports whether the CloudKit zone this
+    /// account mirrors to currently has any records. Consulted only before
+    /// `.replaceLocalWithICloud`'s irreversible local wipe — the symmetric
+    /// counterpart to `localStoreRowCount`'s guard on
+    /// `.replaceICloudWithLocal` (never erase iCloud for an empty local
+    /// store; never wipe local data to download an empty iCloud). `nil` →
+    /// no pre-flight (legacy/test behavior, matching every other optional
+    /// guard's default).
+    private let remoteZoneHasRecords: (@Sendable () async throws -> Bool)?
+    /// `LIL-80`: resyncs the live JSON backup package after
+    /// `restoreFromBackup`'s raw-SQLite file swap — a DIFFERENT subsystem
+    /// from `BackupRestoreService`'s JSON-package restore (which `2b`'s
+    /// `S23` fix already covers via this same protocol), but with the
+    /// identical gap: swapping the store file directly triggers no Core
+    /// Data save, so `LocalBackupCoordinator`'s observers never fire and
+    /// the live backup package is left describing the pre-restore store.
+    /// Called only on `restoreFromBackup`'s successful-completion path, the
+    /// same "only on success" discipline every other reset-adjacent closure
+    /// on this type follows. `nil` preserves prior behavior for tests/legacy
+    /// callers.
+    private let backupReconciler: (any BackupPackageReconciling)?
 
     private var progressContinuations: [UUID: AsyncStream<MigrationPhase>.Continuation] = [:]
-    /// In-process reentrancy guard. The journal-read guard in `runMigration`
-    /// rejects starting on top of a *persisted* in-flight journal, but the
-    /// journal isn't written until after several `await`s, so two fresh
-    /// concurrent `begin*` calls on this `@MainActor` coordinator could both
-    /// pass that guard. This flag is set synchronously *before* the first
-    /// suspension and cleared on exit, closing the same-process window.
-    private var isMigrating = false
 
     public init(
-        host: any PersistenceReconfiguring,
+        host: any PersistenceReconfiguring & PersistenceResetting,
         journal: any MigrationJournalStore,
         quarantine: QuarantineManager,
         zoneEraser: CloudKitZoneEraser,
@@ -83,7 +142,15 @@ public final class MigrationCoordinator {
         breadcrumbs: BreadcrumbBuffer? = nil,
         cloudKitContainerIdentifier: String = StoreConfiguration.defaultCloudKitContainerIdentifier,
         localStoreRowCount: @escaping @Sendable () async -> Int = { 1 },
-        accountStateProvider: AccountStateProviding? = nil
+        accountStateProvider: AccountStateProviding? = nil,
+        destructiveOpGate: DestructiveOpGate = DestructiveOpGate(),
+        quiesceMinQuietWindow: TimeInterval = 5,
+        quiesceHardTimeout: TimeInterval = 300,
+        syncStatusReset: (@Sendable () async -> Void)? = nil,
+        historyWatermarksReset: (() async -> Void)? = nil,
+        widgetCacheReset: (() async -> Void)? = nil,
+        remoteZoneHasRecords: (@Sendable () async throws -> Bool)? = nil,
+        backupReconciler: (any BackupPackageReconciling)? = nil
     ) {
         self.host = host
         self.journal = journal
@@ -97,6 +164,14 @@ public final class MigrationCoordinator {
         self.cloudKitContainerIdentifier = cloudKitContainerIdentifier
         self.localStoreRowCount = localStoreRowCount
         self.accountStateProvider = accountStateProvider
+        self.destructiveOpGate = destructiveOpGate
+        self.quiesceMinQuietWindow = quiesceMinQuietWindow
+        self.quiesceHardTimeout = quiesceHardTimeout
+        self.syncStatusReset = syncStatusReset
+        self.historyWatermarksReset = historyWatermarksReset
+        self.widgetCacheReset = widgetCacheReset
+        self.remoteZoneHasRecords = remoteZoneHasRecords
+        self.backupReconciler = backupReconciler
     }
 
     /// Breadcrumb emit, awaited inline so phase crumbs land in
@@ -156,6 +231,45 @@ public final class MigrationCoordinator {
         return current
     }
 
+    /// Data-sync-hardening `S19`: actually re-runs the operation a failed
+    /// `MigrationJournal` recorded, from the top. Traced against the
+    /// recovery sheet's actual "Try Again" wiring: it previously only
+    /// called `migrationJournalStore.clear()` and dismissed — a partial
+    /// zone erase (or any other partially-completed step) was left exactly
+    /// as the failure's `catch` block left it, with no retry ever actually
+    /// attempted; the user had to notice sync was still off/on and
+    /// manually re-toggle it in Settings.
+    ///
+    /// Clears the journal first — `runMigration`'s reentrancy guard treats
+    /// any non-idle state (including `.failed`) as "already in progress"
+    /// and would otherwise refuse to start the very retry this method
+    /// exists to perform — then dispatches back through `beginEnable`/
+    /// `beginDisable` so `runMigration` re-attempts every step from
+    /// `.preparing`, including a previously-partial erase (re-erasing an
+    /// already-empty zone is a safe no-op query).
+    ///
+    /// Throws if the journal has no recorded `operation` (shouldn't happen
+    /// for a journal `resumeOrRecover()` found in-flight, but a corrupt or
+    /// hand-edited journal must fail loud, not silently no-op).
+    public func retryFailedOperation(from failed: MigrationJournal, storeURL: URL) async throws {
+        guard let op = failed.operation else {
+            throw LillistError.storeUnavailable(
+                reason: "The interrupted sync change has no recorded operation to retry."
+            )
+        }
+        try? journal.clear()
+        switch op {
+        case .replaceICloudWithLocal:
+            try await beginEnable(direction: .replaceICloud, storeURL: storeURL)
+        case .replaceLocalWithICloud:
+            try await beginEnable(direction: .replaceLocal, storeURL: storeURL)
+        case .syncFirstThenDisable:
+            try await beginDisable(strategy: .syncFirst, storeURL: storeURL)
+        case .disableNow:
+            try await beginDisable(strategy: .now, storeURL: storeURL)
+        }
+    }
+
     /// Restore from the quarantine backup the journal recorded and
     /// revert `syncMode` to whatever was active before the failed
     /// migration. Clears the journal on success.
@@ -168,6 +282,11 @@ public final class MigrationCoordinator {
     /// quarantined store. If neither resolves, surface
     /// `storeUnavailable`.
     public func restoreFromBackup(filename: String = "Lillist.sqlite", targetURL: URL) async throws {
+        // Shares the same destructive-op lock as runMigration (S11): a
+        // restore mutates files and calls host.reconfigure, and must not
+        // interleave with a fresh migration or a reset either.
+        try destructiveOpGate.acquire(for: .restore)
+        defer { destructiveOpGate.release() }
         let entry = try journal.read()
         let recorded: URL? = try entry.quarantineFolderName.flatMap {
             try quarantine.quarantinedStore(folderName: $0, filename: filename)
@@ -179,11 +298,71 @@ public final class MigrationCoordinator {
         }
         LillistLog.sync.notice("restoreFromBackup restoring quarantined store")
         emit(.removingLocalStore)
-        try quarantine.restore(quarantinedStore: backup, to: targetURL)
         let prev = entry.previousMode ?? .localOnly
+        do {
+            // S2: close the live store's connection BEFORE touching any
+            // file on disk. The prior implementation moved the live file
+            // out from under an OPEN coordinator and only reconfigured
+            // afterwards — a crash (or even just `prev == currentMode`,
+            // which makes `reconfigure(to:)` a silent same-mode no-op)
+            // left the app writing into an unlinked/quarantined inode
+            // while the journal and mode store both already claimed
+            // success. No backup is requested here (`backupVia: nil`) —
+            // `quarantine.restore` below already quarantines whatever is
+            // currently at `targetURL` before copying the recovery
+            // backup in.
+            _ = try await host.tearDownStore(backupVia: nil)
+            try quarantine.restore(quarantinedStore: backup, to: targetURL)
+            emit(.reconfiguringStore)
+            // `LIL-81`: mirrors `runMigration`'s account-changed pre-flight
+            // (`.replaceICloudWithLocal`/`.replaceLocalWithICloud`) — never
+            // reattach with mirroring armed against an account that
+            // changed since the crash this recovers from. Gated to
+            // `prev == .iCloudSync` since a `.localOnly` reattach arms no
+            // mirroring regardless (matching `remoteZoneHasRecords`'s own
+            // op-specific gating above). Placed after the recovery anchor
+            // (`quarantine.restore` already ran) but before the one
+            // irreversible-in-context step left: reattaching with
+            // whatever `armsCloudKitMirroring` this host was constructed
+            // with.
+            if prev == .iCloudSync,
+               let provider = accountStateProvider,
+               await provider() == .accountChanged {
+                throw LillistError.storeUnavailable(
+                    reason: "iCloud account changed; aborting restore before reattaching."
+                )
+            }
+            // Forced attach, not `reconfigure(to:)`: the file at
+            // `targetURL` was just replaced out from under the
+            // coordinator, so even a same-mode restore
+            // (`prev == currentMode`) must open a fresh connection —
+            // `reconfigure`'s same-mode guard would otherwise no-op and
+            // leave the coordinator permanently detached.
+            try await host.attachStore(at: prev)
+        } catch {
+            // Best-effort reattach so a failure at any point in this
+            // sequence never leaves the coordinator permanently
+            // store-less (mirrors S12's reattach-on-failure pattern).
+            // The journal is deliberately left untouched here — it's
+            // already `.failed` from the migration this is recovering,
+            // and the recovery sheet should still offer another attempt.
+            try? await host.reattachStore()
+            throw error
+        }
+        // S8-pattern: flip the mode store only AFTER the destructive
+        // file-swap and reattach both succeeded — never before. (This
+        // mirrors runMigration's own S8 fix; restoreFromBackup had the
+        // identical ordering bug in its own right, fixed here as part of
+        // the same method rewrite.)
         await syncModeStore.setMode(prev)
-        try await host.reconfigure(to: prev)
         try journal.clear()
+        await syncStatusReset?()
+        // `LIL-80`: the file swap above triggered no Core Data save, so
+        // `LocalBackupCoordinator`'s observers never saw it — resync the
+        // live JSON backup package to the just-restored store explicitly,
+        // the same "only on success" call every other destructive op on
+        // this type makes.
+        await backupReconciler?.reconcileFull()
         emit(.completed)
         LillistLog.sync.notice("restoreFromBackup completed mode=\(prev.rawValue, privacy: .public)")
     }
@@ -197,22 +376,31 @@ public final class MigrationCoordinator {
         // any new migration while one is already recorded as in flight.
         // Read synchronously *before* the first suspension so the check
         // can't race itself. Leaves the existing journal untouched.
-        if let current = try? journal.read(), current.isInFlight {
+        //
+        // A decode failure is NOT the same as "no journal" (S15):
+        // `FileMigrationJournalStore.read()` already returns `.idle`
+        // without throwing when the file is simply absent, so reaching
+        // this `catch` means the file exists but failed to parse — fail
+        // closed rather than silently proceeding on top of unknown state.
+        let current: MigrationJournal
+        do {
+            current = try journal.read()
+        } catch {
+            throw LillistError.storeUnavailable(
+                reason: "The sync migration journal is unreadable; refusing to start a new migration until it's resolved. (\(error))"
+            )
+        }
+        if current.isInFlight {
             throw LillistError.storeUnavailable(
                 reason: "A sync-mode migration is already in progress."
             )
         }
-        // In-process reentrancy: close the window between the journal-read
-        // guard above and the first journal.write below (several awaits later)
-        // where a second concurrent begin* could slip through. Synchronous —
-        // set before any suspension; cleared on every exit path.
-        guard !isMigrating else {
-            throw LillistError.storeUnavailable(
-                reason: "A sync-mode migration is already in progress."
-            )
-        }
-        isMigrating = true
-        defer { isMigrating = false }
+        // Shared destructive-op lock (S11): closes both this type's own
+        // reentrancy window AND the cross-type window against
+        // `DataStoreResetService`/`restoreFromBackup`. Synchronous — set
+        // before any suspension; released on every exit path via defer.
+        try destructiveOpGate.acquire(for: .migration(op))
+        defer { destructiveOpGate.release() }
         let signpostID = LillistLog.signposter.makeSignpostID()
         let interval = LillistLog.signposter.beginInterval(
             "migration", id: signpostID,
@@ -254,46 +442,115 @@ public final class MigrationCoordinator {
                 }
             }
 
-            // 4. structural swap FIRST so the SQLite connection to the
-            //    old file is closed before we touch the file on disk
-            //    (persist-3). PersistenceHost.reconfigure removes the
-            //    old store from the coordinator (closing the
-            //    connection) and re-adds a fresh description; the old
-            //    on-disk file is left intact for the copy below.
-            entry.state = .reconfiguringStore
-            entry.lastHeartbeatAt = Date()
-            try journal.write(entry)
-            emit(.reconfiguringStore)
-            LillistLog.sync.notice("migration reconfiguring store")
-            try await host.reconfigure(to: targetMode)
-            await syncModeStore.setMode(targetMode)
-
-            // 5. quarantine the now-closed old store as a recovery
-            //    anchor — COPY, not move, and only if the file is still
-            //    present. Record the exact folder name in the journal.
-            //
-            //    `copyStore(at:)` runs a pre-flight disk-space check and
-            //    throws `LillistError.insufficientDiskSpace` *before*
-            //    touching any file. That keeps the shortfall ahead of
-            //    the irreversible CloudKit erase in step 6 (blind-spot
-            //    #5 recovery runbook). Do NOT reorder the erase ahead of
-            //    this block.
-            emit(.backingUp)
-            entry.state = .quarantining
-            entry.lastHeartbeatAt = Date()
-            try journal.write(entry)
-            if FileManager.default.fileExists(atPath: storeURL.path) {
-                let backup = try quarantine.copyStore(at: storeURL)
-                entry.quarantineFolderName = backup.folderName
+            // 3b. syncFirstThenDisable (S5): wait for the final export to
+            //     drain BEFORE detaching mirroring — waiting AFTER
+            //     reconfigure(to: .localOnly) is pointless (no CloudKit
+            //     container remains to export through) and is exactly the
+            //     bug this finding reports ("sync one final time first"
+            //     never actually synced). Nothing destructive has
+            //     happened yet, so a `.timedOut` result here FAILS the
+            //     step closed (S14) rather than proceeding to strand
+            //     unsynced edits.
+            if op == .syncFirstThenDisable {
+                entry.state = .awaitingSync
+                entry.lastHeartbeatAt = Date()
                 try journal.write(entry)
+                emit(.uploading(progress: nil))
+                LillistLog.sync.notice("migration awaiting final sync before disable")
+                let result = await quiesceMonitor.waitForQuiesce(minQuietWindow: quiesceMinQuietWindow, hardTimeout: quiesceHardTimeout)
+                if result == .timedOut {
+                    throw LillistError.syncFailure(
+                        underlying: "Timed out waiting for the final sync to iCloud to complete before disconnecting."
+                    )
+                }
             }
 
-            // 6. cloudkit-side mutation (only for replaceICloudWithLocal).
-            if op == .replaceICloudWithLocal {
+            // 4. recovery anchor + destructive work, in an order specific
+            //    to each op (S1, S6).
+            switch op {
+            case .replaceLocalWithICloud:
+                // S1: this device's local data must actually be replaced,
+                // not merged. Tear down -> quarantine the PRE-WIPE store
+                // (the recovery anchor) -> destroy + rebuild empty ->
+                // THEN reconfigure, so mirroring only ever sees a fresh,
+                // empty store to download iCloud's copy into. Reuses the
+                // same primitives DataStoreResetService.performReset uses.
+                entry.state = .quarantining
+                entry.lastHeartbeatAt = Date()
+                try journal.write(entry)
+                emit(.backingUp)
+                let backup = try await host.tearDownStore(backupVia: quarantine)
+                if let backup {
+                    entry.quarantineFolderName = backup.folderName
+                    try journal.write(entry)
+                }
+                // S3: never wipe local data to download an account's copy
+                // if the signed-in account changed out from under us —
+                // mirrors .replaceICloudWithLocal's identical pre-flight
+                // below, placed at the same relative position (after the
+                // recovery-anchor backup, before the irreversible step).
+                // This branch previously had no such guard at all: a user
+                // could flip "iCloud Sync" on in Settings while an
+                // unresolved account mismatch was active and wipe their
+                // local data to redownload the WRONG account's copy.
+                if let provider = accountStateProvider,
+                   await provider() == .accountChanged {
+                    throw LillistError.storeUnavailable(
+                        reason: "iCloud account changed; aborting before wiping local data."
+                    )
+                }
+                // S19: the symmetric guard to .replaceICloudWithLocal's
+                // localStoreRowCount precondition above — never wipe real
+                // local data to download from an iCloud zone that turns
+                // out to have nothing in it.
+                if let remoteZoneHasRecords {
+                    let hasRecords = (try? await remoteZoneHasRecords()) ?? true
+                    guard hasRecords else {
+                        throw LillistError.iCloudDataEmpty
+                    }
+                }
+                emit(.removingLocalStore)
+                LillistLog.sync.notice("migration removing local store")
+                try await host.rebuildEmptyStore()
+                entry.state = .reconfiguringStore
+                entry.lastHeartbeatAt = Date()
+                try journal.write(entry)
+                emit(.reconfiguringStore)
+                LillistLog.sync.notice("migration reconfiguring store")
+                try await host.reconfigure(to: targetMode)
+
+            case .replaceICloudWithLocal:
+                // S6: erase the iCloud zone BEFORE mirroring re-attaches.
+                // At this point the store is still plain .localOnly — no
+                // mirroring delegate exists yet to race the erase, or to
+                // mark local rows as already-exported ahead of it.
+                //
+                // S7: the quarantine anchor now comes from a CLOSED store.
+                // tearDownStore closes the SQLite connection before
+                // copying — the same closed-store mechanism
+                // .replaceLocalWithICloud already used (via
+                // host.tearDownStore above), reconciling the asymmetry
+                // 2a's closing report flagged: this op used to call
+                // quarantine.copyStore(at:) directly against the
+                // still-open, potentially WAL-active store. The
+                // disk-space pre-flight (inside tearDownStore's copy)
+                // still throws before the irreversible erase below
+                // (blind-spot #5) — unchanged guarantee.
+                entry.state = .quarantining
+                entry.lastHeartbeatAt = Date()
+                try journal.write(entry)
+                emit(.backingUp)
+                let icloudBackup = try await host.tearDownStore(backupVia: quarantine)
+                if let icloudBackup {
+                    entry.quarantineFolderName = icloudBackup.folderName
+                    try journal.write(entry)
+                }
                 // Pre-flight: never erase if the signed-in account changed
                 // out from under us — that would wipe the wrong account's
                 // zone. This throws into the catch below, which records
                 // `.failed` for the recovery sheet (PauseReason.accountChanged).
+                // The store is intentionally left detached here — the
+                // catch's unconditional reattach handles it.
                 if let provider = accountStateProvider,
                    await provider() == .accountChanged {
                     throw LillistError.storeUnavailable(
@@ -311,23 +568,71 @@ public final class MigrationCoordinator {
                         await MainActor.run { self?.emit(.erasingICloud(progress: fraction)) }
                     }
                 )
+                entry.state = .reconfiguringStore
+                entry.lastHeartbeatAt = Date()
+                try journal.write(entry)
+                emit(.reconfiguringStore)
+                LillistLog.sync.notice("migration reconfiguring store")
+                // S2 sibling: attachStore(at:), not reconfigure(to:) — the
+                // store was fully detached above by tearDownStore, so
+                // there is nothing left for reconfigure's remove-then-add
+                // swap to remove; attachStore performs just the add half,
+                // at the target mode.
+                try await host.attachStore(at: targetMode)
+
+            case .syncFirstThenDisable, .disableNow:
+                // S7: same closed-store quarantine mechanism as
+                // .replaceICloudWithLocal above — see that case's comment.
+                entry.state = .quarantining
+                entry.lastHeartbeatAt = Date()
+                try journal.write(entry)
+                emit(.backingUp)
+                let disableBackup = try await host.tearDownStore(backupVia: quarantine)
+                if let disableBackup {
+                    entry.quarantineFolderName = disableBackup.folderName
+                    try journal.write(entry)
+                }
+                entry.state = .reconfiguringStore
+                entry.lastHeartbeatAt = Date()
+                try journal.write(entry)
+                emit(.reconfiguringStore)
+                LillistLog.sync.notice("migration reconfiguring store")
+                try await host.attachStore(at: targetMode)
             }
 
-            // 7. wait for CloudKit to settle (only when going to
-            //    iCloudSync; LocalOnly has nothing to wait on).
+            // 5. wait for CloudKit to settle (only when going to
+            //    iCloudSync; LocalOnly already waited in step 3b, or
+            //    doesn't wait at all for disableNow). The destructive
+            //    work above already succeeded by this point, so a
+            //    `.timedOut` result (S14) is logged, not fatal — there is
+            //    nothing left to revert, and the mirroring delegate keeps
+            //    draining the queue in the background after this call
+            //    returns (matches `QuiesceResult.timedOut`'s own
+            //    documented contract).
             if targetMode == .iCloudSync {
                 entry.state = .awaitingSync
                 entry.lastHeartbeatAt = Date()
                 try journal.write(entry)
                 emit(op == .replaceICloudWithLocal ? .uploading(progress: nil) : .downloading(progress: nil))
-                _ = await quiesceMonitor.waitForQuiesce(minQuietWindow: 5, hardTimeout: 300)
+                let result = await quiesceMonitor.waitForQuiesce(minQuietWindow: quiesceMinQuietWindow, hardTimeout: quiesceHardTimeout)
+                if result == .timedOut {
+                    LillistLog.sync.notice(
+                        "migration quiesce timed out post-completion op=\(op.rawValue, privacy: .public) — proceeding, sync continues in background"
+                    )
+                    await breadcrumb("migration quiesce timed out, proceeding (still syncing in background)")
+                }
             }
 
-            // 8. finalize.
+            // 6. finalize. S8: the sync mode advances ONLY here, after
+            //    every destructive step has already succeeded — never
+            //    before, and therefore never needs an explicit revert on
+            //    failure (any thrown error above happens before this
+            //    line, so `syncModeStore` still reads `previousMode`).
             entry.state = .finalizing
             entry.lastHeartbeatAt = Date()
             try journal.write(entry)
             emit(.finalizing)
+            await syncModeStore.setMode(targetMode)
 
             // Re-install the post-migration notification steady state:
             // surviving per-task specs are reconciled and the morning
@@ -343,11 +648,35 @@ public final class MigrationCoordinator {
                 )
             }
 
+            // X11: only .replaceLocalWithICloud actually destroys/rebuilds
+            // the local store (host.rebuildEmptyStore(), above) — the
+            // other three ops tear down and reattach the SAME on-disk
+            // file, so their watermarks stay valid and must NOT be
+            // cleared (that would force a needless full replay).
+            if op == .replaceLocalWithICloud {
+                await historyWatermarksReset?()
+                await widgetCacheReset?()
+            }
             try journal.clear()
+            await syncStatusReset?()
             emit(.completed)
             LillistLog.sync.notice("migration completed op=\(op.rawValue, privacy: .public)")
             await breadcrumb("sync mode change completed \(op.rawValue)")
         } catch {
+            // S12/S7: every op now tears the store off the coordinator at
+            // some point before its structural swap — either to
+            // destroy+rebuild it empty (.replaceLocalWithICloud), or to
+            // take a closed-store quarantine copy before attaching the
+            // target mode (the other three ops, since S7). Whichever
+            // sub-step failed, best-effort reattach — unconditionally,
+            // regardless of which op was running — so the coordinator is
+            // never left store-less. reattachStore() is itself a safe
+            // no-op when a store is already attached (e.g. a failure
+            // AFTER attachStore already succeeded), so this is safe
+            // regardless of exactly where the failure occurred. The
+            // quarantine backup captured above (if it got that far)
+            // remains the real recovery path for the user's data.
+            try? await host.reattachStore()
             entry.state = .failed
             entry.failureReason = "\(error)"
             entry.lastHeartbeatAt = Date()

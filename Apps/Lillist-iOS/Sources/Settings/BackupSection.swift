@@ -107,8 +107,13 @@ struct BackupSection: View {
         statusIsError = false
         defer { isBackingUp = false }
         do {
-            let manager = environment.backupSnapshotManager
-            _ = try await Task.detached { try manager.createSnapshot() }.value
+            // S23: through LocalBackupCoordinator.createSnapshotNow(),
+            // never environment.backupSnapshotManager.createSnapshot(...)
+            // directly — that would zip through a DIFFERENT TaskBackupStore
+            // instance than the one the coordinator's live writes are
+            // actually serialized on, defeating the actor-isolation
+            // guarantee the snapshot needs to be torn-free.
+            _ = try await environment.localBackupCoordinator.createSnapshotNow()
             await loadSnapshots()
             announce(String(localized: "Backup created."), isError: false)
         } catch {

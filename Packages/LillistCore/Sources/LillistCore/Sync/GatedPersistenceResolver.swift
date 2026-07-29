@@ -20,27 +20,37 @@ import Foundation
 /// running against a half-swapped store.
 public struct GatedPersistenceResolver: Sendable {
     private let appGroupID: String
+    private let role: StoreLocation.Role
     private let journal: any MigrationJournalStore
     private let modeStore: SyncModeStore
 
     /// Test/explicit-injection initializer.
     public init(
         appGroupID: String,
+        role: StoreLocation.Role,
         journal: any MigrationJournalStore,
         modeStore: SyncModeStore
     ) {
         self.appGroupID = appGroupID
+        self.role = role
         self.journal = journal
         self.modeStore = modeStore
     }
 
     /// Production initializer. Returns `nil` when the App Group container
     /// is not reachable (so the file-backed journal can't be created).
-    public init?(appGroupID: String) {
+    ///
+    /// - Parameter role: which process this resolver is serving —
+    ///   `.extensionProcess` for the Share/Shortcuts extensions,
+    ///   `.widget` for the widget extension. Only `.mainApp` may arm
+    ///   CloudKit mirroring (data-sync-hardening `X15`); every other role
+    ///   opens the shared store with mirroring suppressed.
+    public init?(appGroupID: String, role: StoreLocation.Role) {
         guard let journal = FileMigrationJournalStore(appGroupID: appGroupID) else {
             return nil
         }
         self.appGroupID = appGroupID
+        self.role = role
         self.journal = journal
         self.modeStore = SyncModeStore(appGroupID: appGroupID)
     }
@@ -50,7 +60,7 @@ public struct GatedPersistenceResolver: Sendable {
     /// is in flight or the App Group is unavailable.
     public func resolveStoreConfiguration() async throws -> StoreConfiguration {
         let gate = MigrationGate(journal: journal, modeStore: modeStore)
-        return try await gate.resolveStoreConfiguration(appGroupID: appGroupID)
+        return try await gate.resolveStoreConfiguration(appGroupID: appGroupID, role: role)
     }
 
     /// Resolve the configuration through the gate, then build a controller

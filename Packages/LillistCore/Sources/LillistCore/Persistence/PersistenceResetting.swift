@@ -43,4 +43,27 @@ public protocol PersistenceResetting: Sendable {
     /// between teardown and rebuild fails, so the coordinator is never
     /// left store-less.
     func reattachStore() async throws
+
+    /// Attach a fresh store at `mode`, always performing a real add and
+    /// always updating the canonical `currentMode` — unlike
+    /// `reattachStore()` (which reopens at the UNCHANGED `currentMode`,
+    /// and no-ops if a store is already attached) and unlike
+    /// `PersistenceReconfiguring.reconfigure(to:)` (which no-ops when
+    /// `mode == currentMode`, because it assumes an existing attached
+    /// store needs swapping out).
+    ///
+    /// Exists for callers that already tore the store down (via
+    /// `tearDownStore`) and then mutated the on-disk file out from under
+    /// the coordinator — a restore-from-backup that replaces the file's
+    /// *contents* at the same URL, for instance (data-sync-hardening
+    /// `S2`). In that case `reconfigure(to:)`'s same-mode no-op would
+    /// leave the coordinator permanently store-less even though the
+    /// target mode legitimately hasn't changed, because there is nothing
+    /// left to "swap" — the connection was already closed and the file
+    /// underneath it already changed.
+    ///
+    /// - Precondition: the coordinator holds no attached store (call
+    ///   after `tearDownStore`). Throws when one is already attached —
+    ///   a caller error this method does not silently repair.
+    func attachStore(at mode: SyncMode) async throws
 }

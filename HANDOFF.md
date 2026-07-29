@@ -1,61 +1,83 @@
-# HANDOFF — issue #18 (macOS row gestures: unverified SwiftUI arbitration model)
+# HANDOFF — Data & Sync Hardening: PROGRAM COMPLETE, PR not yet opened
 
-**State:** harness authored and **compiling** (`xcodebuild build-for-testing` green);
-DRY consolidation done and unit-verified; PR open (link on issue #18). This session ran
-in a linked worktree, so per policy it stops after the PR — the behavioral verdict run,
-merge, versioning, and deploy happen from `main` / on Mikey's Mac.
+**Worktree:** `/Volumes/Code/mikeyward/Lillist/.claude/worktrees/data-sync-hardening`
+**Branch:** `hardening/data-sync-2026-07`
+**State:** All 70 findings from `docs/reviews/2026-07-28-data-sync-review.md`
+are closed across Waves 0–6. This was the program's last wave (`6a`
+`completeness-and-lows` + closeout). **Nothing left to fix.** The only
+remaining step is opening the one program PR — see below.
 
-## The reframe
+## What landed in Wave 6
 
-#18 is tech debt, **not a live defect** and never reopened. PR #17 bridged the *iOS* row
-gestures to UIKit recognizers but froze the macOS `#else` branches on the SwiftUI
-arbitration model iOS's #12 RCA falsified. Key finding: macOS's event model makes the iOS
-root cause **structurally impossible** — scrolling is scroll-wheel/trackpad input routed to
-`NSScrollView`, while a `DragGesture` fires only on mouse-button-down + move (different
-event streams that never compete). So the debt was *unverified + unguarded*, not broken.
-Resolution chosen (with Mikey): **verify-first**, not a speculative AppKit bridge.
+Full per-item design: `docs/superpowers/plans/2026-07-28-plan-6a-completeness-and-lows.md`.
+Full commit table + verification transcript: the ledger's *Wave 6 closing
+report* (`docs/superpowers/plans/2026-07-28-data-sync-hardening-index.md`).
 
-## What landed (this branch)
+- `L1`/`L2`/`L6` (the program's three remaining lows) — closed.
+- Six residuals flagged across earlier waves' closing reports, folded into
+  this wave's scope — closed: `LIL-77` (crash-prompt toggle bound to the
+  wrong preference store), `LIL-80`/`LIL-81` (`restoreFromBackup`'s missing
+  backup-package resync and account-changed guard), `LIL-82`
+  (`TaskDuplicateReconciler.diagnosticLog` wiring), `LIL-84` (three named
+  timing-flake tests hardened, each with a shape-appropriate fix), `LIL-87`
+  (`LocalBackupCoordinator`'s missing launch-time history catch-up).
+- Two **genuinely new** defects this wave's own completeness-proof tests
+  surfaced — found and fixed in the same session: `LIL-88` (`Importer.apply`
+  never restored `document.preferences` at all — every export/import cycle
+  silently reverted every account-level preference to its default) and
+  `LIL-89` (`recoverInterruptedReseed()` never broadcast to peers, found via
+  the ledger residual sweep, not a test).
+- `LIL-90` (a latent `NotificationSpec` in-place-edit reconcile gap) —
+  reconfirmed still correctly deferred, not fixed (unreachable in production
+  today; fixing it now would be speculative code).
+- Two new completeness-proof test suites the wave brief called for
+  directly: export/import round-trip equality (the suite that caught
+  `LIL-88`), and an `X20` flip-flop stress test across two real
+  cross-process controllers.
 
-- **macOS real-input gesture harness** in `Lillist-macOSUITests` — the regression guard the
-  macOS branch never had: `MacListScrollUITests` (scroll-wheel from row body scrolls the
-  list — the macOS #12 analogue), `MacReorderUITests` (vertical click-drag reorders +
-  persists; horizontal doesn't), `MacSwipeUITests` (horizontal reveals Delete + deletes +
-  persists; vertical doesn't reveal), `MacRowTapOpenUITests` (click opens the right task).
-- **`MacUITestHelpers`** extended with gesture-harness launches, element-agnostic row
-  location, stable-order reads, and a macOS drag/scroll driver.
-- **`--ui-test-seed-many` + `--ui-test-seed-count <N>`** launch seam in the macOS `LillistApp`.
-- **DRY consolidation:** `SwipeableRow`'s macOS branch now derives its axis from the shared
-  `DragAxisArbiter` at a new `macSwipeAxisCommitDistance` (10) token — proven
-  behavior-preserving by an exhaustive grid test in `DragAxisArbiterTests` (host-runnable).
-- Docs: `DragReorderable`/`SwipeableRow` headers, the RCA `#18 update` note, an
-  engineering-notes entry, this handoff.
+**Verification:** full `LillistCore` suite green twice at the final commit
+(1451 tests, 262 suites, unmasked exit codes, clean failure-marker grep; one
+SIGSEGV worker-crash flake between the two runs, matching the documented
+class, cleared on retry). LillistUI non-snapshot suite green (87/18).
+`lillist-cli` builds. Both apps verified with unsigned `xcodebuild` builds.
+`xcodegen generate` — zero drift for both `project.yml` specs.
 
-## Verified here (agent-runnable)
+## What still needs Mikey (not gates on anything — tracked, not blocking)
 
-- macOS `build-for-testing` **SUCCEEDED** (app + `Lillist-macOSUITests` + LillistUI compile,
-  warnings-as-errors); iOS `build` **SUCCEEDED** (shared change is macOS-only).
-- `swift test` LillistUI (skip Snapshot/Tour) green incl. the new `DragAxisArbiterTests`
-  equivalence grid; LillistCore untouched (full run for hygiene).
+Both are named, with a redesign trigger, in the ledger's *Decisions
+awaiting Mikey* section:
 
-## Remaining steps (Mikey, on-device / from `main`)
+- **`LIL-83`** — `X10`'s all-day-notification timezone-dedup posture needs
+  a new synced `AppPreferences` home-timezone field, which needs a
+  Development→Production CloudKit schema deploy in the Console — explicitly
+  deferred out of this program (near its end, not worth expanding the
+  zero-schema-change posture this program held throughout). Redesign
+  trigger: a real user report of a cross-timezone duplicate notification,
+  or Mikey scheduling the field work directly.
+- **`LIL-90`** — the latent `NotificationSpec` in-place-edit gap. Redesign
+  trigger: any new `NotificationSpecStore.update` caller reachable from a
+  different device/process than the one that created the spec (e.g. a
+  future cross-device snooze feature).
 
-1. **Gate 4 — run the harness on a signed Mac with a live window server** (physical console,
-   not headless SSH): the XCUITest runner cannot initialize over SSH
-   (`LAError -4 "System authentication is running"`), so it did not execute here.
-   ```
-   xcodebuild test -workspace Lillist.xcworkspace -scheme Lillist-macOS \
-     -destination 'platform=macOS' -only-testing:Lillist-macOSUITests
-   ```
-   - **Green (expected):** the debt is discharged by verification — the harness is the
-     standing guard. Merge the PR (closes #18). Consider tightening the header wording from
-     "guarded by" to "verified by".
-   - **Red:** a genuine macOS gesture defect — the trigger has fired for real. *Then* bridge
-     the affected macOS branch to `NSGestureRecognizerRepresentable` (macOS 15+) mirroring
-     the iOS bridge, red→green. (Design only if needed.)
-2. **Merge the PR** (merge commit; verify; delete branch).
+Plus the full **manual-verification checklist** in the ledger (CloudKit
+Console purge-record audit, macOS store-location migration, live sync-mode
+switches, a second-Apple-ID account switch, two-device reset propagation,
+real-widget checks) — none of it gates anything; it's for Mikey to run at
+leisure with real devices/accounts.
 
-## Related issues still open
+## Next step — open the one program PR, then stop
 
-- **#19** — bridged reorder's window-space translation anchor assumes no mid-drag list
-  movement; redesign before edge auto-scroll is built. (Untouched here.)
+Per this worktree's standing rule (deploys/merges only run from `main`,
+never from a linked worktree): push this branch, open one PR summarizing
+the whole program (link the review doc + the ledger), and **stop** — no
+merge, no version bump, no deploy from here. The orchestrator/Mikey reviews
+and merges from `main`.
+
+## If you're picking this up fresh
+
+Read, in order: this file → the ledger's *Current status* banner (now reads
+PROGRAM COMPLETE) → the *Wave 6 closing report* → the plan doc above. There
+is no next wave. If something in production surfaces a NEW defect, it's a
+new investigation (or, if it retriggers `LIL-83`/`LIL-90`'s known
+limitations specifically, use their existing redesign triggers above), not
+a resumption of this program.

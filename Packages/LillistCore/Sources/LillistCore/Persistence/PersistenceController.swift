@@ -190,7 +190,11 @@ public final class PersistenceController: @unchecked Sendable {
         description.setOption(true as NSNumber, forKey: NSPersistentStoreRemoteChangeNotificationPostOptionKey)
 
         // CloudKit options — private database, single custom zone (design Section 3).
-        if canAttachCloudKitOptions && configuration.syncMode == .iCloudSync {
+        // X15: `armsCloudKitMirroring` gates this independently of `syncMode` —
+        // only `.mainApp`-role configurations (see `StoreLocation.Role`) may
+        // attach `cloudKitContainerOptions`, even when the device's persisted
+        // SyncMode is `.iCloudSync`.
+        if canAttachCloudKitOptions && configuration.syncMode == .iCloudSync && configuration.armsCloudKitMirroring {
             let options = NSPersistentCloudKitContainerOptions(containerIdentifier: configuration.cloudKitContainerIdentifier)
             options.databaseScope = CKDatabase.Scope.private
             description.cloudKitContainerOptions = options

@@ -15,7 +15,7 @@ public struct WidgetSnapshotStore: Sendable {
 
     /// Production initializer. Returns `nil` when the App Group container is not
     /// reachable (entitlement missing or running outside a signed sandbox) —
-    /// mirrors ``StoreConfiguration/appGroupOnDisk(groupID:syncMode:)``.
+    /// mirrors ``StoreLocation/resolve(role:appGroupID:containerProvider:fileManager:)``.
     public init?(appGroupID: String) {
         guard let container = FileManager.default
             .containerURL(forSecurityApplicationGroupIdentifier: appGroupID)
@@ -84,6 +84,19 @@ public struct WidgetSnapshotStore: Sendable {
             else { continue }
             try? fm.removeItem(at: file)
         }
+    }
+
+    /// Delete every persisted snapshot (the index and every per-filter
+    /// file) — data-sync-hardening `X11`. Call immediately before the next
+    /// `regenerate()` after a destructive store reset/rebuild, as defense
+    /// in depth against `WidgetSnapshotBuilder.regenerate()`'s own
+    /// per-filter-failure-is-silently-skipped design (a per-filter write
+    /// that throws mid-regenerate could otherwise leave a stale, now-
+    /// erased snapshot behind even after an overall "successful"
+    /// regenerate). Best-effort; failures are ignored — a stale cache
+    /// degrades gracefully in the widget, it isn't fatal.
+    public func clearAll() {
+        try? FileManager.default.removeItem(at: root)
     }
 
     // MARK: - Coders

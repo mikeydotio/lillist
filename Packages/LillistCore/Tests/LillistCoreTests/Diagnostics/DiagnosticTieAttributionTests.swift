@@ -30,7 +30,7 @@ final class DiagnosticTieAttributionTests: XCTestCase {
         let spy = SpyDiagnosticSink()
         let observer = DiagnosticHistoryObserver(
             persistence: persistence,
-            tokenStore: PersistentHistoryTokenStore(suiteName: "t.\(UUID().uuidString)", key: PersistentHistoryTokenStore.diagnosticsKey),
+            tokenStore: PersistentHistoryTokenStore(suiteName: "t.\(UUID().uuidString)", consumer: .diagnostics),
             sink: spy,
             process: .app
         )

@@ -265,6 +265,28 @@ Lightweight (auto-inferable) preferred; hand-written mapping models otherwise. C
 - Acceptable race window: a few seconds. v2 can tighten via CloudKit subscriptions delivering APNs pushes.
 - Morning summary fires independently on each device (feature, not bug).
 
+> **Known limitation (2026-07-28, data-sync-hardening `X10`, tracked as
+> `LIL-83`): the "few seconds" race window above assumes both devices
+> resolve an all-day anchor to the SAME absolute instant, which is only
+> true when they share a time zone.** All-day fire times resolve the
+> configured default hour/minute in each device's own `TimeZone.current`,
+> so two devices in different time zones compute genuinely different
+> absolute instants for "the same" all-day reminder and both fire — this is
+> a real gap in the dedup guarantee above, not a documented feature the way
+> the morning summary line is. Council-decided fix (unanimous after
+> deliberation, full audit trail
+> `.council/x10-all-day-timezone-dedup-posture/DECISION.md`): anchor
+> all-day fire times to a new synced "home time zone" field on
+> `AppPreferences`, not per-device `.current` — a data-model change
+> requiring orchestrator approval and a Development→Production CloudKit
+> schema deploy before it can ship, deliberately not implemented in the
+> plan that added this note. Widening the `lastFiredAt` dedup tolerance
+> window instead was considered and rejected: the existing
+> `deadlineChangeAfterFireReschedules` test proves no single window value
+> can both allow a legitimate reschedule and suppress a real timezone-
+> driven duplicate (the two need opposite tolerances at the same ~24h
+> boundary).
+
 ### Snooze
 
 - `SnoozeAction` value type: `{id, displayName, compute: (NotificationSpec, deliveredAt) -> Date}`.

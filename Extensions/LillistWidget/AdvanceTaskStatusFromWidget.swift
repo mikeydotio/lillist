@@ -28,7 +28,14 @@ struct AdvanceTaskStatusFromWidget: AppIntent {
         guard let id = UUID(uuidString: taskID) else { return .result() }
         let persistence = try await WidgetIntentSupport.makePersistence()
 
+        // X8: wired so completing a task from the widget actually cancels
+        // its pending reminder — previously this bare TaskStore had no
+        // scheduler, so the reminder kept firing after the task showed
+        // closed in the widget. Built directly off the already-resolved
+        // `persistence` (rather than `WidgetIntentSupport.makeTaskStore()`)
+        // so this function resolves the store exactly once.
         let taskStore = TaskStore(persistence: persistence)
+        taskStore.notificationScheduler = try await WidgetIntentSupport.makeNotificationScheduler(persistence: persistence)
         let current = try await taskStore.fetch(id: id)
         let next = StatusCycler.nextOnClick(from: current.status)
         if next != current.status {

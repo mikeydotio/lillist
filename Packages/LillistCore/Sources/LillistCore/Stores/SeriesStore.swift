@@ -21,11 +21,11 @@ public final class SeriesStore: @unchecked Sendable {
 
     @discardableResult
     public func create(fromSeedTask seedTaskID: UUID, rule: RecurrenceRule) async throws -> UUID {
-        try await context.perform { [self] in
+        try await withMutationRollback(context: context) { [self] in
             let task = try TaskStore(persistence: persistence).fetchManagedObject(id: seedTaskID, in: context)
             let series = Series(context: context)
             series.id = UUID()
-            series.rule = rule
+            try series.setRule(rule)
             series.seedTask = task
             // Membership: the seed is also part of `instances`.
             task.series = series
@@ -33,7 +33,6 @@ public final class SeriesStore: @unchecked Sendable {
             let anchor = task.start ?? task.createdAt ?? Date()
             series.nextOccurrenceAfter = Self.computeNextOccurrence(rule: rule, after: anchor)
 
-            try context.save()
             return series.id!
         }
     }
@@ -66,22 +65,20 @@ public final class SeriesStore: @unchecked Sendable {
     // MARK: - Update
 
     public func update(id: UUID, rule: RecurrenceRule) async throws {
-        try await context.perform { [self] in
+        try await withMutationRollback(context: context) { [self] in
             let m = try fetchManagedObject(id: id, in: context)
-            m.rule = rule
+            try m.setRule(rule)
             let anchor = m.seedTask?.start ?? m.seedTask?.createdAt ?? Date()
             m.nextOccurrenceAfter = Self.computeNextOccurrence(rule: rule, after: anchor)
-            try context.save()
         }
     }
 
     // MARK: - Delete
 
     public func delete(id: UUID) async throws {
-        try await context.perform { [self] in
+        try await withMutationRollback(context: context) { [self] in
             let m = try fetchManagedObject(id: id, in: context)
             context.delete(m)
-            try context.save()
         }
     }
 
@@ -92,7 +89,7 @@ public final class SeriesStore: @unchecked Sendable {
     /// **forked** instance will come from the new series.
     @discardableResult
     public func forkFutureFromInstance(instanceID: UUID) async throws -> UUID {
-        try await context.perform { [self] in
+        try await withMutationRollback(context: context) { [self] in
             let task = try TaskStore(persistence: persistence).fetchManagedObject(id: instanceID, in: context)
             guard let oldSeries = task.series else {
                 throw LillistError.validationFailed([
@@ -112,13 +109,12 @@ public final class SeriesStore: @unchecked Sendable {
 
             let newSeries = Series(context: context)
             newSeries.id = UUID()
-            newSeries.rule = rule
+            try newSeries.setRule(rule)
             newSeries.seedTask = task
             task.series = newSeries
             let anchor = task.start ?? task.createdAt ?? Date()
             newSeries.nextOccurrenceAfter = Self.computeNextOccurrence(rule: rule, after: anchor)
 
-            try context.save()
             return newSeries.id!
         }
     }

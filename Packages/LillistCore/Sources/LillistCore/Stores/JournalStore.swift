@@ -33,7 +33,7 @@ public final class JournalStore: @unchecked Sendable {
     @discardableResult
     public func appendNote(taskID: UUID, body: String) async throws -> UUID {
         do {
-            let id: UUID = try await context.perform { [self] in
+            let id: UUID = try await withMutationRollback(context: context) { [self] in
                 let task = try fetchTask(id: taskID, in: context)
                 let entry = JournalEntry(context: context)
                 entry.id = UUID()
@@ -41,7 +41,6 @@ public final class JournalStore: @unchecked Sendable {
                 entry.kind = .note
                 entry.body = body
                 entry.createdAt = Date()
-                try context.save()
                 return entry.id!
             }
             await recordCrumb("journal.append", success: true)
@@ -73,7 +72,7 @@ public final class JournalStore: @unchecked Sendable {
     // MARK: - Edit
 
     public func editNote(id: UUID, body: String) async throws {
-        try await context.perform { [self] in
+        try await withMutationRollback(context: context) { [self] in
             let m = try fetchManagedObject(id: id, in: context)
             guard m.kind.isUserEditable else {
                 throw LillistError.validationFailed([
@@ -82,14 +81,13 @@ public final class JournalStore: @unchecked Sendable {
             }
             m.body = body
             m.editedAt = Date()
-            try context.save()
         }
     }
 
     // MARK: - Delete
 
     public func delete(id: UUID) async throws {
-        try await context.perform { [self] in
+        try await withMutationRollback(context: context) { [self] in
             let m = try fetchManagedObject(id: id, in: context)
             guard m.kind.isUserEditable else {
                 throw LillistError.validationFailed([
@@ -97,7 +95,6 @@ public final class JournalStore: @unchecked Sendable {
                 ])
             }
             context.delete(m)
-            try context.save()
         }
     }
 

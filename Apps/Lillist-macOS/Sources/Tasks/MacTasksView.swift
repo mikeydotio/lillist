@@ -227,10 +227,7 @@ struct MacTasksView: View {
     }
 
     private var savedFilterSpecs: [SavedFilterChipSpec] {
-        savedFilters
-            .filter { $0.isPinned }
-            .sorted { $0.position < $1.position }
-            .map { SavedFilterChipSpec(id: $0.id, title: $0.name) }
+        SavedFilterChipSpec.pinnedSorted(from: savedFilters)
     }
 
     // MARK: - Load
@@ -429,7 +426,7 @@ struct MacTasksView: View {
             await reload()
             return
         }
-        let archived = (try? await env.taskStore.archive(ids: candidates)) ?? []
+        let archived = (try? await env.taskStore.archive(ids: candidates))?.flipped ?? []
         await reload()
         guard !archived.isEmpty else { return }
         lastArchivedBatch = archived
@@ -440,7 +437,7 @@ struct MacTasksView: View {
     private func undoArchive() async {
         let ids = lastArchivedBatch
         guard !ids.isEmpty else { return }
-        try? await env.taskStore.unarchive(ids: ids)
+        _ = try? await env.taskStore.unarchive(ids: ids)
         lastArchivedBatch = []
         lastArchivedCount = 0
         isArchiveToastPresented = false

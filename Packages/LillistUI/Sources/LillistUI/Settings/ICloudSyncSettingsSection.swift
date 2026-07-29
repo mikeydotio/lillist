@@ -20,6 +20,17 @@ public struct ICloudSyncSettingsSection: View {
         public let localTaskCount: Int?
         /// How many of those are mirrored to iCloud (have a CloudKit record id).
         public let mirroredTaskCount: Int?
+        /// Data-sync-hardening `S10`: the display name of the device that
+        /// broadcast the currently-pending, undecided `ResetControlEvent` —
+        /// `nil` when nothing is pending. Only the sender name (not the
+        /// full event) is needed here; the confirmation dialog itself
+        /// receives the full event via `SyncSheetRoute.pendingResetDecision`.
+        public let pendingResetSenderName: String?
+        /// Data-sync-hardening `S10`: pre-formatted "why didn't I get
+        /// asked" copy for the most recent auto-discarded reset event
+        /// (expired, or not currently syncing) — `nil` when there's
+        /// nothing to show.
+        public let discardedResetNotice: String?
 
         public init(
             mode: SyncMode,
@@ -27,7 +38,9 @@ public struct ICloudSyncSettingsSection: View {
             isToggleDisabled: Bool = false,
             disabledFooter: String? = nil,
             localTaskCount: Int? = nil,
-            mirroredTaskCount: Int? = nil
+            mirroredTaskCount: Int? = nil,
+            pendingResetSenderName: String? = nil,
+            discardedResetNotice: String? = nil
         ) {
             self.mode = mode
             self.status = status
@@ -35,6 +48,8 @@ public struct ICloudSyncSettingsSection: View {
             self.disabledFooter = disabledFooter
             self.localTaskCount = localTaskCount
             self.mirroredTaskCount = mirroredTaskCount
+            self.pendingResetSenderName = pendingResetSenderName
+            self.discardedResetNotice = discardedResetNotice
         }
     }
 
@@ -66,15 +81,25 @@ public struct ICloudSyncSettingsSection: View {
         public let onToggle: (Bool) -> Void
         public let onOpenSystemSettings: () -> Void
         public let onPausedTap: () -> Void
+        /// Data-sync-hardening `S10`: opens the `PendingResetDecisionDialog`
+        /// confirmation sheet. Never invoked automatically.
+        public let onPendingResetTap: () -> Void
+        /// Data-sync-hardening `S10`: dismisses `discardedResetNotice` —
+        /// purely a local UI acknowledgement, no monitor call.
+        public let onDismissDiscardNotice: () -> Void
 
         public init(
             onToggle: @escaping (Bool) -> Void,
             onOpenSystemSettings: @escaping () -> Void,
-            onPausedTap: @escaping () -> Void = {}
+            onPausedTap: @escaping () -> Void = {},
+            onPendingResetTap: @escaping () -> Void = {},
+            onDismissDiscardNotice: @escaping () -> Void = {}
         ) {
             self.onToggle = onToggle
             self.onOpenSystemSettings = onOpenSystemSettings
             self.onPausedTap = onPausedTap
+            self.onPendingResetTap = onPendingResetTap
+            self.onDismissDiscardNotice = onDismissDiscardNotice
         }
     }
 
@@ -150,6 +175,50 @@ public struct ICloudSyncSettingsSection: View {
                         .font(.footnote)
                 }
                 .foregroundStyle(RainbowPalette.cautionAmber.ink)
+            }
+
+            // Data-sync-hardening S10: a reset another device broadcast is
+            // awaiting this device's explicit confirmation — tapping opens
+            // PendingResetDecisionDialog. Never auto-presented; this row is
+            // the only way to reach it, and it stays visible (re-tappable)
+            // until the user actually confirms or the event expires.
+            if let senderName = viewState.pendingResetSenderName {
+                Button(action: actions.onPendingResetTap) {
+                    HStack {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Reset requested", bundle: .module)
+                                .font(.footnote.bold())
+                            Text("\(senderName) asked every device to converge. Review to decide.", bundle: .module)
+                                .font(.footnote)
+                        }
+                        Spacer()
+                        Image(systemName: "chevron.right")
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(RainbowPalette.cautionAmber.ink)
+            }
+
+            // Data-sync-hardening S10: informational — a reset event was
+            // auto-discarded (expired, or this device isn't syncing) without
+            // ever asking. Dismissible; purely a local UI acknowledgement.
+            if let notice = viewState.discardedResetNotice {
+                HStack(alignment: .top) {
+                    Text(notice)
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                    Spacer()
+                    Button {
+                        actions.onDismissDiscardNotice()
+                    } label: {
+                        Image(systemName: "xmark.circle.fill")
+                            .foregroundStyle(.secondary)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel(Text("Dismiss", bundle: .module))
+                }
             }
         } header: {
             HStack {
@@ -246,6 +315,26 @@ public struct ICloudSyncSettingsSection: View {
             return String(localized: "Sync error: \(msg)", bundle: .module)
         case .paused:
             return String(localized: "Sync paused — iCloud unavailable", bundle: .module)
+        }
+    }
+
+    /// Data-sync-hardening `S10`: pure, testable copy for
+    /// `ViewState.discardedResetNotice` — single source of truth so the
+    /// wording matches verbatim across both app targets (the house rule
+    /// this codebase already enforces for every other cross-platform
+    /// string). `nonisolated static` for the same reason as `statusLine`.
+    public nonisolated static func discardNoticeText(for notice: ResetEventDiscardNotice) -> String {
+        switch notice.reason {
+        case .expired:
+            return String(
+                localized: "A reset request from \(notice.event.senderDisplayName) expired without being applied.",
+                bundle: .module
+            )
+        case .notSyncing:
+            return String(
+                localized: "A reset request from \(notice.event.senderDisplayName) arrived while this device was in Local Only mode and couldn't be applied. Turn on iCloud Sync to receive future requests.",
+                bundle: .module
+            )
         }
     }
 

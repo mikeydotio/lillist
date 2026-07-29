@@ -29,15 +29,28 @@ public struct StoreConfiguration: Sendable {
     /// `.localOnly` omits them. Honored only when `storeKind` is
     /// `.onDisk` — in-memory stores never mirror regardless of mode.
     public var syncMode: SyncMode
+    /// Data-sync-hardening `X15`: whether this configuration is *permitted*
+    /// to attach `cloudKitContainerOptions`, independent of `syncMode`.
+    /// `syncMode` answers "is this device syncing"; this answers "may the
+    /// process opening this store arm CloudKit mirroring at all." Only the
+    /// two main apps should — the widget, Share/Shortcuts extensions, and
+    /// CLI all open the same shared store but must never each stand up
+    /// their own mirroring delegate against it (see `StoreLocation.Role`).
+    /// Defaults to `true` so every pre-existing call site and test is
+    /// unaffected; only `StoreLocation.makeConfiguration(syncMode:)` sets
+    /// it `false` for non-`.mainApp` roles.
+    public var armsCloudKitMirroring: Bool
 
     public init(
         storeKind: StoreKind,
         cloudKitContainerIdentifier: String = StoreConfiguration.defaultCloudKitContainerIdentifier,
-        syncMode: SyncMode = .default
+        syncMode: SyncMode = .default,
+        armsCloudKitMirroring: Bool = true
     ) {
         self.storeKind = storeKind
         self.cloudKitContainerIdentifier = cloudKitContainerIdentifier
         self.syncMode = syncMode
+        self.armsCloudKitMirroring = armsCloudKitMirroring
     }
 
     /// In-memory store backed by `/dev/null`. For tests and previews.
@@ -66,37 +79,26 @@ public struct StoreConfiguration: Sendable {
         }
     }
 
-    /// On-disk SQLite store inside the App Group's shared container. Use
-    /// when the main app and its extensions (Share / App Intents) need to
-    /// see the same store. Returns `nil` if the group container is not
-    /// reachable (entitlement missing or running outside a signed sandbox).
-    public static func appGroupOnDisk(
-        groupID: String,
-        syncMode: SyncMode = .default
-    ) -> StoreConfiguration? {
-        guard let container = FileManager.default
-            .containerURL(forSecurityApplicationGroupIdentifier: groupID)
-        else { return nil }
-        let dir = container.appendingPathComponent("Lillist", isDirectory: true)
-        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
-        return .onDisk(url: dir.appendingPathComponent("Lillist.sqlite"), syncMode: syncMode)
-    }
-
     /// Returns a copy with the given CloudKit container identifier substituted in.
+    /// Preserves `armsCloudKitMirroring` — a "with" copy must not silently
+    /// reset a role's mirroring permission back to the default (`X15`).
     public func withCloudKitContainer(_ identifier: String) -> StoreConfiguration {
         StoreConfiguration(
             storeKind: storeKind,
             cloudKitContainerIdentifier: identifier,
-            syncMode: syncMode
+            syncMode: syncMode,
+            armsCloudKitMirroring: armsCloudKitMirroring
         )
     }
 
-    /// Returns a copy with the given sync mode substituted in.
+    /// Returns a copy with the given sync mode substituted in. Preserves
+    /// `armsCloudKitMirroring` — see `withCloudKitContainer(_:)`.
     public func withSyncMode(_ mode: SyncMode) -> StoreConfiguration {
         StoreConfiguration(
             storeKind: storeKind,
             cloudKitContainerIdentifier: cloudKitContainerIdentifier,
-            syncMode: mode
+            syncMode: mode,
+            armsCloudKitMirroring: armsCloudKitMirroring
         )
     }
 }

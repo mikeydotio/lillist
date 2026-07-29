@@ -45,4 +45,20 @@ struct StoreConfigurationTests {
             Issue.record("storeKind should remain onDisk after syncMode override")
         }
     }
+
+    @Test("withSyncMode preserves armsCloudKitMirroring (X15) rather than resetting it to the default")
+    func withSyncModePreservesArmsCloudKitMirroring() {
+        var cfg = StoreConfiguration.onDisk(url: URL(fileURLWithPath: "/tmp/x.sqlite"))
+        cfg.armsCloudKitMirroring = false
+        let copy = cfg.withSyncMode(.localOnly)
+        #expect(copy.armsCloudKitMirroring == false)
+    }
+
+    @Test("withCloudKitContainer preserves armsCloudKitMirroring (X15) rather than resetting it to the default")
+    func withCloudKitContainerPreservesArmsCloudKitMirroring() {
+        var cfg = StoreConfiguration.onDisk(url: URL(fileURLWithPath: "/tmp/x.sqlite"))
+        cfg.armsCloudKitMirroring = false
+        let copy = cfg.withCloudKitContainer("iCloud.example.test")
+        #expect(copy.armsCloudKitMirroring == false)
+    }
 }

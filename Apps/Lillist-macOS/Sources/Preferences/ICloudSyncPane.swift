@@ -67,7 +67,15 @@ struct ICloudSyncPane: View {
                 PauseExplainerDialog(
                     reason: environment.pauseReason ?? .unknown,
                     onOpenSettings: openSystemSettings,
-                    onDisableSync: { route = .disable },
+                    onAdoptNewAccount: { try await resolveAccountMismatchByAdoptingNewAccount() },
+                    onStayLocal: { try await resolveAccountMismatchByStayingLocal() },
+                    onDismiss: { route = nil }
+                )
+                .frame(width: 460, height: 340)
+            case .pendingResetDecision(let event):
+                PendingResetDecisionDialog(
+                    event: event,
+                    onApply: { try await environment.resetSignalMonitor.confirmApply() },
                     onDismiss: { route = nil }
                 )
                 .frame(width: 460, height: 340)
@@ -102,7 +110,9 @@ struct ICloudSyncPane: View {
             isToggleDisabled: isToggleDisabled,
             disabledFooter: footer,
             localTaskCount: taskCounts?.local,
-            mirroredTaskCount: taskCounts?.mirrored
+            mirroredTaskCount: taskCounts?.mirrored,
+            pendingResetSenderName: environment.pendingResetDecision?.senderDisplayName,
+            discardedResetNotice: environment.resetEventDiscardNotice.map(ICloudSyncSettingsSection.discardNoticeText(for:))
         )
     }
 
@@ -114,7 +124,12 @@ struct ICloudSyncPane: View {
         .init(
             onToggle: handleToggle,
             onOpenSystemSettings: openSystemSettings,
-            onPausedTap: { route = .pauseExplainer }
+            onPausedTap: { route = .pauseExplainer },
+            onPendingResetTap: {
+                guard let event = environment.pendingResetDecision else { return }
+                route = .pendingResetDecision(event)
+            },
+            onDismissDiscardNotice: { environment.resetEventDiscardNotice = nil }
         )
     }
 
@@ -194,5 +209,23 @@ struct ICloudSyncPane: View {
         } catch {
             route = .progress(.failed(reason: error.localizedDescription))
         }
+    }
+
+    // MARK: - S3: account-mismatch resolution
+
+    /// "Use This Account" — see the iOS counterpart's identical doc comment.
+    private func resolveAccountMismatchByAdoptingNewAccount() async throws {
+        try await environment.dataStoreReset.resolveAccountMismatchByRedownloading()
+        try environment.accountIdentityStore.adoptCurrentIdentity()
+        try? await environment.accountStateMonitor.refresh()
+    }
+
+    /// "Stay Local For Now" — see the iOS counterpart's identical doc comment.
+    private func resolveAccountMismatchByStayingLocal() async throws {
+        let url = environment.storeURL
+            ?? FileManager.default.temporaryDirectory.appendingPathComponent("Lillist.sqlite")
+        try await environment.migrationCoordinator.beginDisable(strategy: .now, storeURL: url)
+        try environment.accountIdentityStore.adoptCurrentIdentity()
+        try? await environment.accountStateMonitor.refresh()
     }
 }

@@ -111,7 +111,7 @@ public final class AttachmentStore: @unchecked Sendable {
         metadata: LinkPreviewMetadata,
         thumbnailData: Data? = nil
     ) async throws {
-        try await context.perform { [self] in
+        try await withMutationRollback(context: context) { [self] in
             let m = try fetchManagedObject(id: id, in: context)
             guard m.kindRaw == Int16(AttachmentKind.linkPreview.rawValue) else {
                 throw LillistError.validationFailed([
@@ -137,7 +137,6 @@ public final class AttachmentStore: @unchecked Sendable {
                 m.data = bytes
                 m.byteSize = Int64(bytes.count)
             }
-            try context.save()
         }
     }
 
@@ -185,11 +184,21 @@ public final class AttachmentStore: @unchecked Sendable {
 
     // MARK: - Delete
 
+    /// M7: `Attachment.journalEntry` is a `Nullify` relationship — deleting
+    /// the attachment alone leaves its auto-created `JournalEntry` behind as
+    /// a permanent blank system row nobody ever reaps. The entry exists only
+    /// to represent the attachment (created alongside it in
+    /// `insertAttachment`), so it dies with it: an ordinary in-context
+    /// delete of both rows in the same save, not a `CascadeReaper` cascade
+    /// (that type exists for trash-barrier-aware subtree cascades; this is
+    /// an unconditional 1:1 lifecycle pairing).
     public func delete(id: UUID) async throws {
-        try await context.perform { [self] in
+        try await withMutationRollback(context: context) { [self] in
             let m = try fetchManagedObject(id: id, in: context)
+            if let entry = m.journalEntry {
+                context.delete(entry)
+            }
             context.delete(m)
-            try context.save()
         }
     }
 
@@ -210,7 +219,7 @@ public final class AttachmentStore: @unchecked Sendable {
         linkPreviewJSON: String?
     ) async throws -> UUID {
         do {
-            let id: UUID = try await context.perform { [self] in
+            let id: UUID = try await withMutationRollback(context: context) { [self] in
                 let task = try fetchTask(id: taskID, in: context)
                 let journal = JournalEntry(context: context)
                 journal.id = UUID()
@@ -231,7 +240,6 @@ public final class AttachmentStore: @unchecked Sendable {
                 att.linkPreviewJSON = linkPreviewJSON
                 att.createdAt = journal.createdAt
 
-                try context.save()
                 return att.id!
             }
             await recordCrumb("attachment.attach", success: true)

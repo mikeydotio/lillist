@@ -180,13 +180,17 @@ struct AdvancedPane: View {
                 resetResult = msg
                 AccessibilityAnnouncements.post(msg, priority: .high)
             case .eraseEverywhere:
-                try await environment.dataStoreReset.resetEverywhereToEmpty()
-                let msg = String(localized: "Data store reset. Your other devices will erase and reload the next time they're open and online. Relaunch Lillist to reload.")
+                let outcome = try await environment.dataStoreReset.resetEverywhereToEmpty()
+                let msg = Self.broadcastResultMessage(
+                    base: "Data store reset.", outcome: outcome, convergeVerb: "erase and reload"
+                )
                 resetResult = msg
                 AccessibilityAnnouncements.post(msg, priority: .high)
             case .reseedFromThisDevice:
-                try await environment.dataStoreReset.resetAndReseedFromThisDevice()
-                let msg = String(localized: "This device is now the source of truth. Your other devices will catch up the next time they're open and online. Relaunch Lillist to reload.")
+                let outcome = try await environment.dataStoreReset.resetAndReseedFromThisDevice()
+                let msg = Self.broadcastResultMessage(
+                    base: "This device is now the source of truth.", outcome: outcome, convergeVerb: "catch up"
+                )
                 resetResult = msg
                 AccessibilityAnnouncements.post(msg, priority: .high)
             }
@@ -195,6 +199,21 @@ struct AdvancedPane: View {
             resetResult = failure
             resetResultIsError = true
             AccessibilityAnnouncements.post(failure, priority: .high)
+        }
+    }
+
+    /// Data-sync-hardening `S20`/`S9c`: see the iOS counterpart's
+    /// identical doc comment.
+    private static func broadcastResultMessage(base: String, outcome: BroadcastOutcome, convergeVerb: String) -> String {
+        switch outcome {
+        case .notified:
+            return String(localized: "\(base) Your other devices will \(convergeVerb) the next time they're open and online. Relaunch Lillist to reload.")
+        case .rosterEmpty:
+            return String(localized: "\(base) No other devices are currently known on this account, so nobody else was notified. Relaunch Lillist to reload.")
+        case .skippedQuiesceTimedOut:
+            return String(localized: "\(base) The upload to iCloud is still finishing, so other devices weren't notified yet — they'll pick it up automatically once this device finishes syncing. Relaunch Lillist to reload.")
+        case .notConfigured:
+            return String(localized: "\(base) Relaunch Lillist to reload.")
         }
     }
 
@@ -246,7 +265,15 @@ struct AdvancedPane: View {
         defer { isImporting = false }
         let importer = Importer(persistence: environment.persistence)
         do {
-            importSummary = try await importer.importBundle(at: url, conflictPolicy: .skipExisting)
+            // S9a sibling: without assetsDirectory the importer's
+            // attachment-restore branch never runs and every attachment is
+            // silently dropped — Exporter.export(to:) always writes an
+            // assets/ folder alongside lillist.json under the picked url.
+            importSummary = try await importer.importBundle(
+                at: url,
+                conflictPolicy: .skipExisting,
+                assetsDirectory: url.appendingPathComponent("assets", isDirectory: true)
+            )
             lastExportError = nil
         } catch {
             lastExportError = "Import failed: \(error.localizedDescription)"

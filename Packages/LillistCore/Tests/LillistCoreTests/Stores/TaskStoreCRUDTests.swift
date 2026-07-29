@@ -107,6 +107,57 @@ struct TaskStoreCRUDTests {
         #expect(tagIDs.filter { $0 == tagID }.count == 1)
     }
 
+    /// L4: `unassignTag` must mirror `assignTag`'s no-op guard — a task that
+    /// never had the tag (or already had it removed) must not write:
+    /// no `modifiedAt` bump, no meaningless CloudKit export.
+    @Test("Unassigning a tag the task never had is a no-op — no write occurs")
+    func unassignNeverAssignedIsNoOp() async throws {
+        let p = try await TestStore.make()
+        let tasks = TaskStore(persistence: p)
+        let tags = TagStore(persistence: p)
+        let taskID = try await tasks.create(title: "T")
+        let tagID = try await tags.create(name: "Work")
+        let before = try await tasks.fetch(id: taskID)
+
+        try await Task.sleep(nanoseconds: 10_000_000)
+
+        let ctx = p.container.viewContext
+        final class SaveObserved: @unchecked Sendable { var fired = false }
+        let observed = SaveObserved()
+        let token = NotificationCenter.default.addObserver(
+            forName: .NSManagedObjectContextDidSave,
+            object: ctx,
+            queue: nil
+        ) { _ in observed.fired = true }
+        defer { NotificationCenter.default.removeObserver(token) }
+
+        try await tasks.unassignTag(taskID: taskID, tagID: tagID)
+
+        let after = try await tasks.fetch(id: taskID)
+        #expect(after.modifiedAt == before.modifiedAt, "unassignTag on a never-assigned tag must not bump modifiedAt")
+        #expect(observed.fired == false, "unassignTag on a never-assigned tag must never call context.save()")
+    }
+
+    /// L4's other half: unassigning a tag a second time (already removed)
+    /// must also be a no-op, not just the never-assigned case.
+    @Test("Unassigning an already-removed tag a second time is a no-op")
+    func unassignAlreadyRemovedIsNoOp() async throws {
+        let p = try await TestStore.make()
+        let tasks = TaskStore(persistence: p)
+        let tags = TagStore(persistence: p)
+        let taskID = try await tasks.create(title: "T")
+        let tagID = try await tags.create(name: "Work")
+        try await tasks.assignTag(taskID: taskID, tagID: tagID)
+        try await tasks.unassignTag(taskID: taskID, tagID: tagID)
+        let before = try await tasks.fetch(id: taskID)
+
+        try await Task.sleep(nanoseconds: 10_000_000)
+        try await tasks.unassignTag(taskID: taskID, tagID: tagID)
+
+        let after = try await tasks.fetch(id: taskID)
+        #expect(after.modifiedAt == before.modifiedAt)
+    }
+
     /// Round-trip guard: a freshly-created root task must be readable via
     /// `children(of: nil)` on the same persistence controller. Catches a
     /// silent save-but-not-readable regression independently of any UI

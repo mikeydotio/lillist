@@ -48,6 +48,23 @@ final class AppEnvironment {
     /// converges this one to current iCloud state. Started in
     /// `bootstrap()`, after one launch catch-up pass.
     let resetSignalMonitor: ResetSignalMonitor
+    /// Data-sync-hardening `S10`: the currently-pending, undecided reset
+    /// event awaiting explicit user confirmation, mirrored off
+    /// `resetSignalMonitor.pendingDecisionStream` so SwiftUI can observe it
+    /// without polling. `nil` means nothing is pending.
+    var pendingResetDecision: ResetControlEvent?
+    /// Data-sync-hardening `S10`: the most recent reset event this device
+    /// auto-discarded (expired, or not currently syncing) without ever
+    /// surfacing it as a decision — mirrored off
+    /// `resetSignalMonitor.discardNoticeStream` so the UI can show a real
+    /// "why didn't I get asked" note instead of a silent drop.
+    var resetEventDiscardNotice: ResetEventDiscardNotice?
+    /// Data-sync-hardening `S18`: filesystem backup copies taken before a
+    /// destructive migration/reset. Promoted to a stored property (was a
+    /// local in this initializer) so `bootstrap()` can call
+    /// `cleanupExpired()` — previously never wired into production at all,
+    /// so quarantine copies accumulated unbounded.
+    let quarantine: QuarantineManager
     /// Issue #7: keeps the on-disk JSON backup package in step with the live
     /// store (one file per task), and rolls daily snapshot zips. Retained for
     /// the app's lifetime; deinit removes its observers.
@@ -58,6 +75,17 @@ final class AppEnvironment {
     /// Issue #7: schema-gated destructive restore from a package or snapshot.
     let backupRestoreService: BackupRestoreService
     let pauseReasonClassifier: PauseReasonClassifier
+    /// Data-sync-hardening `S24`: real `NWPathMonitor`-backed reachability
+    /// for `pauseReasonClassifier`, promoted to its own property so
+    /// `bootstrap()` can call `start()` — matches the established pattern
+    /// (`resetSignalMonitor`, `taskDuplicateReconciler`, `syncMonitor`, …)
+    /// of constructing in `init` and starting observation in `bootstrap()`.
+    let networkReachability: LiveNetworkReachability
+    /// Data-sync-hardening `S21`: the Core sync-status actor, promoted to
+    /// its own property so `resetStallState()` can be injected into
+    /// `migrationCoordinator`/`dataStoreReset`. `syncMonitor` (below) wraps
+    /// this same instance for the UI.
+    let syncStatusMonitor: SyncStatusMonitor
     /// Latest resolved sync mode, mirrored off the actor so SwiftUI
     /// can observe it.
     var currentSyncMode: SyncMode = .default
@@ -91,7 +119,7 @@ final class AppEnvironment {
     let smartFilterStore: SmartFilterStore
     /// Regenerates the per-filter widget snapshot cache + reloads widget
     /// timelines on store changes. `nil` when the App Group is unreachable.
-    let widgetRefresh: WidgetRefreshCoordinator?
+    let widgetRefresh: WidgetRefreshController?
     let notificationSpecStore: NotificationSpecStore
     let snoozeRegistry: SnoozeRegistry
     let notificationScheduler: NotificationScheduler
@@ -111,6 +139,19 @@ final class AppEnvironment {
     let diagnosticHistoryObserver: DiagnosticHistoryObserver
     let notificationPermissions: NotificationPermissions
     let accountStateMonitor: AccountStateMonitor
+    /// Data-sync-hardening `S3`: persists and compares this device's known
+    /// iCloud account identity. `make()` consults it before constructing
+    /// `PersistenceController` (so a mismatch never arms CloudKit
+    /// mirroring), and it's retained here so the mismatch-resolution UI
+    /// can call `adoptCurrentIdentity()` after a chosen resolution
+    /// succeeds. See the plan doc
+    /// `docs/superpowers/plans/2026-07-28-plan-3a-account-identity-and-status.md`.
+    let accountIdentityStore: AccountIdentityStore
+    /// The identity comparison `make()` ran before this environment was
+    /// constructed. Informational — `accountState`/`pauseReason` (derived
+    /// from `accountStateMonitor`, which re-runs the same comparison in
+    /// `bootstrap()`) are the live signals the UI observes.
+    let accountIdentityCheckAtLaunch: AccountIdentityStore.CheckResult
     let onboardingState: OnboardingState
     let defaultsInstaller: DefaultsInstaller
     /// Persist-6: hard-deletes trash older than the retention window.
@@ -140,13 +181,17 @@ final class AppEnvironment {
         initialSyncMode: SyncMode,
         syncModeStore: SyncModeStore,
         migrationJournalStore: any MigrationJournalStore,
-        devicePreferences: DevicePreferencesStore
+        devicePreferences: DevicePreferencesStore,
+        accountIdentityStore: AccountIdentityStore,
+        accountIdentityCheckAtLaunch: AccountIdentityStore.CheckResult
     ) {
         self.persistenceHost = persistenceHost
         self.persistence = persistence
         self.storeURL = storeURL
         self.syncModeStore = syncModeStore
         self.migrationJournalStore = migrationJournalStore
+        self.accountIdentityStore = accountIdentityStore
+        self.accountIdentityCheckAtLaunch = accountIdentityCheckAtLaunch
         self.currentSyncMode = initialSyncMode
         self.taskStore = TaskStore(persistence: persistence)
         self.tagStore = TagStore(persistence: persistence)
@@ -163,22 +208,40 @@ final class AppEnvironment {
         let smartFilterStore = SmartFilterStore(persistence: persistence)
         self.smartFilterStore = smartFilterStore
         // Home-screen / Lock Screen widgets read a per-filter snapshot cache
-        // this coordinator maintains; nil only if the App Group is unreachable.
-        self.widgetRefresh = WidgetRefreshCoordinator(
-            smartFilterStore: smartFilterStore,
-            appGroupID: Self.appGroupID
-        )
+        // this controller maintains; nil only if the App Group is unreachable.
+        // X6: observes both local `viewContext` saves and remote CloudKit
+        // imports (see the type's own doc comment) — `start()` is called
+        // once in `bootstrap()`, alongside the other launch-time observers.
+        if let widgetSnapshotStore = WidgetSnapshotStore(appGroupID: Self.appGroupID) {
+            self.widgetRefresh = WidgetRefreshController(
+                persistence: persistence,
+                builder: WidgetSnapshotBuilder(smartFilterStore: smartFilterStore, snapshotStore: widgetSnapshotStore),
+                reloader: SystemWidgetTimelineReloader()
+            )
+        } else {
+            self.widgetRefresh = nil
+        }
         self.onboardingState = OnboardingState(devicePreferences: devicePreferences)
         self.defaultsInstaller = DefaultsInstaller(filters: smartFilterStore)
         self.autoPurgeJob = AutoPurgeJob(persistence: persistence, preferences: preferencesStore)
         let ckContainerID = StoreConfiguration.defaultCloudKitContainerIdentifier
         let accountStateMonitor = AccountStateMonitor(
-            provider: CloudKitAccountStatusProvider(container: CKContainer(identifier: ckContainerID))
+            provider: CloudKitAccountStatusProvider(container: CKContainer(identifier: ckContainerID)),
+            identityStore: accountIdentityStore
         )
         self.accountStateMonitor = accountStateMonitor
         let specStore = NotificationSpecStore(persistence: persistence)
         self.notificationSpecStore = specStore
 
+        // TODO(LIL-83): timeZone: .current defeats cross-device all-day
+        // notification dedup when a user's devices are in different time
+        // zones — each device resolves the same all-day anchor to a
+        // different absolute instant. Known, tracked limitation (interim:
+        // documented in the design doc + pinned by a KNOWN LIMITATION
+        // regression test); the real fix needs a new synced "home time
+        // zone" field on AppPreferences (orchestrator-gated schema change —
+        // see .council/x10-all-day-timezone-dedup-posture/DECISION.md).
+        // Delete this TODO and both `.current` args once LIL-83 ships.
         let registry = SnoozeRegistry(
             defaultAllDayHour: 9,
             defaultAllDayMinute: 0,
@@ -202,6 +265,11 @@ final class AppEnvironment {
         // Property injection per Plan 5: TaskStore reaches the scheduler
         // here, NOT through a singleton holder.
         self.taskStore.notificationScheduler = scheduler
+        // H3: AutoPurgeJob needs the scheduler too, so a retention-window
+        // purge cancels the pending OS notifications of every task it
+        // removes (reconcile(taskID:) can't be reused post-purge — the row
+        // is gone, so it would silently no-op).
+        self.autoPurgeJob.notificationScheduler = scheduler
 
         // Remote-change-driven reconcile: when CloudKit imports another
         // device's notification fire, reconcile the affected tasks so this
@@ -213,7 +281,7 @@ final class AppEnvironment {
         // ~line 228, where it resolves as a shorthand for `Self.appGroupID`
         // because `make()` is also a static method — but that is a
         // different call site in a different method.)
-        let historyTokens = PersistentHistoryTokenStore(appGroupID: Self.appGroupID)
+        let historyTokens = PersistentHistoryTokenStore(appGroupID: Self.appGroupID, consumer: .remoteChangeReconciler)
         self.remoteChangeReconciler = RemoteChangeReconciler(
             persistence: persistence,
             tokenStore: historyTokens
@@ -237,10 +305,18 @@ final class AppEnvironment {
         self.diagnosticLog = diagnosticLog
         self.diagnosticHistoryObserver = DiagnosticHistoryObserver(
             persistence: persistence,
-            tokenStore: PersistentHistoryTokenStore(appGroupID: Self.appGroupID, key: PersistentHistoryTokenStore.diagnosticsKey),
+            tokenStore: PersistentHistoryTokenStore(appGroupID: Self.appGroupID, consumer: .diagnostics),
             sink: diagnosticLog,
             process: .app
         )
+        // H6: fail-loud wiring for a computed-affected-tasks failure — same
+        // property-injection precedent as taskStore/smartFilterStore below.
+        self.remoteChangeReconciler.diagnosticLog = diagnosticLog
+        // LIL-82: M5's diagnosticLog property was never wired here — a
+        // duplicate-merge failure only ever reached os.Logger, never the
+        // structured diagnostic stream this same block wires up for
+        // remoteChangeReconciler right above.
+        self.taskDuplicateReconciler.diagnosticLog = diagnosticLog
 
         // Real CloudKit-driven sync status: bridge LillistCore's
         // SyncStatusMonitor (fed by NSPersistentCloudKitContainer events via
@@ -248,9 +324,12 @@ final class AppEnvironment {
         // `start()` is invoked from bootstrap(). Replaces the old
         // IdleSyncIndicatorMonitor stub that always reported "synced just now"
         // regardless of real activity.
-        self.syncMonitor = CloudKitSyncStatusAdapter(
-            monitor: SyncStatusMonitor(bridge: persistence.cloudKitEventBridge)
-        )
+        // S21: promoted to its own stored property (rather than only living
+        // inside the adapter) so its `resetStallState()` can be injected
+        // into migrationCoordinator/dataStoreReset below.
+        let syncStatusMonitor = SyncStatusMonitor(bridge: persistence.cloudKitEventBridge)
+        self.syncStatusMonitor = syncStatusMonitor
+        self.syncMonitor = CloudKitSyncStatusAdapter(monitor: syncStatusMonitor)
 
         // Plan 9: shared breadcrumb buffer + crash reporter. Canary lives
         // in the App Group container so any extension that wants to record
@@ -295,10 +374,54 @@ final class AppEnvironment {
         let quarantineRoot = storeURL.map { $0.deletingLastPathComponent() }
             ?? FileManager.default.temporaryDirectory
         let quarantine = QuarantineManager(rootDirectory: quarantineRoot)
+        self.quarantine = quarantine
+        // data-sync-hardening S9b: durable crash-recovery journal for
+        // resetAndReseedFromThisDevice — rooted alongside the quarantine
+        // (same App-Group-anchored directory the reseed's own staged
+        // bundle lives under), never FileManager.default.temporaryDirectory.
+        let reseedJournal = FileReseedJournalStore(appGroupID: Self.appGroupID)
+            ?? FileReseedJournalStore(url: quarantineRoot.appendingPathComponent("reseed.json"))
         let quiesceMonitor = SyncQuiesceMonitor(bridge: persistence.cloudKitEventBridge)
+        // data-sync-hardening S11: ONE shared gate, injected into both
+        // the migration coordinator and the reset service below, so a
+        // migration and a reset (including one ResetSignalMonitor
+        // applies automatically from a peer broadcast) can never run
+        // concurrently against the same persistenceHost. Each type
+        // defaults to its own private gate when none is passed — this
+        // explicit shared instance is what actually closes the
+        // cross-type window in production.
+        let destructiveOpGate = DestructiveOpGate()
+
+        // Issue #7: local JSON backup subsystem, rooted alongside the store
+        // and quarantine under the App Group container (`<root>/Backup/Package`
+        // + `<root>/Backup/Snapshots`). Constructed here (ahead of
+        // dataStoreReset below) so it can be injected into
+        // DataStoreResetService as backupReconciler (S23) — the reset
+        // service needs the coordinator to resync the live JSON package
+        // after a destructive wipe.
+        let backupBase = quarantineRoot.appendingPathComponent("Backup", isDirectory: true)
+        let backupPackageDirectory = backupBase.appendingPathComponent("Package", isDirectory: true)
+        let backupSnapshotsDirectory = backupBase.appendingPathComponent("Snapshots", isDirectory: true)
+        let backupSnapshotManager = BackupSnapshotManager(
+            packageDirectory: backupPackageDirectory,
+            snapshotsDirectory: backupSnapshotsDirectory
+        )
+        self.backupSnapshotManager = backupSnapshotManager
+        let localBackupCoordinator = LocalBackupCoordinator(
+            persistence: persistence,
+            preferences: preferencesStore,
+            store: TaskBackupStore(packageDirectory: backupPackageDirectory),
+            tokenStore: PersistentHistoryTokenStore(appGroupID: Self.appGroupID, consumer: .backup),
+            snapshotManager: backupSnapshotManager,
+            destructiveOpGate: destructiveOpGate
+        )
+        self.localBackupCoordinator = localBackupCoordinator
+
+        let networkReachability = LiveNetworkReachability()
+        self.networkReachability = networkReachability
         self.pauseReasonClassifier = PauseReasonClassifier(
             accountMonitor: accountStateMonitor,
-            networkMonitor: ConstantNetworkReachability(reachable: true)
+            networkMonitor: networkReachability
         )
         // sync-7: the irreversible "replace iCloud with local" erase must
         // refuse to run against an empty local store. Capture the
@@ -309,6 +432,55 @@ final class AppEnvironment {
         let countController = persistence
         let localStoreRowCount: @Sendable () async -> Int = {
             await countController.localTaskRowCount()
+        }
+        // Data-sync-hardening S3: this closure was previously only wired
+        // into DataStoreResetService below — MigrationCoordinator itself
+        // was NEVER given an accountStateProvider in production, so its
+        // own .replaceICloudWithLocal/.replaceLocalWithICloud account-
+        // changed pre-flights (both closed as part of this plan) were
+        // dead code until now. Defined here, ahead of both constructions,
+        // so both types share the identical live signal.
+        let accountStateProbe: AccountStateProviding = { [accountStateMonitor] in
+            await accountStateMonitor.currentState
+        }
+        // S21: clears SyncStatusMonitor's stall counters on a successful
+        // reconfigure/reset — see the type's own doc comment.
+        let clearSyncStallState: @Sendable () async -> Void = { [syncStatusMonitor] in
+            await syncStatusMonitor.resetStallState()
+        }
+        // X11/X12/L7: WatermarkRegistry is the single source of truth for
+        // every registered history consumer's watermark — both reset
+        // hygiene (clearAll(), below) and safe pruning (HistoryPruner,
+        // bootstrap() further down) read/clear through the same instance
+        // shape, backed by the same App Group suite the three real
+        // consumers (remoteChangeReconciler/diagnosticHistoryObserver/
+        // localBackupCoordinator, constructed above) already use — so
+        // clearing here is guaranteed to hit the real watermarks those
+        // consumers read from, not a duplicate copy. Replaces the narrow,
+        // hand-maintained `HistoryWatermarks` seam `3b` landed ahead of
+        // this plan (see `WatermarkRegistry`'s own doc comment).
+        let watermarkRegistry = WatermarkRegistry(appGroupID: Self.appGroupID)
+        let clearHistoryWatermarks: () async -> Void = {
+            watermarkRegistry.clearAll()
+        }
+        // X11: clears + regenerates the widget cache and reloads
+        // timelines. `widgetRefresh` is `nil` only when the App Group is
+        // unreachable, matching every other optional use of it in this
+        // file. Captures the already-assigned `self.widgetRefresh` value
+        // directly (not `self`) — capturing `self`, even weakly, before
+        // every stored property is initialized violates Swift's definite-
+        // initialization rules inside `init`.
+        let widgetRefreshForReset = self.widgetRefresh
+        let clearWidgetCache: () async -> Void = {
+            await widgetRefreshForReset?.resetAfterDestructiveOp()
+        }
+        // S19: the symmetric guard to localStoreRowCount above — never
+        // wipe real local data to download from an iCloud zone that turns
+        // out to have nothing in it. Reuses the same LiveCloudKitZoneEraser
+        // instance-shape as migrationCoordinator/dataStoreReset below (a
+        // fresh instance is cheap — it holds no state).
+        let remoteZoneHasRecords: @Sendable () async throws -> Bool = {
+            try await LiveCloudKitZoneEraser().hasAnyRecords(in: ckContainerID)
         }
         self.migrationCoordinator = MigrationCoordinator(
             host: persistenceHost,
@@ -321,7 +493,18 @@ final class AppEnvironment {
             syncModeStore: syncModeStore,
             breadcrumbs: breadcrumbs,
             cloudKitContainerIdentifier: ckContainerID,
-            localStoreRowCount: localStoreRowCount
+            localStoreRowCount: localStoreRowCount,
+            accountStateProvider: accountStateProbe,
+            destructiveOpGate: destructiveOpGate,
+            syncStatusReset: clearSyncStallState,
+            historyWatermarksReset: clearHistoryWatermarks,
+            widgetCacheReset: clearWidgetCache,
+            remoteZoneHasRecords: remoteZoneHasRecords,
+            // LIL-80: restoreFromBackup's raw-SQLite file swap triggers no
+            // Core Data save, so localBackupCoordinator's observers never
+            // see it — resync the live JSON backup package explicitly on
+            // success, same as every other destructive op already does.
+            backupReconciler: localBackupCoordinator
         )
         // Issue #71: the reset-propagation control channel, over iCloud
         // Key-Value Store — a separate iCloud subsystem from the Core
@@ -343,11 +526,10 @@ final class AppEnvironment {
         // Debug full-reset service. Same building blocks as the migration
         // coordinator (quarantine backup, CloudKit zone eraser, quiesce
         // wait) but a distinct type: a reset is not a mode transition and
-        // must not touch the migration journal. The account-changed probe
-        // guards against erasing the wrong account's zone after a switch.
-        let resetAccountProbe: AccountStateProviding = { [accountStateMonitor] in
-            await accountStateMonitor.currentState
-        }
+        // must not touch the migration journal. Shares `accountStateProbe`
+        // (defined above, ahead of migrationCoordinator) so both types see
+        // the identical live signal — the account-changed guard protects
+        // against erasing the wrong account's zone after a switch.
         self.dataStoreReset = DataStoreResetService(
             host: persistenceHost,
             quarantine: quarantine,
@@ -355,39 +537,36 @@ final class AppEnvironment {
             quiesceMonitor: quiesceMonitor,
             notificationScheduler: scheduler,
             cloudKitContainerIdentifier: ckContainerID,
-            accountStateProvider: resetAccountProbe,
+            accountStateProvider: accountStateProbe,
             breadcrumbs: breadcrumbs,
             propagator: resetPropagator,
             exporter: Exporter(persistence: persistence, preferences: preferencesStore),
-            importer: Importer(persistence: persistence)
+            importer: Importer(persistence: persistence),
+            destructiveOpGate: destructiveOpGate,
+            reseedJournal: reseedJournal,
+            backupReconciler: localBackupCoordinator,
+            syncStatusReset: clearSyncStallState,
+            historyWatermarksReset: clearHistoryWatermarks,
+            widgetCacheReset: clearWidgetCache
         )
+        // Data-sync-hardening S10: this device's own live sync mode,
+        // consulted by ResetSignalMonitor once per scan to decide whether
+        // an otherwise-actionable event can be surfaced at all — a
+        // localOnly device has nothing to converge to.
+        let resetMonitorSyncMode: @Sendable () async -> SyncMode = { [persistenceHost] in
+            await persistenceHost.currentMode
+        }
         self.resetSignalMonitor = ResetSignalMonitor(
             inbox: controlInbox,
             applied: AppliedEventStore(),
             deviceID: deviceID,
-            breadcrumbs: breadcrumbs
+            breadcrumbs: breadcrumbs,
+            currentSyncMode: resetMonitorSyncMode,
+            deadLetters: ResetEventDeadLetterStore()
         ) { [dataStoreReset] _ in
             try await dataStoreReset.resetAndRedownload()
         }
 
-        // Issue #7: local JSON backup subsystem, rooted alongside the store and
-        // quarantine under the App Group container (`<root>/Backup/Package` +
-        // `<root>/Backup/Snapshots`).
-        let backupBase = quarantineRoot.appendingPathComponent("Backup", isDirectory: true)
-        let backupPackageDirectory = backupBase.appendingPathComponent("Package", isDirectory: true)
-        let backupSnapshotsDirectory = backupBase.appendingPathComponent("Snapshots", isDirectory: true)
-        let backupSnapshotManager = BackupSnapshotManager(
-            packageDirectory: backupPackageDirectory,
-            snapshotsDirectory: backupSnapshotsDirectory
-        )
-        self.backupSnapshotManager = backupSnapshotManager
-        self.localBackupCoordinator = LocalBackupCoordinator(
-            persistence: persistence,
-            preferences: preferencesStore,
-            store: TaskBackupStore(packageDirectory: backupPackageDirectory),
-            tokenStore: PersistentHistoryTokenStore(appGroupID: Self.appGroupID, key: PersistentHistoryTokenStore.backupKey),
-            snapshotManager: backupSnapshotManager
-        )
         self.backupRestoreService = BackupRestoreService(
             reset: self.dataStoreReset,
             importer: Importer(persistence: persistence),
@@ -395,7 +574,8 @@ final class AppEnvironment {
             packageDirectory: backupPackageDirectory,
             diagnosticLog: diagnosticLog,
             process: .app,
-            propagator: resetPropagator
+            propagator: resetPropagator,
+            backupReconciler: localBackupCoordinator
         )
 
         // Tasks from Reminders: EventKit gateway + drain importer. The
@@ -421,14 +601,41 @@ final class AppEnvironment {
     /// Intents extension see the same data. The initial sync mode is
     /// resolved from `SyncModeStore` (defaults to iCloudSync when no
     /// value is persisted yet — preserving Plan 20 upgrade behavior).
+    ///
+    /// Data-sync-hardening `X1` (folded-in iOS detail): this used to fall
+    /// back silently to `StoreConfiguration.defaultOnDisk` (a private,
+    /// per-sandbox path the Share/Shortcuts extensions and widget can't
+    /// see) whenever the App Group container was unreachable — a fourth,
+    /// undocumented store-location fork. `StoreLocation.resolve` now
+    /// throws loud instead: an unreachable App Group is a real
+    /// misconfiguration (missing entitlement, unsigned build) that must
+    /// surface as a launch failure, never a silent fork onto a store the
+    /// rest of the app can't share.
     static func make() async throws -> AppEnvironment {
         let syncModeStore = SyncModeStore(appGroupID: appGroupID)
         let initialMode = await syncModeStore.currentMode()
-        var config: StoreConfiguration
-        if let group = StoreConfiguration.appGroupOnDisk(groupID: appGroupID, syncMode: initialMode) {
-            config = group
-        } else {
-            config = try StoreConfiguration.defaultOnDisk.withSyncMode(initialMode)
+        let location = try StoreLocation.resolve(role: .mainApp, appGroupID: appGroupID)
+
+        // Data-sync-hardening S3: compare this device's known iCloud
+        // account identity BEFORE PersistenceController can arm
+        // cloudKitContainerOptions. A genuine mismatch (or a storage read
+        // failure — we can't verify safety, so fail closed) suppresses
+        // mirroring for this launch regardless of role/mode; see the plan
+        // doc §2/§4 for the full rationale and the identity-source
+        // decision.
+        let accountIdentityStore = AccountIdentityStore(
+            storage: FileAccountIdentityStore(appGroupID: appGroupID) ?? InMemoryAccountIdentityRecordStore()
+        )
+        let identityCheck: AccountIdentityStore.CheckResult
+        do {
+            identityCheck = try accountIdentityStore.check()
+        } catch {
+            identityCheck = .mismatch
+        }
+
+        var config = location.makeConfiguration(syncMode: initialMode)
+        if identityCheck == .mismatch {
+            config.armsCloudKitMirroring = false
         }
         let persistence = try await PersistenceController(configuration: config)
         let host = PersistenceHost(controller: persistence, initialMode: initialMode)
@@ -444,7 +651,9 @@ final class AppEnvironment {
             initialSyncMode: initialMode,
             syncModeStore: syncModeStore,
             migrationJournalStore: journal,
-            devicePreferences: devicePreferences
+            devicePreferences: devicePreferences,
+            accountIdentityStore: accountIdentityStore,
+            accountIdentityCheckAtLaunch: identityCheck
         )
     }
 
@@ -459,6 +668,7 @@ final class AppEnvironment {
         let devicePreferences = DevicePreferencesStore(suiteName: suite)
         let syncModeStore = SyncModeStore(suiteName: suite)
         let journal = InMemoryMigrationJournalStore()
+        let accountIdentityStore = AccountIdentityStore(storage: InMemoryAccountIdentityRecordStore())
         return AppEnvironment(
             persistenceHost: host,
             persistence: persistence,
@@ -466,13 +676,20 @@ final class AppEnvironment {
             initialSyncMode: .iCloudSync,
             syncModeStore: syncModeStore,
             migrationJournalStore: journal,
-            devicePreferences: devicePreferences
+            devicePreferences: devicePreferences,
+            accountIdentityStore: accountIdentityStore,
+            accountIdentityCheckAtLaunch: .firstLaunch
         )
     }
 
     /// One-shot async bootstrap: registers UNNotificationCategory set so
     /// snooze actions on the Lock Screen dispatch correctly.
     func bootstrap() async {
+        // Data-sync-hardening S9b: resolve any resetAndReseedFromThisDevice
+        // interrupted by a crash on a prior launch — before anything else
+        // assumes the store reflects steady state. Best-effort, matching
+        // every other step here.
+        _ = try? await dataStoreReset.recoverInterruptedReseed()
         // Plan 21: ensure the AppPreferences row's device-local fields
         // have been copied into App Group UserDefaults before any
         // device-local consumer (OnboardingState, hotkey monitor, etc.)
@@ -482,6 +699,20 @@ final class AppEnvironment {
         // imports that arrived while the app wasn't running, then start
         // observing live remote changes.
         try? await preferencesStore.normalizeSingletons()
+        // X10: hydrate the scheduler's all-day default from the persisted
+        // preference BEFORE any reconcile pass runs below — otherwise
+        // remoteChangeReconciler's own catch-up (next line) would recompute
+        // (and, pre-fix, incorrectly rewrite) all-day trigger times against
+        // the hardcoded 09:00 constructor default instead of the user's
+        // real preference. Reuses updateDefaultAllDayTime exactly as the
+        // Settings surface does — see that method's own doc comment for why
+        // this call is a no-op diff in the common case, not a real rewrite.
+        if let prefs = try? await preferencesStore.read() {
+            await notificationScheduler.updateDefaultAllDayTime(
+                hour: Int(prefs.defaultAllDayHour),
+                minute: Int(prefs.defaultAllDayMinute)
+            )
+        }
         await remoteChangeReconciler.processPendingHistory()
         remoteChangeReconciler.start()
         // Issue #66: catch up on any duplicate LillistTask rows that arrived
@@ -489,10 +720,47 @@ final class AppEnvironment {
         // launch), then begin observing live remote changes.
         await taskDuplicateReconciler.reconcileNow()
         taskDuplicateReconciler.start()
+        // L2: SmartFilterStore.deduplicateExactDuplicates()'s own doc
+        // comment claims default-filter duplicates "self-heal across
+        // launches," but installDefaultsIfNeeded() (which begins with this
+        // same dedup pass) is only ever called from onboarding — a
+        // one-time, first-launch-only entry point. A device that completed
+        // onboarding before a cross-device create race landed a duplicate
+        // would otherwise never run the dedup pass again. Calling it here
+        // makes every ordinary launch a self-heal opportunity, matching the
+        // doc comment's actual claim. Best-effort, matching every other
+        // step here.
+        try? await smartFilterStore.deduplicateExactDuplicates()
+        // Data-sync-hardening plan 1a: self-heal any illegal tree state a
+        // CloudKit merge produced (parent cycles, live-under-trashed nodes,
+        // position ties) — runs after duplicate reconcile (so a stale
+        // duplicate can't masquerade as a cycle-break tie or a false
+        // live-under-trashed positive) and before autoPurgeJob below (so
+        // purge never sees an illegal state to begin with). Best-effort,
+        // matching every other step here — a failed repair must never
+        // block launch.
+        await persistence.container.viewContext.perform { [self] in
+            guard let violations = try? TreeIntegrityChecker.repair(in: persistence.container.viewContext),
+                  !violations.isEmpty else { return }
+            try? persistence.container.viewContext.save()
+        }
+        // Data-sync-hardening S18: cleanupExpired() was never wired into
+        // production before this — store copies accumulated unbounded
+        // until disk-full failure started taking down every future
+        // migration. Opportunistic maintenance, after the integrity/
+        // singleton passes above (matches autoPurgeJob's own placement
+        // further below); best-effort, matching every other step here.
+        try? quarantine.cleanupExpired()
         // Issue #71: catch up on any reset broadcast that arrived while the
         // app wasn't running, then begin observing live ones.
-        await resetSignalMonitor.checkAndApply()
-        resetSignalMonitor.start()
+        // Data-sync-hardening S10: refreshPendingDecision() (renamed from
+        // the auto-applying checkAndApply()) only ever classifies and
+        // surfaces — nothing is ever applied without explicit user
+        // confirmation via the pending-decision dialog.
+        await resetSignalMonitor.refreshPendingDecision()
+        await resetSignalMonitor.start()
+        startObservingPendingResetDecision()
+        startObservingResetEventDiscardNotice()
         // Diagnostics: sync the cached enabled flag from device prefs, then run a
         // catch-up pass over any history that accrued while not running and begin
         // observing live remote changes. Order matters — set the flag first so the
@@ -511,7 +779,10 @@ final class AppEnvironment {
         // persist-1 / notif-7: sweep localOnly persistent history at launch so
         // it never grows unbounded. Internally gated to syncMode == .localOnly
         // (iCloudSync is a no-op); fire-and-forget — a failed prune never
-        // blocks launch.
+        // blocks launch. X12/L7: the prune boundary comes from
+        // WatermarkRegistry.pruneBoundary(in:) (min over every registered
+        // consumer's own watermark), not "now" — safe regardless of whether
+        // every consumer's catch-up above has actually completed.
         if let historyPruner = HistoryPruner(
             persistence: persistence,
             syncMode: await syncModeStore.currentMode(),
@@ -527,6 +798,10 @@ final class AppEnvironment {
         // sees an empty disk on a clean cold launch and a real stale
         // canary only after a true foreground crash.
         self.crashPromptsEnabled = await devicePreferences.crashPromptsEnabled()
+        // S24: begin observing real network reachability before priming
+        // pauseReason below, so the first classification isn't stuck on
+        // the pre-start default.
+        await networkReachability.start()
         // Plan 10: prime the iCloud account-state cache so the
         // onboarding gate has a non-default value to read.
         try? await accountStateMonitor.refresh()
@@ -534,15 +809,20 @@ final class AppEnvironment {
         // ios-1: prime the pause-reason mirror so the sync-status badge and
         // PauseExplainerDialog read a real classification, not a stale nil.
         self.pauseReason = await pauseReasonClassifier.currentReason()
+        // S13: observe CKAccountChanged so a mid-session account switch is
+        // caught, not just this cold launch's own check (already applied
+        // above via `accountIdentityCheckAtLaunch`/`config.armsCloudKitMirroring`).
+        await accountStateMonitor.startObservingSystemAccountChanges()
         startObservingAccountState()
+        startObservingMidSessionAccountMismatch()
         startObservingSyncMode()
         installCanaryLifecycleObservers()
         startObservingPauseReason()
         // Keep home-screen / Lock Screen widgets fresh: rebuild the per-filter
-        // snapshot cache + reload timelines on every store change (local writes
-        // AND CloudKit imports), and warm the cache once now so a freshly added
-        // widget renders immediately.
-        startObservingStoreChangesForWidgets()
+        // snapshot cache + reload timelines on every store change (local
+        // `viewContext` saves AND CloudKit imports — X6), and warm the cache
+        // once now so a freshly added widget renders immediately.
+        widgetRefresh?.start()
         widgetRefresh?.refreshNow()
         // Connect the live CloudKit sync-status stream to the UI indicator.
         await syncMonitor.start()
@@ -587,25 +867,10 @@ final class AppEnvironment {
     /// has already fired — so this observer doesn't write a canary on
     /// cold launch (that's `CrashReporterHost.detectAndPrepare()`'s
     /// job) and only fires on subsequent foreground returns.
-    /// Rebuild the widget snapshot cache whenever the store changes. The
-    /// coordinator debounces, so a burst of writes coalesces into one rebuild +
-    /// one timeline reload. Fires for local writes and CloudKit imports alike;
-    /// registered app-lifetime (matching the other bootstrap observers).
-    private func startObservingStoreChangesForWidgets() {
-        NotificationCenter.default.addObserver(
-            forName: .NSPersistentStoreRemoteChange,
-            object: persistence.container.persistentStoreCoordinator,
-            queue: nil
-        ) { [weak self] _ in
-            Task { @MainActor [weak self] in
-                self?.widgetRefresh?.scheduleRefresh()
-            }
-        }
-    }
-
     private func installCanaryLifecycleObservers() {
         let reporter = self.crashReporter
         let backup = self.localBackupCoordinator
+        let accountStateMonitor = self.accountStateMonitor
         NotificationCenter.default.addObserver(
             forName: UIApplication.didBecomeActiveNotification,
             object: nil,
@@ -615,6 +880,10 @@ final class AppEnvironment {
             // Issue #7: roll a daily snapshot if the app stays foregrounded
             // across a day boundary. No-op when one isn't due.
             Task { await backup.runSnapshotIfDue() }
+            // S13: re-probe on every foreground return, not just
+            // CKAccountChanged deliveries — a belt-and-suspenders catch
+            // for any account change the notification alone might miss.
+            Task { try? await accountStateMonitor.refresh() }
             // Warm reactivation: consume any Quick Capture handoff and drain
             // the Reminders queue. (Cold launch is handled in bootstrap(),
             // which runs after the first didBecomeActive.)
@@ -646,6 +915,35 @@ final class AppEnvironment {
         }
     }
 
+    /// Data-sync-hardening `S10`: stream pending-decision changes off
+    /// `resetSignalMonitor` into the `@Observable` mirror so the settings
+    /// UI can show/dismiss the confirmation dialog without polling.
+    private func startObservingPendingResetDecision() {
+        let monitor = self.resetSignalMonitor
+        Task { [weak self] in
+            for await decision in await monitor.pendingDecisionStream {
+                await MainActor.run {
+                    self?.pendingResetDecision = decision
+                }
+            }
+        }
+    }
+
+    /// Data-sync-hardening `S10`: stream auto-discard notices (expired, or
+    /// not currently syncing) off `resetSignalMonitor` into the
+    /// `@Observable` mirror so the UI can show a real "why didn't I get
+    /// asked" note instead of a silent drop.
+    private func startObservingResetEventDiscardNotice() {
+        let monitor = self.resetSignalMonitor
+        Task { [weak self] in
+            for await notice in await monitor.discardNoticeStream {
+                await MainActor.run {
+                    self?.resetEventDiscardNotice = notice
+                }
+            }
+        }
+    }
+
     /// Plan 10: stream account-state changes off the actor into the
     /// `@Observable` mirror so views update without polling.
     private func startObservingAccountState() {
@@ -657,6 +955,49 @@ final class AppEnvironment {
                 }
             }
         }
+    }
+
+    /// Data-sync-hardening `S3`/`S13`: automatically and silently sever a
+    /// live CloudKit mirroring connection the instant a mismatch is
+    /// detected *mid-session* — per the council decision
+    /// (`.council/s3-account-mismatch-response-policy/DECISION.md`), this
+    /// is non-destructive containment (no data loss, no user confirmation
+    /// needed) distinct from the dismissible resolution dialog that still
+    /// appears afterward via the ordinary `pauseReason` badge path.
+    ///
+    /// Deliberately skips the stream's FIRST value: `accountStateMonitor
+    /// .stateStream` always replays the current state to a new subscriber
+    /// immediately, and by the time this subscribes (after `bootstrap()`'s
+    /// own `refresh()` call above), that replay already reflects
+    /// whatever `accountIdentityCheckAtLaunch` found — which cold launch
+    /// already handled safely via `armsCloudKitMirroring = false` in
+    /// `make()`. Only a value that arrives AFTER that replay represents a
+    /// genuine mid-session change (a live `CKAccountChanged` delivery or a
+    /// foreground re-probe), when mirroring may actually be attached and
+    /// live.
+    private func startObservingMidSessionAccountMismatch() {
+        let monitor = self.accountStateMonitor
+        Task { [weak self] in
+            var iterator = await monitor.stateStream.makeAsyncIterator()
+            _ = await iterator.next() // skip cold-launch replay
+            while let state = await iterator.next() {
+                guard state == .accountChanged else { continue }
+                await self?.severMirroringForMidSessionAccountMismatch()
+            }
+        }
+    }
+
+    /// Detach CloudKit mirroring immediately by driving the same
+    /// `.disableNow` transition the "Stay Local For Now" resolution button
+    /// uses — reused rather than a bespoke coordinator call, matching the
+    /// existing hardened-primitives-only discipline. Best-effort: a
+    /// failure here still leaves the coordinator's own failure handling
+    /// (unconditional reattach) in control, and the dismissible resolution
+    /// dialog remains available regardless of this call's outcome.
+    private func severMirroringForMidSessionAccountMismatch() async {
+        guard currentSyncMode == .iCloudSync else { return }
+        let url = storeURL ?? FileManager.default.temporaryDirectory.appendingPathComponent("Lillist.sqlite")
+        try? await migrationCoordinator.beginDisable(strategy: .now, storeURL: url)
     }
 
     /// Plan 21: bridge `SyncModeStore.modeStream` onto the

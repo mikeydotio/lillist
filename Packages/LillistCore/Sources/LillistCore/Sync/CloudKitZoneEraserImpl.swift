@@ -51,6 +51,32 @@ public struct LiveCloudKitZoneEraser: CloudKitZoneEraser {
         return CloudKitEraseSummary(zoneIDs: deleted)
     }
 
+    /// Data-sync-hardening `S19`: whether this account's CloudKit mirror
+    /// currently has a managed zone at all — consulted before
+    /// `.replaceLocalWithICloud`'s irreversible local wipe (the symmetric
+    /// guard to `localStoreRowCount`'s check on the opposite direction).
+    ///
+    /// Deliberately a **zone-existence** check, not a record-count query:
+    /// `NSPersistentCloudKitContainer` creates its managed zone lazily on
+    /// first mirror attach, so "no managed zone exists yet" reliably
+    /// identifies the case this guard most needs to catch — a brand-new
+    /// iCloud account with zero sync history — using the exact same
+    /// zone-enumeration `eraseManagedZones` already performs (no new
+    /// CloudKit surface, no raw `CKFetchRecordZoneChangesOperation`
+    /// continuation-wrapping this codebase doesn't otherwise use). The
+    /// residual gap — a managed zone that exists but happens to hold zero
+    /// records — is a narrow, low-risk simplification: `.replaceLocalWithICloud`
+    /// proceeding in that rare case just means the first download finds
+    /// nothing, a self-correcting outcome `NSPersistentCloudKitContainer`
+    /// already handles, not a data-loss risk (the local data was already
+    /// quarantined before this check runs).
+    public func hasAnyRecords(in containerIdentifier: String) async throws -> Bool {
+        let container = CKContainer(identifier: containerIdentifier)
+        let database = container.privateCloudDatabase
+        let allZones = try await Self.fetchAllCustomZones(in: database)
+        return allZones.contains { $0.zoneName.hasPrefix("com.apple.coredata.cloudkit.zone") }
+    }
+
     private static func fetchAllCustomZones(in database: CKDatabase) async throws -> [CKRecordZone.ID] {
         // `recordZones(matching:)` arrived in iOS 15 / macOS 12 — but
         // the `(matching: NSPredicate, inZoneWith: nil)` variant uses

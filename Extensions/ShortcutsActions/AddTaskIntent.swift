@@ -48,7 +48,13 @@ struct AddTaskIntent: AppIntent {
             calendar: .current
         )
         if let deadline {
+            // X8: wired with a scheduler (built off the already-resolved
+            // `persistence`, not IntentSupport.makeTaskStore(), so this
+            // function resolves the store exactly once) — TaskStore.update
+            // reconciles notifications after a deadline change, and without
+            // a scheduler that reconcile silently no-ops.
             let taskStore = TaskStore(persistence: persistence)
+            taskStore.notificationScheduler = try await IntentSupport.makeNotificationScheduler(persistence: persistence)
             try await taskStore.update(id: id) { draft in
                 draft.deadline = deadline
                 draft.deadlineHasTime = true

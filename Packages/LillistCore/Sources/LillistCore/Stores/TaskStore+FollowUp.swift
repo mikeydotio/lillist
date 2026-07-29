@@ -18,9 +18,9 @@ extension TaskStore {
         title: String,
         deadline: Date
     ) async throws -> UUID {
-        try validateTitle(title)
         let ctx = persistence.container.viewContext
-        let newID: UUID = try await ctx.perform { [self] in
+        let newID: UUID = try await withMutationRollback(context: ctx) { [self] in
+            try validateTitle(title)
             let blocked = try fetchManagedObject(id: parentTaskID, in: ctx)
             let siblingParent: LillistTask? = blocked.parent
 
@@ -50,7 +50,6 @@ extension TaskStore {
             let payload: [String: String] = ["followUpTaskID": id.uuidString]
             entry.payload = try JSONSerialization.data(withJSONObject: payload)
 
-            try ctx.save()
             return id
         }
         // Reconcile notifications for the newly-created task — it has a

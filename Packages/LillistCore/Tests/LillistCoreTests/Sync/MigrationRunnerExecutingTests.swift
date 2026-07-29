@@ -1,6 +1,7 @@
 import Testing
 import Foundation
 import CloudKit
+import CoreData
 @testable import LillistCore
 
 @Suite("MigrationCoordinator runner (executing, no live store)", .serialized)
@@ -17,7 +18,11 @@ struct MigrationRunnerExecutingTests {
         startMode: SyncMode,
         rowCount: @escaping @Sendable () async -> Int = { 1 },
         journal: InMemoryMigrationJournalStore = InMemoryMigrationJournalStore(),
-        eraser: FakeCloudKitZoneEraser = FakeCloudKitZoneEraser()
+        eraser: FakeCloudKitZoneEraser = FakeCloudKitZoneEraser(),
+        syncStatusReset: (@Sendable () async -> Void)? = nil,
+        historyWatermarksReset: (() async -> Void)? = nil,
+        widgetCacheReset: (() async -> Void)? = nil,
+        remoteZoneHasRecords: (@Sendable () async throws -> Bool)? = nil
     ) -> (MigrationCoordinator, FakePersistenceReconfigurer, InMemoryMigrationJournalStore, FakeCloudKitZoneEraser, URL) {
         let dir = tempDir()
         let recon = FakePersistenceReconfigurer(initialMode: startMode)
@@ -31,9 +36,55 @@ struct MigrationRunnerExecutingTests {
             quiesceMonitor: SyncQuiesceMonitor(bridge: CloudKitEventBridge()),
             notificationScheduler: nil,
             syncModeStore: modeStore,
-            localStoreRowCount: rowCount
+            localStoreRowCount: rowCount,
+            syncStatusReset: syncStatusReset,
+            historyWatermarksReset: historyWatermarksReset,
+            widgetCacheReset: widgetCacheReset,
+            remoteZoneHasRecords: remoteZoneHasRecords
         )
         return (coordinator, recon, journal, eraser, dir)
+    }
+
+    /// Test-only call counter for `syncStatusReset` (S21) — an actor so
+    /// the closure can safely bump it from the coordinator's `@MainActor`
+    /// isolation.
+    private actor CallCounter {
+        private(set) var count = 0
+        func bump() { count += 1 }
+    }
+
+    @Test("test_S21_successfulMigrationResetsSyncStallState")
+    @MainActor
+    func successfulMigrationResetsSyncStallState() async throws {
+        let counter = CallCounter()
+        let (coordinator, _, _, _, dir) = makeCoordinator(
+            startMode: .iCloudSync,
+            syncStatusReset: { await counter.bump() }
+        )
+        let storeURL = dir.appendingPathComponent("Lillist.sqlite")
+        try Data("x".utf8).write(to: storeURL)
+
+        try await coordinator.beginDisable(strategy: .now, storeURL: storeURL)
+
+        #expect(await counter.count == 1)
+    }
+
+    @Test("test_S21_failedMigrationDoesNotResetSyncStallState")
+    @MainActor
+    func failedMigrationDoesNotResetSyncStallState() async throws {
+        let counter = CallCounter()
+        let (coordinator, _, _, _, dir) = makeCoordinator(
+            startMode: .localOnly, rowCount: { 0 },
+            syncStatusReset: { await counter.bump() }
+        )
+        let storeURL = dir.appendingPathComponent("Lillist.sqlite")
+        try Data("x".utf8).write(to: storeURL)
+
+        await #expect(throws: LillistError.self) {
+            try await coordinator.beginEnable(direction: .replaceICloud, storeURL: storeURL)
+        }
+
+        #expect(await counter.count == 0)
     }
 
     @Test("replaceICloudWithLocal on an empty local store throws before erasing")
@@ -107,8 +158,12 @@ struct MigrationRunnerExecutingTests {
 
         // Eraser must not run on a disable (no CloudKit zone erasure).
         #expect(await eraser.callCount == 0)
-        // Mode swapped to localOnly exactly once.
-        #expect(await recon.reconfigureCalls == [.localOnly])
+        // S7: the trailing swap now runs through tearDown+attachStore
+        // (closed-store quarantine copy), not the old reconfigure(to:)
+        // path.
+        #expect(await recon.resetSteps == ["tearDown"])
+        #expect(await recon.attachCalls == [.localOnly])
+        #expect(await recon.reconfigureCalls == [])
         // Journal cleared (idle) on success.
         #expect(try journal.read() == .idle)
         // .preparing must precede the structural swap — this proves
@@ -123,7 +178,7 @@ struct MigrationRunnerExecutingTests {
         #expect(phases.last == .completed)
     }
 
-    @Test("replaceICloudWithLocal: eraser called once, reconfigure precedes erase, cancel-before-destructive")
+    @Test("replaceICloudWithLocal: eraser called once, erase precedes reconfigure, cancel-before-destructive (S6)")
     @MainActor
     func replaceICloudWithLocalExecutes() async throws {
         let (coordinator, recon, journal, eraser, dir) = makeCoordinator(
@@ -141,30 +196,38 @@ struct MigrationRunnerExecutingTests {
 
         // Eraser is called exactly once (the CloudKit zone erasure step).
         #expect(await eraser.callCount == 1)
-        // Mode swapped to iCloudSync exactly once.
-        #expect(await recon.reconfigureCalls == [.iCloudSync])
+        // S7: the trailing swap now runs through tearDown+attachStore.
+        #expect(await recon.resetSteps == ["tearDown"])
+        #expect(await recon.attachCalls == [.iCloudSync])
+        #expect(await recon.reconfigureCalls == [])
         // Journal cleared (idle) on success.
         #expect(try journal.read() == .idle)
-        // .preparing precedes both the swap and the erase — proving
+        // .preparing precedes both the erase and the swap — proving
         // notification cancellation fires before any destructive step.
+        // S6: the erase must now precede reconfigure — attaching
+        // mirroring to a store that hasn't been erased yet is the exact
+        // bug this finding reports (remote data merging back in, or
+        // CloudKit's export bookkeeping believing rows were already
+        // uploaded before the erase that was supposed to predate them).
         let preparingIdx = phases.firstIndex(of: .preparing)
         let reconfigIdx = phases.firstIndex(of: .reconfiguringStore)
         let eraseIdx = phases.firstIndex {
             if case .erasingICloud = $0 { return true } else { return false }
         }
         #expect(preparingIdx != nil && reconfigIdx != nil && eraseIdx != nil)
-        #expect(preparingIdx! < reconfigIdx!)
-        #expect(reconfigIdx! < eraseIdx!)
+        #expect(preparingIdx! < eraseIdx!)
+        #expect(eraseIdx! < reconfigIdx!)
     }
 
     // MARK: - Failure-injection test
 
-    @Test("Reconfigure failure leaves .failed journal with previousMode and rethrows")
+    @Test("attachStore failure leaves .failed journal with previousMode, reattaches, and rethrows (S7)")
     @MainActor
     func reconfigureFailureLeavesFailedJournal() async throws {
         let (coordinator, recon, journal, eraser, dir) = makeCoordinator(startMode: .iCloudSync)
-        // Arm the fake to throw on the first reconfigure call.
-        await recon.failOnReconfigure(call: 1)
+        // S7: disableNow's trailing swap now runs through attachStore(at:),
+        // not reconfigure(to:) — arm the failure on the NEW mechanism.
+        await recon.failOnAttachStore(call: 1)
         let storeURL = dir.appendingPathComponent("Lillist.sqlite")
         try Data("x".utf8).write(to: storeURL)
 
@@ -180,8 +243,517 @@ struct MigrationRunnerExecutingTests {
         #expect(j.failureReason?.isEmpty == false)
         // Eraser never ran (disable does not erase; also we failed before it).
         #expect(await eraser.callCount == 0)
+        // tearDown ran, attachStore failed, and the catch's now-
+        // unconditional best-effort reattach ran too.
+        #expect(await recon.resetSteps == ["tearDown", "reattach"])
         // The fake's mode must be unchanged — the throw keeps the mode at iCloudSync.
         #expect(await recon.mode == .iCloudSync)
+    }
+
+    // MARK: - S1: replaceLocalWithICloud actually wipes local data
+
+    @Test("replaceLocalWithICloud: tears down, wipes, THEN reconfigures — local rows do NOT survive (S1 class-kill)")
+    @MainActor
+    func replaceLocalWithICloudWipesLocalData() async throws {
+        // RealWipingReconfigurer (not the ordering-only FakePersistenceReconfigurer)
+        // so this test can prove actual data loss, not just call ordering —
+        // a fake that never truly clears the store would satisfy a naive
+        // "reconfigure happened" assertion regardless of whether S1's bug
+        // is present.
+        let persistence = try await TestStore.make()
+        let taskStore = TaskStore(persistence: persistence)
+        _ = try await taskStore.create(title: "must not survive the wipe")
+
+        let dir = tempDir()
+        let host = RealWipingReconfigurer(persistence: persistence, initialMode: .localOnly)
+        let journal = InMemoryMigrationJournalStore()
+        let suite = "MigRunner-\(UUID().uuidString)"
+        let modeStore = SyncModeStore(suiteName: suite)
+        await modeStore.setMode(.localOnly)
+        let coordinator = MigrationCoordinator(
+            host: host,
+            journal: journal,
+            quarantine: QuarantineManager(rootDirectory: dir),
+            zoneEraser: FakeCloudKitZoneEraser(),
+            quiesceMonitor: SyncQuiesceMonitor(bridge: CloudKitEventBridge()),
+            notificationScheduler: nil,
+            syncModeStore: modeStore,
+            localStoreRowCount: { 1 },
+            quiesceMinQuietWindow: 0.05,
+            quiesceHardTimeout: 2
+        )
+        let storeURL = dir.appendingPathComponent("Lillist.sqlite")
+
+        try await coordinator.beginEnable(direction: .replaceLocal, storeURL: storeURL)
+
+        // Ordering: tear down -> rebuild -> THEN reconfigure to the target.
+        #expect(await host.resetSteps == ["tearDown", "rebuild"])
+        #expect(await host.reconfigureCalls == [.iCloudSync])
+        #expect(await modeStore.currentMode() == .iCloudSync)
+        #expect(try journal.read() == .idle)
+
+        // The class-kill: the row created before the migration must be
+        // GONE — the store was genuinely wiped, not merely reconfigured
+        // in place (which would let the row merge into iCloud instead of
+        // being replaced by it).
+        let remaining = try await persistence.container.viewContext.perform {
+            try persistence.container.viewContext.count(for: NSFetchRequest<LillistTask>(entityName: "LillistTask"))
+        }
+        #expect(remaining == 0)
+    }
+
+    @Test("replaceLocalWithICloud: a rebuildEmptyStore failure best-effort reattaches before failing (S12)")
+    @MainActor
+    func replaceLocalWithICloudReattachesOnRebuildFailure() async throws {
+        let dir = tempDir()
+        let recon = FakePersistenceReconfigurer(initialMode: .localOnly)
+        await recon.failOnRebuild()
+        let journal = InMemoryMigrationJournalStore()
+        let suite = "MigRunner-\(UUID().uuidString)"
+        let modeStore = SyncModeStore(suiteName: suite)
+        await modeStore.setMode(.localOnly)
+        let coordinator = MigrationCoordinator(
+            host: recon,
+            journal: journal,
+            quarantine: QuarantineManager(rootDirectory: dir),
+            zoneEraser: FakeCloudKitZoneEraser(),
+            quiesceMonitor: SyncQuiesceMonitor(bridge: CloudKitEventBridge()),
+            notificationScheduler: nil,
+            syncModeStore: modeStore,
+            localStoreRowCount: { 1 }
+        )
+        let storeURL = dir.appendingPathComponent("Lillist.sqlite")
+
+        await #expect(throws: LillistError.self) {
+            try await coordinator.beginEnable(direction: .replaceLocal, storeURL: storeURL)
+        }
+
+        // tearDown ran, rebuild failed, and the catch's best-effort
+        // reattach ran too — the coordinator must never be left
+        // store-less on this failure path (S12). reconfigure never ran
+        // (rebuild failed before it), so mode is unchanged.
+        #expect(await recon.resetSteps == ["tearDown", "rebuild", "reattach"])
+        #expect(await recon.reconfigureCalls == [])
+        #expect(await modeStore.currentMode() == .localOnly)
+        let j = try journal.read()
+        #expect(j.state == .failed)
+    }
+
+    @Test("test_S3_replaceLocalWithICloudRefusesOnAccountChanged")
+    @MainActor
+    func replaceLocalWithICloudRefusesOnAccountChanged() async throws {
+        // Data-sync-hardening S3: unlike .replaceICloudWithLocal (which
+        // already had this preflight), .replaceLocalWithICloud had NO
+        // accountStateProvider check at all — a user could flip the sync
+        // toggle on in Settings while an account mismatch was still
+        // unresolved and wipe their local data to download the WRONG
+        // account's copy. Placed at the same relative position
+        // .replaceICloudWithLocal already uses: AFTER the recovery-anchor
+        // backup (tearDownStore), BEFORE the truly irreversible step
+        // (here, rebuildEmptyStore's local wipe) — so the reentrant
+        // catch's unconditional reattach still has a backup to fall back
+        // on if this check fires.
+        let dir = tempDir()
+        let recon = FakePersistenceReconfigurer(initialMode: .localOnly)
+        let journal = InMemoryMigrationJournalStore()
+        let suite = "MigRunner-\(UUID().uuidString)"
+        let modeStore = SyncModeStore(suiteName: suite)
+        await modeStore.setMode(.localOnly)
+        let provider: AccountStateProviding = { .accountChanged }
+        let coordinator = MigrationCoordinator(
+            host: recon,
+            journal: journal,
+            quarantine: QuarantineManager(rootDirectory: dir),
+            zoneEraser: FakeCloudKitZoneEraser(),
+            quiesceMonitor: SyncQuiesceMonitor(bridge: CloudKitEventBridge()),
+            notificationScheduler: nil,
+            syncModeStore: modeStore,
+            localStoreRowCount: { 1 },
+            accountStateProvider: provider
+        )
+        let storeURL = dir.appendingPathComponent("Lillist.sqlite")
+
+        await #expect(throws: LillistError.self) {
+            try await coordinator.beginEnable(direction: .replaceLocal, storeURL: storeURL)
+        }
+
+        // The recovery-anchor backup ran (tearDown), the check fired
+        // before the irreversible local wipe (no "rebuild" step), and the
+        // outer catch's unconditional reattach ran — the coordinator is
+        // never left store-less.
+        #expect(await recon.resetSteps == ["tearDown", "reattach"])
+        #expect(await recon.reconfigureCalls == [])
+        #expect(await modeStore.currentMode() == .localOnly)
+        #expect(try journal.read().state == .failed)
+    }
+
+    // MARK: - S5/S14: syncFirstThenDisable quiesces BEFORE detaching
+
+    @Test("syncFirstThenDisable: quiesces THEN detaches, in that order (S5 happy path)")
+    @MainActor
+    func syncFirstThenDisableQuiescesBeforeDetaching() async throws {
+        let dir = tempDir()
+        let recon = FakePersistenceReconfigurer(initialMode: .iCloudSync)
+        let journal = InMemoryMigrationJournalStore()
+        let suite = "MigRunner-\(UUID().uuidString)"
+        let modeStore = SyncModeStore(suiteName: suite)
+        await modeStore.setMode(.iCloudSync)
+        let coordinator = MigrationCoordinator(
+            host: recon,
+            journal: journal,
+            quarantine: QuarantineManager(rootDirectory: dir),
+            zoneEraser: FakeCloudKitZoneEraser(),
+            quiesceMonitor: SyncQuiesceMonitor(bridge: CloudKitEventBridge()),
+            notificationScheduler: nil,
+            syncModeStore: modeStore,
+            quiesceMinQuietWindow: 0.05,
+            quiesceHardTimeout: 2
+        )
+        let storeURL = dir.appendingPathComponent("Lillist.sqlite")
+        try Data("x".utf8).write(to: storeURL)
+
+        let phases = try await collectPhases(from: coordinator) {
+            try await coordinator.beginDisable(strategy: .syncFirst, storeURL: storeURL)
+        }
+
+        // S7: the trailing swap now runs through tearDown+attachStore.
+        #expect(await recon.resetSteps == ["tearDown"])
+        #expect(await recon.attachCalls == [.localOnly])
+        #expect(await recon.reconfigureCalls == [])
+        #expect(await modeStore.currentMode() == .localOnly)
+        #expect(try journal.read() == .idle)
+        let uploadIdx = phases.firstIndex { if case .uploading = $0 { return true } else { return false } }
+        let reconfigIdx = phases.firstIndex(of: .reconfiguringStore)
+        #expect(uploadIdx != nil && reconfigIdx != nil)
+        // The final-sync wait must precede the detach — waiting AFTER
+        // reconfigure(to: .localOnly) is pointless (no CloudKit container
+        // remains to export through) and is exactly the bug S5 reports.
+        #expect(uploadIdx! < reconfigIdx!)
+    }
+
+    @Test("syncFirstThenDisable: a quiesce timeout fails the step BEFORE detaching, never strands mode (S5/S14)")
+    @MainActor
+    func syncFirstThenDisableFailsClosedOnQuiesceTimeout() async throws {
+        let dir = tempDir()
+        let recon = FakePersistenceReconfigurer(initialMode: .iCloudSync)
+        let journal = InMemoryMigrationJournalStore()
+        let suite = "MigRunner-\(UUID().uuidString)"
+        let modeStore = SyncModeStore(suiteName: suite)
+        await modeStore.setMode(.iCloudSync)
+        let coordinator = MigrationCoordinator(
+            host: recon,
+            journal: journal,
+            quarantine: QuarantineManager(rootDirectory: dir),
+            zoneEraser: FakeCloudKitZoneEraser(),
+            // No events ever fire on this bridge, and hardTimeout sits
+            // below minQuietWindow, so the wait can only ever time out —
+            // that's the failure path this test proves.
+            quiesceMonitor: SyncQuiesceMonitor(bridge: CloudKitEventBridge()),
+            notificationScheduler: nil,
+            syncModeStore: modeStore,
+            quiesceMinQuietWindow: 1.0,
+            quiesceHardTimeout: 0.05
+        )
+        let storeURL = dir.appendingPathComponent("Lillist.sqlite")
+        try Data("x".utf8).write(to: storeURL)
+
+        await #expect(throws: LillistError.self) {
+            try await coordinator.beginDisable(strategy: .syncFirst, storeURL: storeURL)
+        }
+
+        // The whole point of "sync first": a timeout must fail the step
+        // BEFORE detaching mirroring, so unsynced edits are never
+        // silently stranded (S5). Neither the old (reconfigure) nor the
+        // new (tearDown+attachStore, S7) swap mechanism must ever have
+        // run — the timeout throws before step 4's switch even starts.
+        // The catch block's now-unconditional best-effort reattach DOES
+        // still run (a harmless no-op here, since nothing was ever
+        // detached) — that's the one "reattach" entry `resetSteps` picks
+        // up.
+        #expect(await recon.reconfigureCalls == [])
+        #expect(await recon.resetSteps == ["reattach"])
+        #expect(await recon.attachCalls == [])
+        #expect(await recon.mode == .iCloudSync)
+        #expect(await modeStore.currentMode() == .iCloudSync)
+        #expect(try journal.read().state == .failed)
+    }
+
+    // MARK: - S7: quarantine anchor comes from the closed-store mechanism
+
+    @Test("disableNow's quarantine anchor is captured via tearDownStore, not a direct live-store copy (S7)")
+    @MainActor
+    func disableNowQuarantinesViaTearDownStore() async throws {
+        let (coordinator, recon, journal, _, dir) = makeCoordinator(startMode: .iCloudSync)
+        let storeURL = dir.appendingPathComponent("Lillist.sqlite")
+        try Data("pre-disable-content".utf8).write(to: storeURL)
+        // Point the fake at the real file so tearDownStore's quarantine
+        // copy is genuine (see FakePersistenceReconfigurer.storeURL) —
+        // this proves the capture happens via the SAME primitive
+        // .replaceLocalWithICloud already used, not a direct
+        // MigrationCoordinator -> quarantine call bypassing the host.
+        await recon.setStoreURL(storeURL)
+
+        try await coordinator.beginDisable(strategy: .now, storeURL: storeURL)
+
+        #expect(await recon.resetSteps == ["tearDown"])
+        let quarantine = QuarantineManager(rootDirectory: dir)
+        let backup = try quarantine.latestQuarantinedStore(filename: "Lillist.sqlite")
+        #expect(backup != nil)
+        #expect(try String(contentsOf: backup!, encoding: .utf8) == "pre-disable-content")
+        #expect(try journal.read() == .idle)
+    }
+
+    @Test("replaceICloudWithLocal's quarantine anchor is captured via tearDownStore before the erase (S7)")
+    @MainActor
+    func replaceICloudWithLocalQuarantinesViaTearDownStore() async throws {
+        let (coordinator, recon, journal, eraser, dir) = makeCoordinator(
+            startMode: .localOnly, rowCount: { 5 }
+        )
+        let storeURL = dir.appendingPathComponent("Lillist.sqlite")
+        try Data("pre-erase-content".utf8).write(to: storeURL)
+        await recon.setStoreURL(storeURL)
+
+        try await coordinator.beginEnable(direction: .replaceICloud, storeURL: storeURL)
+
+        #expect(await recon.resetSteps == ["tearDown"])
+        #expect(await eraser.callCount == 1)
+        let quarantine = QuarantineManager(rootDirectory: dir)
+        let backup = try quarantine.latestQuarantinedStore(filename: "Lillist.sqlite")
+        #expect(backup != nil)
+        #expect(try String(contentsOf: backup!, encoding: .utf8) == "pre-erase-content")
+        #expect(try journal.read() == .idle)
+    }
+
+    // MARK: - S14: a POST-destructive quiesce timeout does not fail the migration
+
+    @Test("replaceLocalWithICloud: a post-completion quiesce timeout still COMPLETES the migration (S14 — nothing left to revert)")
+    @MainActor
+    func postDestructiveQuiesceTimeoutStillCompletes() async throws {
+        let dir = tempDir()
+        let recon = FakePersistenceReconfigurer(initialMode: .localOnly)
+        let journal = InMemoryMigrationJournalStore()
+        let suite = "MigRunner-\(UUID().uuidString)"
+        let modeStore = SyncModeStore(suiteName: suite)
+        await modeStore.setMode(.localOnly)
+        let coordinator = MigrationCoordinator(
+            host: recon,
+            journal: journal,
+            quarantine: QuarantineManager(rootDirectory: dir),
+            zoneEraser: FakeCloudKitZoneEraser(),
+            quiesceMonitor: SyncQuiesceMonitor(bridge: CloudKitEventBridge()),
+            notificationScheduler: nil,
+            syncModeStore: modeStore,
+            localStoreRowCount: { 1 },
+            quiesceMinQuietWindow: 1.0,
+            quiesceHardTimeout: 0.05
+        )
+        let storeURL = dir.appendingPathComponent("Lillist.sqlite")
+        try Data("x".utf8).write(to: storeURL)
+
+        // The wait times out (hardTimeout < minQuietWindow, no events
+        // ever fire). The destructive work (tear down + rebuild +
+        // reconfigure) already succeeded by this point, so the migration
+        // must still COMPLETE rather than fail — there is nothing left
+        // to revert, and failing here would strand the user on a
+        // half-migrated store for no benefit (matches
+        // `QuiesceResult.timedOut`'s own documented "proceeds anyway"
+        // contract).
+        try await coordinator.beginEnable(direction: .replaceLocal, storeURL: storeURL)
+
+        #expect(await recon.reconfigureCalls == [.iCloudSync])
+        #expect(await modeStore.currentMode() == .iCloudSync)
+        #expect(try journal.read() == .idle)
+    }
+
+    // MARK: - X11: history-watermark + widget-cache clearing
+
+    /// Test-only call counter shared by the X11 tests below — same shape
+    /// as `CallCounter`, kept separate so its name documents intent at
+    /// each call site.
+    private actor ClearCallCounter {
+        private(set) var count = 0
+        func bump() { count += 1 }
+    }
+
+    @Test("X11: replaceLocalWithICloud (the only op that destroys/rebuilds the store) clears history watermarks and the widget cache on success")
+    @MainActor
+    func replaceLocalWithICloudClearsWatermarksAndWidgetCache() async throws {
+        let watermarks = ClearCallCounter()
+        let widgets = ClearCallCounter()
+        let (coordinator, _, _, _, dir) = makeCoordinator(
+            startMode: .localOnly,
+            historyWatermarksReset: { await watermarks.bump() },
+            widgetCacheReset: { await widgets.bump() }
+        )
+        let storeURL = dir.appendingPathComponent("Lillist.sqlite")
+        try Data("x".utf8).write(to: storeURL)
+
+        try await coordinator.beginEnable(direction: .replaceLocal, storeURL: storeURL)
+
+        #expect(await watermarks.count == 1)
+        #expect(await widgets.count == 1)
+    }
+
+    @Test("X11: replaceICloudWithLocal (tears down + reattaches the SAME file, never destroys/rebuilds) never clears history watermarks or the widget cache")
+    @MainActor
+    func replaceICloudWithLocalNeverClearsWatermarks() async throws {
+        let watermarks = ClearCallCounter()
+        let widgets = ClearCallCounter()
+        let (coordinator, _, _, _, dir) = makeCoordinator(
+            startMode: .localOnly,
+            historyWatermarksReset: { await watermarks.bump() },
+            widgetCacheReset: { await widgets.bump() }
+        )
+        let storeURL = dir.appendingPathComponent("Lillist.sqlite")
+        try Data("x".utf8).write(to: storeURL)
+
+        try await coordinator.beginEnable(direction: .replaceICloud, storeURL: storeURL)
+
+        #expect(await watermarks.count == 0)
+        #expect(await widgets.count == 0)
+    }
+
+    @Test("X11: disableNow never clears history watermarks or the widget cache (same on-disk file, no destroy/rebuild)")
+    @MainActor
+    func disableNowNeverClearsWatermarks() async throws {
+        let watermarks = ClearCallCounter()
+        let widgets = ClearCallCounter()
+        let (coordinator, _, _, _, dir) = makeCoordinator(
+            startMode: .iCloudSync,
+            historyWatermarksReset: { await watermarks.bump() },
+            widgetCacheReset: { await widgets.bump() }
+        )
+        let storeURL = dir.appendingPathComponent("Lillist.sqlite")
+        try Data("x".utf8).write(to: storeURL)
+
+        try await coordinator.beginDisable(strategy: .now, storeURL: storeURL)
+
+        #expect(await watermarks.count == 0)
+        #expect(await widgets.count == 0)
+    }
+
+    // MARK: - S19: iCloud-not-empty guard for replaceLocalWithICloud
+
+    @Test("S19: remoteZoneHasRecords reporting false blocks replaceLocalWithICloud with iCloudDataEmpty, before any destructive work")
+    @MainActor
+    func remoteZoneEmptyBlocksReplaceLocalWithICloud() async throws {
+        let (coordinator, recon, journal, _, dir) = makeCoordinator(
+            startMode: .localOnly,
+            remoteZoneHasRecords: { false }
+        )
+        let storeURL = dir.appendingPathComponent("Lillist.sqlite")
+        try Data("x".utf8).write(to: storeURL)
+
+        await #expect(throws: LillistError.iCloudDataEmpty) {
+            try await coordinator.beginEnable(direction: .replaceLocal, storeURL: storeURL)
+        }
+
+        // Tear-down + quarantine already ran (the recovery anchor is taken
+        // before this guard, matching the account-changed guard's own
+        // relative position) but rebuildEmptyStore — the actually
+        // irreversible step — must never have run.
+        #expect(await recon.resetSteps.contains("rebuild") == false)
+        #expect(try journal.read().state == .failed)
+    }
+
+    @Test("S19: remoteZoneHasRecords reporting true lets replaceLocalWithICloud proceed normally")
+    @MainActor
+    func remoteZoneNonEmptyAllowsReplaceLocalWithICloud() async throws {
+        let (coordinator, recon, _, _, dir) = makeCoordinator(
+            startMode: .localOnly,
+            remoteZoneHasRecords: { true }
+        )
+        let storeURL = dir.appendingPathComponent("Lillist.sqlite")
+        try Data("x".utf8).write(to: storeURL)
+
+        try await coordinator.beginEnable(direction: .replaceLocal, storeURL: storeURL)
+
+        #expect(await recon.resetSteps == ["tearDown", "rebuild"])
+    }
+
+    @Test("S19: a throwing remoteZoneHasRecords fails OPEN (proceeds) rather than blocking a legitimate transition on a transient check failure")
+    @MainActor
+    func remoteZoneCheckFailureFailsOpen() async throws {
+        struct ProbeFailure: Error {}
+        let (coordinator, recon, _, _, dir) = makeCoordinator(
+            startMode: .localOnly,
+            remoteZoneHasRecords: { throw ProbeFailure() }
+        )
+        let storeURL = dir.appendingPathComponent("Lillist.sqlite")
+        try Data("x".utf8).write(to: storeURL)
+
+        try await coordinator.beginEnable(direction: .replaceLocal, storeURL: storeURL)
+
+        #expect(await recon.resetSteps == ["tearDown", "rebuild"])
+    }
+
+    @Test("S19: no remoteZoneHasRecords configured is a no-op guard (legacy/test behavior)")
+    @MainActor
+    func noRemoteZoneCheckConfiguredProceeds() async throws {
+        let (coordinator, recon, _, _, dir) = makeCoordinator(startMode: .localOnly)
+        let storeURL = dir.appendingPathComponent("Lillist.sqlite")
+        try Data("x".utf8).write(to: storeURL)
+
+        try await coordinator.beginEnable(direction: .replaceLocal, storeURL: storeURL)
+
+        #expect(await recon.resetSteps == ["tearDown", "rebuild"])
+    }
+
+    // MARK: - S19: retryFailedOperation actually re-runs the failed op
+
+    @Test(
+        "S19: retryFailedOperation dispatches each recorded ModeTransitionOp back through the matching beginEnable/beginDisable call",
+        arguments: [
+            (ModeTransitionOp.replaceICloudWithLocal, SyncMode.localOnly),
+            (ModeTransitionOp.replaceLocalWithICloud, SyncMode.localOnly),
+            (ModeTransitionOp.syncFirstThenDisable, SyncMode.iCloudSync),
+            (ModeTransitionOp.disableNow, SyncMode.iCloudSync),
+        ]
+    )
+    @MainActor
+    func retryFailedOperationRedispatchesCorrectOp(op: ModeTransitionOp, startMode: SyncMode) async throws {
+        let (coordinator, recon, journal, _, dir) = makeCoordinator(startMode: startMode)
+        let storeURL = dir.appendingPathComponent("Lillist.sqlite")
+        try Data("x".utf8).write(to: storeURL)
+        let failed = MigrationJournal(
+            state: .failed, operation: op, startedAt: Date(), lastHeartbeatAt: Date(),
+            previousMode: startMode, failureReason: "simulated prior failure"
+        )
+        try journal.write(failed)
+
+        try await coordinator.retryFailedOperation(from: failed, storeURL: storeURL)
+
+        // Re-ran the FULL op from scratch — proven by the destructive
+        // steps a fresh runMigration performs, not merely by the journal
+        // being cleared (the old "Try Again" already cleared the journal
+        // without retrying anything, which is exactly the bug S19 fixes).
+        switch op {
+        case .replaceICloudWithLocal:
+            #expect(await recon.resetSteps == ["tearDown"])
+            #expect(await recon.attachCalls == [.iCloudSync])
+        case .replaceLocalWithICloud:
+            #expect(await recon.resetSteps == ["tearDown", "rebuild"])
+            #expect(await recon.reconfigureCalls == [.iCloudSync])
+        case .syncFirstThenDisable, .disableNow:
+            #expect(await recon.resetSteps == ["tearDown"])
+            #expect(await recon.attachCalls == [.localOnly])
+        }
+        #expect(try journal.read() == .idle)
+    }
+
+    @Test("S19: retryFailedOperation throws when the journal has no recorded operation, instead of silently no-op-ing")
+    @MainActor
+    func retryFailedOperationThrowsWithoutRecordedOp() async throws {
+        let (coordinator, _, _, _, dir) = makeCoordinator(startMode: .localOnly)
+        let storeURL = dir.appendingPathComponent("Lillist.sqlite")
+        let corrupt = MigrationJournal(
+            state: .failed, operation: nil, startedAt: Date(), lastHeartbeatAt: Date(),
+            previousMode: nil, failureReason: "corrupt"
+        )
+
+        await #expect(throws: LillistError.self) {
+            try await coordinator.retryFailedOperation(from: corrupt, storeURL: storeURL)
+        }
     }
 }
 

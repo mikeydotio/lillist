@@ -102,6 +102,65 @@ struct ImporterTests {
         #expect(after == "Source title")
     }
 
+    /// Discovered during the 6a completeness sweep's export/import
+    /// round-trip test: `apply` never touched `document.preferences` at
+    /// all — an export -> wipe -> import cycle silently reverted every
+    /// account-level preference to its hardcoded default. This regression
+    /// test failed (import left the destination's preferences at their
+    /// defaults) before the `applyPreferences` fix and passes after it.
+    @Test("Import restores preferences into a fresh store")
+    func importRestoresPreferencesIntoFreshStore() async throws {
+        let src = try await TestStore.make()
+        let srcPrefs = PreferencesStore(persistence: src)
+        try await srcPrefs.update {
+            $0.trashRetentionDays = 45
+            $0.defaultTagTintHex = "#ABCDEF"
+            $0.morningSummaryEnabled = false
+        }
+        let bundle = try await exportFixture(from: src)
+
+        let dst = try await TestStore.make()
+        let importer = Importer(persistence: dst)
+        let summary = try await importer.importBundle(at: bundle, conflictPolicy: .replaceExisting)
+        #expect(summary.preferencesApplied == true)
+
+        let dstPrefs = try await PreferencesStore(persistence: dst).read()
+        #expect(dstPrefs.trashRetentionDays == 45)
+        #expect(dstPrefs.defaultTagTintHex == "#ABCDEF")
+        #expect(dstPrefs.morningSummaryEnabled == false)
+    }
+
+    @Test(".skipExisting leaves a destination's already-materialized preferences alone")
+    func skipExistingLeavesPreferencesAlone() async throws {
+        let src = try await TestStore.make()
+        try await PreferencesStore(persistence: src).update { $0.trashRetentionDays = 45 }
+        let bundle = try await exportFixture(from: src)
+
+        let dst = try await TestStore.make()
+        let dstPrefs = PreferencesStore(persistence: dst)
+        try await dstPrefs.update { $0.trashRetentionDays = 10 }
+
+        let importer = Importer(persistence: dst)
+        let summary = try await importer.importBundle(at: bundle, conflictPolicy: .skipExisting)
+        #expect(summary.preferencesApplied == false)
+        #expect(try await dstPrefs.read().trashRetentionDays == 10, "an already-materialized destination row must survive .skipExisting untouched")
+    }
+
+    @Test(".skipExisting still populates preferences on a store that's never been touched")
+    func skipExistingStillPopulatesAnAbsentRow() async throws {
+        let src = try await TestStore.make()
+        try await PreferencesStore(persistence: src).update { $0.trashRetentionDays = 45 }
+        let bundle = try await exportFixture(from: src)
+
+        // A destination whose AppPreferences row has never been created —
+        // "skip existing" has nothing to skip here.
+        let dst = try await TestStore.make()
+        let importer = Importer(persistence: dst)
+        let summary = try await importer.importBundle(at: bundle, conflictPolicy: .skipExisting)
+        #expect(summary.preferencesApplied == true)
+        #expect(try await PreferencesStore(persistence: dst).read().trashRetentionDays == 45)
+    }
+
     @Test(".recencyWins keeps the newest by modifiedAt")
     func recencyWins() async throws {
         let src = try await TestStore.make()

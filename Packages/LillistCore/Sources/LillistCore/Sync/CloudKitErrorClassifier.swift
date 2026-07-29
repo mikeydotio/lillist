@@ -38,6 +38,13 @@ public enum CloudKitErrorClassifier {
             return .syncFailure(underlying: "CloudKit rejected the request.")
         case .zoneBusy:
             return .syncFailure(underlying: "CloudKit zone is busy; will retry.")
+        case .zoneNotFound, .userDeletedZone:
+            // S19: recoverable-with-context, not a permanent failure —
+            // NSPersistentCloudKitContainer recreates its managed zone and
+            // re-uploads through it on its own; distinguished from the
+            // generic default-branch message so this specific,
+            // self-healing condition doesn't read as an opaque failure.
+            return .syncFailure(underlying: "iCloud's zone was deleted or is missing; it will be recreated automatically on the next sync.")
         case .partialFailure:
             return classifyPartialFailure(ns)
         default:
@@ -57,6 +64,11 @@ public enum CloudKitErrorClassifier {
         .networkUnavailable, .networkFailure, .serviceUnavailable, .zoneBusy,
         .requestRateLimited, .serverRecordChanged, .batchRequestFailed,
         .accountTemporarilyUnavailable,
+        // S19: NSPersistentCloudKitContainer recreates a missing/deleted
+        // managed zone and re-uploads through it on its own — a permanent
+        // red badge here would misrepresent a condition the mirror already
+        // self-heals from.
+        .zoneNotFound, .userDeletedZone,
     ]
 
     /// Classify a sync error as transient vs structural.

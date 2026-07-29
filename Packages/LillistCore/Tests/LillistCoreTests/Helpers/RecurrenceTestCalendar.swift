@@ -22,6 +22,16 @@ enum RecurrenceTestCalendar {
         return c
     }()
 
+    /// A Pacific-Time calendar with an arbitrary `firstWeekday` (`1`=Sunday,
+    /// `2`=Monday, `7`=Saturday, per `Calendar.firstWeekday`'s own numbering)
+    /// — the locale seam X17's week-boundary tests parameterize across.
+    static func calendar(firstWeekday: Int) -> Calendar {
+        var c = Calendar(identifier: .gregorian)
+        c.timeZone = TimeZone(identifier: "America/Los_Angeles")!
+        c.firstWeekday = firstWeekday
+        return c
+    }
+
     /// Builds a `Date` in `calendar`'s timezone from explicit components.
     static func date(
         in calendar: Calendar = Self.pacific,

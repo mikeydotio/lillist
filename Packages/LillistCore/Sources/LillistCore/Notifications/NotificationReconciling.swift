@@ -12,4 +12,17 @@ import Foundation
 /// store tests don't need to be updated to know about notifications).
 public protocol NotificationReconciling: Sendable {
     func reconcile(taskID: UUID) async
+
+    /// Cancels every pending OS notification for each id in `taskIDs`,
+    /// without requiring the corresponding task row to still exist.
+    ///
+    /// H3: `reconcile(taskID:)` starts by fetching the task from the store —
+    /// correct for every other mutation (soft-delete, restore, status
+    /// change), where the row still exists at reconcile time. After a hard
+    /// delete or trash purge the row is entirely gone, so `reconcile` would
+    /// throw `.notFound` internally and silently no-op (its own top-level
+    /// `catch` swallows the error) — a guaranteed-missed cancellation, not a
+    /// safe default. `cancelPending` matches purely by
+    /// `request.content.userInfo["taskID"]`, never touching the store.
+    func cancelPending(forTaskIDs taskIDs: [UUID]) async
 }

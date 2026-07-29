@@ -44,6 +44,11 @@ public final class BackupRestoreService {
     /// `nil` → restore still succeeds locally but doesn't notify peers
     /// (test/legacy callers).
     private let propagator: ResetPropagator?
+    /// Resyncs the live JSON backup package to the just-restored content
+    /// (`S23`) — deterministic, rather than relying on the local-save
+    /// observer's incidental timing for something this important. `nil`
+    /// (the default) preserves prior behavior for tests/legacy callers.
+    private let backupReconciler: (any BackupPackageReconciling)?
 
     public init(
         reset: any BackupDataResetting,
@@ -52,7 +57,8 @@ public final class BackupRestoreService {
         packageDirectory: URL,
         diagnosticLog: DiagnosticSink? = nil,
         process: DiagProcess = .app,
-        propagator: ResetPropagator? = nil
+        propagator: ResetPropagator? = nil,
+        backupReconciler: (any BackupPackageReconciling)? = nil
     ) {
         self.reset = reset
         self.importer = importer
@@ -61,6 +67,7 @@ public final class BackupRestoreService {
         self.diagnosticLog = diagnosticLog
         self.process = process
         self.propagator = propagator
+        self.backupReconciler = backupReconciler
     }
 
     /// What to restore from: the live package, or a specific snapshot zip.
@@ -125,6 +132,10 @@ public final class BackupRestoreService {
             )
             // Importer does not touch preferences — apply the captured set here.
             try await applyPreferences(document.preferences)
+            // S23: resync the live backup package to the just-restored
+            // content — deterministic, rather than relying on the
+            // local-save observer's incidental timing.
+            await backupReconciler?.reconcileFull()
             await emit(source: source, outcome: "completed", summary: summary)
             // This device's data just became the account's new truth — tell
             // every other known device to converge on it too.
@@ -183,7 +194,22 @@ public final class BackupRestoreService {
     private func resolveReader(_ source: RestoreSource) throws -> ResolvedReader {
         switch source {
         case .livePackage:
-            return ResolvedReader(reader: BackupPackageReader(packageDirectory: packageDirectory), tempDirectory: nil)
+            // S4: stage a COPY of the live package before any destructive
+            // step runs, rather than reading packageDirectory in place
+            // after the wipe. Without this, a remote-change notification
+            // landing during the reset's quiesce window drives
+            // LocalBackupCoordinator.processRemoteChange, which diffs the
+            // now-empty live store against the package's on-disk files
+            // and prunes every one of them as "stale" — the restore then
+            // reads (and imports) nothing, destroying the very package
+            // that would have let the user retry. Mirrors the
+            // .snapshotZip case below (unzip-to-temp), which was already
+            // immune to this for the same reason.
+            let temp = FileManager.default.temporaryDirectory
+                .appendingPathComponent("lillist-restore-live-\(UUID().uuidString)", isDirectory: true)
+            try FileManager.default.createDirectory(at: temp, withIntermediateDirectories: true)
+            try Self.copyPackageContents(from: packageDirectory, to: temp)
+            return ResolvedReader(reader: BackupPackageReader(packageDirectory: temp), tempDirectory: temp)
         case .snapshotZip(let zipURL):
             let temp = FileManager.default.temporaryDirectory
                 .appendingPathComponent("lillist-restore-\(UUID().uuidString)", isDirectory: true)
@@ -192,13 +218,36 @@ public final class BackupRestoreService {
         }
     }
 
+    /// Copy every top-level child of `source` into `destination` (which
+    /// must already exist). A no-op — not an error — when `source` itself
+    /// doesn't exist yet, matching `BackupPackageReader`'s own tolerant
+    /// missing-file handling (a package that has never been written to is
+    /// a legitimate, empty-restore state, not a failure).
+    private static func copyPackageContents(from source: URL, to destination: URL) throws {
+        let fm = FileManager.default
+        guard fm.fileExists(atPath: source.path) else { return }
+        for child in try fm.contentsOfDirectory(at: source, includingPropertiesForKeys: nil) {
+            try fm.copyItem(at: child, to: destination.appendingPathComponent(child.lastPathComponent))
+        }
+    }
+
     private static func preflight(reader: BackupPackageReader) throws -> Preflight {
         let manifest = try reader.readManifest()
         let records = try reader.readTaskRecords()
-        // Prefer the manifest; fall back to the first task record; an empty
-        // package with no manifest is treated as current-compatible.
-        let fileVersion = manifest?.cloudKitSchemaVersion
-            ?? records.first?.cloudKitSchemaVersion
+        // S23: `manifest.cloudKitSchemaVersion` is always THIS BUILD's
+        // `CloudKitSchema.currentVersion` — `LocalBackupCoordinator
+        // .updateManifest()` writes that constant on every update, never
+        // a fact derived from the package's actual contents — so
+        // trusting it made this gate nearly always vacuously
+        // "compatible." Each record's own `cloudKitSchemaVersion` is
+        // stamped from the live Core Data row at projection time and can
+        // genuinely lag behind if that task hasn't been re-touched since
+        // an older build wrote it; the file's TRUE version is the
+        // OLDEST (minimum) version among its records. An empty package
+        // has no records to disagree with, so it falls back to the
+        // manifest, then current.
+        let fileVersion = records.map(\.cloudKitSchemaVersion).min()
+            ?? manifest?.cloudKitSchemaVersion
             ?? CloudKitSchema.currentVersion
         let count = manifest?.taskCount ?? records.count
         return Preflight(
@@ -219,6 +268,12 @@ public final class BackupRestoreService {
             if let sort = SortField(rawValue: dto.defaultTaskListSort) {
                 prefs.defaultTaskListSort = sort
             }
+            // X3 (discovered): defaultTagTintHex was never copied here, so
+            // every restore silently reset the account's tag-tint back to
+            // whatever the fresh post-wipe store defaulted to, discarding
+            // the backup's actual value even though it round-tripped
+            // correctly through export/import up to this point.
+            prefs.defaultTagTintHex = dto.defaultTagTintHex
         }
     }
 }

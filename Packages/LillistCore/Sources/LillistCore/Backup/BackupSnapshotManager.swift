@@ -50,18 +50,28 @@ public struct BackupSnapshotManager: Sendable {
 
     /// Zip `packageDirectory` into `Snapshots/<ISO8601>.zip`, then prune to
     /// `retentionCount`. Returns the new snapshot URL.
+    ///
+    /// `S23`: the zip runs through `store.zipPackage(to:)` — the
+    /// `TaskBackupStore` actor's own zip method — rather than calling
+    /// `FileManager.zipItem` directly on `packageDirectory`. Every write
+    /// to the package (`upsert`/`remove`/`replaceAll`/etc.) is already
+    /// serialized on that actor; routing the read through it too closes
+    /// the race where a snapshot captures a directory `replaceAll` is
+    /// concurrently tearing down and rewriting (manifest `taskCount` and
+    /// the real on-disk record count disagreeing is the symptom this
+    /// produces). `store` must be the SAME instance backing the live
+    /// package's writes — passing an unrelated `TaskBackupStore` pointed
+    /// at the same directory would defeat the actor serialization this
+    /// exists for.
     @discardableResult
-    public func createSnapshot() throws -> URL {
+    public func createSnapshot(via store: TaskBackupStore) async throws -> URL {
         let fm = FileManager.default
         try fm.createDirectory(at: snapshotsDirectory, withIntermediateDirectories: true)
         let destination = snapshotsDirectory.appendingPathComponent(Self.snapshotFilename(at: clock()))
-        if fm.fileExists(atPath: destination.path) {
-            try fm.removeItem(at: destination)
-        }
         // `shouldKeepParent: false` puts the package *contents* (tasks/, assets/,
         // sidecars) at the archive root, so unzipping yields a ready-to-read
         // package directory.
-        try fm.zipItem(at: packageDirectory, to: destination, shouldKeepParent: false, compressionMethod: .deflate)
+        try await store.zipPackage(to: destination, shouldKeepParent: false)
         try pruneToRetention()
         return destination
     }
@@ -69,9 +79,9 @@ public struct BackupSnapshotManager: Sendable {
     /// Create a snapshot only if one is due. Returns the new URL, or `nil` when
     /// nothing was due.
     @discardableResult
-    public func createSnapshotIfDue() throws -> URL? {
+    public func createSnapshotIfDue(via store: TaskBackupStore) async throws -> URL? {
         guard try isSnapshotDue() else { return nil }
-        return try createSnapshot()
+        return try await createSnapshot(via: store)
     }
 
     /// Existing snapshots, newest first.

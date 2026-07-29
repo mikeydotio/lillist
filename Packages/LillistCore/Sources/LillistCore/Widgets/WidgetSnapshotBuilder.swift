@@ -5,8 +5,8 @@ import Foundation
 /// changes; the widget only ever *reads* the result.
 ///
 /// **Pure LillistCore — no WidgetKit.** The `WidgetCenter.reloadTimelines(...)`
-/// call that follows a regeneration lives in the app/extension target (e.g.
-/// `WidgetRefreshCoordinator`), never here.
+/// call that follows a regeneration lives behind the `WidgetTimelineReloading`
+/// seam (see ``WidgetRefreshController``), never here.
 ///
 /// Every snapshot orders **open tasks first, just-completed tasks at the
 /// bottom**: a task closed *today* is retained at the end of the list (so
@@ -34,29 +34,92 @@ public struct WidgetSnapshotBuilder: Sendable {
         self.rowCap = rowCap
     }
 
-    /// Regenerate widget snapshots.
+    /// Forwards to `WidgetSnapshotStore.clearAll()` — data-sync-hardening
+    /// `X11`. Call before `regenerate()` after a destructive store
+    /// reset/rebuild so a stale, now-erased task can never render with a
+    /// dangling deep link in the gap before the next regenerate.
+    public func clearCache() {
+        snapshotStore.clearAll()
+    }
+
+    /// Additive-only rebuild: (re)writes the snapshot for each requested filter
+    /// id (or every saved filter when `filterIDs` is `nil`), plus the "No
+    /// Filter" sentinel when in scope.
     ///
     /// - Parameter filterIDs: the filters to refresh, or `nil` to refresh every
-    ///   saved filter (the default the app uses, so any widget's cache stays
-    ///   warm without tracking which filter is placed on which widget). The
-    ///   "No Filter" sentinel is (re)built whenever `filterIDs` is `nil` or
-    ///   explicitly contains ``WidgetSnapshot/unfilteredID`` — it reflects *all*
-    ///   tasks, so any task change can affect it.
+    ///   saved filter this reader currently sees (the default the app uses, so
+    ///   any widget's cache stays warm without tracking which filter is placed
+    ///   on which widget). The "No Filter" sentinel is (re)built whenever
+    ///   `filterIDs` is `nil` or explicitly contains ``WidgetSnapshot/unfilteredID``
+    ///   — it reflects *all* tasks, so any task change can affect it.
+    ///
+    /// **Never deletes anything on disk, and never touches the picker
+    /// index** — not even when `filterIDs` is `nil` and this read happens to
+    /// come back with fewer filters than exist. data-sync-hardening `X5`: a
+    /// same-device cross-process read (widget extension, Share extension,
+    /// Shortcuts action) can legitimately lag a very recent write another
+    /// process just made — `NSPersistentCloudKitContainer`'s cross-process
+    /// propagation is asynchronous, and Core Data surfaces no error for "not
+    /// caught up yet," so an incomplete read is indistinguishable from a
+    /// genuinely smaller filter set at this call site. Treating either as
+    /// grounds for deletion is exactly the bug; this method structurally
+    /// cannot delete anything, so it's safe to call from *any* process,
+    /// including the widget's own cold-cache-miss rebuild
+    /// (``FilterTimelineProvider``), which is definitionally this shape — one
+    /// filter, additive, no authority implied. See
+    /// ``regenerateAuthoritatively()`` for the one call site allowed to prune.
     ///
     /// Never throws: a per-filter failure is skipped so the others still refresh,
     /// and a total failure (e.g. store unavailable) is swallowed — a stale or
     /// missing snapshot degrades gracefully in the widget, it isn't fatal.
     public func regenerate(filterIDs: [UUID]? = nil) async {
-        guard let filters = try? await smartFilterStore.list() else { return }
+        _ = await performRegenerate(filterIDs: filterIDs)
+    }
 
-        // The index lists *all* saved filters (for the picker + name resolution),
-        // regardless of which subset we regenerate this pass. The sentinel is
-        // injected by the config picker directly, so it is not listed here.
+    /// Full regeneration that also reconciles the on-disk cache to match the
+    /// read: writes the picker index and prunes snapshots for filters no
+    /// longer present.
+    ///
+    /// **Only safe to call from the main app process** (via
+    /// `WidgetRefreshController`, which is the only caller). Pruning requires
+    /// trusting an empty/incomplete read as ground truth for "this filter is
+    /// gone" — a trust `regenerate(filterIDs:)`'s doc comment explains no
+    /// cross-process reader can extend. The app process is the one place that
+    /// trust is actually earned: Core Data serializes `context.perform` on one
+    /// queue, so a fetch issued after this process's own save always observes
+    /// it — the only kind of staleness that could cause over-pruning
+    /// (deleting a snapshot for a filter that still exists) cannot occur
+    /// here. Under-pruning relative to another device's very recent CloudKit
+    /// write is still possible and is safe by design (the stale snapshot just
+    /// persists a little longer, never deleted incorrectly).
+    ///
+    /// Never throws, same swallow-and-degrade contract as `regenerate(filterIDs:)`.
+    public func regenerateAuthoritatively() async {
+        guard let filters = await performRegenerate(filterIDs: nil) else { return }
+
+        // The index lists *all* saved filters (for the picker + name
+        // resolution). The sentinel is injected by the config picker
+        // directly, so it is not listed here.
         let index = WidgetSnapshotIndex(
             filters: filters.map { .init(id: $0.id, name: $0.name, tintHex: $0.tintColor) },
             generatedAt: Date()
         )
         try? snapshotStore.writeIndex(index)
+
+        // Drop caches for filters that no longer exist — but always keep the
+        // sentinel snapshot. Safe here (and only here): see this method's own
+        // doc comment for why this read can be trusted as ground truth.
+        snapshotStore.pruneFilters(keeping: Set(filters.map(\.id)).union([WidgetSnapshot.unfilteredID]))
+    }
+
+    /// Shared body: write per-filter snapshots for `filterIDs` (or every
+    /// filter this read sees, when `nil`) plus the sentinel when in scope.
+    /// Returns the full filter list this read produced (for
+    /// ``regenerateAuthoritatively()``'s index/prune step) — `nil` only when
+    /// the underlying read itself failed (store unavailable, fetch error),
+    /// which already means neither caller should write anything further.
+    private func performRegenerate(filterIDs: [UUID]?) async -> [SmartFilterStore.SmartFilterRecord]? {
+        guard let filters = try? await smartFilterStore.list() else { return nil }
 
         // The grace set: tasks closed *today*, most-recent first. Computed once
         // and shared across every target, since a just-completed task should
@@ -107,9 +170,7 @@ public struct WidgetSnapshotBuilder: Sendable {
             )
         }
 
-        // Drop caches for filters that no longer exist — but always keep the
-        // sentinel snapshot.
-        snapshotStore.pruneFilters(keeping: Set(filters.map(\.id)).union([WidgetSnapshot.unfilteredID]))
+        return filters
     }
 
     /// Order a target's tasks (open first, closed-today grace set last) and

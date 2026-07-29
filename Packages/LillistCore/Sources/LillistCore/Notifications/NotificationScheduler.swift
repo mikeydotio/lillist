@@ -276,9 +276,15 @@ public actor NotificationScheduler: NotificationReconciling {
     /// looking up specs) makes reconciliation correct even when a spec
     /// was just deleted in this reconcile cycle.
     private func isPendingForTask(_ request: UNNotificationRequest, taskID: UUID) -> Bool {
+        isPendingForAnyTask(request, in: [taskID.uuidString])
+    }
+
+    /// As `isPendingForTask`, widened to a set of task-id strings — the
+    /// batch-matching primitive `cancelPending(forTaskIDs:)` uses.
+    private func isPendingForAnyTask(_ request: UNNotificationRequest, in taskIDStrings: Set<String>) -> Bool {
         guard request.identifier.hasSuffix("#\(deviceFingerprint)") else { return false }
         guard let taskIDString = request.content.userInfo["taskID"] as? String else { return false }
-        return taskIDString == taskID.uuidString
+        return taskIDStrings.contains(taskIDString)
     }
 
     // MARK: - Bootstrap
@@ -314,6 +320,67 @@ public actor NotificationScheduler: NotificationReconciling {
         }
     }
 
+    /// H3: cancels every pending notification for each id in `taskIDs`,
+    /// without reading the tasks from the store — see the protocol's doc
+    /// comment for why `reconcile(taskID:)` cannot be reused for this after
+    /// a hard delete or purge.
+    ///
+    /// Fetches `pendingNotificationRequests()` exactly **once** regardless
+    /// of `taskIDs.count`, filters in memory, and issues one
+    /// `removePendingNotificationRequests(withIdentifiers:)` call for the
+    /// whole batch — deliberately not "call this once per task id," which
+    /// would mean N full OS-level pending-request fetches for an N-task
+    /// purge (thousands, for "Empty Trash" on a long-lived device).
+    public func cancelPending(forTaskIDs taskIDs: [UUID]) async {
+        guard !taskIDs.isEmpty else { return }
+        let idStrings = Set(taskIDs.map(\.uuidString))
+        let pending = await center.pendingNotificationRequests()
+        let toRemove = pending
+            .filter { isPendingForAnyTask($0, in: idStrings) }
+            .map(\.identifier)
+        guard !toRemove.isEmpty else { return }
+        await center.removePendingNotificationRequests(withIdentifiers: toRemove)
+    }
+
+    /// X9: a `NotificationSpec` deleted on another device can't be resolved
+    /// to a task id from persistent history (no attribute in the model is
+    /// flagged `preservesValueInHistoryOnDeletion`, and relationships are
+    /// never tombstoned regardless of any flag — see the plan doc's
+    /// investigation), so there's no taskID to hand `reconcile(taskID:)`.
+    /// Instead, sweep every one of THIS device's locally-pending requests
+    /// and cancel any whose `specID` no longer resolves to a live
+    /// `NotificationSpec` row — the same set-difference principle
+    /// `LocalBackupCoordinator.processRemoteChange` already uses for its own
+    /// tombstone-free deletion case. Self-healing for any stale pending
+    /// request, not just the one that triggered the sweep; one
+    /// `pendingNotificationRequests()` fetch and one batch existence check
+    /// regardless of how many requests are pending.
+    ///
+    /// A store-read failure treats every checked id as still-live (a no-op
+    /// sweep) rather than risk mass-cancelling valid pending requests on an
+    /// uncertain read — the inverse of `cancelPending`'s "fail loud is
+    /// unreachable, so do nothing" posture, chosen because the failure mode
+    /// here (silently keep a stale pending request one cycle longer) is
+    /// categorically safer than the alternative (wrongly cancel a live one).
+    public func reconcileOrphanedPendingRequests() async {
+        let pending = await center.pendingNotificationRequests()
+        let ours = pending.filter { $0.identifier.hasSuffix("#\(deviceFingerprint)") }
+        guard ours.isEmpty == false else { return }
+        let specIDs: [UUID] = ours.compactMap { req in
+            guard let raw = req.content.userInfo["specID"] as? String else { return nil }
+            return UUID(uuidString: raw)
+        }
+        guard specIDs.isEmpty == false else { return }
+        let liveIDs = (try? await specStore.existingIDs(among: specIDs)) ?? Set(specIDs)
+        let stale = ours.filter { req in
+            guard let raw = req.content.userInfo["specID"] as? String,
+                  let id = UUID(uuidString: raw) else { return false }
+            return liveIDs.contains(id) == false
+        }
+        guard stale.isEmpty == false else { return }
+        await center.removePendingNotificationRequests(withIdentifiers: stale.map(\.identifier))
+    }
+
     // MARK: - Preference change
 
     /// Update the default all-day notification time. Reconciles every task
@@ -322,6 +389,31 @@ public actor NotificationScheduler: NotificationReconciling {
     /// configured default — so changing it must re-trigger every dependent
     /// request. (Lillist no longer auto-creates default specs; this default
     /// time now only shapes user reminders on all-day tasks.)
+    ///
+    /// X10 — rewrite semantics, decided deliberately: this method is the
+    /// ONLY code path that ever changes `defaultAllDayHour`/`Minute`, and it
+    /// unconditionally rewrites every dependent pending trigger to match.
+    /// That's correct in both of its two callers:
+    /// - **Bootstrap-time hydration** (`AppEnvironment.bootstrap()`, both
+    ///   platforms): called with the value already persisted in
+    ///   `PreferencesStore` — the same value that produced whatever
+    ///   triggers are currently pending — so this is a no-op diff in the
+    ///   common case, not a real rewrite. (Extension-constructed schedulers
+    ///   — `IntentSupport`/`WidgetIntentSupport`/`ShareRootView` — hydrate
+    ///   at construction instead, passing the persisted value straight to
+    ///   the initializer; they never call this method at all.) Before X10,
+    ///   the app-level scheduler was constructed with a hardcoded 09:00 and
+    ///   never hydrated, so THIS was where "reconcile rewrites correct
+    ///   pending triggers back to 09:00" actually came from: the first
+    ///   reconcile after a fresh, unhydrated launch compared against the
+    ///   wrong in-memory default and (correctly, by this method's own
+    ///   diffing logic) replaced a correct trigger with a wrong one.
+    ///   Hydrating before any reconcile can run removes the wrong
+    ///   comparison, not the rewrite behavior itself.
+    /// - **An explicit Settings/Preferences change**: the user just told the
+    ///   system their default reminder time changed, so rewriting every
+    ///   dependent trigger to the new value is exactly the intended
+    ///   behavior, not a bug to be prevented.
     public func updateDefaultAllDayTime(hour: Int, minute: Int) async {
         self.defaultAllDayHour = hour
         self.defaultAllDayMinute = minute

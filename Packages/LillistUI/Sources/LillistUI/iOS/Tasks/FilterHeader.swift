@@ -32,6 +32,32 @@ public struct SavedFilterChipSpec: Identifiable, Hashable, Sendable {
         self.id = id
         self.title = title
     }
+
+    /// Pinned filters, in canonical `SiblingOrder` (position ascending,
+    /// then `id.uuidString` ascending on ties) — never a raw
+    /// `position <`-only comparator (`L1`). Both `TasksView` (iOS) and
+    /// `MacTasksView` (macOS) previously duplicated an identical
+    /// `.sorted { $0.position < $1.position }` with no tie-break, which
+    /// could diverge from `SmartFilterStore.list()`'s own canonical order
+    /// (used everywhere else a filter list renders, including the
+    /// Settings/Preferences surface) whenever two pinned filters shared a
+    /// position — "the same rows render in opposite order on different
+    /// surfaces." Consolidated here so both apps share one tie-break
+    /// instead of re-deriving it, and so it's directly unit-testable
+    /// (`nonisolated static`, not app-target `View` state).
+    public nonisolated static func pinnedSorted(
+        from filters: [SmartFilterStore.SmartFilterRecord]
+    ) -> [SavedFilterChipSpec] {
+        filters
+            .filter(\.isPinned)
+            .sorted {
+                SiblingOrder.precedes(
+                    positionA: $0.position, idA: $0.id,
+                    positionB: $1.position, idB: $1.id
+                )
+            }
+            .map { SavedFilterChipSpec(id: $0.id, title: $0.name) }
+    }
 }
 
 /// Expanding filter header rendered above the Tasks list via

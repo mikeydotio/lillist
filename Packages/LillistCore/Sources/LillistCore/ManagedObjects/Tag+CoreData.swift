@@ -39,11 +39,25 @@ extension Tag {
 
     /// All descendant tags (depth-first, not including self).
     public var descendants: [Tag] {
+        descendants(visited: [])
+    }
+
+    /// H7: same shape as `LillistTask`'s ancestor/descendant walks — a
+    /// CloudKit merge can create a parent-cycle in the Tag hierarchy too,
+    /// and this walk never mutates anything as it descends, so it is not
+    /// self-limiting. `visited` tracks the path from the original root to
+    /// the current node (extended per call, not shared across sibling
+    /// branches — the to-one `parent` relationship means two different
+    /// legitimate branches can never reconverge on the same node, so a cycle
+    /// can only be re-encountered along the single path that contains it).
+    private func descendants(visited: Set<NSManagedObjectID>) -> [Tag] {
         guard let children = self.children as? Set<Tag> else { return [] }
+        var visited = visited
+        visited.insert(self.objectID)
         var out: [Tag] = []
-        for child in children {
+        for child in children where !visited.contains(child.objectID) {
             out.append(child)
-            out.append(contentsOf: child.descendants)
+            out.append(contentsOf: child.descendants(visited: visited))
         }
         return out
     }

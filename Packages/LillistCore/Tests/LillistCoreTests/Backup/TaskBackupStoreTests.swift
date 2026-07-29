@@ -111,12 +111,18 @@ struct TaskBackupStoreTests {
         let store = TaskBackupStore(packageDirectory: dir)
 
         let tag = ExportSchema.TagDTO(id: UUID(), name: "Work", tintColor: "#FF0000", parentID: nil, position: 1)
+        let series = ExportSchema.SeriesDTO(id: UUID(), seedTaskID: UUID(), rule: nil, nextOccurrenceAfter: nil)
+        let filter = ExportSchema.SmartFilterDTO(
+            id: UUID(), name: "Overdue", predicateGroup: nil, tintColor: "#00FF00",
+            sortField: "deadline", sortAscending: true, isPinned: false, position: 1,
+            createdAt: nil, modifiedAt: nil
+        )
         let prefs = ExportSchema.PreferencesDTO(
             defaultAllDayHour: 8, defaultAllDayMinute: 30,
             morningSummaryEnabled: false, morningSummaryHour: 7, morningSummaryMinute: 15,
             trashRetentionDays: 14, defaultTaskListSort: "deadline"
         )
-        try await store.writeSidecars(tags: [tag], preferences: prefs)
+        try await store.writeSidecars(tags: [tag], series: [series], smartFilters: [filter], preferences: prefs)
         let when = Date(timeIntervalSince1970: 1_700_000_000)
         try await store.writeManifest(.init(
             backupSchemaVersion: BackupPackageSchema.version,
@@ -133,6 +139,8 @@ struct TaskBackupStoreTests {
 
         let doc = try reader.assembleDocument()
         #expect(doc.tags == [tag])
+        #expect(doc.series == [series])
+        #expect(doc.smartFilters == [filter])
         #expect(doc.preferences == prefs)
     }
 
@@ -153,7 +161,7 @@ struct TaskBackupStoreTests {
             trashRetentionDays: 30, defaultTaskListSort: "manualPosition"
         )
         try await store.replaceAll(
-            records: [record(fresh)], assets: [], tags: [], preferences: prefs,
+            records: [record(fresh)], assets: [], tags: [], series: [], smartFilters: [], preferences: prefs,
             cloudKitSchemaVersion: CloudKitSchema.currentVersion,
             updatedAt: Date(timeIntervalSince1970: 1_700_000_000)
         )

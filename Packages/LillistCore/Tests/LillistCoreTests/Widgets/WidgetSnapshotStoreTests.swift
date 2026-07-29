@@ -65,4 +65,41 @@ struct WidgetSnapshotStoreTests {
         #expect(store.read(filterID: keep.filterID) != nil)
         #expect(store.read(filterID: drop.filterID) == nil)
     }
+
+    @Test("X11: clearAll removes the index and every per-filter snapshot")
+    func clearAllRemovesEverything() throws {
+        let (store, dir) = tempStore()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let snap = sampleSnapshot()
+        try store.write(snap)
+        try store.writeIndex(WidgetSnapshotIndex(filters: [], generatedAt: Date()))
+
+        store.clearAll()
+
+        #expect(store.read(filterID: snap.filterID) == nil)
+        #expect(store.readIndex() == nil)
+    }
+
+    @Test("X11: clearAll on an already-empty store is a harmless no-op")
+    func clearAllOnEmptyStoreIsNoop() throws {
+        let (store, dir) = tempStore()
+        defer { try? FileManager.default.removeItem(at: dir) }
+
+        store.clearAll()
+
+        #expect(store.readIndex() == nil)
+    }
+
+    @Test("X11: write still works after clearAll — the directory structure is recreated on demand")
+    func writeAfterClearAllRecreatesDirectories() throws {
+        let (store, dir) = tempStore()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let snap = sampleSnapshot()
+        try store.write(snap)
+
+        store.clearAll()
+        try store.write(snap)
+
+        #expect(store.read(filterID: snap.filterID) == snap)
+    }
 }

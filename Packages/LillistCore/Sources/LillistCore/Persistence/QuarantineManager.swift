@@ -53,16 +53,33 @@ public struct QuarantineManager: Sendable {
         return footprint * Self.quarantineHeadroomFactor
     }
 
+    /// The `Quarantine/` subfolder leaf name for a given call: the raw
+    /// unix timestamp when `label` is `nil` (preserving every pre-existing
+    /// caller's exact naming), or `<timestamp>-<label>` when a caller
+    /// needs to disambiguate multiple same-second calls.
+    private func folderName(label: String?) -> String {
+        let timestamp = Int(clock().timeIntervalSince1970)
+        guard let label else { return String(timestamp) }
+        return "\(timestamp)-\(label)"
+    }
+
     /// Move the SQLite store (and its `-wal` / `-shm` sidecars, if present)
-    /// into `<root>/Quarantine/<unix-timestamp>/`. Returns the destination
-    /// URL of the main store file.
+    /// into `<root>/Quarantine/<unix-timestamp>/` (or
+    /// `<root>/Quarantine/<unix-timestamp>-<label>/` when `label` is given).
+    /// Returns the destination URL of the main store file.
+    ///
+    /// - Parameter label: disambiguates the destination folder when a
+    ///   caller makes more than one quarantine/copy call within the same
+    ///   wall-clock second — the timestamp-only folder name collides in
+    ///   that case (`moveItem`/`copyItem` throw on an existing
+    ///   destination). `nil` (the default) preserves the exact prior
+    ///   folder naming for every existing caller.
     @discardableResult
-    public func quarantineStore(at storeURL: URL) throws -> URL {
+    public func quarantineStore(at storeURL: URL, label: String? = nil) throws -> URL {
         guard fm.fileExists(atPath: storeURL.path) else {
             throw LillistError.storeUnavailable(reason: "Cannot quarantine: store missing at \(storeURL.path)")
         }
-        let timestamp = Int(clock().timeIntervalSince1970)
-        let quarantineDir = rootDirectory.appendingPathComponent("Quarantine/\(timestamp)", isDirectory: true)
+        let quarantineDir = rootDirectory.appendingPathComponent("Quarantine/\(folderName(label: label))", isDirectory: true)
         try fm.createDirectory(at: quarantineDir, withIntermediateDirectories: true)
 
         let dest = quarantineDir.appendingPathComponent(storeURL.lastPathComponent)
@@ -79,14 +96,15 @@ public struct QuarantineManager: Sendable {
     }
 
     /// Copy the SQLite store (and its `-wal` / `-shm` sidecars, if
-    /// present) into `<root>/Quarantine/<unix-timestamp>/`, leaving the
-    /// original in place. Used as the pre-swap recovery anchor: the
+    /// present) into `<root>/Quarantine/<unix-timestamp>/` (or with
+    /// `-<label>` appended — see `quarantineStore(at:label:)`), leaving
+    /// the original in place. Used as the pre-swap recovery anchor: the
     /// migration coordinator removes the store from the coordinator
     /// (closing the connection) and then this captures a clean copy
     /// without yanking the live file (persist-3). Returns a named
     /// backup so the journal can record the exact folder (sync-7).
     @discardableResult
-    public func copyStore(at storeURL: URL) throws -> QuarantinedBackup {
+    public func copyStore(at storeURL: URL, label: String? = nil) throws -> QuarantinedBackup {
         guard fm.fileExists(atPath: storeURL.path) else {
             throw LillistError.storeUnavailable(reason: "Cannot quarantine: store missing at \(storeURL.path)")
         }
@@ -100,7 +118,7 @@ public struct QuarantineManager: Sendable {
         guard available >= needed else {
             throw LillistError.insufficientDiskSpace(neededBytes: needed, availableBytes: available)
         }
-        let folderName = String(Int(clock().timeIntervalSince1970))
+        let folderName = folderName(label: label)
         let quarantineDir = rootDirectory.appendingPathComponent("Quarantine/\(folderName)", isDirectory: true)
         try fm.createDirectory(at: quarantineDir, withIntermediateDirectories: true)
 

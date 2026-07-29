@@ -45,6 +45,21 @@ public actor PersistenceHost: PersistenceReconfiguring, PersistenceResetting {
     /// `reconfigure` can re-add the store at the same location. `nil`
     /// for in-memory stores (which never reconfigure).
     private let storeURL: URL?
+    /// Data-sync-hardening `S3`: whether this host may arm CloudKit
+    /// mirroring at all, captured from the controller's own configuration
+    /// at init — same treatment as `storeURL`/`cloudKitContainerIdentifier`
+    /// above, and for the same reason: `controller.configuration` itself
+    /// is a frozen snapshot from `PersistenceController`'s own init and is
+    /// never updated by any of this type's structural-swap methods, so
+    /// `configuration(for:)` must consult this dedicated copy rather than
+    /// re-deriving a fresh `StoreConfiguration` (whose default is `true`)
+    /// on every call. A host built from a mismatch-suppressed configuration
+    /// (`AppEnvironment.make()` sets `armsCloudKitMirroring = false` on an
+    /// `S3` account-identity mismatch) must stay suppressed across every
+    /// `reconfigure`/`rebuildEmptyStore`/`reattachStore`/`attachStore` —
+    /// see the plan-3a doc §5 for the two independent council traces that
+    /// found the pre-fix default-`true` rebuild as a live leak.
+    private let armsCloudKitMirroring: Bool
 
     /// Test seam: when set, the next `flushAndSwap` re-adds the
     /// original store but then *throws* to simulate an
@@ -70,6 +85,7 @@ public actor PersistenceHost: PersistenceReconfiguring, PersistenceResetting {
         self.controller = controller
         self.currentMode = initialMode
         self.cloudKitContainerIdentifier = controller.configuration.cloudKitContainerIdentifier
+        self.armsCloudKitMirroring = controller.configuration.armsCloudKitMirroring
         switch controller.configuration.storeKind {
         case .inMemory:
             self.storeURL = nil
@@ -175,9 +191,17 @@ public actor PersistenceHost: PersistenceReconfiguring, PersistenceResetting {
                 if ctx.hasChanges {
                     try ctx.save()
                 }
-                // We only support a single attached store in production; in
-                // tests there may be zero (in-memory) — bail in that case.
-                guard let store = coordinator.persistentStores.first else { return }
+                // We only support a single attached store. Zero attached
+                // stores means a prior step already left the coordinator
+                // store-less (e.g. a reset's tearDownStore ran without a
+                // matching reattach) — silently returning here would let
+                // `reconfigure(to:)` advance `currentMode` as if the swap
+                // succeeded, with no store actually attached (S12).
+                guard let store = coordinator.persistentStores.first else {
+                    throw LillistError.storeUnavailable(
+                        reason: "flushAndSwap found no persistent store attached; cannot reconfigure."
+                    )
+                }
 
                 let rollbackDesc = PersistenceController.makeStoreDescription(for: originalConfig)
                 let desc = PersistenceController.makeStoreDescription(for: newConfig)
@@ -277,16 +301,25 @@ public actor PersistenceHost: PersistenceReconfiguring, PersistenceResetting {
     }
 
     private func configuration(for newMode: SyncMode) -> StoreConfiguration {
-        // We preserve the original CloudKit container identifier and
-        // store URL; only syncMode changes. In-memory hosts (no
-        // storeURL) shouldn't be passed through reconfigure but we
-        // build a safe default in case a future caller does.
+        // We preserve the original CloudKit container identifier, store
+        // URL, and mirroring permission; only syncMode changes. In-memory
+        // hosts (no storeURL) shouldn't be passed through reconfigure but
+        // we build a safe default in case a future caller does.
         let url = storeURL ?? URL(fileURLWithPath: "/dev/null")
         return StoreConfiguration(
             storeKind: .onDisk(url: url),
             cloudKitContainerIdentifier: cloudKitContainerIdentifier,
-            syncMode: newMode
+            syncMode: newMode,
+            armsCloudKitMirroring: armsCloudKitMirroring
         )
+    }
+
+    /// Test seam — exposes `configuration(for:)`'s output directly so a
+    /// test can assert `armsCloudKitMirroring` round-trips without a live
+    /// container swap (mirrors `rollbackDescriptionForTesting()`'s
+    /// non-live-container proof technique).
+    func configurationForTesting(mode: SyncMode) -> StoreConfiguration {
+        configuration(for: mode)
     }
 
     // MARK: - Destructive reset (PersistenceResetting)
@@ -363,5 +396,30 @@ public actor PersistenceHost: PersistenceReconfiguring, PersistenceResetting {
             let desc = PersistenceController.makeStoreDescription(for: config)
             try Self.addStore(desc, to: coordinator)
         }
+    }
+
+    /// Attach a fresh store at an explicit `mode`. See
+    /// `PersistenceResetting.attachStore(at:)`.
+    public func attachStore(at mode: SyncMode) async throws {
+        guard storeURL != nil else {
+            throw LillistError.storeUnavailable(reason: "Cannot attach an in-memory store to a URL-based mode.")
+        }
+        let ctx = controller.container.viewContext
+        let coordinator = controller.container.persistentStoreCoordinator
+        let config = configuration(for: mode)
+        try await ctx.perform {
+            guard coordinator.persistentStores.isEmpty else {
+                throw LillistError.storeUnavailable(
+                    reason: "attachStore(at:) requires a fully detached coordinator; a store is already attached. Call tearDownStore first."
+                )
+            }
+            let desc = PersistenceController.makeStoreDescription(for: config)
+            try Self.addStore(desc, to: coordinator)
+            // The on-disk file at this URL may have just changed out from
+            // under us (S2's restore case) — drop any registered objects
+            // so a reader never sees rows from whatever was here before.
+            ctx.reset()
+        }
+        currentMode = mode
     }
 }

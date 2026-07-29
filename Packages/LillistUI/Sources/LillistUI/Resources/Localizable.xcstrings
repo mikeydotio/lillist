@@ -241,9 +241,6 @@
     "Disable Now" : {
 
     },
-    "Disable Sync" : {
-
-    },
     "Discarded" : {
 
     },
@@ -753,6 +750,9 @@
     "Status" : {
 
     },
+    "Stay Local For Now" : {
+
+    },
     "Sunday" : {
 
     },
@@ -834,6 +834,9 @@
     "The data store copy contains all of your task content. The package never leaves your device unless you share it." : {
 
     },
+    "The iCloud account signed in on this device is different from the one this device's data belongs to. Sign back into the original account in Settings, use this account and start fresh (this device's current data is backed up first), or stay in Local Only mode until you decide." : {
+
+    },
     "This device may not be sharing tasks" : {
 
     },
@@ -882,6 +885,9 @@
     "Uploading to iCloud…" : {
 
     },
+    "Use This Account" : {
+
+    },
     "Variant" : {
 
     },
@@ -910,9 +916,6 @@
 
     },
     "Your data is ready to go." : {
-
-    },
-    "Your iCloud account changed since the last sync. Sign back into the original account, or migrate your data." : {
 
     },
     "Your iCloud account changed." : {

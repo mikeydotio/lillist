@@ -114,7 +114,7 @@ struct MigrationCoordinatorTests {
         #expect(observed.operation == .replaceLocalWithICloud)
     }
 
-    @Test("runMigration aborts on insufficient disk space before erasing iCloud")
+    @Test("runMigration aborts on insufficient disk space before erasing iCloud, leaving mode unadvanced (S8)")
     @MainActor
     func runMigrationRejectsLowDiskSpace() async throws {
         let dir = Self.tempDir()
@@ -126,6 +126,12 @@ struct MigrationCoordinatorTests {
         // FakePersistenceReconfigurer keeps the test ungated: it flips
         // its currentMode without a live container, so no liveSwapAllowed.
         let host = FakePersistenceReconfigurer(initialMode: .localOnly)
+        // S7: the quarantine copy now runs INSIDE tearDownStore rather
+        // than as a direct MigrationCoordinator->quarantine call — point
+        // the fake at the real on-disk file so it performs a REAL
+        // quarantine.copyStore(at:) and genuinely exercises the
+        // disk-space pre-flight this test is about.
+        await host.setStoreURL(storeURL)
         let journal = InMemoryMigrationJournalStore()
         // Zero free space, non-zero footprint -> pre-flight must throw.
         let probe = FakeDiskSpaceProbe(availableBytes: 0, footprintBytes: 4096)
@@ -152,17 +158,20 @@ struct MigrationCoordinatorTests {
         await #expect(throws: LillistError.self) {
             try await coordinator.beginEnable(direction: .replaceICloud, storeURL: storeURL)
         }
-        // Erase must NOT have run — copyStore threw first (step 5 < step 6).
+        // Erase must NOT have run — copyStore threw first.
         #expect(await fakeEraser.callCount == 0)
         // Journal left .failed so the recovery sheet can surface it.
         let finalJournal = try journal.read()
         #expect(finalJournal.state == .failed)
         #expect(finalJournal.failureReason?.contains("insufficientDiskSpace") == true)
-        // POST-RECONFIGURE state: reconfigure (step 4) ran before
-        // copyStore (step 5) threw, so the mode is ALREADY flipped to
-        // the target on both the host and the mode store.
-        #expect(await host.currentMode == .iCloudSync)
-        #expect(await modeStore.currentMode() == .iCloudSync)
+        // S6/S8: quarantine copy now runs BEFORE reconfigure for
+        // replaceICloudWithLocal (erase-before-attach reordering), and
+        // the sync mode advances only in the finalize step, after every
+        // destructive step succeeds. copyStore throwing here means
+        // reconfigure never even ran — the host and mode store must both
+        // still read the ORIGINAL mode, not the target.
+        #expect(await host.currentMode == .localOnly)
+        #expect(await modeStore.currentMode() == .localOnly)
         // The live store was never copied out — copyStore threw before
         // touching disk, leaving the original in place.
         #expect(FileManager.default.fileExists(atPath: storeURL.path) == true)

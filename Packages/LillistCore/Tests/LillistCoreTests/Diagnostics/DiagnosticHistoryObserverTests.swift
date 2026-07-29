@@ -8,7 +8,7 @@ final class DiagnosticHistoryObserverTests: XCTestCase {
         let spy = SpyDiagnosticSink()
         let observer = DiagnosticHistoryObserver(
             persistence: persistence,
-            tokenStore: PersistentHistoryTokenStore(suiteName: "t.\(UUID().uuidString)", key: PersistentHistoryTokenStore.diagnosticsKey),
+            tokenStore: PersistentHistoryTokenStore(suiteName: "t.\(UUID().uuidString)", consumer: .diagnostics),
             sink: spy,
             process: .app
         )
@@ -30,7 +30,7 @@ final class DiagnosticHistoryObserverTests: XCTestCase {
     func test_observer_emits_inserts_for_creates_and_advances_watermark() async throws {
         let persistence = try await PersistenceController(configuration: .inMemory)
         let spy = SpyDiagnosticSink()
-        let tokens = PersistentHistoryTokenStore(suiteName: "t.\(UUID().uuidString)", key: PersistentHistoryTokenStore.diagnosticsKey)
+        let tokens = PersistentHistoryTokenStore(suiteName: "t.\(UUID().uuidString)", consumer: .diagnostics)
         let observer = DiagnosticHistoryObserver(persistence: persistence, tokenStore: tokens, sink: spy, process: .app)
         let store = TaskStore(persistence: persistence)
         _ = try await store.create(title: "a")
@@ -51,7 +51,7 @@ final class DiagnosticHistoryObserverTests: XCTestCase {
         let spy = SpyDiagnosticSink()
         let observer = DiagnosticHistoryObserver(
             persistence: persistence,
-            tokenStore: PersistentHistoryTokenStore(suiteName: "t.\(UUID().uuidString)", key: PersistentHistoryTokenStore.diagnosticsKey),
+            tokenStore: PersistentHistoryTokenStore(suiteName: "t.\(UUID().uuidString)", consumer: .diagnostics),
             sink: spy, process: .app
         )
         let store = TaskStore(persistence: persistence)
@@ -78,7 +78,7 @@ final class DiagnosticHistoryObserverTests: XCTestCase {
         let spy = SpyDiagnosticSink()
         let observer = DiagnosticHistoryObserver(
             persistence: persistence,
-            tokenStore: PersistentHistoryTokenStore(suiteName: "t.\(UUID().uuidString)", key: PersistentHistoryTokenStore.diagnosticsKey),
+            tokenStore: PersistentHistoryTokenStore(suiteName: "t.\(UUID().uuidString)", consumer: .diagnostics),
             sink: spy, process: .app
         )
         let store = TaskStore(persistence: persistence)

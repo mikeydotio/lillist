@@ -303,4 +303,150 @@ struct SyncStatusMonitorTests {
         let health = await monitor.exportHealth
         #expect(health == SyncStatusMonitor.ExportHealth(consecutiveFailures: 0, lastErrorDomain: nil, lastErrorCode: nil))
     }
+
+    // MARK: - S21: import-axis stall escalation (mirrors the export axis)
+
+    private func recordRecoverableImportFailures(
+        _ count: Int,
+        bridge: CloudKitEventBridge,
+        iterator: inout AsyncStream<SyncStatus>.AsyncIterator
+    ) async -> SyncStatus? {
+        var final: SyncStatus?
+        for _ in 0..<count {
+            await bridge.recordEvent(.init(type: .import, started: true, endedAt: nil, error: nil))
+            _ = await iterator.next()
+            await bridge.recordEvent(.init(
+                type: .import, started: false, endedAt: Date(),
+                error: .syncFailure(underlying: "1 record failed"), recoverable: true
+            ))
+            final = await iterator.next()
+        }
+        return final
+    }
+
+    @Test("test_S21_importStallEscalatesAtThreshold")
+    func importStallEscalatesAtThreshold() async throws {
+        let bridge = CloudKitEventBridge()
+        let monitor = SyncStatusMonitor(bridge: bridge)
+        await monitor.start()
+        var iterator = await monitor.statusStream.makeAsyncIterator()
+        _ = await iterator.next() // initial replay
+
+        let final = await recordRecoverableImportFailures(3, bridge: bridge, iterator: &iterator)
+        #expect(final?.error == .syncStalled(consecutiveFailures: 3))
+        #expect(await monitor.consecutiveImportFailures == 3)
+    }
+
+    @Test("test_S21_importStreakResetsOnSuccess")
+    func importStreakResetsOnSuccess() async throws {
+        let bridge = CloudKitEventBridge()
+        let monitor = SyncStatusMonitor(bridge: bridge)
+        await monitor.start()
+        var iterator = await monitor.statusStream.makeAsyncIterator()
+        _ = await iterator.next() // initial replay
+
+        _ = await recordRecoverableImportFailures(2, bridge: bridge, iterator: &iterator)
+        #expect(await monitor.consecutiveImportFailures == 2)
+
+        await bridge.recordEvent(.init(type: .import, started: false, endedAt: Date(), error: nil))
+        _ = await iterator.next()
+        #expect(await monitor.consecutiveImportFailures == 0)
+
+        let final = await recordRecoverableImportFailures(2, bridge: bridge, iterator: &iterator)
+        #expect(final?.error == nil, "streak restarted after the success, so 2 more stays calm")
+    }
+
+    @Test("test_S21_structuralImportFailureResetsStreak")
+    func structuralImportFailureResetsStreak() async throws {
+        let bridge = CloudKitEventBridge()
+        let monitor = SyncStatusMonitor(bridge: bridge)
+        await monitor.start()
+        var iterator = await monitor.statusStream.makeAsyncIterator()
+        _ = await iterator.next() // initial replay
+
+        _ = await recordRecoverableImportFailures(2, bridge: bridge, iterator: &iterator)
+
+        let structural = LillistError.quotaExceeded(resource: "iCloud")
+        await bridge.recordEvent(.init(type: .import, started: false, endedAt: Date(), error: structural, recoverable: false))
+        let afterStructural = await iterator.next()
+        #expect(afterStructural?.error == structural)
+        #expect(await monitor.consecutiveImportFailures == 0)
+    }
+
+    @Test("test_S21_exportAndImportStreaksAreIndependent")
+    func exportAndImportStreaksAreIndependent() async throws {
+        let bridge = CloudKitEventBridge()
+        let monitor = SyncStatusMonitor(bridge: bridge)
+        await monitor.start()
+        var iterator = await monitor.statusStream.makeAsyncIterator()
+        _ = await iterator.next() // initial replay
+
+        // Two export failures (below threshold), two import failures
+        // (below threshold) interleaved — neither axis should push the
+        // other toward its own threshold.
+        _ = await recordRecoverableExportFailures(2, bridge: bridge, iterator: &iterator)
+        _ = await recordRecoverableImportFailures(2, bridge: bridge, iterator: &iterator)
+        #expect(await monitor.consecutiveExportFailures == 2)
+        #expect(await monitor.consecutiveImportFailures == 2)
+
+        // One more of each reaches each axis's own threshold independently.
+        let exportFinal = await recordRecoverableExportFailures(1, bridge: bridge, iterator: &iterator)
+        #expect(exportFinal?.error == .syncStalled(consecutiveFailures: 3))
+        let importFinal = await recordRecoverableImportFailures(1, bridge: bridge, iterator: &iterator)
+        #expect(importFinal?.error == .syncStalled(consecutiveFailures: 3))
+    }
+
+    @Test("test_S21_resetStallStateClearsBothAxesAndForensics")
+    func resetStallStateClearsBothAxesAndForensics() async throws {
+        let bridge = CloudKitEventBridge()
+        let monitor = SyncStatusMonitor(bridge: bridge)
+        await monitor.start()
+        var iterator = await monitor.statusStream.makeAsyncIterator()
+        _ = await iterator.next() // initial replay
+
+        _ = await recordRecoverableExportFailures(2, bridge: bridge, iterator: &iterator)
+        _ = await recordRecoverableImportFailures(2, bridge: bridge, iterator: &iterator)
+        #expect(await monitor.consecutiveExportFailures == 2)
+        #expect(await monitor.consecutiveImportFailures == 2)
+
+        // Record forensic-history detail explicitly (the shared helpers
+        // above don't set rawErrorDomain/rawErrorCode) so the reset's
+        // forensics-clearing behavior has something real to clear.
+        await bridge.recordEvent(.init(
+            type: .export, started: false, endedAt: Date(),
+            error: .syncFailure(underlying: "1 record failed"), recoverable: true,
+            rawErrorDomain: "CKErrorDomain", rawErrorCode: 2
+        ))
+        _ = await iterator.next()
+        await bridge.recordEvent(.init(
+            type: .import, started: false, endedAt: Date(),
+            error: .syncFailure(underlying: "1 record failed"), recoverable: true,
+            rawErrorDomain: "CKErrorDomain", rawErrorCode: 2
+        ))
+        _ = await iterator.next()
+        #expect(await monitor.exportHealth.lastErrorDomain != nil)
+        #expect(await monitor.importHealth.lastErrorDomain != nil)
+
+        await monitor.resetStallState()
+
+        #expect(await monitor.consecutiveExportFailures == 0)
+        #expect(await monitor.consecutiveImportFailures == 0)
+        #expect(await monitor.exportHealth == SyncStatusMonitor.ExportHealth(consecutiveFailures: 0, lastErrorDomain: nil, lastErrorCode: nil))
+        #expect(await monitor.importHealth == SyncStatusMonitor.ImportHealth(consecutiveFailures: 0, lastErrorDomain: nil, lastErrorCode: nil))
+
+        // A fresh streak after the reset starts from zero, not from where
+        // the cleared streak left off.
+        let final = await recordRecoverableExportFailures(2, bridge: bridge, iterator: &iterator)
+        #expect(final?.error == nil)
+    }
+
+    @Test("No import failure yet leaves importHealth at its zero value")
+    func importHealthDefaultsToZero() async throws {
+        let bridge = CloudKitEventBridge()
+        let monitor = SyncStatusMonitor(bridge: bridge)
+        await monitor.start()
+
+        let health = await monitor.importHealth
+        #expect(health == SyncStatusMonitor.ImportHealth(consecutiveFailures: 0, lastErrorDomain: nil, lastErrorCode: nil))
+    }
 }

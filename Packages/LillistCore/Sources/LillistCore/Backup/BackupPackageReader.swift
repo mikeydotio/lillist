@@ -13,6 +13,8 @@ public struct BackupPackageReader: Sendable {
     private let manifestURL: URL
     private let tagsURL: URL
     private let preferencesURL: URL
+    private let seriesURL: URL
+    private let smartFiltersURL: URL
 
     public init(packageDirectory: URL) {
         self.packageDirectory = packageDirectory
@@ -21,6 +23,8 @@ public struct BackupPackageReader: Sendable {
         self.manifestURL = packageDirectory.appendingPathComponent("manifest.json")
         self.tagsURL = packageDirectory.appendingPathComponent("tags.json")
         self.preferencesURL = packageDirectory.appendingPathComponent("preferences.json")
+        self.seriesURL = packageDirectory.appendingPathComponent("series.json")
+        self.smartFiltersURL = packageDirectory.appendingPathComponent("smartFilters.json")
     }
 
     private static func makeDecoder() -> JSONDecoder {
@@ -65,7 +69,10 @@ public struct BackupPackageReader: Sendable {
             tags: try readTags(),
             journalEntries: records.flatMap(\.journalEntries),
             attachments: records.flatMap(\.attachments),
-            preferences: try readPreferences()
+            preferences: try readPreferences(),
+            series: try readSeries(),
+            notificationSpecs: records.flatMap(\.notificationSpecs),
+            smartFilters: try readSmartFilters()
         )
     }
 
@@ -76,24 +83,31 @@ public struct BackupPackageReader: Sendable {
         return try Self.makeDecoder().decode([ExportSchema.TagDTO].self, from: data)
     }
 
-    private func readPreferences() throws -> ExportSchema.PreferencesDTO {
-        guard FileManager.default.fileExists(atPath: preferencesURL.path) else {
-            return Self.defaultPreferences
-        }
-        let data = try Data(contentsOf: preferencesURL)
-        guard !data.isEmpty else { return Self.defaultPreferences }
-        return try Self.makeDecoder().decode(ExportSchema.PreferencesDTO.self, from: data)
+    /// X3: absent for a package written before this plan — returns `[]`
+    /// rather than throwing, matching `readTags()`'s missing-file handling.
+    private func readSeries() throws -> [ExportSchema.SeriesDTO] {
+        guard FileManager.default.fileExists(atPath: seriesURL.path) else { return [] }
+        let data = try Data(contentsOf: seriesURL)
+        guard !data.isEmpty else { return [] }
+        return try Self.makeDecoder().decode([ExportSchema.SeriesDTO].self, from: data)
     }
 
-    /// Mirrors the Core Data model defaults — used only when a package predates
-    /// the preferences sidecar.
-    private static let defaultPreferences = ExportSchema.PreferencesDTO(
-        defaultAllDayHour: 9,
-        defaultAllDayMinute: 0,
-        morningSummaryEnabled: true,
-        morningSummaryHour: 9,
-        morningSummaryMinute: 0,
-        trashRetentionDays: 30,
-        defaultTaskListSort: "manualPosition"
-    )
+    /// X3 (discovered): absent for a package written before this plan —
+    /// returns `[]` rather than throwing, matching `readTags()`'s
+    /// missing-file handling.
+    private func readSmartFilters() throws -> [ExportSchema.SmartFilterDTO] {
+        guard FileManager.default.fileExists(atPath: smartFiltersURL.path) else { return [] }
+        let data = try Data(contentsOf: smartFiltersURL)
+        guard !data.isEmpty else { return [] }
+        return try Self.makeDecoder().decode([ExportSchema.SmartFilterDTO].self, from: data)
+    }
+
+    private func readPreferences() throws -> ExportSchema.PreferencesDTO {
+        guard FileManager.default.fileExists(atPath: preferencesURL.path) else {
+            return .fallback
+        }
+        let data = try Data(contentsOf: preferencesURL)
+        guard !data.isEmpty else { return .fallback }
+        return try Self.makeDecoder().decode(ExportSchema.PreferencesDTO.self, from: data)
+    }
 }

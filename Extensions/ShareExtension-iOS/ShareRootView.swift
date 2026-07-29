@@ -78,7 +78,7 @@ struct ShareRootView: View {
             // flight the resolver throws storeUnavailable and we surface
             // the message below so the user can retry.
             let appGroupID = "group.app.lillist"
-            guard let resolver = GatedPersistenceResolver(appGroupID: appGroupID) else {
+            guard let resolver = GatedPersistenceResolver(appGroupID: appGroupID, role: .extensionProcess) else {
                 saveError = "App Group container is not available."
                 return
             }
@@ -89,6 +89,28 @@ struct ShareRootView: View {
                 transactionAuthor: PersistenceController.shareExtensionTransactionAuthor
             )
             let taskStore = TaskStore(persistence: persistence)
+            // data-sync-hardening X8: wire a scheduler here too, even though
+            // this flow doesn't attach a reminder at share time today —
+            // "a TaskStore is never constructed unwired in an extension
+            // process" is the class-kill; if a future share-time reminder
+            // is added, it's already correctly plumbed. Hydrated from the
+            // persisted all-day default (X10), matching every other
+            // extension-constructed scheduler in this program.
+            let sharePrefs = try await PreferencesStore(persistence: persistence).read()
+            taskStore.notificationScheduler = NotificationScheduler(
+                persistence: persistence,
+                specs: NotificationSpecStore(persistence: persistence),
+                center: SystemUserNotificationCenter(),
+                snoozeRegistry: SnoozeRegistry(
+                    defaultAllDayHour: Int(sharePrefs.defaultAllDayHour),
+                    defaultAllDayMinute: Int(sharePrefs.defaultAllDayMinute),
+                    timeZone: .current
+                ),
+                deviceFingerprint: DeviceFingerprint.current(),
+                defaultAllDayHour: Int(sharePrefs.defaultAllDayHour),
+                defaultAllDayMinute: Int(sharePrefs.defaultAllDayMinute),
+                timeZone: .current
+            )
             let attachmentStore = AttachmentStore(persistence: persistence)
 
             // Explicit diagnostic emits (e.g. task.create with observedMaxPosition)

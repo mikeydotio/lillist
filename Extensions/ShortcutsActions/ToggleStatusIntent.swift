@@ -15,11 +15,15 @@ struct ToggleStatusIntent: AppIntent {
     @MainActor
     func perform() async throws -> some IntentResult {
         let persistence = try await IntentSupport.makePersistence()
+        // X8: see CompleteTaskIntent's identical note — a status change made
+        // from Shortcuts must reconcile the OS pending set the same way the
+        // two apps' own status controls do.
         try await CLIBridge.StatusHandler.run(
             token: task.id.uuidString,
             to: status.coreStatus,
             note: nil,
-            persistence: persistence
+            persistence: persistence,
+            notificationScheduler: try await IntentSupport.makeNotificationScheduler(persistence: persistence)
         )
         await WidgetRefresh.refreshAfterMutation(persistence: persistence)
         return .result()

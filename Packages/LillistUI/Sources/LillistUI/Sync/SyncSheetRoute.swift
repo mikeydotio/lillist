@@ -18,6 +18,11 @@ public enum SyncSheetRoute: Equatable, Identifiable {
     case disable
     /// Explains why sync is paused (account/network), with a disable shortcut.
     case pauseExplainer
+    /// Data-sync-hardening `S10`: the always-prompt confirmation dialog for
+    /// a pending `ResetControlEvent` broadcast by another device. Never
+    /// presented automatically — only in response to the user tapping the
+    /// pending-reset banner in `ICloudSyncSettingsSection`.
+    case pendingResetDecision(ResetControlEvent)
     /// Live migration progress. The `id` is **constant** across phases so that
     /// streaming a new phase updates the presented sheet *in place* rather than
     /// dismissing and re-presenting it on every progress tick.
@@ -28,6 +33,7 @@ public enum SyncSheetRoute: Equatable, Identifiable {
         case .choice: return "choice"
         case .disable: return "disable"
         case .pauseExplainer: return "pauseExplainer"
+        case .pendingResetDecision(let event): return "pendingResetDecision-\(event.id)"
         case .progress: return "progress"
         }
     }

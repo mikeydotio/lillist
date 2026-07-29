@@ -47,4 +47,26 @@ struct MigrationGateTests {
             Issue.record("Expected abort, got \(decision)")
         }
     }
+
+    @Test("A corrupt/undecodable journal fails closed (aborts), distinct from idle (S15)")
+    func corruptJournalFailsClosed() async {
+        // FileMigrationJournalStore.read() already returns .idle without
+        // throwing when the file is simply absent — CorruptMigrationJournalStore
+        // simulates the OTHER case: a file that exists but failed to
+        // decode. Before S15 this was conflated with "no journal" via
+        // `try?`, silently letting extensions/CLI/widget proceed to open
+        // the store on top of unreadable state.
+        let journal = CorruptMigrationJournalStore()
+        let modeStore = SyncModeStore(suiteName: "MigrationGateTests-\(UUID().uuidString)")
+        await modeStore.setMode(.iCloudSync)
+        let gate = MigrationGate(journal: journal, modeStore: modeStore)
+        let decision = await gate.evaluate()
+        guard case .abort(let message) = decision else {
+            Issue.record("Expected abort, got \(decision) — a corrupt journal must never read as proceed")
+            return
+        }
+        // Distinct wording from the "already in progress" abort, so the
+        // two failure modes aren't conflated in the UI either.
+        #expect(message.contains("corrupted") || message.contains("could not be read"))
+    }
 }

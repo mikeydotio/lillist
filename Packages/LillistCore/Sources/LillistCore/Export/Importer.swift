@@ -40,6 +40,27 @@ public actor Importer {
         public let journalEntriesInserted: Int
         public let journalEntriesUpdated: Int
         public let journalEntriesSkipped: Int
+        /// X3: recurrence series, reminders, and smart filters — previously
+        /// entirely absent from import (there was nothing to count).
+        public let seriesInserted: Int
+        public let seriesUpdated: Int
+        public let seriesSkipped: Int
+        public let notificationSpecsInserted: Int
+        public let notificationSpecsUpdated: Int
+        public let notificationSpecsSkipped: Int
+        public let smartFiltersInserted: Int
+        public let smartFiltersUpdated: Int
+        public let smartFiltersSkipped: Int
+        /// Discovered during the 6a completeness sweep's export/import
+        /// round-trip test: `apply` never touched `document.preferences` at
+        /// all, so an export -> wipe -> import cycle silently reverted
+        /// every account-level preference (trash retention, morning
+        /// summary time, default tag tint, ...) to its hardcoded default.
+        /// `true` once this document's preferences have been applied to
+        /// the destination's singleton `AppPreferences` row (`false` only
+        /// when `.skipExisting` left an already-materialized row alone —
+        /// see `applyPreferences`'s doc comment).
+        public let preferencesApplied: Bool
         public let errors: [String]
 
         public init(
@@ -52,6 +73,16 @@ public actor Importer {
             journalEntriesInserted: Int = 0,
             journalEntriesUpdated: Int = 0,
             journalEntriesSkipped: Int = 0,
+            seriesInserted: Int = 0,
+            seriesUpdated: Int = 0,
+            seriesSkipped: Int = 0,
+            notificationSpecsInserted: Int = 0,
+            notificationSpecsUpdated: Int = 0,
+            notificationSpecsSkipped: Int = 0,
+            smartFiltersInserted: Int = 0,
+            smartFiltersUpdated: Int = 0,
+            smartFiltersSkipped: Int = 0,
+            preferencesApplied: Bool = false,
             errors: [String] = []
         ) {
             self.tasksInserted = tasksInserted
@@ -63,6 +94,16 @@ public actor Importer {
             self.journalEntriesInserted = journalEntriesInserted
             self.journalEntriesUpdated = journalEntriesUpdated
             self.journalEntriesSkipped = journalEntriesSkipped
+            self.seriesInserted = seriesInserted
+            self.seriesUpdated = seriesUpdated
+            self.seriesSkipped = seriesSkipped
+            self.notificationSpecsInserted = notificationSpecsInserted
+            self.notificationSpecsUpdated = notificationSpecsUpdated
+            self.notificationSpecsSkipped = notificationSpecsSkipped
+            self.smartFiltersInserted = smartFiltersInserted
+            self.smartFiltersUpdated = smartFiltersUpdated
+            self.smartFiltersSkipped = smartFiltersSkipped
+            self.preferencesApplied = preferencesApplied
             self.errors = errors
         }
     }
@@ -70,13 +111,23 @@ public actor Importer {
     /// Import a previously-exported bundle at `bundleURL`. The bundle
     /// is expected to be the directory the Exporter writes — with
     /// `lillist.json` at the top level.
-    public func importBundle(at bundleURL: URL, conflictPolicy: ConflictPolicy) async throws -> ImportSummary {
+    /// - Parameter assetsDirectory: when non-nil, attachments are restored
+    ///   from this folder — see `apply(document:policy:assetsDirectory:)`.
+    ///   Nil (the default) skips attachment rows entirely. Callers that know
+    ///   the bundle was written by `Exporter.export(to:)` (which always
+    ///   creates an `assets/` folder alongside `lillist.json`) should pass
+    ///   `bundleURL.appendingPathComponent("assets", isDirectory: true)`.
+    public func importBundle(
+        at bundleURL: URL,
+        conflictPolicy: ConflictPolicy,
+        assetsDirectory: URL? = nil
+    ) async throws -> ImportSummary {
         let docURL = bundleURL.appendingPathComponent("lillist.json")
         let data = try Data(contentsOf: docURL)
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .iso8601
         let document = try decoder.decode(ExportSchema.Document.self, from: data)
-        return try await apply(document: document, policy: conflictPolicy)
+        return try await apply(document: document, policy: conflictPolicy, assetsDirectory: assetsDirectory)
     }
 
     /// Apply a decoded export `document` to the store.
@@ -124,15 +175,28 @@ public actor Importer {
             var entriesInserted = 0
             var entriesUpdated = 0
             var entriesSkipped = 0
+            var seriesInserted = 0
+            var seriesUpdated = 0
+            var seriesSkipped = 0
+            var specsInserted = 0
+            var specsUpdated = 0
+            var specsSkipped = 0
+            var filtersInserted = 0
+            var filtersUpdated = 0
+            var filtersSkipped = 0
             var errors: [String] = []
 
             var tagByID: [UUID: Tag] = [:]
+            // X13: rows `.skipExisting` explicitly left alone must never be
+            // touched by the second pass below — not even their `.parent`.
+            var skippedTagIDs: Set<UUID> = []
             for dto in document.tags {
                 do {
                     if let existing = try self.fetchTag(id: dto.id, ctx: ctx) {
                         switch policy {
                         case .skipExisting:
                             tagsSkipped += 1
+                            skippedTagIDs.insert(dto.id)
                         case .replaceExisting:
                             self.applyTag(dto, into: existing)
                             tagsUpdated += 1
@@ -156,12 +220,23 @@ public actor Importer {
                 }
             }
             // Second pass to wire tag.parent (now that all rows exist).
+            // X13: skip rows this pass didn't write, and fall back to the
+            // destination store when the parent isn't part of this bundle —
+            // a parent absent from the bundle but present in the store must
+            // not be treated as "missing" (which would silently promote an
+            // otherwise-valid child to root).
             for dto in document.tags {
-                guard let row = tagByID[dto.id], let parentID = dto.parentID else { continue }
-                row.parent = tagByID[parentID]
+                guard !skippedTagIDs.contains(dto.id),
+                      let row = tagByID[dto.id],
+                      let parentID = dto.parentID
+                else { continue }
+                row.parent = tagByID[parentID] ?? (try? self.fetchTag(id: parentID, ctx: ctx))
             }
 
             var taskByID: [UUID: LillistTask] = [:]
+            // X13: same discipline as tags above — skipped rows are never
+            // touched by the second pass.
+            var skippedTaskIDs: Set<UUID> = []
             for dto in document.tasks {
                 do {
                     if let existing = try self.fetchTask(id: dto.id, ctx: ctx) {
@@ -175,6 +250,7 @@ public actor Importer {
                         switch action {
                         case .skip:
                             tasksSkipped += 1
+                            skippedTaskIDs.insert(dto.id)
                         case .update:
                             self.applyTask(dto, into: existing, tagByID: tagByID)
                             tasksUpdated += 1
@@ -191,9 +267,65 @@ public actor Importer {
                     errors.append("task \(dto.id): \(error.localizedDescription)")
                 }
             }
+            // X13: skip rows this pass didn't write, and fall back to the
+            // destination store when the parent isn't part of this bundle.
             for dto in document.tasks {
-                guard let row = taskByID[dto.id], let parentID = dto.parentID else { continue }
-                row.parent = taskByID[parentID]
+                guard !skippedTaskIDs.contains(dto.id),
+                      let row = taskByID[dto.id],
+                      let parentID = dto.parentID
+                else { continue }
+                row.parent = taskByID[parentID] ?? (try? self.fetchTask(id: parentID, ctx: ctx))
+            }
+
+            // X3: recurrence series (previously entirely absent from import).
+            var seriesByID: [UUID: Series] = [:]
+            var skippedSeriesIDs: Set<UUID> = []
+            for dto in document.series {
+                do {
+                    if let existing = try self.fetchSeries(id: dto.id, ctx: ctx) {
+                        switch policy {
+                        case .skipExisting:
+                            seriesSkipped += 1
+                            skippedSeriesIDs.insert(dto.id)
+                        case .replaceExisting, .recencyWins:
+                            // Series carries no modifiedAt; fall back to
+                            // "incoming wins", matching Tag's precedent.
+                            try self.applySeries(dto, into: existing)
+                            seriesUpdated += 1
+                        }
+                        seriesByID[dto.id] = existing
+                    } else {
+                        let row = Series(context: ctx)
+                        row.id = dto.id
+                        try self.applySeries(dto, into: row)
+                        seriesInserted += 1
+                        seriesByID[dto.id] = row
+                    }
+                } catch {
+                    errors.append("series \(dto.id): \(error.localizedDescription)")
+                }
+            }
+            // Wire Series.seedTask — skip-respecting (X13 discipline extended
+            // to this new relationship from the start), bundle-then-store
+            // fallback. A seedTaskID that resolves nowhere leaves seedTask
+            // nil rather than dropping the whole series — see
+            // `SeriesDTO.seedTaskID`'s doc comment.
+            for dto in document.series {
+                guard !skippedSeriesIDs.contains(dto.id), let row = seriesByID[dto.id] else { continue }
+                if let seedTaskID = dto.seedTaskID {
+                    row.seedTask = taskByID[seedTaskID] ?? (try? self.fetchTask(id: seedTaskID, ctx: ctx))
+                }
+            }
+            // Wire Task.series (X3: applyTask never set this before). Only
+            // for tasks this import actually wrote — a skipped task's
+            // series membership must not change, matching X13's discipline
+            // for `.parent`.
+            for dto in document.tasks {
+                guard !skippedTaskIDs.contains(dto.id),
+                      let row = taskByID[dto.id],
+                      let seriesID = dto.seriesID
+                else { continue }
+                row.series = seriesByID[seriesID] ?? (try? self.fetchSeries(id: seriesID, ctx: ctx))
             }
 
             var journalByID: [UUID: JournalEntry] = [:]
@@ -264,6 +396,82 @@ public actor Importer {
                 }
             }
 
+            // X3: reminders — simple owned-child pattern (like Attachment):
+            // the task FK is resolved and set at creation/update time, no
+            // second pass needed. A taskID absent from both the bundle and
+            // the destination store is an orphan, skipped like JournalEntry/
+            // Attachment's existing convention.
+            for dto in document.notificationSpecs {
+                let owningTask: LillistTask? = dto.taskID.flatMap { id in
+                    taskByID[id] ?? (try? self.fetchTask(id: id, ctx: ctx))
+                }
+                guard let owningTask else {
+                    errors.append("notificationSpec \(dto.id): skipped (no resolvable task)")
+                    continue
+                }
+                do {
+                    if let existing = try self.fetchNotificationSpec(id: dto.id, ctx: ctx) {
+                        if policy == .skipExisting {
+                            specsSkipped += 1
+                            continue
+                        }
+                        // No modifiedAt on NotificationSpec either — same
+                        // "incoming wins" fallback as Series/Tag.
+                        self.applyNotificationSpec(dto, into: existing, task: owningTask)
+                        specsUpdated += 1
+                    } else {
+                        let row = NotificationSpec(context: ctx)
+                        row.id = dto.id
+                        self.applyNotificationSpec(dto, into: row, task: owningTask)
+                        specsInserted += 1
+                    }
+                } catch {
+                    errors.append("notificationSpec \(dto.id): \(error.localizedDescription)")
+                }
+            }
+
+            // Smart filters — standalone, no relationships to wire.
+            // SmartFilter DOES carry modifiedAt, so recencyWins uses the
+            // same decideAction comparison as Task/JournalEntry rather than
+            // Series/Tag/NotificationSpec's "incoming wins" fallback.
+            for dto in document.smartFilters {
+                do {
+                    if let existing = try self.fetchSmartFilter(id: dto.id, ctx: ctx) {
+                        let action = self.decideAction(
+                            policy: policy,
+                            existingModified: existing.modifiedAt,
+                            existingCreated: existing.createdAt,
+                            incomingModified: dto.modifiedAt,
+                            incomingCreated: dto.createdAt
+                        )
+                        switch action {
+                        case .skip:
+                            filtersSkipped += 1
+                        case .update:
+                            self.applySmartFilter(dto, into: existing)
+                            filtersUpdated += 1
+                        }
+                    } else {
+                        let row = SmartFilter(context: ctx)
+                        row.id = dto.id
+                        self.applySmartFilter(dto, into: row)
+                        filtersInserted += 1
+                    }
+                } catch {
+                    errors.append("smartFilter \(dto.id): \(error.localizedDescription)")
+                }
+            }
+
+            // Preferences — a singleton row, not a collection, so there's
+            // no per-row insert/update/skip count to track: only whether
+            // this document's preferences were applied at all.
+            var preferencesApplied = false
+            do {
+                preferencesApplied = try self.applyPreferences(document.preferences, policy: policy, ctx: ctx)
+            } catch {
+                errors.append("preferences: \(error.localizedDescription)")
+            }
+
             do {
                 try ctx.save()
             } catch {
@@ -280,6 +488,16 @@ public actor Importer {
                 journalEntriesInserted: entriesInserted,
                 journalEntriesUpdated: entriesUpdated,
                 journalEntriesSkipped: entriesSkipped,
+                seriesInserted: seriesInserted,
+                seriesUpdated: seriesUpdated,
+                seriesSkipped: seriesSkipped,
+                notificationSpecsInserted: specsInserted,
+                notificationSpecsUpdated: specsUpdated,
+                notificationSpecsSkipped: specsSkipped,
+                smartFiltersInserted: filtersInserted,
+                smartFiltersUpdated: filtersUpdated,
+                smartFiltersSkipped: filtersSkipped,
+                preferencesApplied: preferencesApplied,
                 errors: errors
             )
         }
@@ -327,6 +545,7 @@ public actor Importer {
         row.modifiedAt = dto.modifiedAt
         row.closedAt = dto.closedAt
         row.deletedAt = dto.deletedAt
+        row.archivedAt = dto.archivedAt
         // Imported rows are written with this build's field shape, so they
         // conform to the current CloudKit schema regardless of the bundle's
         // recorded version — stamp current rather than copying `dto.schemaVersion`
@@ -372,6 +591,93 @@ public actor Importer {
         }
     }
 
+    /// `Series.rule` is a read-only computed property (L6) — `setRule(_:)`
+    /// throws on an encode failure rather than silently clearing the rule,
+    /// so this method must too. Its two call sites already run inside a
+    /// per-row `do`/`catch` that appends to `errors`, matching every other
+    /// entity's import discipline.
+    private nonisolated func applySeries(_ dto: ExportSchema.SeriesDTO, into row: Series) throws {
+        if let rule = dto.rule {
+            try row.setRule(rule)
+        } else {
+            row.ruleJSON = nil
+        }
+        row.nextOccurrenceAfter = dto.nextOccurrenceAfter
+        // seedTask is wired by the caller's second pass, once every task
+        // row (bundle-inserted or destination-store-resident) is resolvable.
+    }
+
+    private nonisolated func applyNotificationSpec(
+        _ dto: ExportSchema.NotificationSpecDTO,
+        into row: NotificationSpec,
+        task: LillistTask
+    ) {
+        row.task = task
+        row.kindRaw = Int16(dto.kind)
+        if let offset = dto.offsetMinutes {
+            row.offsetMinutes = NSNumber(value: offset)
+        } else {
+            row.offsetMinutes = nil
+        }
+        row.fireDate = dto.fireDate
+        // Round-trips as-is — see `ExportSchema.NotificationSpecDTO`'s doc
+        // comment for why resetting this to nil on import would be wrong,
+        // not merely unproven.
+        row.lastFiredAt = dto.lastFiredAt
+        row.snoozedUntil = dto.snoozedUntil
+        row.createdAt = dto.createdAt
+    }
+
+    private nonisolated func applySmartFilter(_ dto: ExportSchema.SmartFilterDTO, into row: SmartFilter) {
+        row.name = dto.name
+        row.predicateGroupJSON = dto.predicateGroup.flatMap { try? SmartFilterStore.encode($0) }
+        row.tintColor = dto.tintColor
+        row.sortFieldRaw = dto.sortField
+        row.sortAscending = dto.sortAscending
+        row.isPinned = dto.isPinned
+        row.position = dto.position
+        row.createdAt = dto.createdAt
+        row.modifiedAt = dto.modifiedAt
+    }
+
+    /// Restores `dto` into the destination's singleton `AppPreferences` row
+    /// (creating it if absent), returning whether it was applied.
+    ///
+    /// `AppPreferences` carries no `modifiedAt` (same as `Series`/`Tag`), so
+    /// there's no timestamp to arbitrate a `.recencyWins` decision — this
+    /// follows their established "incoming wins" fallback for both
+    /// `.replaceExisting` and `.recencyWins`. `.skipExisting` only skips
+    /// when a row already exists to skip: an absent singleton (a store
+    /// that's never been touched) still gets populated, matching every
+    /// other entity's "insert always happens, .skipExisting only guards
+    /// updates" shape.
+    private nonisolated func applyPreferences(
+        _ dto: ExportSchema.PreferencesDTO,
+        policy: ConflictPolicy,
+        ctx: NSManagedObjectContext
+    ) throws -> Bool {
+        let req = NSFetchRequest<AppPreferences>(entityName: "AppPreferences")
+        req.predicate = NSPredicate(format: "id == %@", PreferencesStore.singletonID as CVarArg)
+        req.fetchLimit = 1
+        let existing = try ctx.fetch(req).first
+        if existing != nil, policy == .skipExisting { return false }
+
+        let row = existing ?? {
+            let new = AppPreferences(context: ctx)
+            new.id = PreferencesStore.singletonID
+            return new
+        }()
+        row.defaultAllDayNotificationHour = dto.defaultAllDayHour
+        row.defaultAllDayNotificationMinute = dto.defaultAllDayMinute
+        row.morningSummaryEnabled = dto.morningSummaryEnabled
+        row.morningSummaryHour = dto.morningSummaryHour
+        row.morningSummaryMinute = dto.morningSummaryMinute
+        row.trashRetentionDays = dto.trashRetentionDays
+        row.defaultTaskListSortRaw = dto.defaultTaskListSort
+        row.defaultTagTintHex = dto.defaultTagTintHex
+        return true
+    }
+
     private nonisolated func fetchTag(id: UUID, ctx: NSManagedObjectContext) throws -> Tag? {
         let req = NSFetchRequest<Tag>(entityName: "Tag")
         req.predicate = NSPredicate(format: "id == %@", id as CVarArg)
@@ -395,6 +701,27 @@ public actor Importer {
 
     private nonisolated func fetchAttachment(id: UUID, ctx: NSManagedObjectContext) throws -> Attachment? {
         let req = NSFetchRequest<Attachment>(entityName: "Attachment")
+        req.predicate = NSPredicate(format: "id == %@", id as CVarArg)
+        req.fetchLimit = 1
+        return try ctx.fetch(req).first
+    }
+
+    private nonisolated func fetchSeries(id: UUID, ctx: NSManagedObjectContext) throws -> Series? {
+        let req = NSFetchRequest<Series>(entityName: "Series")
+        req.predicate = NSPredicate(format: "id == %@", id as CVarArg)
+        req.fetchLimit = 1
+        return try ctx.fetch(req).first
+    }
+
+    private nonisolated func fetchNotificationSpec(id: UUID, ctx: NSManagedObjectContext) throws -> NotificationSpec? {
+        let req = NSFetchRequest<NotificationSpec>(entityName: "NotificationSpec")
+        req.predicate = NSPredicate(format: "id == %@", id as CVarArg)
+        req.fetchLimit = 1
+        return try ctx.fetch(req).first
+    }
+
+    private nonisolated func fetchSmartFilter(id: UUID, ctx: NSManagedObjectContext) throws -> SmartFilter? {
+        let req = NSFetchRequest<SmartFilter>(entityName: "SmartFilter")
         req.predicate = NSPredicate(format: "id == %@", id as CVarArg)
         req.fetchLimit = 1
         return try ctx.fetch(req).first

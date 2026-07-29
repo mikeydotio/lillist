@@ -83,6 +83,31 @@ in-house crash reporter.
   not in CI). The plans under `docs/superpowers/plans/` are now **archaeology**,
   not an active to-do list. CI (`.github/workflows/ci.yml`) now enforces the
   test/build matrix post-push on `main` (see *Build & test*).
+- **Data & Sync Hardening — remediation COMPLETE on its worktree branch,
+  merge pending (kicked off 2026-07-28):** the 2026-07-28 review
+  (`docs/reviews/2026-07-28-data-sync-review.md`, 70 findings across the
+  stores/persistence, sync machinery, and cross-process sweeps) and its
+  remediation program. **Mini-roadmap:** Wave 0 (docs + 70 storyhook
+  stories `LIL-7`..`LIL-76`) ✅; Waves 1–6 (`1a`-`1d` trash/restore
+  integrity, purge/CloudKit retirement, store-location unification, export
+  completeness; `2a`-`2b` migration/backup/reset correctness; `3a`-`3b`
+  account identity, reset propagation; `4a`-`4c` history/notification/
+  recurrence discipline; `5a`-`5c` mutation-scope, widget, and watermark
+  hygiene; `6a` completeness sweep + closeout) all ✅. All 70 findings
+  closed, plus eight discovered-during-the-program residuals fixed and one
+  (`LIL-90`) reconfirmed correctly deferred alongside the one deliberately
+  deferred product decision (`LIL-83`, `X10`'s timezone-posture schema
+  change — needs a Development→Production CloudKit deploy Mikey must run,
+  scheduled outside this program). Ran in one long-lived worktree/branch
+  (`hardening/data-sync-2026-07`, not `main`); one PR opens once this last
+  wave's verification finishes — **this line should read fully merged and
+  archaeological, matching the Foundation Hardening entry above it, once
+  that PR lands; until then this bullet is the accurate status.** The
+  living ledger
+  `docs/superpowers/plans/2026-07-28-data-sync-hardening-index.md` remains
+  the detailed record (per-wave closing reports, full verification
+  transcripts, story cross-reference) — this paragraph is only the
+  pointer.
 
 ## Build & test
 

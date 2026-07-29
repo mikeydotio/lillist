@@ -148,9 +148,10 @@ public final class TaskStore: @unchecked Sendable {
         placement: NewTaskPlacement = .bottom
     ) async throws -> UUID {
         do {
-            try validateTitle(title)
-            let result: (id: UUID, assigned: Double, observedMax: Double?) = try await context.perform { [self] in
+            let result: (id: UUID, assigned: Double, observedMax: Double?) = try await withMutationRollback(context: context) { [self] in
+                try validateTitle(title)
                 let parentTask = try parent.map { try fetchManagedObject(id: $0, in: context) }
+                try assertParentNotTrashed(parentTask)
                 // Compute the position BEFORE inserting the new row, so the
                 // observed-edge fetch reflects real siblings — not the new task's
                 // own default 0.0. Behavior-preserving for `assigned`:
@@ -170,7 +171,6 @@ public final class TaskStore: @unchecked Sendable {
                 task.stampCurrentSchemaVersion()
                 task.parent = parentTask
                 task.position = detail.assigned
-                try context.save()
                 return (id: id, assigned: detail.assigned, observedMax: detail.observedMax)
             }
             await recordCrumb("task.create", success: true)
@@ -183,7 +183,6 @@ public final class TaskStore: @unchecked Sendable {
             ])
             return result.id
         } catch {
-            await context.perform { [self] in context.rollback() }
             await recordCrumb("task.create", success: false)
             await emitDiag("task.create", [
                 "parentID": parent.map { .string($0.uuidString) } ?? .null,
@@ -206,7 +205,7 @@ public final class TaskStore: @unchecked Sendable {
 
     public func update(id: UUID, _ block: @escaping @Sendable (inout TaskDraft) -> Void) async throws {
         do {
-            try await context.perform { [self] in
+            try await withMutationRollback(context: context) { [self] in
                 let m = try fetchManagedObject(id: id, in: context)
                 var draft = TaskDraft(
                     title: m.title ?? "",
@@ -228,7 +227,6 @@ public final class TaskStore: @unchecked Sendable {
                 m.isPinned = draft.isPinned
                 m.modifiedAt = Date()
                 m.stampCurrentSchemaVersion()
-                try context.save()
             }
             // Anchor fields (start/deadline) and their time flags affect
             // notification scheduling. Reconcile after save.
@@ -237,7 +235,6 @@ public final class TaskStore: @unchecked Sendable {
             }
             await recordCrumb("task.update", success: true)
         } catch {
-            await context.perform { [self] in context.rollback() }
             await recordCrumb("task.update", success: false)
             throw error
         }
@@ -247,14 +244,27 @@ public final class TaskStore: @unchecked Sendable {
 
     public func hardDelete(id: UUID) async throws {
         do {
-            try await context.perform { [self] in
+            let doomedTaskIDs: [UUID] = try await withMutationRollback(context: context) { [self] in
                 let m = try fetchManagedObject(id: id, in: context)
+                // H3: collect the full cascade closure's task ids BEFORE
+                // deleting, so pending OS notifications can be cancelled
+                // once the delete is durable. Unconditional traversal
+                // (unlike CascadeReaper.planPurge's trash-bounded barrier)
+                // — hardDelete permanently removes `m` and everything under
+                // it regardless of each descendant's own deletedAt state;
+                // there is no "spare a live descendant" concept here the
+                // way there is for a Trash purge.
+                let doomedTaskIDs: [UUID] = CascadeReaper.objectIDs(forDeleting: [m])
+                    .filter { $0.entity.name == "LillistTask" }
+                    .compactMap { (try? context.existingObject(with: $0) as? LillistTask)?.id }
                 context.delete(m)
-                try context.save()
+                return doomedTaskIDs
+            }
+            if let notificationScheduler, !doomedTaskIDs.isEmpty {
+                await notificationScheduler.cancelPending(forTaskIDs: doomedTaskIDs)
             }
             await recordCrumb("task.purge", success: true)
         } catch {
-            await context.perform { [self] in context.rollback() }
             await recordCrumb("task.purge", success: false)
             throw error
         }
@@ -316,12 +326,13 @@ public final class TaskStore: @unchecked Sendable {
 
     public func reparent(id: UUID, newParent newParentID: UUID?) async throws {
         do {
-            let outcome: (oldParentID: UUID?, assigned: Double) = try await context.perform { [self] in
+            let outcome: (oldParentID: UUID?, assigned: Double) = try await withMutationRollback(context: context) { [self] in
                 let m = try fetchManagedObject(id: id, in: context)
                 let oldParentID = m.parent?.id
                 let newParent: LillistTask?
                 if let newParentID {
                     let candidate = try fetchManagedObject(id: newParentID, in: context)
+                    try assertParentNotTrashed(candidate)
                     if Validators.wouldCreateCycle(candidate: m, newParent: candidate) {
                         throw LillistError.validationFailed([
                             .init(field: "parent", message: "would create a cycle")
@@ -336,7 +347,6 @@ public final class TaskStore: @unchecked Sendable {
                 m.position = assigned
                 m.modifiedAt = Date()
                 m.stampCurrentSchemaVersion()
-                try context.save()
                 return (oldParentID: oldParentID, assigned: assigned)
             }
             await recordCrumb("task.move", success: true)
@@ -348,7 +358,6 @@ public final class TaskStore: @unchecked Sendable {
                 "threwError": .bool(false),
             ])
         } catch {
-            await context.perform { [self] in context.rollback() }
             await recordCrumb("task.move", success: false)
             await emitDiag("task.reparent", [
                 "taskID": .string(id.uuidString),
@@ -388,7 +397,7 @@ public final class TaskStore: @unchecked Sendable {
         // tie that throws) still logs the equal anchors that caused it.
         let cap = ReorderCapture()
         do {
-            try await context.perform { [self] in
+            try await withMutationRollback(context: context) { [self] in
                 let m = try fetchManagedObject(id: id, in: context)
                 let afterTask = try afterID.map { try fetchManagedObject(id: $0, in: context) }
                 let beforeTask = try beforeID.map { try fetchManagedObject(id: $0, in: context) }
@@ -410,6 +419,31 @@ public final class TaskStore: @unchecked Sendable {
                     throw LillistError.validationFailed([
                         .init(field: "neighbors", message: "must share the same parent")
                     ])
+                }
+
+                // M6: the check above only fires when BOTH anchors are
+                // present. A single anchor under `.explicit(parent)` needs
+                // the same guard against the target parent — an anchor's
+                // `position` is only meaningful within its OWN sibling
+                // group, so computing a position from an anchor in a
+                // DIFFERENT group (relative to the explicit target) is
+                // never correct: it can silently collide with an existing
+                // sibling there, or land at a value with no relation to
+                // that group's numbering. Mirrors the both-anchors case's
+                // own behavior exactly — unconditional throw, no heal
+                // attempt — and runs before the tie/inversion heal below so
+                // a wrong-group anchor never reaches recompaction.
+                if case .explicit(let pid) = reparent {
+                    if let a = afterTask, beforeTask == nil, a.parent?.id != pid {
+                        throw LillistError.validationFailed([
+                            .init(field: "neighbors", message: "anchor does not belong to the target parent")
+                        ])
+                    }
+                    if let b = beforeTask, afterTask == nil, b.parent?.id != pid {
+                        throw LillistError.validationFailed([
+                            .init(field: "neighbors", message: "anchor does not belong to the target parent")
+                        ])
+                    }
                 }
 
                 // Heal-then-recheck: if anchors are tied or inverted, attempt to
@@ -502,6 +536,7 @@ public final class TaskStore: @unchecked Sendable {
                 }
 
                 if m.parent?.objectID != newParent?.objectID {
+                    try assertParentNotTrashed(newParent)
                     if Validators.wouldCreateCycle(candidate: m, newParent: newParent) {
                         throw LillistError.validationFailed([
                             .init(field: "parent", message: "would create a cycle")
@@ -530,11 +565,9 @@ public final class TaskStore: @unchecked Sendable {
                 m.position = computed
                 m.modifiedAt = Date()
                 m.stampCurrentSchemaVersion()
-                try context.save()
             }
             await emitReorderDiag(id: id, afterID: afterID, beforeID: beforeID, capture: cap, threwError: false)
         } catch {
-            await context.perform { [self] in context.rollback() }
             await emitReorderDiag(id: id, afterID: afterID, beforeID: beforeID, capture: cap, threwError: true)
             throw error
         }
@@ -569,7 +602,7 @@ public final class TaskStore: @unchecked Sendable {
     public func transition(id: UUID, to newStatus: Status) async throws {
         let cap = TransitionCapture()
         do {
-            let spawnedID: UUID? = try await context.perform { [self] in
+            let spawnedID: UUID? = try await withMutationRollback(context: context) { [self] in
                 let m = try fetchManagedObject(id: id, in: context)
                 let oldStatus = m.status
                 cap.from = oldStatus
@@ -605,10 +638,9 @@ public final class TaskStore: @unchecked Sendable {
                 // per design Section 8.
                 var spawnedID: UUID? = nil
                 if newStatus == .closed {
-                    spawnedID = RecurrenceSpawner.spawnIfNeeded(forClosedTask: m, in: context)
+                    spawnedID = try RecurrenceSpawner.spawnIfNeeded(forClosedTask: m, in: context)
                 }
 
-                try context.save()
                 return spawnedID
             }
             // Reconcile *after* the save so the persistent store reflects the
@@ -624,7 +656,6 @@ public final class TaskStore: @unchecked Sendable {
             await emitTransitionDiag(id: id, to: newStatus, capture: cap, threwError: false)
             await recordCrumb("task.status.change", success: true)
         } catch {
-            await context.perform { [self] in context.rollback() }
             await emitTransitionDiag(id: id, to: newStatus, capture: cap, threwError: true)
             await recordCrumb("task.status.change", success: false)
             throw error
@@ -656,58 +687,91 @@ public final class TaskStore: @unchecked Sendable {
 
     // MARK: - Archive
 
+    /// The result of a batch `archive`/`unarchive` call. `flipped` is the
+    /// ids that were actually mutated (so callers, notably the iOS/macOS
+    /// pull-to-refresh undo affordance, can scope "undo" to the rows their
+    /// action touched without trampling earlier batches). `skipped` is any
+    /// id in the request that no longer exists (e.g. hard-deleted or purged
+    /// concurrently) — reported, never silently dropped, and never fails
+    /// the rest of the batch (L5).
+    public struct BatchIDOutcome: Sendable, Equatable {
+        public let flipped: [UUID]
+        public let skipped: [UUID]
+        public init(flipped: [UUID], skipped: [UUID]) {
+            self.flipped = flipped
+            self.skipped = skipped
+        }
+    }
+
     /// Stamp `archivedAt = now` on every task in `ids` that doesn't already
-    /// have a value. Returns just the IDs that were actually flipped, so
-    /// callers (notably the iOS pull-to-refresh undo affordance) can scope
-    /// "undo" to the rows their action created without trampling earlier
-    /// archive batches.
+    /// have a value.
+    ///
+    /// L5: a missing id no longer fails the whole batch — it's skipped and
+    /// reported in `BatchIDOutcome.skipped`, while every other id in the
+    /// batch still succeeds.
     ///
     /// Note: archive is independent of status. Closing a task does not
     /// auto-archive it; the UI batches and archives explicitly. Reopening a
     /// closed task does, however, clear `archivedAt` (see `transition`).
     @discardableResult
-    public func archive(ids: [UUID]) async throws -> [UUID] {
+    public func archive(ids: [UUID]) async throws -> BatchIDOutcome {
         do {
-            let affected: [UUID] = try await context.perform { [self] in
+            let outcome: BatchIDOutcome = try await withMutationRollback(context: context) { [self] in
                 var flipped: [UUID] = []
+                var skipped: [UUID] = []
                 let now = Date()
                 for id in ids {
-                    let m = try fetchManagedObject(id: id, in: context)
+                    let m: LillistTask
+                    do {
+                        m = try fetchManagedObject(id: id, in: context)
+                    } catch LillistError.notFound {
+                        skipped.append(id)
+                        continue
+                    }
                     guard m.archivedAt == nil else { continue }
                     m.archivedAt = now
                     m.modifiedAt = now
                     m.stampCurrentSchemaVersion()
                     flipped.append(id)
                 }
-                try context.save()
-                return flipped
+                return BatchIDOutcome(flipped: flipped, skipped: skipped)
             }
             await recordCrumb("task.archive", success: true)
-            return affected
+            return outcome
         } catch {
-            await context.perform { [self] in context.rollback() }
             await recordCrumb("task.archive", success: false)
             throw error
         }
     }
 
     /// Clear `archivedAt` on every task in `ids`. Idempotent — rows already
-    /// at `archivedAt == nil` are left untouched.
-    public func unarchive(ids: [UUID]) async throws {
+    /// at `archivedAt == nil` are left untouched. Same L5 skip-and-report
+    /// semantics as `archive`.
+    @discardableResult
+    public func unarchive(ids: [UUID]) async throws -> BatchIDOutcome {
         do {
-            try await context.perform { [self] in
+            let outcome: BatchIDOutcome = try await withMutationRollback(context: context) { [self] in
+                var flipped: [UUID] = []
+                var skipped: [UUID] = []
                 for id in ids {
-                    let m = try fetchManagedObject(id: id, in: context)
+                    let m: LillistTask
+                    do {
+                        m = try fetchManagedObject(id: id, in: context)
+                    } catch LillistError.notFound {
+                        skipped.append(id)
+                        continue
+                    }
                     guard m.archivedAt != nil else { continue }
                     m.archivedAt = nil
                     m.modifiedAt = Date()
                     m.stampCurrentSchemaVersion()
+                    flipped.append(id)
                 }
-                try context.save()
+                return BatchIDOutcome(flipped: flipped, skipped: skipped)
             }
             await recordCrumb("task.unarchive", success: true)
+            return outcome
         } catch {
-            await context.perform { [self] in context.rollback() }
             await recordCrumb("task.unarchive", success: false)
             throw error
         }
@@ -717,18 +781,25 @@ public final class TaskStore: @unchecked Sendable {
 
     public func softDelete(id: UUID) async throws {
         do {
-            try await context.perform { [self] in
+            // H2: applySoftDelete cascades deletedAt onto every live descendant
+            // (see 1a's H7 cycle-guard fix), so notification reconcile must
+            // cover the whole subtree it touched — not just the root id — or a
+            // cascaded descendant's reminder keeps firing for a trashed task.
+            let affectedIDs: [UUID] = try await withMutationRollback(context: context) { [self] in
                 let m = try fetchManagedObject(id: id, in: context)
                 let now = Date()
-                applySoftDelete(to: m, at: now)
-                try context.save()
+                return applySoftDelete(to: m, at: now)
             }
             if let scheduler = notificationScheduler {
-                await scheduler.reconcile(taskID: id)
+                // Every affected task's desired notification set is
+                // unconditionally empty now (computeDesiredRequests excludes
+                // deletedAt != nil) — cancelling is a batched OS round trip
+                // for the whole subtree, the same H3 primitive purge uses,
+                // rather than one reconcile() fetch-and-diff per descendant.
+                await scheduler.cancelPending(forTaskIDs: affectedIDs)
             }
             await recordCrumb("task.delete", success: true)
         } catch {
-            await context.perform { [self] in context.rollback() }
             await recordCrumb("task.delete", success: false)
             throw error
         }
@@ -736,18 +807,40 @@ public final class TaskStore: @unchecked Sendable {
 
     public func restore(id: UUID) async throws {
         do {
-            try await context.perform { [self] in
+            // H2: clearSoftDelete cascades the restore onto every descendant
+            // whose deletedAt matches the root's (see 1a's H7 cycle-guard
+            // fix), so every one of them needs a real reconcile — a
+            // descendant's specs may now resolve to a future fire date again,
+            // which cancelPending's cancel-only shape can't re-install.
+            let affectedIDs: [UUID] = try await withMutationRollback(context: context) { [self] in
                 let m = try fetchManagedObject(id: id, in: context)
-                guard let deletedAt = m.deletedAt else { return }
-                clearSoftDelete(from: m, matchingDeletedAt: deletedAt)
-                try context.save()
+                guard let deletedAt = m.deletedAt else { return [] }
+                let affected = clearSoftDelete(from: m, matchingDeletedAt: deletedAt)
+                // C2 (binding product decision, 2026-07-28): a child restored
+                // while its own parent is still trashed is promoted to root,
+                // severing the link — left alone it lands in an unreachable
+                // limbo (invisible in the parent's listing, since the parent
+                // is still hidden) that becomes C1's next purge victim.
+                if let parent = m.parent, parent.deletedAt != nil {
+                    m.parent = nil
+                }
+                // H4: a stale pre-trash position can collide with a live
+                // sibling that moved into it via recompaction while this
+                // task sat in the trash. Always reassign a fresh position
+                // among the (possibly new, per the promotion above) live
+                // sibling group — the same edge-placement helper `create`
+                // uses, now that `nextPositionDetail` itself ignores trashed
+                // siblings when computing the edge.
+                m.position = try nextPositionDetail(forParent: m.parent, placement: .bottom).assigned
+                return affected
             }
             if let scheduler = notificationScheduler {
-                await scheduler.reconcile(taskID: id)
+                for taskID in affectedIDs {
+                    await scheduler.reconcile(taskID: taskID)
+                }
             }
             await recordCrumb("task.restore", success: true)
         } catch {
-            await context.perform { [self] in context.rollback() }
             await recordCrumb("task.restore", success: false)
             throw error
         }
@@ -784,17 +877,51 @@ public final class TaskStore: @unchecked Sendable {
     /// has a CloudKit record identity once the mirror has accepted it for export.
     /// This is the closest supported "is it in iCloud" signal; NSPCC exposes no
     /// per-record server-confirmation flag (see engineering-notes 2026-06-27).
+    /// L3: runs on a background context, not the main-queue `viewContext` —
+    /// `mirrored`'s `NSPersistentCloudKitContainer.recordIDs(for:)` needs
+    /// every task's `NSManagedObjectID` as input (there is no CloudKit-
+    /// mirrored-count-only API), so this materializes every id regardless;
+    /// moving that unbounded work off `viewContext` keeps it from
+    /// contending with UI-driven fetches as the task count grows. `local`'s
+    /// count moves to the same background context for one round trip rather
+    /// than two. Object IDs are valid across any context sharing this
+    /// controller's persistent store coordinator, so passing them to
+    /// `cloud.recordIDs(for:)` (itself coordinator-scoped, not
+    /// context-scoped) is unaffected by which context fetched them.
+    /// L3: runs on a background context, not the main-queue `viewContext` —
+    /// `mirrored`'s `NSPersistentCloudKitContainer.recordIDs(for:)` needs
+    /// every task's `NSManagedObjectID` as input (there is no CloudKit-
+    /// mirrored-count-only API), so this materializes every id regardless;
+    /// moving that unbounded work off `viewContext` keeps it from
+    /// contending with UI-driven fetches as the task count grows. `local`'s
+    /// count moves to the same background context for one round trip rather
+    /// than two. Object IDs are valid across any context sharing this
+    /// controller's persistent store coordinator, so passing them to
+    /// `cloud.recordIDs(for:)` (itself coordinator-scoped, not
+    /// context-scoped) is unaffected by which context fetched them.
+    /// L3: runs on a background context, not the main-queue `viewContext` —
+    /// `mirrored`'s `NSPersistentCloudKitContainer.recordIDs(for:)` needs
+    /// every task's `NSManagedObjectID` as input (there is no CloudKit-
+    /// mirrored-count-only API), so this materializes every id regardless;
+    /// moving that unbounded work off `viewContext` keeps it from
+    /// contending with UI-driven fetches as the task count grows. `local`'s
+    /// count moves to the same background context for one round trip rather
+    /// than two. Object IDs are valid across any context sharing this
+    /// controller's persistent store coordinator, so passing them to
+    /// `cloud.recordIDs(for:)` (itself coordinator-scoped, not
+    /// context-scoped) is unaffected by which context fetched them.
     public func syncCounts() async throws -> SyncCounts {
-        try await context.perform { [self] in
+        let bg = persistence.makeBackgroundContext()
+        return try await bg.perform { [self] in
             let countReq = NSFetchRequest<NSFetchRequestResult>(entityName: "LillistTask")
-            let local = try context.count(for: countReq)
+            let local = try bg.count(for: countReq)
             guard local > 0,
                   let cloud = persistence.container as? NSPersistentCloudKitContainer else {
                 return SyncCounts(local: local, mirrored: 0)
             }
             let idReq = NSFetchRequest<NSManagedObjectID>(entityName: "LillistTask")
             idReq.resultType = .managedObjectIDResultType
-            let ids = try context.fetch(idReq)
+            let ids = try bg.fetch(idReq)
             return SyncCounts(local: local, mirrored: cloud.recordIDs(for: ids).count)
         }
     }
@@ -823,14 +950,10 @@ public final class TaskStore: @unchecked Sendable {
     }
 
     /// Hard-deletes every `LillistTask` matching `predicateFormat` off the
-    /// main-queue `viewContext`, on a background context, in a single
-    /// `NSBatchDeleteRequest`.
-    ///
-    /// The predicate is rebuilt *inside* the `@Sendable` background-context
-    /// closure from its Sendable format string + argument list — an
-    /// `NSPredicate` is not `Sendable` and so cannot be captured across the
-    /// actor boundary (the same hoist-and-rebuild pattern `PersistenceHost`
-    /// uses for `NSPersistentStoreDescription`).
+    /// main-queue `viewContext`, on a background context, via chunked
+    /// managed-object-context deletes (`TrashPurger`) — never
+    /// `NSBatchDeleteRequest`, which bypasses `NSPersistentCloudKitContainer`'s
+    /// export tracking (C4/X4).
     ///
     /// - Parameters:
     ///   - predicateFormat: `NSPredicate(format:)` string selecting the
@@ -843,61 +966,83 @@ public final class TaskStore: @unchecked Sendable {
         predicateFormat: String,
         arguments: [any Sendable]
     ) async throws -> Int {
-        let ctx = persistence.makeBackgroundContext()
-        let viewContext = persistence.container.viewContext
-        let deletedIDs: [NSManagedObjectID] = try await ctx.perform {
-            let predicate = NSPredicate(
-                format: predicateFormat,
-                argumentArray: arguments
-            )
-            let req = NSFetchRequest<LillistTask>(entityName: "LillistTask")
-            req.predicate = predicate
-            let matched = try ctx.fetch(req)
-            let roots = matched.filter { task in
-                guard let parent = task.parent else { return true }
-                return !predicate.evaluate(with: parent)
-            }
-            // `NSBatchDeleteRequest` bypasses Core Data's Cascade delete
-            // rules, so expand each root to every cascade-reachable
-            // objectID (descendants, journal entries, attachments,
-            // notification specs), then delete that closure entity-by-entity
-            // (a single batch is restricted to one entity). The returned IDs
-            // are merged into the viewContext below so it invalidates the
-            // corresponding in-memory objects and callers see no dangling
-            // faults.
-            let ids = CascadeReaper.objectIDs(forDeleting: roots)
-            return try CascadeReaper.batchDelete(objectIDs: ids, in: ctx)
-        }
-        guard !deletedIDs.isEmpty else { return 0 }
-        await viewContext.perform {
-            NSManagedObjectContext.mergeChanges(
-                fromRemoteContextSave: [NSDeletedObjectsKey: deletedIDs],
-                into: [viewContext]
-            )
-        }
-        return await ctx.perform {
-            deletedIDs.filter { $0.entity.name == "LillistTask" }.count
-        }
+        try await TrashPurger.purge(
+            predicateFormat: predicateFormat,
+            arguments: arguments,
+            context: persistence.makeBackgroundContext(),
+            viewContext: persistence.container.viewContext,
+            notificationScheduler: notificationScheduler
+        )
     }
 
-    private func applySoftDelete(to m: LillistTask, at now: Date) {
+    /// H7: recursing only into children whose `deletedAt` doesn't already
+    /// match what this pass is about to stamp is self-limiting against a
+    /// mutual cycle in the common case (a revisited node's `deletedAt`
+    /// already equals `now` by the time the cycle loops back to it, so the
+    /// `where` clause excludes it). The explicit `visited` set is defense in
+    /// depth against that guarantee ever being weakened by a future change
+    /// to this recursion's shape — see `TreeCycleGuardTests`.
+    ///
+    /// H2: returns every task id this pass actually touched (root +
+    /// cascaded descendants) so the caller can reconcile notifications for
+    /// the whole affected subtree, not just the root.
+    @discardableResult
+    private func applySoftDelete(to m: LillistTask, at now: Date) -> [UUID] {
+        var visited: Set<NSManagedObjectID> = []
+        var affected: [UUID] = []
+        applySoftDelete(to: m, at: now, visited: &visited, affected: &affected)
+        return affected
+    }
+
+    private func applySoftDelete(
+        to m: LillistTask,
+        at now: Date,
+        visited: inout Set<NSManagedObjectID>,
+        affected: inout [UUID]
+    ) {
+        guard visited.insert(m.objectID).inserted else { return }
         m.deletedAt = now
         m.modifiedAt = now
         m.stampCurrentSchemaVersion()
+        if let id = m.id { affected.append(id) }
         if let children = m.children as? Set<LillistTask> {
             for child in children where child.deletedAt == nil {
-                applySoftDelete(to: child, at: now)
+                applySoftDelete(to: child, at: now, visited: &visited, affected: &affected)
             }
         }
     }
 
-    private func clearSoftDelete(from m: LillistTask, matchingDeletedAt: Date) {
+    /// H7: same self-limiting shape and same defense-in-depth rationale as
+    /// `applySoftDelete` above. H2: same affected-id-collection shape too.
+    @discardableResult
+    private func clearSoftDelete(from m: LillistTask, matchingDeletedAt: Date) -> [UUID] {
+        var visited: Set<NSManagedObjectID> = []
+        var affected: [UUID] = []
+        clearSoftDelete(from: m, matchingDeletedAt: matchingDeletedAt, visited: &visited, affected: &affected)
+        return affected
+    }
+
+    private func clearSoftDelete(
+        from m: LillistTask,
+        matchingDeletedAt: Date,
+        visited: inout Set<NSManagedObjectID>,
+        affected: inout [UUID]
+    ) {
+        guard visited.insert(m.objectID).inserted else { return }
         m.deletedAt = nil
+        // M2: a restored task must be unconditionally visible. Clearing
+        // only `deletedAt` can leave it in the archived-but-not-deleted
+        // state, invisible in the surfaces that don't show the archive.
+        // Applied to every node this cascade restores (root + matching
+        // descendants) so a subtree that was independently archived before
+        // being swept into the trash also resurfaces in full.
+        m.archivedAt = nil
         m.modifiedAt = Date()
         m.stampCurrentSchemaVersion()
+        if let id = m.id { affected.append(id) }
         if let children = m.children as? Set<LillistTask> {
             for child in children where child.deletedAt == matchingDeletedAt {
-                clearSoftDelete(from: child, matchingDeletedAt: matchingDeletedAt)
+                clearSoftDelete(from: child, matchingDeletedAt: matchingDeletedAt, visited: &visited, affected: &affected)
             }
         }
     }
@@ -905,36 +1050,29 @@ public final class TaskStore: @unchecked Sendable {
     // MARK: - Tags
 
     public func assignTag(taskID: UUID, tagID: UUID) async throws {
-        do {
-            try await context.perform { [self] in
-                let task = try fetchManagedObject(id: taskID, in: context)
-                let tag = try fetchTag(id: tagID, in: context)
-                let existing = task.tags as? Set<Tag> ?? []
-                if existing.contains(tag) { return }
-                task.addToTags(tag)
-                task.modifiedAt = Date()
-                task.stampCurrentSchemaVersion()
-                try context.save()
-            }
-        } catch {
-            await context.perform { [self] in context.rollback() }
-            throw error
+        try await withMutationRollback(context: context) { [self] in
+            let task = try fetchManagedObject(id: taskID, in: context)
+            let tag = try fetchTag(id: tagID, in: context)
+            let existing = task.tags as? Set<Tag> ?? []
+            if existing.contains(tag) { return }
+            task.addToTags(tag)
+            task.modifiedAt = Date()
+            task.stampCurrentSchemaVersion()
         }
     }
 
+    /// L4: mirrors `assignTag`'s no-op guard — unassigning a tag the task
+    /// doesn't currently carry must not write (no spurious `modifiedAt`
+    /// bump, no meaningless CloudKit export).
     public func unassignTag(taskID: UUID, tagID: UUID) async throws {
-        do {
-            try await context.perform { [self] in
-                let task = try fetchManagedObject(id: taskID, in: context)
-                let tag = try fetchTag(id: tagID, in: context)
-                task.removeFromTags(tag)
-                task.modifiedAt = Date()
-                task.stampCurrentSchemaVersion()
-                try context.save()
-            }
-        } catch {
-            await context.perform { [self] in context.rollback() }
-            throw error
+        try await withMutationRollback(context: context) { [self] in
+            let task = try fetchManagedObject(id: taskID, in: context)
+            let tag = try fetchTag(id: tagID, in: context)
+            let existing = task.tags as? Set<Tag> ?? []
+            guard existing.contains(tag) else { return }
+            task.removeFromTags(tag)
+            task.modifiedAt = Date()
+            task.stampCurrentSchemaVersion()
         }
     }
 
@@ -974,6 +1112,10 @@ public final class TaskStore: @unchecked Sendable {
     /// so `create` can record `observedMaxPosition` in its diagnostic — the
     /// value the non-atomic edge allocation saw, central to the reorder-tie RCA.
     ///
+    /// Thin wrapper over `SiblingPositioning` (the shared core `RecurrenceSpawner`
+    /// also delegates to, so a spawn's placement can never drift from a
+    /// manually-created task's — see H1).
+    ///
     /// `placement` selects which end the new row lands at:
     /// - `.bottom` (default): the edge is the *max* sibling position and the
     ///   row is placed after it (`edge + 1.0`).
@@ -984,23 +1126,7 @@ public final class TaskStore: @unchecked Sendable {
         forParent parent: LillistTask?,
         placement: NewTaskPlacement = .bottom
     ) throws -> (assigned: Double, observedMax: Double?) {
-        let req = NSFetchRequest<LillistTask>(entityName: "LillistTask")
-        if let parent {
-            req.predicate = NSPredicate(format: "parent == %@", parent)
-        } else {
-            req.predicate = NSPredicate(format: "parent == nil")
-        }
-        // For `.bottom` we need the largest position (sort desc); for `.top`
-        // the smallest (sort asc). Either way we fetch a single edge row.
-        req.sortDescriptors = [NSSortDescriptor(key: "position", ascending: placement == .top)]
-        req.fetchLimit = 1
-        let edgePosition = try context.fetch(req).first?.position
-        switch placement {
-        case .bottom:
-            return (FractionalPosition.position(after: edgePosition, before: nil), edgePosition)
-        case .top:
-            return (FractionalPosition.position(after: nil, before: edgePosition), edgePosition)
-        }
+        try SiblingPositioning.nextPositionDetail(forParent: parent, placement: placement, in: context)
     }
 
     /// Re-space every non-trashed sibling under `parent` to even 1.0 gaps,
@@ -1045,7 +1171,7 @@ public final class TaskStore: @unchecked Sendable {
     /// healthy sibling sets produce zero writes. Called at load-seams so data
     /// is clean before the first reorder attempt.
     public func normalizeSiblingsIfDegenerate(ofParent parentID: UUID?) async throws {
-        try await context.perform { [self] in
+        try await withMutationRollback(context: context) { [self] in
             let req = NSFetchRequest<LillistTask>(entityName: "LillistTask")
             if let parentID {
                 let parent = try fetchManagedObject(id: parentID, in: context)
@@ -1071,7 +1197,6 @@ public final class TaskStore: @unchecked Sendable {
             for (sibling, newPosition) in zip(sorted, respaced) {
                 sibling.position = newPosition
             }
-            try context.save()
         }
     }
 
@@ -1083,6 +1208,23 @@ public final class TaskStore: @unchecked Sendable {
     /// the single source of truth for the rule; `validateTitle` delegates.
     public nonisolated static func isCommittableTitle(_ title: String) -> Bool {
         !title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
+    /// M1: `create`, `reparent`, and `reorder` (both `.infer` and
+    /// `.explicit`, at the point where a *new* parent assignment is about to
+    /// be made) all reject a soft-deleted target parent — mirroring the
+    /// soft-deleted-*anchor* guard in `reorder`. Left unguarded, any of
+    /// these entry points could directly construct the live-under-trashed
+    /// illegal state `C1`'s purge fix and `C2`'s restore fix exist to
+    /// prevent/repair. A CloudKit merge can still create this state (no
+    /// local guard reaches a remote write) — `TreeIntegrityChecker`'s
+    /// launch-time self-heal is the defense-in-depth backstop for that path.
+    func assertParentNotTrashed(_ parent: LillistTask?) throws {
+        if let parent, parent.deletedAt != nil {
+            throw LillistError.validationFailed([
+                .init(field: "parent", message: "parent is trashed")
+            ])
+        }
     }
 
     func validateTitle(_ title: String) throws {
