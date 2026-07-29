@@ -80,9 +80,9 @@ public final class SmartFilterStore: @unchecked Sendable {
         sortField: SortField = .deadline,
         sortAscending: Bool = true
     ) async throws -> UUID {
-        try validateName(name)
-        let json = try Self.encode(group)
-        return try await context.perform { [self] in
+        try await withMutationRollback(context: context) { [self] in
+            try validateName(name)
+            let json = try Self.encode(group)
             let m = SmartFilter(context: context)
             let id = UUID()
             m.id = id
@@ -95,7 +95,6 @@ public final class SmartFilterStore: @unchecked Sendable {
             m.position = try nextPosition()
             m.createdAt = Date()
             m.modifiedAt = m.createdAt
-            try context.save()
             return id
         }
     }
@@ -115,7 +114,7 @@ public final class SmartFilterStore: @unchecked Sendable {
     /// non-strictly-increasing position. Idempotent. Called at the filters-list
     /// load seam.
     public func normalizeIfDegenerate() async throws {
-        try await context.perform { [self] in
+        try await withMutationRollback(context: context) { [self] in
             let req = NSFetchRequest<SmartFilter>(entityName: "SmartFilter")
             req.sortDescriptors = [NSSortDescriptor(key: "position", ascending: true)]
             let rows = try context.fetch(req)
@@ -135,7 +134,6 @@ public final class SmartFilterStore: @unchecked Sendable {
             for (row, newPosition) in zip(sorted, respaced) {
                 row.position = newPosition
             }
-            try context.save()
         }
     }
 
@@ -158,7 +156,7 @@ public final class SmartFilterStore: @unchecked Sendable {
     // MARK: - Update
 
     public func update(id: UUID, _ block: @escaping @Sendable (inout SmartFilterDraft) -> Void) async throws {
-        try await context.perform { [self] in
+        try await withMutationRollback(context: context) { [self] in
             let m = try fetchManagedObject(id: id, in: context)
             let current = try record(from: m)
             var draft = SmartFilterDraft(
@@ -176,17 +174,15 @@ public final class SmartFilterStore: @unchecked Sendable {
             m.sortField = draft.sortField
             m.sortAscending = draft.sortAscending
             m.modifiedAt = Date()
-            try context.save()
         }
     }
 
     // MARK: - Delete
 
     public func delete(id: UUID) async throws {
-        try await context.perform { [self] in
+        try await withMutationRollback(context: context) { [self] in
             let m = try fetchManagedObject(id: id, in: context)
             context.delete(m)
-            try context.save()
         }
     }
 
@@ -308,11 +304,10 @@ extension SmartFilterStore {
 
 extension SmartFilterStore {
     public func setPinned(id: UUID, pinned: Bool) async throws {
-        try await context.perform { [self] in
+        try await withMutationRollback(context: context) { [self] in
             let m = try fetchManagedObject(id: id, in: context)
             m.isPinned = pinned
             m.modifiedAt = Date()
-            try context.save()
         }
     }
 
@@ -337,7 +332,7 @@ extension SmartFilterStore {
         // SmartFilter analogue of the reorder-tie RCA.
         let cap = ReorderCapture()
         do {
-            try await context.perform { [self] in
+            try await withMutationRollback(context: context) { [self] in
                 let target = try fetchManagedObject(id: id, in: context)
                 let afterRow = try after.map { try fetchManagedObject(id: $0, in: context) }
                 let beforeRow = try before.map { try fetchManagedObject(id: $0, in: context) }
@@ -396,11 +391,9 @@ extension SmartFilterStore {
                 cap.computedPosition = computed
                 target.position = computed
                 target.modifiedAt = Date()
-                try context.save()
             }
             await emitReorderDiag(id: id, afterID: after, beforeID: before, capture: cap, threwError: false)
         } catch {
-            await context.perform { [self] in context.rollback() }
             await emitReorderDiag(id: id, afterID: after, beforeID: before, capture: cap, threwError: true)
             throw error
         }
