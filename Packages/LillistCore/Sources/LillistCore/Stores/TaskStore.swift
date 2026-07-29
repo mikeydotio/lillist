@@ -687,33 +687,57 @@ public final class TaskStore: @unchecked Sendable {
 
     // MARK: - Archive
 
+    /// The result of a batch `archive`/`unarchive` call. `flipped` is the
+    /// ids that were actually mutated (so callers, notably the iOS/macOS
+    /// pull-to-refresh undo affordance, can scope "undo" to the rows their
+    /// action touched without trampling earlier batches). `skipped` is any
+    /// id in the request that no longer exists (e.g. hard-deleted or purged
+    /// concurrently) — reported, never silently dropped, and never fails
+    /// the rest of the batch (L5).
+    public struct BatchIDOutcome: Sendable, Equatable {
+        public let flipped: [UUID]
+        public let skipped: [UUID]
+        public init(flipped: [UUID], skipped: [UUID]) {
+            self.flipped = flipped
+            self.skipped = skipped
+        }
+    }
+
     /// Stamp `archivedAt = now` on every task in `ids` that doesn't already
-    /// have a value. Returns just the IDs that were actually flipped, so
-    /// callers (notably the iOS pull-to-refresh undo affordance) can scope
-    /// "undo" to the rows their action created without trampling earlier
-    /// archive batches.
+    /// have a value.
+    ///
+    /// L5: a missing id no longer fails the whole batch — it's skipped and
+    /// reported in `BatchIDOutcome.skipped`, while every other id in the
+    /// batch still succeeds.
     ///
     /// Note: archive is independent of status. Closing a task does not
     /// auto-archive it; the UI batches and archives explicitly. Reopening a
     /// closed task does, however, clear `archivedAt` (see `transition`).
     @discardableResult
-    public func archive(ids: [UUID]) async throws -> [UUID] {
+    public func archive(ids: [UUID]) async throws -> BatchIDOutcome {
         do {
-            let affected: [UUID] = try await withMutationRollback(context: context) { [self] in
+            let outcome: BatchIDOutcome = try await withMutationRollback(context: context) { [self] in
                 var flipped: [UUID] = []
+                var skipped: [UUID] = []
                 let now = Date()
                 for id in ids {
-                    let m = try fetchManagedObject(id: id, in: context)
+                    let m: LillistTask
+                    do {
+                        m = try fetchManagedObject(id: id, in: context)
+                    } catch LillistError.notFound {
+                        skipped.append(id)
+                        continue
+                    }
                     guard m.archivedAt == nil else { continue }
                     m.archivedAt = now
                     m.modifiedAt = now
                     m.stampCurrentSchemaVersion()
                     flipped.append(id)
                 }
-                return flipped
+                return BatchIDOutcome(flipped: flipped, skipped: skipped)
             }
             await recordCrumb("task.archive", success: true)
-            return affected
+            return outcome
         } catch {
             await recordCrumb("task.archive", success: false)
             throw error
@@ -721,19 +745,32 @@ public final class TaskStore: @unchecked Sendable {
     }
 
     /// Clear `archivedAt` on every task in `ids`. Idempotent — rows already
-    /// at `archivedAt == nil` are left untouched.
-    public func unarchive(ids: [UUID]) async throws {
+    /// at `archivedAt == nil` are left untouched. Same L5 skip-and-report
+    /// semantics as `archive`.
+    @discardableResult
+    public func unarchive(ids: [UUID]) async throws -> BatchIDOutcome {
         do {
-            try await withMutationRollback(context: context) { [self] in
+            let outcome: BatchIDOutcome = try await withMutationRollback(context: context) { [self] in
+                var flipped: [UUID] = []
+                var skipped: [UUID] = []
                 for id in ids {
-                    let m = try fetchManagedObject(id: id, in: context)
+                    let m: LillistTask
+                    do {
+                        m = try fetchManagedObject(id: id, in: context)
+                    } catch LillistError.notFound {
+                        skipped.append(id)
+                        continue
+                    }
                     guard m.archivedAt != nil else { continue }
                     m.archivedAt = nil
                     m.modifiedAt = Date()
                     m.stampCurrentSchemaVersion()
+                    flipped.append(id)
                 }
+                return BatchIDOutcome(flipped: flipped, skipped: skipped)
             }
             await recordCrumb("task.unarchive", success: true)
+            return outcome
         } catch {
             await recordCrumb("task.unarchive", success: false)
             throw error

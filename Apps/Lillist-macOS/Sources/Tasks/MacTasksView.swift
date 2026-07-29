@@ -429,7 +429,7 @@ struct MacTasksView: View {
             await reload()
             return
         }
-        let archived = (try? await env.taskStore.archive(ids: candidates)) ?? []
+        let archived = (try? await env.taskStore.archive(ids: candidates))?.flipped ?? []
         await reload()
         guard !archived.isEmpty else { return }
         lastArchivedBatch = archived
@@ -440,7 +440,7 @@ struct MacTasksView: View {
     private func undoArchive() async {
         let ids = lastArchivedBatch
         guard !ids.isEmpty else { return }
-        try? await env.taskStore.unarchive(ids: ids)
+        _ = try? await env.taskStore.unarchive(ids: ids)
         lastArchivedBatch = []
         lastArchivedCount = 0
         isArchiveToastPresented = false

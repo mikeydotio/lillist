@@ -11,11 +11,12 @@ struct TaskStoreArchiveTests {
         let id = try await store.create(title: "Done")
         try await store.transition(id: id, to: .closed)
 
-        let affected = try await store.archive(ids: [id])
+        let outcome = try await store.archive(ids: [id])
 
         let record = try await store.fetch(id: id)
         #expect(record.archivedAt != nil)
-        #expect(affected == [id])
+        #expect(outcome.flipped == [id])
+        #expect(outcome.skipped.isEmpty)
     }
 
     @Test("archive(ids:) is idempotent — already-archived rows aren't re-touched")
@@ -28,9 +29,9 @@ struct TaskStoreArchiveTests {
         let firstArchivedAt = try #require(try await store.fetch(id: id).archivedAt)
 
         try await Task.sleep(nanoseconds: 10_000_000)
-        let secondAffected = try await store.archive(ids: [id])
+        let secondOutcome = try await store.archive(ids: [id])
 
-        #expect(secondAffected.isEmpty)
+        #expect(secondOutcome.flipped.isEmpty)
         let stillSame = try await store.fetch(id: id).archivedAt
         #expect(stillSame == firstArchivedAt)
     }
@@ -43,9 +44,9 @@ struct TaskStoreArchiveTests {
         let store = TaskStore(persistence: p)
         let id = try await store.create(title: "Open")
 
-        let affected = try await store.archive(ids: [id])
+        let outcome = try await store.archive(ids: [id])
 
-        #expect(affected == [id])
+        #expect(outcome.flipped == [id])
         let record = try await store.fetch(id: id)
         #expect(record.archivedAt != nil)
         #expect(record.status == .todo)
@@ -59,10 +60,11 @@ struct TaskStoreArchiveTests {
         try await store.transition(id: id, to: .closed)
         _ = try await store.archive(ids: [id])
 
-        try await store.unarchive(ids: [id])
+        let outcome = try await store.unarchive(ids: [id])
 
         let record = try await store.fetch(id: id)
         #expect(record.archivedAt == nil)
+        #expect(outcome.flipped == [id])
     }
 
     @Test("archive(ids:) accepts a batch and returns only the actually-affected IDs")
@@ -78,9 +80,10 @@ struct TaskStoreArchiveTests {
         // Pre-archive `a` so it should be excluded from the next batch result.
         _ = try await store.archive(ids: [a])
 
-        let affected = try await store.archive(ids: [a, b, c])
+        let outcome = try await store.archive(ids: [a, b, c])
 
-        #expect(Set(affected) == Set([b, c]))
+        #expect(Set(outcome.flipped) == Set([b, c]))
+        #expect(outcome.skipped.isEmpty)
     }
 
     @Test("Reopening an archived closed task auto-clears archivedAt")
