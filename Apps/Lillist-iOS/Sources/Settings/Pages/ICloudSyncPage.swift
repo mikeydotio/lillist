@@ -51,7 +51,8 @@ struct ICloudSyncPage: View {
                 PauseExplainerDialog(
                     reason: environment.pauseReason ?? .unknown,
                     onOpenSettings: openICloudSystemSettings,
-                    onDisableSync: { model.route = .disable },
+                    onAdoptNewAccount: { try await resolveAccountMismatchByAdoptingNewAccount() },
+                    onStayLocal: { try await resolveAccountMismatchByStayingLocal() },
                     onDismiss: { model.route = nil }
                 )
                 .presentationDetents([.medium])
@@ -88,5 +89,30 @@ struct ICloudSyncPage: View {
             return String(localized: "This permanently replaces this device's data with what's in iCloud. This cannot be undone.")
         case nil: return ""
         }
+    }
+
+    // MARK: - S3: account-mismatch resolution
+
+    /// "Use This Account" — wipes this device's local copy of the
+    /// superseded account's data (backed up to quarantine first) and
+    /// re-downloads fresh from the now-current iCloud account, then adopts
+    /// the new identity so future launches see a match. Per the council
+    /// decision, adoption happens ONLY after the reset reports success.
+    private func resolveAccountMismatchByAdoptingNewAccount() async throws {
+        try await environment.dataStoreReset.resolveAccountMismatchByRedownloading()
+        try environment.accountIdentityStore.adoptCurrentIdentity()
+        try? await environment.accountStateMonitor.refresh()
+    }
+
+    /// "Stay Local For Now" — transitions to LocalOnly via the existing
+    /// hardened coordinator path (no CloudKit interaction), then adopts
+    /// the new identity so the mismatch prompt doesn't reappear every
+    /// launch while the user is deliberately not syncing.
+    private func resolveAccountMismatchByStayingLocal() async throws {
+        let url = environment.storeURL
+            ?? FileManager.default.temporaryDirectory.appendingPathComponent("Lillist.sqlite")
+        try await environment.migrationCoordinator.beginDisable(strategy: .now, storeURL: url)
+        try environment.accountIdentityStore.adoptCurrentIdentity()
+        try? await environment.accountStateMonitor.refresh()
     }
 }

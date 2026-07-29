@@ -67,7 +67,8 @@ struct ICloudSyncPane: View {
                 PauseExplainerDialog(
                     reason: environment.pauseReason ?? .unknown,
                     onOpenSettings: openSystemSettings,
-                    onDisableSync: { route = .disable },
+                    onAdoptNewAccount: { try await resolveAccountMismatchByAdoptingNewAccount() },
+                    onStayLocal: { try await resolveAccountMismatchByStayingLocal() },
                     onDismiss: { route = nil }
                 )
                 .frame(width: 460, height: 340)
@@ -194,5 +195,23 @@ struct ICloudSyncPane: View {
         } catch {
             route = .progress(.failed(reason: error.localizedDescription))
         }
+    }
+
+    // MARK: - S3: account-mismatch resolution
+
+    /// "Use This Account" — see the iOS counterpart's identical doc comment.
+    private func resolveAccountMismatchByAdoptingNewAccount() async throws {
+        try await environment.dataStoreReset.resolveAccountMismatchByRedownloading()
+        try environment.accountIdentityStore.adoptCurrentIdentity()
+        try? await environment.accountStateMonitor.refresh()
+    }
+
+    /// "Stay Local For Now" — see the iOS counterpart's identical doc comment.
+    private func resolveAccountMismatchByStayingLocal() async throws {
+        let url = environment.storeURL
+            ?? FileManager.default.temporaryDirectory.appendingPathComponent("Lillist.sqlite")
+        try await environment.migrationCoordinator.beginDisable(strategy: .now, storeURL: url)
+        try environment.accountIdentityStore.adoptCurrentIdentity()
+        try? await environment.accountStateMonitor.refresh()
     }
 }

@@ -111,6 +111,19 @@ final class AppEnvironment {
     let diagnosticHistoryObserver: DiagnosticHistoryObserver
     let notificationPermissions: NotificationPermissions
     let accountStateMonitor: AccountStateMonitor
+    /// Data-sync-hardening `S3`: persists and compares this device's known
+    /// iCloud account identity. `make()` consults it before constructing
+    /// `PersistenceController` (so a mismatch never arms CloudKit
+    /// mirroring), and it's retained here so the mismatch-resolution UI
+    /// can call `adoptCurrentIdentity()` after a chosen resolution
+    /// succeeds. See the plan doc
+    /// `docs/superpowers/plans/2026-07-28-plan-3a-account-identity-and-status.md`.
+    let accountIdentityStore: AccountIdentityStore
+    /// The identity comparison `make()` ran before this environment was
+    /// constructed. Informational — `accountState`/`pauseReason` (derived
+    /// from `accountStateMonitor`, which re-runs the same comparison in
+    /// `bootstrap()`) are the live signals the UI observes.
+    let accountIdentityCheckAtLaunch: AccountIdentityStore.CheckResult
     let onboardingState: OnboardingState
     let defaultsInstaller: DefaultsInstaller
     /// Persist-6: hard-deletes trash older than the retention window.
@@ -140,13 +153,17 @@ final class AppEnvironment {
         initialSyncMode: SyncMode,
         syncModeStore: SyncModeStore,
         migrationJournalStore: any MigrationJournalStore,
-        devicePreferences: DevicePreferencesStore
+        devicePreferences: DevicePreferencesStore,
+        accountIdentityStore: AccountIdentityStore,
+        accountIdentityCheckAtLaunch: AccountIdentityStore.CheckResult
     ) {
         self.persistenceHost = persistenceHost
         self.persistence = persistence
         self.storeURL = storeURL
         self.syncModeStore = syncModeStore
         self.migrationJournalStore = migrationJournalStore
+        self.accountIdentityStore = accountIdentityStore
+        self.accountIdentityCheckAtLaunch = accountIdentityCheckAtLaunch
         self.currentSyncMode = initialSyncMode
         self.taskStore = TaskStore(persistence: persistence)
         self.tagStore = TagStore(persistence: persistence)
@@ -173,7 +190,8 @@ final class AppEnvironment {
         self.autoPurgeJob = AutoPurgeJob(persistence: persistence, preferences: preferencesStore)
         let ckContainerID = StoreConfiguration.defaultCloudKitContainerIdentifier
         let accountStateMonitor = AccountStateMonitor(
-            provider: CloudKitAccountStatusProvider(container: CKContainer(identifier: ckContainerID))
+            provider: CloudKitAccountStatusProvider(container: CKContainer(identifier: ckContainerID)),
+            identityStore: accountIdentityStore
         )
         self.accountStateMonitor = accountStateMonitor
         let specStore = NotificationSpecStore(persistence: persistence)
@@ -468,7 +486,28 @@ final class AppEnvironment {
         let syncModeStore = SyncModeStore(appGroupID: appGroupID)
         let initialMode = await syncModeStore.currentMode()
         let location = try StoreLocation.resolve(role: .mainApp, appGroupID: appGroupID)
-        let config = location.makeConfiguration(syncMode: initialMode)
+
+        // Data-sync-hardening S3: compare this device's known iCloud
+        // account identity BEFORE PersistenceController can arm
+        // cloudKitContainerOptions. A genuine mismatch (or a storage read
+        // failure — we can't verify safety, so fail closed) suppresses
+        // mirroring for this launch regardless of role/mode; see the plan
+        // doc §2/§4 for the full rationale and the identity-source
+        // decision.
+        let accountIdentityStore = AccountIdentityStore(
+            storage: FileAccountIdentityStore(appGroupID: appGroupID) ?? InMemoryAccountIdentityRecordStore()
+        )
+        let identityCheck: AccountIdentityStore.CheckResult
+        do {
+            identityCheck = try accountIdentityStore.check()
+        } catch {
+            identityCheck = .mismatch
+        }
+
+        var config = location.makeConfiguration(syncMode: initialMode)
+        if identityCheck == .mismatch {
+            config.armsCloudKitMirroring = false
+        }
         let persistence = try await PersistenceController(configuration: config)
         let host = PersistenceHost(controller: persistence, initialMode: initialMode)
         let devicePreferences = DevicePreferencesStore(appGroupID: appGroupID)
@@ -483,7 +522,9 @@ final class AppEnvironment {
             initialSyncMode: initialMode,
             syncModeStore: syncModeStore,
             migrationJournalStore: journal,
-            devicePreferences: devicePreferences
+            devicePreferences: devicePreferences,
+            accountIdentityStore: accountIdentityStore,
+            accountIdentityCheckAtLaunch: identityCheck
         )
     }
 
@@ -498,6 +539,7 @@ final class AppEnvironment {
         let devicePreferences = DevicePreferencesStore(suiteName: suite)
         let syncModeStore = SyncModeStore(suiteName: suite)
         let journal = InMemoryMigrationJournalStore()
+        let accountIdentityStore = AccountIdentityStore(storage: InMemoryAccountIdentityRecordStore())
         return AppEnvironment(
             persistenceHost: host,
             persistence: persistence,
@@ -505,7 +547,9 @@ final class AppEnvironment {
             initialSyncMode: .iCloudSync,
             syncModeStore: syncModeStore,
             migrationJournalStore: journal,
-            devicePreferences: devicePreferences
+            devicePreferences: devicePreferences,
+            accountIdentityStore: accountIdentityStore,
+            accountIdentityCheckAtLaunch: .firstLaunch
         )
     }
 
@@ -591,7 +635,12 @@ final class AppEnvironment {
         // ios-1: prime the pause-reason mirror so the sync-status badge and
         // PauseExplainerDialog read a real classification, not a stale nil.
         self.pauseReason = await pauseReasonClassifier.currentReason()
+        // S13: observe CKAccountChanged so a mid-session account switch is
+        // caught, not just this cold launch's own check (already applied
+        // above via `accountIdentityCheckAtLaunch`/`config.armsCloudKitMirroring`).
+        await accountStateMonitor.startObservingSystemAccountChanges()
         startObservingAccountState()
+        startObservingMidSessionAccountMismatch()
         startObservingSyncMode()
         installCanaryLifecycleObservers()
         startObservingPauseReason()
@@ -663,6 +712,7 @@ final class AppEnvironment {
     private func installCanaryLifecycleObservers() {
         let reporter = self.crashReporter
         let backup = self.localBackupCoordinator
+        let accountStateMonitor = self.accountStateMonitor
         NotificationCenter.default.addObserver(
             forName: UIApplication.didBecomeActiveNotification,
             object: nil,
@@ -672,6 +722,10 @@ final class AppEnvironment {
             // Issue #7: roll a daily snapshot if the app stays foregrounded
             // across a day boundary. No-op when one isn't due.
             Task { await backup.runSnapshotIfDue() }
+            // S13: re-probe on every foreground return, not just
+            // CKAccountChanged deliveries — a belt-and-suspenders catch
+            // for any account change the notification alone might miss.
+            Task { try? await accountStateMonitor.refresh() }
             // Warm reactivation: consume any Quick Capture handoff and drain
             // the Reminders queue. (Cold launch is handled in bootstrap(),
             // which runs after the first didBecomeActive.)
@@ -714,6 +768,49 @@ final class AppEnvironment {
                 }
             }
         }
+    }
+
+    /// Data-sync-hardening `S3`/`S13`: automatically and silently sever a
+    /// live CloudKit mirroring connection the instant a mismatch is
+    /// detected *mid-session* — per the council decision
+    /// (`.council/s3-account-mismatch-response-policy/DECISION.md`), this
+    /// is non-destructive containment (no data loss, no user confirmation
+    /// needed) distinct from the dismissible resolution dialog that still
+    /// appears afterward via the ordinary `pauseReason` badge path.
+    ///
+    /// Deliberately skips the stream's FIRST value: `accountStateMonitor
+    /// .stateStream` always replays the current state to a new subscriber
+    /// immediately, and by the time this subscribes (after `bootstrap()`'s
+    /// own `refresh()` call above), that replay already reflects
+    /// whatever `accountIdentityCheckAtLaunch` found — which cold launch
+    /// already handled safely via `armsCloudKitMirroring = false` in
+    /// `make()`. Only a value that arrives AFTER that replay represents a
+    /// genuine mid-session change (a live `CKAccountChanged` delivery or a
+    /// foreground re-probe), when mirroring may actually be attached and
+    /// live.
+    private func startObservingMidSessionAccountMismatch() {
+        let monitor = self.accountStateMonitor
+        Task { [weak self] in
+            var iterator = await monitor.stateStream.makeAsyncIterator()
+            _ = await iterator.next() // skip cold-launch replay
+            while let state = await iterator.next() {
+                guard state == .accountChanged else { continue }
+                await self?.severMirroringForMidSessionAccountMismatch()
+            }
+        }
+    }
+
+    /// Detach CloudKit mirroring immediately by driving the same
+    /// `.disableNow` transition the "Stay Local For Now" resolution button
+    /// uses — reused rather than a bespoke coordinator call, matching the
+    /// existing hardened-primitives-only discipline. Best-effort: a
+    /// failure here still leaves the coordinator's own failure handling
+    /// (unconditional reattach) in control, and the dismissible resolution
+    /// dialog remains available regardless of this call's outcome.
+    private func severMirroringForMidSessionAccountMismatch() async {
+        guard currentSyncMode == .iCloudSync else { return }
+        let url = storeURL ?? FileManager.default.temporaryDirectory.appendingPathComponent("Lillist.sqlite")
+        try? await migrationCoordinator.beginDisable(strategy: .now, storeURL: url)
     }
 
     /// Plan 21: bridge `SyncModeStore.modeStream` onto the

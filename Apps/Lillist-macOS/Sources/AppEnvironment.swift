@@ -63,6 +63,14 @@ final class AppEnvironment {
     let notificationScheduler: NotificationScheduler
     let notificationPermissions: NotificationPermissions
     let accountStateMonitor: AccountStateMonitor
+    /// Data-sync-hardening `S3`: persists and compares this device's known
+    /// iCloud account identity — see the iOS counterpart's doc comment and
+    /// the plan doc
+    /// `docs/superpowers/plans/2026-07-28-plan-3a-account-identity-and-status.md`.
+    let accountIdentityStore: AccountIdentityStore
+    /// The identity comparison `make()` ran before this environment was
+    /// constructed. Informational — see the iOS counterpart's doc comment.
+    let accountIdentityCheckAtLaunch: AccountIdentityStore.CheckResult
     let onboardingState: OnboardingState
     let defaultsInstaller: DefaultsInstaller
     /// Persist-6: hard-deletes trash older than the retention window.
@@ -128,6 +136,8 @@ final class AppEnvironment {
         syncModeStore: SyncModeStore,
         migrationJournalStore: any MigrationJournalStore,
         devicePreferences: DevicePreferencesStore,
+        accountIdentityStore: AccountIdentityStore,
+        accountIdentityCheckAtLaunch: AccountIdentityStore.CheckResult,
         initialHotkeyCombo: String = GlobalHotkeyMonitor.defaultCombo
     ) {
         self.persistenceHost = persistenceHost
@@ -136,6 +146,8 @@ final class AppEnvironment {
         self.macAppGroupMigrationOutcome = macAppGroupMigrationOutcome
         self.syncModeStore = syncModeStore
         self.migrationJournalStore = migrationJournalStore
+        self.accountIdentityStore = accountIdentityStore
+        self.accountIdentityCheckAtLaunch = accountIdentityCheckAtLaunch
         self.currentSyncMode = initialSyncMode
         self.taskStore = TaskStore(persistence: persistence)
         self.tagStore = TagStore(persistence: persistence)
@@ -167,7 +179,8 @@ final class AppEnvironment {
         self.hotkeyMonitor = GlobalHotkeyMonitor(initialCombo: initialHotkeyCombo)
         let ckContainerID = StoreConfiguration.defaultCloudKitContainerIdentifier
         self.accountStateMonitor = AccountStateMonitor(
-            provider: CloudKitAccountStatusProvider(container: CKContainer(identifier: ckContainerID))
+            provider: CloudKitAccountStatusProvider(container: CKContainer(identifier: ckContainerID)),
+            identityStore: accountIdentityStore
         )
         let specStore = NotificationSpecStore(persistence: persistence)
         self.notificationSpecStore = specStore
@@ -457,6 +470,25 @@ final class AppEnvironment {
         var baseConfig = StoreConfiguration.onDisk(url: resolvedURL, syncMode: initialMode)
         baseConfig.armsCloudKitMirroring = location.mayArmCloudKitMirroring
 
+        // Data-sync-hardening S3: compare this device's known iCloud
+        // account identity BEFORE PersistenceController can arm
+        // cloudKitContainerOptions — see the iOS counterpart's identical
+        // comment and the plan doc §2/§4. Runs on `resolvedURL` (whichever
+        // store the App-Group migration above landed on), independent of
+        // that migration's own outcome.
+        let accountIdentityStore = AccountIdentityStore(
+            storage: FileAccountIdentityStore(appGroupID: appGroupID) ?? InMemoryAccountIdentityRecordStore()
+        )
+        let identityCheck: AccountIdentityStore.CheckResult
+        do {
+            identityCheck = try accountIdentityStore.check()
+        } catch {
+            identityCheck = .mismatch
+        }
+        if identityCheck == .mismatch {
+            baseConfig.armsCloudKitMirroring = false
+        }
+
         // Stamp the Mac's distinct author so the diagnostics observer can tell
         // Mac-authored writes apart from iOS on the same iCloud account. Safe:
         // macOS has no RemoteChangeReconciler, so no local-vs-foreign filter
@@ -489,6 +521,8 @@ final class AppEnvironment {
             syncModeStore: syncModeStore,
             migrationJournalStore: journal,
             devicePreferences: devicePreferences,
+            accountIdentityStore: accountIdentityStore,
+            accountIdentityCheckAtLaunch: identityCheck,
             initialHotkeyCombo: combo
         )
         return env
@@ -574,7 +608,12 @@ final class AppEnvironment {
         // ios-1 parity: prime the pause-reason mirror the Preferences sync
         // pane reads, so the macOS classifier stops being dead too.
         self.pauseReason = await pauseReasonClassifier.currentReason()
+        // S13: observe CKAccountChanged so a mid-session account switch is
+        // caught, not just this cold launch's own check (already applied
+        // above via `accountIdentityCheckAtLaunch`/`baseConfig.armsCloudKitMirroring`).
+        await accountStateMonitor.startObservingSystemAccountChanges()
         startObservingAccountState()
+        startObservingMidSessionAccountMismatch()
         startObservingSyncMode()
         startObservingPauseReason()
         // Keep desktop widgets fresh: rebuild the per-filter snapshot cache +
@@ -633,6 +672,7 @@ final class AppEnvironment {
     /// Drain the Reminders queue whenever the app becomes active. Fire-and-
     /// forget; the importer no-ops fast when the feature is off or unauthorized.
     private func installActivationDrain() {
+        let accountStateMonitor = self.accountStateMonitor
         NotificationCenter.default.addObserver(
             forName: NSApplication.didBecomeActiveNotification,
             object: nil,
@@ -642,7 +682,37 @@ final class AppEnvironment {
                 guard let self else { return }
                 await self.remindersImporter.drainIfNeeded()
             }
+            // S13: re-probe on every foreground return, not just
+            // CKAccountChanged deliveries — belt-and-suspenders parity
+            // with iOS's identical hook.
+            Task { try? await accountStateMonitor.refresh() }
         }
+    }
+
+    /// Data-sync-hardening `S3`/`S13`: automatically and silently sever a
+    /// live CloudKit mirroring connection the instant a mismatch is
+    /// detected mid-session — see the iOS counterpart's identical doc
+    /// comment and the council decision
+    /// (`.council/s3-account-mismatch-response-policy/DECISION.md`).
+    private func startObservingMidSessionAccountMismatch() {
+        let monitor = self.accountStateMonitor
+        Task { [weak self] in
+            var iterator = await monitor.stateStream.makeAsyncIterator()
+            _ = await iterator.next() // skip cold-launch replay
+            while let state = await iterator.next() {
+                guard state == .accountChanged else { continue }
+                await self?.severMirroringForMidSessionAccountMismatch()
+            }
+        }
+    }
+
+    /// Detach CloudKit mirroring immediately by driving the same
+    /// `.disableNow` transition the "Stay Local For Now" resolution button
+    /// uses — see the iOS counterpart's identical doc comment.
+    private func severMirroringForMidSessionAccountMismatch() async {
+        guard currentSyncMode == .iCloudSync else { return }
+        let url = storeURL ?? FileManager.default.temporaryDirectory.appendingPathComponent("Lillist.sqlite")
+        try? await migrationCoordinator.beginDisable(strategy: .now, storeURL: url)
     }
 
     /// Plan 10: stream account-state changes off the actor into the
