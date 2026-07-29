@@ -84,7 +84,22 @@ public final class LocalBackupCoordinator: @unchecked Sendable {
     /// configured snapshot manager.
     public func runSnapshotIfDue() async {
         guard let snapshotManager else { return }
-        _ = try? await Task.detached { try snapshotManager.createSnapshotIfDue() }.value
+        let store = store
+        _ = try? await Task.detached { try await snapshotManager.createSnapshotIfDue(via: store) }.value
+    }
+
+    /// Force an immediate snapshot — the manual "Back Up Now" action.
+    /// Always zips through the SAME `TaskBackupStore` actor as every
+    /// other package write (`S23`) — never call
+    /// `snapshotManager.createSnapshot(via:)` directly with some other
+    /// store instance, which would defeat the serialization this exists
+    /// for. The single public entry point both the automatic
+    /// (`runSnapshotIfDue`) and manual paths ultimately share.
+    public func createSnapshotNow() async throws -> URL {
+        guard let snapshotManager else {
+            throw LillistError.storeUnavailable(reason: "No snapshot manager configured.")
+        }
+        return try await snapshotManager.createSnapshot(via: store)
     }
 
     // MARK: - Lifecycle

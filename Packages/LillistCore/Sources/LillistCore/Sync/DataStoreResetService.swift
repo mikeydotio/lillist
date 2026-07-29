@@ -1,6 +1,24 @@
 import Foundation
 import os
 
+/// The backup-package resync primitive a destructive reset/restore needs
+/// once it changes what the live store contains (`S23`). `CloudKit`
+/// re-import (`LocalBackupCoordinator.processRemoteChange`) covers the
+/// `.iCloudSync` case incrementally as data streams back in, but a
+/// `.localOnly` wipe has no remote-change notification to trigger
+/// anything — without an explicit call, the package would sit stale
+/// (or, before `S4`'s fix, wrongly pruned to empty) indefinitely.
+/// `LocalBackupCoordinator` is the production conformer. Not
+/// `@MainActor`-isolated (unlike `BackupDataResetting`) — `reconcileFull()`
+/// is a plain nonisolated `async` method, callable from the
+/// `@MainActor`-isolated `DataStoreResetService`/`BackupRestoreService`
+/// like any other `await`.
+public protocol BackupPackageReconciling: Sendable {
+    func reconcileFull() async
+}
+
+extension LocalBackupCoordinator: BackupPackageReconciling {}
+
 /// Result of `DataStoreResetService.recoverInterruptedReseed()` (`S9b`).
 public enum ReseedRecoveryOutcome: Sendable, Equatable {
     /// No reseed was in flight — a normal launch.
@@ -96,6 +114,10 @@ public final class DataStoreResetService {
     /// `AppEnvironment` injects a real `FileReseedJournalStore` so the
     /// record survives a crash.
     private let reseedJournal: any ReseedJournalStore
+    /// Resyncs the live JSON backup package after a successful destructive
+    /// op (`S23`) — see `BackupPackageReconciling`'s doc comment. `nil`
+    /// (the default) preserves prior behavior for tests/legacy callers.
+    private let backupReconciler: (any BackupPackageReconciling)?
 
     /// Shared lock serializing this service against `MigrationCoordinator`
     /// (and `restoreFromBackup`) — both mutate the same `PersistenceHost`
@@ -130,6 +152,7 @@ public final class DataStoreResetService {
         importer: Importer? = nil,
         destructiveOpGate: DestructiveOpGate = DestructiveOpGate(),
         reseedJournal: any ReseedJournalStore = InMemoryReseedJournalStore(),
+        backupReconciler: (any BackupPackageReconciling)? = nil,
         quiesceMinQuietWindow: TimeInterval = 5,
         quiesceHardTimeout: TimeInterval = 300
     ) {
@@ -146,6 +169,7 @@ public final class DataStoreResetService {
         self.importer = importer
         self.destructiveOpGate = destructiveOpGate
         self.reseedJournal = reseedJournal
+        self.backupReconciler = backupReconciler
         self.quiesceMinQuietWindow = quiesceMinQuietWindow
         self.quiesceHardTimeout = quiesceHardTimeout
     }
@@ -285,6 +309,13 @@ public final class DataStoreResetService {
                     conflictPolicy: .replaceExisting,
                     assetsDirectory: stageDir.appendingPathComponent("assets", isDirectory: true)
                 )
+                // S23: explicit re-reconcile after the reimport — the
+                // wipe's own reconcile (inside performReset, above)
+                // already resynced to empty; this deterministically
+                // resyncs to the reseeded content rather than relying on
+                // the local-save observer's incidental timing for
+                // something this important.
+                await backupReconciler?.reconcileFull()
 
                 // 4. propagate, so peers know to discard their own state
                 //    and re-download rather than resurrecting it.
@@ -357,6 +388,9 @@ public final class DataStoreResetService {
             conflictPolicy: .replaceExisting,
             assetsDirectory: stageDir.appendingPathComponent("assets", isDirectory: true)
         )
+        // S23: resync the backup package to the just-recovered content —
+        // same reasoning as the primary (non-crashed) reseed path.
+        await backupReconciler?.reconcileFull()
         try? reseedJournal.clear()
         try? FileManager.default.removeItem(at: stageDir)
         return .resumed
@@ -473,6 +507,13 @@ public final class DataStoreResetService {
                     await breadcrumb("data store reset quiesce timed out, proceeding (still syncing in background)")
                 }
             }
+
+            // S23: resync the live JSON backup package to whatever the
+            // reset just left the store in (empty, or re-importing from
+            // CloudKit) — one chokepoint covers resetAllData/
+            // resetAndRedownload/resetEverywhereToEmpty/the wipe half of
+            // resetAndReseedFromThisDevice.
+            await backupReconciler?.reconcileFull()
 
             LillistLog.sync.notice("data store reset completed")
             await breadcrumb("data store reset completed")

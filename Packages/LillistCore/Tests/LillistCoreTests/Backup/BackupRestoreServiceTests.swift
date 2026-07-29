@@ -51,6 +51,25 @@ struct BackupRestoreServiceTests {
         return p
     }
 
+    /// S23: `preflight` now derives compatibility from the MINIMUM
+    /// `cloudKitSchemaVersion` across the package's actual task records,
+    /// not the manifest (which always reflects the CURRENT build's
+    /// constant — see `LocalBackupCoordinator.updateManifest()` — and so
+    /// is no longer authoritative for "what does this package actually
+    /// contain"). Simulating an incompatible package now requires
+    /// bumping the real per-task record(s), not just the manifest.
+    private func bumpTaskRecordSchemaVersions(in dir: URL, to version: Int) async throws {
+        let reader = BackupPackageReader(packageDirectory: dir)
+        let records = try reader.readTaskRecords()
+        var bumped: [BackupPackageSchema.TaskBackupRecord] = []
+        for record in records {
+            var r = record
+            r.cloudKitSchemaVersion = version
+            bumped.append(r)
+        }
+        try await TaskBackupStore(packageDirectory: dir).upsert(bumped, assets: [])
+    }
+
     private func count(_ entity: String, in p: PersistenceController) async -> Int {
         await p.container.viewContext.perform {
             let req = NSFetchRequest<NSFetchRequestResult>(entityName: entity)
@@ -61,7 +80,7 @@ struct BackupRestoreServiceTests {
     private func makeService(
         into p: PersistenceController, packageDir: URL, reset: any BackupDataResetting,
         diagnosticLog: DiagnosticSink? = nil, process: DiagProcess = .app,
-        propagator: ResetPropagator? = nil
+        propagator: ResetPropagator? = nil, backupReconciler: (any BackupPackageReconciling)? = nil
     ) -> BackupRestoreService {
         BackupRestoreService(
             reset: reset,
@@ -70,8 +89,33 @@ struct BackupRestoreServiceTests {
             packageDirectory: packageDir,
             diagnosticLog: diagnosticLog,
             process: process,
-            propagator: propagator
+            propagator: propagator,
+            backupReconciler: backupReconciler
         )
+    }
+
+    @Test("S23: preflight trusts a stale per-record schema version even when the manifest lies (claims current)")
+    func preflightDistrustsManifestOverStaleRecord() async throws {
+        // The exact mechanism S23 describes: `updateManifest()` always
+        // writes THIS BUILD's CloudKitSchema.currentVersion, regardless
+        // of what any individual task record actually carries — so a
+        // manifest claiming "current" is not proof every record is.
+        // Here the manifest is left alone (still claims current) but the
+        // one real task record is stale (an older build's version) —
+        // preflight must catch this from the record, not the manifest.
+        let dir = tempDir("pkg")
+        defer { try? FileManager.default.removeItem(at: dir) }
+        _ = try await buildPopulatedPackage(into: dir)
+        try await bumpTaskRecordSchemaVersions(in: dir, to: CloudKitSchema.currentVersion - 1)
+        // Deliberately do NOT touch the manifest — it still (correctly,
+        // per production behavior) claims CloudKitSchema.currentVersion.
+
+        let target = try await TestStore.make()
+        let service = makeService(into: target, packageDir: dir, reset: FakeResetter())
+        let pre = try await service.preflight(.livePackage)
+
+        #expect(pre.fileCloudKitSchemaVersion == CloudKitSchema.currentVersion - 1)
+        #expect(!pre.isCompatible)
     }
 
     @Test("preflight reports compatible for a current-schema package")
@@ -160,6 +204,7 @@ struct BackupRestoreServiceTests {
             updatedAt: Date(),
             taskCount: 1
         ))
+        try await bumpTaskRecordSchemaVersions(in: dir, to: CloudKitSchema.currentVersion + 1)
 
         let target = try await TestStore.make()
         let kv = InMemoryKeyValueSyncStore()
@@ -189,7 +234,8 @@ struct BackupRestoreServiceTests {
             try? FileManager.default.removeItem(at: snaps)
         }
         _ = try await buildPopulatedPackage(into: dir)
-        let zip = try BackupSnapshotManager(packageDirectory: dir, snapshotsDirectory: snaps).createSnapshot()
+        let zip = try await BackupSnapshotManager(packageDirectory: dir, snapshotsDirectory: snaps)
+            .createSnapshot(via: TaskBackupStore(packageDirectory: dir))
 
         let target = try await TestStore.make()
         let service = makeService(into: target, packageDir: dir, reset: FakeResetter())
@@ -241,7 +287,8 @@ struct BackupRestoreServiceTests {
         defer { try? FileManager.default.removeItem(at: dir) }
         _ = try await buildPopulatedPackage(into: dir)
 
-        // Rewrite the manifest with a future schema version.
+        // Rewrite the manifest AND the real task record with a future
+        // schema version — S23: only the record is actually authoritative.
         let store = TaskBackupStore(packageDirectory: dir)
         try await store.writeManifest(.init(
             backupSchemaVersion: BackupPackageSchema.version,
@@ -249,6 +296,7 @@ struct BackupRestoreServiceTests {
             updatedAt: Date(),
             taskCount: 1
         ))
+        try await bumpTaskRecordSchemaVersions(in: dir, to: CloudKitSchema.currentVersion + 1)
 
         let target = try await TestStore.make()
         let reset = FakeResetter()
@@ -306,6 +354,7 @@ struct BackupRestoreServiceTests {
             updatedAt: Date(),
             taskCount: 1
         ))
+        try await bumpTaskRecordSchemaVersions(in: dir, to: CloudKitSchema.currentVersion + 1)
 
         let target = try await TestStore.make()
         let spy = SpyDiagnosticSink()
@@ -351,5 +400,46 @@ struct BackupRestoreServiceTests {
         let service = makeService(into: target, packageDir: dir, reset: FakeResetter())
         let summary = try await service.restore(from: .livePackage)
         #expect(summary.tasksInserted == 1)
+    }
+
+    // MARK: - S23: post-restore backup-package reconcile
+
+    /// Records `reconcileFull()` call count.
+    private actor SpyBackupPackageReconciler: BackupPackageReconciling {
+        private(set) var callCount = 0
+        func reconcileFull() async { callCount += 1 }
+    }
+
+    @Test("restore: a successful restore resyncs the backup package exactly once (S23)")
+    func restoreResyncsBackupPackageOnSuccess() async throws {
+        let dir = tempDir("pkg")
+        defer { try? FileManager.default.removeItem(at: dir) }
+        _ = try await buildPopulatedPackage(into: dir)
+
+        let target = try await TestStore.make()
+        let reconciler = SpyBackupPackageReconciler()
+        let service = makeService(into: target, packageDir: dir, reset: FakeResetter(), backupReconciler: reconciler)
+
+        _ = try await service.restore(from: .livePackage)
+
+        #expect(await reconciler.callCount == 1)
+    }
+
+    @Test("restore: a schema-mismatch refusal never resyncs the backup package (S23)")
+    func refusedRestoreDoesNotResyncBackupPackage() async throws {
+        let dir = tempDir("pkg")
+        defer { try? FileManager.default.removeItem(at: dir) }
+        _ = try await buildPopulatedPackage(into: dir)
+        try await bumpTaskRecordSchemaVersions(in: dir, to: CloudKitSchema.currentVersion + 1)
+
+        let target = try await TestStore.make()
+        let reconciler = SpyBackupPackageReconciler()
+        let service = makeService(into: target, packageDir: dir, reset: FakeResetter(), backupReconciler: reconciler)
+
+        await #expect(throws: LillistError.self) {
+            try await service.restore(from: .livePackage)
+        }
+
+        #expect(await reconciler.callCount == 0)
     }
 }

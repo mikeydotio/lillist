@@ -1,4 +1,5 @@
 import Foundation
+import ZIPFoundation
 
 /// Owns all writes to the live backup *package* directory (issue #7).
 ///
@@ -186,6 +187,30 @@ public actor TaskBackupStore {
     public func writeManifest(_ manifest: BackupPackageSchema.Manifest) throws {
         try prepareDirectories()
         try Self.makeEncoder().encode(manifest).write(to: manifestURL, options: [.atomic])
+    }
+
+    // MARK: - Snapshot
+
+    /// Zip `packageDirectory` into `destination`, serialized on this actor
+    /// (`S23`) — the invariant this type's own header doc already promised
+    /// ("a snapshot zip... also hops through this actor"), but which
+    /// `BackupSnapshotManager` didn't actually honor until this method
+    /// existed for it to call through. `upsert`/`remove`/`replaceAll`/
+    /// `writeSidecars`/`writeManifest` bodies never suspend mid-execution,
+    /// so once this call is admitted onto the actor's executor it can
+    /// never interleave with one of them — the zip always captures a
+    /// state that existed at some single, real point in time, never a
+    /// directory another write is concurrently tearing down and
+    /// rebuilding (`replaceAll`'s remove-then-rewrite is the sharpest
+    /// case this closes).
+    @discardableResult
+    public func zipPackage(to destination: URL, shouldKeepParent: Bool = false) throws -> URL {
+        let fm = FileManager.default
+        if fm.fileExists(atPath: destination.path) {
+            try fm.removeItem(at: destination)
+        }
+        try fm.zipItem(at: packageDirectory, to: destination, shouldKeepParent: shouldKeepParent, compressionMethod: .deflate)
+        return destination
     }
 
     // MARK: - Paths

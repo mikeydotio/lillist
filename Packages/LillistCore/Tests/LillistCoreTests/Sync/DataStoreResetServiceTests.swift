@@ -26,7 +26,8 @@ struct DataStoreResetServiceTests {
         accountStateProvider: AccountStateProviding? = nil,
         propagator: ResetPropagator? = nil,
         exporter: Exporter? = nil,
-        importer: Importer? = nil
+        importer: Importer? = nil,
+        backupReconciler: (any BackupPackageReconciling)? = nil
     ) -> DataStoreResetService {
         DataStoreResetService(
             host: host,
@@ -38,7 +39,8 @@ struct DataStoreResetServiceTests {
             accountStateProvider: accountStateProvider,
             propagator: propagator,
             exporter: exporter,
-            importer: importer
+            importer: importer,
+            backupReconciler: backupReconciler
         )
     }
 
@@ -577,6 +579,61 @@ struct DataStoreResetServiceTests {
         // The (corrupt) journal is left as-is — never silently cleared.
         #expect(try reseedJournal.read().phase == .failed)
     }
+
+    // MARK: - S23: post-reset backup-package reconcile
+
+    @Test("resetAllData: a successful reset resyncs the backup package exactly once (S23)")
+    @MainActor
+    func resetAllDataResyncsBackupPackageOnSuccess() async throws {
+        let host = FakePersistenceReconfigurer(initialMode: .localOnly)
+        let eraser = FakeCloudKitZoneEraser()
+        let reconciler = SpyBackupPackageReconciler()
+        let service = makeService(startMode: .localOnly, host: host, eraser: eraser, backupReconciler: reconciler)
+
+        try await service.resetAllData()
+
+        #expect(await reconciler.callCount == 1)
+    }
+
+    @Test("resetAllData: a failed reset never resyncs the backup package (S23)")
+    @MainActor
+    func resetAllDataDoesNotResyncOnFailure() async throws {
+        let host = FakePersistenceReconfigurer(initialMode: .localOnly)
+        await host.failOnRebuild()
+        let eraser = FakeCloudKitZoneEraser()
+        let reconciler = SpyBackupPackageReconciler()
+        let service = makeService(startMode: .localOnly, host: host, eraser: eraser, backupReconciler: reconciler)
+
+        await #expect(throws: LillistError.self) {
+            try await service.resetAllData()
+        }
+
+        #expect(await reconciler.callCount == 0)
+    }
+
+    @Test("resetAndReseedFromThisDevice: resyncs the backup package after both the wipe and the reimport (S23)")
+    @MainActor
+    func resetAndReseedResyncsBackupPackageTwice() async throws {
+        let persistence = try await TestStore.make()
+        let preferences = PreferencesStore(persistence: persistence)
+        _ = try await preferences.read()
+        let host = FakePersistenceReconfigurer(initialMode: .iCloudSync)
+        let eraser = FakeCloudKitZoneEraser()
+        let reconciler = SpyBackupPackageReconciler()
+        let service = makeService(
+            startMode: .iCloudSync, host: host, eraser: eraser,
+            exporter: Exporter(persistence: persistence, preferences: preferences),
+            importer: Importer(persistence: persistence),
+            backupReconciler: reconciler
+        )
+
+        try await service.resetAndReseedFromThisDevice()
+
+        // Once from performReset's own wipe-success chokepoint, once
+        // more explicitly after the reimport — deliberate, not relying
+        // on the local-save observer's incidental timing.
+        #expect(await reconciler.callCount == 2)
+    }
 }
 
 /// Zone eraser that records the call then throws, for the reset
@@ -633,4 +690,15 @@ private actor RealWipingResetHost: PersistenceResetting {
     func reattachStore() async throws {}
 
     func attachStore(at newMode: SyncMode) async throws {}
+}
+
+/// Records `reconcileFull()` call count — proves `S23`'s post-reset
+/// resync wiring without needing a real `LocalBackupCoordinator`/live
+/// package.
+private actor SpyBackupPackageReconciler: BackupPackageReconciling {
+    private(set) var callCount = 0
+
+    func reconcileFull() async {
+        callCount += 1
+    }
 }

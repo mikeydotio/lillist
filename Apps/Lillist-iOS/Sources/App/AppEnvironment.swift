@@ -316,6 +316,32 @@ final class AppEnvironment {
         // explicit shared instance is what actually closes the
         // cross-type window in production.
         let destructiveOpGate = DestructiveOpGate()
+
+        // Issue #7: local JSON backup subsystem, rooted alongside the store
+        // and quarantine under the App Group container (`<root>/Backup/Package`
+        // + `<root>/Backup/Snapshots`). Constructed here (ahead of
+        // dataStoreReset below) so it can be injected into
+        // DataStoreResetService as backupReconciler (S23) — the reset
+        // service needs the coordinator to resync the live JSON package
+        // after a destructive wipe.
+        let backupBase = quarantineRoot.appendingPathComponent("Backup", isDirectory: true)
+        let backupPackageDirectory = backupBase.appendingPathComponent("Package", isDirectory: true)
+        let backupSnapshotsDirectory = backupBase.appendingPathComponent("Snapshots", isDirectory: true)
+        let backupSnapshotManager = BackupSnapshotManager(
+            packageDirectory: backupPackageDirectory,
+            snapshotsDirectory: backupSnapshotsDirectory
+        )
+        self.backupSnapshotManager = backupSnapshotManager
+        let localBackupCoordinator = LocalBackupCoordinator(
+            persistence: persistence,
+            preferences: preferencesStore,
+            store: TaskBackupStore(packageDirectory: backupPackageDirectory),
+            tokenStore: PersistentHistoryTokenStore(appGroupID: Self.appGroupID, key: PersistentHistoryTokenStore.backupKey),
+            snapshotManager: backupSnapshotManager,
+            destructiveOpGate: destructiveOpGate
+        )
+        self.localBackupCoordinator = localBackupCoordinator
+
         self.pauseReasonClassifier = PauseReasonClassifier(
             accountMonitor: accountStateMonitor,
             networkMonitor: ConstantNetworkReachability(reachable: true)
@@ -382,7 +408,8 @@ final class AppEnvironment {
             exporter: Exporter(persistence: persistence, preferences: preferencesStore),
             importer: Importer(persistence: persistence),
             destructiveOpGate: destructiveOpGate,
-            reseedJournal: reseedJournal
+            reseedJournal: reseedJournal,
+            backupReconciler: localBackupCoordinator
         )
         self.resetSignalMonitor = ResetSignalMonitor(
             inbox: controlInbox,
@@ -393,25 +420,6 @@ final class AppEnvironment {
             try await dataStoreReset.resetAndRedownload()
         }
 
-        // Issue #7: local JSON backup subsystem, rooted alongside the store and
-        // quarantine under the App Group container (`<root>/Backup/Package` +
-        // `<root>/Backup/Snapshots`).
-        let backupBase = quarantineRoot.appendingPathComponent("Backup", isDirectory: true)
-        let backupPackageDirectory = backupBase.appendingPathComponent("Package", isDirectory: true)
-        let backupSnapshotsDirectory = backupBase.appendingPathComponent("Snapshots", isDirectory: true)
-        let backupSnapshotManager = BackupSnapshotManager(
-            packageDirectory: backupPackageDirectory,
-            snapshotsDirectory: backupSnapshotsDirectory
-        )
-        self.backupSnapshotManager = backupSnapshotManager
-        self.localBackupCoordinator = LocalBackupCoordinator(
-            persistence: persistence,
-            preferences: preferencesStore,
-            store: TaskBackupStore(packageDirectory: backupPackageDirectory),
-            tokenStore: PersistentHistoryTokenStore(appGroupID: Self.appGroupID, key: PersistentHistoryTokenStore.backupKey),
-            snapshotManager: backupSnapshotManager,
-            destructiveOpGate: destructiveOpGate
-        )
         self.backupRestoreService = BackupRestoreService(
             reset: self.dataStoreReset,
             importer: Importer(persistence: persistence),
@@ -419,7 +427,8 @@ final class AppEnvironment {
             packageDirectory: backupPackageDirectory,
             diagnosticLog: diagnosticLog,
             process: .app,
-            propagator: resetPropagator
+            propagator: resetPropagator,
+            backupReconciler: localBackupCoordinator
         )
 
         // Tasks from Reminders: EventKit gateway + drain importer. The
