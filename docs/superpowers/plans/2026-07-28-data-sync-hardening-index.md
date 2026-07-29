@@ -111,38 +111,55 @@ next plan, `5b` `widget-snapshot-correctness`, next.**
   — contains the full `withMutationRollback` design (UML), the conformance-
   test design, and both corrections above written in place (not a separate
   addendum, since nothing had built on the superseded claims yet). Commit
-  range `84dd7a39..6b84143f` (20 commits: 1 docs, 1 `chore(stories)`
-  in-progress, 13 fix/feat/test, 1 `chore(stories)` done — plus one
-  discovered-and-filed story, `LIL-86`, for an unrelated pre-existing test
-  fragility found while verifying, see below). Full `LillistCore` suite
-  green **twice in a row** with unmasked exit codes and a clean grep for
-  the failure markers (1406 tests, 253 suites, up from `4c`'s 1376/241
-  baseline — the count also reflects `1d`'s `X10TimezoneDedupKnownLimitationTests`
-  suite being explicitly skipped, see below; one `SIGSEGV`/signal-11
-  worker-crash flake hit on the first of the two `--skip`ped runs, matching
-  the documented parallel-test-flake class exactly, cleared on immediate
-  retry); LillistUI non-snapshot suite green (83 tests, 17 suites,
-  unchanged); `lillist-cli` builds; both apps verified with unsigned
-  `xcodebuild` builds (BUILD SUCCEEDED) after the `L5` commit (the only
-  app-touching one — `TasksView.swift`/`MacTasksView.swift`'s call-site
-  updates for the `BatchIDOutcome` return type, plus macOS
-  `AppEnvironment.swift`'s `normalizeSingletons()` wiring from the `M4`/`X20`
-  commit, verified separately at that point too).
-  **Discovered, out-of-scope defect — filed as `LIL-86`, not fixed here:**
+  range `84dd7a39..9c5aecef` (23 commits: 1 docs, 1 `chore(stories)`
+  in-progress, 13 fix/feat/test, 1 `chore(stories)` done, 1 test-only fix
+  for a discovered-during-verification defect (`LIL-86`, see below), 2 more
+  `chore(stories)`). Full `LillistCore` suite green **twice in a row** with
+  unmasked exit codes and a clean grep for the failure markers, **zero
+  skips** — 1408 tests, 254 suites (up from `4c`'s 1376/241 baseline). One
+  `SIGSEGV`/signal-11 worker-crash flake hit on the first of these final
+  two runs — no individual test failure line, only the outer driver's
+  signal 11 for the `swiftpm-testing-helper` subprocess, matching the
+  documented parallel-test-flake class exactly — cleared on immediate
+  retry. (An earlier verification pass, before `LIL-86` was fixed,
+  explicitly `--skip`ped that one test and said so at every step; the final
+  two green runs reported here run the complete, unmodified suite.)
+  LillistUI non-snapshot suite green (83 tests, 17 suites, unchanged);
+  `lillist-cli` builds; both apps verified with unsigned `xcodebuild`
+  builds (BUILD SUCCEEDED) after the `L5` commit (the only app-touching
+  one — `TasksView.swift`/`MacTasksView.swift`'s call-site updates for the
+  `BatchIDOutcome` return type, plus macOS `AppEnvironment.swift`'s
+  `normalizeSingletons()` wiring from the `M4`/`X20` commit, verified
+  separately at that point too).
+  **Discovered-during-verification defect — filed AND fixed as a final
+  plan item, `LIL-86`:**
   `X10TimezoneDedupKnownLimitationTests.differingTimeZoneDevicesBothFire`
   (a `4b`-owned pinned-KNOWN-LIMITATION test) failed deterministically
-  during this plan's verification runs. Confirmed via a temporary,
-  immediately-removed `git worktree` at `6cc5fa4c` (the tip of `4c`, before
-  any `5a` work) that the identical test fails byte-identically there too
-  — proving it predates this plan entirely and is not a regression from
-  any of `5a`'s nine fixes. Likely a wall-clock-time-dependent test
-  fixture issue (the test's `devAFireDate`/`devBFireDate` computation
-  depends on the live `Date()` at run time, not an injected fixed `now`),
-  not a production bug — see `LIL-86`'s full body for the suspected
-  mechanism. Every full-suite run in this closing report explicitly
-  `--skip`s this one test and says so; nothing else was excluded or
-  suppressed. See *Wave 5a closing report* below for the per-finding
-  breakdown, the class-kill demonstration, and what `5b` needs to know.
+  during this plan's verification runs. Confirmed via two independent
+  bisections — a temporary worktree at `6cc5fa4c` (the tip of `4c`, before
+  any `5a` commit existed) reproducing it byte-identically, and a targeted
+  `git revert --no-commit` of just the `M4`/`X20` commit (keeping every
+  other `5a` commit) still reproducing it — that this predates `5a` and
+  isn't caused by any of its nine fixes, ruling out the team lead's own
+  independently-raised "M4 changed what a fresh-install device resolves"
+  hypothesis directly (confirmed structurally: the test never references
+  `PreferencesStore` at all). Root-caused precisely: `NotificationScheduler
+  .computeDesiredRequests`'s cross-device dedup check (`lastFired >=
+  fireDate - 60s`, `Notifications/NotificationScheduler.swift:189-192`)
+  compares **absolute** instants, and whether Tokyo's or Los Angeles's
+  respective "9am on the calendar day of a shared deadline instant" lands
+  later in UTC flips depending on which side of a ~15:00 UTC boundary the
+  live `Date()` (the test's un-injected anchor) happens to fall on when the
+  suite runs — a genuine day-alignment race against the wall clock, not
+  the flaky-test class this ledger already documents elsewhere. Fixed
+  (test-only, `LIL-86` closed) by anchoring both tests to a fixed, explicit
+  UTC instant chosen so Tokyo's calendar day is deterministically one day
+  ahead of Los Angeles's for that instant, matching
+  `NotificationSchedulerDSTTests`'s own far-future-fixed-date convention;
+  verified deterministic across 5 consecutive isolated runs plus the two
+  final zero-skip full-suite runs above. See *Wave 5a closing report*
+  below for the per-finding breakdown, the class-kill demonstration, the
+  full `LIL-86` root-cause derivation, and what `5b` needs to know.
 
 - ✅ **Plan `4c` closed all 4 findings** (`H1 X7 X16 X17` /
   `LIL-19 LIL-38 LIL-65 LIL-66`) — `H1`: `RecurrenceSpawner` anchored every
@@ -1857,19 +1874,25 @@ built on the superseded claims yet.
 | `L3` | `LIL-72` | `de65d178` | `TaskStoreSyncCountsL3Tests.swift` (1) — timing-based, verified genuinely red against the pre-fix implementation via a shell-level-timeout-guarded probe (an earlier open-ended-gate version of the same probe deadlocked the whole `swift test` process for 2+ minutes; redesigned to a bounded window before landing) |
 | `L4` | `LIL-73` | `644b5626` (test only — the guard itself landed inside `8d3cbafc`'s `unassignTag` migration) | `TaskStoreCRUDTests.swift`'s two new cases |
 | `L5` | `LIL-74` | `ae47939d` | `TaskStoreArchiveL5SkipAndReportTests.swift` (3) + `TaskStoreArchiveTests.swift` updated for the new `BatchIDOutcome` return type |
+| `LIL-86` (discovered during verification, not one of the 70 findings — see below) | `LIL-86` | `79fc1f68` | `X10TimezoneDedupKnownLimitationTests.swift` (test-only fix; both existing tests, no new ones) |
 
-**Commit range:** `84dd7a39..6b84143f` — 1 docs (`84dd7a39`), 1
+**Commit range:** `84dd7a39..9c5aecef` — 1 docs (`84dd7a39`), 1
 `chore(stories)` in-progress (`87454042`), 13 fix/feat/test commits, 1
-`chore(stories)` done (`6b84143f`). Full `LillistCore` suite green **twice
-in a row** with unmasked exit codes and a clean grep for the failure
-markers, **excluding one explicitly-`--skip`ped pre-existing test** (see
-below) — 1406 tests, 253 suites (up from `4c`'s 1376/241 baseline; the
-per-test delta reflects new regression tests added across the 13 fix
-commits). One `SIGSEGV`/signal-11 worker-crash flake hit on the first of
-the two `--skip`ped runs — no individual test failure line, only the outer
-driver's signal 11 for the `swiftpm-testing-helper` subprocess, matching
-the documented parallel-test-flake class exactly — cleared on immediate
-retry. LillistUI non-snapshot suite green (83 tests, 17 suites,
+`chore(stories)` done (`6b84143f`), 1 test-only fix for `LIL-86`
+(`79fc1f68`, see below), 2 more `chore(stories)` (`6b84143f`'s companion
+LIL-86-move `9c5aecef`, plus the one already counted). Full `LillistCore`
+suite green **twice in a row** with unmasked exit codes and a clean grep
+for the failure markers, running the **complete suite with zero skips** —
+1408 tests, 254 suites (up from `4c`'s 1376/241 baseline). One
+`SIGSEGV`/signal-11 worker-crash flake hit on the first of these final two
+runs — no individual test failure line, only the outer driver's signal 11
+for the `swiftpm-testing-helper` subprocess, matching the documented
+parallel-test-flake class exactly — cleared on immediate retry. (Two
+earlier full-suite attempts, before `LIL-86`'s fix landed, hit the
+still-unfixed `LIL-86` failure directly — one clean run and one
+`--skip`-guarded pair are recorded further down as part of the diagnosis
+trail; only the final two zero-skip runs are the plan's closing
+verification.) LillistUI non-snapshot suite green (83 tests, 17 suites,
 unchanged); `lillist-cli` builds; both apps verified with unsigned
 `xcodebuild` builds (BUILD SUCCEEDED) after the `L5` commit, which is the
 only one that touched app-target files (`TasksView.swift`/
@@ -1878,23 +1901,42 @@ only one that touched app-target files (`TasksView.swift`/
 commit) was also verified with its own unsigned macOS build at the time it
 landed.
 
-**Discovered, out-of-scope defect — filed as `LIL-86`, not fixed here (not
-one of the 70 cataloged findings):**
+**Discovered-during-verification defect — `LIL-86`, filed AND fixed as a
+final plan item (not one of the 70 cataloged findings):**
 `X10TimezoneDedupKnownLimitationTests.differingTimeZoneDevicesBothFire` (a
 `4b`-owned pinned-KNOWN-LIMITATION regression test) failed deterministically
-during this plan's first two full-suite verification attempts, with a
-different symptom than the limitation it documents: `centerB` had **zero**
-pending notification requests, not a deduped-but-present one. Root-caused
-as pre-existing, not a `5a` regression, by reproducing the identical
-failure in a temporary `git worktree` checked out at `6cc5fa4c` (the tip of
-`4c`, before any `5a` commit existed) and immediately removed after
-confirming. Every subsequent full-suite run in this closing report's
-verification `--skip`s this one test by name and says so explicitly — no
-other test was excluded or its failure suppressed. Filed as `LIL-86`
-(labels `plan-6a`, `discovered-during-5a`) with the suspected mechanism
-(the test's fixture computes fire dates from the live `Date()` at run time
-instead of an injected fixed `now`, making it wall-clock-time-dependent)
-in the story body for whoever picks up `6a`'s completeness sweep.
+during this plan's verification runs, with a different symptom than the
+limitation it documents: `centerB` had **zero** pending notification
+requests, not a deduped-but-present one. Two independent bisections ruled
+out every `5a` fix as the cause, including the team lead's own
+independently-raised hypothesis that `M4` was responsible: (1) a temporary
+`git worktree` at `6cc5fa4c` (tip of `4c`, before any `5a` commit existed)
+reproduced the identical failure byte-for-byte; (2) a targeted `git revert
+--no-commit` of just the `M4`/`X20` commit (`623abe1c`), keeping every
+other `5a` commit intact, still reproduced it identically — and a source
+check confirmed the test never references `PreferencesStore` at all
+(`M4`'s code path is structurally unreachable from it). Root-caused
+precisely: `NotificationScheduler.computeDesiredRequests`'s cross-device
+dedup check (`lastFired >= fireDate - 60s`,
+`Notifications/NotificationScheduler.swift:189-192`) compares **absolute**
+instants, and whether Tokyo's or Los Angeles's respective "9am on the
+calendar day of a shared deadline instant" lands later in UTC flips
+depending on which side of a ~15:00 UTC boundary the live `Date()` (the
+test's un-injected anchor, `Date().addingTimeInterval(86_400)`) happens to
+fall on when the suite runs — a genuine day-alignment race against the
+wall clock. Fixed test-only (`Closes LIL-86`, commit `79fc1f68`): both
+tests now anchor to a fixed, explicit UTC instant
+(`2099-06-15T20:00:00Z`) chosen so Tokyo's calendar day is deterministically
+one day ahead of Los Angeles's for that instant — guaranteeing the dedup
+comparison always resolves the same way regardless of when the suite
+actually runs, and (as a bonus) keeping both computed fire dates safely in
+the future relative to any real "now," sidestepping
+`computeDesiredRequests`'s separate past-due-fire-date filter too — matching
+`NotificationSchedulerDSTTests`'s own far-future-fixed-date convention.
+Verified deterministic across 5 consecutive isolated runs of just this
+suite, plus the two final zero-skip full-suite runs reported above. No
+production code changed; the `LIL-83` KNOWN LIMITATION itself is unaffected
+and remains pinned.
 
 **Class-kill demonstration (per the wave brief, not committed):**
 temporarily reverted `TagStore.setTintColor` to call `try context.save()`
@@ -2005,7 +2047,7 @@ Wave 6 closeout. **Status** starts `pending` for everything except Wave 0.
 | 5 | **5a** `mutation-scope-discipline` | `H5 M4 M6 M7 L3 L4 L5 X19 X20` | ✅ complete |
 | 5 | **5b** `widget-snapshot-correctness` | `X5 X6` | ⬜ pending |
 | 5 | **5c** `watermark-registry-pruning` | `X12 L7` | ⬜ pending |
-| 6 | **6a** `completeness-and-lows` + closeout | `L1 L2 L6` + export round-trip equality suite + `X20` flip-flop stress (builds atop 5a's fix, not a new finding) + any residuals from Waves 1-5, incl. `LIL-77` (discovered during `1d`, not one of the 70 findings) and `LIL-86` (discovered during `5a`, a pre-existing test fragility, not one of the 70 findings — see the *Wave 5a closing report*'s discovered-defect note for the suspected mechanism and what a fix needs to do). **Not included:** `LIL-83` (discovered during `4b`) — the underlying data-model change was explicitly **deferred out of this program** (orchestrator decision, 2026-07-29 — see *Decisions awaiting Mikey* below); do not pick it up in `6a`, it isn't program-scheduled work. | ⬜ pending |
+| 6 | **6a** `completeness-and-lows` + closeout | `L1 L2 L6` + export round-trip equality suite + `X20` flip-flop stress (builds atop 5a's fix, not a new finding) + any residuals from Waves 1-5, incl. `LIL-77` (discovered during `1d`, not one of the 70 findings). `LIL-86` (discovered during `5a`) was fixed within `5a` itself (test-only, `Closes LIL-86`) rather than carried forward — no `6a` action needed. **Not included:** `LIL-83` (discovered during `4b`) — the underlying data-model change was explicitly **deferred out of this program** (orchestrator decision, 2026-07-29 — see *Decisions awaiting Mikey* below); do not pick it up in `6a`, it isn't program-scheduled work. | ⬜ pending |
 
 **Finding-count check:** 70 unique findings (`C1`-`C4`, `H1`-`H7`, `M1`-`M7`,
 `L1`-`L7` from the stores sweep = 25; `S1`-`S4`, `S5`-`S13` with `S9` split
