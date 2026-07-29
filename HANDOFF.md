@@ -1,114 +1,83 @@
-# HANDOFF — Data & Sync Hardening, Wave 5 complete → Wave 6 (closeout)
+# HANDOFF — Data & Sync Hardening: PROGRAM COMPLETE, PR not yet opened
 
 **Worktree:** `/Volumes/Code/mikeyward/Lillist/.claude/worktrees/data-sync-hardening`
 **Branch:** `hardening/data-sync-2026-07`
-**State:** Wave 0, all of Wave 1 (`1a`-`1d`), all of Wave 2 (`2a`, `2b`), all
-of Wave 3 (`3a`, `3b`), all of Wave 4 (`4a`, `4b`, `4c`), and now **all of
-Wave 5** (`5a` `mutation-scope-discipline`, `5b`
-`widget-snapshot-correctness`, `5c` `watermark-registry-pruning`) are
-**COMPLETE**. **Wave 6 (`6a` `completeness-and-lows` + program closeout) is
-next — the program's last wave.**
+**State:** All 70 findings from `docs/reviews/2026-07-28-data-sync-review.md`
+are closed across Waves 0–6. This was the program's last wave (`6a`
+`completeness-and-lows` + closeout). **Nothing left to fix.** The only
+remaining step is opening the one program PR — see below.
 
-## What landed this wave (plan `5c`)
+## What landed in Wave 6
 
-Both findings closed (`X12 L7` / stories `LIL-43 LIL-76`). Full details, the
-per-finding test/commit table, the two class-kill demonstration transcripts,
-and the contended-machine verification log are in the ledger's *Wave 5c
-closing report*
-(`docs/superpowers/plans/2026-07-28-data-sync-hardening-index.md`) and the
-plan doc
-(`docs/superpowers/plans/2026-07-28-plan-5c-watermark-registry-pruning.md`).
+Full per-item design: `docs/superpowers/plans/2026-07-28-plan-6a-completeness-and-lows.md`.
+Full commit table + verification transcript: the ledger's *Wave 6 closing
+report* (`docs/superpowers/plans/2026-07-28-data-sync-hardening-index.md`).
 
-- **`X12`/`L7`**: `HistoryPruner.sweep()` used to delete everything before
-  the coordinator's *current* token, correct only because both apps'
-  `bootstrap()` happens to run every history consumer's catch-up before the
-  sweep call — a property no compiler or test enforced. A Share Extension
-  write landing while the main app was closed could be pruned before
-  `DiagnosticHistoryObserver` (or any consumer) ever saw it. New
-  `WatermarkRegistry` (`Persistence/WatermarkRegistry.swift`) replaces `3b`'s
-  deliberately narrow `HistoryWatermarks` seam: `HistoryConsumerID` is a
-  closed enum a `PersistentHistoryTokenStore` can only be constructed with
-  (never an arbitrary key string), and `pruneBoundary(in:)` computes the
-  earliest of every registered consumer's own watermark by scanning the
-  store's full retained history (`NSPersistentHistoryToken` has no public
-  ordering API). `HistoryPruner.sweep()` now returns a `SweepOutcome`
-  (`.pruned`/`.skippedICloudSync`/`.skippedNoHistory`/`.skippedNoSafeBoundary`)
-  instead of a bare `Bool`, and is fail-safe when any registered consumer
-  has no watermark yet — never guesses a substitute boundary. `L7`'s dead
-  bookkeeping-key write is removed outright (kept only as
-  `HistoryPruner.legacyBookkeepingKey`, `internal`, so
-  `WatermarkRegistry.clearAll()` can purge it from installs that wrote it
-  before this fix).
+- `L1`/`L2`/`L6` (the program's three remaining lows) — closed.
+- Six residuals flagged across earlier waves' closing reports, folded into
+  this wave's scope — closed: `LIL-77` (crash-prompt toggle bound to the
+  wrong preference store), `LIL-80`/`LIL-81` (`restoreFromBackup`'s missing
+  backup-package resync and account-changed guard), `LIL-82`
+  (`TaskDuplicateReconciler.diagnosticLog` wiring), `LIL-84` (three named
+  timing-flake tests hardened, each with a shape-appropriate fix), `LIL-87`
+  (`LocalBackupCoordinator`'s missing launch-time history catch-up).
+- Two **genuinely new** defects this wave's own completeness-proof tests
+  surfaced — found and fixed in the same session: `LIL-88` (`Importer.apply`
+  never restored `document.preferences` at all — every export/import cycle
+  silently reverted every account-level preference to its default) and
+  `LIL-89` (`recoverInterruptedReseed()` never broadcast to peers, found via
+  the ledger residual sweep, not a test).
+- `LIL-90` (a latent `NotificationSpec` in-place-edit reconcile gap) —
+  reconfirmed still correctly deferred, not fixed (unreachable in production
+  today; fixing it now would be speculative code).
+- Two new completeness-proof test suites the wave brief called for
+  directly: export/import round-trip equality (the suite that caught
+  `LIL-88`), and an `X20` flip-flop stress test across two real
+  cross-process controllers.
 
-Commit range `1dfedd84..bec420da` (6 commits). Full `LillistCore` suite
-green **twice in a row** with unmasked exit codes and a clean grep for the
-failure markers (1429 tests, 259 suites — up from `5b`'s 1419/257 baseline).
-Both apps verified with unsigned `xcodebuild` builds (BUILD SUCCEEDED,
-including all widget/Share/Shortcuts extensions).
+**Verification:** full `LillistCore` suite green twice at the final commit
+(1451 tests, 262 suites, unmasked exit codes, clean failure-marker grep; one
+SIGSEGV worker-crash flake between the two runs, matching the documented
+class, cleared on retry). LillistUI non-snapshot suite green (87/18).
+`lillist-cli` builds. Both apps verified with unsigned `xcodebuild` builds.
+`xcodegen generate` — zero drift for both `project.yml` specs.
 
-**Verification ran on an unusually contended machine** (load average
-persistently 4-5) — hit a `SIGSEGV` worker crash, the named "quiesce pair"
-timing flake twice, the named "X16 boundary" flake, and once even a `5b`-own
-`WidgetRefreshControllerTests` flake despite that plan's own two hardening
-passes. Every one traced to a known, pre-existing, unrelated flake class
-(confirmed by isolated re-run or the accepted serial tiebreaker) before being
-discounted — see the ledger's closing report for the full run-by-run log.
-Worth a heads-up to whoever runs `6a`'s own verification: this machine was
-genuinely busy tonight, budget for retries.
+## What still needs Mikey (not gates on anything — tracked, not blocking)
 
-**Class-kill demonstrations (not committed, reverted after):**
-1. Hardcoded one of the three registered watermark key literals outside
-   `WatermarkRegistry.swift` — `WatermarkRegistryConformanceTests` failed
-   immediately, pinpointing the file.
-2. Reverted `HistoryPruner.sweep()` to its pre-`5c` "prune before now" body
-   — `X12WatermarkGatedPruningTests` failed red, and the lagging-consumer
-   case surfaced a genuine `NSPersistentHistoryTokenExpiredError` (Core Data
-   itself reporting the deleted-out-from-under-it transaction) — `X12` made
-   concrete, not just theoretical.
+Both are named, with a redesign trigger, in the ledger's *Decisions
+awaiting Mikey* section:
 
-## What `6a` (completeness-and-lows + closeout) needs to know
+- **`LIL-83`** — `X10`'s all-day-notification timezone-dedup posture needs
+  a new synced `AppPreferences` home-timezone field, which needs a
+  Development→Production CloudKit schema deploy in the Console — explicitly
+  deferred out of this program (near its end, not worth expanding the
+  zero-schema-change posture this program held throughout). Redesign
+  trigger: a real user report of a cross-timezone duplicate notification,
+  or Mikey scheduling the field work directly.
+- **`LIL-90`** — the latent `NotificationSpec` in-place-edit gap. Redesign
+  trigger: any new `NotificationSpecStore.update` caller reachable from a
+  different device/process than the one that created the spec (e.g. a
+  future cross-device snooze feature).
 
-Every serial chain this ledger tracks is now closed for good — `6a` is a
-sweep across residuals and the program's remaining low-severity findings
-(`L1 L2 L6`), not a new shared-file chain. Read the ledger's *Wave/plan
-table* and *Story-ID cross-reference table* for `6a`'s exact scope.
+Plus the full **manual-verification checklist** in the ledger (CloudKit
+Console purge-record audit, macOS store-location migration, live sync-mode
+switches, a second-Apple-ID account switch, two-device reset propagation,
+real-widget checks) — none of it gates anything; it's for Mikey to run at
+leisure with real devices/accounts.
 
-- `HistoryWatermarks.swift` no longer exists — `WatermarkRegistry`
-  (`Persistence/WatermarkRegistry.swift`) is the only watermark-reset
-  mechanism from here forward.
-- `PersistentHistoryTokenStore`'s public API changed shape (`key: String` →
-  `consumer: HistoryConsumerID`) — a fourth history consumer, if ever
-  needed, registers by adding a case to `HistoryConsumerID`.
-- **Discovered, out-of-scope residual, flagged not fixed
-  (`5c`'s plan doc §7):** `LocalBackupCoordinator.bootstrapAtLaunch()` never
-  calls its own `processRemoteChange()` as an explicit launch-time catch-up
-  — it only advances its watermark from a *live* notification firing while
-  the app happens to be running. `5c`'s registry-gated pruner directly
-  closes `X12`'s data-loss risk regardless (a stale backup watermark now
-  correctly blocks the sweep instead of being silently pruned past), but the
-  underlying staleness can still cause unbounded history growth if no future
-  remote-change notification happens to fire. Worth a look in `6a`; not one
-  of the 70 cataloged findings.
-- The `WidgetRefreshControllerTests` contention-sensitivity noted above is
-  worth a glance if `6a` hits it again — not a regression, `5b`'s hardening
-  may just not be proof against every load condition this shared machine can
-  produce.
+## Next step — open the one program PR, then stop
 
-**Discovered, out-of-scope residuals — not fixed, all still open**
-(carried forward unchanged from the `5b` handoff):
-- `TaskDuplicateReconciler.diagnosticLog` unwired in both apps (`1a`'s M5,
-  flagged in `4a`) — `6a` completeness sweep.
-- `recoverInterruptedReseed()`'s crash-recovery path never broadcasts
-  (`3b`); `LIL-81` (`3a`); `LIL-77` (`1d`) — all still open.
-- A remote `NotificationSpec.snoozedUntil`/`.offsetMinutes` in-place edit is
-  still invisible to `RemoteChangeReconciler`'s diff (X9's scope note) —
-  latent, not reachable today.
-- `LIL-83` (X10's timezone-posture schema change) — explicitly deferred out
-  of this program (orchestrator decision, 2026-07-29). Not
-  program-scheduled work; don't pick it up in `6a`.
+Per this worktree's standing rule (deploys/merges only run from `main`,
+never from a linked worktree): push this branch, open one PR summarizing
+the whole program (link the review doc + the ledger), and **stop** — no
+merge, no version bump, no deploy from here. The orchestrator/Mikey reviews
+and merges from `main`.
 
-## Standing worktree rules (unchanged)
+## If you're picking this up fresh
 
-No merge, no `/semver bump`, no `/deployit deploy` from this worktree.
-One PR opens at the very end of Wave 6 — this session stops after
-opening it, per policy.
+Read, in order: this file → the ledger's *Current status* banner (now reads
+PROGRAM COMPLETE) → the *Wave 6 closing report* → the plan doc above. There
+is no next wave. If something in production surfaces a NEW defect, it's a
+new investigation (or, if it retriggers `LIL-83`/`LIL-90`'s known
+limitations specifically, use their existing redesign triggers above), not
+a resumption of this program.
