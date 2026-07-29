@@ -840,17 +840,51 @@ public final class TaskStore: @unchecked Sendable {
     /// has a CloudKit record identity once the mirror has accepted it for export.
     /// This is the closest supported "is it in iCloud" signal; NSPCC exposes no
     /// per-record server-confirmation flag (see engineering-notes 2026-06-27).
+    /// L3: runs on a background context, not the main-queue `viewContext` —
+    /// `mirrored`'s `NSPersistentCloudKitContainer.recordIDs(for:)` needs
+    /// every task's `NSManagedObjectID` as input (there is no CloudKit-
+    /// mirrored-count-only API), so this materializes every id regardless;
+    /// moving that unbounded work off `viewContext` keeps it from
+    /// contending with UI-driven fetches as the task count grows. `local`'s
+    /// count moves to the same background context for one round trip rather
+    /// than two. Object IDs are valid across any context sharing this
+    /// controller's persistent store coordinator, so passing them to
+    /// `cloud.recordIDs(for:)` (itself coordinator-scoped, not
+    /// context-scoped) is unaffected by which context fetched them.
+    /// L3: runs on a background context, not the main-queue `viewContext` —
+    /// `mirrored`'s `NSPersistentCloudKitContainer.recordIDs(for:)` needs
+    /// every task's `NSManagedObjectID` as input (there is no CloudKit-
+    /// mirrored-count-only API), so this materializes every id regardless;
+    /// moving that unbounded work off `viewContext` keeps it from
+    /// contending with UI-driven fetches as the task count grows. `local`'s
+    /// count moves to the same background context for one round trip rather
+    /// than two. Object IDs are valid across any context sharing this
+    /// controller's persistent store coordinator, so passing them to
+    /// `cloud.recordIDs(for:)` (itself coordinator-scoped, not
+    /// context-scoped) is unaffected by which context fetched them.
+    /// L3: runs on a background context, not the main-queue `viewContext` —
+    /// `mirrored`'s `NSPersistentCloudKitContainer.recordIDs(for:)` needs
+    /// every task's `NSManagedObjectID` as input (there is no CloudKit-
+    /// mirrored-count-only API), so this materializes every id regardless;
+    /// moving that unbounded work off `viewContext` keeps it from
+    /// contending with UI-driven fetches as the task count grows. `local`'s
+    /// count moves to the same background context for one round trip rather
+    /// than two. Object IDs are valid across any context sharing this
+    /// controller's persistent store coordinator, so passing them to
+    /// `cloud.recordIDs(for:)` (itself coordinator-scoped, not
+    /// context-scoped) is unaffected by which context fetched them.
     public func syncCounts() async throws -> SyncCounts {
-        try await context.perform { [self] in
+        let bg = persistence.makeBackgroundContext()
+        return try await bg.perform { [self] in
             let countReq = NSFetchRequest<NSFetchRequestResult>(entityName: "LillistTask")
-            let local = try context.count(for: countReq)
+            let local = try bg.count(for: countReq)
             guard local > 0,
                   let cloud = persistence.container as? NSPersistentCloudKitContainer else {
                 return SyncCounts(local: local, mirrored: 0)
             }
             let idReq = NSFetchRequest<NSManagedObjectID>(entityName: "LillistTask")
             idReq.resultType = .managedObjectIDResultType
-            let ids = try context.fetch(idReq)
+            let ids = try bg.fetch(idReq)
             return SyncCounts(local: local, mirrored: cloud.recordIDs(for: ids).count)
         }
     }
