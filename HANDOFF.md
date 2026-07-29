@@ -62,24 +62,35 @@ plan doc
   `TaskDuplicateReconciler.reconcileDuplicates` gained rollback-on-failure
   it never had (a second, previously-unnamed `H5` instance).
 
-Commit range `84dd7a39..6b84143f` (20 commits). Full `LillistCore` suite
+Commit range `84dd7a39..9c5aecef` (23 commits). Full `LillistCore` suite
 green **twice in a row** with unmasked exit codes and a clean grep for the
-failure markers (1406 tests, 253 suites — up from `4c`'s 1376/241 baseline),
-**explicitly `--skip`ping one pre-existing, unrelated failing test** (see
-below) — no other exclusions. LillistUI non-snapshot suite green (83/17,
-unchanged); `lillist-cli` builds; both apps verified with unsigned
-`xcodebuild` builds after the one app-touching commit (`L5`'s call-site
-updates) and after the `M4`/`X20` commit (macOS `AppEnvironment.swift`
-wiring).
+failure markers, running the **complete suite with zero skips** — 1408
+tests, 254 suites (up from `4c`'s 1376/241 baseline). LillistUI
+non-snapshot suite green (83/17, unchanged); `lillist-cli` builds; both
+apps verified with unsigned `xcodebuild` builds after the one app-touching
+commit (`L5`'s call-site updates) and after the `M4`/`X20` commit (macOS
+`AppEnvironment.swift` wiring).
 
-**Discovered, out-of-scope defect — filed as `LIL-86`, not fixed:**
-`X10TimezoneDedupKnownLimitationTests.differingTimeZoneDevicesBothFire` (a
-`4b`-owned test) fails deterministically as of this writing — confirmed via
-a temporary `git worktree` at `6cc5fa4c` (tip of `4c`, before any `5a` work)
-that it fails identically there too, proving it predates `5a` entirely.
-Suspected cause: the test computes fire dates from the live `Date()` at run
-time rather than an injected fixed `now`, making it wall-clock-time
-dependent. Filed for `6a`'s completeness sweep.
+**Discovered-during-verification defect — `LIL-86`, filed AND fixed as a
+final plan item:** `X10TimezoneDedupKnownLimitationTests
+.differingTimeZoneDevicesBothFire` (a `4b`-owned test) failed
+deterministically during verification. Two independent bisections — a
+temporary `git worktree` at `6cc5fa4c` (tip of `4c`, before any `5a` work)
+reproducing it identically, and a targeted revert of just the `M4`/`X20`
+commit keeping every other `5a` commit intact, also reproducing it
+identically — ruled out every `5a` fix as the cause (including a
+teammate's independently-raised M4 hypothesis; the test doesn't reference
+`PreferencesStore` at all). Root cause:
+`NotificationScheduler.computeDesiredRequests`'s cross-device dedup check
+compares absolute instants, and whether Tokyo's or LA's "9am on the
+calendar day of a shared deadline" lands later in UTC flips depending on
+which side of a UTC time boundary the test's un-injected `Date()` anchor
+falls on — a real day-alignment race against the wall clock. Fixed
+test-only (`Closes LIL-86`, `79fc1f68`): both tests now anchor to a fixed
+UTC instant chosen so Tokyo's calendar day is deterministically one day
+ahead of LA's, matching `NotificationSchedulerDSTTests`'s own
+far-future-fixed-date convention. Verified deterministic across 5
+consecutive isolated runs. No `6a` follow-up needed.
 
 ## What `5b` needs to know
 
@@ -117,7 +128,8 @@ forward from the `4c` handoff, plus one new item this wave):
 - `LIL-83` (X10's timezone-posture schema change) — **explicitly deferred
   out of this program** (orchestrator decision, 2026-07-29). Not
   program-scheduled work; don't pick it up in `6a`.
-- `LIL-86` (this wave's discovery, above) — `6a` completeness sweep.
+- `LIL-86` (this wave's discovery) — fixed within `5a` itself (see above),
+  no longer a residual.
 
 ## Standing worktree rules (unchanged)
 
