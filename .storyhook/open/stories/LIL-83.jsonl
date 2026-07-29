@@ -16,3 +16,7 @@
 {"kind":"StoryStateChanged","at":"2026-07-29T05:08:54Z","state":"in-progress"}
 {"kind":"StoryStateChanged","at":"2026-07-29T05:09:09Z","state":"todo"}
 {"kind":"StoryCommentAdded","at":"2026-07-29T05:09:09Z","text":"Reverting another auto-hook state flip from a commit message mentioning LIL-83. Confirmed final state: todo — deferred, not in progress, not blocked-pending-approval. See the story description and the ledger's Decisions awaiting Mikey section for the full status."}
+{"kind":"StoryCommentAdded","at":"2026-07-29T05:09:12Z","text":"[git] 67e7934: chore(stories): correct LIL-83 state to todo after another git-hook auto-flip"}
+{"kind":"StoryStateChanged","at":"2026-07-29T05:09:12Z","state":"in-progress"}
+{"kind":"StoryStateChanged","at":"2026-07-29T05:09:24Z","state":"todo"}
+{"kind":"StoryCommentAdded","at":"2026-07-29T05:09:24Z","text":"Final correction: confirmed todo state, deferred per orchestrator decision. Ending this correction loop here since commit messages naming this story's identifier re-trigger the auto-progress hook."}
