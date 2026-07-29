@@ -56,28 +56,11 @@ public final class DiagnosticHistoryObserver: @unchecked Sendable {
     /// two suspension points apart) and double-emit the same history into the
     /// append-only log. The gate lets exactly one drain run at a time and
     /// coalesces overlapping requests into a single follow-up pass, so no change
-    /// is ever emitted twice or missed.
+    /// is ever emitted twice or missed. `DrainGate` (`Persistence/DrainGate.swift`)
+    /// is the extracted, shared version of what used to be a private nested
+    /// actor here (data-sync-hardening M3) — `RemoteChangeReconciler` and
+    /// `TaskDuplicateReconciler` now use the identical type.
     private let drainGate = DrainGate()
-
-    /// Actor gate guarding the single-drain invariant. An actor (not a lock)
-    /// because the call sites are `async`, where `NSLock.lock()` is unavailable.
-    private actor DrainGate {
-        private var isDraining = false
-        private var rerunRequested = false
-        /// `true` if the caller becomes the owning drainer; `false` if a drain is
-        /// already in flight (a coalesced rerun is requested instead).
-        func tryAcquire() -> Bool {
-            if isDraining { rerunRequested = true; return false }
-            isDraining = true
-            return true
-        }
-        /// `true` if the owner should sweep again (a request arrived mid-drain).
-        func finishOrRerun() -> Bool {
-            if rerunRequested { rerunRequested = false; return true }
-            isDraining = false
-            return false
-        }
-    }
 
     /// - Parameters:
     ///   - persistence: the live controller; its `viewContext` fetches history.
