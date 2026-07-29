@@ -227,10 +227,7 @@ struct MacTasksView: View {
     }
 
     private var savedFilterSpecs: [SavedFilterChipSpec] {
-        savedFilters
-            .filter { $0.isPinned }
-            .sorted { $0.position < $1.position }
-            .map { SavedFilterChipSpec(id: $0.id, title: $0.name) }
+        SavedFilterChipSpec.pinnedSorted(from: savedFilters)
     }
 
     // MARK: - Load
