@@ -23,8 +23,8 @@ struct WidgetSnapshotBuilderTests {
         return (WidgetSnapshotStore(rootDirectory: dir), dir)
     }
 
-    @Test("regenerate writes a per-filter snapshot and an index")
-    func regenerateWritesSnapshotAndIndex() async throws {
+    @Test("regenerate (additive) writes a per-filter snapshot")
+    func regenerateWritesSnapshot() async throws {
         let controller = try await TestStore.make()
         let tasks = TaskStore(persistence: controller)
         let filters = SmartFilterStore(persistence: controller)
@@ -43,9 +43,25 @@ struct WidgetSnapshotBuilderTests {
         #expect(snap.openCount == 2)
         #expect(snap.tasks.count == 2)
         #expect(Set(snap.tasks.map(\.title)) == ["Submit feedback", "Renew passport"])
+    }
 
-        let index = try #require(snapStore.readIndex())
-        #expect(index.filters.map(\.id) == [filterID])
+    // X5: the additive `regenerate(filterIDs:)` path deliberately never
+    // writes the picker index — only `regenerateAuthoritatively()` (the
+    // app's own trusted, full-read path) may, since an incomplete/stale
+    // cross-process read must never destructively overwrite it. See
+    // `WidgetSnapshotBuilderX5Tests` for the authoritative-path coverage.
+    @Test("regenerate (additive) does not write the picker index")
+    func regenerateDoesNotWriteIndex() async throws {
+        let controller = try await TestStore.make()
+        let filters = SmartFilterStore(persistence: controller)
+        _ = try await filters.create(name: "Todayish", group: todoGroup())
+
+        let (snapStore, dir) = tempSnapshotStore()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let builder = WidgetSnapshotBuilder(smartFilterStore: filters, snapshotStore: snapStore)
+        await builder.regenerate()
+
+        #expect(snapStore.readIndex() == nil)
     }
 
     @Test("openCount excludes closed tasks; totalCount includes them")
