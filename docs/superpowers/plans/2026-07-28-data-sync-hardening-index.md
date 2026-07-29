@@ -27,10 +27,122 @@ CloudKit, XCTest + Swift Testing, xcodegen, storyhook (prefix `LIL`).
 `1b` `purge-cloudkit-retirement`, `1c` `store-location-unification`, `1d`
 `export-schema-completeness`), all of Wave 2 (`2a` `migration-transitions`,
 `2b` `backup-restore-correctness`), all of Wave 3 (`3a`
-`account-identity-and-status`, `3b` `reset-propagation-safety`), and now all
-of Wave 4 (`4a` `history-consumer-discipline`, `4b`
-`notification-truthfulness`, `4c` `recurrence-correctness`) are COMPLETE.
-Wave 5's first plan, `5a` `mutation-scope-discipline`, next.**
+`account-identity-and-status`, `3b` `reset-propagation-safety`), all of
+Wave 4 (`4a` `history-consumer-discipline`, `4b`
+`notification-truthfulness`, `4c` `recurrence-correctness`), and now Wave
+5's first plan, `5a` `mutation-scope-discipline`, are COMPLETE. Wave 5's
+next plan, `5b` `widget-snapshot-correctness`, next.**
+
+- ✅ **Plan `5a` closed all 9 findings** (`H5 M4 M6 M7 L3 L4 L5 X19 X20` /
+  `LIL-23 LIL-48 LIL-50 LIL-51 LIL-72 LIL-73 LIL-74 LIL-68 LIL-69`) — new
+  shared `withMutationRollback` helper
+  (`Persistence/MutationRollback.swift`) generalizes `TaskStore`'s
+  mutate-then-save-or-rollback-on-catch pattern; adopted across every
+  public mutating method of all eight `LillistCore` stores (`TaskStore`
+  incl. `TaskStore+FollowUp`, `TagStore` incl. `+FindOrCreate`,
+  `SmartFilterStore`, `JournalStore`, `AttachmentStore`, `SeriesStore`,
+  `PreferencesStore`, `NotificationSpecStore`) plus
+  `TaskDuplicateReconciler.reconcileDuplicates` (`H5`) — five of those
+  stores (`Tag`/`SmartFilter`/`Journal`/`Attachment`/`Series`) had **zero**
+  rollback discipline anywhere before this; `TaskStore`'s own wart
+  (`create`'s `validateTitle` ran outside `context.perform`, yet the catch
+  unconditionally rolled back) is fixed structurally by moving validation
+  inside the helper's atomic body. Both save and rollback are gated on
+  `context.hasChanges`, with a documented, tested limitation: the guard is
+  context-wide, not scoped to a caller, so it depends on universal atomic
+  adoption (enforced by the class-killer) for its cross-caller safety
+  property, not on the guard alone — logged in the plan doc's §8 and
+  demonstrated via a dedicated `MutationRollbackTests` case. **Class-killer
+  delivered:** `MutationRollbackConformanceTests` — a source-text scan
+  (no `Mirror`-based runtime enumeration exists for plain Swift classes)
+  proving every migrated file contains zero raw `context.save()`/
+  `.rollback()` calls, plus a whole-tree walker that fails on any
+  undocumented future bypass; demonstrated locally (bypassed the helper in
+  `TagStore.setTintColor`, watched the walker fail pinpointing the exact
+  line, reverted — not committed). `M4`: `PreferencesStore.read()` no
+  longer creates the singleton row as a side effect (the old
+  `fetchOrCreateSingleton`, triggered reactively on every remote-change
+  notification) — it's genuinely read-only now, falling back to in-memory
+  defaults on a totally empty store; creation moved into
+  `normalizeSingletons()` (now handling the empty-store case) and
+  `update(_:)`'s own `ensureSingleton`. **Correction found during
+  implementation:** macOS's `bootstrap()` had no `normalizeSingletons()`
+  call at all (only iOS did) — it relied entirely on `read()`'s now-removed
+  side effect to ever materialize the row on a fresh install; fixed by
+  adding the same call iOS already had, same relative position. `X20`:
+  `normalizeSingletons`'s survivor tie-break no longer sorts by raw `id`
+  bytes (which could pick a legacy row over the canonical one, and had no
+  tie-break for two rows that both already carry `singletonID`) — new order
+  is canonical-id-first, then a deterministic content-key built from every
+  settings field. **Correction found during implementation:** the plan
+  doc originally sketched a `createdAt`-then-`id` tie-break, but
+  `AppPreferences` has no timestamp attribute at all (verified against the
+  model) and adding one is a real CloudKit schema change out of this plan's
+  scope (same orchestrator-first constraint `4b` hit for `LIL-83`) — the
+  content-key design needs no schema change. `M6`: `reorder`'s
+  both-anchors parent-mismatch guard now also covers the single-anchor
+  `.explicit(parent)` case — an anchor from a different sibling group used
+  to silently compute a position from the wrong group's numbering, able to
+  collide with an existing sibling there. `M7`: `AttachmentStore.delete`
+  now also deletes its auto-created `JournalEntry` (`Nullify` relationship,
+  verified against the model) instead of orphaning it as a permanent blank
+  row. `L3`: `syncCounts` moved off the main-queue `viewContext` onto
+  `persistence.makeBackgroundContext()`; regression test proved genuinely
+  red (fails fast) against the old implementation and confirmed a real
+  hang risk in an earlier, since-redesigned open-ended-gate version of the
+  test itself — `NSMainQueueConcurrencyType.perform` dispatches onto the
+  real process main thread, so a synchronous busy-wait there is a genuine
+  deadlock hazard, not just a slow test. `L4`: `unassignTag` now mirrors
+  `assignTag`'s existing no-op guard (this specific fix landed as part of
+  the `H5` `TaskStore` migration commit; its own dedicated regression tests
+  landed in a follow-up commit). `L5`: `archive`/`unarchive` no longer fail
+  the whole batch on one missing id — new `TaskStore.BatchIDOutcome
+  {flipped, skipped}` return type reports skips instead of throwing;
+  updated both app call sites (iOS `TasksView`, macOS `MacTasksView`),
+  verified both app targets build. `X19`'s three named sites: `M4` covers
+  `PreferencesStore.read`; `NotificationSpecStore.add`'s default-spec dedup
+  branch dropped its manual `if hasChanges { save() }` (redundant with the
+  helper's own gate, not an added safety it actually provided — verified
+  via a did-save-notification assertion, not just inferred); `Task
+  DuplicateReconciler.reconcileDuplicates`'s failed-merge-save previously
+  had **no rollback at all** — a second, previously-unnamed instance of
+  `H5`'s failure mode, now closed the same way. Plan doc:
+  `docs/superpowers/plans/2026-07-28-plan-5a-mutation-scope-discipline.md`
+  — contains the full `withMutationRollback` design (UML), the conformance-
+  test design, and both corrections above written in place (not a separate
+  addendum, since nothing had built on the superseded claims yet). Commit
+  range `84dd7a39..6b84143f` (20 commits: 1 docs, 1 `chore(stories)`
+  in-progress, 13 fix/feat/test, 1 `chore(stories)` done — plus one
+  discovered-and-filed story, `LIL-86`, for an unrelated pre-existing test
+  fragility found while verifying, see below). Full `LillistCore` suite
+  green **twice in a row** with unmasked exit codes and a clean grep for
+  the failure markers (1406 tests, 253 suites, up from `4c`'s 1376/241
+  baseline — the count also reflects `1d`'s `X10TimezoneDedupKnownLimitationTests`
+  suite being explicitly skipped, see below; one `SIGSEGV`/signal-11
+  worker-crash flake hit on the first of the two `--skip`ped runs, matching
+  the documented parallel-test-flake class exactly, cleared on immediate
+  retry); LillistUI non-snapshot suite green (83 tests, 17 suites,
+  unchanged); `lillist-cli` builds; both apps verified with unsigned
+  `xcodebuild` builds (BUILD SUCCEEDED) after the `L5` commit (the only
+  app-touching one — `TasksView.swift`/`MacTasksView.swift`'s call-site
+  updates for the `BatchIDOutcome` return type, plus macOS
+  `AppEnvironment.swift`'s `normalizeSingletons()` wiring from the `M4`/`X20`
+  commit, verified separately at that point too).
+  **Discovered, out-of-scope defect — filed as `LIL-86`, not fixed here:**
+  `X10TimezoneDedupKnownLimitationTests.differingTimeZoneDevicesBothFire`
+  (a `4b`-owned pinned-KNOWN-LIMITATION test) failed deterministically
+  during this plan's verification runs. Confirmed via a temporary,
+  immediately-removed `git worktree` at `6cc5fa4c` (the tip of `4c`, before
+  any `5a` work) that the identical test fails byte-identically there too
+  — proving it predates this plan entirely and is not a regression from
+  any of `5a`'s nine fixes. Likely a wall-clock-time-dependent test
+  fixture issue (the test's `devAFireDate`/`devBFireDate` computation
+  depends on the live `Date()` at run time, not an injected fixed `now`),
+  not a production bug — see `LIL-86`'s full body for the suspected
+  mechanism. Every full-suite run in this closing report explicitly
+  `--skip`s this one test and says so; nothing else was excluded or
+  suppressed. See *Wave 5a closing report* below for the per-finding
+  breakdown, the class-kill demonstration, and what `5b` needs to know.
 
 - ✅ **Plan `4c` closed all 4 findings** (`H1 X7 X16 X17` /
   `LIL-19 LIL-38 LIL-65 LIL-66`) — `H1`: `RecurrenceSpawner` anchored every
@@ -498,12 +610,14 @@ Wave 5's first plan, `5a` `mutation-scope-discipline`, next.**
   the X8 process-capability investigation, the X9 tombstone-availability
   investigation, and what `4c` needs to know.
 
-**Next action for whoever picks this up:** start Wave 5's first plan, `5a`
-(`mutation-scope-discipline`) — findings `H5 M4 M6 M7 L3 L4 L5 X19 X20`. Read
-the *Resume protocol* section first, then the *Wave 4c closing report* below
-for what `5a` needs to know about `TaskStore.swift`'s current shape (fourth
-and final plan in that file's serial chain) and the new
-`SiblingPositioning`/`DeterministicUUID` types `4c` added.
+**Next action for whoever picks this up:** start Wave 5's second plan, `5b`
+(`widget-snapshot-correctness`) — findings `X5 X6`. Read the *Resume
+protocol* section first, then the *Wave 5a closing report* below for the
+new `withMutationRollback`/`MutationRollbackConformanceTests` shape (any
+future store mutation must route through it, per the class-killer) and
+`TaskStore.swift`'s final state — `5a` was the fourth and last plan in that
+file's serial chain, so it's now closed for good, but `5b`/`5c`/`6a` may
+still touch other shared files this ledger tracks.
 
 ---
 
@@ -1718,6 +1832,118 @@ the full commit range against everything outside `Packages/LillistCore`
 
 ---
 
+## Wave 5a closing report (`mutation-scope-discipline`)
+
+Plan doc: `docs/superpowers/plans/2026-07-28-plan-5a-mutation-scope-discipline.md`
+— contains the full `withMutationRollback` type proposal (UML), the
+conformance-test design, and both in-place corrections (X20's tie-break,
+macOS's missing `normalizeSingletons()` call) written directly into the
+sections they correct rather than as separate addenda, since nothing had
+built on the superseded claims yet.
+
+| Finding | Story | Fix commit(s) | Regression test(s) |
+|---|---|---|---|
+| `H5` (helper + TaskStore) | `LIL-23` | `642312bb` (helper), `8d3cbafc` (TaskStore) | `MutationRollbackTests.swift` (5), `MutationRollbackConformanceTests.swift` (3, scope grows per store), `TaskStoreRollbackTests.swift`'s new `createValidationFailureNeverTouchesContext` |
+| `H5` (TagStore) | `LIL-23` | `114d4af9` | `TagStoreRollbackTests.swift` (1) |
+| `H5` (SmartFilterStore) | `LIL-23` | `bcdf4101` | `SmartFilterStoreRollbackTests.swift` (1) |
+| `H5` (JournalStore) | `LIL-23` | `35e2bf55` | `JournalStoreRollbackTests.swift` (1) |
+| `H5` (SeriesStore) | `LIL-23` | `e400c92e` | `SeriesStoreRollbackTests.swift` (1) |
+| `H5` (AttachmentStore) | `LIL-23` | `bad11f0d` | `AttachmentStoreRollbackTests.swift` (1) |
+| `M7` | `LIL-51` | `765da9dd` | `AttachmentStoreM7OrphanedJournalEntryTests.swift` (3) |
+| `M4` + `X20` (+ `H5` for `PreferencesStore`) | `LIL-48`, `LIL-69` | `623abe1c` | `PreferencesStoreSingletonTests.swift` (rewritten: 6 tests, including the new canonical-beats-legacy and two-canonical-rows-converge cases) |
+| `X19` (`NotificationSpecStore`) + `H5` | `LIL-68` | `137e57d0` | `NotificationSpecStoreX19Tests.swift` (1) |
+| `X19` (`TaskDuplicateReconciler`) + `H5` | `LIL-68` | `62d90d5f` | `TaskDuplicateReconcilerX19RollbackTests.swift` (1) — this commit also closed the conformance test's migration list entirely (empty "still pending" set) |
+| `M6` | `LIL-50` | `22725503` | `TaskStoreM6ExplicitParentAnchorMismatchTests.swift` (4) |
+| `L3` | `LIL-72` | `de65d178` | `TaskStoreSyncCountsL3Tests.swift` (1) — timing-based, verified genuinely red against the pre-fix implementation via a shell-level-timeout-guarded probe (an earlier open-ended-gate version of the same probe deadlocked the whole `swift test` process for 2+ minutes; redesigned to a bounded window before landing) |
+| `L4` | `LIL-73` | `644b5626` (test only — the guard itself landed inside `8d3cbafc`'s `unassignTag` migration) | `TaskStoreCRUDTests.swift`'s two new cases |
+| `L5` | `LIL-74` | `ae47939d` | `TaskStoreArchiveL5SkipAndReportTests.swift` (3) + `TaskStoreArchiveTests.swift` updated for the new `BatchIDOutcome` return type |
+
+**Commit range:** `84dd7a39..6b84143f` — 1 docs (`84dd7a39`), 1
+`chore(stories)` in-progress (`87454042`), 13 fix/feat/test commits, 1
+`chore(stories)` done (`6b84143f`). Full `LillistCore` suite green **twice
+in a row** with unmasked exit codes and a clean grep for the failure
+markers, **excluding one explicitly-`--skip`ped pre-existing test** (see
+below) — 1406 tests, 253 suites (up from `4c`'s 1376/241 baseline; the
+per-test delta reflects new regression tests added across the 13 fix
+commits). One `SIGSEGV`/signal-11 worker-crash flake hit on the first of
+the two `--skip`ped runs — no individual test failure line, only the outer
+driver's signal 11 for the `swiftpm-testing-helper` subprocess, matching
+the documented parallel-test-flake class exactly — cleared on immediate
+retry. LillistUI non-snapshot suite green (83 tests, 17 suites,
+unchanged); `lillist-cli` builds; both apps verified with unsigned
+`xcodebuild` builds (BUILD SUCCEEDED) after the `L5` commit, which is the
+only one that touched app-target files (`TasksView.swift`/
+`MacTasksView.swift`'s `BatchIDOutcome` call-site updates); macOS
+`AppEnvironment.swift`'s `normalizeSingletons()` wiring (the `M4`/`X20`
+commit) was also verified with its own unsigned macOS build at the time it
+landed.
+
+**Discovered, out-of-scope defect — filed as `LIL-86`, not fixed here (not
+one of the 70 cataloged findings):**
+`X10TimezoneDedupKnownLimitationTests.differingTimeZoneDevicesBothFire` (a
+`4b`-owned pinned-KNOWN-LIMITATION regression test) failed deterministically
+during this plan's first two full-suite verification attempts, with a
+different symptom than the limitation it documents: `centerB` had **zero**
+pending notification requests, not a deduped-but-present one. Root-caused
+as pre-existing, not a `5a` regression, by reproducing the identical
+failure in a temporary `git worktree` checked out at `6cc5fa4c` (the tip of
+`4c`, before any `5a` commit existed) and immediately removed after
+confirming. Every subsequent full-suite run in this closing report's
+verification `--skip`s this one test by name and says so explicitly — no
+other test was excluded or its failure suppressed. Filed as `LIL-86`
+(labels `plan-6a`, `discovered-during-5a`) with the suspected mechanism
+(the test's fixture computes fire dates from the live `Date()` at run time
+instead of an injected fixed `now`, making it wall-clock-time-dependent)
+in the story body for whoever picks up `6a`'s completeness sweep.
+
+**Class-kill demonstration (per the wave brief, not committed):**
+temporarily reverted `TagStore.setTintColor` to call `try context.save()`
+directly instead of `withMutationRollback`, ran
+`MutationRollbackConformanceTests` and confirmed it failed immediately,
+pinpointing the exact file and the exact bypassing line
+(`Stores/TagStore.swift bypasses withMutationRollback at: try
+context.save()`), then reverted the change and confirmed `git diff` showed
+zero drift from the committed state before re-confirming green.
+
+**Deviations from the plan doc's own commit plan:** none in substance — the
+plan doc's 21-item commit plan was followed in order; the only differences
+are (a) `L4`'s guard landed one commit earlier than planned, bundled into
+`H5`'s `TaskStore` migration commit (both touch the exact same six lines of
+`unassignTag`, so splitting them would have meant migrating the method
+twice), with its dedicated regression tests following in their own,
+separate commit as originally planned, and (b) the two "in-place
+correction" write-ups (§5's macOS `normalizeSingletons()` gap, §6's
+`createdAt`-that-doesn't-exist) weren't anticipated as separate commit-plan
+items because they were discovered *while implementing* the items they
+correct, not before.
+
+**What `5b` (`widget-snapshot-correctness`, not on the `TaskStore.swift`
+chain — that chain is now permanently closed) needs to know:**
+- Any new `LillistCore` store or maintenance-path mutation must route
+  through `withMutationRollback` (`Persistence/MutationRollback.swift`) —
+  `MutationRollbackConformanceTests`'s whole-tree walker will fail the
+  build immediately on a raw `context.save()`/`.rollback()` call anywhere
+  under `Stores/`, `Notifications/`, or `Persistence/TaskDuplicateReconciler.swift`
+  that isn't already in its `migratedFiles` list. If `5b` adds a new
+  mutating method to any existing store (unlikely, per its finding list,
+  but check), add the file to that list only once it's actually migrated —
+  the test is deliberately written to fail first (red) if the list and the
+  code disagree.
+- `TaskStore.archive`/`unarchive` now return `TaskStore.BatchIDOutcome
+  {flipped, skipped}`, not `[UUID]`/`Void`. Any code reading their return
+  value (beyond the two app call sites already updated) needs `.flipped`.
+- `PreferencesStore.read()` is genuinely read-only now; do not add a new
+  call site that expects it to create the singleton row as a side effect —
+  use `normalizeSingletons()` (maintenance/bootstrap) or `update(_:)`
+  (explicit mutation) for that.
+- `TaskStore.syncCounts()` now opens its own `persistence
+  .makeBackgroundContext()` rather than using the injected `context`
+  property — if `5b`'s widget-snapshot work reads `syncCounts` or a similar
+  aggregate, the same off-`viewContext` pattern is the one to copy, not the
+  old inline `context.perform` shape.
+
+---
+
 ## Execution model (per Mikey's directives, 2026-07-28)
 
 - **One dedicated worktree** on a long-running branch:
@@ -1776,10 +2002,10 @@ Wave 6 closeout. **Status** starts `pending` for everything except Wave 0.
 | 4 | **4a** `history-consumer-discipline` | `H6 M3` | ✅ complete |
 | 4 | **4b** `notification-truthfulness` | `H2 X8 X9 X10` | ✅ complete |
 | 4 | **4c** `recurrence-correctness` | `H1 X7 X16 X17` | ✅ complete |
-| 5 | **5a** `mutation-scope-discipline` | `H5 M4 M6 M7 L3 L4 L5 X19 X20` | ⬜ pending |
+| 5 | **5a** `mutation-scope-discipline` | `H5 M4 M6 M7 L3 L4 L5 X19 X20` | ✅ complete |
 | 5 | **5b** `widget-snapshot-correctness` | `X5 X6` | ⬜ pending |
 | 5 | **5c** `watermark-registry-pruning` | `X12 L7` | ⬜ pending |
-| 6 | **6a** `completeness-and-lows` + closeout | `L1 L2 L6` + export round-trip equality suite + `X20` flip-flop stress (builds atop 5a's fix, not a new finding) + any residuals from Waves 1-5, incl. `LIL-77` (discovered during `1d`, not one of the 70 findings). **Not included:** `LIL-83` (discovered during `4b`) — the underlying data-model change was explicitly **deferred out of this program** (orchestrator decision, 2026-07-29 — see *Decisions awaiting Mikey* below); do not pick it up in `6a`, it isn't program-scheduled work. | ⬜ pending |
+| 6 | **6a** `completeness-and-lows` + closeout | `L1 L2 L6` + export round-trip equality suite + `X20` flip-flop stress (builds atop 5a's fix, not a new finding) + any residuals from Waves 1-5, incl. `LIL-77` (discovered during `1d`, not one of the 70 findings) and `LIL-86` (discovered during `5a`, a pre-existing test fragility, not one of the 70 findings — see the *Wave 5a closing report*'s discovered-defect note for the suspected mechanism and what a fix needs to do). **Not included:** `LIL-83` (discovered during `4b`) — the underlying data-model change was explicitly **deferred out of this program** (orchestrator decision, 2026-07-29 — see *Decisions awaiting Mikey* below); do not pick it up in `6a`, it isn't program-scheduled work. | ⬜ pending |
 
 **Finding-count check:** 70 unique findings (`C1`-`C4`, `H1`-`H7`, `M1`-`M7`,
 `L1`-`L7` from the stores sweep = 25; `S1`-`S4`, `S5`-`S13` with `S9` split
@@ -1800,7 +2026,7 @@ landing wave's plan doc (house rule) before implementation:
 | Canonical `StoreLocation` resolver + multi-process pin test | Adopt | 1c |
 | `TreeIntegrityChecker` (launch self-heal + post-mutation assertions) | Adopt | 1a |
 | `DrainGate` extraction (public) + `WatermarkRegistry` (min-watermark prune) | Adopt, split | 4a + 5c |
-| Full `MutationContext` re-architecture | **Reject** → `withMutationRollback` helper + conformance test + logged tech debt | 5a |
+| Full `MutationContext` re-architecture | **Reject** → `withMutationRollback` helper + conformance test + logged tech debt | 5a — delivered |
 | Model-derived export-completeness test (walks `NSManagedObjectModel`) | Adopt — delivered | 1d |
 | `DestructiveOpGate` (shared, synchronous-acquire lock replacing `MigrationCoordinator.isMigrating`/`DataStoreResetService.isResetting`) | Adopt — delivered | 2a |
 | `AccountIdentityStore` (persisted `ubiquityIdentityToken`-based identity comparison, gates launch-time CloudKit mirroring) | Adopt — delivered | 3a |
@@ -1823,11 +2049,22 @@ structure — each earlier plan in the chain will have moved line numbers.
    accumulator — and both return the collected ids; `softDelete`/`restore`
    reconcile the whole returned set, not just the root id, via
    `cancelPending(forTaskIDs:)`/`reconcile(taskID:)` respectively — see the
-   *Wave 4b closing report* for the exact shape) → `5a` (mutation-rollback
-   helper adopted across its mutators — re-Read the softDelete/restore
-   bodies before touching them, they now do more than a bare `context
-   .perform` + save). Four plans, one file — serialize strictly in this
-   order.
+   *Wave 4b closing report* for the exact shape) → `5a` ✅ done, **chain
+   closed** (every mutating method — `create`, `update`, `hardDelete`,
+   `reparent`, `reorder`, `transition`, `archive`, `unarchive`,
+   `softDelete`, `restore`, `assignTag`, `unassignTag`,
+   `normalizeSiblingsIfDegenerate`, `TaskStore+FollowUp.scheduleFollowUp`
+   — now routes through `withMutationRollback`, replacing each method's own
+   `do { try await context.perform { ...; try context.save() } } catch {
+   await context.perform { context.rollback() } }`; `archive`/`unarchive`
+   now return `TaskStore.BatchIDOutcome` instead of `[UUID]`/`Void`;
+   `reorder` gained a single-anchor explicit-parent consistency guard;
+   `syncCounts` now runs on `persistence.makeBackgroundContext()`, not
+   `viewContext` — see the *Wave 5a closing report* for the exact diffs).
+   Four plans, one file, all done — no future plan is currently scheduled
+   to touch `TaskStore.swift`'s shared shape again; the next contributor
+   who does should still re-Read it fresh (the house rule applies
+   regardless of chain status).
 2. **`MigrationCoordinator.swift`** — `2a` ✅ done (`host` widened to
    `PersistenceReconfiguring & PersistenceResetting`; per-op step sequence
    redesigned — see the plan doc's state-machine table; `destructiveOpGate`

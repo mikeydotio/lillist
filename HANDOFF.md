@@ -1,98 +1,111 @@
-# HANDOFF — Data & Sync Hardening, Wave 4 complete → Wave 5a
+# HANDOFF — Data & Sync Hardening, Wave 5a complete → Wave 5b
 
 **Worktree:** `/Volumes/Code/mikeyward/Lillist/.claude/worktrees/data-sync-hardening`
 **Branch:** `hardening/data-sync-2026-07`
 **State:** Wave 0, all of Wave 1 (`1a`-`1d`), all of Wave 2 (`2a`, `2b`), all
-of Wave 3 (`3a`, `3b`), and now **all of Wave 4** (`4a`
-`history-consumer-discipline`, `4b` `notification-truthfulness`, `4c`
-`recurrence-correctness`) are **COMPLETE**. Wave 5's first plan, `5a`
-`mutation-scope-discipline` (findings `H5 M4 M6 M7 L3 L4 L5 X19 X20`), is
-next; `5b`/`5c`/Wave 6 not started.
+of Wave 3 (`3a`, `3b`), all of Wave 4 (`4a`, `4b`, `4c`), and now **Wave 5's
+first plan, `5a` `mutation-scope-discipline`**, are **COMPLETE**. Wave 5's
+second plan, `5b` `widget-snapshot-correctness` (findings `X5 X6`), is next;
+`5c`/Wave 6 not started.
 
-## What landed this wave (plan `4c`)
+## What landed this wave (plan `5a`)
 
-All four findings closed (`H1`, `X7`, `X16`, `X17` / stories `LIL-19`,
-`LIL-38`, `LIL-65`, `LIL-66`). Full details, the per-finding test/commit
-table, the H1 placement-decision reasoning, and the X7 end-to-end merge
-proof are in the ledger's *Wave 4c closing report*
+All nine findings closed (`H5 M4 M6 M7 L3 L4 L5 X19 X20` / stories `LIL-23
+LIL-48 LIL-50 LIL-51 LIL-68 LIL-69 LIL-72 LIL-73 LIL-74`). Full details, the
+per-finding test/commit table, the class-kill demonstration, and both
+in-place plan-doc corrections are in the ledger's *Wave 5a closing report*
 (`docs/superpowers/plans/2026-07-28-data-sync-hardening-index.md`) and the
 plan doc
-(`docs/superpowers/plans/2026-07-28-plan-4c-recurrence-correctness.md`).
+(`docs/superpowers/plans/2026-07-28-plan-5a-mutation-scope-discipline.md`).
 
-- **`H1`**: `RecurrenceSpawner` anchored every spawn at
-  `series.seedTask.position + 0.5` — `seedTask` never changes across a
-  series' lifetime, so every spawn after the first collided at the
-  identical position. New `Ordering/SiblingPositioning.swift` extracts the
-  live sibling-position fetch `TaskStore.create` already used;
-  `RecurrenceSpawner` now delegates to it (bottom placement — decided
-  directly, no council; reuses tested machinery and never silently
-  reshuffles a manually curated list). `TaskStore.nextPositionDetail`
-  becomes a thin wrapper over the same core.
-- **`X7`**: recurrence spawns had no idempotency key — a concurrent
-  widget/app or two-device race could double-spawn the same occurrence
-  under distinct random UUIDs that `TaskDuplicateReconciler` couldn't
-  collapse. New `DeterministicUUID.v5` (RFC 4122 name-based UUID) derives
-  `spawn.id = v5(namespace: series.id, name: <occurrence date>)` and
-  deep-copied children get `v5(namespace: <parent copy's id>, name:
-  <source child's stable id>)` — the whole spawned subtree is now
-  deterministic to arbitrary depth. Proven end-to-end that `1a`'s existing
-  `TaskDuplicateReconciler` actually merges the resulting same-id
-  duplicate rows.
-- **`X16`**: `AfterCompletionRule.interval` had no clamp, unlike its
-  `CalendarRule` sibling — a 0/negative interval spawned a
-  permanently-overdue task on every close. Mirrors `CalendarRule`'s exact
-  shape (init + decode-boundary normalization into `1 second...10 years`)
-  plus point-of-use defense-in-depth. Two pre-existing tests that
-  documented the bug as intended behavior were rewritten in the same
-  commit.
-- **`X17`**: weekly `byDay` expansion hardcoded a Sunday week boundary,
-  ignoring `calendar.firstWeekday` — a biweekly Saturday/Sunday rule under
-  a Monday-first calendar fired one week early. Re-based the arithmetic
-  onto "days since `calendar.firstWeekday`"; added locale-parameterized
-  tests across Sunday-first, Monday-first, and Saturday-first calendars.
+- **`H5`**: new shared `withMutationRollback` helper
+  (`Persistence/MutationRollback.swift`) generalizes `TaskStore`'s
+  mutate-then-save-or-rollback pattern; adopted across every public
+  mutating method of all eight `LillistCore` stores plus
+  `TaskDuplicateReconciler.reconcileDuplicates`. Five stores
+  (`Tag`/`SmartFilter`/`Journal`/`Attachment`/`Series`) had zero rollback
+  discipline before this. `TaskStore.create`'s own wart (validation outside
+  `context.perform`, unconditional rollback in catch) is fixed structurally
+  by moving validation inside the helper's atomic body. **Class-killer:**
+  `MutationRollbackConformanceTests` — a source-text scan (no runtime
+  `Mirror` enumeration exists for plain Swift classes) proving zero raw
+  `context.save()`/`.rollback()` calls outside the helper, plus a
+  whole-tree walker catching any undocumented future bypass; demonstrated
+  locally (bypassed the helper in one method, watched the walker fail
+  pinpointing the exact line, reverted).
+- **`M4`**: `PreferencesStore.read()` no longer creates the singleton row
+  as a side effect — genuinely read-only now, falling back to in-memory
+  defaults on an empty store. Creation moved to `normalizeSingletons()`
+  (now handling the empty-store case) and `update(_:)`'s own
+  `ensureSingleton`. **Found while implementing:** macOS's `bootstrap()`
+  had no `normalizeSingletons()` call at all (only iOS did) — fixed by
+  adding it in the same relative position iOS already had.
+- **`X20`**: `normalizeSingletons`'s tie-break no longer sorts by raw `id`
+  bytes — canonical-id-first, then a content-key built from every settings
+  field. **Found while implementing:** the plan doc's original
+  `createdAt`-based design assumed a field that doesn't exist on
+  `AppPreferences` — adding one is a real CloudKit schema change out of
+  scope (same constraint `4b` hit for `LIL-83`); the content-key design
+  needs no schema change.
+- **`M6`**: `TaskStore.reorder`'s both-anchors parent-mismatch guard now
+  also covers the single-anchor `.explicit(parent)` case.
+- **`M7`**: `AttachmentStore.delete` now also deletes its auto-created
+  `JournalEntry` (`Nullify` relationship) instead of orphaning it.
+- **`L3`**: `TaskStore.syncCounts()` moved off the main-queue `viewContext`
+  onto a background context.
+- **`L4`**: `unassignTag` now mirrors `assignTag`'s no-op guard.
+- **`L5`**: `archive`/`unarchive` return a new `TaskStore.BatchIDOutcome
+  {flipped, skipped}` instead of failing the whole batch on one missing id;
+  both app call sites (iOS `TasksView`, macOS `MacTasksView`) updated.
+- **`X19`**: `NotificationSpecStore.add`'s dedup branch dropped its
+  redundant manual `if hasChanges { save() }`;
+  `TaskDuplicateReconciler.reconcileDuplicates` gained rollback-on-failure
+  it never had (a second, previously-unnamed `H5` instance).
 
-Commit range `47953dee..3b377f58` (6 commits: 1 docs (plan), 1
-`chore(stories)` in-progress, 4 fix/feat, 1 `chore(stories)` done). Full
-`LillistCore` suite green **twice** with unmasked exit codes and a clean
-grep for the failure markers (1376 tests, 241 suites — up from `4b`'s
-1354/237 baseline); one signal-11 (SIGSEGV) worker-crash flake hit between
-the two clean runs, matching the documented `CLAUDE.md` parallel-test-flake
-class exactly, cleared on immediate retry. **Pure `LillistCore` change — no
-app-target files touched**, so no `xcodebuild` builds were needed this wave.
+Commit range `84dd7a39..6b84143f` (20 commits). Full `LillistCore` suite
+green **twice in a row** with unmasked exit codes and a clean grep for the
+failure markers (1406 tests, 253 suites — up from `4c`'s 1376/241 baseline),
+**explicitly `--skip`ping one pre-existing, unrelated failing test** (see
+below) — no other exclusions. LillistUI non-snapshot suite green (83/17,
+unchanged); `lillist-cli` builds; both apps verified with unsigned
+`xcodebuild` builds after the one app-touching commit (`L5`'s call-site
+updates) and after the `M4`/`X20` commit (macOS `AppEnvironment.swift`
+wiring).
 
-## What `5a` needs to know
+**Discovered, out-of-scope defect — filed as `LIL-86`, not fixed:**
+`X10TimezoneDedupKnownLimitationTests.differingTimeZoneDevicesBothFire` (a
+`4b`-owned test) fails deterministically as of this writing — confirmed via
+a temporary `git worktree` at `6cc5fa4c` (tip of `4c`, before any `5a` work)
+that it fails identically there too, proving it predates `5a` entirely.
+Suspected cause: the test computes fire dates from the live `Date()` at run
+time rather than an injected fixed `now`, making it wall-clock-time
+dependent. Filed for `6a`'s completeness sweep.
 
-`5a` (`mutation-scope-discipline`, findings `H5 M4 M6 M7 L3 L4 L5 X19 X20`)
-is the **fourth and final plan in the `TaskStore.swift` serial chain**
-(`1a` → `1b` → `4b` → `5a` — see the ledger's *Shared-file serial chains*
-section). Re-Read `TaskStore.swift` fully before touching it; `4c` added:
+## What `5b` needs to know
 
-- `TaskStore.nextPositionDetail(forParent:placement:)` is now a one-line
-  wrapper delegating to `Ordering/SiblingPositioning
-  .nextPositionDetail(forParent:placement:in:)` — the actual fetch +
-  `FractionalPosition` logic moved there so `RecurrenceSpawner` (no
-  `TaskStore` instance available) can share it. Any `withMutationRollback`
-  helper wrapped around `TaskStore.create`/`reorder` needs to account for
-  this one extra layer of indirection; the `throws` contract is unchanged.
-- `RecurrenceSpawner.spawnIfNeeded(forClosedTask:in:)` is now `throws`
-  (previously non-throwing). Its one call site, `TaskStore.transition`'s
-  `newStatus == .closed` branch, already runs inside a throwing
-  `context.perform` block with the existing rollback-on-catch structure —
-  composed cleanly. If `5a`'s mutation-rollback helper wraps `transition`,
-  make sure `spawnIfNeeded`'s throw still propagates to that same rollback
-  path rather than getting swallowed.
-- New file `Recurrence/DeterministicUUID.swift` (RFC 4122 v5 UUID,
-  `CryptoKit.Insecure.SHA1`) — not part of `5a`'s scope, but reusable if
-  any future mutation needs a deterministic/idempotent id for the same
-  cross-process race shape `X7` closed.
-- `RecurrenceSpawner.deepCopy` now assigns child ids via
-  `DeterministicUUID.v5(...)` instead of a bare `UUID()` — don't assume
-  every `LillistTask` copy site still mints a purely random id if `5a`
-  touches cascade/subtree-copy logic (it shouldn't need to, per its
-  finding list).
+`5b` (`widget-snapshot-correctness`, findings `X5 X6`) is **not** on the
+`TaskStore.swift` serial chain — that chain closed permanently with `5a`
+(four plans: `1a` → `1b` → `4b` → `5a`, no more scheduled touches). Still
+relevant:
+
+- Any new `LillistCore` store or maintenance-path mutation must route
+  through `withMutationRollback` (`Persistence/MutationRollback.swift`) —
+  `MutationRollbackConformanceTests`'s whole-tree walker fails the build
+  immediately on a raw `context.save()`/`.rollback()` call anywhere under
+  `Stores/`, `Notifications/`, or
+  `Persistence/TaskDuplicateReconciler.swift` not already in its
+  `migratedFiles` list.
+- `TaskStore.archive`/`unarchive` now return `TaskStore.BatchIDOutcome
+  {flipped, skipped}`, not `[UUID]`/`Void`.
+- `PreferencesStore.read()` is genuinely read-only now — don't add a call
+  site expecting it to create the singleton row.
+- `TaskStore.syncCounts()` opens its own `persistence
+  .makeBackgroundContext()` rather than using the injected `context`
+  property — the pattern to copy for any widget-snapshot aggregate that
+  needs the same off-`viewContext` treatment.
 
 **Discovered, out-of-scope residuals — not fixed, all still open** (carried
-forward unchanged from the `4b` handoff):
+forward from the `4c` handoff, plus one new item this wave):
 - `TaskDuplicateReconciler.diagnosticLog` unwired in both apps (`1a`'s M5,
   flagged in `4a`) — `6a` completeness sweep.
 - `recoverInterruptedReseed()`'s crash-recovery path never broadcasts
@@ -104,6 +117,7 @@ forward unchanged from the `4b` handoff):
 - `LIL-83` (X10's timezone-posture schema change) — **explicitly deferred
   out of this program** (orchestrator decision, 2026-07-29). Not
   program-scheduled work; don't pick it up in `6a`.
+- `LIL-86` (this wave's discovery, above) — `6a` completeness sweep.
 
 ## Standing worktree rules (unchanged)
 
