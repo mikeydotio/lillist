@@ -27,9 +27,68 @@ CloudKit, XCTest + Swift Testing, xcodegen, storyhook (prefix `LIL`).
 `1b` `purge-cloudkit-retirement`, `1c` `store-location-unification`, `1d`
 `export-schema-completeness`), all of Wave 2 (`2a` `migration-transitions`,
 `2b` `backup-restore-correctness`), all of Wave 3 (`3a`
-`account-identity-and-status`, `3b` `reset-propagation-safety`), and Wave 4's
-first plan `4a` `history-consumer-discipline` COMPLETE. Wave 4's second plan,
-`4b` `notification-truthfulness`, next.**
+`account-identity-and-status`, `3b` `reset-propagation-safety`), and now all
+of Wave 4 (`4a` `history-consumer-discipline`, `4b`
+`notification-truthfulness`, `4c` `recurrence-correctness`) are COMPLETE.
+Wave 5's first plan, `5a` `mutation-scope-discipline`, next.**
+
+- ✅ **Plan `4c` closed all 4 findings** (`H1 X7 X16 X17` /
+  `LIL-19 LIL-38 LIL-65 LIL-66`) — `H1`: `RecurrenceSpawner` anchored every
+  spawn at `series.seedTask.position + 0.5`; since `seedTask` never changes
+  across a series' lifetime, every spawn after the first collided at the
+  identical position. New `Ordering/SiblingPositioning.swift` extracts the
+  live sibling-position fetch `TaskStore.create` already used;
+  `RecurrenceSpawner` now delegates to it (bottom placement, decided
+  directly — no council needed, see the plan doc's three-option writeup),
+  and `TaskStore.nextPositionDetail` becomes a thin wrapper over the same
+  core. `X7`: recurrence spawns had no idempotency key — a concurrent
+  widget/app or two-device race could double-spawn the same occurrence
+  under distinct random UUIDs that `TaskDuplicateReconciler` (keyed on
+  app-level `id` equality) had no way to collapse. New
+  `DeterministicUUID.v5` (RFC 4122 name-based UUID, `CryptoKit
+  .Insecure.SHA1`) derives `spawn.id = v5(namespace: series.id, name:
+  <occurrence date>)` — the value both racing processes read as the same
+  pre-advance `series.nextOccurrenceAfter` — and deep-copied children get
+  `v5(namespace: <parent copy's own id>, name: <source child's stable
+  id>)`, making the whole spawned subtree deterministic to arbitrary
+  depth; proven end-to-end that `1a`'s existing `TaskDuplicateReconciler`
+  actually merges the resulting same-id duplicate rows, not just that the
+  ids match. `series.nextOccurrenceAfter`'s own advancement needed no
+  separate fix — deterministic rule math plus the store-wide trump merge
+  policy already converge it. `X16`: `AfterCompletionRule.interval` (a
+  `TimeInterval`) had no clamp, unlike its `CalendarRule` sibling — a
+  0/negative interval spawned a permanently-overdue task on every close.
+  Mirrors `CalendarRule`'s exact shape (memberwise-init + decode-boundary
+  normalization into `1 second...10 years`) plus point-of-use
+  defense-in-depth in `RecurrenceExpander.nextAfterCompletion`; two
+  pre-existing tests that documented the bug as intended behavior were
+  rewritten in the same commit (two-hats — this is the fix's own behavior
+  change). `X17`: `weeklyStep` computed same-week-vs-next-week using
+  `Weekday.calendarComponent`'s raw Sunday=1...Saturday=7 numbering
+  directly, silently assuming every week starts on Sunday regardless of
+  `calendar.firstWeekday` — a biweekly Saturday/Sunday rule under a
+  Monday-first calendar fired one week early. Re-based the arithmetic onto
+  "days since `calendar.firstWeekday`"; added a
+  `RecurrenceTestCalendar.calendar(firstWeekday:)` factory and
+  locale-parameterized tests across Sunday-first, Monday-first, and
+  Saturday-first calendars (the review's "no locale-parameterized
+  recurrence tests" gap), hand-verified and empirically confirmed the
+  existing TU/TH and MO/WE/FR suites are unaffected. Plan doc:
+  `docs/superpowers/plans/2026-07-28-plan-4c-recurrence-correctness.md`.
+  Commit range `47953dee..3b377f58` (6 commits: 1 docs (plan doc, before
+  this ledger entry), 1 `chore(stories)` in-progress, 4 fix/feat, 1
+  `chore(stories)` done). Full `LillistCore` suite green **twice** with
+  unmasked exit codes and a clean grep for the failure markers (1376
+  tests, 241 suites — up from `4b`'s 1354/237 baseline); one signal-11
+  (SIGSEGV) worker-crash flake hit between the two clean runs, matching
+  the documented parallel-test-flake class exactly (`CLAUDE.md`'s Core
+  Data concurrency note), cleared on immediate retry per the documented
+  policy. **Pure `LillistCore` change — no app-target files touched**, so
+  no `xcodebuild` builds were needed (confirmed by diffing the full
+  commit range against the app/extension directories). See *Wave 4c
+  closing report* below for the per-finding breakdown, the H1 placement
+  decision detail, and what `5a` needs to know about
+  `TaskStore.swift`/`RecurrenceSpawner.swift`'s current shape.
 
 - ✅ **Plan `4a` closed both findings** (`H6`, `M3` / `LIL-24`, `LIL-47`) —
   `RemoteChangeReconciler.processPendingHistory` now advances its history
@@ -439,13 +498,12 @@ first plan `4a` `history-consumer-discipline` COMPLETE. Wave 4's second plan,
   the X8 process-capability investigation, the X9 tombstone-availability
   investigation, and what `4c` needs to know.
 
-**Next action for whoever picks this up:** start Wave 4's third and final
-plan, `4c` (`recurrence-correctness`) — findings `H1 X7 X16 X17`. Read the
-*Resume protocol* section first, then the *Wave 4b closing report* below
-for the notification-scheduling seam `4c`'s recurrence-spawn work needs to
-know about (spawning a recurring task's next instance should schedule its
-notifications too, via the same extension-safe construction pattern `4b`
-established).
+**Next action for whoever picks this up:** start Wave 5's first plan, `5a`
+(`mutation-scope-discipline`) — findings `H5 M4 M6 M7 L3 L4 L5 X19 X20`. Read
+the *Resume protocol* section first, then the *Wave 4c closing report* below
+for what `5a` needs to know about `TaskStore.swift`'s current shape (fourth
+and final plan in that file's serial chain) and the new
+`SiblingPositioning`/`DeterministicUUID` types `4c` added.
 
 ---
 
@@ -1573,6 +1631,93 @@ scope changed, only the commit breakdown.
 
 ---
 
+## Wave 4c closing report (`recurrence-correctness`)
+
+Plan doc: `docs/superpowers/plans/2026-07-28-plan-4c-recurrence-correctness.md`
+— contains the full H1 placement-decision writeup, the X7 identity design
+(including the child deep-copy scheme and a worked example), the X16 bound
+rationale, and the X17 week-boundary semantics table.
+
+| Finding | Story | Fix commit | Regression test(s) |
+|---|---|---|---|
+| `H1` | `LIL-19` | `47953dee` | `H1PositionCollisionTests.swift` (3 tests) — consecutive-spawn collision reproduction, live-sibling-set placement, reparented-seed placement. |
+| `X16` | `LIL-65` | `372273cc` | `X16AfterCompletionIntervalClampTests.swift` (8 tests) + 2 pre-existing `RecurrenceExpanderAfterCompletionTests` cases rewritten (they asserted the pre-fix bug as intended behavior). |
+| `X17` | `LIL-66` | `e0630a4e` | `X17WeekBoundaryLocaleTests.swift` (3 tests, one parameterized across 3 `firstWeekday` values) — biweekly SA/SU week-grouping per locale, a same-week same-week hop sanity check, and an invariance cross-check against the existing TU/TH suite. |
+| `X7` | `LIL-38` | `6d4a53e0` | `X7IdempotentSpawnTests.swift` (6 tests) — `DeterministicUUID.v5` pure-function contract (3), concurrent-double-spawn id convergence for the spawn and its children (2), and an end-to-end proof that `TaskDuplicateReconciler` actually merges the resulting pair (1). |
+
+**Commit range:** `47953dee..3b377f58` — 4 fix/feat commits (`47953dee` H1,
+`372273cc` X16, `e0630a4e` X17, `6d4a53e0` X7) + 1 `chore(stories)` done-move
+(`3b377f58`); the plan doc (`02bffffb`) and in-progress story move
+(`1fc5db7a`) landed just before this range, per the *Method* binding
+requirement. Full `LillistCore` suite green twice with unmasked exit codes
+and a clean grep for the failure markers (1376 tests, 241 suites — up from
+`4b`'s 1354/237 baseline). One signal-11 (SIGSEGV) worker-crash flake hit
+between the two clean confirmations — the log showed no individual test
+failure line, only the outer driver's `exited with unexpected signal code
+11` for the `swiftpm-testing-helper` subprocess — matching the documented
+`CLAUDE.md` parallel-test-flake class (heavy concurrent in-memory Core Data
+store creation), cleared on immediate retry. A separate, earlier anomalous
+run (summary line claimed "failed... with 2 issues" while the process exit
+code was 0 and no individual test recorded a traceable failure) was
+superseded by two subsequent clean runs and is noted here only so this row
+doesn't read as having silently ignored an unexplained signal — no `4c`
+code is implicated in either anomaly; both are consistent with the
+documented flake class, not a regression.
+
+**H1's placement decision — decided directly, no council** (bottom, over
+top or adjacent-to-the-closed-instance): reuses `TaskStore.create`'s
+already-tested live-edge-fetch machinery verbatim with zero new surface
+area, can never collide by construction, and — the deciding factor — never
+silently reshuffles a manually curated list the way "top" would on every
+single close of a high-frequency recurring task. Full reasoning in the plan
+doc.
+
+**X7's identity mechanism — verified end-to-end, not just asserted:** the
+`X7IdempotentSpawnTests.duplicateReconcilerHealsConcurrentSpawnPair` test
+simulates the race by resetting `series.nextOccurrenceAfter` back to its
+pre-race value between two direct `RecurrenceSpawner.spawnIfNeeded` calls
+(both converging on one `DeterministicUUID.v5`-derived id), then drives
+`TaskDuplicateReconciler.reconcileDuplicates` directly and confirms it
+collapses the pair to one survivor, re-pointing relationships — the same
+mechanism `1a` shipped, now with a genuine trigger for this specific defect
+class where none existed before.
+
+**No app-target files touched** — confirmed via `git diff --stat` across
+the full commit range against everything outside `Packages/LillistCore`
+(empty). No unsigned `xcodebuild` builds were needed for this plan.
+
+**What `5a` (`mutation-scope-discipline`, the fourth and final plan in the
+`TaskStore.swift` serial chain) needs to know:**
+- `TaskStore.nextPositionDetail(forParent:placement:)` is now a one-line
+  wrapper delegating to a new type, `Ordering/SiblingPositioning
+  .nextPositionDetail(forParent:placement:in:)` — the actual fetch +
+  `FractionalPosition` logic moved there so `RecurrenceSpawner` (which has
+  no `TaskStore` instance to call through) can share it. Any `5a`
+  mutation-rollback wrapper placed around `TaskStore.create`/`reorder`
+  needs to account for this one extra layer of indirection — the
+  `throws`-propagation contract is unchanged, just relocated.
+- `RecurrenceSpawner.spawnIfNeeded(forClosedTask:in:)` is now `throws`
+  (previously non-throwing) — its one call site,
+  `TaskStore.transition`'s `newStatus == .closed` branch, already runs
+  inside a throwing `context.perform` block with the existing
+  rollback-on-catch structure, so this composed cleanly with no additional
+  changes needed there. If `5a`'s `withMutationRollback` helper wraps
+  `transition`, make sure it still lets `spawnIfNeeded`'s throw propagate
+  through to that same rollback path rather than swallowing it.
+- New file `Recurrence/DeterministicUUID.swift` — a small, self-contained
+  RFC 4122 v5 UUID helper (`CryptoKit.Insecure.SHA1`). Not part of `5a`'s
+  scope, but if any future mutation needs a deterministic, idempotent id
+  (the same cross-process/cross-device race shape `X7` closed), reuse this
+  rather than reimplementing name-based UUID generation.
+- `RecurrenceSpawner.swift`'s `deepCopy` now assigns child ids via
+  `DeterministicUUID.v5(namespace: newParent.id ?? UUID(), name: source.id
+  ?.uuidString ?? UUID().uuidString)` instead of a bare `UUID()` — if `5a`
+  touches cascade/subtree-copy logic elsewhere (it shouldn't need to, per
+  its finding list), don't assume every `LillistTask` copy site still
+  mints a purely random id.
+
+---
+
 ## Execution model (per Mikey's directives, 2026-07-28)
 
 - **One dedicated worktree** on a long-running branch:
@@ -1630,7 +1775,7 @@ Wave 6 closeout. **Status** starts `pending` for everything except Wave 0.
 | 3 | **3b** `reset-propagation-safety` | `S10 S18 S19 S20 S22 X11 S9c` | ✅ complete |
 | 4 | **4a** `history-consumer-discipline` | `H6 M3` | ✅ complete |
 | 4 | **4b** `notification-truthfulness` | `H2 X8 X9 X10` | ✅ complete |
-| 4 | **4c** `recurrence-correctness` | `H1 X7 X16 X17` | ⬜ pending |
+| 4 | **4c** `recurrence-correctness` | `H1 X7 X16 X17` | ✅ complete |
 | 5 | **5a** `mutation-scope-discipline` | `H5 M4 M6 M7 L3 L4 L5 X19 X20` | ⬜ pending |
 | 5 | **5b** `widget-snapshot-correctness` | `X5 X6` | ⬜ pending |
 | 5 | **5c** `watermark-registry-pruning` | `X12 L7` | ⬜ pending |
