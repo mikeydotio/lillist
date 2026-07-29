@@ -157,6 +157,49 @@ struct PersistenceHostTests {
         #expect((rollbackDesc.options[NSPersistentHistoryTrackingKey] as? NSNumber)?.boolValue == true)
     }
 
+    // Data-sync-hardening S3, Fix 1 (see the plan-3a doc §5): a host
+    // constructed from a configuration with `armsCloudKitMirroring: false`
+    // (the launch-time suppression an account-identity mismatch triggers)
+    // must never have any subsequent structural swap silently re-derive a
+    // default-`true` configuration — closing the exact leak both the
+    // software-architect and security-researcher council seats
+    // independently traced to `configuration(for:)`'s old hand-rebuilt
+    // `StoreConfiguration` (which never carried the host's own
+    // `armsCloudKitMirroring` forward). Uses the same non-live,
+    // factory-level assertion technique as `rollbackPreservesCloudKitOptions`
+    // above — `configurationForTesting(mode:)` calls the exact private
+    // helper every real reconfigure/attachStore/reattachStore/
+    // rebuildEmptyStore path uses, without needing a live container swap.
+    @Test("test_S3_reconfigurePreservesArmsCloudKitMirroringFalse")
+    func reconfigurePreservesArmsCloudKitMirroringFalse() async throws {
+        var config = StoreConfiguration.onDisk(url: Self.freshStoreURL(), syncMode: .localOnly)
+        config.armsCloudKitMirroring = false
+        let controller = try await PersistenceController(configuration: config)
+        let host = PersistenceHost(controller: controller, initialMode: .localOnly)
+
+        let rebuilt = await host.configurationForTesting(mode: .iCloudSync)
+
+        #expect(rebuilt.armsCloudKitMirroring == false, "a mismatch-suppressed host must never silently re-derive armsCloudKitMirroring back to true")
+        // Confirm this isn't vacuously true because syncMode also stayed
+        // localOnly — it's specifically targeting iCloudSync and still
+        // suppressed.
+        #expect(rebuilt.syncMode == .iCloudSync)
+        let desc = PersistenceController.makeStoreDescription(for: rebuilt)
+        #expect(desc.cloudKitContainerOptions == nil, "the description built from a suppressed config must never carry cloudKitContainerOptions")
+    }
+
+    @Test("A normally-armed host (the default) still preserves armsCloudKitMirroring true across a swap")
+    func reconfigurePreservesArmsCloudKitMirroringTrue() async throws {
+        let controller = try await PersistenceController(configuration: .onDisk(url: Self.freshStoreURL(), syncMode: .localOnly))
+        let host = PersistenceHost(controller: controller, initialMode: .localOnly)
+
+        let rebuilt = await host.configurationForTesting(mode: .iCloudSync)
+
+        #expect(rebuilt.armsCloudKitMirroring == true)
+        let desc = PersistenceController.makeStoreDescription(for: rebuilt)
+        #expect(desc.cloudKitContainerOptions != nil)
+    }
+
     // MARK: - Destructive reset (PersistenceResetting)
 
     @Test("tearDownStore + rebuildEmptyStore wipes data and leaves a usable empty store", .enabled(if: liveSwapAllowed))
