@@ -86,7 +86,13 @@ struct WidgetRefreshControllerTests {
         // A genuine local save on the SAME viewContext the mutation stores use.
         _ = try await tasks.create(title: "Submit feedback")
 
-        await waitUntil { snapStore.read(filterID: filterID) != nil }
+        // Poll on the reload, not the snapshot write — regenerateAuthoritatively()
+        // writes the snapshot partway through its own body, strictly before
+        // it returns and `reloadAllTimelines()` runs; polling on the write
+        // alone can observe that intermediate state and race the reload
+        // under contention. The reload always happens last, so waiting for
+        // it guarantees the snapshot is already settled too.
+        await waitUntil { reloader.reloadCount >= 1 }
 
         let snap = try #require(snapStore.read(filterID: filterID))
         #expect(snap.totalCount == 1, "the rebuild must reflect the task the local save just created")
@@ -121,9 +127,9 @@ struct WidgetRefreshControllerTests {
             try await Task.sleep(for: .milliseconds(20))
         }
 
-        // Poll for the settled state (all 5 tasks reflected) rather than a
-        // fixed post-burst margin.
-        await waitUntil { snapStore.read(filterID: filterID)?.totalCount == 5 }
+        // Poll on the reload (see the previous test's comment for why not
+        // the snapshot write) rather than a fixed post-burst margin.
+        await waitUntil { reloader.reloadCount >= 1 }
 
         let snap = try #require(snapStore.read(filterID: filterID))
         #expect(snap.totalCount == 5)
@@ -182,7 +188,7 @@ struct WidgetRefreshControllerTests {
             debounce: .seconds(30) // long enough that a debounced call would never land in this test
         )
         await refresh.refreshNow()
-        await waitUntil { snapStore.read(filterID: filterID) != nil }
+        await waitUntil { reloader.reloadCount >= 1 }
 
         #expect(snapStore.read(filterID: filterID) != nil)
         #expect(reloader.reloadCount == 1)
@@ -207,7 +213,7 @@ struct WidgetRefreshControllerTests {
             debounce: .milliseconds(50)
         )
         await refresh.refreshNow()
-        await waitUntil { snapStore.read(filterID: filterID) != nil }
+        await waitUntil { reloader.reloadCount >= 1 }
         #expect(snapStore.read(filterID: filterID) != nil)
 
         await refresh.resetAfterDestructiveOp()
