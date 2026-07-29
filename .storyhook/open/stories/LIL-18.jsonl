@@ -1,5 +1,0 @@
-{"kind":"StoryCreated","at":"2026-07-28T16:32:21Z","title":"X5: Widget cache-miss rebuild treats an empty filter list as success","state":"todo"}
-{"kind":"StoryPrioritySet","at":"2026-07-28T16:32:21Z","priority":"critical"}
-{"kind":"StoryLabelsSet","at":"2026-07-28T16:32:21Z","labels":["plan-5b","sev-critical","sweep-crossproc"]}
-{"kind":"StoryDescriptionSet","at":"2026-07-28T16:32:21Z","description":"pruneFilters(keeping:) then deletes every snapshot the app wrote. Failure scenario: combined with X1, one macOS widget refresh (which reads the wrong, empty store) blanks ALL desktop widgets. On iOS this manifests as a stale-read race that prunes freshly-written snapshots. Severity: Critical. Wave/Plan: Wave 5, plan 5b widget-snapshot-correctness. Sweep: cross-process."}
-{"kind":"StoryStateChanged","at":"2026-07-29T08:12:10Z","state":"in-progress"}
