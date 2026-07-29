@@ -289,6 +289,54 @@ struct MigrationRunnerExecutingTests {
         #expect(j.state == .failed)
     }
 
+    @Test("test_S3_replaceLocalWithICloudRefusesOnAccountChanged")
+    @MainActor
+    func replaceLocalWithICloudRefusesOnAccountChanged() async throws {
+        // Data-sync-hardening S3: unlike .replaceICloudWithLocal (which
+        // already had this preflight), .replaceLocalWithICloud had NO
+        // accountStateProvider check at all — a user could flip the sync
+        // toggle on in Settings while an account mismatch was still
+        // unresolved and wipe their local data to download the WRONG
+        // account's copy. Placed at the same relative position
+        // .replaceICloudWithLocal already uses: AFTER the recovery-anchor
+        // backup (tearDownStore), BEFORE the truly irreversible step
+        // (here, rebuildEmptyStore's local wipe) — so the reentrant
+        // catch's unconditional reattach still has a backup to fall back
+        // on if this check fires.
+        let dir = tempDir()
+        let recon = FakePersistenceReconfigurer(initialMode: .localOnly)
+        let journal = InMemoryMigrationJournalStore()
+        let suite = "MigRunner-\(UUID().uuidString)"
+        let modeStore = SyncModeStore(suiteName: suite)
+        await modeStore.setMode(.localOnly)
+        let provider: AccountStateProviding = { .accountChanged }
+        let coordinator = MigrationCoordinator(
+            host: recon,
+            journal: journal,
+            quarantine: QuarantineManager(rootDirectory: dir),
+            zoneEraser: FakeCloudKitZoneEraser(),
+            quiesceMonitor: SyncQuiesceMonitor(bridge: CloudKitEventBridge()),
+            notificationScheduler: nil,
+            syncModeStore: modeStore,
+            localStoreRowCount: { 1 },
+            accountStateProvider: provider
+        )
+        let storeURL = dir.appendingPathComponent("Lillist.sqlite")
+
+        await #expect(throws: LillistError.self) {
+            try await coordinator.beginEnable(direction: .replaceLocal, storeURL: storeURL)
+        }
+
+        // The recovery-anchor backup ran (tearDown), the check fired
+        // before the irreversible local wipe (no "rebuild" step), and the
+        // outer catch's unconditional reattach ran — the coordinator is
+        // never left store-less.
+        #expect(await recon.resetSteps == ["tearDown", "reattach"])
+        #expect(await recon.reconfigureCalls == [])
+        #expect(await modeStore.currentMode() == .localOnly)
+        #expect(try journal.read().state == .failed)
+    }
+
     // MARK: - S5/S14: syncFirstThenDisable quiesces BEFORE detaching
 
     @Test("syncFirstThenDisable: quiesces THEN detaches, in that order (S5 happy path)")

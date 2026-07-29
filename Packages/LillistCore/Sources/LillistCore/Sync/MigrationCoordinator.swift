@@ -369,6 +369,21 @@ public final class MigrationCoordinator {
                     entry.quarantineFolderName = backup.folderName
                     try journal.write(entry)
                 }
+                // S3: never wipe local data to download an account's copy
+                // if the signed-in account changed out from under us —
+                // mirrors .replaceICloudWithLocal's identical pre-flight
+                // below, placed at the same relative position (after the
+                // recovery-anchor backup, before the irreversible step).
+                // This branch previously had no such guard at all: a user
+                // could flip "iCloud Sync" on in Settings while an
+                // unresolved account mismatch was active and wipe their
+                // local data to redownload the WRONG account's copy.
+                if let provider = accountStateProvider,
+                   await provider() == .accountChanged {
+                    throw LillistError.storeUnavailable(
+                        reason: "iCloud account changed; aborting before wiping local data."
+                    )
+                }
                 emit(.removingLocalStore)
                 LillistLog.sync.notice("migration removing local store")
                 try await host.rebuildEmptyStore()
