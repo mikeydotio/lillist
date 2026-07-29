@@ -106,11 +106,24 @@ struct X16AfterCompletionIntervalClampTests {
         let rule = try JSONDecoder().decode(RecurrenceRule.self, from: Data(json.utf8))
         _ = try await series.create(fromSeedTask: id, rule: rule)
 
-        let beforeClose = Date()
         try await tasks.transition(id: id, to: .closed)
+
+        // LIL-84: compare against the seed task's own PERSISTED closedAt
+        // (fetched back after the transition), not a `Date()` the test
+        // captured independently beforehand. `spawn.start` is derived
+        // directly from `closedAt` (`closedAt.addingTimeInterval(interval)`)
+        // — comparing against the same value removes any dependency on how
+        // much real wall-clock time elapsed between the test's own
+        // `Date()` call and the moment `transition`'s `context.perform`
+        // block actually ran, which is exactly the kind of scheduler-timing
+        // gap that flaked this assertion under `swift test --parallel`
+        // contention (the two values are now causally derived from each
+        // other, not independently sampled).
+        let seed = try await tasks.fetch(id: id)
+        let closedAt = try #require(seed.closedAt)
 
         let roots = try await tasks.children(of: nil).filter { $0.title == "Water the plants" }
         let spawn = roots.first { $0.status == .todo }!
-        #expect(spawn.start! > beforeClose, "even a corrupt negative-interval rule must not spawn an already-overdue task")
+        #expect(spawn.start! > closedAt, "even a corrupt negative-interval rule must not spawn an already-overdue task")
     }
 }

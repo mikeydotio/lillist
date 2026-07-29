@@ -78,7 +78,7 @@ public actor SyncQuiesceMonitor {
         while Date() < deadline {
             try? await Task.sleep(nanoseconds: UInt64(pollInterval * 1_000_000_000))
             let elapsed = Date().timeIntervalSince(lastEventAt[waiterID] ?? Date())
-            if elapsed >= minQuietWindow {
+            if QuiesceDecision.isQuiesced(elapsedSinceLastEvent: elapsed, minQuietWindow: minQuietWindow) {
                 return .quiesced
             }
         }
@@ -87,5 +87,29 @@ public actor SyncQuiesceMonitor {
 
     private func recordEvent(waiterID: UUID) {
         lastEventAt[waiterID] = Date()
+    }
+}
+
+/// The one comparison `waitForQuiesce`'s poll loop makes every tick,
+/// extracted so it has a real name and can be driven directly by a test
+/// (`LIL-84`). A pure, zero-behavior-change extraction — `waitForQuiesce`
+/// itself is otherwise untouched, so this carries none of the risk a
+/// deeper refactor (e.g. replacing the loop's own `Date()`/`hardTimeout`
+/// structure) would.
+///
+/// `SyncQuiesceDecisionTests` drives this in a synthetic simulation loop
+/// (a caller-supplied schedule of "an event arrives at tick N" instead of
+/// a real `CloudKitEventBridge`) to prove the full S14 poll-loop shape —
+/// an event arriving at any point resets the quiet window; a `.setup`
+/// event counts exactly like `.import`/`.export`; concurrent waiters never
+/// observe each other's clock — deterministically, with zero real elapsed
+/// time and therefore zero wall-clock contention sensitivity. This is the
+/// durable fix for `SyncQuiesceMonitorTests`' own tight (300ms/500ms)
+/// real-time budgets flaking under `swift test --parallel` CPU contention;
+/// those tests remain as lightweight real-clock smoke tests, no longer the
+/// sole proof of correctness.
+enum QuiesceDecision {
+    static func isQuiesced(elapsedSinceLastEvent: TimeInterval, minQuietWindow: TimeInterval) -> Bool {
+        elapsedSinceLastEvent >= minQuietWindow
     }
 }

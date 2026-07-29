@@ -116,7 +116,16 @@ struct WidgetRefreshControllerTests {
             persistence: controller,
             builder: builder,
             reloader: reloader,
-            debounce: .milliseconds(100)
+            // LIL-84: widened from 100ms (with 20ms gaps, ~5x headroom) to
+            // 500ms (with 5ms gaps, ~20x headroom) — this test flaked under
+            // `swift test --parallel` contention when a save's own
+            // `Task.sleep(for: .milliseconds(20))` occasionally overshot
+            // far enough that an EARLIER debounce timer fired before a
+            // LATER save landed, coalescing into more than one reload (or
+            // reflecting fewer than 5 tasks) instead of the one this test
+            // asserts. The debounce-coalescing MECHANISM this test proves
+            // is unchanged; only the timing margin needed extra headroom.
+            debounce: .milliseconds(500)
         )
         await refresh.start()
 
@@ -124,7 +133,7 @@ struct WidgetRefreshControllerTests {
             _ = try await tasks.create(title: "Task \(i)")
             // Well under the debounce window, so each save restarts it
             // rather than letting it fire.
-            try await Task.sleep(for: .milliseconds(20))
+            try await Task.sleep(for: .milliseconds(5))
         }
 
         // Poll on the reload (see the previous test's comment for why not
