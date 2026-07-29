@@ -634,6 +634,113 @@ struct DataStoreResetServiceTests {
         // on the local-save observer's incidental timing.
         #expect(await reconciler.callCount == 2)
     }
+
+    // MARK: - S3: account-mismatch resolution (narrow, re-validating entry point)
+
+    /// Fast quiesce timing so the iCloudSync-only `.redownload` path
+    /// doesn't wait the real 5s default — mirrors
+    /// `postRebuildQuiesceTimeoutStillCompletes`'s pattern above.
+    @MainActor
+    private func makeFastService(
+        host: FakePersistenceReconfigurer,
+        eraser: any CloudKitZoneEraser,
+        accountStateProvider: AccountStateProviding?
+    ) -> DataStoreResetService {
+        DataStoreResetService(
+            host: host,
+            quarantine: QuarantineManager(rootDirectory: tempDir()),
+            zoneEraser: eraser,
+            quiesceMonitor: SyncQuiesceMonitor(bridge: CloudKitEventBridge()),
+            notificationScheduler: nil,
+            cloudKitContainerIdentifier: "iCloud.test",
+            accountStateProvider: accountStateProvider,
+            quiesceMinQuietWindow: 0.05,
+            quiesceHardTimeout: 0.1
+        )
+    }
+
+    @Test("test_S3_resolveAccountMismatchByRedownloadingRequiresActiveMismatch")
+    @MainActor
+    func resolveAccountMismatchRequiresActiveMismatch() async throws {
+        let host = FakePersistenceReconfigurer(initialMode: .iCloudSync)
+        let eraser = FakeCloudKitZoneEraser()
+        // No provider at all — the method has nothing to re-validate against.
+        let service = makeFastService(host: host, eraser: eraser, accountStateProvider: nil)
+
+        await #expect(throws: LillistError.self) {
+            try await service.resolveAccountMismatchByRedownloading()
+        }
+        #expect(await host.resetSteps == [], "must not touch the store when there is nothing to resolve")
+
+        // A provider that reports anything OTHER than .accountChanged must
+        // also refuse — this is a re-validation, not a rubber stamp.
+        let calmProvider: AccountStateProviding = { .available }
+        let calmService = makeFastService(host: host, eraser: eraser, accountStateProvider: calmProvider)
+        await #expect(throws: LillistError.self) {
+            try await calmService.resolveAccountMismatchByRedownloading()
+        }
+    }
+
+    @Test("test_S3_resolveAccountMismatchByRedownloadingBypassesPreflightOnce")
+    @MainActor
+    func resolveAccountMismatchBypassesPreflightOnce() async throws {
+        let host = FakePersistenceReconfigurer(initialMode: .iCloudSync)
+        let eraser = FakeCloudKitZoneEraser()
+        let provider: AccountStateProviding = { .accountChanged }
+        let service = makeFastService(host: host, eraser: eraser, accountStateProvider: provider)
+
+        // Must NOT throw despite the provider reporting .accountChanged —
+        // this one call is the confirmed resolution flow itself.
+        try await service.resolveAccountMismatchByRedownloading()
+
+        #expect(await host.resetSteps == ["tearDown", "rebuild"])
+        // .redownload scope never erases the zone.
+        #expect(await eraser.callCount == 0)
+    }
+
+    @Test("test_S3_resetAndRedownloadStillBlockedDuringActiveMismatch")
+    @MainActor
+    func resetAndRedownloadStillBlockedDuringActiveMismatch() async throws {
+        // Proves resetAndRedownload() itself is completely unmodified —
+        // ResetSignalMonitor's automatic peer-triggered path calls this
+        // exact method and must stay blocked during a real mismatch.
+        let host = FakePersistenceReconfigurer(initialMode: .iCloudSync)
+        let eraser = FakeCloudKitZoneEraser()
+        let provider: AccountStateProviding = { .accountChanged }
+        let service = makeFastService(host: host, eraser: eraser, accountStateProvider: provider)
+
+        await #expect(throws: LillistError.self) {
+            try await service.resetAndRedownload()
+        }
+        #expect(await host.resetSteps == [])
+    }
+
+    @Test("test_S3_failedResolutionReattachDoesNotRearmMirroring")
+    @MainActor
+    func failedResolutionReattachDoesNotRearmMirroring() async throws {
+        // Class-kill for the PersistenceHost fix (plan-3a §5): even though
+        // this test drives the FAKE host (which doesn't itself carry
+        // armsCloudKitMirroring — that property lives on the real
+        // PersistenceHost, proven directly in PersistenceHostTests), the
+        // ordering assertion here proves DataStoreResetService's own
+        // contribution to the guarantee: a failed rebuild during a
+        // confirmed mismatch resolution still reattaches (never leaves the
+        // coordinator store-less) and still surfaces the failure — the
+        // caller (the resolution UI) must not call adoptCurrentIdentity()
+        // on this path, exactly per the council decision's binding
+        // ordering.
+        let host = FakePersistenceReconfigurer(initialMode: .iCloudSync)
+        await host.failOnRebuild()
+        let eraser = FakeCloudKitZoneEraser()
+        let provider: AccountStateProviding = { .accountChanged }
+        let service = makeFastService(host: host, eraser: eraser, accountStateProvider: provider)
+
+        await #expect(throws: LillistError.self) {
+            try await service.resolveAccountMismatchByRedownloading()
+        }
+
+        #expect(await host.resetSteps == ["tearDown", "rebuild", "reattach"])
+    }
 }
 
 /// Zone eraser that records the call then throws, for the reset

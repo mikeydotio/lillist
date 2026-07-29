@@ -220,6 +220,43 @@ public final class DataStoreResetService {
         }
     }
 
+    /// Resolves a detected account-identity mismatch (data-sync-hardening
+    /// `S3`) by wiping this device's local copy of the superseded
+    /// account's data and re-downloading fresh from the now-current iCloud
+    /// account. **Not** the same call path as `resetAndRedownload()` above
+    /// — that method is left completely unmodified specifically so
+    /// `ResetSignalMonitor`'s automatic peer-triggered reset (which calls
+    /// it directly) stays unconditionally blocked by the ordinary
+    /// `accountStateProvider` preflight whenever a real mismatch is
+    /// active. This method is the one, narrowly-scoped, re-validating
+    /// bypass: it independently re-reads the live account state itself
+    /// (never trusting a stale caller-held flag) and refuses unless a
+    /// mismatch is genuinely active right now, then — and only then —
+    /// skips *just* `performReset`'s internal ambient throw for this one
+    /// call. Every other invariant (`destructiveOpGate`, the disk
+    /// pre-flight, notification cancellation, reattach-on-failure) is
+    /// untouched.
+    ///
+    /// Callers must call `AccountIdentityStore.adoptCurrentIdentity()`
+    /// **only after** this method returns successfully — never before,
+    /// never on failure. See the plan doc §3's council decision for why:
+    /// adopting early could let a failure-path `reattachStore()` reattach
+    /// still-mismatched data with mirroring re-armed against the
+    /// newly-adopted identity. A failure here always leaves the
+    /// coordinator reattached (never store-less) via the same
+    /// `performReset` failure handling every other reset flavor uses.
+    public func resolveAccountMismatchByRedownloading() async throws {
+        guard let accountStateProvider else {
+            throw LillistError.storeUnavailable(reason: "Cannot resolve an account mismatch without an account-state provider configured.")
+        }
+        guard await accountStateProvider() == .accountChanged else {
+            throw LillistError.storeUnavailable(reason: "No account mismatch is currently active to resolve.")
+        }
+        try await withReentrancyGuard(label: "resolveAccountMismatchByRedownloading") {
+            try await performReset(.redownload, bypassAccountChangedGuard: true)
+        }
+    }
+
     /// "Erase data from all devices and start over" (issue #71). Wipes
     /// local + iCloud to empty via `resetAllData()`'s exact steps, then
     /// propagates over `ResetPropagator` so every other known device
@@ -433,7 +470,15 @@ public final class DataStoreResetService {
     /// Callers must already hold `withReentrancyGuard` — this has no guard
     /// of its own, so `resetAndReseedFromThisDevice()` can wrap it together
     /// with its export/reimport/broadcast steps under one guarded call.
-    private func performReset(_ scope: Scope) async throws {
+    ///
+    /// - Parameter bypassAccountChangedGuard: `S3` — set only by
+    ///   `resolveAccountMismatchByRedownloading()`, which has already
+    ///   independently re-validated a mismatch is genuinely active before
+    ///   calling. Every other caller (including `resetAndRedownload()`,
+    ///   which `ResetSignalMonitor`'s automatic peer-triggered reset
+    ///   depends on) leaves this `false` and stays subject to step 2's
+    ///   ambient throw.
+    private func performReset(_ scope: Scope, bypassAccountChangedGuard: Bool = false) async throws {
         let mode = await host.currentMode
 
         // `.redownload` only makes sense while syncing — guard before any
@@ -452,8 +497,10 @@ public final class DataStoreResetService {
                 await scheduler.cancelAllPending()
             }
 
-            // 2. account-changed pre-flight
-            if let provider = accountStateProvider, await provider() == .accountChanged {
+            // 2. account-changed pre-flight — skipped only for the one
+            //    confirmed, re-validated mismatch-resolution call path.
+            if !bypassAccountChangedGuard,
+               let provider = accountStateProvider, await provider() == .accountChanged {
                 throw LillistError.storeUnavailable(
                     reason: "iCloud account changed; aborting reset before erase."
                 )
