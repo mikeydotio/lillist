@@ -1,5 +1,0 @@
-{"kind":"StoryCreated","at":"2026-07-28T16:32:21Z","title":"X7: Recurrence spawn has no idempotency key","state":"todo"}
-{"kind":"StoryPrioritySet","at":"2026-07-28T16:32:21Z","priority":"high"}
-{"kind":"StoryLabelsSet","at":"2026-07-28T16:32:21Z","labels":["plan-4c","sev-high","sweep-crossproc"]}
-{"kind":"StoryDescriptionSet","at":"2026-07-28T16:32:21Z","description":"nextOccurrenceAfter is the only guard, and the trump merge policy lets a concurrent widget/app interaction, or two devices closing the same task near-simultaneously, double-spawn the identical occurrence under distinct IDs - the reconciler has no way to collapse them. RecurrenceLog is an os.Logger call, not a ledger. Severity: High. Wave/Plan: Wave 4, plan 4c recurrence-correctness. Sweep: cross-process. Fix approach: deterministic occurrence identity (e.g. UUIDv5(seriesID, occurrence date)) so double-spawns collapse."}
-{"kind":"StoryStateChanged","at":"2026-07-29T05:26:00Z","state":"in-progress"}

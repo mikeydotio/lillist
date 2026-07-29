@@ -1,5 +1,0 @@
-{"kind":"StoryCreated","at":"2026-07-28T16:32:21Z","title":"H1: RecurrenceSpawner assigns every spawn seed.position + 0.5","state":"todo"}
-{"kind":"StoryPrioritySet","at":"2026-07-28T16:32:21Z","priority":"high"}
-{"kind":"StoryLabelsSet","at":"2026-07-28T16:32:21Z","labels":["plan-4c","sev-high","sweep-stores"]}
-{"kind":"StoryDescriptionSet","at":"2026-07-28T16:32:21Z","description":"RecurrenceSpawner.swift:46 - a guaranteed sibling-position collision on the second spawn from the same seed; also collides with reorder-heal output. Severity: High. Wave/Plan: Wave 4, plan 4c recurrence-correctness. Sweep: stores/persistence. Verified directly against source."}
-{"kind":"StoryStateChanged","at":"2026-07-29T05:26:00Z","state":"in-progress"}
