@@ -18,7 +18,9 @@ struct MigrationRecoveryTests {
         journal: MigrationJournalStore,
         quarantineRoot: URL,
         quarantineClock: @escaping @Sendable () -> Date = Date.init,
-        syncStatusReset: (@Sendable () async -> Void)? = nil
+        syncStatusReset: (@Sendable () async -> Void)? = nil,
+        accountStateProvider: AccountStateProviding? = nil,
+        backupReconciler: (any BackupPackageReconciling)? = nil
     ) -> (MigrationCoordinator, FakePersistenceReconfigurer, FakeCloudKitZoneEraser) {
         let recon = FakePersistenceReconfigurer(initialMode: startMode)
         let eraser = FakeCloudKitZoneEraser()
@@ -33,9 +35,19 @@ struct MigrationRecoveryTests {
             notificationScheduler: nil,
             syncModeStore: modeStore,
             localStoreRowCount: { 1 },
-            syncStatusReset: syncStatusReset
+            accountStateProvider: accountStateProvider,
+            syncStatusReset: syncStatusReset,
+            backupReconciler: backupReconciler
         )
         return (coordinator, recon, eraser)
+    }
+
+    /// Records `reconcileFull()` call count — mirrors
+    /// `BackupRestoreServiceTests`/`DataStoreResetServiceTests`'
+    /// `SpyBackupPackageReconciler`.
+    private actor SpyBackupPackageReconciler: BackupPackageReconciling {
+        private(set) var callCount = 0
+        func reconcileFull() async { callCount += 1 }
     }
 
     @Test("restoreFromBackup restores contents, reverts mode, clears journal")
@@ -270,6 +282,164 @@ struct MigrationRecoveryTests {
         // another attempt, rather than being silently cleared or
         // overwritten with a new, less-informative failure.
         #expect(try journal.read() == preexisting)
+    }
+
+    // MARK: - LIL-81: account-changed guard before reattaching
+
+    @Test("restoreFromBackup refuses to reattach at .iCloudSync when the account changed since the crash")
+    @MainActor
+    func restoreRefusesToReattachICloudSyncOnAccountChanged() async throws {
+        let dir = tempDir()
+        let liveURL = dir.appendingPathComponent("Lillist.sqlite")
+        try Data("backup-content".utf8).write(to: liveURL)
+        let quarantine = QuarantineManager(rootDirectory: dir)
+        _ = try quarantine.copyStore(at: liveURL)
+        try FileManager.default.removeItem(at: liveURL)
+
+        // A pre-existing `.failed` journal, matching the real scenario:
+        // the ORIGINAL migration crash already recorded `.failed` before
+        // the user ever triggers recovery — restoreFromBackup's own catch
+        // never writes the journal at all, on any failure path.
+        let preexisting = MigrationJournal(
+            state: .failed,
+            operation: .replaceICloudWithLocal,
+            previousMode: .iCloudSync
+        )
+        let journal = InMemoryMigrationJournalStore(initial: preexisting)
+        let (coordinator, recon, _) = makeCoordinator(
+            startMode: .localOnly, journal: journal, quarantineRoot: dir,
+            accountStateProvider: { .accountChanged }
+        )
+
+        await #expect(throws: LillistError.self) {
+            try await coordinator.restoreFromBackup(filename: "Lillist.sqlite", targetURL: liveURL)
+        }
+
+        // tearDown ran (the recovery anchor is unaffected — the guard sits
+        // strictly after it), attachStore was NEVER reached, and the
+        // catch's best-effort reattach ran — the coordinator must never be
+        // left store-less, mirroring restoreAttachFailureReattachesWithoutClobberingJournal.
+        #expect(await recon.resetSteps == ["tearDown", "reattach"])
+        #expect(await recon.attachCalls == [])
+        // The journal is left EXACTLY as it was — same "still offer
+        // another attempt" contract as every other failure path here.
+        #expect(try journal.read() == preexisting)
+    }
+
+    @Test("restoreFromBackup's account-changed guard does not apply when previousMode is .localOnly")
+    @MainActor
+    func restoreAccountChangedGuardDoesNotApplyToLocalOnly() async throws {
+        let dir = tempDir()
+        let liveURL = dir.appendingPathComponent("Lillist.sqlite")
+        try Data("backup-content".utf8).write(to: liveURL)
+        let quarantine = QuarantineManager(rootDirectory: dir)
+        _ = try quarantine.copyStore(at: liveURL)
+        try FileManager.default.removeItem(at: liveURL)
+
+        // previousMode is .localOnly here — a reattach at .localOnly arms
+        // no CloudKit mirroring regardless of account state, so an
+        // .accountChanged report must NOT block this restore.
+        let journal = InMemoryMigrationJournalStore(initial: MigrationJournal(
+            state: .reconfiguringStore,
+            operation: .syncFirstThenDisable,
+            previousMode: .localOnly
+        ))
+        let (coordinator, recon, _) = makeCoordinator(
+            startMode: .localOnly, journal: journal, quarantineRoot: dir,
+            accountStateProvider: { .accountChanged }
+        )
+
+        try await coordinator.restoreFromBackup(filename: "Lillist.sqlite", targetURL: liveURL)
+
+        #expect(try String(contentsOf: liveURL, encoding: .utf8) == "backup-content")
+        #expect(await recon.mode == .localOnly)
+        #expect(await recon.attachCalls == [.localOnly])
+        #expect(try journal.read() == .idle)
+    }
+
+    @Test("restoreFromBackup at .iCloudSync succeeds normally when the account did not change")
+    @MainActor
+    func restoreICloudSyncSucceedsWhenAccountMatches() async throws {
+        let dir = tempDir()
+        let liveURL = dir.appendingPathComponent("Lillist.sqlite")
+        try Data("backup-content".utf8).write(to: liveURL)
+        let quarantine = QuarantineManager(rootDirectory: dir)
+        _ = try quarantine.copyStore(at: liveURL)
+        try FileManager.default.removeItem(at: liveURL)
+
+        let journal = InMemoryMigrationJournalStore(initial: MigrationJournal(
+            state: .reconfiguringStore,
+            operation: .replaceICloudWithLocal,
+            previousMode: .iCloudSync
+        ))
+        let (coordinator, recon, _) = makeCoordinator(
+            startMode: .localOnly, journal: journal, quarantineRoot: dir,
+            accountStateProvider: { .available }
+        )
+
+        try await coordinator.restoreFromBackup(filename: "Lillist.sqlite", targetURL: liveURL)
+
+        #expect(try String(contentsOf: liveURL, encoding: .utf8) == "backup-content")
+        #expect(await recon.mode == .iCloudSync)
+        #expect(await recon.attachCalls == [.iCloudSync])
+        #expect(try journal.read() == .idle)
+    }
+
+    // MARK: - LIL-80: backup-package resync after the raw-SQLite file swap
+
+    @Test("restoreFromBackup resyncs the live JSON backup package on success")
+    @MainActor
+    func restoreResyncsBackupPackageOnSuccess() async throws {
+        let dir = tempDir()
+        let liveURL = dir.appendingPathComponent("Lillist.sqlite")
+        try Data("backup-content".utf8).write(to: liveURL)
+        let quarantine = QuarantineManager(rootDirectory: dir)
+        _ = try quarantine.copyStore(at: liveURL)
+        try FileManager.default.removeItem(at: liveURL)
+
+        let journal = InMemoryMigrationJournalStore(initial: MigrationJournal(
+            state: .reconfiguringStore,
+            operation: .replaceICloudWithLocal,
+            previousMode: .iCloudSync
+        ))
+        let reconciler = SpyBackupPackageReconciler()
+        let (coordinator, _, _) = makeCoordinator(
+            startMode: .localOnly, journal: journal, quarantineRoot: dir,
+            backupReconciler: reconciler
+        )
+
+        try await coordinator.restoreFromBackup(filename: "Lillist.sqlite", targetURL: liveURL)
+
+        #expect(await reconciler.callCount == 1)
+    }
+
+    @Test("restoreFromBackup never resyncs the backup package when the restore fails")
+    @MainActor
+    func restoreNeverResyncsBackupPackageOnFailure() async throws {
+        let dir = tempDir()
+        let liveURL = dir.appendingPathComponent("Lillist.sqlite")
+        try Data("backup-content".utf8).write(to: liveURL)
+        let quarantine = QuarantineManager(rootDirectory: dir)
+        _ = try quarantine.copyStore(at: liveURL)
+        try FileManager.default.removeItem(at: liveURL)
+
+        let journal = InMemoryMigrationJournalStore(initial: MigrationJournal(
+            state: .reconfiguringStore,
+            operation: .replaceICloudWithLocal,
+            previousMode: .iCloudSync
+        ))
+        let reconciler = SpyBackupPackageReconciler()
+        let (coordinator, recon, _) = makeCoordinator(
+            startMode: .localOnly, journal: journal, quarantineRoot: dir,
+            backupReconciler: reconciler
+        )
+        await recon.failOnAttachStore(call: 1)
+
+        await #expect(throws: LillistError.self) {
+            try await coordinator.restoreFromBackup(filename: "Lillist.sqlite", targetURL: liveURL)
+        }
+
+        #expect(await reconciler.callCount == 0)
     }
 
     @Test("A secondary journal-write failure in the catch does not mask the original error")

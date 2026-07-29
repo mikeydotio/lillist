@@ -470,7 +470,12 @@ final class AppEnvironment {
             syncStatusReset: clearSyncStallState,
             historyWatermarksReset: clearHistoryWatermarks,
             widgetCacheReset: clearWidgetCache,
-            remoteZoneHasRecords: remoteZoneHasRecords
+            remoteZoneHasRecords: remoteZoneHasRecords,
+            // LIL-80: restoreFromBackup's raw-SQLite file swap triggers no
+            // Core Data save, so localBackupCoordinator's observers never
+            // see it — resync the live JSON backup package explicitly on
+            // success, same as every other destructive op already does.
+            backupReconciler: localBackupCoordinator
         )
         // Issue #71: the reset-propagation control channel, over iCloud
         // Key-Value Store — a separate iCloud subsystem from the Core

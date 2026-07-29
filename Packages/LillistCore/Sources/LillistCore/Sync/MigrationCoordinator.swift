@@ -115,6 +115,18 @@ public final class MigrationCoordinator {
     /// no pre-flight (legacy/test behavior, matching every other optional
     /// guard's default).
     private let remoteZoneHasRecords: (@Sendable () async throws -> Bool)?
+    /// `LIL-80`: resyncs the live JSON backup package after
+    /// `restoreFromBackup`'s raw-SQLite file swap — a DIFFERENT subsystem
+    /// from `BackupRestoreService`'s JSON-package restore (which `2b`'s
+    /// `S23` fix already covers via this same protocol), but with the
+    /// identical gap: swapping the store file directly triggers no Core
+    /// Data save, so `LocalBackupCoordinator`'s observers never fire and
+    /// the live backup package is left describing the pre-restore store.
+    /// Called only on `restoreFromBackup`'s successful-completion path, the
+    /// same "only on success" discipline every other reset-adjacent closure
+    /// on this type follows. `nil` preserves prior behavior for tests/legacy
+    /// callers.
+    private let backupReconciler: (any BackupPackageReconciling)?
 
     private var progressContinuations: [UUID: AsyncStream<MigrationPhase>.Continuation] = [:]
 
@@ -137,7 +149,8 @@ public final class MigrationCoordinator {
         syncStatusReset: (@Sendable () async -> Void)? = nil,
         historyWatermarksReset: (() async -> Void)? = nil,
         widgetCacheReset: (() async -> Void)? = nil,
-        remoteZoneHasRecords: (@Sendable () async throws -> Bool)? = nil
+        remoteZoneHasRecords: (@Sendable () async throws -> Bool)? = nil,
+        backupReconciler: (any BackupPackageReconciling)? = nil
     ) {
         self.host = host
         self.journal = journal
@@ -158,6 +171,7 @@ public final class MigrationCoordinator {
         self.historyWatermarksReset = historyWatermarksReset
         self.widgetCacheReset = widgetCacheReset
         self.remoteZoneHasRecords = remoteZoneHasRecords
+        self.backupReconciler = backupReconciler
     }
 
     /// Breadcrumb emit, awaited inline so phase crumbs land in
@@ -300,6 +314,24 @@ public final class MigrationCoordinator {
             _ = try await host.tearDownStore(backupVia: nil)
             try quarantine.restore(quarantinedStore: backup, to: targetURL)
             emit(.reconfiguringStore)
+            // `LIL-81`: mirrors `runMigration`'s account-changed pre-flight
+            // (`.replaceICloudWithLocal`/`.replaceLocalWithICloud`) — never
+            // reattach with mirroring armed against an account that
+            // changed since the crash this recovers from. Gated to
+            // `prev == .iCloudSync` since a `.localOnly` reattach arms no
+            // mirroring regardless (matching `remoteZoneHasRecords`'s own
+            // op-specific gating above). Placed after the recovery anchor
+            // (`quarantine.restore` already ran) but before the one
+            // irreversible-in-context step left: reattaching with
+            // whatever `armsCloudKitMirroring` this host was constructed
+            // with.
+            if prev == .iCloudSync,
+               let provider = accountStateProvider,
+               await provider() == .accountChanged {
+                throw LillistError.storeUnavailable(
+                    reason: "iCloud account changed; aborting restore before reattaching."
+                )
+            }
             // Forced attach, not `reconfigure(to:)`: the file at
             // `targetURL` was just replaced out from under the
             // coordinator, so even a same-mode restore
@@ -325,6 +357,12 @@ public final class MigrationCoordinator {
         await syncModeStore.setMode(prev)
         try journal.clear()
         await syncStatusReset?()
+        // `LIL-80`: the file swap above triggered no Core Data save, so
+        // `LocalBackupCoordinator`'s observers never saw it — resync the
+        // live JSON backup package to the just-restored store explicitly,
+        // the same "only on success" call every other destructive op on
+        // this type makes.
+        await backupReconciler?.reconcileFull()
         emit(.completed)
         LillistLog.sync.notice("restoreFromBackup completed mode=\(prev.rawValue, privacy: .public)")
     }
