@@ -23,9 +23,10 @@ CloudKit, XCTest + Swift Testing, xcodegen, storyhook (prefix `LIL`).
 > **New here? Read this section first.** This file is the **living progress
 > tracker** — keep it current as plans land.
 
-**As of 2026-07-28 — Wave 0 and all of Wave 1 (`1a` `trash-tree-integrity`,
+**As of 2026-07-28 — Wave 0, all of Wave 1 (`1a` `trash-tree-integrity`,
 `1b` `purge-cloudkit-retirement`, `1c` `store-location-unification`, `1d`
-`export-schema-completeness`) COMPLETE. Wave 2 next.**
+`export-schema-completeness`), and all of Wave 2 (`2a` `migration-transitions`,
+`2b` `backup-restore-correctness`) COMPLETE. Wave 3 next.**
 
 - ✅ **Plan `1a` closed all 8 findings** (`C1 C2 C3 H4 H7 M1 M2 M5` /
   `LIL-7 LIL-8 LIL-9 LIL-22 LIL-25 LIL-45 LIL-46 LIL-49`), added the
@@ -223,15 +224,18 @@ CloudKit, XCTest + Swift Testing, xcodegen, storyhook (prefix `LIL`).
   needs to know about the current shape of `MigrationCoordinator.swift`/
   `PersistenceHost.swift`.
 
-**Next action for whoever picks this up:** start Wave 2, plan `2b`
-(`backup-restore-correctness`) — findings `S2 S4 S7 S9b S23`. Its
-hotspots are `MigrationCoordinator.swift`, `PersistenceHost.swift`, and
-the backup/restore types (see the *Shared-file serial chains* section,
-chains 2 and 3 — `2a` ✅ done is the first link in both; `2b` is next,
-then `3a`). Read the *Resume protocol* section first, then *Wave 2a
-closing report* below for what `2a` left in place (quarantine mechanism
-unchanged, `S7`'s WAL-active-store concern still open, `DestructiveOpGate`
-wiring pattern to reuse).
+**Next action for whoever picks this up:** start Wave 3, plan `3a`
+(`account-identity-and-status`) — findings `S3 S13 S21 S24`. Its
+hotspots include `MigrationCoordinator.swift` and both
+`AppEnvironment.swift`s (see the *Shared-file serial chains* section,
+chains 2 and 5 — `2a`/`2b` ✅ done are the first two links on chain 2;
+`1c` ✅ done is the first link on chain 5). Read the *Resume protocol*
+section first, then *Wave 2b closing report* below for what `2b` left
+in place (the unified tearDown+attachStore quarantine mechanism now
+covers all four migration ops; `DestructiveOpGate` also gates
+`LocalBackupCoordinator`'s prune step; a new `ReseedJournal` +
+`BackupPackageReconciling` protocol exist if `3a`'s account-switch work
+ever needs a similar durable-recovery or resync pattern).
 
 ---
 
@@ -671,6 +675,144 @@ needs to know about the current shape:**
 
 ---
 
+## Wave 2b closing report (`backup-restore-correctness`)
+
+Plan doc: `docs/superpowers/plans/2026-07-28-plan-2b-backup-restore-correctness.md`
+— contains the full restore/reseed state-machine tables, the `S7`
+unification design, the `S4` staging design, and the `S9b` journal
+decision (with the "why not `MigrationJournal`" reasoning). Read it
+before touching `MigrationCoordinator.swift`/`DataStoreResetService.swift`/
+`BackupRestoreService.swift`/`LocalBackupCoordinator.swift` again.
+
+| Finding | Story | Fix commit | Regression test(s) |
+|---|---|---|---|
+| `S2` | `LIL-12` | `42b2e657` | `MigrationRecoveryTests.swift` (+2: same-mode-still-reattaches class-kill, failed-attachStore-reattaches-without-clobbering-journal) |
+| `S7` | `LIL-28` | `959a5e65` | `MigrationRunnerExecutingTests.swift` (+2 dedicated quarantine-via-tearDownStore proofs) + 4 existing tests updated from `reconfigureCalls` to `resetSteps`/`attachCalls` assertions (mechanism changed, not just call count) |
+| `S9b` | `LIL-31` | `11e24b70` | `DataStoreResetServiceTests.swift` (+5: pre-wipe-failure leaves `localDataWiped=false`, `recoverInterruptedReseed`'s three branches — idle/discard/resume — the resume case a genuine class-kill via `RealWipingResetHost`, missing-staged-path throws) + 1 existing test rewritten (durable-location cleanup, not the old temp-dir) |
+| `S4` | `LIL-14` | `7c863ebd` | `BackupRestoreServiceTests.swift` (`PackageWipingResetter` — deletes the entire live package mid-reset, restore still recovers the pre-wipe data; class-kill verified red against the pre-fix code) + `LocalBackupCoordinatorTests.swift` (gate-held-skips-prune / gate-released-prunes, class-kill verified red) |
+| `S23` | `LIL-61` | `d43afe1f` | `BackupRestoreServiceTests.swift` (manifest-lies-record-tells-truth + 3 existing incompatible-package tests updated to bump the real record, not just the manifest) + `BackupSnapshotManagerTests.swift` (20-way concurrent `replaceAll`/`zipPackage` stress against one actor, asserting every zip is 0-or-5 files, never torn) + `DataStoreResetServiceTests.swift`/`BackupRestoreServiceTests.swift` (reconcile-called-once-on-success / never-on-failure) |
+
+**Commit range:** `eed4e709..d43afe1f` — 1 docs (`eed4e709`), 5 fix
+(`42b2e657` S2, `959a5e65` S7, `11e24b70` S9b, `7c863ebd` S4, `d43afe1f`
+S23), 2 `chore(stories)` (in-progress, done). Full `LillistCore` suite
+green **twice in a row** with unmasked exit codes and a clean grep for
+the failure markers after every fix commit (1235 tests, 228 suites — up
+from `2a`'s 1217/228 baseline); both apps verified with unsigned
+`xcodebuild` builds (BUILD SUCCEEDED) after every commit that touched
+an app target (`S9b`, `S4`, `S23`). One `SmartFilterPerformanceTests`
+timing-budget flake and one `SyncQuiesceMonitorTests` timing flake hit
+during verification — both match documented pre-existing flake classes
+(CLAUDE.md's parallel-test-flakes section), unrelated to this plan's
+changes, and cleared on retry per the documented policy.
+
+**New type: `PersistenceResetting.attachStore(at:)`.** Added alongside
+`tearDownStore`/`rebuildEmptyStore`/`reattachStore` — attaches a fresh
+store at an explicit mode, always performing a real add and always
+updating `currentMode` (unlike `reconfigure(to:)`'s same-mode no-op or
+`reattachStore()`'s attach-at-unchanged-mode). `S2`'s `restoreFromBackup`
+needed it because the on-disk file changes out from under the
+coordinator even when the target mode doesn't change; `S7`'s
+`replaceICloudWithLocal`/`syncFirstThenDisable`/`disableNow` reuse it as
+the trailing half of their new tearDown-then-attach shape. All four
+`PersistenceResetting` conformers (`PersistenceHost`,
+`FakePersistenceReconfigurer`, `RealWipingReconfigurer`,
+`RealWipingResetHost`) implement it.
+
+**New type: `ReseedJournal`/`ReseedJournalStore`
+(`Sync/ReseedJournal.swift`/`Sync/ReseedJournalStore.swift`).**
+Deliberately NOT a `MigrationJournal.State` case — see the plan doc §2
+for the full reasoning (a reseed's recovery action is categorically
+different from a migration's, and `DataStoreResetService`'s own header
+comment already forbids touching `MigrationJournal`). Mirrors
+`MigrationJournal`'s exact file-backed/atomic-write shape. Staging root
+is `quarantine.rootDirectory.appendingPathComponent("Reseed")` — reused,
+not a new durable-root concept. `DataStoreResetService
+.recoverInterruptedReseed()` is wired into both apps' `bootstrap()`,
+first thing, best-effort.
+
+**New type: `BackupPackageReconciling`
+(`Sync/DataStoreResetService.swift`, next to `BackupPackageReconciling`'s
+one production conformer `LocalBackupCoordinator`).** Mirrors
+`BackupDataResetting`'s existing shape but deliberately NOT `@MainActor`
+— `LocalBackupCoordinator` isn't actor-isolated the way
+`DataStoreResetService` is. Injected into both `DataStoreResetService`
+(one chokepoint inside `performReset`'s success path, covering all four
+reset flavors, plus two explicit extra calls in
+`resetAndReseedFromThisDevice`/`recoverInterruptedReseed` after their
+reimports) and `BackupRestoreService` (after a successful restore's
+reimport).
+
+**Production wiring note for future contributors:** both
+`AppEnvironment.swift`s now construct `localBackupCoordinator` and its
+backing `backupSnapshotManager`/`backupPackageDirectory` *before*
+`dataStoreReset` (moved up from their original position after it) so
+`localBackupCoordinator` can be injected into `dataStoreReset` as
+`backupReconciler` — the ledger's *shared-file serial chains* section's
+note on `AppEnvironment.swift` ordering (macOS's
+`macAppGroupMigrationOutcome` logging, `3a`'s account-identity guard)
+should account for this reordering if `3a` touches the same region.
+
+**No council votes.** `S9b`'s journal-type decision (dedicated
+`ReseedJournal` vs. reusing `MigrationJournal`) and `S23`'s
+min-vs-max-vs-reject schema-gate design (min-over-records won once the
+manifest's actual write behavior — always-current, never
+records-derived — was traced from source, the same "one defensible
+answer once traced against existing invariants" pattern `2a` used) both
+resolved without needing the council — see the plan doc §2 and §4a for
+the full reasoning trails.
+
+**Deviation from the plan doc's implied commit shape:** `S9b`'s test
+updates (`resetAndReseedFromThisDevice: cleans up its temp export
+directory`) and `S7`'s four call-site test updates
+(`reconfigureCalls`→`resetSteps`/`attachCalls`) landed in the SAME
+commit as their respective fixes, not separately — both are
+necessitated by the fix itself (the old assertions test a mechanism the
+fix replaces), matching the two-hats principle's own carve-out ("fix
+first" commits may include the test changes the fix's own behavior
+change requires, distinct from a separate refactor).
+
+**Discovered, out-of-scope residual — not fixed here, flagged per the
+`LIL-77` precedent:** `MigrationCoordinator.restoreFromBackup` (the
+raw-SQLite migration-crash-recovery restore, a DIFFERENT subsystem from
+`BackupRestoreService`'s JSON-package restore — see the plan doc §0) has
+the same "nothing tells `LocalBackupCoordinator` to resync" gap `S23`
+fixed for the JSON-package subsystem: it swaps the live SQLite file
+directly, with no Core Data save for the backup coordinator's observers
+to react to. Not one of the 70 findings, not touched here to avoid
+scope creep on an already-large plan; worth a future `6a`-style
+completeness-sweep entry.
+
+**What `3a` (`account-identity-and-status`, the next plan to touch
+`MigrationCoordinator.swift`/`AppEnvironment.swift`) needs to know:**
+- `MigrationCoordinator.host` still `any PersistenceReconfiguring &
+  PersistenceResetting` (unchanged) — but the PROTOCOL itself gained
+  `attachStore(at:)`. Any new conformer needs it.
+- `.replaceICloudWithLocal`/`.syncFirstThenDisable`/`.disableNow` no
+  longer call `host.reconfigure(to:)` at all — they call
+  `host.tearDownStore(backupVia:)` then `host.attachStore(at:)`.
+  `.replaceLocalWithICloud` is the ONE op still using
+  `host.reconfigure(to:)` (its trailing step, after `rebuildEmptyStore`
+  leaves a store attached to swap). If `3a`'s account-switch guard needs
+  to intercept "is the store about to change," check ALL of
+  `tearDownStore`/`attachStore`/`reconfigure`, not just `reconfigure`.
+- The catch block's reattach-on-failure is now unconditional across all
+  four ops (was gated to `.replaceLocalWithICloud` only pre-`2b`).
+- `restoreFromBackup`'s ordering is now tearDown → file swap →
+  `attachStore(at: prev)` → `syncModeStore.setMode(prev)` → journal
+  clear. If `3a`'s account-identity guard needs a pre-flight check
+  before a migration/restore proceeds, the account-changed pattern
+  `.replaceICloudWithLocal` already uses (a probe consulted right before
+  the irreversible step, throwing into the existing catch) is the
+  precedent to extend — `restoreFromBackup` currently has no equivalent
+  account-changed pre-flight; consider whether it needs one before `3a`
+  lands its own probe elsewhere.
+- Both `AppEnvironment.swift`s' backup-subsystem block
+  (`backupSnapshotManager`/`localBackupCoordinator`) now constructs
+  BEFORE `dataStoreReset` (see the production-wiring note above) — don't
+  move it back after without re-threading `backupReconciler:`.
+
+---
+
 ## Execution model (per Mikey's directives, 2026-07-28)
 
 - **One dedicated worktree** on a long-running branch:
@@ -723,7 +865,7 @@ Wave 6 closeout. **Status** starts `pending` for everything except Wave 0.
 | 1 | **1c** `store-location-unification` | `X1 X2 X15` (+ iOS silent `defaultOnDisk` fallback detail, folded into the `X1`/`X2` story bodies — no separate ID) | ✅ complete |
 | 1 | **1d** `export-schema-completeness` | `X3 S9a X13 X18` | ✅ complete |
 | 2 | **2a** `migration-transitions` | `S1 S5 S6 S8 S11 S12 S14 S15 S16 S17` | ✅ complete |
-| 2 | **2b** `backup-restore-correctness` | `S2 S4 S7 S9b S23` | ⬜ pending |
+| 2 | **2b** `backup-restore-correctness` | `S2 S4 S7 S9b S23` | ✅ complete |
 | 3 | **3a** `account-identity-and-status` | `S3 S13 S21 S24` | ⬜ pending |
 | 3 | **3b** `reset-propagation-safety` | `S10 S18 S19 S20 S22 X11 S9c` | ⬜ pending |
 | 4 | **4a** `history-consumer-discipline` | `H6 M3` | ⬜ pending |
@@ -779,13 +921,19 @@ structure — each earlier plan in the chain will have moved line numbers.
    stored property replaces `isMigrating`; `quiesceMinQuietWindow`/
    `quiesceHardTimeout` are now injectable constructor params;
    `restoreFromBackup` also acquires the gate, as `Owner.restore`) → `2b`
-   (backup/restore: close-before-file-ops, quarantine-from-closed-store,
-   staged restore package — `2a` left the quarantine COPY mechanism itself
-   unchanged, `S7`'s WAL-active-store concern is still open) → `3a`
-   (account-identity guard wired into the pre-erase check). Three plans.
+   ✅ done (`restoreFromBackup` now tearDown→file-swap→`attachStore(at:)`,
+   never `reconfigure`; the same tearDown+`attachStore` shape replaces
+   `reconfigure` for `replaceICloudWithLocal`/`syncFirstThenDisable`/
+   `disableNow` too — `replaceLocalWithICloud` is the only op still calling
+   `reconfigure`; catch-block reattach is now unconditional across all four
+   ops) → `3a` (account-identity guard wired into the pre-erase check —
+   see the *Wave 2b closing report* for exactly what shape to extend).
+   Three plans.
 3. **`PersistenceHost.swift`** — `2a` ✅ done (`flushAndSwap` throws instead
-   of silently succeeding with zero attached stores) → `2b`. Two plans,
-   `2a` first.
+   of silently succeeding with zero attached stores) → `2b` ✅ done (new
+   `attachStore(at:)` on `PersistenceResetting` — attaches fresh at an
+   explicit mode, always updating `currentMode`, never a no-op; all four
+   conformers implement it). Two plans, both done.
 4. **`RemoteChangeReconciler.swift`** — `4a` (`DrainGate`/watermark-after-
    success pattern extracted and adopted) → `4b` (spec insert/delete +
    soft-delete reconcile added on top of `4a`'s corrected watermark
@@ -796,8 +944,16 @@ structure — each earlier plan in the chain will have moved line numbers.
    macOS App-Group migration; macOS's `AppEnvironment` gained a new
    `macAppGroupMigrationOutcome` stored property logged at the top of
    `bootstrap()` — see the *Wave 1c closing report* for exactly where) →
-   `3a` (account identity store wiring) → `4b` (notification scheduler
-   reaching extension/widget/CLI paths via 1c's standardized construction).
+   `2b` ✅ done, not originally on this chain but landed here anyway
+   (backup-subsystem construction — `backupSnapshotManager`/
+   `localBackupCoordinator` — moved BEFORE `dataStoreReset` so it can be
+   injected as `backupReconciler`; `reseedJournal` construction added
+   alongside `quarantine`; `bootstrap()` gained a
+   `recoverInterruptedReseed()` best-effort call as its first line — see
+   the *Wave 2b closing report* for the exact diff shape) → `3a` (account
+   identity store wiring — re-Read `bootstrap()`'s new first-line ordering
+   before prepending anything) → `4b` (notification scheduler reaching
+   extension/widget/CLI paths via 1c's standardized construction).
 6. **`HistoryPruner.swift` + the three history-token `UserDefaults` keys** —
    `3b` (reset clears watermarks + widget cache; `WatermarkRegistry` doubles
    as the reset-clear enumeration) ↔ `5c` (formalizes the registry itself,
@@ -815,10 +971,10 @@ structure — each earlier plan in the chain will have moved line numbers.
    all decode-with-default on older bundles; `Importer.apply`'s pass order
    is now tags→tag.parent→tasks→task.parent→series→series.seedTask→
    task.series→journal entries→attachments→notification specs→smart
-   filters→save; model-derived completeness test landed) → `2b`
-   (backup/restore consumes the completed schema for its
-   restore-in-progress guard and min-over-records check — see the *Wave 1d
-   closing report* for exactly what shape to build on).
+   filters→save; model-derived completeness test landed) → `2b` ✅ done
+   (consumed the completed schema for the min-over-records schema-gate
+   fix and the live-package staging guard — see the *Wave 2b closing
+   report* for exactly what shape landed).
 
 ---
 
@@ -1043,7 +1199,18 @@ are tracked here so nothing is silently dropped.
       legacy). See the council decision:
       `.council/macos-migration-both-stores-populated/DECISION.md` and
       `docs/superpowers/plans/2026-07-28-plan-1c-store-location-unification.md`.
-- [ ] End-to-end sync-mode switches on live iCloud (Wave 2).
+- [ ] End-to-end sync-mode switches on live iCloud (Wave 2), including `2b`'s
+      restored `restoreFromBackup` crash-recovery flow specifically: force a
+      migration crash (kill the app mid-`.reconfiguringStore`), relaunch,
+      trigger recovery, confirm the store reopens correctly at both a
+      same-mode and a different-mode `previousMode` (the `S2` same-mode
+      no-op this plan fixed can only be proven end-to-end on a real
+      `NSPersistentCloudKitContainer`, not the fakes the unit suite uses).
+- [ ] `2b`/`S9b`: force-kill the app mid-`resetAndReseedFromThisDevice`
+      (after the wipe, before the reimport completes) and confirm
+      `recoverInterruptedReseed()` resumes cleanly on next launch with no
+      data loss — the unit suite proves the mechanism via
+      `RealWipingResetHost`, not a real crash mid-flight.
 - [ ] Account switch with a second Apple ID (`3a`).
 - [ ] Two-device reset propagation, including the stale-event UX (`3b`).
 - [ ] Real-widget verification: completing a task cancels its reminder; a
@@ -1052,6 +1219,10 @@ are tracked here so nothing is silently dropped.
       (its changes are to the export/backup file format and in-process
       logic only; the Core Data model is unchanged). No schema deploy
       needed for this plan.
+- [x] `2b` does **not** add any new CloudKit record types/fields either —
+      verified (every change is to the migration/reset/backup
+      orchestration logic and the on-disk JSON backup package; the Core
+      Data model is unchanged). No schema deploy needed for this plan.
 - [ ] iCloud-dependent app-hosted/UI tests — standing CI-scope rule, verified
       manually per wave (same posture as the Foundation Hardening program).
 
