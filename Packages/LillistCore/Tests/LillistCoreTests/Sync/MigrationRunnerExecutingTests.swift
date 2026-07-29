@@ -19,7 +19,10 @@ struct MigrationRunnerExecutingTests {
         rowCount: @escaping @Sendable () async -> Int = { 1 },
         journal: InMemoryMigrationJournalStore = InMemoryMigrationJournalStore(),
         eraser: FakeCloudKitZoneEraser = FakeCloudKitZoneEraser(),
-        syncStatusReset: (@Sendable () async -> Void)? = nil
+        syncStatusReset: (@Sendable () async -> Void)? = nil,
+        historyWatermarksReset: (() async -> Void)? = nil,
+        widgetCacheReset: (() async -> Void)? = nil,
+        remoteZoneHasRecords: (@Sendable () async throws -> Bool)? = nil
     ) -> (MigrationCoordinator, FakePersistenceReconfigurer, InMemoryMigrationJournalStore, FakeCloudKitZoneEraser, URL) {
         let dir = tempDir()
         let recon = FakePersistenceReconfigurer(initialMode: startMode)
@@ -34,7 +37,10 @@ struct MigrationRunnerExecutingTests {
             notificationScheduler: nil,
             syncModeStore: modeStore,
             localStoreRowCount: rowCount,
-            syncStatusReset: syncStatusReset
+            syncStatusReset: syncStatusReset,
+            historyWatermarksReset: historyWatermarksReset,
+            widgetCacheReset: widgetCacheReset,
+            remoteZoneHasRecords: remoteZoneHasRecords
         )
         return (coordinator, recon, journal, eraser, dir)
     }
@@ -557,6 +563,197 @@ struct MigrationRunnerExecutingTests {
         #expect(await recon.reconfigureCalls == [.iCloudSync])
         #expect(await modeStore.currentMode() == .iCloudSync)
         #expect(try journal.read() == .idle)
+    }
+
+    // MARK: - X11: history-watermark + widget-cache clearing
+
+    /// Test-only call counter shared by the X11 tests below — same shape
+    /// as `CallCounter`, kept separate so its name documents intent at
+    /// each call site.
+    private actor ClearCallCounter {
+        private(set) var count = 0
+        func bump() { count += 1 }
+    }
+
+    @Test("X11: replaceLocalWithICloud (the only op that destroys/rebuilds the store) clears history watermarks and the widget cache on success")
+    @MainActor
+    func replaceLocalWithICloudClearsWatermarksAndWidgetCache() async throws {
+        let watermarks = ClearCallCounter()
+        let widgets = ClearCallCounter()
+        let (coordinator, _, _, _, dir) = makeCoordinator(
+            startMode: .localOnly,
+            historyWatermarksReset: { await watermarks.bump() },
+            widgetCacheReset: { await widgets.bump() }
+        )
+        let storeURL = dir.appendingPathComponent("Lillist.sqlite")
+        try Data("x".utf8).write(to: storeURL)
+
+        try await coordinator.beginEnable(direction: .replaceLocal, storeURL: storeURL)
+
+        #expect(await watermarks.count == 1)
+        #expect(await widgets.count == 1)
+    }
+
+    @Test("X11: replaceICloudWithLocal (tears down + reattaches the SAME file, never destroys/rebuilds) never clears history watermarks or the widget cache")
+    @MainActor
+    func replaceICloudWithLocalNeverClearsWatermarks() async throws {
+        let watermarks = ClearCallCounter()
+        let widgets = ClearCallCounter()
+        let (coordinator, _, _, _, dir) = makeCoordinator(
+            startMode: .localOnly,
+            historyWatermarksReset: { await watermarks.bump() },
+            widgetCacheReset: { await widgets.bump() }
+        )
+        let storeURL = dir.appendingPathComponent("Lillist.sqlite")
+        try Data("x".utf8).write(to: storeURL)
+
+        try await coordinator.beginEnable(direction: .replaceICloud, storeURL: storeURL)
+
+        #expect(await watermarks.count == 0)
+        #expect(await widgets.count == 0)
+    }
+
+    @Test("X11: disableNow never clears history watermarks or the widget cache (same on-disk file, no destroy/rebuild)")
+    @MainActor
+    func disableNowNeverClearsWatermarks() async throws {
+        let watermarks = ClearCallCounter()
+        let widgets = ClearCallCounter()
+        let (coordinator, _, _, _, dir) = makeCoordinator(
+            startMode: .iCloudSync,
+            historyWatermarksReset: { await watermarks.bump() },
+            widgetCacheReset: { await widgets.bump() }
+        )
+        let storeURL = dir.appendingPathComponent("Lillist.sqlite")
+        try Data("x".utf8).write(to: storeURL)
+
+        try await coordinator.beginDisable(strategy: .now, storeURL: storeURL)
+
+        #expect(await watermarks.count == 0)
+        #expect(await widgets.count == 0)
+    }
+
+    // MARK: - S19: iCloud-not-empty guard for replaceLocalWithICloud
+
+    @Test("S19: remoteZoneHasRecords reporting false blocks replaceLocalWithICloud with iCloudDataEmpty, before any destructive work")
+    @MainActor
+    func remoteZoneEmptyBlocksReplaceLocalWithICloud() async throws {
+        let (coordinator, recon, journal, _, dir) = makeCoordinator(
+            startMode: .localOnly,
+            remoteZoneHasRecords: { false }
+        )
+        let storeURL = dir.appendingPathComponent("Lillist.sqlite")
+        try Data("x".utf8).write(to: storeURL)
+
+        await #expect(throws: LillistError.iCloudDataEmpty) {
+            try await coordinator.beginEnable(direction: .replaceLocal, storeURL: storeURL)
+        }
+
+        // Tear-down + quarantine already ran (the recovery anchor is taken
+        // before this guard, matching the account-changed guard's own
+        // relative position) but rebuildEmptyStore — the actually
+        // irreversible step — must never have run.
+        #expect(await recon.resetSteps.contains("rebuild") == false)
+        #expect(try journal.read().state == .failed)
+    }
+
+    @Test("S19: remoteZoneHasRecords reporting true lets replaceLocalWithICloud proceed normally")
+    @MainActor
+    func remoteZoneNonEmptyAllowsReplaceLocalWithICloud() async throws {
+        let (coordinator, recon, _, _, dir) = makeCoordinator(
+            startMode: .localOnly,
+            remoteZoneHasRecords: { true }
+        )
+        let storeURL = dir.appendingPathComponent("Lillist.sqlite")
+        try Data("x".utf8).write(to: storeURL)
+
+        try await coordinator.beginEnable(direction: .replaceLocal, storeURL: storeURL)
+
+        #expect(await recon.resetSteps == ["tearDown", "rebuild"])
+    }
+
+    @Test("S19: a throwing remoteZoneHasRecords fails OPEN (proceeds) rather than blocking a legitimate transition on a transient check failure")
+    @MainActor
+    func remoteZoneCheckFailureFailsOpen() async throws {
+        struct ProbeFailure: Error {}
+        let (coordinator, recon, _, _, dir) = makeCoordinator(
+            startMode: .localOnly,
+            remoteZoneHasRecords: { throw ProbeFailure() }
+        )
+        let storeURL = dir.appendingPathComponent("Lillist.sqlite")
+        try Data("x".utf8).write(to: storeURL)
+
+        try await coordinator.beginEnable(direction: .replaceLocal, storeURL: storeURL)
+
+        #expect(await recon.resetSteps == ["tearDown", "rebuild"])
+    }
+
+    @Test("S19: no remoteZoneHasRecords configured is a no-op guard (legacy/test behavior)")
+    @MainActor
+    func noRemoteZoneCheckConfiguredProceeds() async throws {
+        let (coordinator, recon, _, _, dir) = makeCoordinator(startMode: .localOnly)
+        let storeURL = dir.appendingPathComponent("Lillist.sqlite")
+        try Data("x".utf8).write(to: storeURL)
+
+        try await coordinator.beginEnable(direction: .replaceLocal, storeURL: storeURL)
+
+        #expect(await recon.resetSteps == ["tearDown", "rebuild"])
+    }
+
+    // MARK: - S19: retryFailedOperation actually re-runs the failed op
+
+    @Test(
+        "S19: retryFailedOperation dispatches each recorded ModeTransitionOp back through the matching beginEnable/beginDisable call",
+        arguments: [
+            (ModeTransitionOp.replaceICloudWithLocal, SyncMode.localOnly),
+            (ModeTransitionOp.replaceLocalWithICloud, SyncMode.localOnly),
+            (ModeTransitionOp.syncFirstThenDisable, SyncMode.iCloudSync),
+            (ModeTransitionOp.disableNow, SyncMode.iCloudSync),
+        ]
+    )
+    @MainActor
+    func retryFailedOperationRedispatchesCorrectOp(op: ModeTransitionOp, startMode: SyncMode) async throws {
+        let (coordinator, recon, journal, _, dir) = makeCoordinator(startMode: startMode)
+        let storeURL = dir.appendingPathComponent("Lillist.sqlite")
+        try Data("x".utf8).write(to: storeURL)
+        let failed = MigrationJournal(
+            state: .failed, operation: op, startedAt: Date(), lastHeartbeatAt: Date(),
+            previousMode: startMode, failureReason: "simulated prior failure"
+        )
+        try journal.write(failed)
+
+        try await coordinator.retryFailedOperation(from: failed, storeURL: storeURL)
+
+        // Re-ran the FULL op from scratch — proven by the destructive
+        // steps a fresh runMigration performs, not merely by the journal
+        // being cleared (the old "Try Again" already cleared the journal
+        // without retrying anything, which is exactly the bug S19 fixes).
+        switch op {
+        case .replaceICloudWithLocal:
+            #expect(await recon.resetSteps == ["tearDown"])
+            #expect(await recon.attachCalls == [.iCloudSync])
+        case .replaceLocalWithICloud:
+            #expect(await recon.resetSteps == ["tearDown", "rebuild"])
+            #expect(await recon.reconfigureCalls == [.iCloudSync])
+        case .syncFirstThenDisable, .disableNow:
+            #expect(await recon.resetSteps == ["tearDown"])
+            #expect(await recon.attachCalls == [.localOnly])
+        }
+        #expect(try journal.read() == .idle)
+    }
+
+    @Test("S19: retryFailedOperation throws when the journal has no recorded operation, instead of silently no-op-ing")
+    @MainActor
+    func retryFailedOperationThrowsWithoutRecordedOp() async throws {
+        let (coordinator, _, _, _, dir) = makeCoordinator(startMode: .localOnly)
+        let storeURL = dir.appendingPathComponent("Lillist.sqlite")
+        let corrupt = MigrationJournal(
+            state: .failed, operation: nil, startedAt: Date(), lastHeartbeatAt: Date(),
+            previousMode: nil, failureReason: "corrupt"
+        )
+
+        await #expect(throws: LillistError.self) {
+            try await coordinator.retryFailedOperation(from: corrupt, storeURL: storeURL)
+        }
     }
 }
 

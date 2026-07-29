@@ -18,6 +18,14 @@ public enum LillistError: Error, Sendable, Equatable {
     /// always the same (pull from iCloud instead); the user-facing copy in
     /// `errorDescription` spells out the corrective action.
     case localDataEmpty
+    /// Data-sync-hardening `S19`: the symmetric counterpart to
+    /// `localDataEmpty` — "replace this device's data with iCloud" is
+    /// refused when the CloudKit zone this account mirrors to currently
+    /// has no records, so wiping real local data would leave the user with
+    /// nothing (a plain, unrecoverable-from-cloud wipe). Carries no
+    /// payload for the same reason `localDataEmpty` doesn't: the remedy is
+    /// always the same (use "Replace iCloud with This Device" instead).
+    case iCloudDataEmpty
     case iCloudUnavailable(reason: String)
     case syncFailure(underlying: String)
     case validationFailed([Issue])
@@ -52,6 +60,8 @@ extension LillistError: LocalizedError {
             return "The Lillist data store is unavailable: \(reason)"
         case .localDataEmpty:
             return "This device has no tasks to upload, so it can't replace iCloud — that would erase everything in iCloud. To copy your iCloud tasks onto this device instead, choose “Replace This Device with iCloud.”"
+        case .iCloudDataEmpty:
+            return "iCloud has no tasks to download, so replacing this device's data would leave you with nothing. To copy this device's tasks to iCloud instead, choose “Replace iCloud with This Device.”"
         case .iCloudUnavailable(let reason):
             return "iCloud is unavailable: \(reason)"
         case .syncFailure(let underlying):

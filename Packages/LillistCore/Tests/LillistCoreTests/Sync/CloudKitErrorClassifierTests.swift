@@ -43,6 +43,19 @@ struct CloudKitErrorClassifierTests {
         }
     }
 
+    @Test("S19: zoneNotFound and userDeletedZone map to a syncFailure naming the self-healing recreate-and-reupload path, not the generic default message")
+    func zoneMissingIsDistinguished() {
+        for code: CKError.Code in [.zoneNotFound, .userDeletedZone] {
+            let mapped = CloudKitErrorClassifier.classify(ckError(code))
+            guard case let .syncFailure(underlying) = mapped else {
+                Issue.record("expected .syncFailure for \(code), got \(mapped)")
+                continue
+            }
+            #expect(underlying.localizedCaseInsensitiveContains("zone"))
+            #expect(underlying.localizedCaseInsensitiveContains("recreat"))
+        }
+    }
+
     @Test("A non-CloudKit error falls back to syncFailure with its description")
     func nonCloudKit() {
         let raw = NSError(domain: "SomeOtherDomain", code: 7, userInfo: [NSLocalizedDescriptionKey: "boom"])
@@ -145,5 +158,17 @@ struct CloudKitErrorClassifierTests {
     func severityNonCloudKit() {
         let raw = NSError(domain: "SomeOtherDomain", code: 7, userInfo: nil)
         #expect(CloudKitErrorClassifier.severity(of: raw) == .structural)
+    }
+
+    @Test("S19: zoneNotFound and userDeletedZone are recoverable, not structural — NSPersistentCloudKitContainer recreates the zone and re-uploads on its own")
+    func severityZoneMissingIsRecoverable() {
+        #expect(CloudKitErrorClassifier.severity(of: ckError(.zoneNotFound)) == .recoverable)
+        #expect(CloudKitErrorClassifier.severity(of: ckError(.userDeletedZone)) == .recoverable)
+    }
+
+    @Test("S19: a partialFailure whose per-item codes are all zoneNotFound is recoverable")
+    func severityPartialFailureAllZoneNotFound() {
+        let err = partialFailure([.zoneNotFound, .zoneNotFound])
+        #expect(CloudKitErrorClassifier.severity(of: err) == .recoverable)
     }
 }

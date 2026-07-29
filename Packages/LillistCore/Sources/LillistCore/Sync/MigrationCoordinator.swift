@@ -93,6 +93,28 @@ public final class MigrationCoordinator {
     /// failed op hasn't actually changed the store's sync health). `nil`
     /// preserves prior behavior for every existing test/legacy caller.
     private let syncStatusReset: (@Sendable () async -> Void)?
+    /// Data-sync-hardening `X11`: clears every persistent-history
+    /// watermark after a destroy/rebuild — see `HistoryWatermarks`' own
+    /// doc comment. Called only for `.replaceLocalWithICloud`, the one
+    /// migration op that actually destroys/rebuilds the local store (the
+    /// other three tear down and reattach the *same* file, so their
+    /// watermarks stay valid). Not `@Sendable`: this type is already
+    /// `@MainActor`-isolated.
+    private let historyWatermarksReset: (() async -> Void)?
+    /// Data-sync-hardening `X11`: clears + regenerates the widget snapshot
+    /// cache and reloads timelines. Same `.replaceLocalWithICloud`-only
+    /// gating as `historyWatermarksReset` — see that property's doc
+    /// comment.
+    private let widgetCacheReset: (() async -> Void)?
+    /// Data-sync-hardening `S19`: reports whether the CloudKit zone this
+    /// account mirrors to currently has any records. Consulted only before
+    /// `.replaceLocalWithICloud`'s irreversible local wipe — the symmetric
+    /// counterpart to `localStoreRowCount`'s guard on
+    /// `.replaceICloudWithLocal` (never erase iCloud for an empty local
+    /// store; never wipe local data to download an empty iCloud). `nil` →
+    /// no pre-flight (legacy/test behavior, matching every other optional
+    /// guard's default).
+    private let remoteZoneHasRecords: (@Sendable () async throws -> Bool)?
 
     private var progressContinuations: [UUID: AsyncStream<MigrationPhase>.Continuation] = [:]
 
@@ -112,7 +134,10 @@ public final class MigrationCoordinator {
         destructiveOpGate: DestructiveOpGate = DestructiveOpGate(),
         quiesceMinQuietWindow: TimeInterval = 5,
         quiesceHardTimeout: TimeInterval = 300,
-        syncStatusReset: (@Sendable () async -> Void)? = nil
+        syncStatusReset: (@Sendable () async -> Void)? = nil,
+        historyWatermarksReset: (() async -> Void)? = nil,
+        widgetCacheReset: (() async -> Void)? = nil,
+        remoteZoneHasRecords: (@Sendable () async throws -> Bool)? = nil
     ) {
         self.host = host
         self.journal = journal
@@ -130,6 +155,9 @@ public final class MigrationCoordinator {
         self.quiesceMinQuietWindow = quiesceMinQuietWindow
         self.quiesceHardTimeout = quiesceHardTimeout
         self.syncStatusReset = syncStatusReset
+        self.historyWatermarksReset = historyWatermarksReset
+        self.widgetCacheReset = widgetCacheReset
+        self.remoteZoneHasRecords = remoteZoneHasRecords
     }
 
     /// Breadcrumb emit, awaited inline so phase crumbs land in
@@ -187,6 +215,45 @@ public final class MigrationCoordinator {
             emit(.failed(reason: current.failureReason ?? "Migration interrupted"))
         }
         return current
+    }
+
+    /// Data-sync-hardening `S19`: actually re-runs the operation a failed
+    /// `MigrationJournal` recorded, from the top. Traced against the
+    /// recovery sheet's actual "Try Again" wiring: it previously only
+    /// called `migrationJournalStore.clear()` and dismissed — a partial
+    /// zone erase (or any other partially-completed step) was left exactly
+    /// as the failure's `catch` block left it, with no retry ever actually
+    /// attempted; the user had to notice sync was still off/on and
+    /// manually re-toggle it in Settings.
+    ///
+    /// Clears the journal first — `runMigration`'s reentrancy guard treats
+    /// any non-idle state (including `.failed`) as "already in progress"
+    /// and would otherwise refuse to start the very retry this method
+    /// exists to perform — then dispatches back through `beginEnable`/
+    /// `beginDisable` so `runMigration` re-attempts every step from
+    /// `.preparing`, including a previously-partial erase (re-erasing an
+    /// already-empty zone is a safe no-op query).
+    ///
+    /// Throws if the journal has no recorded `operation` (shouldn't happen
+    /// for a journal `resumeOrRecover()` found in-flight, but a corrupt or
+    /// hand-edited journal must fail loud, not silently no-op).
+    public func retryFailedOperation(from failed: MigrationJournal, storeURL: URL) async throws {
+        guard let op = failed.operation else {
+            throw LillistError.storeUnavailable(
+                reason: "The interrupted sync change has no recorded operation to retry."
+            )
+        }
+        try? journal.clear()
+        switch op {
+        case .replaceICloudWithLocal:
+            try await beginEnable(direction: .replaceICloud, storeURL: storeURL)
+        case .replaceLocalWithICloud:
+            try await beginEnable(direction: .replaceLocal, storeURL: storeURL)
+        case .syncFirstThenDisable:
+            try await beginDisable(strategy: .syncFirst, storeURL: storeURL)
+        case .disableNow:
+            try await beginDisable(strategy: .now, storeURL: storeURL)
+        }
     }
 
     /// Restore from the quarantine backup the journal recorded and
@@ -394,6 +461,16 @@ public final class MigrationCoordinator {
                         reason: "iCloud account changed; aborting before wiping local data."
                     )
                 }
+                // S19: the symmetric guard to .replaceICloudWithLocal's
+                // localStoreRowCount precondition above — never wipe real
+                // local data to download from an iCloud zone that turns
+                // out to have nothing in it.
+                if let remoteZoneHasRecords {
+                    let hasRecords = (try? await remoteZoneHasRecords()) ?? true
+                    guard hasRecords else {
+                        throw LillistError.iCloudDataEmpty
+                    }
+                }
                 emit(.removingLocalStore)
                 LillistLog.sync.notice("migration removing local store")
                 try await host.rebuildEmptyStore()
@@ -533,6 +610,15 @@ public final class MigrationCoordinator {
                 )
             }
 
+            // X11: only .replaceLocalWithICloud actually destroys/rebuilds
+            // the local store (host.rebuildEmptyStore(), above) — the
+            // other three ops tear down and reattach the SAME on-disk
+            // file, so their watermarks stay valid and must NOT be
+            // cleared (that would force a needless full replay).
+            if op == .replaceLocalWithICloud {
+                await historyWatermarksReset?()
+                await widgetCacheReset?()
+            }
             try journal.clear()
             await syncStatusReset?()
             emit(.completed)
