@@ -32,7 +32,23 @@ enum RecurrenceSpawner {
 
         let seed = series.seedTask ?? closed
         let spawn = LillistTask(context: context)
-        let spawnID = UUID()
+        // X7: deterministic identity so a concurrent double-spawn of the
+        // SAME occurrence (widget + app process, or two devices closing
+        // near-simultaneously) converges on the SAME app-level `id` rather
+        // than two permanently-distinct random UUIDs. `nextDate` is read
+        // above, before either racing process advances it, so both sides
+        // compute this from the identical (series, occurrence) pair.
+        // `series.id` can only be nil on a corrupted row (no non-optional
+        // constraint anywhere in this model) — falls back to a random id;
+        // idempotency is unrecoverable for that one corrupted series, but
+        // the spawn must not be blocked by it.
+        let spawnID: UUID
+        if let seriesID = series.id {
+            spawnID = DeterministicUUID.v5(namespace: seriesID, name: occurrenceName(for: nextDate))
+        } else {
+            spawnID = UUID()
+            RecurrenceLog.normalization.warning("Series has a nil id; recurrence spawn identity cannot be made deterministic (X7), falling back to a random UUID")
+        }
         spawn.id = spawnID
         spawn.title = seed.title
         spawn.notes = seed.notes
@@ -111,7 +127,22 @@ enum RecurrenceSpawner {
             return
         }
         let copy = LillistTask(context: context)
-        copy.id = UUID()
+        // X7: deterministic child identity, composed from the (already
+        // deterministic, per the top-level `spawnID` derivation above)
+        // parent copy's own id as namespace and the source child's stable,
+        // pre-existing id as name. This makes the ENTIRE spawned subtree
+        // deterministic to arbitrary depth: two devices independently
+        // deep-copying the same seed subtree produce copy trees with
+        // identical ids at every level, node-for-node — the same
+        // `TaskDuplicateReconciler` merge mechanism the top-level spawn
+        // relies on then heals any children that raced into existence
+        // twice. A nil `source.id` (corrupted row) falls back to a random
+        // name input — idempotency is unrecoverable for that one node, same
+        // resilience posture as the top-level fallback.
+        copy.id = DeterministicUUID.v5(
+            namespace: newParent.id ?? UUID(),
+            name: source.id?.uuidString ?? UUID().uuidString
+        )
         copy.title = source.title
         copy.notes = source.notes
         copy.statusRaw = Int16(Status.todo.rawValue)
@@ -150,6 +181,15 @@ enum RecurrenceSpawner {
         case .afterCompletion(let after):
             return RecurrenceExpander.nextAfterCompletion(completedAt: completedAt, rule: after)
         }
+    }
+
+    /// X7: exact, unambiguous name input for `DeterministicUUID.v5` — the
+    /// hex bit pattern of the occurrence date's `timeIntervalSince1970`.
+    /// Two processes reading the identical stored `Date` (see the call
+    /// site's comment) get bit-for-bit identical output; sidesteps any
+    /// locale/decimal-formatting round-trip question entirely.
+    static func occurrenceName(for date: Date) -> String {
+        String(date.timeIntervalSince1970.bitPattern, radix: 16)
     }
 
     /// True if the rule's `count` budget would be consumed after this spawn.
