@@ -57,7 +57,7 @@ public final class NotificationSpecStore: @unchecked Sendable {
         offsetMinutes: Int32?,
         fireDate: Date?
     ) async throws -> UUID {
-        try await context.perform { [self] in
+        try await withMutationRollback(context: context) { [self] in
             let task = try fetchTask(id: taskID, in: context)
             // Default specs are singletons per (task, kind): exactly one
             // .defaultStart and one .defaultDeadline may exist for a task.
@@ -78,10 +78,17 @@ public final class NotificationSpecStore: @unchecked Sendable {
                     // Collapse any duplicates a previous race already created so
                     // the store self-heals on the next add (CloudKit imports
                     // can deliver a second default before this guard ran).
+                    // X19: no manual `if hasChanges { save() }` here — that
+                    // duplicated withMutationRollback's own save-only-if-
+                    // dirtied gate with no added safety (both read the same
+                    // context-wide flag), while looking like a per-branch
+                    // check. The common no-duplicates-found case now makes
+                    // zero changes and the helper triggers zero saves for
+                    // it — verified via a did-save-notification assertion
+                    // in NotificationSpecStoreX19Tests, not just inferred.
                     for dup in found.dropFirst() {
                         context.delete(dup)
                     }
-                    if context.hasChanges { try context.save() }
                     return survivor.id ?? UUID()
                 }
             }
@@ -97,7 +104,6 @@ public final class NotificationSpecStore: @unchecked Sendable {
             }
             spec.fireDate = fireDate
             spec.createdAt = Date()
-            try context.save()
             return id
         }
     }
@@ -119,7 +125,7 @@ public final class NotificationSpecStore: @unchecked Sendable {
     }
 
     public func update(id: UUID, _ block: @escaping @Sendable (inout SpecDraft) -> Void) async throws {
-        try await context.perform { [self] in
+        try await withMutationRollback(context: context) { [self] in
             let m = try fetchManagedObject(id: id, in: context)
             var draft = SpecDraft(
                 kind: m.kind,
@@ -136,23 +142,20 @@ public final class NotificationSpecStore: @unchecked Sendable {
             }
             m.fireDate = draft.fireDate
             m.snoozedUntil = draft.snoozedUntil
-            try context.save()
         }
     }
 
     public func delete(id: UUID) async throws {
-        try await context.perform { [self] in
+        try await withMutationRollback(context: context) { [self] in
             let m = try fetchManagedObject(id: id, in: context)
             context.delete(m)
-            try context.save()
         }
     }
 
     public func recordLastFired(id: UUID, at date: Date) async throws {
-        try await context.perform { [self] in
+        try await withMutationRollback(context: context) { [self] in
             let m = try fetchManagedObject(id: id, in: context)
             m.lastFiredAt = date
-            try context.save()
         }
     }
 
