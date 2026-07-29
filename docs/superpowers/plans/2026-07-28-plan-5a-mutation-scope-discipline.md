@@ -324,10 +324,21 @@ Recorded in the closing report, not committed.
   write — a caller reading prefs on a store that hasn't run maintenance yet
   sees sensible defaults, not a thrown error, and (this is the fix) **no
   write happens as a side effect of asking**.
-- Creation/adoption moves into `normalizeSingletons()` — already called once
-  at both apps' bootstraps (per `AppEnvironment.bootstrap()`, confirmed in
-  both platforms) — which is extended to also handle the zero-row case (today
-  it's a silent no-op: `guard let survivor = rows.first else { return }`).
+- Creation/adoption moves into `normalizeSingletons()`. **Correction found
+  during implementation:** only iOS's `bootstrap()` already calls it (right
+  before its own `preferencesStore.read()` call); macOS's `bootstrap()` calls
+  `preferencesStore.read()` directly with no `normalizeSingletons()` call at
+  all — meaning, pre-fix, macOS relied entirely on `read()`'s now-removed
+  create-on-read side effect to ever materialize the canonical row on a
+  fresh install. Fixed as part of this plan: macOS's `bootstrap()` gains the
+  same `try? await preferencesStore.normalizeSingletons()` call, in the same
+  relative position iOS already has it (right after
+  `preferencesPartitionMigrator.runIfNeeded()`, right before its own
+  `preferencesStore.read()` call) — see the *Shared-file serial chains*
+  ledger entry for `AppEnvironment.swift`'s current bootstrap ordering before
+  touching either copy again. `normalizeSingletons()` is extended to also
+  handle the zero-row case (today it's a silent no-op:
+  `guard let survivor = rows.first else { return }`).
   `normalizeSingletons()` becomes the **only** place `AppPreferences` rows
   are ever created or id-adopted; `update(_:)` keeps using a rewritten
   `ensureSingleton(in:)` helper (create-if-missing is legitimate there — it's
@@ -341,12 +352,26 @@ Recorded in the closing report, not committed.
 
 ## 6. `X20` — deterministic, canonical-first survivor selection
 
+**Correction found during implementation:** this section originally sketched
+a `createdAt`-then-`id` tie-break. Re-reading `AppPreferences`'s actual model
+entry (`Model/LillistModel.xcdatamodeld/LillistModel.xcdatamodel/contents`)
+before writing the code — per the house rule of reading a file fresh before
+each edit pass — showed it has **no timestamp attribute of any kind**, only
+`id` plus the settings fields themselves. Adding one is a real CloudKit
+schema change (new synced field, Development→Production redeployment) —
+exactly the kind of change `4b` explicitly deferred out of its own scope for
+`X10`/`LIL-83` under the binding "flag data-model changes to the
+orchestrator first" constraint. No such change is made here either; the
+design below uses only fields the model already has.
+
 `normalizeSingletons`'s new selection rule, replacing the raw-byte `id`
 sort:
 
 1. Fetch all `AppPreferences` rows.
-2. Sort by the tuple `(isCanonical descending, createdAt ascending nils-last,
-   id.uuidString ascending)`, where `isCanonical = (id == singletonID)`.
+2. Sort by the tuple `(isCanonical descending, contentKey ascending,
+   id.uuidString ascending)`, where `isCanonical = (id == singletonID)` and
+   `contentKey` is a canonical string built by concatenating every settings
+   field in a fixed, documented order (`PreferencesStore.contentKey(_:)`).
 3. Survivor = first row after sorting.
 
 This gives, in order of precedence:
@@ -357,21 +382,30 @@ This gives, in order of precedence:
   is no longer decided by raw-byte comparison at all.
 - **Two rows that both carry `singletonID`** (the concurrent-create race: two
   devices independently ran the create-if-missing path before either synced)
-  tie-break on `createdAt` ascending — earliest-created wins — then `id`
-  (degenerate case, identical timestamps) as the final, purely mechanical
-  tie-break. Both fields are regular synced `AppPreferences` attributes, so
-  once CloudKit has propagated both rows to both devices, every device
-  computes the identical ordering and picks the identical survivor — this is
-  the "total order… so every device picks the SAME survivor" requirement.
-- **All-legacy rows, no canonical row yet** — same `(createdAt, id)`
+  tie-break on `contentKey` ascending, then `id.uuidString` (a no-op in this
+  specific sub-case, since both ids are literally equal) as the final,
+  purely mechanical fallback. Every field `contentKey` reads is a regular
+  synced `AppPreferences` attribute, so once CloudKit has propagated both
+  rows to both devices, every device computes the identical key for each row
+  and picks the identical survivor — content-based rather than
+  creation-time-based, but still a total, convergent order, which is what
+  "every device picks the SAME survivor" actually requires (not that the
+  pick be temporally meaningful).
+- **All-legacy rows, no canonical row yet** — same `(contentKey, id)`
   tie-break decides which one gets promoted to `singletonID`.
 
-No council vote needed — `createdAt`-then-`id` is the only total order
-available from the model's own synced fields (mirrors the precedent
-`SiblingOrder`/`TaskDuplicateReconciler`'s own deterministic-tie-break
-designs already established in this codebase), and "prefer the row already
-carrying the canonical id" is dictated by `PreferencesStore.singletonID`'s
-own doc comment ("never regenerate it; existing stores depend on it").
+**Decided directly, no council vote** — two alternatives were considered:
+(a) the content-key approach above, pure Core Data, no new dependency, works
+identically under the in-memory test store; (b) a CloudKit-`recordName`-based
+tie-break (mirroring `TaskDuplicateReconciler`'s `MirroredObjectIdentifying`
+seam). (b) was rejected: it needs a live `CKContainer` at the call site,
+breaking `normalizeSingletons`'s pure-Core-Data testability for a narrow
+concurrent-race edge case that doesn't warrant the added complexity —
+`TaskDuplicateReconciler`'s own design doc reasoned through this exact
+trade-off already, and the reasoning transfers directly. "Prefer the row
+already carrying the canonical id" is separately dictated by
+`PreferencesStore.singletonID`'s own doc comment ("never regenerate it;
+existing stores depend on it").
 
 ## 7. Other findings — fix shape (no open design questions)
 

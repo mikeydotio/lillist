@@ -71,45 +71,30 @@ public final class PreferencesStore: @unchecked Sendable {
         public var defaultTagTintHex: String
     }
 
+    /// M4: genuinely read-only — never inserts or saves. Reads the
+    /// canonical `singletonID` row if present; falls back to reading (never
+    /// adopting) the first legacy row for backward-compatible display; if
+    /// the store has no `AppPreferences` row at all yet (a fresh install
+    /// before the bootstrap maintenance pass has run), returns in-memory
+    /// defaults built from the same literals `Self.defaultPrefs` uses for
+    /// row creation, so a caller sees sensible values rather than a thrown
+    /// error — without ever writing as a side effect of asking. Creation
+    /// happens only in `normalizeSingletons()` (the explicit maintenance
+    /// path both apps' bootstraps call) or, implicitly, in `update(_:)`
+    /// (already an explicit mutation).
     public func read() async throws -> Prefs {
         try await context.perform { [self] in
-            let row = try fetchOrCreateSingleton(in: context)
-            return Prefs(
-                defaultAllDayHour: row.defaultAllDayNotificationHour,
-                defaultAllDayMinute: row.defaultAllDayNotificationMinute,
-                morningSummaryEnabled: row.morningSummaryEnabled,
-                morningSummaryHour: row.morningSummaryHour,
-                morningSummaryMinute: row.morningSummaryMinute,
-                trashRetentionDays: row.trashRetentionDays,
-                defaultTaskListSort: row.defaultTaskListSort,
-                crashPromptsEnabled: row.crashPromptsEnabled,
-                hasCompletedOnboarding: row.hasCompletedOnboarding,
-                quickCaptureEnabled: row.quickCaptureEnabled,
-                quickCaptureHotkey: row.quickCaptureHotkey ?? "ctrl+opt+space",
-                statusBarItemVisible: row.statusBarItemVisible,
-                defaultTagTintHex: row.defaultTagTintHex ?? "#7F8FA6"
-            )
+            if let row = try fetchCanonicalOrLegacySingleton(in: context) {
+                return Self.prefs(from: row)
+            }
+            return Self.defaultPrefs
         }
     }
 
     public func update(_ block: @escaping @Sendable (inout Prefs) -> Void) async throws {
-        let updated: Prefs = try await context.perform { [self] in
-            let row = try fetchOrCreateSingleton(in: context)
-            var prefs = Prefs(
-                defaultAllDayHour: row.defaultAllDayNotificationHour,
-                defaultAllDayMinute: row.defaultAllDayNotificationMinute,
-                morningSummaryEnabled: row.morningSummaryEnabled,
-                morningSummaryHour: row.morningSummaryHour,
-                morningSummaryMinute: row.morningSummaryMinute,
-                trashRetentionDays: row.trashRetentionDays,
-                defaultTaskListSort: row.defaultTaskListSort,
-                crashPromptsEnabled: row.crashPromptsEnabled,
-                hasCompletedOnboarding: row.hasCompletedOnboarding,
-                quickCaptureEnabled: row.quickCaptureEnabled,
-                quickCaptureHotkey: row.quickCaptureHotkey ?? "ctrl+opt+space",
-                statusBarItemVisible: row.statusBarItemVisible,
-                defaultTagTintHex: row.defaultTagTintHex ?? "#7F8FA6"
-            )
+        let updated: Prefs = try await withMutationRollback(context: context) { [self] in
+            let row = try ensureSingleton(in: context)
+            var prefs = Self.prefs(from: row)
             block(&prefs)
             row.defaultAllDayNotificationHour = prefs.defaultAllDayHour
             row.defaultAllDayNotificationMinute = prefs.defaultAllDayMinute
@@ -124,7 +109,6 @@ public final class PreferencesStore: @unchecked Sendable {
             row.quickCaptureHotkey = prefs.quickCaptureHotkey
             row.statusBarItemVisible = prefs.statusBarItemVisible
             row.defaultTagTintHex = prefs.defaultTagTintHex
-            try context.save()
             return prefs
         }
         broadcast(updated)
@@ -182,10 +166,10 @@ public final class PreferencesStore: @unchecked Sendable {
         }
     }
 
-    private func fetchOrCreateSingleton(in ctx: NSManagedObjectContext) throws -> AppPreferences {
-        // Prefer the canonical well-known-id row. Falling back to "any row"
-        // keeps a legacy random-UUID store readable until `normalizeSingletons`
-        // collapses it (called once at bootstrap).
+    /// M4: pure read. Returns the canonical `singletonID` row if present,
+    /// else the first legacy row (read, never adopted/mutated), else `nil`
+    /// on a completely empty store. Never inserts, never saves.
+    private func fetchCanonicalOrLegacySingleton(in ctx: NSManagedObjectContext) throws -> AppPreferences? {
         let canonical = NSFetchRequest<AppPreferences>(entityName: "AppPreferences")
         canonical.predicate = NSPredicate(format: "id == %@", Self.singletonID as CVarArg)
         canonical.fetchLimit = 1
@@ -194,14 +178,30 @@ public final class PreferencesStore: @unchecked Sendable {
         }
         let anyReq = NSFetchRequest<AppPreferences>(entityName: "AppPreferences")
         anyReq.fetchLimit = 1
-        if let legacy = try ctx.fetch(anyReq).first {
-            // Adopt the legacy row's identity in place so we don't strand a
-            // CloudKit record; `normalizeSingletons` handles the multi-row case.
-            legacy.id = Self.singletonID
-            try ctx.save()
-            return legacy
+        return try ctx.fetch(anyReq).first
+    }
+
+    /// `update(_:)`'s create-if-missing path — legitimate here since
+    /// `update` is already an explicit mutation, unlike `read()`. Adopts a
+    /// legacy row's identity in place if one exists (so we don't strand a
+    /// CloudKit record; `normalizeSingletons` handles the multi-row case),
+    /// otherwise creates a fresh canonical row via `Self.populateDefaults`.
+    private func ensureSingleton(in ctx: NSManagedObjectContext) throws -> AppPreferences {
+        if let existing = try fetchCanonicalOrLegacySingleton(in: ctx) {
+            existing.id = Self.singletonID
+            return existing
         }
         let row = AppPreferences(context: ctx)
+        Self.populateDefaults(row)
+        return row
+    }
+
+    /// The single source of truth for "what a brand-new `AppPreferences`
+    /// row looks like" — shared by `ensureSingleton`'s creation path,
+    /// `normalizeSingletons`'s empty-store creation path, and
+    /// `Self.defaultPrefs`'s in-memory fallback, so the three can never
+    /// drift apart.
+    private static func populateDefaults(_ row: AppPreferences) {
         row.id = Self.singletonID
         row.defaultAllDayNotificationHour = 9
         row.defaultAllDayNotificationMinute = 0
@@ -216,34 +216,137 @@ public final class PreferencesStore: @unchecked Sendable {
         row.quickCaptureHotkey = "ctrl+opt+space"
         row.statusBarItemVisible = true
         row.defaultTagTintHex = "#7F8FA6"
-        try ctx.save()
-        return row
+    }
+
+    /// In-memory defaults `read()` returns when no `AppPreferences` row
+    /// exists yet (a fresh install before the bootstrap maintenance pass
+    /// has run) — the same values `populateDefaults` writes to a real row.
+    private static var defaultPrefs: Prefs {
+        Prefs(
+            defaultAllDayHour: 9,
+            defaultAllDayMinute: 0,
+            morningSummaryEnabled: true,
+            morningSummaryHour: 9,
+            morningSummaryMinute: 0,
+            trashRetentionDays: 30,
+            defaultTaskListSort: .manualPosition,
+            crashPromptsEnabled: true,
+            hasCompletedOnboarding: false,
+            quickCaptureEnabled: true,
+            quickCaptureHotkey: "ctrl+opt+space",
+            statusBarItemVisible: true,
+            defaultTagTintHex: "#7F8FA6"
+        )
+    }
+
+    private static func prefs(from row: AppPreferences) -> Prefs {
+        Prefs(
+            defaultAllDayHour: row.defaultAllDayNotificationHour,
+            defaultAllDayMinute: row.defaultAllDayNotificationMinute,
+            morningSummaryEnabled: row.morningSummaryEnabled,
+            morningSummaryHour: row.morningSummaryHour,
+            morningSummaryMinute: row.morningSummaryMinute,
+            trashRetentionDays: row.trashRetentionDays,
+            defaultTaskListSort: row.defaultTaskListSort,
+            crashPromptsEnabled: row.crashPromptsEnabled,
+            hasCompletedOnboarding: row.hasCompletedOnboarding,
+            quickCaptureEnabled: row.quickCaptureEnabled,
+            quickCaptureHotkey: row.quickCaptureHotkey ?? "ctrl+opt+space",
+            statusBarItemVisible: row.statusBarItemVisible,
+            defaultTagTintHex: row.defaultTagTintHex ?? "#7F8FA6"
+        )
     }
 
     /// One-time-per-launch convergence pass: collapse every `AppPreferences`
-    /// row down to a single canonical row carrying `singletonID`.
+    /// row down to a single canonical row carrying `singletonID` — and, on a
+    /// completely empty store, create that canonical row (M4: the only
+    /// non-`update` path allowed to do so).
     ///
-    /// Pre-fix stores (and any device that synced before this fix shipped) can
-    /// hold multiple random-UUID rows. We keep the row that sorts first by id
-    /// (deterministic across devices), reassign it `singletonID`, and delete the
-    /// rest. Idempotent: on an already-canonical store this fetches one row and
-    /// returns without writing. Safe to call on every bootstrap.
+    /// X20: survivor selection is a deterministic total order, not a raw-byte
+    /// `id` sort (which could pick a legacy row over the canonical one — ~32%
+    /// of legacy UUIDs sort below the fixed singleton id — and had no
+    /// tie-break at all for two rows that both already carry `singletonID`,
+    /// the concurrent-create race shape). `AppPreferences` has no timestamp
+    /// attribute (verified against the model) and adding one is a real
+    /// CloudKit-schema change requiring Development→Production redeployment
+    /// — out of this plan's scope per the same binding constraint `4b` hit
+    /// for `LIL-83` (flag to the orchestrator first, don't add unilaterally).
+    /// The order instead is:
+    ///   1. A row already carrying `singletonID` always wins over any row
+    ///      that doesn't — preserves the canonical identity outright rather
+    ///      than reassigning it away from a row that already has it.
+    ///   2. Among rows tied on (1) — either two canonical rows from a
+    ///      concurrent-create race, or an all-legacy store — `Self
+    ///      .contentKey`, a canonical string built from every settings
+    ///      field in a fixed order, ascending.
+    ///   3. `id.uuidString` ascending as the final, purely mechanical
+    ///      tie-break (identical content — the rows are indistinguishable
+    ///      in every user-visible way, so any deterministic pick is
+    ///      correct).
+    /// Every input to this ordering (the settings fields themselves, `id`)
+    /// is a regular synced `AppPreferences` attribute, so once CloudKit has
+    /// propagated every row to every device, every device computes the
+    /// identical ordering and picks the identical survivor — content-based
+    /// rather than creation-time-based, but still a total, convergent order,
+    /// which is what "every device picks the same survivor" requires. (A
+    /// CloudKit-`recordName`-based tie-break was the other option
+    /// considered; rejected — it would need a live `CKContainer` at the call
+    /// site, breaking this method's pure-Core-Data testability the same way
+    /// `TaskDuplicateReconciler`'s design explicitly worked around via
+    /// dependency injection, for a narrow concurrent-race edge case that
+    /// doesn't warrant the added complexity.)
+    ///
+    /// Idempotent: on an already-canonical single-row store this fetches one
+    /// row and returns without writing. Safe to call on every bootstrap.
     public func normalizeSingletons() async throws {
-        try await context.perform { [self] in
+        try await withMutationRollback(context: context) { [self] in
             let req = NSFetchRequest<AppPreferences>(entityName: "AppPreferences")
-            req.sortDescriptors = [NSSortDescriptor(key: "id", ascending: true)]
             let rows = try context.fetch(req)
-            guard let survivor = rows.first else { return }       // empty store
-            if rows.count == 1 && survivor.id == Self.singletonID {
+            guard !rows.isEmpty else {
+                let row = AppPreferences(context: context)
+                Self.populateDefaults(row)
+                return
+            }
+            let sorted = rows.sorted { a, b in
+                let aCanonical = a.id == Self.singletonID
+                let bCanonical = b.id == Self.singletonID
+                if aCanonical != bCanonical { return aCanonical }
+                let aKey = Self.contentKey(a)
+                let bKey = Self.contentKey(b)
+                if aKey != bKey { return aKey < bKey }
+                return (a.id?.uuidString ?? "") < (b.id?.uuidString ?? "")
+            }
+            let survivor = sorted[0]
+            if sorted.count == 1 && survivor.id == Self.singletonID {
                 return                                            // already canonical
             }
             survivor.id = Self.singletonID
-            for extra in rows.dropFirst() {
+            for extra in sorted.dropFirst() {
                 context.delete(extra)
             }
-            if context.hasChanges {
-                try context.save()
-            }
         }
+    }
+
+    /// A canonical, deterministic string encoding every settings field in a
+    /// fixed order — used only as `normalizeSingletons`'s content-based
+    /// tie-break (X20) when `id` alone can't distinguish two rows. Not a
+    /// hash; a direct field concatenation, so it's trivially reproducible
+    /// and debuggable.
+    private static func contentKey(_ row: AppPreferences) -> String {
+        [
+            String(row.defaultAllDayNotificationHour),
+            String(row.defaultAllDayNotificationMinute),
+            String(row.morningSummaryEnabled),
+            String(row.morningSummaryHour),
+            String(row.morningSummaryMinute),
+            String(row.trashRetentionDays),
+            row.defaultTaskListSortRaw ?? "",
+            String(row.crashPromptsEnabled),
+            String(row.hasCompletedOnboarding),
+            String(row.quickCaptureEnabled),
+            row.quickCaptureHotkey ?? "",
+            String(row.statusBarItemVisible),
+            row.defaultTagTintHex ?? "",
+        ].joined(separator: "\u{1}")
     }
 }

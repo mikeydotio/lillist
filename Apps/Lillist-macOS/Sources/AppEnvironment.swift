@@ -671,6 +671,14 @@ final class AppEnvironment {
         // forward into App Group UserDefaults if we haven't already.
         // Idempotent; subsequent launches no-op.
         _ = try? await preferencesPartitionMigrator.runIfNeeded()
+        // M4 (data-sync-hardening 5a): normalizeSingletons is now the only
+        // path (besides an explicit update(_:)) that may create the
+        // canonical AppPreferences row — read() below is genuinely
+        // read-only. iOS's bootstrap already called this; macOS relied
+        // entirely on read()'s removed create-on-read side effect to ever
+        // materialize the row on a fresh install, matching iOS's ordering
+        // (right before its own preferencesStore.read() call) fixes that.
+        try? await preferencesStore.normalizeSingletons()
         // X10: hydrate the scheduler's all-day default from the persisted
         // preference BEFORE any reconcile pass runs below — see the iOS
         // counterpart's identical doc comment for the full rationale (the
