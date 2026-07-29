@@ -93,4 +93,54 @@ enum IntentSupport {
             enabled: await DevicePreferencesStore(appGroupID: appGroupID).diagnosticLoggingEnabled()
         )
     }
+
+    /// data-sync-hardening X8/X10: a `NotificationScheduler` wired to the
+    /// resolved persistence stack and hydrated from the persisted all-day
+    /// default preference (never the hardcoded construction default X10
+    /// flagged in both apps). `UNUserNotificationCenter`'s pending-request
+    /// namespace is scoped to the containing app, shared automatically by
+    /// every extension in its App Group — no new entitlement or
+    /// authorization request is needed for an extension to schedule/cancel
+    /// requests once the main app has been granted permission (verified,
+    /// not assumed — see the plan doc's X8 investigation).
+    ///
+    /// Deliberately NOT cached the way `makePersistence()` is: constructing
+    /// a scheduler is cheap (one Core Data fetch for the prefs row, no
+    /// CloudKit work), so a fresh instance per call avoids stale-preference
+    /// cache-invalidation complexity for no real cost.
+    static func makeNotificationScheduler() async throws -> NotificationScheduler {
+        try await makeNotificationScheduler(persistence: try await makePersistence())
+    }
+
+    static func makeNotificationScheduler(persistence: PersistenceController) async throws -> NotificationScheduler {
+        let prefs = try await PreferencesStore(persistence: persistence).read()
+        let registry = SnoozeRegistry(
+            defaultAllDayHour: Int(prefs.defaultAllDayHour),
+            defaultAllDayMinute: Int(prefs.defaultAllDayMinute),
+            timeZone: .current
+        )
+        return NotificationScheduler(
+            persistence: persistence,
+            specs: NotificationSpecStore(persistence: persistence),
+            center: SystemUserNotificationCenter(),
+            snoozeRegistry: registry,
+            deviceFingerprint: DeviceFingerprint.current(),
+            defaultAllDayHour: Int(prefs.defaultAllDayHour),
+            defaultAllDayMinute: Int(prefs.defaultAllDayMinute),
+            timeZone: .current
+        )
+    }
+
+    /// data-sync-hardening X8: a `TaskStore` with its `notificationScheduler`
+    /// already assigned — the class-kill for "an extension mutation never
+    /// touches a scheduler, so a completed task's reminder stays pending
+    /// forever." Every `TaskStore` construction site in this target should
+    /// route through here rather than `TaskStore(persistence:)` directly,
+    /// so a future intent can't reintroduce the gap by construction.
+    static func makeTaskStore() async throws -> TaskStore {
+        let persistence = try await makePersistence()
+        let store = TaskStore(persistence: persistence)
+        store.notificationScheduler = try await makeNotificationScheduler(persistence: persistence)
+        return store
+    }
 }

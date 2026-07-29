@@ -16,16 +16,14 @@ struct AddNudgeIntent: AppIntent {
     @MainActor
     func perform() async throws -> some IntentResult {
         let persistence = try await IntentSupport.makePersistence()
-        // NudgeHandler takes a `atToken` string (date DSL). The intent gives
-        // us a concrete Date; route it through the spec store directly with
-        // the same shape NudgeHandler uses, bypassing the DSL parser.
-        let specs = NotificationSpecStore(persistence: persistence)
-        _ = try await specs.add(
-            taskID: task.id,
-            kind: .nudge,
-            offsetMinutes: nil,
-            fireDate: fireAt
-        )
+        // X8: route through the scheduler's addNudge (persist + reconcile in
+        // one call, matching the app-level API) instead of the spec store
+        // directly — a nudge added from Shortcuts previously persisted the
+        // NotificationSpec row but never installed a UNNotificationRequest,
+        // so it silently never fired unless the main app happened to
+        // reconcile it later.
+        let scheduler = try await IntentSupport.makeNotificationScheduler(persistence: persistence)
+        _ = try await scheduler.addNudge(taskID: task.id, fireDate: fireAt)
         await WidgetRefresh.refreshAfterMutation(persistence: persistence)
         return .result()
     }
