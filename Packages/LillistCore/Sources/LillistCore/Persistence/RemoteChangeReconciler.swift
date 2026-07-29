@@ -69,6 +69,10 @@ public final class RemoteChangeReconciler: @unchecked Sendable {
     /// property-injected `diagnosticLog` (M5).
     public var diagnosticLog: DiagnosticSink?
 
+    /// M3: serializes and coalesces overlapping `processPendingHistory()`
+    /// calls — see `DrainGate`'s own doc comment for the full rationale.
+    private let drainGate = DrainGate()
+
     /// - Parameters:
     ///   - persistence: the live controller (its `viewContext` is used to fetch
     ///     history and resolve `NotificationSpec` → `taskID`).
@@ -112,7 +116,27 @@ public final class RemoteChangeReconciler: @unchecked Sendable {
     /// Walk history since the last watermark, compute affected task ids, advance
     /// the watermark, and fire the callback. Public so the app can also call it
     /// once at launch (catch-up for changes that arrived while not running).
+    ///
+    /// M3: reentrancy-safe. A burst of `NSPersistentStoreRemoteChange`
+    /// notifications spawns several concurrent calls; only one drain ever
+    /// runs at a time, and calls that arrive mid-drain are coalesced into a
+    /// single guaranteed rerun rather than running (and re-reading the
+    /// watermark) concurrently. See `DrainGate`.
     public func processPendingHistory() async {
+        guard await drainGate.tryAcquire() else { return }
+        while true {
+            await drainOnce()
+            if await drainGate.finishOrRerun() { continue }   // a change landed mid-drain; sweep again
+            return
+        }
+    }
+
+    /// One serialized read-fetch-reconcile-advance pass. Only ever called by
+    /// the single owning `processPendingHistory` loop, so the token read
+    /// (inside `ctx.perform`) and the watermark advance (after the callback)
+    /// stay atomic w.r.t. other drains despite the intervening suspension
+    /// points.
+    private func drainOnce() async {
         let ctx = persistence.container.viewContext
         let (changes, newToken): ([SyntheticChange], NSPersistentHistoryToken?)
         do {

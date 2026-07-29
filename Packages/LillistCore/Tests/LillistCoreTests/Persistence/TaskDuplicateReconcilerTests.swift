@@ -486,6 +486,49 @@ struct TaskDuplicateReconcilerTests {
         #expect(remainingB == 1)
     }
 
+    // MARK: - M3: overlapping notifications collapse into a bounded number of passes
+
+    /// Always reports nothing mirrored (ambiguous — never resolves the
+    /// duplicate group), so a `mirroredObjectIDs` call fires on EVERY full
+    /// pass that finds the group still present, for as long as the test
+    /// runs — letting the call count double as a direct proxy for "how many
+    /// times the reconcile core actually ran," independent of whether any
+    /// individual pass does useful work.
+    private final class CountingAmbiguousMirrorIdentifier: MirroredObjectIdentifying, @unchecked Sendable {
+        private let lock = NSLock()
+        private var _callCount = 0
+        var callCount: Int { lock.lock(); defer { lock.unlock() }; return _callCount }
+        func mirroredObjectIDs(among ids: [NSManagedObjectID]) -> Set<NSManagedObjectID> {
+            lock.lock(); _callCount += 1; lock.unlock()
+            return []   // ambiguous: 0 mirrored — the group is never resolved
+        }
+    }
+
+    @Test("M3: concurrent reconcileNow calls collapse into a bounded number of full-table passes, not one per notification")
+    func concurrentCallsCollapseIntoBoundedPasses() async throws {
+        let (p, ctx) = try await makeContext()
+        let tasks = TaskStore(persistence: p)
+        let id = try await tasks.create(title: "Hello!")
+        try await insertDuplicate(id: id, title: "Hello! (dup)", in: ctx)   // never resolves — kept ambiguous
+
+        let counter = CountingAmbiguousMirrorIdentifier()
+        let reconciler = TaskDuplicateReconciler(persistence: p)
+
+        // Fire many overlapping drains at once — without DrainGate, each of
+        // the 24 concurrent calls independently runs its own full-table
+        // scan (24 calls to the mirror identifier); with it, all but the
+        // owner plus a small, bounded number of coalesced reruns must
+        // return without running a pass at all.
+        await withTaskGroup(of: Void.self) { group in
+            for _ in 0..<24 {
+                group.addTask { await reconciler.reconcileNow(mirrorIdentifier: counter) }
+            }
+        }
+
+        #expect(counter.callCount < 24, "overlapping notifications must coalesce into far fewer full-table passes than the number of concurrent calls")
+        #expect(counter.callCount <= 4, "the gate must bound the coalesced rerun count, not merely reduce it a little")
+    }
+
     // MARK: - Triplicate: more than two rows sharing one id
 
     @Test("Resolves a triplicate (3 rows sharing one id) down to the one mirrored survivor")

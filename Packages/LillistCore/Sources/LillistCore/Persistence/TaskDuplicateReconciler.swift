@@ -55,6 +55,12 @@ extension NSPersistentCloudKitContainer: MirroredObjectIdentifying {
 /// apply automatically — no need for `CascadeReaper`, which exists
 /// specifically to work around batch-delete bypassing those rules.
 ///
+/// Bursty remote-change delivery (a batch of notifications arriving close
+/// together) is serialized through a `DrainGate` (M3): overlapping
+/// `reconcileNow` calls collapse into one in-flight full-table scan plus at
+/// most a small, bounded number of coalesced reruns, instead of one
+/// independent scan per notification.
+///
 /// `@unchecked Sendable`: the only mutable state (the observer token) is
 /// touched on the main actor in `start()`/`stop()`.
 public final class TaskDuplicateReconciler: @unchecked Sendable {
@@ -66,6 +72,14 @@ public final class TaskDuplicateReconciler: @unchecked Sendable {
     /// unconditional `os.Logger` line — mirrors `TaskStore`'s
     /// property-injected `diagnosticLog`.
     public var diagnosticLog: DiagnosticSink?
+
+    /// M3: serializes and coalesces overlapping `reconcileNow` calls. Each
+    /// full-table scan is individually atomic (one `ctx.perform` block), so
+    /// concurrent calls can't corrupt state even without this gate — but
+    /// bursty remote-change delivery (e.g. a batch of notifications) would
+    /// otherwise spawn one independent full `LillistTask` scan per
+    /// notification with no coalescing. See `DrainGate`'s own doc comment.
+    private let drainGate = DrainGate()
 
     public init(persistence: PersistenceController) {
         self.persistence = persistence
@@ -106,7 +120,22 @@ public final class TaskDuplicateReconciler: @unchecked Sendable {
     /// injected mirror identifier, since a live `NSPersistentCloudKitContainer`
     /// (what `reconcileNow()` derives its identifier from) isn't available
     /// under unsigned `swift test` / the in-memory test store.
+    ///
+    /// M3: reentrancy-safe, same as `reconcileNow()` — both route through
+    /// this single gated entry point, so a test driving this seam directly
+    /// still exercises the real serialization.
     func reconcileNow(mirrorIdentifier: (any MirroredObjectIdentifying)?) async {
+        guard await drainGate.tryAcquire() else { return }
+        while true {
+            await reconcileOnce(mirrorIdentifier: mirrorIdentifier)
+            if await drainGate.finishOrRerun() { continue }   // a change landed mid-drain; sweep again
+            return
+        }
+    }
+
+    /// One serialized full-table reconcile pass. Only ever called by the
+    /// single owning `reconcileNow` loop.
+    private func reconcileOnce(mirrorIdentifier: (any MirroredObjectIdentifying)?) async {
         let ctx = persistence.container.viewContext
         do {
             _ = try await Self.reconcileDuplicates(in: ctx, mirrorIdentifier: mirrorIdentifier)

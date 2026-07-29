@@ -224,6 +224,49 @@ struct RemoteChangeReconcilerTests {
         #expect(received.isEmpty, "a write authored by this controller's OWN transactionAuthor must be classified as local and never trigger reconcile")
     }
 
+    // MARK: - M3: overlapping notifications don't double-process or regress the watermark
+
+    @Test("M3: concurrent processPendingHistory calls process each change exactly once, no watermark regression")
+    func concurrentCallsProcessEachChangeExactlyOnce() async throws {
+        let (p, _) = try await makeContext()
+        let tasks = TaskStore(persistence: p)
+        let specs = NotificationSpecStore(persistence: p)
+        var taskIDs: [UUID] = []
+        for i in 0..<8 {
+            let taskID = try await tasks.create(title: "t\(i)")
+            let specID = try await specs.add(taskID: taskID, kind: .defaultDeadline, offsetMinutes: nil, fireDate: nil)
+            try await writeForeignLastFired(specID: specID, on: p)
+            taskIDs.append(taskID)
+        }
+
+        actor CallbackSpy {
+            private(set) var received: [UUID] = []
+            func record(_ ids: [UUID]) { received.append(contentsOf: ids) }
+        }
+        let spy = CallbackSpy()
+        let tokenStore = PersistentHistoryTokenStore(suiteName: "M3-\(UUID().uuidString)")
+        let reconciler = RemoteChangeReconciler(persistence: p, tokenStore: tokenStore) { ids in
+            await spy.record(ids)
+        }
+
+        // Fire many overlapping drains at once — the reentrancy guard must let
+        // exactly one run and coalesce the rest, so no task id is reconciled
+        // more than once and the watermark never regresses under the flood.
+        await withTaskGroup(of: Void.self) { group in
+            for _ in 0..<24 { group.addTask { await reconciler.processPendingHistory() } }
+        }
+
+        let received = await spy.received
+        #expect(Set(received).count == received.count, "no task id may be reconciled more than once across overlapping notifications")
+        #expect(Set(received) == Set(taskIDs), "every affected task must be reconciled exactly once")
+
+        // A subsequent call with no new writes must trigger nothing further —
+        // proves the watermark did not regress under the concurrent flood.
+        await reconciler.processPendingHistory()
+        let receivedAfter = await spy.received
+        #expect(receivedAfter.count == received.count, "a settled pass after the flood must not re-trigger any callback")
+    }
+
     @Test("Duplicate taskIDs across multiple specs collapse to a unique set")
     func deduplicatesTaskIDs() async throws {
         let (p, ctx) = try await makeContext()
