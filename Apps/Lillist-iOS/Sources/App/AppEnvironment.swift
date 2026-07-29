@@ -58,6 +58,12 @@ final class AppEnvironment {
     /// Issue #7: schema-gated destructive restore from a package or snapshot.
     let backupRestoreService: BackupRestoreService
     let pauseReasonClassifier: PauseReasonClassifier
+    /// Data-sync-hardening `S24`: real `NWPathMonitor`-backed reachability
+    /// for `pauseReasonClassifier`, promoted to its own property so
+    /// `bootstrap()` can call `start()` — matches the established pattern
+    /// (`resetSignalMonitor`, `taskDuplicateReconciler`, `syncMonitor`, …)
+    /// of constructing in `init` and starting observation in `bootstrap()`.
+    let networkReachability: LiveNetworkReachability
     /// Data-sync-hardening `S21`: the Core sync-status actor, promoted to
     /// its own property so `resetStallState()` can be injected into
     /// `migrationCoordinator`/`dataStoreReset`. `syncMonitor` (below) wraps
@@ -368,9 +374,11 @@ final class AppEnvironment {
         )
         self.localBackupCoordinator = localBackupCoordinator
 
+        let networkReachability = LiveNetworkReachability()
+        self.networkReachability = networkReachability
         self.pauseReasonClassifier = PauseReasonClassifier(
             accountMonitor: accountStateMonitor,
-            networkMonitor: ConstantNetworkReachability(reachable: true)
+            networkMonitor: networkReachability
         )
         // sync-7: the irreversible "replace iCloud with local" erase must
         // refuse to run against an empty local store. Capture the
@@ -653,6 +661,10 @@ final class AppEnvironment {
         // sees an empty disk on a clean cold launch and a real stale
         // canary only after a true foreground crash.
         self.crashPromptsEnabled = await devicePreferences.crashPromptsEnabled()
+        // S24: begin observing real network reachability before priming
+        // pauseReason below, so the first classification isn't stuck on
+        // the pre-start default.
+        await networkReachability.start()
         // Plan 10: prime the iCloud account-state cache so the
         // onboarding gate has a non-default value to read.
         try? await accountStateMonitor.refresh()

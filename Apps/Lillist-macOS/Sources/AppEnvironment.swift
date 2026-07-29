@@ -28,6 +28,9 @@ final class AppEnvironment {
     let migrationJournalStore: any MigrationJournalStore
     let migrationCoordinator: MigrationCoordinator
     let pauseReasonClassifier: PauseReasonClassifier
+    /// Data-sync-hardening `S24`: real reachability — see the iOS
+    /// counterpart's identical doc comment.
+    let networkReachability: LiveNetworkReachability
     /// Data-sync-hardening `S21`: the Core sync-status actor, promoted to
     /// its own property — see the iOS counterpart's identical doc comment.
     let syncStatusMonitor: SyncStatusMonitor
@@ -326,9 +329,11 @@ final class AppEnvironment {
         )
         self.localBackupCoordinator = localBackupCoordinator
 
+        let networkReachability = LiveNetworkReachability()
+        self.networkReachability = networkReachability
         self.pauseReasonClassifier = PauseReasonClassifier(
             accountMonitor: accountStateMonitor,
-            networkMonitor: ConstantNetworkReachability(reachable: true)
+            networkMonitor: networkReachability
         )
         // sync-7: the irreversible "replace iCloud with local" erase must
         // refuse to run against an empty local store. Capture the
@@ -616,6 +621,9 @@ final class AppEnvironment {
         // AppDelegate continues to delete the canary on clean exit.
         // Hydrate crashPromptsEnabled from device-local preferences.
         self.crashPromptsEnabled = await devicePreferences.crashPromptsEnabled()
+        // S24: begin observing real network reachability before priming
+        // pauseReason below — see the iOS counterpart's identical comment.
+        await networkReachability.start()
         // Plan 10: prime the iCloud account-state cache so the onboarding
         // gate has a non-default value to read. Errors fall through; the
         // gate handles `.noAccount` as the "iCloud unavailable" branch.
