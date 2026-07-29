@@ -23,11 +23,12 @@ CloudKit, XCTest + Swift Testing, xcodegen, storyhook (prefix `LIL`).
 > **New here? Read this section first.** This file is the **living progress
 > tracker** — keep it current as plans land.
 
-**As of 2026-07-28 — Wave 0, all of Wave 1 (`1a` `trash-tree-integrity`,
+**As of 2026-07-29 — Wave 0, all of Wave 1 (`1a` `trash-tree-integrity`,
 `1b` `purge-cloudkit-retirement`, `1c` `store-location-unification`, `1d`
 `export-schema-completeness`), all of Wave 2 (`2a` `migration-transitions`,
-`2b` `backup-restore-correctness`), and plan `3a` `account-identity-and-status`
-COMPLETE. Wave 3's second plan, `3b` `reset-propagation-safety`, next.**
+`2b` `backup-restore-correctness`), and all of Wave 3 (`3a`
+`account-identity-and-status`, `3b` `reset-propagation-safety`) COMPLETE.
+Wave 4's first plan, `4a` `history-consumer-discipline`, next.**
 
 - ✅ **Plan `1a` closed all 8 findings** (`C1 C2 C3 H4 H7 M1 M2 M5` /
   `LIL-7 LIL-8 LIL-9 LIL-22 LIL-25 LIL-45 LIL-46 LIL-49`), added the
@@ -274,23 +275,74 @@ COMPLETE. Wave 3's second plan, `3b` `reset-propagation-safety`, next.**
   outcome, the two corroborated `PersistenceHost` leaks this plan closed
   as binding parts of the council decision, and what `3b` needs to know.
 
-**Next action for whoever picks this up:** start Wave 3's second plan, `3b`
-(`reset-propagation-safety`) — findings `S9c S10 S18 S19 S20 S22 X11`. Its
-hotspots include `ResetSignalMonitor.swift`, `ResetPropagator.swift`,
-`ControlInbox.swift`, `HistoryPruner.swift`, and both `AppEnvironment.swift`s
-again (see the *Shared-file serial chains* section, chain 5 — `1c` → `2b` →
-`3a` ✅ done are the first three links; chain 6, `HistoryPruner.swift` +
-history-token `UserDefaults` keys, co-depends with `5c` — read both plans
-before starting either). Read the *Resume protocol* section first, then
-*Wave 3a closing report* below for what `3a` left in place (the shared
-`AccountIdentityStore`/`accountStateProbe` pattern now wired into both
-`MigrationCoordinator` and `DataStoreResetService` in both apps; if `3b`'s
-reset-propagation work interacts with account identity at all — e.g. should
-a propagated reset from another device be trusted differently after an
-account switch — the seam is `AccountIdentityStore.check()`, already
-callable synchronously). `S10`'s product decision (remote reset events never
-auto-applied, an expiry-window duration left to a `3b` council vote) is
-already binding — see *Product decisions* above.
+- ✅ **Plan `3b` closed all 7 findings** (`S9c S10 S18 S19 S20 S22 X11` /
+  `LIL-32 LIL-33 LIL-56 LIL-57 LIL-58 LIL-42 LIL-60`) — `ResetSignalMonitor`
+  became an `actor` implementing the binding always-prompt product decision:
+  `refreshPendingDecision()` (replaces the old auto-applying `checkAndApply()`)
+  only ever classifies and surfaces a pending decision via
+  `pendingDecisionStream`/`discardNoticeStream`; `confirmApply()` is the sole
+  path that ever applies anything, called only from the new
+  `PendingResetDecisionDialog` on explicit user confirmation. Events past the
+  council-decided 180-day expiry window, or arriving while the device is
+  `.localOnly`, are acked-and-discarded automatically with a diagnostic
+  breadcrumb and a UI-surfaced discard notice — never applied, never retried
+  forever (closes `S10`; also closes `S22`'s `isApplying` race by
+  construction). `S22`'s other two parts: `ControlInbox` gained
+  `undecodableKeys`/`discardUndecodable` quarantining corrupt payloads into a
+  new `ResetEventDeadLetterStore`; `AppliedEventStore` capped at 200 entries.
+  `S20`: `ResetPropagator.broadcast` returns a new `BroadcastOutcome`
+  (`.notified(peerCount:)`/`.rosterEmpty`/`.notConfigured`) instead of
+  `Void`, surfaced through both apps' reset-result copy. `S9c`:
+  `resetAndReseedFromThisDevice()` now waits for the reimported data's
+  re-export to quiesce before broadcasting (`BroadcastOutcome
+  .skippedQuiesceTimedOut` on timeout — never broadcasts a knowably-partial
+  zone). `X11`: new `HistoryWatermarks` clears the three
+  `PersistentHistoryTokenStore` consumers + `HistoryPruner`'s bookkeeping key;
+  new `WidgetSnapshotStore.clearAll()`/`WidgetSnapshotBuilder.clearCache()`/
+  `WidgetRefreshCoordinator.resetAfterDestructiveOp()` clear + regenerate the
+  widget cache — both wired into `DataStoreResetService` (every reset flavor)
+  and `MigrationCoordinator` (`.replaceLocalWithICloud` only — the sole
+  migration op that actually destroys/rebuilds the store; the other three
+  reattach the same file and must not have their watermarks cleared). `S19`:
+  `CloudKitErrorClassifier` now classifies `.zoneNotFound`/`.userDeletedZone`
+  as recoverable with a distinguishing message; new
+  `LiveCloudKitZoneEraser.hasAnyRecords(in:)` backs a new
+  `MigrationCoordinator.remoteZoneHasRecords` guard (symmetric to
+  `localStoreRowCount`'s existing guard) that blocks `.replaceLocalWithICloud`
+  with the new `LillistError.iCloudDataEmpty` when iCloud has no managed
+  zone yet (fails open on a throwing probe); "Try Again" was traced to
+  actually only clear the journal and dismiss — new
+  `MigrationCoordinator.retryFailedOperation(from:storeURL:)` re-dispatches
+  through `beginEnable`/`beginDisable` so a partial failure is genuinely
+  retried. `S18`: `quarantine` promoted to a stored `AppEnvironment`
+  property; `bootstrap()` now calls `cleanupExpired()`. Plan doc:
+  `docs/superpowers/plans/2026-07-28-plan-3b-reset-propagation-safety.md` —
+  contains the full always-prompt state diagram, the `BroadcastOutcome`
+  design, and the X11 clear-list enumeration. Commit range `9843f6fc..89c34aa0`
+  (7 commits: 1 docs, 4 fix/feat, 1 `chore(stories)`, plus a final
+  `chore(stories)` done-move). Full `LillistCore` suite green twice in a row
+  with unmasked exit codes and a clean grep for the failure markers (1314
+  tests, 232 suites — up from `3a`'s 1277/231 baseline; one
+  `SIGABRT`/Core-Data-internal-exception flake hit on the first full-suite
+  attempt post-app-wiring, matching the documented parallel-test-flake class,
+  cleared on retry per the documented policy); LillistUI non-snapshot suite
+  green (83/17, unchanged); both apps verified with unsigned `xcodebuild`
+  builds (BUILD SUCCEEDED, including `LillistWidget`/`ShareExtension-iOS` on
+  iOS and `LillistWidget-macOS` on macOS) after the app-wiring commit. See
+  *Wave 3b closing report* below for the council-vote outcome (180-day
+  expiry, unanimous 3/3 round 1) and what `4a` needs to know.
+
+**Next action for whoever picks this up:** start Wave 4's first plan, `4a`
+(`history-consumer-discipline`) — findings `H6 M3`. Its hotspot is
+`RemoteChangeReconciler.swift` (chain 4 in *Shared-file serial chains* below:
+`4a` must land first, before `4b` widens the reconcile mechanism — see that
+chain's note). `4a` also opens chain 6 (`HistoryPruner.swift` + the three
+history-token `UserDefaults` keys) alongside `5c`, which formalizes the
+`WatermarkRegistry` `3b`'s `HistoryWatermarks` type deliberately stubbed
+against (see the *Wave 3b closing report* below for the exact seam `5c`
+should replace). Read the *Resume protocol* section first, then the *Wave 3b
+closing report* for what's now wired into `ResetSignalMonitor`/
+`DataStoreResetService`/`MigrationCoordinator`/both `AppEnvironment.swift`s.
 
 ---
 
@@ -1015,6 +1067,167 @@ setter-removal were all direct calls per the plan doc's own reasoning (see
 
 ---
 
+## Wave 3b closing report (`reset-propagation-safety`)
+
+Plan doc: `docs/superpowers/plans/2026-07-28-plan-3b-reset-propagation-safety.md`
+— contains the full always-prompt state diagram (detected → pending-decision
+→ confirmed/declined/expired/dead-letter), the `BroadcastOutcome` design
+(shared by `S20`/`S9c`), and the `X11` watermark clear-list enumeration.
+
+| Finding | Story | Fix commit | Regression test(s) |
+|---|---|---|---|
+| `S10`, `S22` (`isApplying` race + `ControlInbox`/`AppliedEventStore` halves) | `LIL-33`, `LIL-60` | `d3897ee7` | `ResetSignalMonitorTests.swift` (rewritten in full — every existing test asserted the auto-apply behavior the fix removes, per the `2a`-established two-hats carve-out for this exact situation — +expiry boundary tests, local-only-discard tests, dead-letter tests, stream tests) + `ResetSignalMonitorGateTests.swift` (rewritten for the `refreshPendingDecision()`/`confirmApply()` split) |
+| `S20`, `S9c`, `X11` (`DataStoreResetService` side) | `LIL-32`, `LIL-58`, `LIL-42` | `0875470d` | `ResetPropagatorTests.swift` (+2), `DataStoreResetServiceTests.swift` (+8: broadcast-outcome assertions on existing tests, new `rosterEmpty`/quiesce-timeout/local-only-broadcasts tests, new X11 watermark/widget-cache-clear-count tests), new `HistoryWatermarksTests.swift` (3 tests), `WidgetSnapshotStoreTests.swift`/`WidgetSnapshotBuilderTests.swift` (+4) |
+| `S19`, `X11` (`MigrationCoordinator` side) | `LIL-56`, `LIL-57` | `bd6fe02f` | `CloudKitErrorClassifierTests.swift` (+3), `MigrationRunnerExecutingTests.swift` (+9: X11 watermark/widget-cache gating by op, `remoteZoneHasRecords` guard incl. fail-open, `retryFailedOperation` dispatch table for all 4 `ModeTransitionOp`s + no-recorded-op throw) |
+| `S18` + app-layer wiring for all seven findings | `LIL-56`(app half) | `89c34aa0` | App-level — no host-side unit test target reaches `AppEnvironment.bootstrap()`'s private wiring or the `PendingResetDecisionDialog` sheet flow (same precedent as `2a`'s `S16`/`S17` and `3a`'s app-wiring rows); verified by unsigned `xcodebuild build` for both apps (BUILD SUCCEEDED, including `LillistWidget`/`ShareExtension-iOS` on iOS and `LillistWidget-macOS` on macOS) |
+
+**Commit range:** `9843f6fc..4d492c9e` — 1 docs (`9843f6fc`), 4 feat/fix
+(`d3897ee7`, `0875470d`, `bd6fe02f`, `89c34aa0`), 2 `chore(stories)` (the
+in-progress moves folded into the working tree, plus `4d492c9e`'s done-move).
+Full `LillistCore` suite green **twice in a row** with unmasked exit codes
+and a clean grep for the failure markers (1314 tests, 232 suites — up from
+`3a`'s 1277/231 baseline). One `SIGABRT`/`-[__NSCFSet addObject:]: attempt to
+insert nil` Core-Data-internal-exception crash hit on the first full-suite
+attempt after the app-wiring commit — matches the documented parallel-test-
+flake class (`CLAUDE.md`'s "heavy concurrent in-memory store creation
+intermittently SIGSEGVs inside Core Data" note, same root cause — CPU/thread
+contention under `--parallel --num-workers 2`, not a manifestation new to
+this plan's changes), cleared on retry per the documented policy, then
+re-confirmed clean twice more. LillistUI non-snapshot suite green (83 tests,
+17 suites, unchanged from baseline — this plan added no new LillistUI
+tests, only new views/types covered by the app-level build verification).
+
+**Always-prompt design, delivered exactly as specified in the plan doc:**
+`ResetSignalMonitor` is now an `actor`. `refreshPendingDecision()` (replaces
+the old auto-applying `checkAndApply()` — every call site in both apps
+updated) only ever classifies each pending `ControlInbox` event into one of
+four terminal fates — pending (surfaced via `pendingDecisionStream`),
+expired (180-day council-decided window, acked+discarded silently),
+not-syncing (this device is `.localOnly`, acked+discarded with a
+`discardNoticeStream` notice), or dead-lettered (undecodable payload,
+quarantined into the new `ResetEventDeadLetterStore`) — and never applies
+anything. `confirmApply()` is the **only** path that ever invokes the
+injected `apply` closure (`DataStoreResetService.resetAndRedownload()` in
+production), and it's called exclusively from the new
+`LillistUI.PendingResetDecisionDialog`, reached via a new banner row in
+`ICloudSyncSettingsSection` (mirrors `divergenceWarning`/`recoveryAdvisory`'s
+existing visual pattern) and a new `SyncSheetRoute.pendingResetDecision`
+case on both platforms. Confirming applies once and acknowledges **every**
+currently-pending event, not just the one shown, since they all resolve to
+the identical "converge to current iCloud state" action. "Not Now" is
+purely a UI-local dismiss — no monitor call — so the event stays live and
+re-offerable, extending the `S3`-established "non-blocking dialog must stay
+genuinely persistent" precedent rather than inventing new state.
+
+**Council vote (round 1, unanimous 3/3, no deliberation needed):** the
+`S10` expiry-window duration — **180 days**. Full audit trail:
+`.council/reset-event-expiry-window/DECISION.md` (gitignored plugin-state
+directory, same as every prior council in this program). Rationale in
+brief: since apply is always user-confirmed, the two failure directions are
+asymmetric — a too-short window silently defeats the actual convergence
+mechanism issue #71 built (a bare CloudKit zone delete does not "stick" on
+its own), while a too-long window costs almost nothing (cheap KVS entries,
+rare/deliberate resets, still requires an explicit tap). 90 days sits at
+the edge of the brief's own stated "weeks to a few months" secondary-device
+dormancy window rather than comfortably past it; 180 days clears it with
+real margin while remaining a genuine bound.
+
+**X11's precise scope, re-verified against current source (not assumed
+from the finding's prose):** only `DataStoreResetService.performReset`
+(every flavor) and `MigrationCoordinator`'s `.replaceLocalWithICloud` op
+actually destroy/rebuild the local store (`host.rebuildEmptyStore()`); the
+other three migration ops (`.replaceICloudWithLocal`, `.syncFirstThenDisable`,
+`.disableNow`) tear down and reattach the **same** on-disk file, so their
+watermarks stay valid and must not be cleared — verified this distinction
+with dedicated tests (`replaceICloudWithLocalNeverClearsWatermarks`,
+`disableNowNeverClearsWatermarks`) proving the gate, not just the
+positive case.
+
+**New type `HistoryWatermarks`
+(`Persistence/HistoryWatermarks.swift`)** — deliberately narrow, hand-
+maintained seam bundling the three `PersistentHistoryTokenStore` consumers
+(`RemoteChangeReconciler`/`DiagnosticHistoryObserver`/`LocalBackupCoordinator`)
+plus `HistoryPruner`'s own bookkeeping key (verified via source read that
+`HistoryPruner.sweep()` never actually reads its own key back to resume —
+stale-but-inert today, cleared anyway for hygiene/correctness-by-
+construction). **This is the forward-reference seam chain 6 flagged for
+`5c`** (`watermark-registry-pruning`) to formalize into a real
+`WatermarkRegistry` — `5c` should replace `HistoryWatermarks` with the
+registry rather than building a second, parallel mechanism.
+
+**New type `BroadcastOutcome`
+(`Sync/ResetPropagator.swift`)** — `.notConfigured`/`.notified(peerCount:)`/
+`.rosterEmpty`/`.skippedQuiesceTimedOut`. One type deliberately serves both
+`S20` (roster-empty visibility) and `S9c` (quiesce-timeout visibility)
+since both are "the destructive op itself succeeded locally, but peers
+were not told" with the same UI-facing shape. `resetEverywhereToEmpty()`/
+`resetAndReseedFromThisDevice()` both changed return type from `Void` to
+`BroadcastOutcome`; `resetAllData()`/`resetAndRedownload()` (the two
+non-propagating flavors) are unchanged.
+
+**S19's "Try Again" fix, traced to its actual production wiring (not
+assumed):** `Apps/*/Sources/App|Preferences/LillistApp.swift`'s
+`onTryAgain` closure previously only called `migrationJournalStore.clear()`
+and dismissed — never re-invoking anything. New
+`MigrationCoordinator.retryFailedOperation(from:storeURL:)` clears the
+journal (required — `runMigration`'s reentrancy guard treats `.failed` as
+"already in progress") then dispatches back through `beginEnable`/
+`beginDisable` per the journal's recorded `ModeTransitionOp`, so a partial
+zone erase (or any other partially-completed step) is genuinely re-attempted
+from the top. Both apps' `onTryAgain` now mirror the existing
+`ICloudUnavailableScreen` catch→re-check-journal→re-present-or-dismiss shape.
+
+**Discovered, out-of-scope residual — not fixed here (flagged per the
+`LIL-77`/`LIL-81` precedent):** `recoverInterruptedReseed()`'s resume
+branch never calls `propagator?.broadcast(...)`, crashed-or-not — a
+crash-recovered reseed never notifies peers even after this plan's `S9c`
+fix to the primary (non-crashed) path. Narrow, pre-existing, worth a
+future wave.
+
+**No deviations from the plan doc's commit plan beyond the documented
+"group by mechanism, not strict per-finding" pattern `2a` already
+established** — `MigrationCoordinator.swift` in particular carries three
+findings' worth of changes (`X11` gating, `S19`'s `remoteZoneHasRecords`
+guard, `S19`'s `retryFailedOperation`) in one commit because they're
+adjacent, overlapping edits to the same `runMigration`/init region; splitting
+them via `git add -p` would have been high-risk surgery for no real
+audit-trail benefit given every finding still has a named regression test
+traceable via the table above.
+
+**What `4a` (`history-consumer-discipline`, opens chain 4 —
+`RemoteChangeReconciler.swift` — and continues chain 6 alongside `5c`) needs
+to know:**
+- `ResetSignalMonitor`'s constructor gained `currentSyncMode`/`deadLetters`/
+  `clock` parameters (all defaulted for source compat) — if `4a`'s
+  `DrainGate`/watermark-after-success work touches anything that also
+  constructs test fakes sharing this monitor's patterns, match the new
+  `clock: { Self.fixedNow }` test-fixture discipline (a fixed historical
+  `requestedAt` combined with the real system clock now falls outside the
+  180-day expiry window — every `ResetSignalMonitorTests`/
+  `ResetSignalMonitorGateTests` construction needed an explicit `clock:`
+  override to avoid events reading as pre-expired under today's date).
+- `HistoryWatermarks` (`Persistence/HistoryWatermarks.swift`) is the
+  seam `5c`'s `WatermarkRegistry` should absorb — see its own doc comment
+  and the X11 section above. Don't build a second registry mechanism
+  alongside it.
+- Both `AppEnvironment.swift`s' `bootstrap()` gained two new observer
+  registrations (`startObservingPendingResetDecision()`/
+  `startObservingResetEventDiscardNotice()`) right after
+  `resetSignalMonitor.start()`, and a `quarantine.cleanupExpired()` call
+  right after the `TreeIntegrityChecker.repair` block — re-Read the current
+  `bootstrap()` ordering before inserting anything new near there.
+- `MigrationCoordinator`/`DataStoreResetService` both gained
+  `historyWatermarksReset`/`widgetCacheReset` closure parameters (plain
+  `(() async -> Void)?`, deliberately **not** `@Sendable` — both types are
+  already `@MainActor`-isolated, so no Sendable-capture gymnastics are
+  needed, and capturing `[weak self]` for these closures inside `init`
+  would violate Swift's definite-initialization rules since many stored
+  properties aren't assigned yet at that point in `AppEnvironment.init` —
+  capture the specific already-assigned property value into a local instead,
+  as both `AppEnvironment.swift`s now do for `widgetRefreshForReset`).
+
+---
+
 ## Execution model (per Mikey's directives, 2026-07-28)
 
 - **One dedicated worktree** on a long-running branch:
@@ -1069,7 +1282,7 @@ Wave 6 closeout. **Status** starts `pending` for everything except Wave 0.
 | 2 | **2a** `migration-transitions` | `S1 S5 S6 S8 S11 S12 S14 S15 S16 S17` | ✅ complete |
 | 2 | **2b** `backup-restore-correctness` | `S2 S4 S7 S9b S23` | ✅ complete |
 | 3 | **3a** `account-identity-and-status` | `S3 S13 S21 S24` | ✅ complete |
-| 3 | **3b** `reset-propagation-safety` | `S10 S18 S19 S20 S22 X11 S9c` | ⬜ pending |
+| 3 | **3b** `reset-propagation-safety` | `S10 S18 S19 S20 S22 X11 S9c` | ✅ complete |
 | 4 | **4a** `history-consumer-discipline` | `H6 M3` | ⬜ pending |
 | 4 | **4b** `notification-truthfulness` | `H2 X8 X9 X10` | ⬜ pending |
 | 4 | **4c** `recurrence-correctness` | `H1 X7 X16 X17` | ⬜ pending |
@@ -1102,6 +1315,7 @@ landing wave's plan doc (house rule) before implementation:
 | `DestructiveOpGate` (shared, synchronous-acquire lock replacing `MigrationCoordinator.isMigrating`/`DataStoreResetService.isResetting`) | Adopt — delivered | 2a |
 | `AccountIdentityStore` (persisted `ubiquityIdentityToken`-based identity comparison, gates launch-time CloudKit mirroring) | Adopt — delivered | 3a |
 | `LiveNetworkReachability` (`NWPathMonitor`-backed actor, canonical single implementation vs. one-per-app-target) | Adopt — delivered | 3a |
+| `ResetSignalMonitor` actor conversion (always-prompt state machine — `apply` is structurally unreachable except via explicit `confirmApply()`, replacing the prior class of "an automatic peer-triggered apply can run without confirmation" bugs) | Adopt — delivered | 3b |
 
 ---
 
@@ -1137,7 +1351,15 @@ structure — each earlier plan in the chain will have moved line numbers.
    successful-completion path only — see the *Wave 3a closing report* for
    the full shape). `restoreFromBackup` itself still has NO
    `accountStateProvider` check — filed as `LIL-81`, not fixed in `3a`,
-   still open for a future plan. Three plans, all done.
+   still open for a future plan. → `3b` ✅ done (`.replaceLocalWithICloud`
+   gained a `remoteZoneHasRecords` pre-flight — symmetric to the existing
+   `localStoreRowCount` guard — right before `host.rebuildEmptyStore()`,
+   throwing `LillistError.iCloudDataEmpty`; the same op-gated success path
+   also now calls `historyWatermarksReset`/`widgetCacheReset` closures,
+   `.replaceLocalWithICloud`-only; new
+   `retryFailedOperation(from:storeURL:)` re-dispatches a failed journal's
+   recorded op back through `beginEnable`/`beginDisable` — see the *Wave 3b
+   closing report* for the full shape). Four plans, all done.
 3. **`PersistenceHost.swift`** — `2a` ✅ done (`flushAndSwap` throws instead
    of silently succeeding with zero attached stores) → `2b` ✅ done (new
    `attachStore(at:)` on `PersistenceResetting` — attaches fresh at an
@@ -1169,19 +1391,38 @@ structure — each earlier plan in the chain will have moved line numbers.
    the existing `recoverInterruptedReseed()`/`preferencesPartitionMigrator`
    first lines — re-Read `bootstrap()`'s full current ordering before
    prepending anything; `SyncStatusMonitor` promoted to a stored property,
-   no longer constructed inline inside `CloudKitSyncStatusAdapter`) → `4b`
+   no longer constructed inline inside `CloudKitSyncStatusAdapter`) → `3b`
+   ✅ done (`resetSignalMonitor` construction gained `currentSyncMode`/
+   `deadLetters` params; `quarantine` promoted from a local to a stored
+   property; `bootstrap()` gained a `quarantine.cleanupExpired()` call
+   right after `TreeIntegrityChecker.repair` and two new observer
+   registrations — `startObservingPendingResetDecision()`/
+   `startObservingResetEventDiscardNotice()` — right after
+   `resetSignalMonitor.start()`; `migrationCoordinator`/`dataStoreReset`
+   construction both gained `historyWatermarksReset`/`widgetCacheReset`/
+   (`migrationCoordinator` only) `remoteZoneHasRecords` closures, built
+   from a new `HistoryWatermarks` instance + `WidgetRefreshCoordinator
+   .resetAfterDestructiveOp()` — see the *Wave 3b closing report* for the
+   exact diff shape and the definite-initialization gotcha it hit) → `4b`
    (notification scheduler reaching extension/widget/CLI paths via 1c's
    standardized construction).
 6. **`HistoryPruner.swift` + the three history-token `UserDefaults` keys** —
-   `3b` (reset clears watermarks + widget cache; `WatermarkRegistry` doubles
-   as the reset-clear enumeration) ↔ `5c` (formalizes the registry itself,
-   min-over-consumers pruning). These two co-depend — read both plans before
-   starting either; land `5c`'s registry first structurally, `3b` consumes it
-   for the reset-clear path, even though `3b` is the earlier wave (a
-   **forward reference**: `3b`'s plan doc should stub/interface against the
-   registry shape `5c` will formalize, or `5c` should be pulled earlier if
-   the forward-reference proves awkward in practice — flag this at Wave 3
-   kickoff if so).
+   `3b` ✅ done, landed AHEAD of `5c` (the reverse of the originally-planned
+   order — see below) — new `HistoryWatermarks`
+   (`Persistence/HistoryWatermarks.swift`) bundles the three
+   `PersistentHistoryTokenStore` consumers + `HistoryPruner`'s own
+   bookkeeping key and is wired into `DataStoreResetService`'s every reset
+   flavor + `MigrationCoordinator`'s `.replaceLocalWithICloud`. **Deviation
+   from the plan doc's originally-sketched ordering:** the ledger's own
+   pre-`3b` note said "land `5c`'s registry first structurally, `3b`
+   consumes it" — in practice `3b` landed a deliberately narrow, hand-
+   maintained `HistoryWatermarks` seam directly (not a stub against a
+   not-yet-built registry) rather than block Wave 3 on pulling `5c`
+   forward out of wave order. `5c` (`watermark-registry-pruning`) should
+   now **replace** `HistoryWatermarks` with the formal `WatermarkRegistry`
+   (min-over-consumers pruning) rather than build a second, parallel
+   mechanism — see `HistoryWatermarks`' own doc comment, which says this
+   explicitly.
 7. **`Importer.swift` + `Exporter.swift` + `ExportSchema.swift` +
    `BackupSchema.swift`** — `1d` ✅ done (`ExportSchema`/`BackupPackageSchema`
    both at v2; `SeriesDTO`/`NotificationSpecDTO`/`SmartFilterDTO` +
@@ -1439,6 +1680,40 @@ defensible alternatives, Mikey unavailable). Full audit trails live under
    closing report* above for the full implementation shape and the two
    `PersistenceHost` leaks closed as binding parts of this decision.
 
+5. **`S10` reset-event expiry window** (Wave 3, plan `3b`, 2026-07-28) —
+   what expiry window (in days) should gate whether a still-undecided
+   `ResetControlEvent` gets acked-and-discarded automatically vs. surfaced
+   as a pending decision, given the binding product decision that apply is
+   never automatic regardless of age (so the window is a pure hygiene
+   bound, not a safety mechanism)?
+   **Decision: 180 days** — unanimous 3/3 in the round-1 single-choice
+   vote, no deliberation round needed (all three seats — `ux-designer-mobile`,
+   `software-architect`, `skeptic` — independently proposed 30/90/180 days
+   respectively in blind round-1 research, then converged unanimously on
+   the skeptic's 180-day proposal once voting). Rationale: since apply is
+   always user-confirmed, the two failure directions are asymmetric — a
+   too-short window silently defeats the actual convergence mechanism
+   issue #71 built (traced directly from `DataStoreResetService`/
+   `ResetPropagator`'s own source comments: a bare CloudKit zone delete
+   does not self-correct, `NSPersistentCloudKitContainer` simply re-creates
+   the zone and re-uploads a peer's own data, resurrecting what a reset was
+   meant to erase), while a too-long window costs almost nothing (cheap KVS
+   entries against the account-wide budget, rare/deliberate resets, still
+   requires an explicit "Apply Reset" tap regardless of age). The
+   architect's own 90-day proposal was shown in deliberation-equivalent
+   voting reasoning to sit at the edge of the review's own stated "weeks to
+   a few months" secondary-device dormancy window rather than comfortably
+   past it; 180 days clears that window with real margin while remaining a
+   genuine bound (not "persist indefinitely"). A dynamic/per-device policy
+   was considered and rejected as unwarranted complexity (YAGNI) for this
+   account's 2-4-device personal topology. Dissent: none — unanimous. Full
+   audit trail: `.council/reset-event-expiry-window/DECISION.md`.
+   Implemented as `ResetSignalMonitor.expiryWindowDays`
+   (`Packages/LillistCore/Sources/LillistCore/Sync/ResetSignalMonitor.swift`),
+   tested by `ResetSignalMonitorTests.swift`'s `exactBoundaryIsExpired`/
+   `justUnderBoundaryIsStillActionable` (inclusive-boundary proof) — see
+   the *Wave 3b closing report* above for the full implementation shape.
+
 ---
 
 ## Mikey's manual-verification checklist
@@ -1524,7 +1799,59 @@ are tracked here so nothing is silently dropped.
          only the existing "iCloud isn't signed in" pause reason, per
          `AccountIdentityStore`'s `.signedOut` case (distinct from
          `.mismatch`).
-- [ ] Two-device reset propagation, including the stale-event UX (`3b`).
+- [ ] Two-device reset propagation, including the always-prompt UX (`3b`) —
+      needs two devices signed into the SAME test iCloud account (reuse the
+      second Apple ID from the `3a` checklist item above; never test
+      against a real primary account).
+      1. **Basic propagation + always-prompt.** On device A, Settings →
+         Debug → Reset → "Erase Data from All Devices and Start Over…" (or
+         "…Restore All from This Device's Backup…"). Confirm on device A:
+         the result text names whether other devices were actually
+         notified (a live `BroadcastOutcome`, not a hardcoded "will erase
+         and reload" claim). On device B (already open or opened shortly
+         after, both online): confirm a "Reset requested" banner appears in
+         Settings → iCloud Sync **without** device B's data changing on its
+         own — tap it, confirm `PendingResetDecisionDialog` shows the
+         correct sender name and reset kind, tap "Apply Reset," confirm
+         device B converges only after that explicit tap.
+      2. **"Not Now" persistence.** Repeat step 1; on device B tap "Not
+         Now" instead. Confirm: device B's data is untouched, and the
+         "Reset requested" banner is STILL present (re-tappable) after
+         dismissing — reopening Settings → iCloud Sync (or relaunching)
+         still offers the same pending decision.
+      3. **`rosterEmpty` outcome.** From a device that has never
+         registered a peer (e.g. right after a fresh Erase Everywhere
+         wiped the KVS roster, or a genuinely solo test account), trigger
+         "Erase Everywhere." Confirm the result text says nobody else was
+         notified (not a false "your other devices will erase and reload"
+         claim).
+      4. **Local-only auto-discard.** Put device B in Local Only mode
+         (Settings → iCloud Sync toggle off) BEFORE device A broadcasts a
+         reset. Confirm on device B: no "Reset requested" banner ever
+         appears; instead a dismissible discard notice explains a request
+         arrived while offline from iCloud Sync and couldn't be applied.
+      5. **Stale-event expiry (180 days) — inspection only, not a live
+         180-day wait.** Confirm via Console/breadcrumb inspection (not a
+         literal multi-month wait) that an event older than the council-
+         decided 180-day window is acked-and-discarded with a diagnostic
+         breadcrumb rather than surfaced, e.g. by hand-editing a test
+         device's local `ControlInbox` entry's `requestedAt` (or reasoning
+         from the shipped `ResetSignalMonitorTests` expiry-boundary
+         coverage, which already exercises this deterministically) if a
+         live 180-day-old event isn't practical to produce.
+      6. **Reseed quiesce-gated broadcast (`S9c`).** On device A, trigger
+         "Restore All from This Device's Backup" on a connection slow
+         enough to observe the re-export in progress (Settings → iCloud
+         Sync status). Confirm device B's pending-reset banner does NOT
+         appear until device A's re-export has actually settled — device B
+         should never be invited to redownload a zone still mid-upload.
+      7. **`S19` retry-for-real.** Force a migration crash mid-`.reconfiguringStore`
+         (kill the app, matching the existing Wave 2 checklist item above)
+         so the recovery sheet appears, then tap "Try Again." Confirm the
+         operation actually re-runs (visible progress UI, not an instant
+         silent dismiss back to Settings) and either completes or leaves a
+         fresh, accurate failure state — not the old silently-cleared-
+         journal-with-nothing-retried behavior.
 - [ ] Real-widget verification: completing a task cancels its reminder; a
       local edit refreshes the widget (Waves 4-5).
 - [x] `1d` does **not** add any new CloudKit record types/fields — verified
@@ -1541,6 +1868,13 @@ are tracked here so nothing is silently dropped.
       every other change is to launch-sequencing/orchestration logic and
       the Core Data model is unchanged). No schema deploy needed for this
       plan.
+- [x] `3b` does **not** add any new CloudKit record types/fields either —
+      verified (every change is to the `ControlInbox`/`DeviceRoster` KVS
+      channel, local UserDefaults/JSON dead-letter and watermark storage,
+      and in-process migration/reset orchestration logic; the Core Data
+      model is unchanged, and the KVS channel was already a separate
+      pre-existing iCloud subsystem from issue #71, not something this plan
+      introduced). No schema deploy needed for this plan.
 - [ ] iCloud-dependent app-hosted/UI tests — standing CI-scope rule, verified
       manually per wave (same posture as the Foundation Hardening program).
 
@@ -1552,7 +1886,9 @@ are tracked here so nothing is silently dropped.
   trashed promotes it to root. Binding for `1a`.
 - **Product decision (`S10`):** remote reset events are never auto-applied —
   always prompt. An expiry window as a hygiene bound is still worth keeping;
-  its exact duration is a `3b` council-vote decision.
+  its exact duration was a `3b` council-vote decision — **resolved: 180
+  days**, unanimous 3/3 in round 1. Delivered in `3b`; see the *Wave 3b
+  closing report* and `.council/reset-event-expiry-window/DECISION.md`.
 - **`C4`/`X4` verification is non-blocking** — the fix ships regardless of
   device verification timing; see *Execution model* above.
 - **`X20`'s flip-flop stress test** is additional hardening on top of `5a`'s
