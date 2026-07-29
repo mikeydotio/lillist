@@ -27,6 +27,8 @@ struct MutationRollbackConformanceTests {
     static let migratedFiles: [String] = [
         "Stores/TaskStore.swift",
         "Stores/TaskStore+FollowUp.swift",
+        "Stores/TagStore.swift",
+        "Stores/TagStore+FindOrCreate.swift",
     ]
 
     @Test("Every enumerated migrated file exists on disk", arguments: migratedFiles)
@@ -98,8 +100,6 @@ struct MutationRollbackConformanceTests {
         // commit lands — this list is the plan's remaining scope, not a
         // failure. Update as each store migrates.
         let stillPending: Set<String> = [
-            "Stores/TagStore.swift",
-            "Stores/TagStore+FindOrCreate.swift",
             "Stores/SmartFilterStore.swift",
             "Stores/JournalStore.swift",
             "Stores/AttachmentStore.swift",

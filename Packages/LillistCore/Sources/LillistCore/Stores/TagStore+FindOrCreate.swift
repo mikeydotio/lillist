@@ -17,10 +17,9 @@ extension TagStore {
         tintColor: String? = nil
     ) async throws -> UUID {
         let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
-        try validateName(trimmed)
-
         let ctx = persistence.container.viewContext
-        return try await ctx.perform { [self] in
+        return try await withMutationRollback(context: ctx) { [self] in
+            try validateName(trimmed)
             let parentTag: Tag?
             if let parent {
                 parentTag = try fetchManagedObject(id: parent, in: ctx)
@@ -47,7 +46,6 @@ extension TagStore {
             tag.tintColor = tintColor
             tag.parent = parentTag
             tag.position = try nextPosition(forParent: parentTag)
-            try ctx.save()
             return id
         }
     }

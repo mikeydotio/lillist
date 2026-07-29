@@ -31,8 +31,8 @@ public final class TagStore: @unchecked Sendable {
     @discardableResult
     public func create(name: String, tintColor: String? = nil, parent: UUID? = nil) async throws -> UUID {
         do {
-            try validateName(name)
-            let id: UUID = try await context.perform { [self] in
+            let id: UUID = try await withMutationRollback(context: context) { [self] in
+                try validateName(name)
                 let parentTag = try parent.map { try fetchManagedObject(id: $0, in: context) }
                 let resolved = try uniqueNameUnder(parent: parentTag, desired: name)
                 let tag = Tag(context: context)
@@ -41,7 +41,6 @@ public final class TagStore: @unchecked Sendable {
                 tag.tintColor = tintColor
                 tag.parent = parentTag
                 tag.position = try nextPosition(forParent: parentTag)
-                try context.save()
                 return tag.id!
             }
             await recordCrumb("tag.create", success: true)
@@ -92,13 +91,12 @@ public final class TagStore: @unchecked Sendable {
 
     public func rename(id: UUID, to newName: String) async throws {
         do {
-            try validateName(newName)
-            try await context.perform { [self] in
+            try await withMutationRollback(context: context) { [self] in
+                try validateName(newName)
                 let m = try fetchManagedObject(id: id, in: context)
                 guard m.name != newName else { return }
                 let resolved = try uniqueNameUnder(parent: m.parent, desired: newName, excluding: m)
                 m.name = resolved
-                try context.save()
             }
             await recordCrumb("tag.rename", success: true)
         } catch {
@@ -110,7 +108,7 @@ public final class TagStore: @unchecked Sendable {
     // MARK: - Reparent
 
     public func reparent(id: UUID, newParent newParentID: UUID?) async throws {
-        try await context.perform { [self] in
+        try await withMutationRollback(context: context) { [self] in
             let m = try fetchManagedObject(id: id, in: context)
             let newParent: Tag?
             if let newParentID {
@@ -128,7 +126,6 @@ public final class TagStore: @unchecked Sendable {
             m.name = resolved
             m.parent = newParent
             m.position = try nextPosition(forParent: newParent)
-            try context.save()
         }
     }
 
@@ -136,10 +133,9 @@ public final class TagStore: @unchecked Sendable {
 
     public func delete(id: UUID) async throws {
         do {
-            try await context.perform { [self] in
+            try await withMutationRollback(context: context) { [self] in
                 let m = try fetchManagedObject(id: id, in: context)
                 context.delete(m)
-                try context.save()
             }
             await recordCrumb("tag.delete", success: true)
         } catch {
@@ -154,10 +150,9 @@ public final class TagStore: @unchecked Sendable {
     /// later by the macOS / iOS tag editors. The hex string is stored as-is —
     /// validation is the caller's job (`#RRGGBB` per design Section 2).
     public func setTintColor(id: UUID, hex: String?) async throws {
-        try await context.perform { [self] in
+        try await withMutationRollback(context: context) { [self] in
             let m = try fetchManagedObject(id: id, in: context)
             m.tintColor = hex
-            try context.save()
         }
     }
 
