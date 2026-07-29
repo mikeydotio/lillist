@@ -45,6 +45,44 @@ public actor SyncStatusMonitor {
         )
     }
 
+    /// `S21`: the same consecutive-recoverable-failure escalation issue #66
+    /// gave the export axis, now on the import axis — a device stuck
+    /// silently failing every incoming CloudKit import is just as broken
+    /// as one that can't export, and the review found nothing distinguished
+    /// the two before this. Mirrors `consecutiveExportFailures` exactly:
+    /// resets to 0 on any successful import or any *structural* failure.
+    public private(set) var consecutiveImportFailures: Int = 0
+    /// Forensic history for the import axis — see
+    /// `lastExportErrorDomain`/`lastExportErrorCode`'s identical doc
+    /// comment.
+    public private(set) var lastImportErrorDomain: String?
+    public private(set) var lastImportErrorCode: Int?
+
+    /// `S21`: import-axis mirror of `ExportHealth`. A distinct type (not a
+    /// rename/merge of `ExportHealth`) — `ExportHealth` is an existing
+    /// public API other call sites already depend on by name, and a
+    /// generalized "SyncAxisHealth" would be a breaking rename for no
+    /// behavioral gain.
+    public struct ImportHealth: Sendable, Equatable {
+        public let consecutiveFailures: Int
+        public let lastErrorDomain: String?
+        public let lastErrorCode: Int?
+
+        public init(consecutiveFailures: Int, lastErrorDomain: String?, lastErrorCode: Int?) {
+            self.consecutiveFailures = consecutiveFailures
+            self.lastErrorDomain = lastErrorDomain
+            self.lastErrorCode = lastErrorCode
+        }
+    }
+
+    public var importHealth: ImportHealth {
+        ImportHealth(
+            consecutiveFailures: consecutiveImportFailures,
+            lastErrorDomain: lastImportErrorDomain,
+            lastErrorCode: lastImportErrorCode
+        )
+    }
+
     /// Recoverable export failures in a row before the streak escalates to a
     /// surfaced (red) `.syncStalled` error. `CloudKitErrorClassifier`
     /// deliberately treats a *single* bare `partialFailure` as recoverable so
@@ -114,6 +152,8 @@ public actor SyncStatusMonitor {
             next.inProgress = false
             if event.type == .export {
                 applyExportOutcome(event, into: &next)
+            } else if event.type == .import {
+                applyImportOutcome(event, into: &next)
             } else if let err = event.error {
                 if event.recoverable {
                     // Transient (network / a record conflict the mirror reconciles
@@ -169,5 +209,49 @@ public actor SyncStatusMonitor {
         } else {
             next.error = nil
         }
+    }
+
+    /// `S21`: import-axis mirror of `applyExportOutcome` — identical
+    /// shape, tracking `consecutiveImportFailures` instead.
+    private func applyImportOutcome(_ event: CloudKitSyncEvent, into next: inout SyncStatus) {
+        guard let err = event.error else {
+            consecutiveImportFailures = 0
+            if let endedAt = event.endedAt {
+                next.lastSyncedAt = endedAt
+            }
+            next.error = nil
+            return
+        }
+        lastImportErrorDomain = event.rawErrorDomain
+        lastImportErrorCode = event.rawErrorCode
+        guard event.recoverable else {
+            consecutiveImportFailures = 0
+            next.error = err
+            return
+        }
+        consecutiveImportFailures += 1
+        if consecutiveImportFailures >= stallThreshold {
+            next.error = .syncStalled(consecutiveFailures: consecutiveImportFailures)
+        } else {
+            next.error = nil
+        }
+    }
+
+    /// `S21`: clear both axes' stall counters and forensic history — call
+    /// on a successful store reconfigure/reset. Before this existed,
+    /// nothing ever cleared `consecutiveExportFailures`/
+    /// `consecutiveImportFailures` on a swap: a device that hit the
+    /// threshold, then disabled and re-enabled sync, would start the new
+    /// session already latched red, or (for a genuinely fresh store) keep
+    /// reporting a stall streak that no longer has anything to do with the
+    /// store now attached. See `MigrationCoordinator`/`DataStoreResetService`'s
+    /// `syncStatusReset` injection point for exactly where this is called.
+    public func resetStallState() {
+        consecutiveExportFailures = 0
+        lastExportErrorDomain = nil
+        lastExportErrorCode = nil
+        consecutiveImportFailures = 0
+        lastImportErrorDomain = nil
+        lastImportErrorCode = nil
     }
 }
