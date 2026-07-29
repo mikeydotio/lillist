@@ -281,7 +281,7 @@ final class AppEnvironment {
         // ~line 228, where it resolves as a shorthand for `Self.appGroupID`
         // because `make()` is also a static method — but that is a
         // different call site in a different method.)
-        let historyTokens = PersistentHistoryTokenStore(appGroupID: Self.appGroupID)
+        let historyTokens = PersistentHistoryTokenStore(appGroupID: Self.appGroupID, consumer: .remoteChangeReconciler)
         self.remoteChangeReconciler = RemoteChangeReconciler(
             persistence: persistence,
             tokenStore: historyTokens
@@ -305,7 +305,7 @@ final class AppEnvironment {
         self.diagnosticLog = diagnosticLog
         self.diagnosticHistoryObserver = DiagnosticHistoryObserver(
             persistence: persistence,
-            tokenStore: PersistentHistoryTokenStore(appGroupID: Self.appGroupID, key: PersistentHistoryTokenStore.diagnosticsKey),
+            tokenStore: PersistentHistoryTokenStore(appGroupID: Self.appGroupID, consumer: .diagnostics),
             sink: diagnosticLog,
             process: .app
         )
@@ -406,7 +406,7 @@ final class AppEnvironment {
             persistence: persistence,
             preferences: preferencesStore,
             store: TaskBackupStore(packageDirectory: backupPackageDirectory),
-            tokenStore: PersistentHistoryTokenStore(appGroupID: Self.appGroupID, key: PersistentHistoryTokenStore.backupKey),
+            tokenStore: PersistentHistoryTokenStore(appGroupID: Self.appGroupID, consumer: .backup),
             snapshotManager: backupSnapshotManager,
             destructiveOpGate: destructiveOpGate
         )
@@ -443,21 +443,20 @@ final class AppEnvironment {
         let clearSyncStallState: @Sendable () async -> Void = { [syncStatusMonitor] in
             await syncStatusMonitor.resetStallState()
         }
-        // X11: clears every persistent-history watermark after a
-        // destroy/rebuild — see `HistoryWatermarks`' own doc comment. The
-        // three PersistentHistoryTokenStores mirror the exact instances
-        // remoteChangeReconciler/diagnosticHistoryObserver/
-        // localBackupCoordinator were constructed with above (same App
-        // Group suite + key), so clearing here is guaranteed to hit the
-        // real watermarks those consumers read from, not a duplicate copy.
-        let historyWatermarks = HistoryWatermarks(
-            reconciler: historyTokens,
-            diagnostics: PersistentHistoryTokenStore(appGroupID: Self.appGroupID, key: PersistentHistoryTokenStore.diagnosticsKey),
-            backup: PersistentHistoryTokenStore(appGroupID: Self.appGroupID, key: PersistentHistoryTokenStore.backupKey),
-            prunerDefaults: UserDefaults(suiteName: Self.appGroupID) ?? .standard
-        )
+        // X11/X12/L7: WatermarkRegistry is the single source of truth for
+        // every registered history consumer's watermark — both reset
+        // hygiene (clearAll(), below) and safe pruning (HistoryPruner,
+        // bootstrap() further down) read/clear through the same instance
+        // shape, backed by the same App Group suite the three real
+        // consumers (remoteChangeReconciler/diagnosticHistoryObserver/
+        // localBackupCoordinator, constructed above) already use — so
+        // clearing here is guaranteed to hit the real watermarks those
+        // consumers read from, not a duplicate copy. Replaces the narrow,
+        // hand-maintained `HistoryWatermarks` seam `3b` landed ahead of
+        // this plan (see `WatermarkRegistry`'s own doc comment).
+        let watermarkRegistry = WatermarkRegistry(appGroupID: Self.appGroupID)
         let clearHistoryWatermarks: () async -> Void = {
-            historyWatermarks.clearAll()
+            watermarkRegistry.clearAll()
         }
         // X11: clears + regenerates the widget cache and reloads
         // timelines. `widgetRefresh` is `nil` only when the App Group is
@@ -759,7 +758,10 @@ final class AppEnvironment {
         // persist-1 / notif-7: sweep localOnly persistent history at launch so
         // it never grows unbounded. Internally gated to syncMode == .localOnly
         // (iCloudSync is a no-op); fire-and-forget — a failed prune never
-        // blocks launch.
+        // blocks launch. X12/L7: the prune boundary comes from
+        // WatermarkRegistry.pruneBoundary(in:) (min over every registered
+        // consumer's own watermark), not "now" — safe regardless of whether
+        // every consumer's catch-up above has actually completed.
         if let historyPruner = HistoryPruner(
             persistence: persistence,
             syncMode: await syncModeStore.currentMode(),

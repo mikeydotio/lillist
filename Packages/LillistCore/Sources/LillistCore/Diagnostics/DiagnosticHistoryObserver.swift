@@ -7,7 +7,7 @@ import CoreData
 /// `NSPersistentStoreRemoteChange`, read the watermark *inside* `ctx.perform`,
 /// fetch history, advance the watermark) but with three differences:
 ///
-/// 1. **Own watermark.** It uses `PersistentHistoryTokenStore.diagnosticsKey`,
+/// 1. **Own watermark.** It uses the `.diagnostics` `HistoryConsumerID`,
 ///    never the reconciler's key, so the two consumers don't clobber each other.
 /// 2. **No author filter.** The reconciler skips self-authored transactions; the
 ///    observer records *every* writer (the attribution is the whole point) and
@@ -65,7 +65,7 @@ public final class DiagnosticHistoryObserver: @unchecked Sendable {
     /// - Parameters:
     ///   - persistence: the live controller; its `viewContext` fetches history.
     ///   - tokenStore: watermark persistence — pass one keyed with
-    ///     `PersistentHistoryTokenStore.diagnosticsKey`.
+    ///     the `.diagnostics` `HistoryConsumerID`.
     ///   - sink: where derived events go (the process `DiagnosticLog` in prod).
     ///   - process: the *observing* process; stamped on each event's `process`
     ///     field (the writing process is captured separately in `author`).

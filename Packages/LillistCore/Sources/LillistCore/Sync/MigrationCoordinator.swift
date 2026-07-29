@@ -94,7 +94,7 @@ public final class MigrationCoordinator {
     /// preserves prior behavior for every existing test/legacy caller.
     private let syncStatusReset: (@Sendable () async -> Void)?
     /// Data-sync-hardening `X11`: clears every persistent-history
-    /// watermark after a destroy/rebuild — see `HistoryWatermarks`' own
+    /// watermark after a destroy/rebuild — see `WatermarkRegistry`'s own
     /// doc comment. Called only for `.replaceLocalWithICloud`, the one
     /// migration op that actually destroys/rebuilds the local store (the
     /// other three tear down and reattach the *same* file, so their

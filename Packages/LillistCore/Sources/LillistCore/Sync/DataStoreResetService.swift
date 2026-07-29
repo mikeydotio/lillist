@@ -143,7 +143,7 @@ public final class DataStoreResetService {
     /// `backupReconciler?.reconcileFull()`.
     private let syncStatusReset: (@Sendable () async -> Void)?
     /// Data-sync-hardening `X11`: clears every `PersistentHistoryTokenStore`
-    /// watermark after a destroy/rebuild — see `HistoryWatermarks`' own doc
+    /// watermark after a destroy/rebuild — see `WatermarkRegistry`'s own doc
     /// comment. Called unconditionally on every successful `performReset`
     /// (every flavor destroys/rebuilds the local store). Not `@Sendable`:
     /// this type is already `@MainActor`-isolated, so the stored closure

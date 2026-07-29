@@ -135,12 +135,12 @@ final class AppEnvironment {
     /// this matters: an iPhone-added reminder never scheduled on the Mac,
     /// and a Mac-side notification fire never suppressed the iPhone's
     /// matching pending request, until the Mac app was quit and relaunched,
-    /// if ever). Uses `PersistentHistoryTokenStore.defaultKey` — the exact
-    /// key `historyWatermarks` below already reserved for this
+    /// Uses the `.remoteChangeReconciler` `HistoryConsumerID` — the exact
+    /// key `watermarkRegistry` below already reserves for this consumer
     /// ("macOS has no `RemoteChangeReconciler` of its own, but the
-    /// `defaultKey` watermark is still cleared for consistency/forward-
-    /// compat" — that forward-compat is realized here). Retained for the
-    /// app's lifetime; deinit removes its observer.
+    /// `.remoteChangeReconciler` watermark is still cleared for
+    /// consistency/forward-compat" — that forward-compat is realized
+    /// here). Retained for the app's lifetime; deinit removes its observer.
     let remoteChangeReconciler: RemoteChangeReconciler
     /// Issue #66: merges `LillistTask` rows that share one app `id` — the
     /// shape a resync produces when local mirroring bookkeeping is
@@ -319,7 +319,7 @@ final class AppEnvironment {
         self.diagnosticLog = diagnosticLog
         self.diagnosticHistoryObserver = DiagnosticHistoryObserver(
             persistence: persistence,
-            tokenStore: PersistentHistoryTokenStore(appGroupID: Self.appGroupID, key: PersistentHistoryTokenStore.diagnosticsKey),
+            tokenStore: PersistentHistoryTokenStore(appGroupID: Self.appGroupID, consumer: .diagnostics),
             sink: diagnosticLog,
             process: .macApp
         )
@@ -335,7 +335,7 @@ final class AppEnvironment {
         // foreign.
         self.remoteChangeReconciler = RemoteChangeReconciler(
             persistence: persistence,
-            tokenStore: PersistentHistoryTokenStore(appGroupID: Self.appGroupID, key: PersistentHistoryTokenStore.defaultKey)
+            tokenStore: PersistentHistoryTokenStore(appGroupID: Self.appGroupID, consumer: .remoteChangeReconciler)
         ) { [weak scheduler] affectedTaskIDs in
             guard let scheduler else { return }
             for taskID in affectedTaskIDs {
@@ -391,7 +391,7 @@ final class AppEnvironment {
             persistence: persistence,
             preferences: preferencesStore,
             store: TaskBackupStore(packageDirectory: backupPackageDirectory),
-            tokenStore: PersistentHistoryTokenStore(appGroupID: Self.appGroupID, key: PersistentHistoryTokenStore.backupKey),
+            tokenStore: PersistentHistoryTokenStore(appGroupID: Self.appGroupID, consumer: .backup),
             snapshotManager: backupSnapshotManager,
             destructiveOpGate: destructiveOpGate
         )
@@ -423,20 +423,17 @@ final class AppEnvironment {
         let clearSyncStallState: @Sendable () async -> Void = { [syncStatusMonitor] in
             await syncStatusMonitor.resetStallState()
         }
-        // X11: clears every persistent-history watermark after a
-        // destroy/rebuild — see the iOS counterpart's identical doc
-        // comment and `HistoryWatermarks`' own doc comment. The `defaultKey`
-        // watermark clears `remoteChangeReconciler`'s own token (X9 gave
-        // macOS one — this was a harmless no-op clearing an absent key
-        // before that).
-        let historyWatermarks = HistoryWatermarks(
-            reconciler: PersistentHistoryTokenStore(appGroupID: Self.appGroupID, key: PersistentHistoryTokenStore.defaultKey),
-            diagnostics: PersistentHistoryTokenStore(appGroupID: Self.appGroupID, key: PersistentHistoryTokenStore.diagnosticsKey),
-            backup: PersistentHistoryTokenStore(appGroupID: Self.appGroupID, key: PersistentHistoryTokenStore.backupKey),
-            prunerDefaults: UserDefaults(suiteName: Self.appGroupID) ?? .standard
-        )
+        // X11/X12/L7: WatermarkRegistry is the single source of truth for
+        // every registered history consumer's watermark — see the iOS
+        // counterpart's identical doc comment and `WatermarkRegistry`'s own
+        // doc comment. Replaces the narrow, hand-maintained
+        // `HistoryWatermarks` seam `3b` landed ahead of this plan. The
+        // `.remoteChangeReconciler` watermark clears
+        // `remoteChangeReconciler`'s own token (X9 gave macOS one — this
+        // was a harmless no-op clearing an absent key before that).
+        let watermarkRegistry = WatermarkRegistry(appGroupID: Self.appGroupID)
         let clearHistoryWatermarks: () async -> Void = {
-            historyWatermarks.clearAll()
+            watermarkRegistry.clearAll()
         }
         // X11: clears + regenerates the widget cache and reloads
         // timelines — see the iOS counterpart's identical doc comment
@@ -749,7 +746,10 @@ final class AppEnvironment {
         // persist-1 / notif-7: sweep localOnly persistent history at launch so
         // it never grows unbounded. Internally gated to syncMode == .localOnly
         // (iCloudSync is a no-op); fire-and-forget — a failed prune never
-        // blocks launch.
+        // blocks launch. X12/L7: the prune boundary comes from
+        // WatermarkRegistry.pruneBoundary(in:) (min over every registered
+        // consumer's own watermark), not "now" — safe regardless of whether
+        // every consumer's catch-up above has actually completed.
         if let historyPruner = HistoryPruner(
             persistence: persistence,
             syncMode: await syncModeStore.currentMode(),

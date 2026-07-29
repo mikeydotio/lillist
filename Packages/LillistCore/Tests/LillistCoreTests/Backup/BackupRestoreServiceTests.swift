@@ -45,7 +45,7 @@ struct BackupRestoreServiceTests {
             persistence: p,
             preferences: prefs,
             store: store,
-            tokenStore: PersistentHistoryTokenStore(suiteName: "rt-\(UUID().uuidString)", key: PersistentHistoryTokenStore.backupKey)
+            tokenStore: PersistentHistoryTokenStore(suiteName: "rt-\(UUID().uuidString)", consumer: .backup)
         )
         await coord.reconcileFull()
         return p

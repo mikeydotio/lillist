@@ -21,7 +21,7 @@ struct LocalBackupCoordinatorTests {
         let store = TaskBackupStore(packageDirectory: dir)
         let tokens = PersistentHistoryTokenStore(
             suiteName: "backup-test-\(UUID().uuidString)",
-            key: PersistentHistoryTokenStore.backupKey
+            consumer: .backup
         )
         let coord = LocalBackupCoordinator(
             persistence: p,
@@ -343,7 +343,7 @@ struct LocalBackupCoordinatorTests {
 
         let tokens = PersistentHistoryTokenStore(
             suiteName: "backup-test-\(UUID().uuidString)",
-            key: PersistentHistoryTokenStore.backupKey
+            consumer: .backup
         )
         let gate = DestructiveOpGate()
         let coord = LocalBackupCoordinator(

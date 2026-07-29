@@ -10,32 +10,31 @@ import CoreData
 /// the main app and its extensions share one watermark. `@unchecked Sendable`
 /// because `UserDefaults` is internally thread-safe and the only mutable state
 /// is delegated to it.
+///
+/// **Registration is closed by construction** (data-sync-hardening
+/// `X12`/`L7`): the `key` a store reads/writes is derived from a
+/// `HistoryConsumerID` case, never an arbitrary `String` — see
+/// `WatermarkRegistry`'s own doc comment (`Persistence/WatermarkRegistry.swift`)
+/// for why. A fourth history consumer registers by adding a case there, not
+/// by handing this initializer a new string.
 public final class PersistentHistoryTokenStore: @unchecked Sendable {
     private let defaults: UserDefaults
     private let key: String
 
-    /// The reconciler's watermark key (the historical default).
-    public static let defaultKey = "app.lillist.persistentHistoryToken"
-    /// The diagnostics observer's watermark key. Distinct from `defaultKey` so
-    /// the two history consumers never clobber each other's progress.
-    public static let diagnosticsKey = "app.lillist.diagnostics.historyToken"
-    /// The local-backup coordinator's watermark key. Distinct so the backup
-    /// reconcile and the notification/diagnostics reconcilers advance
-    /// independently and never clobber one another's progress.
-    public static let backupKey = "app.lillist.backup.historyToken"
-
     /// Backed by an explicit suite (tests) or the App Group (production).
-    /// `key` selects which consumer's watermark this store reads/writes.
-    public init(suiteName: String, key: String = PersistentHistoryTokenStore.defaultKey) {
+    /// `consumer` selects which registered consumer's watermark this store
+    /// reads/writes; defaults to `.remoteChangeReconciler`, the historical
+    /// default, for every call site that doesn't care which consumer it is.
+    public init(suiteName: String, consumer: HistoryConsumerID = .remoteChangeReconciler) {
         self.defaults = UserDefaults(suiteName: suiteName) ?? .standard
-        self.key = key
+        self.key = consumer.tokenDefaultsKey
     }
 
     /// Backed by the App Group's shared defaults, falling back to `.standard`
     /// when the group container is unreachable (unsigned/test contexts).
-    public init(appGroupID: String, key: String = PersistentHistoryTokenStore.defaultKey) {
+    public init(appGroupID: String, consumer: HistoryConsumerID = .remoteChangeReconciler) {
         self.defaults = UserDefaults(suiteName: appGroupID) ?? .standard
-        self.key = key
+        self.key = consumer.tokenDefaultsKey
     }
 
     /// The last persistent-history token the reconciler has consumed, or `nil`
