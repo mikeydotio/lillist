@@ -159,4 +159,79 @@ struct PreferencesStoreSingletonTests {
         #expect(try await prefs2.rowCount() == 1)
         #expect(retention1 == retention2, "every device must converge on the identical survivor")
     }
+
+    // MARK: - X20 flip-flop stress (6a): two REAL controllers, one file
+
+    private func tempStoreURL() -> URL {
+        FileManager.default.temporaryDirectory
+            .appendingPathComponent("PreferencesStoreSingletonTests-\(UUID().uuidString)", isDirectory: true)
+            .appendingPathComponent("Lillist.sqlite")
+    }
+
+    /// X20's stress proof, using the `MultiProcessStoreHarnessTests`
+    /// keystone shape (two independently-constructed
+    /// `NSPersistentCloudKitContainer`s sharing ONE on-disk file) rather
+    /// than `twoCanonicalRowsConvergeDeterministically`'s two independent
+    /// in-memory stores — this exercises the real cross-process race the
+    /// finding describes (two processes concurrently racing
+    /// `normalizeSingletons()` against a shared file), not just two
+    /// separately-simulated copies of the same propagated field values.
+    /// Repeated across several fresh store files in one test run — a
+    /// non-deterministic tie-break would eventually disagree with itself
+    /// across enough runs even if any single run looked fine.
+    @Test("X20 flip-flop stress: concurrent-create + normalize across two harness controllers converges on one deterministic survivor, every run")
+    func concurrentCreateAcrossProcessesConvergesDeterministically() async throws {
+        for run in 0..<8 {
+            let storeURL = tempStoreURL()
+            try FileManager.default.createDirectory(at: storeURL.deletingLastPathComponent(), withIntermediateDirectories: true)
+            defer { try? FileManager.default.removeItem(at: storeURL.deletingLastPathComponent()) }
+
+            let controllerA = try await PersistenceController(
+                configuration: .onDisk(url: storeURL, syncMode: .localOnly),
+                transactionAuthor: PersistenceController.localTransactionAuthor
+            )
+            let controllerB = try await PersistenceController(
+                configuration: .onDisk(url: storeURL, syncMode: .localOnly),
+                transactionAuthor: PersistenceController.cliTransactionAuthor
+            )
+            let prefsA = PreferencesStore(persistence: controllerA)
+            let prefsB = PreferencesStore(persistence: controllerB)
+
+            // The concurrent-create race itself: both "devices" run
+            // normalizeSingletons() against the SAME empty, not-yet-
+            // converged file at the same time — real concurrency (async
+            // let), not a scripted sequence, since 5a's fix must hold
+            // under genuine SQLite write-lock contention, not just
+            // sequential replay.
+            async let a: Void = prefsA.normalizeSingletons()
+            async let b: Void = prefsB.normalizeSingletons()
+            _ = try await (a, b)
+
+            // Each controller observes whatever the shared file now
+            // contains, then runs the real "next launch" convergence pass
+            // every device's own bootstrap performs.
+            await controllerA.container.viewContext.perform { controllerA.container.viewContext.refreshAllObjects() }
+            await controllerB.container.viewContext.perform { controllerB.container.viewContext.refreshAllObjects() }
+            try await prefsA.normalizeSingletons()
+            try await prefsB.normalizeSingletons()
+            await controllerA.container.viewContext.perform { controllerA.container.viewContext.refreshAllObjects() }
+            await controllerB.container.viewContext.perform { controllerB.container.viewContext.refreshAllObjects() }
+
+            let countA = try await prefsA.rowCount()
+            let countB = try await prefsB.rowCount()
+            #expect(countA == 1, "run \(run): controller A must converge to exactly one row")
+            #expect(countB == 1, "run \(run): controller B must converge to exactly one row")
+
+            let idA = try await controllerA.container.viewContext.perform {
+                let req = NSFetchRequest<AppPreferences>(entityName: "AppPreferences")
+                return try controllerA.container.viewContext.fetch(req).first?.id
+            }
+            let idB = try await controllerB.container.viewContext.perform {
+                let req = NSFetchRequest<AppPreferences>(entityName: "AppPreferences")
+                return try controllerB.container.viewContext.fetch(req).first?.id
+            }
+            #expect(idA == PreferencesStore.singletonID, "run \(run): the survivor must always carry the canonical id")
+            #expect(idA == idB, "run \(run): both controllers must agree on the identical surviving row — no flip-flop")
+        }
+    }
 }
