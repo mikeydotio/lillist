@@ -58,6 +58,11 @@ final class AppEnvironment {
     /// Issue #7: schema-gated destructive restore from a package or snapshot.
     let backupRestoreService: BackupRestoreService
     let pauseReasonClassifier: PauseReasonClassifier
+    /// Data-sync-hardening `S21`: the Core sync-status actor, promoted to
+    /// its own property so `resetStallState()` can be injected into
+    /// `migrationCoordinator`/`dataStoreReset`. `syncMonitor` (below) wraps
+    /// this same instance for the UI.
+    let syncStatusMonitor: SyncStatusMonitor
     /// Latest resolved sync mode, mirrored off the actor so SwiftUI
     /// can observe it.
     var currentSyncMode: SyncMode = .default
@@ -271,9 +276,12 @@ final class AppEnvironment {
         // `start()` is invoked from bootstrap(). Replaces the old
         // IdleSyncIndicatorMonitor stub that always reported "synced just now"
         // regardless of real activity.
-        self.syncMonitor = CloudKitSyncStatusAdapter(
-            monitor: SyncStatusMonitor(bridge: persistence.cloudKitEventBridge)
-        )
+        // S21: promoted to its own stored property (rather than only living
+        // inside the adapter) so its `resetStallState()` can be injected
+        // into migrationCoordinator/dataStoreReset below.
+        let syncStatusMonitor = SyncStatusMonitor(bridge: persistence.cloudKitEventBridge)
+        self.syncStatusMonitor = syncStatusMonitor
+        self.syncMonitor = CloudKitSyncStatusAdapter(monitor: syncStatusMonitor)
 
         // Plan 9: shared breadcrumb buffer + crash reporter. Canary lives
         // in the App Group container so any extension that wants to record
@@ -374,6 +382,21 @@ final class AppEnvironment {
         let localStoreRowCount: @Sendable () async -> Int = {
             await countController.localTaskRowCount()
         }
+        // Data-sync-hardening S3: this closure was previously only wired
+        // into DataStoreResetService below — MigrationCoordinator itself
+        // was NEVER given an accountStateProvider in production, so its
+        // own .replaceICloudWithLocal/.replaceLocalWithICloud account-
+        // changed pre-flights (both closed as part of this plan) were
+        // dead code until now. Defined here, ahead of both constructions,
+        // so both types share the identical live signal.
+        let accountStateProbe: AccountStateProviding = { [accountStateMonitor] in
+            await accountStateMonitor.currentState
+        }
+        // S21: clears SyncStatusMonitor's stall counters on a successful
+        // reconfigure/reset — see the type's own doc comment.
+        let clearSyncStallState: @Sendable () async -> Void = { [syncStatusMonitor] in
+            await syncStatusMonitor.resetStallState()
+        }
         self.migrationCoordinator = MigrationCoordinator(
             host: persistenceHost,
             journal: migrationJournalStore,
@@ -386,7 +409,9 @@ final class AppEnvironment {
             breadcrumbs: breadcrumbs,
             cloudKitContainerIdentifier: ckContainerID,
             localStoreRowCount: localStoreRowCount,
-            destructiveOpGate: destructiveOpGate
+            accountStateProvider: accountStateProbe,
+            destructiveOpGate: destructiveOpGate,
+            syncStatusReset: clearSyncStallState
         )
         // Issue #71: the reset-propagation control channel, over iCloud
         // Key-Value Store — a separate iCloud subsystem from the Core
@@ -408,11 +433,10 @@ final class AppEnvironment {
         // Debug full-reset service. Same building blocks as the migration
         // coordinator (quarantine backup, CloudKit zone eraser, quiesce
         // wait) but a distinct type: a reset is not a mode transition and
-        // must not touch the migration journal. The account-changed probe
-        // guards against erasing the wrong account's zone after a switch.
-        let resetAccountProbe: AccountStateProviding = { [accountStateMonitor] in
-            await accountStateMonitor.currentState
-        }
+        // must not touch the migration journal. Shares `accountStateProbe`
+        // (defined above, ahead of migrationCoordinator) so both types see
+        // the identical live signal — the account-changed guard protects
+        // against erasing the wrong account's zone after a switch.
         self.dataStoreReset = DataStoreResetService(
             host: persistenceHost,
             quarantine: quarantine,
@@ -420,14 +444,15 @@ final class AppEnvironment {
             quiesceMonitor: quiesceMonitor,
             notificationScheduler: scheduler,
             cloudKitContainerIdentifier: ckContainerID,
-            accountStateProvider: resetAccountProbe,
+            accountStateProvider: accountStateProbe,
             breadcrumbs: breadcrumbs,
             propagator: resetPropagator,
             exporter: Exporter(persistence: persistence, preferences: preferencesStore),
             importer: Importer(persistence: persistence),
             destructiveOpGate: destructiveOpGate,
             reseedJournal: reseedJournal,
-            backupReconciler: localBackupCoordinator
+            backupReconciler: localBackupCoordinator,
+            syncStatusReset: clearSyncStallState
         )
         self.resetSignalMonitor = ResetSignalMonitor(
             inbox: controlInbox,

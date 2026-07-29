@@ -28,6 +28,9 @@ final class AppEnvironment {
     let migrationJournalStore: any MigrationJournalStore
     let migrationCoordinator: MigrationCoordinator
     let pauseReasonClassifier: PauseReasonClassifier
+    /// Data-sync-hardening `S21`: the Core sync-status actor, promoted to
+    /// its own property — see the iOS counterpart's identical doc comment.
+    let syncStatusMonitor: SyncStatusMonitor
     var currentSyncMode: SyncMode = .default
     /// Plan 21: latest classification by `PauseReasonClassifier`.
     var pauseReason: PauseReason?
@@ -227,9 +230,11 @@ final class AppEnvironment {
         // persistence.cloudKitEventBridge) onto the SyncIndicatorMonitor
         // protocol. `start()` is invoked from bootstrap(). Replaces the old
         // IdleSyncIndicatorMonitor stub that always reported "synced just now".
-        self.syncMonitor = CloudKitSyncStatusAdapter(
-            monitor: SyncStatusMonitor(bridge: persistence.cloudKitEventBridge)
-        )
+        // S21: promoted to its own stored property — see the iOS
+        // counterpart's identical doc comment.
+        let syncStatusMonitor = SyncStatusMonitor(bridge: persistence.cloudKitEventBridge)
+        self.syncStatusMonitor = syncStatusMonitor
+        self.syncMonitor = CloudKitSyncStatusAdapter(monitor: syncStatusMonitor)
 
         // Plan 9: shared breadcrumb buffer + crash reporter.
         let info = Bundle.main.infoDictionary ?? [:]
@@ -335,6 +340,16 @@ final class AppEnvironment {
         let localStoreRowCount: @Sendable () async -> Int = {
             await countController.localTaskRowCount()
         }
+        // Data-sync-hardening S3/S21: shared closures, defined here ahead
+        // of both migrationCoordinator and dataStoreReset — see the iOS
+        // counterpart's identical doc comment for why migrationCoordinator
+        // never received an accountStateProvider before this plan.
+        let accountStateProbe: AccountStateProviding = { [accountStateMonitor] in
+            await accountStateMonitor.currentState
+        }
+        let clearSyncStallState: @Sendable () async -> Void = { [syncStatusMonitor] in
+            await syncStatusMonitor.resetStallState()
+        }
         self.migrationCoordinator = MigrationCoordinator(
             host: persistenceHost,
             journal: migrationJournalStore,
@@ -347,7 +362,9 @@ final class AppEnvironment {
             breadcrumbs: breadcrumbs,
             cloudKitContainerIdentifier: ckContainerID,
             localStoreRowCount: localStoreRowCount,
-            destructiveOpGate: destructiveOpGate
+            accountStateProvider: accountStateProbe,
+            destructiveOpGate: destructiveOpGate,
+            syncStatusReset: clearSyncStallState
         )
         // Issue #71: the reset-propagation control channel, over iCloud
         // Key-Value Store — a separate iCloud subsystem from the Core
@@ -367,10 +384,8 @@ final class AppEnvironment {
         )
 
         // Issue #7: full-data reset primitive (parity with iOS) — the
-        // destructive half of a backup restore.
-        let resetAccountProbe: AccountStateProviding = { [accountStateMonitor] in
-            await accountStateMonitor.currentState
-        }
+        // destructive half of a backup restore. Shares `accountStateProbe`/
+        // `clearSyncStallState` (defined above) with migrationCoordinator.
         self.dataStoreReset = DataStoreResetService(
             host: persistenceHost,
             quarantine: quarantine,
@@ -378,14 +393,15 @@ final class AppEnvironment {
             quiesceMonitor: quiesceMonitor,
             notificationScheduler: scheduler,
             cloudKitContainerIdentifier: ckContainerID,
-            accountStateProvider: resetAccountProbe,
+            accountStateProvider: accountStateProbe,
             breadcrumbs: breadcrumbs,
             propagator: resetPropagator,
             exporter: Exporter(persistence: persistence, preferences: preferencesStore),
             importer: Importer(persistence: persistence),
             destructiveOpGate: destructiveOpGate,
             reseedJournal: reseedJournal,
-            backupReconciler: localBackupCoordinator
+            backupReconciler: localBackupCoordinator,
+            syncStatusReset: clearSyncStallState
         )
         self.resetSignalMonitor = ResetSignalMonitor(
             inbox: controlInbox,
