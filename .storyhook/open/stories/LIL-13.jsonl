@@ -2,3 +2,4 @@
 {"kind":"StoryPrioritySet","at":"2026-07-28T16:32:21Z","priority":"critical"}
 {"kind":"StoryLabelsSet","at":"2026-07-28T16:32:21Z","labels":["plan-3a","sev-critical","sweep-sync"]}
 {"kind":"StoryDescriptionSet","at":"2026-07-28T16:32:21Z","description":"Nothing records ubiquityIdentityToken/userRecordID anywhere; iCloudAccountState.from maps ANY signed-in account to .available, and .accountChanged is only ever produced by a test seam - never in production (no accountStateProvider is passed by either app, no CKAccountChanged observer, refresh() runs once per launch). Failure scenario: a device signs out of iCloud account A and into account B without relaunching; the app has no way to detect the switch and can upload account A's data into account B's private database. Severity: Critical. Wave/Plan: Wave 3, plan 3a account-identity-and-status. Sweep: sync machinery."}
+{"kind":"StoryStateChanged","at":"2026-07-29T00:48:45Z","state":"in-progress"}
