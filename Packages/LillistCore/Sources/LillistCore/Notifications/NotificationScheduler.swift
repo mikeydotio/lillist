@@ -342,6 +342,45 @@ public actor NotificationScheduler: NotificationReconciling {
         await center.removePendingNotificationRequests(withIdentifiers: toRemove)
     }
 
+    /// X9: a `NotificationSpec` deleted on another device can't be resolved
+    /// to a task id from persistent history (no attribute in the model is
+    /// flagged `preservesValueInHistoryOnDeletion`, and relationships are
+    /// never tombstoned regardless of any flag — see the plan doc's
+    /// investigation), so there's no taskID to hand `reconcile(taskID:)`.
+    /// Instead, sweep every one of THIS device's locally-pending requests
+    /// and cancel any whose `specID` no longer resolves to a live
+    /// `NotificationSpec` row — the same set-difference principle
+    /// `LocalBackupCoordinator.processRemoteChange` already uses for its own
+    /// tombstone-free deletion case. Self-healing for any stale pending
+    /// request, not just the one that triggered the sweep; one
+    /// `pendingNotificationRequests()` fetch and one batch existence check
+    /// regardless of how many requests are pending.
+    ///
+    /// A store-read failure treats every checked id as still-live (a no-op
+    /// sweep) rather than risk mass-cancelling valid pending requests on an
+    /// uncertain read — the inverse of `cancelPending`'s "fail loud is
+    /// unreachable, so do nothing" posture, chosen because the failure mode
+    /// here (silently keep a stale pending request one cycle longer) is
+    /// categorically safer than the alternative (wrongly cancel a live one).
+    public func reconcileOrphanedPendingRequests() async {
+        let pending = await center.pendingNotificationRequests()
+        let ours = pending.filter { $0.identifier.hasSuffix("#\(deviceFingerprint)") }
+        guard ours.isEmpty == false else { return }
+        let specIDs: [UUID] = ours.compactMap { req in
+            guard let raw = req.content.userInfo["specID"] as? String else { return nil }
+            return UUID(uuidString: raw)
+        }
+        guard specIDs.isEmpty == false else { return }
+        let liveIDs = (try? await specStore.existingIDs(among: specIDs)) ?? Set(specIDs)
+        let stale = ours.filter { req in
+            guard let raw = req.content.userInfo["specID"] as? String,
+                  let id = UUID(uuidString: raw) else { return false }
+            return liveIDs.contains(id) == false
+        }
+        guard stale.isEmpty == false else { return }
+        await center.removePendingNotificationRequests(withIdentifiers: stale.map(\.identifier))
+    }
+
     // MARK: - Preference change
 
     /// Update the default all-day notification time. Reconciles every task

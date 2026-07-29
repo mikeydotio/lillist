@@ -298,6 +298,322 @@ struct RemoteChangeReconcilerTests {
         )
         #expect(affected == [taskID])
     }
+
+    // MARK: - X9: widened diffing (spec insert/delete, task soft-delete/restore)
+
+    @Test("X9: a foreign-author NotificationSpec insert yields the spec's taskID")
+    func specInsertYieldsTaskID() async throws {
+        let (p, ctx) = try await makeContext()
+        let tasks = TaskStore(persistence: p)
+        let specs = NotificationSpecStore(persistence: p)
+        let taskID = try await tasks.create(title: "T")
+        let specID = try await specs.add(taskID: taskID, kind: .offsetDeadline, offsetMinutes: -10, fireDate: nil)
+
+        let specObjectID = try await ctx.perform { () -> NSManagedObjectID in
+            let req = NSFetchRequest<NotificationSpec>(entityName: "NotificationSpec")
+            req.predicate = NSPredicate(format: "id == %@", specID as CVarArg)
+            return try ctx.fetch(req).first!.objectID
+        }
+
+        let change = RemoteChangeReconciler.SyntheticChange(
+            changedObjectID: specObjectID,
+            entityName: "NotificationSpec",
+            changedProperties: [],   // inserts don't populate updatedProperties
+            author: "OtherDeviceImport",
+            changeType: .insert
+        )
+
+        let affected = try await RemoteChangeReconciler.affectedTaskIDs(
+            from: [change],
+            localAuthor: PersistenceController.localTransactionAuthor,
+            in: ctx
+        )
+        #expect(affected == [taskID], "an inserted spec (a reminder added on another device) must reconcile the owning task so it schedules here too")
+    }
+
+    @Test("X9: a self-authored NotificationSpec insert is ignored")
+    func specInsertSelfAuthoredIgnored() async throws {
+        let (p, ctx) = try await makeContext()
+        let tasks = TaskStore(persistence: p)
+        let specs = NotificationSpecStore(persistence: p)
+        let taskID = try await tasks.create(title: "T")
+        let specID = try await specs.add(taskID: taskID, kind: .offsetDeadline, offsetMinutes: -10, fireDate: nil)
+
+        let specObjectID = try await ctx.perform { () -> NSManagedObjectID in
+            let req = NSFetchRequest<NotificationSpec>(entityName: "NotificationSpec")
+            req.predicate = NSPredicate(format: "id == %@", specID as CVarArg)
+            return try ctx.fetch(req).first!.objectID
+        }
+
+        let change = RemoteChangeReconciler.SyntheticChange(
+            changedObjectID: specObjectID,
+            entityName: "NotificationSpec",
+            changedProperties: [],
+            author: PersistenceController.localTransactionAuthor,
+            changeType: .insert
+        )
+
+        let affected = try await RemoteChangeReconciler.affectedTaskIDs(
+            from: [change],
+            localAuthor: PersistenceController.localTransactionAuthor,
+            in: ctx
+        )
+        #expect(affected.isEmpty)
+    }
+
+    @Test("X9: a NotificationSpec delete yields no taskID (unresolvable from history — handled by the orphan sweep instead)")
+    func specDeleteYieldsNoTaskID() async throws {
+        let (p, ctx) = try await makeContext()
+        let tasks = TaskStore(persistence: p)
+        let taskID = try await tasks.create(title: "T")
+
+        // A deleted row's objectID is still a valid NSManagedObjectID value
+        // (just unresolvable via existingObject(with:)) — construct one from
+        // the task itself; entityName is what the diffing core switches on,
+        // not the specific dead objectID.
+        let deadObjectID = try await ctx.perform { () -> NSManagedObjectID in
+            let req = NSFetchRequest<LillistTask>(entityName: "LillistTask")
+            req.predicate = NSPredicate(format: "id == %@", taskID as CVarArg)
+            return try ctx.fetch(req).first!.objectID
+        }
+
+        let change = RemoteChangeReconciler.SyntheticChange(
+            changedObjectID: deadObjectID,
+            entityName: "NotificationSpec",
+            changedProperties: [],
+            author: "OtherDeviceImport",
+            changeType: .delete
+        )
+
+        let affected = try await RemoteChangeReconciler.affectedTaskIDs(
+            from: [change],
+            localAuthor: PersistenceController.localTransactionAuthor,
+            in: ctx
+        )
+        #expect(affected.isEmpty)
+    }
+
+    @Test("X9: hasForeignSpecDeletions detects a foreign NotificationSpec delete")
+    func hasForeignSpecDeletionsDetectsDelete() throws {
+        let dummy = NSManagedObjectID()
+        let foreignDelete = RemoteChangeReconciler.SyntheticChange(
+            changedObjectID: dummy, entityName: "NotificationSpec",
+            changedProperties: [], author: "OtherDevice", changeType: .delete
+        )
+        #expect(RemoteChangeReconciler.hasForeignSpecDeletions(
+            in: [foreignDelete], localAuthor: PersistenceController.localTransactionAuthor
+        ))
+    }
+
+    @Test("X9: hasForeignSpecDeletions ignores a self-authored delete")
+    func hasForeignSpecDeletionsIgnoresSelfAuthored() throws {
+        let dummy = NSManagedObjectID()
+        let ownDelete = RemoteChangeReconciler.SyntheticChange(
+            changedObjectID: dummy, entityName: "NotificationSpec",
+            changedProperties: [], author: PersistenceController.localTransactionAuthor, changeType: .delete
+        )
+        #expect(RemoteChangeReconciler.hasForeignSpecDeletions(
+            in: [ownDelete], localAuthor: PersistenceController.localTransactionAuthor
+        ) == false)
+    }
+
+    @Test("X9: hasForeignSpecDeletions ignores a delete on a different entity")
+    func hasForeignSpecDeletionsIgnoresOtherEntity() throws {
+        let dummy = NSManagedObjectID()
+        let taskDelete = RemoteChangeReconciler.SyntheticChange(
+            changedObjectID: dummy, entityName: "LillistTask",
+            changedProperties: [], author: "OtherDevice", changeType: .delete
+        )
+        #expect(RemoteChangeReconciler.hasForeignSpecDeletions(
+            in: [taskDelete], localAuthor: PersistenceController.localTransactionAuthor
+        ) == false)
+    }
+
+    @Test("X9: a foreign-author task soft-delete (deletedAt set) yields the task's own id")
+    func taskSoftDeleteYieldsTaskID() async throws {
+        let (p, ctx) = try await makeContext()
+        let tasks = TaskStore(persistence: p)
+        let taskID = try await tasks.create(title: "T")
+
+        let taskObjectID = try await ctx.perform { () -> NSManagedObjectID in
+            let req = NSFetchRequest<LillistTask>(entityName: "LillistTask")
+            req.predicate = NSPredicate(format: "id == %@", taskID as CVarArg)
+            return try ctx.fetch(req).first!.objectID
+        }
+
+        let change = RemoteChangeReconciler.SyntheticChange(
+            changedObjectID: taskObjectID,
+            entityName: "LillistTask",
+            changedProperties: ["deletedAt"],
+            author: "OtherDeviceImport",
+            changeType: .update
+        )
+
+        let affected = try await RemoteChangeReconciler.affectedTaskIDs(
+            from: [change],
+            localAuthor: PersistenceController.localTransactionAuthor,
+            in: ctx
+        )
+        #expect(affected == [taskID], "a task trashed on another device must reconcile locally so its now-empty desired set cancels the pending request")
+    }
+
+    @Test("X9: a foreign-author task restore (deletedAt cleared) yields the task's own id")
+    func taskRestoreYieldsTaskID() async throws {
+        let (p, ctx) = try await makeContext()
+        let tasks = TaskStore(persistence: p)
+        let taskID = try await tasks.create(title: "T")
+        try await tasks.softDelete(id: taskID)
+
+        let taskObjectID = try await ctx.perform { () -> NSManagedObjectID in
+            let req = NSFetchRequest<LillistTask>(entityName: "LillistTask")
+            req.predicate = NSPredicate(format: "id == %@", taskID as CVarArg)
+            return try ctx.fetch(req).first!.objectID
+        }
+
+        let change = RemoteChangeReconciler.SyntheticChange(
+            changedObjectID: taskObjectID,
+            entityName: "LillistTask",
+            changedProperties: ["deletedAt"],
+            author: "OtherDeviceImport",
+            changeType: .update
+        )
+
+        let affected = try await RemoteChangeReconciler.affectedTaskIDs(
+            from: [change],
+            localAuthor: PersistenceController.localTransactionAuthor,
+            in: ctx
+        )
+        #expect(affected == [taskID], "a task restored on another device must reconcile locally so its reminders can be re-installed")
+    }
+
+    @Test("X9: a task update NOT touching deletedAt is ignored")
+    func taskUpdateWithoutDeletedAtIgnored() async throws {
+        let (p, ctx) = try await makeContext()
+        let tasks = TaskStore(persistence: p)
+        let taskID = try await tasks.create(title: "T")
+
+        let taskObjectID = try await ctx.perform { () -> NSManagedObjectID in
+            let req = NSFetchRequest<LillistTask>(entityName: "LillistTask")
+            req.predicate = NSPredicate(format: "id == %@", taskID as CVarArg)
+            return try ctx.fetch(req).first!.objectID
+        }
+
+        let change = RemoteChangeReconciler.SyntheticChange(
+            changedObjectID: taskObjectID,
+            entityName: "LillistTask",
+            changedProperties: ["title"],
+            author: "OtherDeviceImport",
+            changeType: .update
+        )
+
+        let affected = try await RemoteChangeReconciler.affectedTaskIDs(
+            from: [change],
+            localAuthor: PersistenceController.localTransactionAuthor,
+            in: ctx
+        )
+        #expect(affected.isEmpty, "an ordinary title edit on another device is not a notification-relevant change")
+    }
+
+    // MARK: - X9: end-to-end wiring through processPendingHistory
+
+    /// Deletes a NotificationSpec through a background context stamped with
+    /// a foreign author, mirroring `writeForeignLastFired`'s shape.
+    private func deleteForeignSpec(specID: UUID, on persistence: PersistenceController) async throws {
+        let foreignCtx = persistence.container.newBackgroundContext()
+        foreignCtx.transactionAuthor = "OtherDevice.import"
+        try await foreignCtx.perform {
+            let req = NSFetchRequest<NotificationSpec>(entityName: "NotificationSpec")
+            req.predicate = NSPredicate(format: "id == %@", specID as CVarArg)
+            let m = try foreignCtx.fetch(req).first!
+            foreignCtx.delete(m)
+            try foreignCtx.save()
+        }
+    }
+
+    @Test("X9: processPendingHistory fires onOrphanedSpecDeletions for a foreign spec delete")
+    func processPendingHistoryFiresOrphanCallback() async throws {
+        let (p, _) = try await makeContext()
+        let tasks = TaskStore(persistence: p)
+        let specs = NotificationSpecStore(persistence: p)
+        let taskID = try await tasks.create(title: "T")
+        let specID = try await specs.add(taskID: taskID, kind: .offsetDeadline, offsetMinutes: -10, fireDate: nil)
+        try await deleteForeignSpec(specID: specID, on: p)
+
+        actor OrphanSpy {
+            private(set) var callCount = 0
+            func record() { callCount += 1 }
+        }
+        let spy = OrphanSpy()
+        let tokenStore = PersistentHistoryTokenStore(suiteName: "X9-orphan-\(UUID().uuidString)")
+        let reconciler = RemoteChangeReconciler(
+            persistence: p, tokenStore: tokenStore,
+            onAffectedTasks: { _ in }
+        ) {
+            await spy.record()
+        }
+
+        await reconciler.processPendingHistory()
+
+        #expect(await spy.callCount == 1)
+    }
+
+    @Test("X9: processPendingHistory does NOT fire onOrphanedSpecDeletions for a self-authored spec delete")
+    func processPendingHistoryIgnoresSelfAuthoredDelete() async throws {
+        let (p, _) = try await makeContext()
+        let tasks = TaskStore(persistence: p)
+        let specs = NotificationSpecStore(persistence: p)
+        let taskID = try await tasks.create(title: "T")
+        let specID = try await specs.add(taskID: taskID, kind: .offsetDeadline, offsetMinutes: -10, fireDate: nil)
+        try await specs.delete(id: specID)   // deleted through the local (own-author) context
+
+        actor OrphanSpy {
+            private(set) var callCount = 0
+            func record() { callCount += 1 }
+        }
+        let spy = OrphanSpy()
+        let tokenStore = PersistentHistoryTokenStore(suiteName: "X9-orphan-self-\(UUID().uuidString)")
+        let reconciler = RemoteChangeReconciler(
+            persistence: p, tokenStore: tokenStore,
+            onAffectedTasks: { _ in }
+        ) {
+            await spy.record()
+        }
+
+        await reconciler.processPendingHistory()
+
+        #expect(await spy.callCount == 0)
+    }
+
+    @Test("X9: processPendingHistory reconciles a task soft-deleted through a foreign context")
+    func processPendingHistoryFiresForForeignTaskSoftDelete() async throws {
+        let (p, _) = try await makeContext()
+        let tasks = TaskStore(persistence: p)
+        let taskID = try await tasks.create(title: "T")
+
+        let foreignCtx = p.container.newBackgroundContext()
+        foreignCtx.transactionAuthor = "OtherDevice.import"
+        try await foreignCtx.perform {
+            let req = NSFetchRequest<LillistTask>(entityName: "LillistTask")
+            req.predicate = NSPredicate(format: "id == %@", taskID as CVarArg)
+            let m = try foreignCtx.fetch(req).first!
+            m.deletedAt = Date()
+            try foreignCtx.save()
+        }
+
+        actor CallbackSpy {
+            private(set) var received: [UUID] = []
+            func record(_ ids: [UUID]) { received.append(contentsOf: ids) }
+        }
+        let spy = CallbackSpy()
+        let tokenStore = PersistentHistoryTokenStore(suiteName: "X9-tasksoftdelete-\(UUID().uuidString)")
+        let reconciler = RemoteChangeReconciler(persistence: p, tokenStore: tokenStore) { ids in
+            await spy.record(ids)
+        }
+
+        await reconciler.processPendingHistory()
+
+        #expect(await spy.received == [taskID])
+    }
 }
 
 @Suite("Two-store convergence (shared on-disk file)")

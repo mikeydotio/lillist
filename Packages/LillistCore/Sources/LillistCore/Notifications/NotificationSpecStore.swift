@@ -156,6 +156,19 @@ public final class NotificationSpecStore: @unchecked Sendable {
         }
     }
 
+    /// X9: batch existence check — returns the subset of `ids` that still
+    /// have a live `NotificationSpec` row. One fetch regardless of `ids`
+    /// count, so `NotificationScheduler.reconcileOrphanedPendingRequests()`
+    /// costs one round trip per sweep, not N per-id lookups.
+    public func existingIDs(among ids: [UUID]) async throws -> Set<UUID> {
+        guard ids.isEmpty == false else { return [] }
+        return try await context.perform { [self] in
+            let req = NSFetchRequest<NotificationSpec>(entityName: "NotificationSpec")
+            req.predicate = NSPredicate(format: "id IN %@", ids)
+            return try Set(context.fetch(req).compactMap(\.id))
+        }
+    }
+
     // MARK: - Helpers
 
     private func fetchManagedObject(id: UUID, in ctx: NSManagedObjectContext) throws -> NotificationSpec {

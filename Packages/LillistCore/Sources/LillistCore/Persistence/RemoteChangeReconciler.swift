@@ -44,23 +44,40 @@ public final class RemoteChangeReconciler: @unchecked Sendable {
         public let entityName: String
         public let changedProperties: Set<String>
         public let author: String?
+        /// X9: distinguishes insert/update/delete. Defaults to `.update` so
+        /// every pre-existing call site (all of which describe update
+        /// scenarios — a `lastFiredAt`/`snoozedUntil` change) compiles and
+        /// behaves unchanged.
+        public let changeType: NSPersistentHistoryChangeType
 
         public init(
             changedObjectID: NSManagedObjectID,
             entityName: String,
             changedProperties: Set<String>,
-            author: String?
+            author: String?,
+            changeType: NSPersistentHistoryChangeType = .update
         ) {
             self.changedObjectID = changedObjectID
             self.entityName = entityName
             self.changedProperties = changedProperties
             self.author = author
+            self.changeType = changeType
         }
     }
 
     private let persistence: PersistenceController
     private let tokenStore: PersistentHistoryTokenStore
     private let onAffectedTasks: @Sendable ([UUID]) async -> Void
+    /// X9: fires when a foreign-authored `NotificationSpec` DELETE is seen
+    /// in a drained batch. A deleted spec's row is gone, and per the plan
+    /// doc's tombstone investigation there's no attribute flagged
+    /// `preservesValueInHistoryOnDeletion` in this model (relationships are
+    /// never tombstoned regardless), so there's no taskID to key
+    /// `onAffectedTasks` with. The app wires this to
+    /// `scheduler.reconcileOrphanedPendingRequests()`, a set-difference
+    /// sweep (mirrors `LocalBackupCoordinator`'s own tombstone-free
+    /// deletion handling) rather than a per-id lookup.
+    private let onOrphanedSpecDeletions: @Sendable () async -> Void
     private var observer: NSObjectProtocol?
 
     /// Optional diagnostic sink. When non-nil, a failure computing affected
@@ -79,14 +96,19 @@ public final class RemoteChangeReconciler: @unchecked Sendable {
     ///   - tokenStore: watermark persistence so diffing resumes across launches.
     ///   - onAffectedTasks: callback invoked with the unique affected task ids.
     ///     The app wires this to `scheduler.reconcile(taskID:)` per id.
+    ///   - onOrphanedSpecDeletions: callback invoked when a foreign-authored
+    ///     `NotificationSpec` DELETE was seen. Defaults to a no-op so
+    ///     existing callers (and every pre-X9 test) compile unchanged.
     public init(
         persistence: PersistenceController,
         tokenStore: PersistentHistoryTokenStore,
-        onAffectedTasks: @escaping @Sendable ([UUID]) async -> Void
+        onAffectedTasks: @escaping @Sendable ([UUID]) async -> Void,
+        onOrphanedSpecDeletions: @escaping @Sendable () async -> Void = {}
     ) {
         self.persistence = persistence
         self.tokenStore = tokenStore
         self.onAffectedTasks = onAffectedTasks
+        self.onOrphanedSpecDeletions = onOrphanedSpecDeletions
     }
 
     /// Begin observing `NSPersistentStoreRemoteChange`. Call once at bootstrap.
@@ -159,7 +181,8 @@ public final class RemoteChangeReconciler: @unchecked Sendable {
                                 changedObjectID: change.changedObjectID,
                                 entityName: name,
                                 changedProperties: change.updatedProperties.map { Set($0.map(\.name)) } ?? [],
-                                author: txn.author
+                                author: txn.author,
+                                changeType: change.changeType
                             )
                         )
                     }
@@ -201,6 +224,15 @@ public final class RemoteChangeReconciler: @unchecked Sendable {
             await onAffectedTasks(affected)
         }
 
+        // X9: a foreign spec DELETE has no taskID to key onAffectedTasks
+        // with (see the type's onOrphanedSpecDeletions doc comment) — swept
+        // separately, after the taskID-keyed callback, still before the
+        // watermark advances (same H6 ordering guarantee: a crash here
+        // leaves the watermark unmoved, so this drain is safely retried).
+        if Self.hasForeignSpecDeletions(in: changes, localAuthor: persistence.transactionAuthor) {
+            await onOrphanedSpecDeletions()
+        }
+
         // H6: advance the watermark only after the affected-task computation
         // AND the callback have both completed — mirrors
         // LocalBackupCoordinator.processRemoteChange, the verified-correct
@@ -214,8 +246,27 @@ public final class RemoteChangeReconciler: @unchecked Sendable {
     }
 
     /// Pure-ish diffing core (no NotificationCenter, no live CloudKit): given a
-    /// flat change list, return the de-duplicated, order-stable list of task ids
-    /// whose `NotificationSpec.lastFiredAt` a foreign-author change touched.
+    /// flat change list, return the de-duplicated, order-stable list of task
+    /// ids that need a notification reconcile because of a foreign-author
+    /// change to either a `NotificationSpec` or a `LillistTask`.
+    ///
+    /// X9 widened this beyond the original `lastFiredAt`-only filter:
+    /// - `NotificationSpec` INSERT (a reminder added on another device) —
+    ///   the row still exists, so `spec.task?.id` resolves directly.
+    /// - `NotificationSpec` UPDATE — narrowly still gated on
+    ///   `changedProperties.contains("lastFiredAt")`, matching the original,
+    ///   verified scope (X9's finding text names inserts/deletes/task
+    ///   soft-deletes, not arbitrary spec property edits — see the plan
+    ///   doc's scope note for why a remote `snoozedUntil`/`offsetMinutes`
+    ///   edit is a distinct, unreachable-today residual, not widened here).
+    /// - `NotificationSpec` DELETE — deliberately **excluded**: the row is
+    ///   gone and (per the plan doc's tombstone investigation) unresolvable
+    ///   to a taskID from history alone. Handled by `hasForeignSpecDeletions`/
+    ///   `onOrphanedSpecDeletions` instead, a taskID-free mechanism.
+    /// - `LillistTask` UPDATE touching `deletedAt` (soft-delete OR restore —
+    ///   both are property updates on a row that still exists) — the change
+    ///   *is* the task, so its own `id` resolves directly, no relationship
+    ///   traversal needed.
     ///
     /// `nonisolated static` so XCTest / background callers can use it without
     /// crossing an actor boundary (CLAUDE.md UI-layer note generalizes here).
@@ -228,17 +279,50 @@ public final class RemoteChangeReconciler: @unchecked Sendable {
             var ordered: [UUID] = []
             var seen: Set<UUID> = []
             for change in changes {
-                guard change.entityName == "NotificationSpec" else { continue }
                 guard change.author != localAuthor else { continue }
-                guard change.changedProperties.contains("lastFiredAt") else { continue }
-                guard let spec = try? ctx.existingObject(with: change.changedObjectID) as? NotificationSpec
-                else { continue }
-                guard let taskID = spec.task?.id else { continue }
+                var taskID: UUID?
+                switch change.entityName {
+                case "NotificationSpec":
+                    guard change.changeType != .delete else { continue }
+                    if change.changeType == .update {
+                        guard change.changedProperties.contains("lastFiredAt") else { continue }
+                    }
+                    guard let spec = try? ctx.existingObject(with: change.changedObjectID) as? NotificationSpec
+                    else { continue }
+                    taskID = spec.task?.id
+                case "LillistTask":
+                    guard change.changeType == .update,
+                          change.changedProperties.contains("deletedAt") else { continue }
+                    guard let task = try? ctx.existingObject(with: change.changedObjectID) as? LillistTask
+                    else { continue }
+                    taskID = task.id
+                default:
+                    continue
+                }
+                guard let taskID else { continue }
                 if seen.insert(taskID).inserted {
                     ordered.append(taskID)
                 }
             }
             return ordered
+        }
+    }
+
+    /// X9: true if `changes` contains at least one foreign-authored
+    /// `NotificationSpec` DELETE. Pure and synchronous — every field it
+    /// reads (`entityName`/`changeType`/`author`) is already flattened into
+    /// `SyntheticChange`, so no context access is needed (unlike
+    /// `affectedTaskIDs`, which must resolve still-live rows). Drives
+    /// `onOrphanedSpecDeletions`, the set-difference sweep that replaces a
+    /// per-id lookup history can't provide for a deleted row.
+    public nonisolated static func hasForeignSpecDeletions(
+        in changes: [SyntheticChange],
+        localAuthor: String
+    ) -> Bool {
+        changes.contains { change in
+            change.entityName == "NotificationSpec"
+                && change.changeType == .delete
+                && change.author != localAuthor
         }
     }
 }
