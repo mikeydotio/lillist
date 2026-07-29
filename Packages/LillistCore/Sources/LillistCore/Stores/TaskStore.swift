@@ -623,7 +623,7 @@ public final class TaskStore: @unchecked Sendable {
                 // per design Section 8.
                 var spawnedID: UUID? = nil
                 if newStatus == .closed {
-                    spawnedID = RecurrenceSpawner.spawnIfNeeded(forClosedTask: m, in: context)
+                    spawnedID = try RecurrenceSpawner.spawnIfNeeded(forClosedTask: m, in: context)
                 }
 
                 try context.save()
@@ -1044,6 +1044,10 @@ public final class TaskStore: @unchecked Sendable {
     /// so `create` can record `observedMaxPosition` in its diagnostic — the
     /// value the non-atomic edge allocation saw, central to the reorder-tie RCA.
     ///
+    /// Thin wrapper over `SiblingPositioning` (the shared core `RecurrenceSpawner`
+    /// also delegates to, so a spawn's placement can never drift from a
+    /// manually-created task's — see H1).
+    ///
     /// `placement` selects which end the new row lands at:
     /// - `.bottom` (default): the edge is the *max* sibling position and the
     ///   row is placed after it (`edge + 1.0`).
@@ -1054,30 +1058,7 @@ public final class TaskStore: @unchecked Sendable {
         forParent parent: LillistTask?,
         placement: NewTaskPlacement = .bottom
     ) throws -> (assigned: Double, observedMax: Double?) {
-        let req = NSFetchRequest<LillistTask>(entityName: "LillistTask")
-        // H4: ignore trashed siblings when computing the edge — consistent
-        // with `recompactSiblings`/`childrenFetchRequest`, which already
-        // filter this way. A trashed sibling is logically absent from the
-        // ordering domain everywhere else in this file; this was the one
-        // holdout, and it's what let a restored task's stale position
-        // collide with a live sibling that moved into that slot via
-        // recompaction while the restored task sat in the trash.
-        if let parent {
-            req.predicate = NSPredicate(format: "parent == %@ AND deletedAt == nil", parent)
-        } else {
-            req.predicate = NSPredicate(format: "parent == nil AND deletedAt == nil")
-        }
-        // For `.bottom` we need the largest position (sort desc); for `.top`
-        // the smallest (sort asc). Either way we fetch a single edge row.
-        req.sortDescriptors = [NSSortDescriptor(key: "position", ascending: placement == .top)]
-        req.fetchLimit = 1
-        let edgePosition = try context.fetch(req).first?.position
-        switch placement {
-        case .bottom:
-            return (FractionalPosition.position(after: edgePosition, before: nil), edgePosition)
-        case .top:
-            return (FractionalPosition.position(after: nil, before: edgePosition), edgePosition)
-        }
+        try SiblingPositioning.nextPositionDetail(forParent: parent, placement: placement, in: context)
     }
 
     /// Re-space every non-trashed sibling under `parent` to even 1.0 gaps,

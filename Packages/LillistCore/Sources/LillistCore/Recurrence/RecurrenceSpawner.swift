@@ -20,11 +20,12 @@ enum RecurrenceSpawner {
     /// - Returns: The spawned task's `UUID` if a new instance was created,
     ///   or `nil` otherwise. Plan 5 callers use this to reconcile
     ///   notifications for the spawn after save.
+    /// - Throws: whatever the live sibling-position fetch throws (H1).
     @discardableResult
     static func spawnIfNeeded(
         forClosedTask closed: LillistTask,
         in context: NSManagedObjectContext
-    ) -> UUID? {
+    ) throws -> UUID? {
         guard let series = closed.series else { return nil }
         guard let rule = series.rule else { return nil }
         guard let nextDate = series.nextOccurrenceAfter else { return nil }
@@ -43,7 +44,16 @@ enum RecurrenceSpawner {
         spawn.modifiedAt = spawn.createdAt
         spawn.stampCurrentSchemaVersion()
         spawn.parent = seed.parent
-        spawn.position = seed.position + 0.5
+        // H1: placement is computed live against the seed's CURRENT sibling
+        // set, at the bottom (same default `TaskStore.create` uses) — never
+        // a fixed offset from any single stored position, which is what let
+        // every spawn after the first collide at `seed.position + 0.5`
+        // (`seed` is the ORIGINAL seed task, whose position never advances
+        // across a series' lifetime). See the plan-4c doc for the
+        // bottom-vs-top-vs-adjacent-to-seed placement decision.
+        spawn.position = try SiblingPositioning.nextPositionDetail(
+            forParent: seed.parent, placement: .bottom, in: context
+        ).assigned
         spawn.series = series
         spawn.tags = seed.tags
 
