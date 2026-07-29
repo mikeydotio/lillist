@@ -95,8 +95,8 @@ final class AppEnvironment {
     /// `bootstrap()`, after one launch catch-up pass. Runs on macOS the
     /// same way `TaskDuplicateReconciler` already does — the observer is
     /// author-agnostic (compares epochs, not `NSPersistentStoreRemoteChange`
-    /// transaction authors), so macOS's lack of a `RemoteChangeReconciler`
-    /// is irrelevant here.
+    /// transaction authors), so it needs no `RemoteChangeReconciler`
+    /// dependency of its own, unlike `remoteChangeReconciler` below.
     let resetSignalMonitor: ResetSignalMonitor
     /// Data-sync-hardening `S10`: the currently-pending, undecided reset
     /// event awaiting explicit user confirmation — see the iOS
@@ -126,11 +126,22 @@ final class AppEnvironment {
     let syncMonitor: any SyncIndicatorMonitor
     let breadcrumbs: BreadcrumbBuffer
     let crashReporter: CrashReporter
-    /// File-based diagnostic logging (design 2026-06-06). macOS is the FIRST
-    /// persistent-history consumer here (no `RemoteChangeReconciler` exists), so
-    /// the observer is net-new wiring with its own watermark key.
+    /// File-based diagnostic logging (design 2026-06-06). `DiagnosticHistoryObserver`
+    /// has its own watermark key, distinct from `remoteChangeReconciler`'s.
     let diagnosticLog: DiagnosticLog
     let diagnosticHistoryObserver: DiagnosticHistoryObserver
+    /// Data-sync-hardening `X9`: macOS's first `RemoteChangeReconciler` —
+    /// previously only iOS had one (see the type's own doc comment for why
+    /// this matters: an iPhone-added reminder never scheduled on the Mac,
+    /// and a Mac-side notification fire never suppressed the iPhone's
+    /// matching pending request, until the Mac app was quit and relaunched,
+    /// if ever). Uses `PersistentHistoryTokenStore.defaultKey` — the exact
+    /// key `historyWatermarks` below already reserved for this
+    /// ("macOS has no `RemoteChangeReconciler` of its own, but the
+    /// `defaultKey` watermark is still cleared for consistency/forward-
+    /// compat" — that forward-compat is realized here). Retained for the
+    /// app's lifetime; deinit removes its observer.
+    let remoteChangeReconciler: RemoteChangeReconciler
     /// Issue #66: merges `LillistTask` rows that share one app `id` — the
     /// shape a resync produces when local mirroring bookkeeping is
     /// discarded/rebuilt while the CloudKit zone still holds a matching
@@ -294,6 +305,30 @@ final class AppEnvironment {
         )
         self.taskStore.diagnosticLog = diagnosticLog
         self.smartFilterStore.diagnosticLog = diagnosticLog
+
+        // X9: macOS's first remote-change-driven notification reconcile —
+        // mirrors iOS's construction exactly (see this property's own doc
+        // comment for why). `localAuthor` resolves to
+        // `persistence.transactionAuthor`, i.e. `macAppTransactionAuthor`,
+        // inside the reconciler itself — 4a's H6 fix is what makes it safe
+        // to wire this up without misclassifying the Mac's own writes as
+        // foreign.
+        self.remoteChangeReconciler = RemoteChangeReconciler(
+            persistence: persistence,
+            tokenStore: PersistentHistoryTokenStore(appGroupID: Self.appGroupID, key: PersistentHistoryTokenStore.defaultKey)
+        ) { [weak scheduler] affectedTaskIDs in
+            guard let scheduler else { return }
+            for taskID in affectedTaskIDs {
+                await scheduler.reconcile(taskID: taskID)
+            }
+        } onOrphanedSpecDeletions: { [weak scheduler] in
+            await scheduler?.reconcileOrphanedPendingRequests()
+        }
+        // H6/M5 precedent: wire the same diagnosticLog property injection
+        // iOS uses, so a computed-affected-tasks failure here also reaches
+        // the structured diagnostic stream, not just os.Logger.
+        self.remoteChangeReconciler.diagnosticLog = diagnosticLog
+
         self.taskDuplicateReconciler = TaskDuplicateReconciler(persistence: persistence)
 
         // Plan 21: assemble the migration machinery + classifier.
@@ -370,10 +405,10 @@ final class AppEnvironment {
         }
         // X11: clears every persistent-history watermark after a
         // destroy/rebuild — see the iOS counterpart's identical doc
-        // comment and `HistoryWatermarks`' own doc comment. macOS has no
-        // `RemoteChangeReconciler` of its own, but the `defaultKey`
-        // watermark is still cleared for consistency/forward-compat —
-        // clearing an absent key is a harmless no-op.
+        // comment and `HistoryWatermarks`' own doc comment. The `defaultKey`
+        // watermark clears `remoteChangeReconciler`'s own token (X9 gave
+        // macOS one — this was a harmless no-op clearing an absent key
+        // before that).
         let historyWatermarks = HistoryWatermarks(
             reconciler: PersistentHistoryTokenStore(appGroupID: Self.appGroupID, key: PersistentHistoryTokenStore.defaultKey),
             diagnostics: PersistentHistoryTokenStore(appGroupID: Self.appGroupID, key: PersistentHistoryTokenStore.diagnosticsKey),
@@ -564,9 +599,13 @@ final class AppEnvironment {
         }
 
         // Stamp the Mac's distinct author so the diagnostics observer can tell
-        // Mac-authored writes apart from iOS on the same iCloud account. Safe:
-        // macOS has no RemoteChangeReconciler, so no local-vs-foreign filter
-        // depends on this matching localTransactionAuthor.
+        // Mac-authored writes apart from iOS on the same iCloud account. X9:
+        // `remoteChangeReconciler` (constructed below) now also depends on
+        // this — it compares foreign changes against
+        // `persistence.transactionAuthor` (this instance's own stamped
+        // value, per 4a's H6 fix), not a hardcoded default, so a Mac-side
+        // write is correctly classified as local without needing to match
+        // `localTransactionAuthor`.
         let persistence = try await PersistenceController(configuration: baseConfig, transactionAuthor: PersistenceController.macAppTransactionAuthor)
         let host = PersistenceHost(controller: persistence, initialMode: initialMode)
         // Plan 21: device-local preferences live in App Group
@@ -625,6 +664,13 @@ final class AppEnvironment {
         await diagnosticLog.setEnabled(await devicePreferences.diagnosticLoggingEnabled())
         await diagnosticHistoryObserver.processPendingHistory()
         diagnosticHistoryObserver.start()
+        // X9: catch up on any notification-relevant remote change that
+        // arrived while the app wasn't running (a spec added/deleted or a
+        // task trashed/restored on iOS), then begin observing live ones —
+        // same catch-up-then-start shape as every other persistent-history
+        // consumer in this method.
+        await remoteChangeReconciler.processPendingHistory()
+        remoteChangeReconciler.start()
         // Issue #66: catch up on any duplicate LillistTask rows that arrived
         // while the app wasn't running (e.g. a restore performed on a prior
         // launch), then begin observing live remote changes.
