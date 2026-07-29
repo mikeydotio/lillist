@@ -2,3 +2,4 @@
 {"kind":"StoryPrioritySet","at":"2026-07-28T16:32:21Z","priority":"high"}
 {"kind":"StoryLabelsSet","at":"2026-07-28T16:32:21Z","labels":["plan-5a","sev-high","sweep-stores"]}
 {"kind":"StoryDescriptionSet","at":"2026-07-28T16:32:21Z","description":"Tag/SmartFilter/Journal/Attachment/Series/Preferences stores - a later, unrelated save() from any store commits the half-built rows; meanwhile TaskStore's own rollback is unconditional and can discard other stores' legitimately staged work sharing the same context. Severity: High. Wave/Plan: Wave 5, plan 5a mutation-scope-discipline. Sweep: stores/persistence. Class-killer: shared withMutationRollback helper adopted by the five bare stores + a conformance test over public mutating methods (full MutationContext re-architecture REJECTED - logged as deliberate tech debt; redesign trigger: cross-contamination despite the conformance test)."}
+{"kind":"StoryStateChanged","at":"2026-07-29T06:14:50Z","state":"in-progress"}

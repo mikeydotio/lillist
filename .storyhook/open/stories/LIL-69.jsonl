@@ -2,3 +2,4 @@
 {"kind":"StoryPrioritySet","at":"2026-07-28T16:32:21Z","priority":"medium"}
 {"kind":"StoryLabelsSet","at":"2026-07-28T16:32:21Z","labels":["plan-5a","sev-medium","sweep-crossproc"]}
 {"kind":"StoryDescriptionSet","at":"2026-07-28T16:32:21Z","description":"The normalize tie-break is nondeterministic on identical singletonID rows, causing an observable flip-flop that can reopen after appearing resolved. Severity: Medium. Wave/Plan: Wave 5, plan 5a mutation-scope-discipline (Wave 6 plan 6a adds an additional flip-flop stress test building on this fix - not a separate finding). Sweep: cross-process."}
+{"kind":"StoryStateChanged","at":"2026-07-29T06:15:46Z","state":"in-progress"}
