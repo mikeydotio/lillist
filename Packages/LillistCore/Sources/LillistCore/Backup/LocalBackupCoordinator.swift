@@ -70,10 +70,30 @@ public final class LocalBackupCoordinator: @unchecked Sendable {
         self.destructiveOpGate = destructiveOpGate
     }
 
-    /// One-call launch entry point: start observing, seed the package if it has
-    /// never been written, and roll a daily snapshot if one is due. All
-    /// best-effort and non-fatal — backup must never block app launch.
+    /// One-call launch entry point: catch up on any remote history that
+    /// accrued while the app wasn't running, start observing, seed the
+    /// package if it has never been written, and roll a daily snapshot if
+    /// one is due. All best-effort and non-fatal — backup must never block
+    /// app launch.
+    ///
+    /// `LIL-87`: unlike `RemoteChangeReconciler`/`DiagnosticHistoryObserver`,
+    /// this consumer used to advance its watermark **only** from a live
+    /// `NSPersistentStoreRemoteChange`/`NSManagedObjectContextDidSave`
+    /// notification firing while the app happened to be running —
+    /// `bootstrapAtLaunch()` never called `processRemoteChange()` as an
+    /// explicit catch-up the way every other history consumer's bootstrap
+    /// does. `5c`'s registry-gated `HistoryPruner` already prevents the
+    /// *data-loss* consequence (a stale watermark blocks the prune sweep
+    /// instead of silently pruning past it), but the underlying staleness
+    /// was real: with no notification to prompt it, this watermark — and
+    /// therefore pruning — could stall indefinitely. The explicit call
+    /// below runs BEFORE `start()`/`seedPackageIfEmpty()`, mirroring every
+    /// other consumer's catch-up-then-start shape; it's a no-op on a
+    /// still-empty package (nothing foreign to diff yet) and idempotent
+    /// against whatever `start()`'s own observer processes afterward (both
+    /// key off the same monotonically-advancing history token).
     public func bootstrapAtLaunch() async {
+        await processRemoteChange()
         start()
         await seedPackageIfEmpty()
         await runSnapshotIfDue()

@@ -16,11 +16,18 @@ struct LocalBackupCoordinatorTests {
 
     private func makeCoordinator(
         _ p: PersistenceController,
-        dir: URL
+        dir: URL,
+        tokenSuiteName: String? = nil
     ) -> (LocalBackupCoordinator, TaskBackupStore) {
         let store = TaskBackupStore(packageDirectory: dir)
         let tokens = PersistentHistoryTokenStore(
-            suiteName: "backup-test-\(UUID().uuidString)",
+            // A caller-supplied suite name simulates the SAME device's
+            // watermark persisting across two coordinator instances
+            // representing two app launches (LIL-87's own scenario) — in
+            // production this is App-Group UserDefaults, which survives a
+            // relaunch. The default (a fresh UUID per call) preserves every
+            // existing test's isolated-watermark behavior.
+            suiteName: tokenSuiteName ?? "backup-test-\(UUID().uuidString)",
             consumer: .backup
         )
         let coord = LocalBackupCoordinator(
@@ -285,6 +292,74 @@ struct LocalBackupCoordinatorTests {
         // A second seed must not duplicate or wipe.
         await coord.seedPackageIfEmpty()
         #expect(try await store.taskFileCount() == 1)
+    }
+
+    // MARK: - LIL-87: launch-time history catch-up
+
+    @Test("bootstrapAtLaunch catches up on foreign history that arrived while no coordinator was observing")
+    func bootstrapAtLaunchCatchesUpWithoutALiveNotification() async throws {
+        let storeURL = tempDir().appendingPathComponent("Lillist.sqlite")
+        try FileManager.default.createDirectory(at: storeURL.deletingLastPathComponent(), withIntermediateDirectories: true)
+        let packageDir = tempDir()
+        defer { try? FileManager.default.removeItem(at: packageDir) }
+        // Shared across both "launches" below — the same device's
+        // watermark persisting across relaunches (App-Group UserDefaults
+        // in production), so the SECOND coordinator resumes from where the
+        // FIRST left off rather than re-scanning from the beginning of
+        // history (which would catch the foreign task by accident,
+        // proving nothing about LIL-87's actual fix).
+        let tokenSuite = "LocalBackupCoordinatorTests-LIL87-\(UUID().uuidString)"
+
+        // First "launch": a local task exists, and bootstrapAtLaunch()
+        // seeds the package via seedPackageIfEmpty()'s full reconcile —
+        // this is the ONLY path that would otherwise mask LIL-87's fix
+        // (a fresh, still-empty package gets fully rebuilt regardless of
+        // any history catch-up). Deliberately populating the package
+        // first, then tearing this coordinator down, forces the SECOND
+        // bootstrap below to hit the genuinely-empty branch of
+        // seedPackageIfEmpty() (already-populated → no-op), isolating the
+        // explicit processRemoteChange() catch-up as the only remaining
+        // mechanism that could pick up what comes next.
+        let firstLaunchController = try await PersistenceController(
+            configuration: .onDisk(url: storeURL, syncMode: .localOnly),
+            transactionAuthor: PersistenceController.localTransactionAuthor
+        )
+        _ = try await TaskStore(persistence: firstLaunchController).create(title: "Existing at first launch")
+        let (firstCoord, firstStore) = makeCoordinator(firstLaunchController, dir: packageDir, tokenSuiteName: tokenSuite)
+        await firstCoord.bootstrapAtLaunch()
+        #expect(try await firstStore.taskFileCount() == 1)
+        firstCoord.stop()
+
+        // "Another process" (mirrors MultiProcessStoreHarnessTests) writes
+        // a SECOND task to the same on-disk store file while nothing is
+        // observing — no coordinator instance exists at all right now, so
+        // there is no live NSManagedObjectContextDidSave/
+        // .NSPersistentStoreRemoteChange observer anywhere to catch it.
+        let foreignController = try await PersistenceController(
+            configuration: .onDisk(url: storeURL, syncMode: .localOnly),
+            transactionAuthor: PersistenceController.cliTransactionAuthor
+        )
+        let foreignTaskID = try await TaskStore(persistence: foreignController).create(title: "Written by another process")
+
+        // "Second launch": a fresh controller + a fresh coordinator
+        // instance over the SAME already-populated package — the
+        // realistic cold-relaunch shape. Only bootstrapAtLaunch() runs;
+        // seedPackageIfEmpty() no-ops (the package already has one file),
+        // so the foreign task can only appear via the explicit
+        // processRemoteChange() catch-up LIL-87 adds.
+        let secondLaunchController = try await PersistenceController(
+            configuration: .onDisk(url: storeURL, syncMode: .localOnly),
+            transactionAuthor: PersistenceController.localTransactionAuthor
+        )
+        await secondLaunchController.container.viewContext.perform {
+            secondLaunchController.container.viewContext.refreshAllObjects()
+        }
+        let (secondCoord, secondStore) = makeCoordinator(secondLaunchController, dir: packageDir, tokenSuiteName: tokenSuite)
+
+        await secondCoord.bootstrapAtLaunch()
+
+        #expect(taskFileExists(packageDir, foreignTaskID))
+        #expect(try await secondStore.taskFileCount() == 2, "the pre-existing file must survive alongside the newly-caught-up one")
     }
 
     @Test("stress: rapid create/delete cycles converge to an empty package")
