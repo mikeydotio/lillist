@@ -150,13 +150,17 @@ struct ResetDataStoreSection: View {
                 result = msg
                 AccessibilityAnnouncements.post(msg, priority: .high)
             case .eraseEverywhere:
-                try await environment.dataStoreReset.resetEverywhereToEmpty()
-                let msg = String(localized: "Data store reset. Your other devices will erase and reload the next time they're open and online. Relaunch Lillist to reload.")
+                let outcome = try await environment.dataStoreReset.resetEverywhereToEmpty()
+                let msg = Self.broadcastResultMessage(
+                    base: "Data store reset.", outcome: outcome, convergeVerb: "erase and reload"
+                )
                 result = msg
                 AccessibilityAnnouncements.post(msg, priority: .high)
             case .reseedFromThisDevice:
-                try await environment.dataStoreReset.resetAndReseedFromThisDevice()
-                let msg = String(localized: "This device is now the source of truth. Your other devices will catch up the next time they're open and online. Relaunch Lillist to reload.")
+                let outcome = try await environment.dataStoreReset.resetAndReseedFromThisDevice()
+                let msg = Self.broadcastResultMessage(
+                    base: "This device is now the source of truth.", outcome: outcome, convergeVerb: "catch up"
+                )
                 result = msg
                 AccessibilityAnnouncements.post(msg, priority: .high)
             }
@@ -165,6 +169,22 @@ struct ResetDataStoreSection: View {
             result = failure
             resultIsError = true
             AccessibilityAnnouncements.post(failure, priority: .high)
+        }
+    }
+
+    /// Data-sync-hardening `S20`/`S9c`: `BroadcastOutcome`-aware result copy
+    /// — the prior single hardcoded message claimed every other device
+    /// would converge regardless of whether anybody was actually notified.
+    private static func broadcastResultMessage(base: String, outcome: BroadcastOutcome, convergeVerb: String) -> String {
+        switch outcome {
+        case .notified:
+            return String(localized: "\(base) Your other devices will \(convergeVerb) the next time they're open and online. Relaunch Lillist to reload.")
+        case .rosterEmpty:
+            return String(localized: "\(base) No other devices are currently known on this account, so nobody else was notified. Relaunch Lillist to reload.")
+        case .skippedQuiesceTimedOut:
+            return String(localized: "\(base) The upload to iCloud is still finishing, so other devices weren't notified yet — they'll pick it up automatically once this device finishes syncing. Relaunch Lillist to reload.")
+        case .notConfigured:
+            return String(localized: "\(base) Relaunch Lillist to reload.")
         }
     }
 }

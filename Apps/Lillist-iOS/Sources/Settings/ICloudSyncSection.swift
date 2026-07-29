@@ -21,6 +21,15 @@ final class ICloudSyncModalsModel {
 
     func handleToggle(_ on: Bool) { route = .afterToggle(on: on) }
     func showPauseExplainer() { route = .pauseExplainer }
+    /// Data-sync-hardening `S10`: opens the always-prompt confirmation
+    /// dialog for the currently-pending reset event. A no-op if nothing is
+    /// pending (the banner that triggers this is only shown when
+    /// `environment.pendingResetDecision != nil`, so this should always
+    /// have a value in practice).
+    func showPendingResetDecision(_ env: AppEnvironment) {
+        guard let event = env.pendingResetDecision else { return }
+        route = .pendingResetDecision(event)
+    }
 
     func confirmReplace(_ env: AppEnvironment) {
         if let direction = pendingDirection { triggerEnable(direction: direction, env) }
@@ -130,7 +139,9 @@ struct ICloudSyncSection: View {
             isToggleDisabled: isToggleDisabled,
             disabledFooter: footer,
             localTaskCount: taskCounts?.local,
-            mirroredTaskCount: taskCounts?.mirrored
+            mirroredTaskCount: taskCounts?.mirrored,
+            pendingResetSenderName: environment.pendingResetDecision?.senderDisplayName,
+            discardedResetNotice: environment.resetEventDiscardNotice.map(ICloudSyncSettingsSection.discardNoticeText(for:))
         )
     }
 
@@ -138,7 +149,9 @@ struct ICloudSyncSection: View {
         .init(
             onToggle: { model.handleToggle($0) },
             onOpenSystemSettings: openICloudSystemSettings,
-            onPausedTap: { model.showPauseExplainer() }
+            onPausedTap: { model.showPauseExplainer() },
+            onPendingResetTap: { model.showPendingResetDecision(environment) },
+            onDismissDiscardNotice: { environment.resetEventDiscardNotice = nil }
         )
     }
 

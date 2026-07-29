@@ -52,4 +52,21 @@ final class WidgetRefreshCoordinator {
             WidgetCenter.shared.reloadAllTimelines()
         }
     }
+
+    /// Data-sync-hardening `X11`: wipes the cache, regenerates against the
+    /// current (likely now-empty or freshly-reseeded) store state, and
+    /// reloads every timeline — called after a destructive store
+    /// reset/rebuild so a stale, now-erased task can never render with a
+    /// dangling deep link in the gap before the next natural regenerate.
+    /// Unlike `scheduleRefresh()`/`refreshNow()`, this is `async` and does
+    /// not spawn its own `Task` — callers driving a destructive reset can
+    /// `await` it directly for deterministic sequencing (matching the
+    /// `backupReconciler`/`historyWatermarksReset` calls it's wired
+    /// alongside in `AppEnvironment`).
+    func resetAfterDestructiveOp() async {
+        pending?.cancel()
+        builder.clearCache()
+        await builder.regenerate()
+        WidgetCenter.shared.reloadAllTimelines()
+    }
 }

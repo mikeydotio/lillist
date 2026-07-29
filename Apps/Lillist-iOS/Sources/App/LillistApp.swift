@@ -321,8 +321,29 @@ private struct OnboardingPresentationModifier: ViewModifier {
                             }
                         },
                         onTryAgain: {
-                            try? environment.migrationJournalStore.clear()
-                            launch = nil
+                            Task {
+                                let url = environment.storeURL
+                                    ?? FileManager.default.temporaryDirectory.appendingPathComponent("Lillist.sqlite")
+                                do {
+                                    // S19: actually re-runs the failed
+                                    // operation from the top — the prior
+                                    // version only cleared the journal and
+                                    // dismissed, never retrying anything.
+                                    try await environment.migrationCoordinator.retryFailedOperation(from: journal, storeURL: url)
+                                    launch = nil
+                                } catch {
+                                    // Mirrors the ICloudUnavailableScreen
+                                    // catch below: surface the coordinator's
+                                    // own fresh recovery state rather than
+                                    // silently proceeding on an
+                                    // inconsistent store.
+                                    if let refreshed = try? environment.migrationJournalStore.read(), refreshed.isInFlight {
+                                        launch = .recovery(refreshed)
+                                    } else {
+                                        launch = nil
+                                    }
+                                }
+                            }
                         }
                     )
                     .interactiveDismissDisabled(true)

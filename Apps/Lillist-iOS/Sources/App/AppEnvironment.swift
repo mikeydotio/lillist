@@ -48,6 +48,23 @@ final class AppEnvironment {
     /// converges this one to current iCloud state. Started in
     /// `bootstrap()`, after one launch catch-up pass.
     let resetSignalMonitor: ResetSignalMonitor
+    /// Data-sync-hardening `S10`: the currently-pending, undecided reset
+    /// event awaiting explicit user confirmation, mirrored off
+    /// `resetSignalMonitor.pendingDecisionStream` so SwiftUI can observe it
+    /// without polling. `nil` means nothing is pending.
+    var pendingResetDecision: ResetControlEvent?
+    /// Data-sync-hardening `S10`: the most recent reset event this device
+    /// auto-discarded (expired, or not currently syncing) without ever
+    /// surfacing it as a decision — mirrored off
+    /// `resetSignalMonitor.discardNoticeStream` so the UI can show a real
+    /// "why didn't I get asked" note instead of a silent drop.
+    var resetEventDiscardNotice: ResetEventDiscardNotice?
+    /// Data-sync-hardening `S18`: filesystem backup copies taken before a
+    /// destructive migration/reset. Promoted to a stored property (was a
+    /// local in this initializer) so `bootstrap()` can call
+    /// `cleanupExpired()` — previously never wired into production at all,
+    /// so quarantine copies accumulated unbounded.
+    let quarantine: QuarantineManager
     /// Issue #7: keeps the on-disk JSON backup package in step with the live
     /// store (one file per task), and rolls daily snapshot zips. Retained for
     /// the app's lifetime; deinit removes its observers.
@@ -332,6 +349,7 @@ final class AppEnvironment {
         let quarantineRoot = storeURL.map { $0.deletingLastPathComponent() }
             ?? FileManager.default.temporaryDirectory
         let quarantine = QuarantineManager(rootDirectory: quarantineRoot)
+        self.quarantine = quarantine
         // data-sync-hardening S9b: durable crash-recovery journal for
         // resetAndReseedFromThisDevice — rooted alongside the quarantine
         // (same App-Group-anchored directory the reseed's own staged
@@ -405,6 +423,41 @@ final class AppEnvironment {
         let clearSyncStallState: @Sendable () async -> Void = { [syncStatusMonitor] in
             await syncStatusMonitor.resetStallState()
         }
+        // X11: clears every persistent-history watermark after a
+        // destroy/rebuild — see `HistoryWatermarks`' own doc comment. The
+        // three PersistentHistoryTokenStores mirror the exact instances
+        // remoteChangeReconciler/diagnosticHistoryObserver/
+        // localBackupCoordinator were constructed with above (same App
+        // Group suite + key), so clearing here is guaranteed to hit the
+        // real watermarks those consumers read from, not a duplicate copy.
+        let historyWatermarks = HistoryWatermarks(
+            reconciler: historyTokens,
+            diagnostics: PersistentHistoryTokenStore(appGroupID: Self.appGroupID, key: PersistentHistoryTokenStore.diagnosticsKey),
+            backup: PersistentHistoryTokenStore(appGroupID: Self.appGroupID, key: PersistentHistoryTokenStore.backupKey),
+            prunerDefaults: UserDefaults(suiteName: Self.appGroupID) ?? .standard
+        )
+        let clearHistoryWatermarks: () async -> Void = {
+            historyWatermarks.clearAll()
+        }
+        // X11: clears + regenerates the widget cache and reloads
+        // timelines. `widgetRefresh` is `nil` only when the App Group is
+        // unreachable, matching every other optional use of it in this
+        // file. Captures the already-assigned `self.widgetRefresh` value
+        // directly (not `self`) — capturing `self`, even weakly, before
+        // every stored property is initialized violates Swift's definite-
+        // initialization rules inside `init`.
+        let widgetRefreshForReset = self.widgetRefresh
+        let clearWidgetCache: () async -> Void = {
+            await widgetRefreshForReset?.resetAfterDestructiveOp()
+        }
+        // S19: the symmetric guard to localStoreRowCount above — never
+        // wipe real local data to download from an iCloud zone that turns
+        // out to have nothing in it. Reuses the same LiveCloudKitZoneEraser
+        // instance-shape as migrationCoordinator/dataStoreReset below (a
+        // fresh instance is cheap — it holds no state).
+        let remoteZoneHasRecords: @Sendable () async throws -> Bool = {
+            try await LiveCloudKitZoneEraser().hasAnyRecords(in: ckContainerID)
+        }
         self.migrationCoordinator = MigrationCoordinator(
             host: persistenceHost,
             journal: migrationJournalStore,
@@ -419,7 +472,10 @@ final class AppEnvironment {
             localStoreRowCount: localStoreRowCount,
             accountStateProvider: accountStateProbe,
             destructiveOpGate: destructiveOpGate,
-            syncStatusReset: clearSyncStallState
+            syncStatusReset: clearSyncStallState,
+            historyWatermarksReset: clearHistoryWatermarks,
+            widgetCacheReset: clearWidgetCache,
+            remoteZoneHasRecords: remoteZoneHasRecords
         )
         // Issue #71: the reset-propagation control channel, over iCloud
         // Key-Value Store — a separate iCloud subsystem from the Core
@@ -460,13 +516,24 @@ final class AppEnvironment {
             destructiveOpGate: destructiveOpGate,
             reseedJournal: reseedJournal,
             backupReconciler: localBackupCoordinator,
-            syncStatusReset: clearSyncStallState
+            syncStatusReset: clearSyncStallState,
+            historyWatermarksReset: clearHistoryWatermarks,
+            widgetCacheReset: clearWidgetCache
         )
+        // Data-sync-hardening S10: this device's own live sync mode,
+        // consulted by ResetSignalMonitor once per scan to decide whether
+        // an otherwise-actionable event can be surfaced at all — a
+        // localOnly device has nothing to converge to.
+        let resetMonitorSyncMode: @Sendable () async -> SyncMode = { [persistenceHost] in
+            await persistenceHost.currentMode
+        }
         self.resetSignalMonitor = ResetSignalMonitor(
             inbox: controlInbox,
             applied: AppliedEventStore(),
             deviceID: deviceID,
-            breadcrumbs: breadcrumbs
+            breadcrumbs: breadcrumbs,
+            currentSyncMode: resetMonitorSyncMode,
+            deadLetters: ResetEventDeadLetterStore()
         ) { [dataStoreReset] _ in
             try await dataStoreReset.resetAndRedownload()
         }
@@ -623,10 +690,23 @@ final class AppEnvironment {
                   !violations.isEmpty else { return }
             try? persistence.container.viewContext.save()
         }
+        // Data-sync-hardening S18: cleanupExpired() was never wired into
+        // production before this — store copies accumulated unbounded
+        // until disk-full failure started taking down every future
+        // migration. Opportunistic maintenance, after the integrity/
+        // singleton passes above (matches autoPurgeJob's own placement
+        // further below); best-effort, matching every other step here.
+        try? quarantine.cleanupExpired()
         // Issue #71: catch up on any reset broadcast that arrived while the
         // app wasn't running, then begin observing live ones.
-        await resetSignalMonitor.checkAndApply()
-        resetSignalMonitor.start()
+        // Data-sync-hardening S10: refreshPendingDecision() (renamed from
+        // the auto-applying checkAndApply()) only ever classifies and
+        // surfaces — nothing is ever applied without explicit user
+        // confirmation via the pending-decision dialog.
+        await resetSignalMonitor.refreshPendingDecision()
+        await resetSignalMonitor.start()
+        startObservingPendingResetDecision()
+        startObservingResetEventDiscardNotice()
         // Diagnostics: sync the cached enabled flag from device prefs, then run a
         // catch-up pass over any history that accrued while not running and begin
         // observing live remote changes. Order matters — set the flag first so the
@@ -791,6 +871,35 @@ final class AppEnvironment {
                 group.leave()
             }
             _ = group.wait(timeout: .now() + .seconds(2))
+        }
+    }
+
+    /// Data-sync-hardening `S10`: stream pending-decision changes off
+    /// `resetSignalMonitor` into the `@Observable` mirror so the settings
+    /// UI can show/dismiss the confirmation dialog without polling.
+    private func startObservingPendingResetDecision() {
+        let monitor = self.resetSignalMonitor
+        Task { [weak self] in
+            for await decision in await monitor.pendingDecisionStream {
+                await MainActor.run {
+                    self?.pendingResetDecision = decision
+                }
+            }
+        }
+    }
+
+    /// Data-sync-hardening `S10`: stream auto-discard notices (expired, or
+    /// not currently syncing) off `resetSignalMonitor` into the
+    /// `@Observable` mirror so the UI can show a real "why didn't I get
+    /// asked" note instead of a silent drop.
+    private func startObservingResetEventDiscardNotice() {
+        let monitor = self.resetSignalMonitor
+        Task { [weak self] in
+            for await notice in await monitor.discardNoticeStream {
+                await MainActor.run {
+                    self?.resetEventDiscardNotice = notice
+                }
+            }
         }
     }
 

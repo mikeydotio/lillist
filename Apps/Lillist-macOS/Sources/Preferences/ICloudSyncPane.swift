@@ -72,6 +72,13 @@ struct ICloudSyncPane: View {
                     onDismiss: { route = nil }
                 )
                 .frame(width: 460, height: 340)
+            case .pendingResetDecision(let event):
+                PendingResetDecisionDialog(
+                    event: event,
+                    onApply: { try await environment.resetSignalMonitor.confirmApply() },
+                    onDismiss: { route = nil }
+                )
+                .frame(width: 460, height: 340)
             case .progress(let phase):
                 SyncMigrationProgressSheet(phase: phase)
                     .frame(width: 520, height: 380)
@@ -103,7 +110,9 @@ struct ICloudSyncPane: View {
             isToggleDisabled: isToggleDisabled,
             disabledFooter: footer,
             localTaskCount: taskCounts?.local,
-            mirroredTaskCount: taskCounts?.mirrored
+            mirroredTaskCount: taskCounts?.mirrored,
+            pendingResetSenderName: environment.pendingResetDecision?.senderDisplayName,
+            discardedResetNotice: environment.resetEventDiscardNotice.map(ICloudSyncSettingsSection.discardNoticeText(for:))
         )
     }
 
@@ -115,7 +124,12 @@ struct ICloudSyncPane: View {
         .init(
             onToggle: handleToggle,
             onOpenSystemSettings: openSystemSettings,
-            onPausedTap: { route = .pauseExplainer }
+            onPausedTap: { route = .pauseExplainer },
+            onPendingResetTap: {
+                guard let event = environment.pendingResetDecision else { return }
+                route = .pendingResetDecision(event)
+            },
+            onDismissDiscardNotice: { environment.resetEventDiscardNotice = nil }
         )
     }
 

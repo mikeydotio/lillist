@@ -56,6 +56,13 @@ struct ICloudSyncPage: View {
                     onDismiss: { model.route = nil }
                 )
                 .presentationDetents([.medium])
+            case .pendingResetDecision(let event):
+                PendingResetDecisionDialog(
+                    event: event,
+                    onApply: { try await environment.resetSignalMonitor.confirmApply() },
+                    onDismiss: { model.route = nil }
+                )
+                .presentationDetents([.medium])
             case .progress(let phase):
                 SyncMigrationProgressSheet(phase: phase)
                     .presentationDetents([.large])
