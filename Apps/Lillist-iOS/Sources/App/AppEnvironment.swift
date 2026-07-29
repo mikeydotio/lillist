@@ -292,6 +292,9 @@ final class AppEnvironment {
             sink: diagnosticLog,
             process: .app
         )
+        // H6: fail-loud wiring for a computed-affected-tasks failure — same
+        // property-injection precedent as taskStore/smartFilterStore below.
+        self.remoteChangeReconciler.diagnosticLog = diagnosticLog
 
         // Real CloudKit-driven sync status: bridge LillistCore's
         // SyncStatusMonitor (fed by NSPersistentCloudKitContainer events via

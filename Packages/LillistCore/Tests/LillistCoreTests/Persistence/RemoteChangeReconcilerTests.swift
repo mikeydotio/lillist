@@ -131,6 +131,99 @@ struct RemoteChangeReconcilerTests {
         #expect(affected.isEmpty)
     }
 
+    // MARK: - H6: watermark advances only after the consuming work completes
+
+    /// Actor spy so the reconciler's `@Sendable` callback can safely read
+    /// `tokenStore.lastToken` (checking `nil`-ness only — no
+    /// `NSPersistentHistoryToken` capture) at the moment it fires.
+    private actor CallbackWatermarkSpy {
+        private(set) var wasNilDuringCallback: Bool?
+        private(set) var receivedIDs: [UUID] = []
+        private let tokenStore: PersistentHistoryTokenStore
+        init(tokenStore: PersistentHistoryTokenStore) { self.tokenStore = tokenStore }
+        func record(_ ids: [UUID]) {
+            wasNilDuringCallback = (tokenStore.lastToken == nil)
+            receivedIDs.append(contentsOf: ids)
+        }
+    }
+
+    /// Writes `lastFiredAt` through a background context stamped with a
+    /// foreign author, so the write reads as a "remote import" the same way
+    /// the two-store convergence test above does.
+    private func writeForeignLastFired(specID: UUID, on persistence: PersistenceController) async throws {
+        let foreignCtx = persistence.container.newBackgroundContext()
+        foreignCtx.transactionAuthor = "OtherDevice.import"
+        try await foreignCtx.perform {
+            let req = NSFetchRequest<NotificationSpec>(entityName: "NotificationSpec")
+            req.predicate = NSPredicate(format: "id == %@", specID as CVarArg)
+            let m = try foreignCtx.fetch(req).first!
+            m.lastFiredAt = Date()
+            try foreignCtx.save()
+        }
+    }
+
+    @Test("H6: the watermark is not advanced until onAffectedTasks has completed")
+    func watermarkAdvancesOnlyAfterCallbackCompletes() async throws {
+        let (p, _) = try await makeContext()
+        let tasks = TaskStore(persistence: p)
+        let specs = NotificationSpecStore(persistence: p)
+        let taskID = try await tasks.create(title: "T")
+        let specID = try await specs.add(taskID: taskID, kind: .defaultDeadline, offsetMinutes: nil, fireDate: nil)
+        try await writeForeignLastFired(specID: specID, on: p)
+
+        let tokenStore = PersistentHistoryTokenStore(suiteName: "H6-order-\(UUID().uuidString)")
+        let spy = CallbackWatermarkSpy(tokenStore: tokenStore)
+        let reconciler = RemoteChangeReconciler(persistence: p, tokenStore: tokenStore) { ids in
+            await spy.record(ids)
+        }
+
+        await reconciler.processPendingHistory()
+
+        let wasNil = await spy.wasNilDuringCallback
+        #expect(wasNil == true, "the watermark must still be nil while onAffectedTasks is running — advance-after-work, not before")
+        let received = await spy.receivedIDs
+        #expect(received == [taskID])
+        #expect(tokenStore.lastToken != nil, "the watermark must be written once processPendingHistory has returned")
+    }
+
+    @Test("H6: uses this controller's own transactionAuthor, not a hardcoded default, to classify local vs foreign writes")
+    func usesInstanceTransactionAuthorNotHardcodedDefault() async throws {
+        // A controller stamped with a NON-default author (mirroring the
+        // macOS app's PersistenceController.macAppTransactionAuthor).
+        // Before the H6 fix, the reconciler compared against the hardcoded
+        // `localTransactionAuthor` ("Lillist.app"), so THIS controller's own
+        // writes (stamped "Lillist.macApp") would be misclassified as foreign.
+        let p = try await PersistenceController(
+            configuration: .inMemory,
+            transactionAuthor: PersistenceController.macAppTransactionAuthor
+        )
+        let tasks = TaskStore(persistence: p)
+        let specs = NotificationSpecStore(persistence: p)
+        let taskID = try await tasks.create(title: "T")
+        let specID = try await specs.add(taskID: taskID, kind: .defaultDeadline, offsetMinutes: nil, fireDate: nil)
+
+        // A write made through THIS SAME controller's own viewContext — i.e.
+        // genuinely local to this process, stamped with its own transactionAuthor.
+        try await p.container.viewContext.perform {
+            let req = NSFetchRequest<NotificationSpec>(entityName: "NotificationSpec")
+            req.predicate = NSPredicate(format: "id == %@", specID as CVarArg)
+            let spec = try p.container.viewContext.fetch(req).first!
+            spec.lastFiredAt = Date()
+            try p.container.viewContext.save()
+        }
+
+        let tokenStore = PersistentHistoryTokenStore(suiteName: "H6-author-\(UUID().uuidString)")
+        let spy = CallbackWatermarkSpy(tokenStore: tokenStore)
+        let reconciler = RemoteChangeReconciler(persistence: p, tokenStore: tokenStore) { ids in
+            await spy.record(ids)
+        }
+
+        await reconciler.processPendingHistory()
+
+        let received = await spy.receivedIDs
+        #expect(received.isEmpty, "a write authored by this controller's OWN transactionAuthor must be classified as local and never trigger reconcile")
+    }
+
     @Test("Duplicate taskIDs across multiple specs collapse to a unique set")
     func deduplicatesTaskIDs() async throws {
         let (p, ctx) = try await makeContext()

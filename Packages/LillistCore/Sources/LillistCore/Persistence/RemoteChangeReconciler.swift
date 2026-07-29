@@ -9,9 +9,28 @@ import CoreData
 /// notification it writes `lastFiredAt`. Device B only learns of that fire via
 /// CloudKit; without a remote-change-driven reconcile, B keeps its now-stale
 /// pending request and the user gets a duplicate. This reconciler closes that
-/// loop. It deliberately ignores self-authored transactions (matched against
-/// `PersistenceController.localTransactionAuthor`) so an app's own writes don't
-/// trigger a redundant reconcile cycle.
+/// loop. It deliberately ignores self-authored transactions — matched against
+/// `persistence.transactionAuthor`, this specific controller's own stamped
+/// value, never a hardcoded default (data-sync-hardening H6: a controller
+/// constructed with a non-default author, e.g. the macOS app's
+/// `macAppTransactionAuthor`, must still recognize its own writes as local) —
+/// so an app's own writes don't trigger a redundant reconcile cycle.
+///
+/// The history watermark advances **only after** the affected-task
+/// computation and the consuming callback have both completed (H6) —
+/// mirroring `LocalBackupCoordinator.processRemoteChange`, the verified-
+/// correct pattern in this codebase. A kill/crash/termination between the
+/// history fetch and the watermark write leaves the watermark unmoved, so the
+/// same range is safely reprocessed next time instead of being silently
+/// skipped forever. A computation failure is logged and surfaced via
+/// `diagnosticLog` rather than swallowed — it must never be treated as "no
+/// affected tasks."
+///
+/// Concurrent notification delivery is serialized through a `DrainGate` (M3):
+/// overlapping `processPendingHistory()` calls collapse into one in-flight
+/// drain plus at most one coalesced rerun, so the token read (inside
+/// `ctx.perform`) and the watermark write (after it) stay atomic with respect
+/// to other drains despite the intervening suspension points.
 ///
 /// `@unchecked Sendable`: the only mutable state (the observer token and the
 /// token watermark) is touched on the main actor in `start()`/`stop()` and the
@@ -43,6 +62,12 @@ public final class RemoteChangeReconciler: @unchecked Sendable {
     private let tokenStore: PersistentHistoryTokenStore
     private let onAffectedTasks: @Sendable ([UUID]) async -> Void
     private var observer: NSObjectProtocol?
+
+    /// Optional diagnostic sink. When non-nil, a failure computing affected
+    /// tasks (H6) emits a structured `DiagnosticEvent` in addition to the
+    /// unconditional `os.Logger` line — mirrors `TaskDuplicateReconciler`'s
+    /// property-injected `diagnosticLog` (M5).
+    public var diagnosticLog: DiagnosticSink?
 
     /// - Parameters:
     ///   - persistence: the live controller (its `viewContext` is used to fetch
@@ -121,17 +146,46 @@ public final class RemoteChangeReconciler: @unchecked Sendable {
             return   // transient store error; next remote change retries
         }
 
-        let affected = (try? await Self.affectedTaskIDs(
-            from: changes,
-            localAuthor: PersistenceController.localTransactionAuthor,
-            in: ctx
-        )) ?? []
-
-        if let newToken {
-            tokenStore.lastToken = newToken
+        let affected: [UUID]
+        do {
+            affected = try await Self.affectedTaskIDs(
+                from: changes,
+                localAuthor: persistence.transactionAuthor,
+                in: ctx
+            )
+        } catch {
+            // H6: a computation failure must never be treated as "no
+            // affected tasks" (the old `try? ... ?? []` swallow) — fail
+            // loud, and — critically — leave the watermark untouched so the
+            // next remote change retries this exact history range instead
+            // of silently losing it.
+            LillistLog.store.error("RemoteChangeReconciler failed to compute affected tasks: \(String(describing: error), privacy: .public)")
+            if let sink = diagnosticLog {
+                await sink.log(DiagnosticEvent(
+                    at: Date(),
+                    seq: 0,
+                    process: .app,
+                    category: .data,
+                    name: "remoteChangeReconciler.affectedTaskIDsFailed",
+                    payload: ["error": .string(String(describing: error))]
+                ))
+            }
+            return
         }
+
         if affected.isEmpty == false {
             await onAffectedTasks(affected)
+        }
+
+        // H6: advance the watermark only after the affected-task computation
+        // AND the callback have both completed — mirrors
+        // LocalBackupCoordinator.processRemoteChange, the verified-correct
+        // pattern (review: "advances only after successful apply"). A
+        // kill/crash between here and the callback returning leaves the
+        // watermark unmoved, so the same history range is safely reprocessed
+        // next time instead of being silently skipped forever.
+        if let newToken {
+            tokenStore.lastToken = newToken
         }
     }
 
