@@ -158,11 +158,20 @@ double conforming to `WidgetTimelineReloading` proves the reload step fired,
 without ever linking WidgetKit into the test target.
 
 **New type:** `Packages/LillistCore/Sources/LillistCore/Widgets/WidgetRefreshController.swift`
-— an `actor` (not a class) because, unlike the app-level type it replaces,
-this one self-registers its `NotificationCenter` observers rather than
-relying on a caller to hop onto `@MainActor` before invoking it; the two
-notifications can post from different queues, so the mutable debounce
-`Task` needs real serialization, not a documented calling convention. Owns:
+— **correction, discovered while implementing:** this doc originally
+sketched an `actor` (not a class), reasoning that self-registering the
+`NotificationCenter` observers (rather than relying on a caller to hop onto
+`@MainActor` first) needed real serialization for the mutable debounce
+`Task`. That doesn't compile under this toolchain's strict concurrency: an
+actor's `deinit` is nonisolated by default and cannot touch its own
+actor-isolated `NSObjectProtocol` observer tokens (not `Sendable`) without
+`isolated deinit` (SE-0371) — which actors don't need in the first place,
+since a *class* marked `@MainActor` can use the same `isolated deinit`
+syntax and gets the identical serialization guarantee for `pending` for
+free, matching `LocalBackupCoordinator`'s proven shape far more closely.
+Landed as `@MainActor final class WidgetRefreshController` with an
+`isolated deinit` instead — same self-registration behavior, same
+serialization guarantee, no actor-hop overhead on every call. Owns:
 `start()`/`stop()` (idempotent, mirrors `LocalBackupCoordinator`),
 `scheduleRefresh()` (debounced), `refreshNow()` (immediate, bootstrap warm),
 `resetAfterDestructiveOp()` (immediate + cache clear, awaited synchronously
@@ -218,9 +227,35 @@ in its place.
 
 ## 6. Deviations tracker
 
-None anticipated. Any discovered during implementation get written in place
-here (matching `5a`'s precedent) rather than as a separate addendum, since
-nothing will have built on the superseded text yet.
+Two, both written in place in the sections they correct (matching `5a`'s
+precedent) rather than as a separate addendum:
+
+- **§4's `actor` → `@MainActor final class` correction** — see §4 above for
+  the full reasoning (an actor's nonisolated `deinit` can't touch its own
+  non-`Sendable` `NSObjectProtocol` observer tokens; `isolated deinit`
+  solves it identically for a `@MainActor` class, matching
+  `LocalBackupCoordinator`'s established shape).
+- **§5's cross-process test mechanism** — the sketch assumed genuine
+  same-device cross-process *staleness* would be reproducible by withholding
+  `refreshAllObjects()` on a second `PersistenceController`, mirroring how
+  `MultiProcessStoreHarnessTests` uses that call. Empirically probed (three
+  throwaway probe tests, not committed) and found false for this specific
+  shape: a **first-time** fetch of a row-existence query
+  (`SmartFilterStore.list()`) always reflects the other controller's
+  already-committed writes immediately in this harness, with or without
+  `refreshAllObjects()` — confirmed by replaying
+  `MultiProcessStoreHarnessTests.writeFromA_visibleToB` itself with its own
+  `refreshAllObjects()` call removed, which still passed unmodified.
+  `refreshAllObjects()` re-syncs an *already-fetched, registered* object's
+  stale property values; it has no bearing on row-existence visibility for
+  data a context has never touched. The committed cross-process test
+  (`WidgetSnapshotBuilderX5CrossProcessTests`) instead proves the
+  mechanism-independent invariant the fix actually provides — prune
+  authority belongs only to `regenerateAuthoritatively()`, even when a
+  non-authoritative caller's own (unstale, cross-controller) read is fully
+  correct — which is the stronger claim and doesn't depend on reproducing a
+  timing window that turned out not to exist in this harness. Full
+  reasoning is written in that test file's own suite doc comment.
 
 ## 7. What `5c` needs to know (filled in at close)
 
