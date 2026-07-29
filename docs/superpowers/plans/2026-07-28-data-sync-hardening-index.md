@@ -23,17 +23,23 @@ CloudKit, XCTest + Swift Testing, xcodegen, storyhook (prefix `LIL`).
 > **New here? Read this section first.** This file is the **living progress
 > tracker** — keep it current as plans land.
 
-**As of 2026-07-29 — Wave 0, all of Wave 1 (`1a` `trash-tree-integrity`,
-`1b` `purge-cloudkit-retirement`, `1c` `store-location-unification`, `1d`
-`export-schema-completeness`), all of Wave 2 (`2a` `migration-transitions`,
-`2b` `backup-restore-correctness`), all of Wave 3 (`3a`
-`account-identity-and-status`, `3b` `reset-propagation-safety`), all of
-Wave 4 (`4a` `history-consumer-discipline`, `4b`
-`notification-truthfulness`, `4c` `recurrence-correctness`), and now all of
-Wave 5 (`5a` `mutation-scope-discipline`, `5b`
-`widget-snapshot-correctness`, `5c` `watermark-registry-pruning`) are
-COMPLETE. Wave 6 (completeness sweep + closeout) is next — the program's
-last wave.**
+**PROGRAM COMPLETE as of 2026-07-29.** Wave 0 (docs/stories), all of Wave 1
+(`1a` `trash-tree-integrity`, `1b` `purge-cloudkit-retirement`, `1c`
+`store-location-unification`, `1d` `export-schema-completeness`), all of
+Wave 2 (`2a` `migration-transitions`, `2b` `backup-restore-correctness`),
+all of Wave 3 (`3a` `account-identity-and-status`, `3b`
+`reset-propagation-safety`), all of Wave 4 (`4a`
+`history-consumer-discipline`, `4b` `notification-truthfulness`, `4c`
+`recurrence-correctness`), all of Wave 5 (`5a` `mutation-scope-discipline`,
+`5b` `widget-snapshot-correctness`, `5c` `watermark-registry-pruning`), and
+now Wave 6 (`6a` `completeness-and-lows` + program closeout) are **all
+COMPLETE**. All 70 review findings are closed. See the *Wave 6 closing
+report* below for the final verification transcript, test counts, and
+storyhook end state; see *Decisions awaiting Mikey* for the two standing
+items (`LIL-83`, `LIL-90`) and *Mikey's manual-verification checklist*
+below for the manual-only verification that never gates a fix but still
+needs a human with real devices/accounts. **One PR remains to open — see
+the *Resume protocol*'s final step.**
 
 - ✅ **Plan `5b` closed both findings** (`X5 X6` / `LIL-18 LIL-37`) —
   `WidgetSnapshotBuilder.regenerate(filterIDs:)` is now additive-only:
@@ -2475,6 +2481,129 @@ chain this ledger tracks is now closed):**
   open). `LIL-83` (`X10`'s timezone-posture schema change) remains
   explicitly deferred out of this program — do not pick it up in `6a`.
 
+- ✅ **PROGRAM COMPLETE — Wave 6 (`completeness-and-lows`) closed the data
+  & sync hardening program.** All 70 review findings, plus nine
+  discovered-during-the-program residuals (eight closed, one — `LIL-90`
+  — reconfirmed correctly deferred) and one explicitly deferred product
+  decision (`LIL-83`), are now resolved or accounted for with a named
+  redesign trigger. See the *Wave 6 closing report* below for the full
+  verification transcript and the *Story-ID cross-reference table*/
+  *Decisions awaiting Mikey* sections for the final standing-items list.
+  One PR remains to open (this ledger's own *Resume protocol* step 9) —
+  **stop after opening it**, no merge, no version bump, no deploy from
+  this worktree.
+
+---
+
+## Wave 6 closing report (`completeness-and-lows` + program closeout)
+
+Plan doc:
+`docs/superpowers/plans/2026-07-28-plan-6a-completeness-and-lows.md` —
+contains the full per-item design for every fix below, the export/import
+round-trip equality suite and `X20` flip-flop stress suite designs, and the
+complete ledger residual close-vs-defer table (§13 of that doc). The
+program's final wave: a completeness sweep across all 70 findings' worth
+of prior work, not one cohesive architectural design — this closing report
+mirrors that shape.
+
+| Finding/residual | Story | Fix commit | Regression test(s) |
+|---|---|---|---|
+| `L1` | `LIL-70` | `1936ea0c` | `SavedFilterChipSpecOrderingTests.swift` (4, LillistUI) — distinct positions, tied positions break by id, matches `SiblingOrder.precedes` directly, unpinned filters excluded |
+| `L2` | `LIL-71` | `89d560dc` | App-wiring only — no host-side unit test reaches `AppEnvironment.bootstrap()`'s private launch sequence (same precedent as `2a`'s `S16`/`S17`); verified by unsigned `xcodebuild build` for both apps |
+| `L6` | `LIL-75` | `4da89d70` | `SeriesRuleEncodeDisciplineTests.swift` (3) — round-trip pin, never-nils-on-a-later-call pin, and a source-text conformance test (mirrors `5a`/`5c`'s class-killer precedent) proving no `try?`-swallow or reintroduced setter survives |
+| `LIL-77` | `LIL-77` | `89d560dc` | App-wiring/SwiftUI-view-state only — same "no host-side unit test" limitation as `L2`; verified by unsigned `xcodebuild build` |
+| `LIL-80`/`LIL-81` | `LIL-80`/`LIL-81` | `bdec5bde` | `MigrationRecoveryTests.swift` (+5): account-changed refuses to reattach at `.iCloudSync` (best-effort reattach still runs, journal untouched), the guard does NOT apply at `.localOnly`, succeeds normally when the account matches, backup-package resync fires on success, never fires on failure |
+| `LIL-82` | `LIL-82` | `89d560dc` | Mechanical one-line wiring per app; no dedicated test (the property itself was already tested when `1a`'s `M5` added it) |
+| `LIL-84` | `LIL-84` | `f796407d` | `SyncQuiesceDecisionTests.swift` (new suite, 6 tests, deterministic simulation) + `X16AfterCompletionIntervalClampTests.swift` (existing test rewritten to compare against persisted `closedAt`) + `WidgetRefreshControllerTests.swift` (existing test's margin widened) |
+| `LIL-87` | `LIL-87` | `cebda48d` | `LocalBackupCoordinatorTests.swift` (+1) — two simulated "launches" sharing one persisted watermark suite; confirmed genuinely red against the reverted production change (the first test design passed even without the fix and was redesigned after catching that) |
+| `LIL-88` (discovered during this wave) | `LIL-88` | `4da89d70` | `ExportImportRoundTripEqualityTests.swift` (the completeness proof that caught it, 1 test) + `ImporterTests.swift` (+3: fresh-store restore, `.skipExisting` leaves an existing row alone, `.skipExisting` still populates an absent row) |
+| `LIL-89` (discovered during this wave's ledger sweep) | `LIL-89` | `f65b3b7b` | `DataStoreResetServiceTests.swift` (+2): a successful resume broadcasts, a quiesce timeout skips the broadcast — mirroring the primary reseed path's own existing tests exactly |
+| `LIL-90` (reconfirmed deferred, not fixed) | `LIL-90` | — (filed only, `4c3c4303`) | N/A — latent, unreachable; see the plan doc §10 for why fixing it now would be speculative code |
+| Export/import round-trip equality suite | — | `4da89d70` | `ExportImportRoundTripEqualityTests.swift` — the suite itself; also see `LIL-88` above for what it caught |
+| `X20` flip-flop stress | — | `d4be6b0f` | `PreferencesStoreSingletonTests.swift` (+1) — 8 iterations of two real cross-process controllers racing `normalizeSingletons()`, stable across four additional manual runs before landing |
+
+**Commit range:** `1a3699e5..4c3c4303` (13 commits: 1 `chore(stories)`
+in-progress, 7 fix/test commits covering the table above, 1 docs (plan
+doc), 1 docs (`.storyhook/CLAUDE.md` gotchas), 1 docs (engineering-notes),
+1 `chore(stories)` filing `LIL-90`). Two commits intentionally bundle more
+than one finding (`4da89d70`: `L6` + `LIL-88`, discovered while writing
+`L6`'s neighbor test suite; `89d560dc`: `L2` + `LIL-82` + `LIL-77`, three
+one-line-scale app-bootstrap/Settings wiring fixes touching the same two
+`AppEnvironment.swift` files) — both files were already staged with
+multiple unrelated small edits by the time each was ready to commit, and
+splitting via `git add -p` would have been the same high-risk-surgery,
+low-audit-trail-benefit tradeoff `2b`'s closing report already accepted for
+an analogous case; every finding still has its own named regression test
+traceable via the table above. Full `LillistCore` suite green **twice** at
+the final committed state with unmasked exit codes and a clean grep for the
+failure markers (1451 tests, 262 suites — up from `5c`'s 1429/259
+baseline); one worker-process `SIGSEGV` (signal 11, no per-test failure
+line) hit between the two clean runs, matching the documented
+parallel-test-flake class exactly (`CLAUDE.md`'s Core Data concurrency
+note), cleared on immediate retry per the documented policy. LillistUI
+non-snapshot suite green (87 tests, 18 suites — up from 83/17, the new
+`SavedFilterChipSpecOrderingTests` suite); `lillist-cli` builds; both apps
+verified with unsigned `xcodebuild` builds (BUILD SUCCEEDED) after every
+app-touching commit and once more at the final commit; `xcodegen generate`
+produced zero diff for both `project.yml` specs (checked at the final
+commit).
+
+**`LIL-84`'s test-design correction, done in-session (not carried
+forward):** the LIL-87 regression test's first design passed even against
+the *reverted* production fix, because a still-empty backup package's
+`seedPackageIfEmpty()` does a full reconcile regardless of any history
+catch-up — the exact "does this test actually prove what it claims"
+failure mode this program's own binding verification discipline (the
+`LIL-79` protocol: never assume a test is red without checking) exists to
+catch. Caught by reverting the fix and re-running before trusting the
+green result, not by inspection alone; redesigned to populate the package
+on a first simulated "launch" so the second launch's `seedPackageIfEmpty()`
+is a guaranteed no-op, isolating the explicit catch-up as the only
+remaining mechanism — confirmed red against the reverted source, green
+against the fix, in that order.
+
+**Two genuinely new defects surfaced by this wave's own completeness
+proofs, not carried in from any prior wave** — see the plan doc §9 for the
+full design of both:
+1. `LIL-88`: `Importer.apply` had **zero** code touching
+   `document.preferences` — every export→import cycle (manual Settings
+   import, and `resetAndReseedFromThisDevice()`) silently reverted every
+   account-level preference to its hardcoded default. Found by the
+   export/import round-trip equality suite's very first run, exactly the
+   failure mode that suite's own doc comment predicted before it was ever
+   run. This was not a narrow edge case — it was the primary path for
+   restoring preferences alongside every other entity, and it simply never
+   ran.
+2. `LIL-89`: found not by a test but by the ledger residual sweep itself
+   (§13 of the plan doc) — `3b`'s own closing report had already flagged
+   it in prose ("a crash-recovered reseed never notifies peers even after
+   this plan's `S9c` fix to the primary path") but no story had been filed
+   for it. Filed and fixed in the same pass once found.
+
+**No council votes needed.** Every design question in this wave resolved
+to one defensible answer directly — either by reusing an already-vetted
+pattern from an earlier wave verbatim (`LIL-80`'s `BackupPackageReconciling`
+chokepoint, `LIL-81`'s account-changed guard shape, `LIL-89`'s
+quiesce-then-broadcast shape, `LIL-88`'s "incoming wins" fallback for a
+timestamp-less entity) or by tracing reachability precisely enough that
+only one fix shape made sense (`L6`'s throwing setter, matching this
+codebase's own sibling `SmartFilterStore` convention; `LIL-84`'s three
+shape-appropriate timing fixes, chosen per what actually made each test
+wall-clock-sensitive rather than one mechanical treatment).
+
+**Storyhook end state at program close:** 90 stories total (85 done, 5
+open). Of the 5 open: `LIL-6`/`LIL-78`/`LIL-85` are pre-existing,
+already-`[deleted]` artifacts (probe stories from Wave 0's storyhook-CLI
+blocker investigation, and `LIL-77`'s original duplicate filing — harmless,
+already documented above and in `.storyhook/CLAUDE.md`'s new Gotchas
+section). The only two live, deliberately-open stories are `LIL-83`
+(`X10`'s deferred timezone-posture schema change) and `LIL-90` (the latent
+`NotificationSpec` in-place-edit gap) — both carry clear labels
+(`postprogram-schema`/`tech-debt` and `tech-debt` respectively) and a named
+redesign trigger (see the *Decisions awaiting Mikey* section and the plan
+doc §10/§13). `story summary`'s `ready stories` list shows exactly these
+two — nothing else is silently left dangling.
+
 ---
 
 ## Execution model (per Mikey's directives, 2026-07-28)
@@ -2538,7 +2667,7 @@ Wave 6 closeout. **Status** starts `pending` for everything except Wave 0.
 | 5 | **5a** `mutation-scope-discipline` | `H5 M4 M6 M7 L3 L4 L5 X19 X20` | ✅ complete |
 | 5 | **5b** `widget-snapshot-correctness` | `X5 X6` | ✅ complete |
 | 5 | **5c** `watermark-registry-pruning` | `X12 L7` | ✅ complete |
-| 6 | **6a** `completeness-and-lows` + closeout | `L1 L2 L6` + export round-trip equality suite + `X20` flip-flop stress (builds atop 5a's fix, not a new finding) + any residuals from Waves 1-5, incl. `LIL-77` (discovered during `1d`, not one of the 70 findings). `LIL-86` (discovered during `5a`) was fixed within `5a` itself (test-only, `Closes LIL-86`) rather than carried forward — no `6a` action needed. **Not included:** `LIL-83` (discovered during `4b`) — the underlying data-model change was explicitly **deferred out of this program** (orchestrator decision, 2026-07-29 — see *Decisions awaiting Mikey* below); do not pick it up in `6a`, it isn't program-scheduled work. | ⬜ pending |
+| 6 | **6a** `completeness-and-lows` + closeout | `L1 L2 L6` + export round-trip equality suite + `X20` flip-flop stress (builds atop 5a's fix, not a new finding) + every residual flagged across Waves 1-5 (`LIL-77 LIL-80 LIL-81 LIL-82 LIL-84 LIL-87`) + two more residuals this wave's own completeness-proof tests discovered (`LIL-88 LIL-89`) + one latent residual reconfirmed still correctly deferred (`LIL-90`). `LIL-86` (discovered during `5a`) was fixed within `5a` itself (test-only, `Closes LIL-86`) rather than carried forward — no `6a` action needed. **Not included:** `LIL-83` (discovered during `4b`) — the underlying data-model change was explicitly **deferred out of this program** (orchestrator decision, 2026-07-29 — see *Decisions awaiting Mikey* below); do not pick it up in `6a`, it isn't program-scheduled work. | ✅ complete |
 
 **Finding-count check:** 70 unique findings (`C1`-`C4`, `H1`-`H7`, `M1`-`M7`,
 `L1`-`L7` from the stores sweep = 25; `S1`-`S4`, `S5`-`S13` with `S9` split
@@ -2809,7 +2938,7 @@ LIL-N` alone. Grouped here by plan, in wave order, for quick lookup —
 | **5a** mutation-scope-discipline | `H5`→`LIL-23`, `M4`→`LIL-48`, `M6`→`LIL-50`, `M7`→`LIL-51`, `L3`→`LIL-72`, `L4`→`LIL-73`, `L5`→`LIL-74`, `X19`→`LIL-68`, `X20`→`LIL-69` |
 | **5b** widget-snapshot-correctness | `X5`→`LIL-18`, `X6`→`LIL-37` |
 | **5c** watermark-registry-pruning | `X12`→`LIL-43`, `L7`→`LIL-76` |
-| **6a** completeness-and-lows | `L1`→`LIL-70`, `L2`→`LIL-71`, `L6`→`LIL-75`, discovered-during-`1d` residual→`LIL-77` (not one of the 70 review findings — see *Current status* above for the discovery trail) |
+| **6a** completeness-and-lows | `L1`→`LIL-70`, `L2`→`LIL-71`, `L6`→`LIL-75`; plus eight residuals not among the 70 review findings (all discovered during earlier waves or this wave's own completeness-proof tests — see the Wave 6 closing report for the full discovery trail): `LIL-77` (discovered `1d`), `LIL-80` (`2b`), `LIL-81` (`3a`), `LIL-82` (`4a`), `LIL-84` (orchestrator, post-`4b`), `LIL-87` (`5c`), `LIL-88`/`LIL-89` (discovered during `6a` itself). `LIL-90` (discovered `4b`) is tracked but deliberately left open/deferred, not part of this plan's closed set. |
 
 **Verification:** 70 findings → 70 stories, one-to-one (the `C4`/`X4` merge
 is the one many-to-one mapping, per the council decision above). Cross-
@@ -3230,6 +3359,20 @@ are tracked here so nothing is silently dropped.
       introduced). No schema deploy needed for this plan.
 - [ ] iCloud-dependent app-hosted/UI tests — standing CI-scope rule, verified
       manually per wave (same posture as the Foundation Hardening program).
+- [x] `6a` does **not** add any new CloudKit record types/fields either —
+      verified (every fix is to in-process logic, the export/import file
+      format writing into EXISTING `AppPreferences` Core Data attributes,
+      or test/app-target code; the Core Data model is unchanged). No
+      schema deploy needed for this plan — the program's zero-CloudKit-
+      schema-change posture (established at `1d`, held through every wave)
+      is intact at close, with the sole standing exception being `LIL-83`'s
+      deliberately deferred `X10` home-timezone field (see *Decisions
+      awaiting Mikey* below).
+- [ ] **Program-close, one-time:** re-run the CloudKit Console audit for
+      orphaned/purged records (`C4`/`X4`, first requested after `1b`
+      merged) now that every wave has landed — this is the last point in
+      the program where "re-check after the fix ships" is meaningful; the
+      checklist item above it is superseded by this one once done.
 
 ---
 
