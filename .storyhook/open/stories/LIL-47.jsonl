@@ -1,5 +1,0 @@
-{"kind":"StoryCreated","at":"2026-07-28T16:32:21Z","title":"M3: Both remote-change reconcilers are re-entrant per notification","state":"todo"}
-{"kind":"StoryPrioritySet","at":"2026-07-28T16:32:21Z","priority":"medium"}
-{"kind":"StoryLabelsSet","at":"2026-07-28T16:32:21Z","labels":["plan-4a","sev-medium","sweep-stores"]}
-{"kind":"StoryDescriptionSet","at":"2026-07-28T16:32:21Z","description":"Duplicate passes, watermark regression, and main-queue full-table-scan thrash under bursty remote-change delivery. Severity: Medium. Wave/Plan: Wave 4, plan 4a history-consumer-discipline. Sweep: stores/persistence."}
-{"kind":"StoryStateChanged","at":"2026-07-29T03:30:47Z","state":"in-progress"}
