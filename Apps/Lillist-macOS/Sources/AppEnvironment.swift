@@ -56,7 +56,7 @@ final class AppEnvironment {
     let smartFilterStore: SmartFilterStore
     /// Regenerates the per-filter widget snapshot cache + reloads widget
     /// timelines on store changes. `nil` when the App Group is unreachable.
-    let widgetRefresh: WidgetRefreshCoordinator?
+    let widgetRefresh: WidgetRefreshController?
     /// Filter to focus, handed off by a `lillist://filter/<id>` deep link (the
     /// widget's whole-tap target). Observed by `MacTasksView`, which selects it
     /// and resets this to `nil`.
@@ -192,12 +192,20 @@ final class AppEnvironment {
         )
         let smartFilterStore = SmartFilterStore(persistence: persistence)
         self.smartFilterStore = smartFilterStore
-        // Desktop widgets read a per-filter snapshot cache this coordinator
-        // maintains; nil only if the App Group is unreachable.
-        self.widgetRefresh = WidgetRefreshCoordinator(
-            smartFilterStore: smartFilterStore,
-            appGroupID: Self.appGroupID
-        )
+        // Desktop widgets read a per-filter snapshot cache this controller
+        // maintains; nil only if the App Group is unreachable. X6: observes
+        // both local `viewContext` saves and remote CloudKit imports (see
+        // the type's own doc comment) — `start()` is called once in
+        // `bootstrap()`, alongside the other launch-time observers.
+        if let widgetSnapshotStore = WidgetSnapshotStore(appGroupID: Self.appGroupID) {
+            self.widgetRefresh = WidgetRefreshController(
+                persistence: persistence,
+                builder: WidgetSnapshotBuilder(smartFilterStore: smartFilterStore, snapshotStore: widgetSnapshotStore),
+                reloader: SystemWidgetTimelineReloader()
+            )
+        } else {
+            self.widgetRefresh = nil
+        }
         self.onboardingState = OnboardingState(devicePreferences: devicePreferences)
         self.defaultsInstaller = DefaultsInstaller(filters: smartFilterStore)
         self.autoPurgeJob = AutoPurgeJob(persistence: persistence, preferences: preferencesStore)
@@ -778,9 +786,9 @@ final class AppEnvironment {
         startObservingSyncMode()
         startObservingPauseReason()
         // Keep desktop widgets fresh: rebuild the per-filter snapshot cache +
-        // reload timelines on every store change (local writes AND CloudKit
-        // imports), and warm the cache once now.
-        startObservingStoreChangesForWidgets()
+        // reload timelines on every store change (local `viewContext` saves
+        // AND CloudKit imports — X6), and warm the cache once now.
+        widgetRefresh?.start()
         widgetRefresh?.refreshNow()
         // Connect the live CloudKit sync-status stream to the UI indicator.
         await syncMonitor.start()
@@ -812,22 +820,6 @@ final class AppEnvironment {
             description = "macAppGroupMigration.migrationFailed reason=\(reason) — booting on legacy store"
         }
         try await breadcrumbs.record(action: description, success: true)
-    }
-
-    /// Rebuild the widget snapshot cache whenever the store changes. The
-    /// coordinator debounces, so a burst of writes coalesces into one rebuild +
-    /// one timeline reload. Fires for local writes and CloudKit imports alike;
-    /// registered app-lifetime (matching the other bootstrap observers).
-    private func startObservingStoreChangesForWidgets() {
-        NotificationCenter.default.addObserver(
-            forName: .NSPersistentStoreRemoteChange,
-            object: persistence.container.persistentStoreCoordinator,
-            queue: nil
-        ) { [weak self] _ in
-            Task { @MainActor [weak self] in
-                self?.widgetRefresh?.scheduleRefresh()
-            }
-        }
     }
 
     /// Drain the Reminders queue whenever the app becomes active. Fire-and-

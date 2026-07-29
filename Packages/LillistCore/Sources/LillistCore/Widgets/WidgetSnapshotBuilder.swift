@@ -5,8 +5,8 @@ import Foundation
 /// changes; the widget only ever *reads* the result.
 ///
 /// **Pure LillistCore — no WidgetKit.** The `WidgetCenter.reloadTimelines(...)`
-/// call that follows a regeneration lives in the app/extension target (e.g.
-/// `WidgetRefreshCoordinator`), never here.
+/// call that follows a regeneration lives behind the `WidgetTimelineReloading`
+/// seam (see ``WidgetRefreshController``), never here.
 ///
 /// Every snapshot orders **open tasks first, just-completed tasks at the
 /// bottom**: a task closed *today* is retained at the end of the list (so
