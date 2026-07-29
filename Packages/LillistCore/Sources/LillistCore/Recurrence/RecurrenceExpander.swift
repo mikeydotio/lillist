@@ -85,14 +85,27 @@ public enum RecurrenceExpander {
         guard let byDay = rule.byDay, byDay.isEmpty == false else {
             return calendar.date(byAdding: .weekOfYear, value: n, to: previous)
         }
-        let sortedDays = byDay.sorted { $0.calendarComponent < $1.calendarComponent }
-        let previousWeekday = calendar.component(.weekday, from: previous)
-        if let next = sortedDays.first(where: { $0.calendarComponent > previousWeekday }) {
-            let delta = next.calendarComponent - previousWeekday
+        // X17: `Weekday.calendarComponent` is always Sunday=1...Saturday=7
+        // (Apple's fixed day-of-week numbering, regardless of locale) —
+        // it is NOT a week-grouping. `weekOffset` re-bases that onto "days
+        // since THIS calendar's week start" (RFC 5545 WKST ==
+        // `calendar.firstWeekday`), so the same-week-vs-next-week decisions
+        // below match the calendar's actual week grouping instead of
+        // silently assuming every week starts on Sunday. Without this, a
+        // biweekly Saturday/Sunday rule under a Monday-first calendar
+        // treats SA/SU as split across two DIFFERENT weeks (Sunday-first
+        // model) rather than adjacent days in the SAME week (Monday-first
+        // model), firing one week early and drifting every later occurrence.
+        func weekOffset(_ component: Int) -> Int { (component - calendar.firstWeekday + 7) % 7 }
+
+        let previousOffset = weekOffset(calendar.component(.weekday, from: previous))
+        let sortedDays = byDay.sorted { weekOffset($0.calendarComponent) < weekOffset($1.calendarComponent) }
+        if let next = sortedDays.first(where: { weekOffset($0.calendarComponent) > previousOffset }) {
+            let delta = weekOffset(next.calendarComponent) - previousOffset
             return calendar.date(byAdding: .day, value: delta, to: previous)
         }
         let firstNext = sortedDays.first!
-        let daysToEndOfWeek = 7 - previousWeekday + firstNext.calendarComponent
+        let daysToEndOfWeek = 7 - previousOffset + weekOffset(firstNext.calendarComponent)
         let totalDays = daysToEndOfWeek + 7 * (n - 1)
         return calendar.date(byAdding: .day, value: totalDays, to: previous)
     }
