@@ -1,5 +1,0 @@
-{"kind":"StoryCreated","at":"2026-07-28T16:32:21Z","title":"S13: AccountStateMonitor.refresh() runs exactly once per launch","state":"todo"}
-{"kind":"StoryPrioritySet","at":"2026-07-28T16:32:21Z","priority":"high"}
-{"kind":"StoryLabelsSet","at":"2026-07-28T16:32:21Z","labels":["plan-3a","sev-high","sweep-sync"]}
-{"kind":"StoryDescriptionSet","at":"2026-07-28T16:32:21Z","description":"A mid-session iCloud sign-out is never detected - the sync badge stays green and every probe keeps returning stale account state. Severity: High. Wave/Plan: Wave 3, plan 3a account-identity-and-status. Sweep: sync machinery."}
-{"kind":"StoryStateChanged","at":"2026-07-29T00:48:45Z","state":"in-progress"}

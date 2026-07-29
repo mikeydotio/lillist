@@ -1,5 +1,0 @@
-{"kind":"StoryCreated","at":"2026-07-28T16:32:21Z","title":"S24: PauseReasonClassifier's .noNetwork/.iCloudDriveDisabled/.unknown cases are unreachable","state":"todo"}
-{"kind":"StoryPrioritySet","at":"2026-07-28T16:32:21Z","priority":"medium"}
-{"kind":"StoryLabelsSet","at":"2026-07-28T16:32:21Z","labels":["plan-3a","sev-medium","sweep-sync"]}
-{"kind":"StoryDescriptionSet","at":"2026-07-28T16:32:21Z","description":"The network monitor is hardcoded reachable and its setter is never called. Severity: Medium. Wave/Plan: Wave 3, plan 3a account-identity-and-status. Sweep: sync machinery. Fix: real NWPathMonitor reachability."}
-{"kind":"StoryStateChanged","at":"2026-07-29T00:48:45Z","state":"in-progress"}

@@ -25,8 +25,9 @@ CloudKit, XCTest + Swift Testing, xcodegen, storyhook (prefix `LIL`).
 
 **As of 2026-07-28 — Wave 0, all of Wave 1 (`1a` `trash-tree-integrity`,
 `1b` `purge-cloudkit-retirement`, `1c` `store-location-unification`, `1d`
-`export-schema-completeness`), and all of Wave 2 (`2a` `migration-transitions`,
-`2b` `backup-restore-correctness`) COMPLETE. Wave 3 next.**
+`export-schema-completeness`), all of Wave 2 (`2a` `migration-transitions`,
+`2b` `backup-restore-correctness`), and plan `3a` `account-identity-and-status`
+COMPLETE. Wave 3's second plan, `3b` `reset-propagation-safety`, next.**
 
 - ✅ **Plan `1a` closed all 8 findings** (`C1 C2 C3 H4 H7 M1 M2 M5` /
   `LIL-7 LIL-8 LIL-9 LIL-22 LIL-25 LIL-45 LIL-46 LIL-49`), added the
@@ -224,18 +225,72 @@ CloudKit, XCTest + Swift Testing, xcodegen, storyhook (prefix `LIL`).
   needs to know about the current shape of `MigrationCoordinator.swift`/
   `PersistenceHost.swift`.
 
-**Next action for whoever picks this up:** start Wave 3, plan `3a`
-(`account-identity-and-status`) — findings `S3 S13 S21 S24`. Its
-hotspots include `MigrationCoordinator.swift` and both
-`AppEnvironment.swift`s (see the *Shared-file serial chains* section,
-chains 2 and 5 — `2a`/`2b` ✅ done are the first two links on chain 2;
-`1c` ✅ done is the first link on chain 5). Read the *Resume protocol*
-section first, then *Wave 2b closing report* below for what `2b` left
-in place (the unified tearDown+attachStore quarantine mechanism now
-covers all four migration ops; `DestructiveOpGate` also gates
-`LocalBackupCoordinator`'s prune step; a new `ReseedJournal` +
-`BackupPackageReconciling` protocol exist if `3a`'s account-switch work
-ever needs a similar durable-recovery or resync pattern).
+- ✅ **Plan `3a` closed all 4 findings** (`S3 S13 S21 S24` /
+  `LIL-13 LIL-36 LIL-59 LIL-62`) — new `AccountIdentityStore` type
+  (`Sync/AccountIdentityStore.swift`) persists a stable identity token from
+  `FileManager.ubiquityIdentityToken` (archived/compared via `isEqual`, per
+  Apple's own documented contract — no `CKContainer.fetchUserRecordID`
+  fallback; a network-dependent identity check would either block or skip
+  itself on every offline cold launch, and account switching needs no
+  network) and distinguishes `.firstLaunch`/`.match`/`.signedOut`/
+  `.mismatch`. Both `AppEnvironment.make()`s now call `check()` before
+  constructing `PersistenceController`, forcing `armsCloudKitMirroring =
+  false` for the launch on a mismatch (or a storage-read throw — fail
+  closed). `AccountStateMonitor.refresh()` gained an optional
+  `identityStore:` that overrides to `.accountChanged` on a real mismatch
+  while the base `CKAccountStatus` is `.available` — the mechanism that
+  makes `.accountChanged` reachable in production for the first time
+  (previously only `simulateAccountChange()`, a test seam). `S13` added a
+  real `CKAccountChanged` `NotificationCenter` observer
+  (`startObservingSystemAccountChanges()`/`stopObservingSystemAccountChanges()`)
+  plus a foreground-reactivation re-probe on both platforms, and a
+  dedicated mid-session watcher that automatically severs a live mirroring
+  connection (via the existing `beginDisable(.now)` primitive, non-
+  destructive containment, no confirmation needed) the instant a mismatch
+  is detected after cold-launch priming. `S21` added
+  `SyncStatusMonitor.resetStallState()` (clears both export- and now a new
+  mirrored import-axis stall counter/forensics — `applyImportOutcome`
+  closes the "import-side recoverable failures never escalate" half of the
+  finding) wired into `MigrationCoordinator`/`DataStoreResetService`'s
+  successful-completion paths only. `S24` retired
+  `PauseReasonClassifier`'s dead `setICloudDriveDisabled(_:)` push API for
+  a pull-based check against the same `AccountIdentityProbing` seam
+  (`ubiquityIdentityToken == nil` while the account is otherwise
+  `.available` is precisely Apple's "signed in, no iCloud Drive access"
+  distinction), and added `LiveNetworkReachability` — a new
+  `NWPathMonitor`-backed actor placed in `LillistCore` (not duplicated per
+  app) since it imports only `Network`/`Foundation` and has no
+  platform-specific behavior, extending the `StoreLocation`
+  canonical-resolver precedent from `1c`. Plan doc:
+  `docs/superpowers/plans/2026-07-28-plan-3a-account-identity-and-status.md`.
+  Commit range `b180d4de..137a6d54` (13 commits: 1 docs, 1 `chore(stories)`,
+  10 fix/feat, 1 `chore(stories)` done-move not yet landed at ledger-write
+  time). Full `LillistCore` suite green **twice in a row** with unmasked
+  exit codes and a clean grep for the failure markers (1277 tests, 231
+  suites — up from `2b`'s 1235/228 baseline); LillistUI non-snapshot suite
+  green (83 tests, 17 suites); both apps verified with unsigned
+  `xcodebuild` builds (BUILD SUCCEEDED) after every app-touching commit.
+  See *Wave 3a closing report* below for the S3 mismatch-response council
+  outcome, the two corroborated `PersistenceHost` leaks this plan closed
+  as binding parts of the council decision, and what `3b` needs to know.
+
+**Next action for whoever picks this up:** start Wave 3's second plan, `3b`
+(`reset-propagation-safety`) — findings `S9c S10 S18 S19 S20 S22 X11`. Its
+hotspots include `ResetSignalMonitor.swift`, `ResetPropagator.swift`,
+`ControlInbox.swift`, `HistoryPruner.swift`, and both `AppEnvironment.swift`s
+again (see the *Shared-file serial chains* section, chain 5 — `1c` → `2b` →
+`3a` ✅ done are the first three links; chain 6, `HistoryPruner.swift` +
+history-token `UserDefaults` keys, co-depends with `5c` — read both plans
+before starting either). Read the *Resume protocol* section first, then
+*Wave 3a closing report* below for what `3a` left in place (the shared
+`AccountIdentityStore`/`accountStateProbe` pattern now wired into both
+`MigrationCoordinator` and `DataStoreResetService` in both apps; if `3b`'s
+reset-propagation work interacts with account identity at all — e.g. should
+a propagated reset from another device be trusted differently after an
+account switch — the seam is `AccountIdentityStore.check()`, already
+callable synchronously). `S10`'s product decision (remote reset events never
+auto-applied, an expiry-window duration left to a `3b` council vote) is
+already binding — see *Product decisions* above.
 
 ---
 
@@ -813,6 +868,153 @@ completeness-sweep entry.
 
 ---
 
+## Wave 3a closing report (`account-identity-and-status`)
+
+Plan doc: `docs/superpowers/plans/2026-07-28-plan-3a-account-identity-and-status.md`
+— contains the `AccountIdentityStore` type proposal with UML, the
+identity-source decision (`ubiquityIdentityToken`, no
+`fetchUserRecordID` fallback), the S3 mismatch-response council outcome,
+and the launch-sequence integration diagram.
+
+| Finding | Story | Fix commit(s) | Regression test(s) |
+|---|---|---|---|
+| `S3` (foundation) | `LIL-13` | `df522814` | `AccountIdentityStoreTests.swift` (8 tests) + `FileAccountIdentityStoreTests` (4 tests) — `check()`'s four-way truth table, token equality via round-trip archive, `adoptCurrentIdentity()` ordering. |
+| `S3`/`S13` (monitor integration) | `LIL-13`/`LIL-36` | `53fc6719` | `AccountStateMonitorTests.swift` (+7) — `refresh()` override on mismatch, no override on firstLaunch/match, a stale stored identity never promotes `.noAccount`/`.restricted` to `.accountChanged`, `CKAccountChanged` observer start/stop. |
+| `S3` (fix 1 — `PersistenceHost` leak) | `LIL-13` | `93a858bb` | `PersistenceHostTests.swift` (+2) — a host built with `armsCloudKitMirroring: false` stays suppressed across every reconfigure/attachStore/reattachStore; a normally-armed host still preserves `true`. |
+| `S3` (resolution primitive) | `LIL-13` | `c72c2d5c` | `DataStoreResetServiceTests.swift` (+4) — `resolveAccountMismatchByRedownloading()` requires an active mismatch, bypasses the preflight once, `resetAndRedownload()` itself stays unmodified/blocked, a failed resolution's reattach doesn't rearm mirroring. |
+| `S3` (missing `.replaceLocalWithICloud` preflight) | `LIL-13` | `29449d44` | `MigrationRunnerExecutingTests.swift` (+1) — mirrors `.replaceICloudWithLocal`'s existing guard at the same relative position (after the recovery-anchor backup, before the irreversible wipe). |
+| `S3`/`S13` (app wiring) | `LIL-13`/`LIL-36` | `eee6fd67` | App-level — no host-side unit test target reaches `AppEnvironment.make()`/`bootstrap()`'s private launch-gate logic (same precedent as `2a`'s `S16`/`S17`); verified by unsigned `xcodebuild build` for both apps (BUILD SUCCEEDED) + the `PauseExplainerDialog` two-button resolution flow (LillistUI, compiles + `Localizable.xcstrings` keys added/orphans removed). |
+| `S21` (core) | `LIL-59` | `645e9c80` | `SyncStatusMonitorTests.swift` (+6) — import-axis escalation mirrors the export axis exactly (threshold, streak-resets-on-success, structural-failure-resets, axes-independent, `resetStallState` clears both + forensics). |
+| `S21` (coordinator/service wiring) | `LIL-59` | `f628f370` | `MigrationRunnerExecutingTests.swift` (+2), `MigrationRecoveryTests.swift` (+1), `DataStoreResetServiceTests.swift` (+2) — `syncStatusReset` fires only on the successful-completion path, never on failure. |
+| `S21` (app wiring) + `S3` (activated `MigrationCoordinator` preflight) | `LIL-59`/`LIL-13` | `2216ea08` | App-level — `SyncStatusMonitor` promoted to a shared stored property on both `AppEnvironment`s; discovered and fixed in the same commit that `MigrationCoordinator` was NEVER given an `accountStateProvider` in production on either platform (only `DataStoreResetService` was) — its own `.replaceICloudWithLocal`/`.replaceLocalWithICloud` account-changed preflights (closed earlier in this same plan) were dead code in production until this commit. Verified by unsigned `xcodebuild build`. |
+| `S24` (core) | `LIL-62` | `fae77f8e` | `PauseReasonClassifierTests.swift` (rewritten to drive the new `identityProbe` seam instead of the deleted `setICloudDriveDisabled` setter, +4 new) + `LiveNetworkReachabilityTests.swift` (3 tests) — pre-`start()` default, idempotent `start()`, a live `NWPathMonitor` read completes without hanging. |
+| `S24` (app wiring) | `LIL-62` | `137a6d54` | App-level — both apps construct `LiveNetworkReachability` and call `start()` before priming `pauseReason`; verified by unsigned `xcodebuild build`. |
+
+**Commit range:** `b180d4de..137a6d54` — 1 docs (`b180d4de`), 1
+`chore(stories)` in-progress move (`1d4668ef`), 10 fix/feat (listed above),
+plus a `chore(stories)` done-move landing alongside this report. Full
+`LillistCore` suite green **twice in a row** with unmasked exit codes and a
+clean grep for the failure markers (1277 tests, 231 suites — up from `2b`'s
+1235/228 baseline); LillistUI non-snapshot suite green (83 tests, 17
+suites); both apps verified with unsigned `xcodebuild` builds (BUILD
+SUCCEEDED) after every app-touching commit.
+
+**Identity-source decision (no council needed — see plan doc §2):**
+`FileManager.ubiquityIdentityToken` over `CKContainer.fetchUserRecordID`.
+Synchronous, no network, works offline (account switching itself needs no
+network), and is Apple's own documented mechanism for this exact "did the
+account change" question. The one documented ambiguity
+(`ubiquityIdentityToken` reflecting iCloud Drive access specifically, not
+bare CloudKit sign-in) is *reused*, not worked around — it's exactly the
+signal `S24`'s `iCloudDriveDisabled` needed, one seam serving two findings.
+
+**S3 mismatch-response policy — council vote (unanimous 3/3 in the
+ranked-choice runoff, after one deliberation round from an initial 1-1-1
+split):** cold launch stays **non-blocking** (extends the existing
+`PauseReason.accountChanged` badge/`PauseExplainerDialog` path — mirroring
+is already suppressed by construction, so a new blocking gate would buy no
+additional safety and would misuse the `OnboardingPresentationModifier`
+mechanism, reserved for a structurally-unusable store). Mid-session
+detection is **automatic, silent containment** (sever mirroring immediately
+via the existing `beginDisable(.now)` primitive, before any prompt — a
+non-destructive action, so it doesn't need confirmation). Two resolution
+choices, both routed through existing hardened primitives: "Use This
+Account" (a new narrowly-scoped, re-validating
+`resolveAccountMismatchByRedownloading()` that bypasses the ambient
+`accountStateProvider` throw only for this one confirmed call, leaving
+`resetAndRedownload()` itself — and therefore `ResetSignalMonitor`'s
+automatic peer-triggered path — unconditionally blocked on a real
+mismatch) and "Stay Local For Now" (the existing `beginDisable(.now)`,
+unmodified). `AccountIdentityStore.adoptCurrentIdentity()` is called only
+AFTER either resolution primitive reports success, never before — round-1
+deliberation surfaced (independently, by two council seats) that
+`PersistenceHost.configuration(for:)` silently defaulted
+`armsCloudKitMirroring` back to `true` on every structural swap, which
+would have let an early-adopted identity re-arm mirroring against a
+still-mismatched store on a mid-reset failure; fixing that defect (this
+plan's Fix 1) closes the leak at its root rather than relying on
+adoption-ordering alone as the only safety mechanism. Full audit trail:
+`.council/s3-account-mismatch-response-policy/DECISION.md` (gitignored
+plugin-state directory — not committed to git, same as every prior
+council's `.council/<slug>/` artifacts in this program; the DECISION
+summary above is the durable record).
+
+**Two corroborated `PersistenceHost` leaks closed as binding parts of the
+council decision (not just the presentation question):**
+1. `configuration(for:)` now captures and threads `armsCloudKitMirroring`
+   as its own stored property (same treatment as `storeURL`/
+   `cloudKitContainerIdentifier`) instead of hand-rebuilding a
+   `StoreConfiguration` via the raw initializer, whose default is `true`.
+   Every `reconfigure`/`rebuildEmptyStore`/`reattachStore`/`attachStore`
+   call now preserves whatever the host was originally constructed with.
+2. `resolveAccountMismatchByRedownloading()`'s failure path reuses
+   `performReset`'s existing unconditional `reattachStore()` handling —
+   once Fix 1 landed, no separate "mirroring-suppressed reattach variant"
+   was needed (an earlier council-deliberation proposal, superseded once
+   Fix 1's existence was settled): the host's own `armsCloudKitMirroring`
+   is already `false` for the one call path where a stale-account failure
+   reattach would otherwise be dangerous.
+
+**Discovered, out-of-scope residual — filed as `LIL-81`, not fixed here
+(per the `LIL-77` precedent):** `MigrationCoordinator.restoreFromBackup`
+(the raw-SQLite migration-crash-recovery restore — a different subsystem
+from the JSON-package `BackupRestoreService`) still has no
+`accountStateProvider` check anywhere in its body before
+`host.attachStore(at: prev)`. The `2b` closing report flagged this exact
+gap for `3a`'s consideration ("`restoreFromBackup` currently has no
+equivalent account-changed pre-flight; consider whether it needs one");
+after tracing it, the compound scenario it protects against (a migration
+crashes, THEN the account changes before the user triggers recovery, AND
+`previousMode == .iCloudSync`) is narrow enough, and adding it would touch
+`restoreFromBackup`'s core ordering again with its own new test coverage,
+that it's better filed than silently expanded into an already-large plan.
+Fix shape recorded on the story.
+
+**No other council votes needed beyond the one above** — the identity-source
+decision, the `PersistenceHost` fix's exact placement, and `S24`'s
+setter-removal were all direct calls per the plan doc's own reasoning (see
+§2, §5, §6) — none met the "2+ genuinely defensible alternatives" bar.
+
+**What `3b` (`reset-propagation-safety`, the next plan to touch
+`AppEnvironment.swift`/the account-identity seam) needs to know:**
+- `AccountIdentityStore`/`AccountIdentityProbing`/`AccountIdentityToken`
+  (`Sync/AccountIdentityStore.swift`) are the new canonical identity
+  primitives. Both apps construct one `AccountIdentityStore` in `make()`
+  and store it as `environment.accountIdentityStore` — if `3b`'s
+  reset-propagation work ever needs to reason about "did the account
+  change" (e.g. should a propagated `ResetControlEvent` from a peer be
+  trusted differently after a local account switch), this is the
+  synchronous, already-injectable seam to consult — don't reinvent a
+  parallel check.
+- `MigrationCoordinator` and `DataStoreResetService` now BOTH receive the
+  same `accountStateProvider` closure in both apps (`accountStateProbe`,
+  defined once per `AppEnvironment.swift` ahead of both constructions) —
+  if `3b` adds a new destructive-op type, wire it the same way rather than
+  duplicating the closure.
+- `SyncStatusMonitor` is now a stored property on both `AppEnvironment`s
+  (`environment.syncStatusMonitor`), no longer constructed inline inside
+  `CloudKitSyncStatusAdapter`. If `3b`'s reset-propagation work needs to
+  observe or reset sync health (e.g. clearing stall state when a peer's
+  reset event applies), this is the instance to use —
+  `ResetSignalMonitor`'s automatic-apply path (`resetAndRedownload()`) will
+  itself trigger `resetStallState()` via `DataStoreResetService`'s existing
+  wiring, so no new plumbing should be needed there specifically.
+- `resolveAccountMismatchByRedownloading()` established the "narrow,
+  re-validating bypass method, ambient method stays unmodified" pattern
+  for letting a confirmed user action route around a safety preflight
+  without weakening it for automatic/peer-triggered callers. If `3b`'s
+  `S10` product decision (remote reset events never auto-applied, but an
+  expiry window is still worth a council-decided duration) needs a similar
+  "confirmed user choice bypasses an ambient guard" shape, this is the
+  precedent to follow.
+- `LIL-81` (the `restoreFromBackup` account-changed gap) and `LIL-77` (the
+  pre-existing `CrashReportingSection`/`AppEnvironment.crashPromptsEnabled`
+  persistence gap from `1d`) are both still open, unrelated to `3b`'s named
+  findings — don't accidentally fold them into `3b`'s scope without a
+  deliberate decision to do so.
+
+---
+
 ## Execution model (per Mikey's directives, 2026-07-28)
 
 - **One dedicated worktree** on a long-running branch:
@@ -866,7 +1068,7 @@ Wave 6 closeout. **Status** starts `pending` for everything except Wave 0.
 | 1 | **1d** `export-schema-completeness` | `X3 S9a X13 X18` | ✅ complete |
 | 2 | **2a** `migration-transitions` | `S1 S5 S6 S8 S11 S12 S14 S15 S16 S17` | ✅ complete |
 | 2 | **2b** `backup-restore-correctness` | `S2 S4 S7 S9b S23` | ✅ complete |
-| 3 | **3a** `account-identity-and-status` | `S3 S13 S21 S24` | ⬜ pending |
+| 3 | **3a** `account-identity-and-status` | `S3 S13 S21 S24` | ✅ complete |
 | 3 | **3b** `reset-propagation-safety` | `S10 S18 S19 S20 S22 X11 S9c` | ⬜ pending |
 | 4 | **4a** `history-consumer-discipline` | `H6 M3` | ⬜ pending |
 | 4 | **4b** `notification-truthfulness` | `H2 X8 X9 X10` | ⬜ pending |
@@ -898,9 +1100,8 @@ landing wave's plan doc (house rule) before implementation:
 | Full `MutationContext` re-architecture | **Reject** → `withMutationRollback` helper + conformance test + logged tech debt | 5a |
 | Model-derived export-completeness test (walks `NSManagedObjectModel`) | Adopt — delivered | 1d |
 | `DestructiveOpGate` (shared, synchronous-acquire lock replacing `MigrationCoordinator.isMigrating`/`DataStoreResetService.isResetting`) | Adopt — delivered | 2a |
-
-Other new public types requiring a proposal+UML in-wave: `AccountIdentityStore`
-(3a).
+| `AccountIdentityStore` (persisted `ubiquityIdentityToken`-based identity comparison, gates launch-time CloudKit mirroring) | Adopt — delivered | 3a |
+| `LiveNetworkReachability` (`NWPathMonitor`-backed actor, canonical single implementation vs. one-per-app-target) | Adopt — delivered | 3a |
 
 ---
 
@@ -926,9 +1127,17 @@ structure — each earlier plan in the chain will have moved line numbers.
    `reconfigure` for `replaceICloudWithLocal`/`syncFirstThenDisable`/
    `disableNow` too — `replaceLocalWithICloud` is the only op still calling
    `reconfigure`; catch-block reattach is now unconditional across all four
-   ops) → `3a` (account-identity guard wired into the pre-erase check —
-   see the *Wave 2b closing report* for exactly what shape to extend).
-   Three plans.
+   ops) → `3a` ✅ done (gained an activated `accountStateProvider` in
+   production for the first time on both platforms — it existed as a
+   constructor param since `2a` but neither `AppEnvironment.swift` ever
+   passed one; `.replaceLocalWithICloud` gained the account-changed
+   preflight `.replaceICloudWithLocal` already had, at the same relative
+   position after the recovery-anchor backup; `restoreFromBackup`/
+   `runMigration` both gained a `syncStatusReset` closure called on their
+   successful-completion path only — see the *Wave 3a closing report* for
+   the full shape). `restoreFromBackup` itself still has NO
+   `accountStateProvider` check — filed as `LIL-81`, not fixed in `3a`,
+   still open for a future plan. Three plans, all done.
 3. **`PersistenceHost.swift`** — `2a` ✅ done (`flushAndSwap` throws instead
    of silently succeeding with zero attached stores) → `2b` ✅ done (new
    `attachStore(at:)` on `PersistenceResetting` — attaches fresh at an
@@ -950,10 +1159,19 @@ structure — each earlier plan in the chain will have moved line numbers.
    injected as `backupReconciler`; `reseedJournal` construction added
    alongside `quarantine`; `bootstrap()` gained a
    `recoverInterruptedReseed()` best-effort call as its first line — see
-   the *Wave 2b closing report* for the exact diff shape) → `3a` (account
-   identity store wiring — re-Read `bootstrap()`'s new first-line ordering
-   before prepending anything) → `4b` (notification scheduler reaching
-   extension/widget/CLI paths via 1c's standardized construction).
+   the *Wave 2b closing report* for the exact diff shape) → `3a` ✅ done
+   (`make()` gained the `AccountIdentityStore.check()` call ahead of
+   `PersistenceController` construction — the launch-sequence integration
+   point, see the plan doc's diagram; `bootstrap()` gained
+   `networkReachability.start()`, `accountStateMonitor
+   .startObservingSystemAccountChanges()`, and a new
+   `startObservingMidSessionAccountMismatch()` observer, all added AFTER
+   the existing `recoverInterruptedReseed()`/`preferencesPartitionMigrator`
+   first lines — re-Read `bootstrap()`'s full current ordering before
+   prepending anything; `SyncStatusMonitor` promoted to a stored property,
+   no longer constructed inline inside `CloudKitSyncStatusAdapter`) → `4b`
+   (notification scheduler reaching extension/widget/CLI paths via 1c's
+   standardized construction).
 6. **`HistoryPruner.swift` + the three history-token `UserDefaults` keys** —
    `3b` (reset clears watermarks + widget cache; `WatermarkRegistry` doubles
    as the reset-clear enumeration) ↔ `5c` (formalizes the registry itself,
@@ -1176,6 +1394,51 @@ defensible alternatives, Mikey unavailable). Full audit trails live under
    The folder-collision finding was fixed separately in `QuarantineManager`
    (commit `070ba738`) ahead of the migration landing.
 
+4. **S3 account-mismatch response policy** (Wave 3, plan `3a`, 2026-07-28) —
+   what should Lillist do when it detects, at launch, that the currently
+   signed-in iCloud account differs from the account the local store
+   belongs to?
+   **Decision: non-blocking at cold launch (extend the existing
+   `PauseReason.accountChanged` badge/dialog path), automatic silent
+   containment mid-session (sever mirroring before any prompt), two
+   resolution choices both routed through existing hardened primitives**
+   — by unanimous ranked-choice majority (3/3 first-place votes) after one
+   deliberation round from an initial 1-1-1 three-way split. Round 1: the
+   mobile-UX seat favored a new blocking full-screen gate (matching the
+   `OnboardingPresentationModifier` precedent, on the theory this is a
+   comprehension-critical state); the software-architect seat favored the
+   non-blocking extension with identity adopted *before* invoking the
+   resolution primitive (required by `DataStoreResetService.performReset`'s
+   own unconditional `accountStateProvider`-changed preflight, which would
+   otherwise self-block the user's own confirmed resolution forever); the
+   security-researcher seat favored the same non-blocking extension but
+   with identity adopted only *after* the resolution primitive succeeded
+   (tracing a real leak: an early-adopted identity plus a mid-reset
+   failure's `reattachStore()` call could re-arm mirroring against the new
+   identity while the store still held the old account's data). In
+   deliberation, the security-researcher seat conceded the self-block
+   critique (verified against real code) but resolved it without moving
+   adoption earlier — by adding a narrowly-scoped, re-validating
+   resolution entry point that bypasses only the ambient throw for the one
+   confirmed call, leaving the ambient method itself (and therefore
+   automatic/peer-triggered callers) fully protected — and independently
+   traced a second, adoption-timing-independent leak in `performReset`'s
+   failure-path `reattachStore()` calls that neither other proposal had
+   found. All three seats converged on this revised proposal, unanimously,
+   in the runoff; the mobile-UX seat's own revision (still favoring
+   blocking) conceded that the architectural fix (mirroring can never
+   silently re-arm) outweighed the UX case for forcing acknowledgment, but
+   the ledger's binding implication is that the non-blocking dialog must
+   stay genuinely *persistent* (survives dismissal, re-triggerable via the
+   badge) rather than silently disappearing across launches. Full audit
+   trail: `.council/s3-account-mismatch-response-policy/DECISION.md`.
+   Implemented in `AccountIdentityStore`
+   (`Packages/LillistCore/Sources/LillistCore/Sync/AccountIdentityStore.swift`),
+   `DataStoreResetService.resolveAccountMismatchByRedownloading()`, and
+   both `AppEnvironment.swift`s' launch/bootstrap wiring — see the *Wave 3a
+   closing report* above for the full implementation shape and the two
+   `PersistenceHost` leaks closed as binding parts of this decision.
+
 ---
 
 ## Mikey's manual-verification checklist
@@ -1211,7 +1474,56 @@ are tracked here so nothing is silently dropped.
       `recoverInterruptedReseed()` resumes cleanly on next launch with no
       data loss — the unit suite proves the mechanism via
       `RealWipingResetHost`, not a real crash mid-flight.
-- [ ] Account switch with a second Apple ID (`3a`).
+- [ ] Account switch with a second Apple ID (`3a`) — needs a Mac and/or
+      iPhone signed into a SECOND, disposable Apple ID with its own iCloud
+      account (never test against a real primary account you care about).
+      Exact steps:
+      1. **Cold-launch mismatch.** With Lillist already installed and
+         synced under account A, sign out of iCloud entirely (Settings →
+         [name] → Sign Out, or System Settings → Apple ID → Sign Out) and
+         sign into account B. Relaunch Lillist. Confirm: (a) the sync
+         status badge shows the paused/cloud-with-slash state, tapping it
+         opens the dialog titled "iCloud account changed"; (b) CloudKit
+         Console for account B's private database shows NO new records
+         from this device (mirroring never armed); (c) account A's local
+         tasks are still visible in the app (the local store is untouched,
+         just not currently mirroring).
+      2. **"Use This Account."** From the dialog, tap "Use This Account."
+         Confirm: (a) it completes without error (a spinner shows briefly);
+         (b) the local store is now empty of account A's tasks; (c) after
+         relaunching Lillist once (per the plan doc's "relaunch to
+         complete" design — mirroring re-arms on the NEXT cold launch's
+         identity check, not in-session), the app downloads and shows
+         account B's actual tasks; (d) CloudKit Console for account A's
+         private database shows NO trace of this device's local edits
+         having uploaded at any point in this flow.
+      3. **"Stay Local For Now"** (repeat step 1 fresh, or use a second
+         test device). From the dialog, tap "Stay Local For Now." Confirm:
+         (a) it completes without error; (b) Settings → iCloud Sync shows
+         Local Only; (c) account A's local tasks are still all present and
+         editable; (d) relaunching Lillist does NOT re-show the mismatch
+         dialog (identity was adopted, so the next launch sees a match);
+         (e) manually re-enabling "iCloud Sync" in Settings afterward
+         correctly downloads account B's data fresh (no account A data
+         leaks into account B's zone).
+      4. **Mid-session switch.** With Lillist foregrounded and actively
+         synced under account A, switch to account B via System
+         Settings/Settings WITHOUT force-quitting Lillist first. Confirm:
+         (a) within roughly one `CKAccountChanged` notification delivery
+         (should be near-immediate), the app auto-disables sync (Settings
+         shows Local Only) with no user action required; (b) the pause
+         dialog/badge subsequently offers the same two resolution choices;
+         (c) CloudKit Console for account B shows no records uploaded
+         during the brief window between the account switch and the
+         auto-disable completing (the one residual risk the council
+         decision explicitly flagged as a documented, Apple-API-bounded
+         limitation — verify it's negligible in practice, not literally
+         zero).
+      5. **False-positive check.** Sign out of iCloud entirely (no second
+         account) and confirm this does NOT trigger the mismatch dialog —
+         only the existing "iCloud isn't signed in" pause reason, per
+         `AccountIdentityStore`'s `.signedOut` case (distinct from
+         `.mismatch`).
 - [ ] Two-device reset propagation, including the stale-event UX (`3b`).
 - [ ] Real-widget verification: completing a task cancels its reminder; a
       local edit refreshes the widget (Waves 4-5).
@@ -1223,6 +1535,12 @@ are tracked here so nothing is silently dropped.
       verified (every change is to the migration/reset/backup
       orchestration logic and the on-disk JSON backup package; the Core
       Data model is unchanged). No schema deploy needed for this plan.
+- [x] `3a` does **not** add any new CloudKit record types/fields either —
+      verified (the account-identity token is persisted to a local JSON
+      file in the App Group container, never synced via CloudKit itself;
+      every other change is to launch-sequencing/orchestration logic and
+      the Core Data model is unchanged). No schema deploy needed for this
+      plan.
 - [ ] iCloud-dependent app-hosted/UI tests — standing CI-scope rule, verified
       manually per wave (same posture as the Foundation Hardening program).
 
