@@ -214,9 +214,21 @@ final class AppEnvironment {
         let specStore = NotificationSpecStore(persistence: persistence)
         self.notificationSpecStore = specStore
 
-        // Bootstrap snooze + scheduler from sensible defaults. Plan 10 owns
-        // wiring the live `AppPreferences` row in via
-        // `scheduler.updateDefaultAllDayTime` / `installMorningSummary`.
+        // Bootstrap snooze + scheduler from sensible defaults —
+        // `bootstrap()` immediately hydrates the real `AppPreferences` value
+        // via `scheduler.updateDefaultAllDayTime` (X10), before any
+        // reconcile can run against these hardcoded ones; the Settings
+        // surface re-calls the same method on every later change.
+        //
+        // TODO(LIL-83): timeZone: .current defeats cross-device all-day
+        // notification dedup when a user's devices are in different time
+        // zones — each device resolves the same all-day anchor to a
+        // different absolute instant. Known, tracked limitation (interim:
+        // documented in the design doc + pinned by a KNOWN LIMITATION
+        // regression test); the real fix needs a new synced "home time
+        // zone" field on AppPreferences (orchestrator-gated schema change —
+        // see .council/x10-all-day-timezone-dedup-posture/DECISION.md).
+        // Delete this TODO and both `.current` args once LIL-83 ships.
         let registry = SnoozeRegistry(
             defaultAllDayHour: 9,
             defaultAllDayMinute: 0,
@@ -659,6 +671,17 @@ final class AppEnvironment {
         // forward into App Group UserDefaults if we haven't already.
         // Idempotent; subsequent launches no-op.
         _ = try? await preferencesPartitionMigrator.runIfNeeded()
+        // X10: hydrate the scheduler's all-day default from the persisted
+        // preference BEFORE any reconcile pass runs below — see the iOS
+        // counterpart's identical doc comment for the full rationale (the
+        // reconcile-rewrite bug this closes, and why reusing
+        // updateDefaultAllDayTime is a no-op diff in the common case here).
+        if let prefs = try? await preferencesStore.read() {
+            await notificationScheduler.updateDefaultAllDayTime(
+                hour: Int(prefs.defaultAllDayHour),
+                minute: Int(prefs.defaultAllDayMinute)
+            )
+        }
         // Diagnostics: sync the cached flag from device prefs, catch up on
         // history accrued while not running, then observe live remote changes.
         await diagnosticLog.setEnabled(await devicePreferences.diagnosticLoggingEnabled())

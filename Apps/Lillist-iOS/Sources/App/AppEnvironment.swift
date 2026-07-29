@@ -225,6 +225,15 @@ final class AppEnvironment {
         let specStore = NotificationSpecStore(persistence: persistence)
         self.notificationSpecStore = specStore
 
+        // TODO(LIL-83): timeZone: .current defeats cross-device all-day
+        // notification dedup when a user's devices are in different time
+        // zones — each device resolves the same all-day anchor to a
+        // different absolute instant. Known, tracked limitation (interim:
+        // documented in the design doc + pinned by a KNOWN LIMITATION
+        // regression test); the real fix needs a new synced "home time
+        // zone" field on AppPreferences (orchestrator-gated schema change —
+        // see .council/x10-all-day-timezone-dedup-posture/DECISION.md).
+        // Delete this TODO and both `.current` args once LIL-83 ships.
         let registry = SnoozeRegistry(
             defaultAllDayHour: 9,
             defaultAllDayMinute: 0,
@@ -673,6 +682,20 @@ final class AppEnvironment {
         // imports that arrived while the app wasn't running, then start
         // observing live remote changes.
         try? await preferencesStore.normalizeSingletons()
+        // X10: hydrate the scheduler's all-day default from the persisted
+        // preference BEFORE any reconcile pass runs below — otherwise
+        // remoteChangeReconciler's own catch-up (next line) would recompute
+        // (and, pre-fix, incorrectly rewrite) all-day trigger times against
+        // the hardcoded 09:00 constructor default instead of the user's
+        // real preference. Reuses updateDefaultAllDayTime exactly as the
+        // Settings surface does — see that method's own doc comment for why
+        // this call is a no-op diff in the common case, not a real rewrite.
+        if let prefs = try? await preferencesStore.read() {
+            await notificationScheduler.updateDefaultAllDayTime(
+                hour: Int(prefs.defaultAllDayHour),
+                minute: Int(prefs.defaultAllDayMinute)
+            )
+        }
         await remoteChangeReconciler.processPendingHistory()
         remoteChangeReconciler.start()
         // Issue #66: catch up on any duplicate LillistTask rows that arrived

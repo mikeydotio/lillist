@@ -389,6 +389,31 @@ public actor NotificationScheduler: NotificationReconciling {
     /// configured default — so changing it must re-trigger every dependent
     /// request. (Lillist no longer auto-creates default specs; this default
     /// time now only shapes user reminders on all-day tasks.)
+    ///
+    /// X10 — rewrite semantics, decided deliberately: this method is the
+    /// ONLY code path that ever changes `defaultAllDayHour`/`Minute`, and it
+    /// unconditionally rewrites every dependent pending trigger to match.
+    /// That's correct in both of its two callers:
+    /// - **Bootstrap-time hydration** (`AppEnvironment.bootstrap()`, both
+    ///   platforms): called with the value already persisted in
+    ///   `PreferencesStore` — the same value that produced whatever
+    ///   triggers are currently pending — so this is a no-op diff in the
+    ///   common case, not a real rewrite. (Extension-constructed schedulers
+    ///   — `IntentSupport`/`WidgetIntentSupport`/`ShareRootView` — hydrate
+    ///   at construction instead, passing the persisted value straight to
+    ///   the initializer; they never call this method at all.) Before X10,
+    ///   the app-level scheduler was constructed with a hardcoded 09:00 and
+    ///   never hydrated, so THIS was where "reconcile rewrites correct
+    ///   pending triggers back to 09:00" actually came from: the first
+    ///   reconcile after a fresh, unhydrated launch compared against the
+    ///   wrong in-memory default and (correctly, by this method's own
+    ///   diffing logic) replaced a correct trigger with a wrong one.
+    ///   Hydrating before any reconcile can run removes the wrong
+    ///   comparison, not the rewrite behavior itself.
+    /// - **An explicit Settings/Preferences change**: the user just told the
+    ///   system their default reminder time changed, so rewriting every
+    ///   dependent trigger to the new value is exactly the intended
+    ///   behavior, not a bug to be prevented.
     public func updateDefaultAllDayTime(hour: Int, minute: Int) async {
         self.defaultAllDayHour = hour
         self.defaultAllDayMinute = minute
