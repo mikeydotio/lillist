@@ -30,9 +30,10 @@ CloudKit, XCTest + Swift Testing, xcodegen, storyhook (prefix `LIL`).
 `account-identity-and-status`, `3b` `reset-propagation-safety`), all of
 Wave 4 (`4a` `history-consumer-discipline`, `4b`
 `notification-truthfulness`, `4c` `recurrence-correctness`), and now all of
-Wave 5's first two plans, `5a` `mutation-scope-discipline` and `5b`
-`widget-snapshot-correctness`, are COMPLETE. Wave 5's last plan, `5c`
-`watermark-registry-pruning`, next.**
+Wave 5 (`5a` `mutation-scope-discipline`, `5b`
+`widget-snapshot-correctness`, `5c` `watermark-registry-pruning`) are
+COMPLETE. Wave 6 (completeness sweep + closeout) is next — the program's
+last wave.**
 
 - ✅ **Plan `5b` closed both findings** (`X5 X6` / `LIL-18 LIL-37`) —
   `WidgetSnapshotBuilder.regenerate(filterIDs:)` is now additive-only:
@@ -116,6 +117,78 @@ Wave 5's first two plans, `5a` `mutation-scope-discipline` and `5b`
   `reloadCount` instead (strictly later in every code path, since the
   reload always happens after the write completes), verified 3/3 isolated
   runs plus the two final full-suite green runs above.
+
+- ✅ **Plan `5c` closed both findings** (`X12 L7` / `LIL-43 LIL-76`) — the
+  last fix plan before Wave 6 closeout. `HistoryPruner.sweep()` used to
+  delete everything before the coordinator's *current* token, correct only
+  because both apps' `bootstrap()` happens to run every history consumer's
+  catch-up before the sweep call — a property no compiler or test enforced
+  (`X12`); its archived `tokenDefaultsKey` was a dead write nothing ever
+  read back (`L7`). New `WatermarkRegistry`
+  (`Persistence/WatermarkRegistry.swift`) replaces `3b`'s deliberately
+  narrow `HistoryWatermarks` seam exactly as that type's own doc comment
+  called for: `HistoryConsumerID` is a closed enum a
+  `PersistentHistoryTokenStore` can only be constructed with (never an
+  arbitrary key string — the "single place a new consumer registers"), and
+  `pruneBoundary(in:)` computes the earliest of every registered
+  consumer's own watermark by scanning the store's full retained history
+  (`NSPersistentHistoryToken` has no public ordering API, so "the minimum
+  of N opaque tokens" is determined by locating which one appears first in
+  a chronological `fetchHistory(after: nil)` scan, not by comparing tokens
+  directly — the same archived-`Data`-equality technique
+  `PersistentHistoryTokenStore` already uses to persist them).
+  `HistoryPruner.sweep()` now consults this boundary instead of "now" and
+  returns a `SweepOutcome`
+  (`.pruned`/`.skippedICloudSync`/`.skippedNoHistory`/`.skippedNoSafeBoundary`)
+  instead of a bare `Bool`. **Fresh-consumer semantics (deliberately
+  fail-safe, not "prune before the oldest known watermark"):** if any
+  registered consumer has no watermark yet — a fresh install, a brand-new
+  consumer added after history already started accumulating, or the narrow
+  window right after `clearAll()` and before every consumer's next
+  bootstrap catch-up completes — `sweep()` never prunes at all
+  (`.skippedNoSafeBoundary`); guessing a substitute boundary would risk
+  destroying history a consumer hasn't seen yet, exactly `X12`'s failure
+  mode. **`L7`'s dead-write key — removed, not resurrected:** once the
+  boundary comes from the registry's own min-over-consumers computation,
+  a fourth, pruner-owned watermark would either duplicate that computation
+  for no benefit or reintroduce the exact "prune against my own cached
+  progress, ignoring the real consumers" bug this plan closes; the
+  constant survives only as `HistoryPruner.legacyBookkeepingKey`
+  (`internal`, not `public`) so `WatermarkRegistry.clearAll()` can purge
+  the stale key from any install that wrote it before this fix — pure
+  hygiene, never written again. No bootstrap-ordering change was needed:
+  the existing "every consumer's catch-up runs before the sweep" sequence
+  in both `AppEnvironment.swift`'s stays exactly where it was — it's just
+  no longer load-bearing for *correctness*, only for how soon pruning
+  resumes after a reset (see the closing report's fresh-consumer note).
+  Plan doc:
+  `docs/superpowers/plans/2026-07-28-plan-5c-watermark-registry-pruning.md`
+  — contains the full `WatermarkRegistry`/`HistoryConsumerID` UML, the
+  complete min-watermark semantics table (every case in the paragraph
+  above, plus the defensive "watermark not locatable in current history"
+  case), and the `HistoryWatermarks` migration note. Commit range
+  `1dfedd84..bec420da` (6 commits: 1 docs, 1 `chore(stories)` in-progress,
+  1 fix (the registry + pruner + both `AppEnvironment.swift`'s + every
+  mechanical `PersistentHistoryTokenStore(key:)`→`consumer:` call-site
+  rename, landed together — deleting `HistoryWatermarks.swift` and
+  changing `PersistentHistoryTokenStore`'s signature meant every call site
+  had to move atomically for the tree to stay bisectable at each commit),
+  1 test (the three new suites below), 1 `chore(stories)` done). Full
+  `LillistCore` suite green **twice in a row** with unmasked exit codes
+  and a clean grep for the failure markers (1429 tests, 259 suites — up
+  from `5b`'s 1419/257 baseline). See *Wave 5c closing report* below for
+  the full verification transcript (this run hit an unusually contended
+  machine — a SIGSEGV worker crash, the `SyncQuiesceMonitor` timing pair
+  twice, an `X16` boundary timing flake, and once even a
+  `WidgetRefreshControllerTests` flake despite `5b`'s own two hardening
+  passes — every one confirmed, by isolated re-run or the accepted serial
+  tiebreaker, to be the documented contention-flake class and unrelated to
+  any file this plan touched), the two class-kill demonstrations (the
+  conformance walker catching an injected off-registry key literal; the
+  pruner-respects-min regression test failing red — with a genuine
+  `NSPersistentHistoryTokenExpiredError`, `X12` made concrete — against a
+  temporarily-restored pre-`5c` `sweep()`), and the `LocalBackupCoordinator`
+  launch-catch-up residual flagged for Wave 6.
 
 - ✅ **Plan `5a` closed all 9 findings** (`H5 M4 M6 M7 L3 L4 L5 X19 X20` /
   `LIL-23 LIL-48 LIL-50 LIL-51 LIL-72 LIL-73 LIL-74 LIL-68 LIL-69`) — new
@@ -711,18 +784,21 @@ Wave 5's first two plans, `5a` `mutation-scope-discipline` and `5b`
   the X8 process-capability investigation, the X9 tombstone-availability
   investigation, and what `4c` needs to know.
 
-**Next action for whoever picks this up:** start Wave 5's third and final
-plan, `5c` (`watermark-registry-pruning`) — findings `X12 L7`. Read the
-*Resume protocol* section first, then the *Wave 5b closing report* below
-for the `WidgetSnapshotBuilder`/`WidgetRefreshController` shape (`5c`'s own
-scope is history-watermark pruning, not widgets, but `X12`'s `HistoryPruner`
-ordering concern lives in the same `Persistence/` neighborhood
-`DrainGate`/`RemoteChangeReconciler` do — see the *Class-killer verdicts*
-table's `WatermarkRegistry` row, split from `4a`'s `DrainGate` extraction
-and reserved for `5c`) and the *Wave 5a closing report* further below for
-`withMutationRollback`/`MutationRollbackConformanceTests` (any future store
-mutation must still route through it) — `TaskStore.swift`'s serial chain
-closed for good with `5a`.
+**Next action for whoever picks this up:** Wave 5 is now fully complete
+(`5a`, `5b`, `5c`) — **start Wave 6** (`6a` `completeness-and-lows` +
+program closeout: `L1 L2 L6` + the export round-trip equality suite + the
+`X20` flip-flop stress hardening + every residual flagged across Waves
+1-5, most recently `5c`'s `LocalBackupCoordinator` launch-catch-up gap —
+see the *Wave 5c closing report* below). Read the *Resume protocol*
+section first, then the *Wave 5c closing report* for `WatermarkRegistry`'s
+final shape (any future history consumer registers by adding a case to
+`HistoryConsumerID`, not by constructing a `PersistentHistoryTokenStore`
+with a raw key), the *Wave 5b closing report* for
+`WidgetSnapshotBuilder`/`WidgetRefreshController`'s shape, and the *Wave
+5a closing report* for `withMutationRollback`/`MutationRollbackConformanceTests`
+(any future store mutation must still route through it) — every serial
+chain this ledger tracks is now closed for good; `6a` is a sweep across
+residuals, not a new shared-file chain.
 
 ---
 
@@ -2222,6 +2298,185 @@ anyway:
 
 ---
 
+## Wave 5c closing report (`watermark-registry-pruning`)
+
+Plan doc:
+`docs/superpowers/plans/2026-07-28-plan-5c-watermark-registry-pruning.md`
+— contains the full `WatermarkRegistry`/`HistoryConsumerID` UML, the
+complete min-watermark semantics table, and the `HistoryWatermarks`
+migration note. The last fix plan before Wave 6 closeout.
+
+| Finding | Story | Fix commit | Regression test(s) |
+|---|---|---|---|
+| `X12` (registry-gated pruning) | `LIL-43` | `7764c221` | `X12WatermarkGatedPruningTests.swift` (2) — end-to-end through `HistoryPruner` itself, not just the registry in isolation |
+| `L7` (dead-write key) | `LIL-76` | `7764c221` (same commit — the boundary source and the now-unnecessary bookkeeping write are one mechanism, not separable behavior) | Covered by every `HistoryPrunerTests`/`WatermarkRegistryTests` case exercising `sweep()`'s new `SweepOutcome` shape (no `tokenDefaultsKey` write survives to test) |
+| `WatermarkRegistry` itself (class-killer) | — | `7764c221` | `WatermarkRegistryTests.swift` (9), `WatermarkRegistryConformanceTests.swift` (1 test, 3 arguments) |
+
+**Commit range:** `1dfedd84..bec420da` — 1 docs (`1dfedd84`), 1
+`chore(stories)` in-progress (`d1dd61e3`), 1 fix (`7764c221` — the registry,
+`PersistentHistoryTokenStore`'s signature change, `HistoryPruner`, both
+`AppEnvironment.swift`'s, and every mechanical `key:`→`consumer:` call-site
+rename this forced, landed together: deleting `HistoryWatermarks.swift`
+and changing `PersistentHistoryTokenStore`'s public initializer signature
+meant every call site — both apps, six existing test files — had to move
+in the same commit for the tree to compile, let alone pass, at that point
+in history), 1 test (`ff167ceb` — the three genuinely new suites, which
+are purely additive and don't need to land atomically with the fix), 1
+`chore(stories)` done (`bec420da`). Full `LillistCore` suite green **twice
+in a row** with unmasked exit codes and a clean grep for the failure
+markers (1429 tests, 259 suites — up from `5b`'s 1419/257 baseline); both
+apps verified with unsigned `xcodebuild` builds (BUILD SUCCEEDED,
+including `LillistWidget`/`ShareExtension-iOS`/`ShortcutsActions` on iOS
+and `LillistWidget-macOS` on macOS) after the fix commit.
+
+**Verification ran on an unusually contended machine tonight (load average
+persistently 4-5 across the session) — every non-green run traced to a
+known, pre-existing, unrelated flake class before being accepted, never
+assumed:**
+1. First full-suite attempt after landing the fix: green (1429/259, exit
+   0, clean grep).
+2. Second attempt: a worker-process `SIGSEGV` (signal 11) — the documented
+   "heavy concurrent in-memory store creation" flake class (`CLAUDE.md`),
+   no per-test failure line at all.
+3. Retry: `SyncQuiesceMonitorTests`' two wall-clock-sensitive cases timed
+   out — the ledger's own named "quiesce pair" flake.
+4. Serial (`--no-parallel`) tiebreaker per the binding protocol: green.
+5. Parallel retry: `X16AfterCompletionIntervalClampTests` — the ledger's
+   own named "X16 boundary" flake.
+6. Parallel retry: green (1429/259).
+7. After landing both commits (fix + tests) and re-running at the final
+   committed state: green (1429/259) — **run 1 of 2**.
+8. Immediate retry: `SyncQuiesceMonitorTests` again (same class as #3).
+9. Serial tiebreaker: `WidgetRefreshControllerTests`' "a burst of local
+   saves debounces into exactly one rebuild + reload" — `5b`'s own new
+   test, hardened twice already in that plan against exactly this
+   contention class (see the *Wave 5b closing report* above); re-run of
+   just that one suite in isolation passed immediately, confirming genuine
+   environmental contention rather than a regression in a file this plan
+   never touched. Worth flagging to `6a`/Mikey: `5b`'s "zero flakes hit
+   either final run" claim was true under the load conditions it was
+   verified against, but this suite's hardening does not appear to be
+   proof against sufficiently heavy *system-wide* (not just
+   `swift-test`-worker) contention — not this plan's file to fix, noted
+   here only so the claim doesn't read as absolute.
+10. Parallel retry: green (1429/259) — **run 2 of 2**, satisfying the
+    binding "EXIT 0 + empty grep twice" protocol at the final committed
+    state (steps 7 and 10), with every intervening failure traced to a
+    named, pre-existing, unrelated flake class before being discounted.
+
+**Design decisions, in detail:**
+
+- **Fresh-consumer semantics — fail-safe chosen deliberately over
+  "prune before the oldest known watermark":** a registered consumer with
+  no watermark yet has made *zero* claims about what it has consumed.
+  Treating "no claim" as "consumed everything up to some other consumer's
+  watermark" would be guessing, and guessing wrong reintroduces `X12`'s
+  exact failure mode — deleting history a consumer hasn't seen. The
+  narrow-window cost is bounded in the common case (every registered
+  consumer's catch-up already runs earlier in the same `bootstrap()` call
+  that runs the sweep, so this state normally clears within the same
+  launch) and never causes data loss in the exceptional case — a slow
+  consumer just delays pruning, never widens it.
+- **`L7`'s dead-write key — removed, not made real.** Once the boundary
+  comes from `WatermarkRegistry.pruneBoundary(in:)` (itself derived from
+  the three real consumers' own persisted watermarks), a fourth,
+  pruner-owned watermark has no remaining purpose: it would either
+  duplicate the registry's computation for no benefit, or reintroduce the
+  exact "prune against my own cached progress, ignoring the real
+  consumers" bug this plan closes. The constant survives only as
+  `HistoryPruner.legacyBookkeepingKey` (`internal`, not `public`) so
+  `WatermarkRegistry.clearAll()` can purge the stale key from any install
+  that wrote it before this fix — pure hygiene, never written again by
+  any code path.
+- **Registration closed by construction, not by convention.**
+  `PersistentHistoryTokenStore`'s `key: String` parameter became
+  `consumer: HistoryConsumerID` — a closed enum, not an arbitrary string.
+  A fourth history consumer, if one is ever added, registers by adding a
+  case there; there is no other way to construct a token store. The
+  residual risk this doesn't close — a future contributor hand-typing one
+  of the three key strings directly into a raw `UserDefaults` call,
+  bypassing `PersistentHistoryTokenStore` entirely — is caught by
+  `WatermarkRegistryConformanceTests`, a source-text scan mirroring `5a`'s
+  `MutationRollbackConformanceTests` precedent (no `Mirror`-based
+  enumeration exists for a plain enum's call sites either).
+- **No bootstrap-ordering change.** Both `AppEnvironment.swift`'s keep the
+  existing "every consumer's catch-up before the sweep" sequence exactly
+  where it was. The fix is that `sweep()` itself no longer *trusts* that
+  ordering for correctness — it verifies it via the registry instead. The
+  ordering still matters for *promptness* (how soon pruning resumes after
+  a reset), just not for safety.
+
+**Class-kill demonstrations (per the wave brief, not committed):**
+1. Temporarily added a rogue `private let` in `HistoryPruner.swift`
+   hardcoding one of the three registered key literals outside
+   `WatermarkRegistry.swift` — `WatermarkRegistryConformanceTests` failed
+   immediately, pinpointing the exact offending file. Reverted; `git
+   status` clean before continuing.
+2. Temporarily reverted `HistoryPruner.sweep()` to its pre-`5c` "prune
+   before now" body and ran `X12WatermarkGatedPruningTests` — both new
+   tests failed red. Notably, `laggingConsumerHistorySurvivesSweep` didn't
+   just fail an assertion: fetching the lagging consumer's own pending
+   history threw a genuine `NSCocoaErrorDomain` `NSPersistentHistoryTokenExpiredError`
+   (code 134301) — Core Data itself reporting that the watermark's
+   underlying transaction had been deleted out from under it. `X12` made
+   concrete, not just theoretical. Reverted; re-confirmed both tests green
+   immediately after.
+
+**Discovered, out-of-scope residual — not fixed here, flagged for Wave 6
+(the plan doc's own §7):** `LocalBackupCoordinator.bootstrapAtLaunch()`
+never calls its own `processRemoteChange()` as an explicit launch-time
+catch-up — unlike `RemoteChangeReconciler`/`DiagnosticHistoryObserver`, it
+only ever advances its watermark from a *live* `NSPersistentStoreRemoteChange`/
+`NSManagedObjectContextDidSave` notification firing while the app happens
+to be running. This is precisely what `X12`'s finding text means by "the
+backup coordinator only catches up via history observers." This plan's
+registry-gated pruner directly closes the *data-loss* half of `X12`
+regardless (a stale backup watermark now correctly blocks the sweep via
+`.skippedNoSafeBoundary` instead of the old code silently deleting past
+it) — but the underlying staleness is real: if no future remote-change
+notification happens to fire, the backup consumer's watermark (and
+therefore pruning) stays stalled indefinitely, trading `X12`'s silent data
+loss for silent unbounded history growth instead of fully resolving it.
+Fixing `LocalBackupCoordinator`'s own catch-up-on-launch behavior is
+consumer discipline (`4a`/`4b`'s explicitly carved-out territory), not
+registry/pruner design — not fixed here. Worth a `6a` look; not one of the
+70 cataloged findings.
+
+**No deviations from the plan doc's commit plan** beyond the same
+"group by mechanism, not strict per-finding" pattern `2a` established and
+every wave since has followed — `X12` and `L7` share one mechanism and one
+commit, as the plan doc itself anticipated ("one mechanism" in its own
+opening line).
+
+**What Wave 6 needs to know (this is the wave 6 handoff — every serial
+chain this ledger tracks is now closed):**
+- `HistoryWatermarks.swift` no longer exists. `WatermarkRegistry`
+  (`Persistence/WatermarkRegistry.swift`) is the only watermark-reset
+  mechanism from here forward; any future finding touching reset/migration
+  watermark clearing should extend it, not reintroduce a parallel seam.
+- `PersistentHistoryTokenStore`'s public API changed shape (`key: String`
+  → `consumer: HistoryConsumerID`, defaulting to `.remoteChangeReconciler`
+  for source compat) — a fourth history consumer, if `6a` or anything
+  later ever needs one, registers by adding a case to `HistoryConsumerID`.
+- The `LocalBackupCoordinator` launch-catch-up residual (above) is real
+  and worth `6a`'s attention — it directly bears on `X12`'s long-term
+  health even though it isn't one of the 70 cataloged findings.
+- The `WidgetRefreshControllerTests` contention-sensitivity observed
+  during this plan's verification (see the run log above) is worth a
+  glance if `6a` hits it again — not a regression, but `5b`'s hardening
+  may not be proof against every load condition this shared machine can
+  produce.
+- Every other residual carried forward into `6a` is unchanged from the
+  `5b`/`5a` handoffs: `TaskDuplicateReconciler.diagnosticLog` unwired in
+  both apps (`1a`'s `M5`), `recoverInterruptedReseed()`'s crash-recovery
+  path never broadcasting (`3b`), a remote `NotificationSpec.snoozedUntil`/
+  `.offsetMinutes` in-place edit invisible to `RemoteChangeReconciler`'s
+  diff (`X9`'s scope note, latent), and `LIL-77`/`LIL-81` (both still
+  open). `LIL-83` (`X10`'s timezone-posture schema change) remains
+  explicitly deferred out of this program — do not pick it up in `6a`.
+
+---
+
 ## Execution model (per Mikey's directives, 2026-07-28)
 
 - **One dedicated worktree** on a long-running branch:
@@ -2282,7 +2537,7 @@ Wave 6 closeout. **Status** starts `pending` for everything except Wave 0.
 | 4 | **4c** `recurrence-correctness` | `H1 X7 X16 X17` | ✅ complete |
 | 5 | **5a** `mutation-scope-discipline` | `H5 M4 M6 M7 L3 L4 L5 X19 X20` | ✅ complete |
 | 5 | **5b** `widget-snapshot-correctness` | `X5 X6` | ✅ complete |
-| 5 | **5c** `watermark-registry-pruning` | `X12 L7` | ⬜ pending |
+| 5 | **5c** `watermark-registry-pruning` | `X12 L7` | ✅ complete |
 | 6 | **6a** `completeness-and-lows` + closeout | `L1 L2 L6` + export round-trip equality suite + `X20` flip-flop stress (builds atop 5a's fix, not a new finding) + any residuals from Waves 1-5, incl. `LIL-77` (discovered during `1d`, not one of the 70 findings). `LIL-86` (discovered during `5a`) was fixed within `5a` itself (test-only, `Closes LIL-86`) rather than carried forward — no `6a` action needed. **Not included:** `LIL-83` (discovered during `4b`) — the underlying data-model change was explicitly **deferred out of this program** (orchestrator decision, 2026-07-29 — see *Decisions awaiting Mikey* below); do not pick it up in `6a`, it isn't program-scheduled work. | ⬜ pending |
 
 **Finding-count check:** 70 unique findings (`C1`-`C4`, `H1`-`H7`, `M1`-`M7`,
@@ -2450,21 +2705,26 @@ structure — each earlier plan in the chain will have moved line numbers.
    this chain.
 6. **`HistoryPruner.swift` + the three history-token `UserDefaults` keys** —
    `3b` ✅ done, landed AHEAD of `5c` (the reverse of the originally-planned
-   order — see below) — new `HistoryWatermarks`
-   (`Persistence/HistoryWatermarks.swift`) bundles the three
-   `PersistentHistoryTokenStore` consumers + `HistoryPruner`'s own
-   bookkeeping key and is wired into `DataStoreResetService`'s every reset
-   flavor + `MigrationCoordinator`'s `.replaceLocalWithICloud`. **Deviation
-   from the plan doc's originally-sketched ordering:** the ledger's own
-   pre-`3b` note said "land `5c`'s registry first structurally, `3b`
-   consumes it" — in practice `3b` landed a deliberately narrow, hand-
-   maintained `HistoryWatermarks` seam directly (not a stub against a
-   not-yet-built registry) rather than block Wave 3 on pulling `5c`
-   forward out of wave order. `5c` (`watermark-registry-pruning`) should
-   now **replace** `HistoryWatermarks` with the formal `WatermarkRegistry`
-   (min-over-consumers pruning) rather than build a second, parallel
-   mechanism — see `HistoryWatermarks`' own doc comment, which says this
-   explicitly.
+   order) — new `HistoryWatermarks` (`Persistence/HistoryWatermarks.swift`)
+   bundled the three `PersistentHistoryTokenStore` consumers +
+   `HistoryPruner`'s own bookkeeping key and was wired into
+   `DataStoreResetService`'s every reset flavor + `MigrationCoordinator`'s
+   `.replaceLocalWithICloud`. **Deviation from the plan doc's originally-
+   sketched ordering, noted at the time:** the ledger's own pre-`3b` note
+   said "land `5c`'s registry first structurally, `3b` consumes it" — in
+   practice `3b` landed a deliberately narrow, hand-maintained
+   `HistoryWatermarks` seam directly (not a stub against a not-yet-built
+   registry) rather than block Wave 3 on pulling `5c` forward out of wave
+   order. → `5c` ✅ done — **replaced** `HistoryWatermarks` with the formal
+   `WatermarkRegistry` (`Persistence/WatermarkRegistry.swift`) exactly as
+   that type's own doc comment called for: `HistoryConsumerID` (a closed
+   enum) is the only way to construct a `PersistentHistoryTokenStore`
+   (its `key: String` parameter became `consumer: HistoryConsumerID`);
+   `WatermarkRegistry.pruneBoundary(in:)` gives `HistoryPruner` the
+   min-over-registered-consumers boundary instead of "now"; `clearAll()`
+   preserves `HistoryWatermarks`' exact reset-hygiene behavior (X11 still
+   works, verified). This chain is now closed for good — no further
+   `HistoryPruner`/watermark work is scheduled in this program.
 7. **`Importer.swift` + `Exporter.swift` + `ExportSchema.swift` +
    `BackupSchema.swift`** — `1d` ✅ done (`ExportSchema`/`BackupPackageSchema`
    both at v2; `SeriesDTO`/`NotificationSpecDTO`/`SmartFilterDTO` +
