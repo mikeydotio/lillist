@@ -1,4 +1,9 @@
-# Foundation Hardening — Wave Handoffs
+# Program handoffs
+
+Handoff documents for the repo's multi-wave hardening programs. Both programs
+are complete; these files are historical record.
+
+## Foundation Hardening — `wave-N.md`
 
 Each wave of the Foundation Hardening program
 ([index](../plans/2026-05-29-foundation-hardening-index.md)) is executed by a
@@ -9,6 +14,15 @@ own (`wave-N.md`) on completion.**
 Waves 1–3 are **backfilled** here from the index's status entries (they merged
 before this protocol existed). Waves 4–7 are written by their executors as they
 land.
+
+## Data & Sync Hardening — `2026-07-28-data-sync-hardening-closeout.md`
+
+The Data & Sync Hardening program
+([index](../plans/2026-07-28-data-sync-hardening-index.md)) ran as one
+long-lived worktree/branch rather than wave-per-executor, so it kept a single
+rolling handoff at the repo root (`HANDOFF.md`) instead of per-wave files. That
+file was archived here on 2026-07-29 when the program merged (PR #77). Its
+per-wave closing reports live in the ledger, not here.
 
 ## Template
 

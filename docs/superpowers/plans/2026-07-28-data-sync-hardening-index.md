@@ -38,8 +38,9 @@ report* below for the final verification transcript, test counts, and
 storyhook end state; see *Decisions awaiting Mikey* for the two standing
 items (`LIL-83`, `LIL-90`) and *Mikey's manual-verification checklist*
 below for the manual-only verification that never gates a fix but still
-needs a human with real devices/accounts. **One PR remains to open — see
-the *Resume protocol*'s final step.**
+needs a human with real devices/accounts. **Merged to `main` via PR #77 on
+2026-07-29** — the program is closed; this file is now historical record,
+not a living tracker.
 
 - ✅ **Plan `5b` closed both findings** (`X5 X6` / `LIL-18 LIL-37`) —
   `WidgetSnapshotBuilder.regenerate(filterIDs:)` is now additive-only:
