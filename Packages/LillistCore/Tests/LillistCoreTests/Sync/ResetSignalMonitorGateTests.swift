@@ -2,19 +2,22 @@ import Testing
 import Foundation
 @testable import LillistCore
 
-/// `S11`: `ResetSignalMonitor`'s automatic peer-reset application must
-/// respect the shared `DestructiveOpGate` — a reset arriving mid-migration
-/// must wait or stay pending, never interleave. Unlike `MigrationCoordinator`
-/// and `DataStoreResetService`, `ResetSignalMonitor` itself needed NO code
-/// change to satisfy this: its existing apply/acknowledge ordering already
-/// leaves a failed-to-apply event pending (not marked applied, not
-/// acknowledged) for the next tick or relaunch to retry — see its own doc
-/// comment. Once `DataStoreResetService` throws because the gate is held
-/// (this plan's own change), that throw flows straight into the existing
-/// retry-later path. These tests prove the END-TO-END pipeline — a REAL
-/// `DataStoreResetService` wired as the `apply` closure exactly as
-/// `AppEnvironment` wires it in production — not just the generic
-/// throwing-closure case `ResetSignalMonitorTests` already covers.
+/// `S11`: `ResetSignalMonitor`'s user-confirmed reset application must
+/// respect the shared `DestructiveOpGate` — a reset confirmed while a
+/// migration holds the gate must fail and stay pending, never interleave.
+/// `ResetSignalMonitor` itself needs no gate-awareness of its own: its
+/// existing apply/acknowledge ordering already leaves a failed-to-apply
+/// event pending (not marked applied, not acknowledged) for the next
+/// confirmation to retry — see its own doc comment. Once
+/// `DataStoreResetService` throws because the gate is held (a `2a`
+/// change), that throw flows straight into `confirmApply()`'s existing
+/// retry-later path (data-sync-hardening `S10`: `confirmApply()` is the
+/// only path that ever applies anything, replacing the old auto-applying
+/// `checkAndApply()` this suite originally drove directly). These tests
+/// prove the END-TO-END pipeline — a REAL `DataStoreResetService` wired as
+/// the `apply` closure exactly as `AppEnvironment` wires it in production —
+/// not just the generic throwing-closure case `ResetSignalMonitorTests`
+/// already covers.
 @Suite("ResetSignalMonitor respects the shared DestructiveOpGate (S11)")
 struct ResetSignalMonitorGateTests {
     private static let fixedNow = Date(timeIntervalSince1970: 1_700_000_000)
@@ -51,13 +54,13 @@ struct ResetSignalMonitorGateTests {
         )
     }
 
-    @Test("A reset event arriving while a migration holds the gate stays pending, not applied or acknowledged")
+    @Test("A reset confirmed while a migration holds the gate stays pending, not applied or acknowledged")
     @MainActor
     func resetStaysPendingWhileMigrationHoldsGate() async throws {
         let gate = DestructiveOpGate()
         // Simulate a migration already in flight, holding the gate —
-        // exactly the state ResetSignalMonitor's checkAndApply() could
-        // observe if a peer's reset broadcast arrives mid-migration.
+        // exactly the state a user could confirm into if a peer's reset
+        // broadcast arrives and is approved mid-migration.
         try gate.acquire(for: .migration(.disableNow))
 
         let kv = InMemoryKeyValueSyncStore()
@@ -71,23 +74,27 @@ struct ResetSignalMonitorGateTests {
 
         let resetService = makeGatedResetService(gate: gate)
         let monitor = ResetSignalMonitor(
-            inbox: inbox, applied: applied, deviceID: "device-B"
+            inbox: inbox, applied: applied, deviceID: "device-B",
+            clock: { Self.fixedNow }
         ) { [resetService] _ in
             try await resetService.resetAndRedownload()
         }
 
-        await monitor.checkAndApply()
+        await monitor.refreshPendingDecision()
+        #expect(await monitor.pendingDecision == e)
+        await #expect(throws: (any Error).self) { try await monitor.confirmApply() }
 
         // The gate rejected the reset (migration still holds it) — the
-        // event must stay pending for the next tick, never marked
+        // event must stay pending for the next confirmation, never marked
         // applied, never acknowledged. No interleaving occurred.
         #expect(applied.hasApplied(e.id) == false)
         #expect(inbox.pendingEvents(for: "device-B") == [e])
+        #expect(await monitor.pendingDecision == e)
 
         gate.release()
     }
 
-    @Test("Once the migration releases the gate, the next tick applies the previously-blocked reset")
+    @Test("Once the migration releases the gate, confirming again applies the previously-blocked reset")
     @MainActor
     func retryAppliesOnceGateFrees() async throws {
         let gate = DestructiveOpGate()
@@ -104,21 +111,23 @@ struct ResetSignalMonitorGateTests {
 
         let resetService = makeGatedResetService(gate: gate)
         let monitor = ResetSignalMonitor(
-            inbox: inbox, applied: applied, deviceID: "device-B"
+            inbox: inbox, applied: applied, deviceID: "device-B",
+            clock: { Self.fixedNow }
         ) { [resetService] _ in
             try await resetService.resetAndRedownload()
         }
 
-        // First tick: blocked, stays pending.
-        await monitor.checkAndApply()
+        // First confirmation attempt: blocked, stays pending.
+        await monitor.refreshPendingDecision()
+        await #expect(throws: (any Error).self) { try await monitor.confirmApply() }
         #expect(applied.hasApplied(e.id) == false)
 
         // The migration finishes and releases the gate.
         gate.release()
 
-        // Second tick (the next notification, or a relaunch catch-up
-        // pass): the reset now runs for real and the event is consumed.
-        await monitor.checkAndApply()
+        // Confirming again (the user retries, or a fresh scan + confirm):
+        // the reset now runs for real and the event is consumed.
+        try await monitor.confirmApply()
         #expect(applied.hasApplied(e.id))
         #expect(inbox.pendingEvents(for: "device-B").isEmpty)
     }

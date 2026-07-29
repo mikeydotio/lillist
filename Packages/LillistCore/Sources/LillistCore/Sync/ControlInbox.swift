@@ -83,6 +83,29 @@ public struct ControlInbox: Sendable {
         kv.synchronize()
     }
 
+    /// Every raw key addressed to `recipientID` whose value fails to decode
+    /// as a `ResetControlEvent` (data-sync-hardening `S22`). `pendingEvents
+    /// (for:)` silently `compactMap`s past these — by design, a corrupt
+    /// entry must never crash a scan — which is exactly why nothing else
+    /// ever notices them: they have no decoded `id` to acknowledge by, so
+    /// they would otherwise sit in the store forever. This is how a caller
+    /// (`ResetSignalMonitor`) discovers what that `compactMap` swallowed, so
+    /// it can quarantine each one via `discardUndecodable(key:)`.
+    public func undecodableKeys(for recipientID: String) -> [String] {
+        kv.keys(withPrefix: Self.recipientPrefix(recipientID)).filter { key in
+            guard let data = kv.data(forKey: key) else { return false }
+            return (try? Self.decode(data)) == nil
+        }
+    }
+
+    /// Remove a raw entry by its exact key. Unlike `acknowledge(eventID:
+    /// recipient:)`, this doesn't require having successfully decoded an
+    /// `id` first — pair with `undecodableKeys(for:)`.
+    public func discardUndecodable(key: String) {
+        kv.removeObject(forKey: key)
+        kv.synchronize()
+    }
+
     private static func encode(_ event: ResetControlEvent) throws -> Data {
         let encoder = JSONEncoder()
         encoder.dateEncodingStrategy = .iso8601

@@ -16,6 +16,16 @@ import Foundation
 /// sharing is needed.
 public final class AppliedEventStore: @unchecked Sendable {
     private static let userDefaultsKey = "app.lillist.appliedResetEventIDs"
+    /// Data-sync-hardening `S22`: bounds growth. A personal account's reset
+    /// events are rare, deliberate, user-initiated actions — 200 is
+    /// generous headroom while guaranteeing this store can never grow
+    /// unbounded across a device's whole lifetime. Oldest entries are
+    /// evicted first once the cap is exceeded; eviction only ever discards
+    /// the crash-recovery/efficiency memory for a long-past event whose
+    /// `ControlInbox` entry has almost certainly already been acknowledged
+    /// and removed by every recipient anyway — this store is not a
+    /// correctness requirement (see the type's own header comment above).
+    public static let capacity = 200
 
     private let defaults: UserDefaults
     private let lock = NSLock()
@@ -34,11 +44,17 @@ public final class AppliedEventStore: @unchecked Sendable {
         lock.lock()
         defer { lock.unlock() }
         var ids = storedIDs()
-        ids.insert(id.uuidString)
-        defaults.set(Array(ids), forKey: Self.userDefaultsKey)
+        ids.removeAll { $0 == id.uuidString }
+        ids.append(id.uuidString)
+        if ids.count > Self.capacity {
+            ids.removeFirst(ids.count - Self.capacity)
+        }
+        defaults.set(ids, forKey: Self.userDefaultsKey)
     }
 
-    private func storedIDs() -> Set<String> {
-        Set(defaults.stringArray(forKey: Self.userDefaultsKey) ?? [])
+    /// Ordered oldest-first so `markApplied` can evict from the front.
+    /// `Set` (the prior storage shape) has no ordering to evict by.
+    private func storedIDs() -> [String] {
+        defaults.stringArray(forKey: Self.userDefaultsKey) ?? []
     }
 }
