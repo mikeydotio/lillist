@@ -350,6 +350,11 @@ final class AppEnvironment {
         self.remoteChangeReconciler.diagnosticLog = diagnosticLog
 
         self.taskDuplicateReconciler = TaskDuplicateReconciler(persistence: persistence)
+        // LIL-82: M5's diagnosticLog property was never wired here (nor on
+        // iOS) — a duplicate-merge failure only ever reached os.Logger,
+        // never the structured diagnostic stream this same block wires up
+        // for remoteChangeReconciler right above.
+        self.taskDuplicateReconciler.diagnosticLog = diagnosticLog
 
         // Plan 21: assemble the migration machinery + classifier.
         let quarantineRoot = storeURL.map { $0.deletingLastPathComponent() }
@@ -712,6 +717,17 @@ final class AppEnvironment {
         // launch), then begin observing live remote changes.
         await taskDuplicateReconciler.reconcileNow()
         taskDuplicateReconciler.start()
+        // L2: SmartFilterStore.deduplicateExactDuplicates()'s own doc
+        // comment claims default-filter duplicates "self-heal across
+        // launches," but installDefaultsIfNeeded() (which begins with this
+        // same dedup pass) is only ever called from onboarding — a
+        // one-time, first-launch-only entry point. A device that completed
+        // onboarding before a cross-device create race landed a duplicate
+        // would otherwise never run the dedup pass again. Calling it here
+        // makes every ordinary launch a self-heal opportunity, matching the
+        // doc comment's actual claim. Best-effort, matching every other
+        // step here.
+        try? await smartFilterStore.deduplicateExactDuplicates()
         // Data-sync-hardening plan 1a: self-heal any illegal tree state a
         // CloudKit merge produced (parent cycles, live-under-trashed nodes,
         // position ties) — runs after duplicate reconcile (so a stale

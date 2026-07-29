@@ -46,7 +46,7 @@ struct SettingsTab: View {
                         DataManagementPage(prefs: b)
                     }
                     navRow("Debug", "ladybug.fill", LillistColor.textMuted) {
-                        DebugPage(prefs: b)
+                        DebugPage()
                     }
                 }
             } else {

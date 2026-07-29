@@ -12,13 +12,12 @@ import LillistUI
 /// nav-destination-in-a-sheet present-then-dismisses and nukes the whole
 /// Settings sheet (see `DiagnosticsExportModel`).
 struct DebugPage: View {
-    @Binding var prefs: PreferencesStore.Prefs
     @Environment(AppEnvironment.self) private var environment
     @State private var diagnostics = DiagnosticsExportModel()
 
     var body: some View {
         SettingsDetailScreen("Debug") {
-            CrashReportingSection(prefs: $prefs)
+            CrashReportingSection()
             DiagnosticsSection(model: diagnostics)
             ResetDataStoreSection()
         }
