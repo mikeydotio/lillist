@@ -101,4 +101,35 @@ struct TaskStoreRollbackTests {
         try await store.update(id: other) { $0.title = "other-updated" }
         #expect(try await store.fetch(id: other).title == "other-updated")
     }
+
+    /// H5's TaskStore wart: pre-`withMutationRollback`, `create`'s
+    /// `validateTitle` ran BEFORE `context.perform`, yet the catch block
+    /// still unconditionally called `context.perform { context.rollback() }`
+    /// — a separate, later `perform` submission that could discard whatever
+    /// another in-flight caller had legitimately staged on the shared
+    /// context in between. `validateTitle` now runs inside
+    /// `withMutationRollback`'s own atomic body, so a validation failure
+    /// never touches the context at all — directly observable as
+    /// `hasChanges` staying `false` throughout, not merely ending up
+    /// `false` after an unnecessary rollback round trip.
+    @Test("H5: create's validation failure never touches the context (no rollback round trip)")
+    func createValidationFailureNeverTouchesContext() async throws {
+        let p = try await TestStore.make()
+        let store = TaskStore(persistence: p)
+        let view = p.container.viewContext
+
+        let preHasChanges: Bool = await view.perform { view.hasChanges }
+        #expect(preHasChanges == false)
+
+        var threw = false
+        do {
+            _ = try await store.create(title: "   ")   // whitespace-only: fails validateTitle
+        } catch {
+            threw = true
+        }
+        #expect(threw == true)
+
+        let postHasChanges: Bool = await view.perform { view.hasChanges }
+        #expect(postHasChanges == false, "a pure validation failure must never dirty (or need to roll back) the shared context")
+    }
 }

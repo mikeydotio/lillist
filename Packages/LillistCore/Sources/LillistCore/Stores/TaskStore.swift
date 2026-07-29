@@ -148,8 +148,8 @@ public final class TaskStore: @unchecked Sendable {
         placement: NewTaskPlacement = .bottom
     ) async throws -> UUID {
         do {
-            try validateTitle(title)
-            let result: (id: UUID, assigned: Double, observedMax: Double?) = try await context.perform { [self] in
+            let result: (id: UUID, assigned: Double, observedMax: Double?) = try await withMutationRollback(context: context) { [self] in
+                try validateTitle(title)
                 let parentTask = try parent.map { try fetchManagedObject(id: $0, in: context) }
                 try assertParentNotTrashed(parentTask)
                 // Compute the position BEFORE inserting the new row, so the
@@ -171,7 +171,6 @@ public final class TaskStore: @unchecked Sendable {
                 task.stampCurrentSchemaVersion()
                 task.parent = parentTask
                 task.position = detail.assigned
-                try context.save()
                 return (id: id, assigned: detail.assigned, observedMax: detail.observedMax)
             }
             await recordCrumb("task.create", success: true)
@@ -184,7 +183,6 @@ public final class TaskStore: @unchecked Sendable {
             ])
             return result.id
         } catch {
-            await context.perform { [self] in context.rollback() }
             await recordCrumb("task.create", success: false)
             await emitDiag("task.create", [
                 "parentID": parent.map { .string($0.uuidString) } ?? .null,
@@ -207,7 +205,7 @@ public final class TaskStore: @unchecked Sendable {
 
     public func update(id: UUID, _ block: @escaping @Sendable (inout TaskDraft) -> Void) async throws {
         do {
-            try await context.perform { [self] in
+            try await withMutationRollback(context: context) { [self] in
                 let m = try fetchManagedObject(id: id, in: context)
                 var draft = TaskDraft(
                     title: m.title ?? "",
@@ -229,7 +227,6 @@ public final class TaskStore: @unchecked Sendable {
                 m.isPinned = draft.isPinned
                 m.modifiedAt = Date()
                 m.stampCurrentSchemaVersion()
-                try context.save()
             }
             // Anchor fields (start/deadline) and their time flags affect
             // notification scheduling. Reconcile after save.
@@ -238,7 +235,6 @@ public final class TaskStore: @unchecked Sendable {
             }
             await recordCrumb("task.update", success: true)
         } catch {
-            await context.perform { [self] in context.rollback() }
             await recordCrumb("task.update", success: false)
             throw error
         }
@@ -248,7 +244,7 @@ public final class TaskStore: @unchecked Sendable {
 
     public func hardDelete(id: UUID) async throws {
         do {
-            let doomedTaskIDs: [UUID] = try await context.perform { [self] in
+            let doomedTaskIDs: [UUID] = try await withMutationRollback(context: context) { [self] in
                 let m = try fetchManagedObject(id: id, in: context)
                 // H3: collect the full cascade closure's task ids BEFORE
                 // deleting, so pending OS notifications can be cancelled
@@ -262,7 +258,6 @@ public final class TaskStore: @unchecked Sendable {
                     .filter { $0.entity.name == "LillistTask" }
                     .compactMap { (try? context.existingObject(with: $0) as? LillistTask)?.id }
                 context.delete(m)
-                try context.save()
                 return doomedTaskIDs
             }
             if let notificationScheduler, !doomedTaskIDs.isEmpty {
@@ -270,7 +265,6 @@ public final class TaskStore: @unchecked Sendable {
             }
             await recordCrumb("task.purge", success: true)
         } catch {
-            await context.perform { [self] in context.rollback() }
             await recordCrumb("task.purge", success: false)
             throw error
         }
@@ -332,7 +326,7 @@ public final class TaskStore: @unchecked Sendable {
 
     public func reparent(id: UUID, newParent newParentID: UUID?) async throws {
         do {
-            let outcome: (oldParentID: UUID?, assigned: Double) = try await context.perform { [self] in
+            let outcome: (oldParentID: UUID?, assigned: Double) = try await withMutationRollback(context: context) { [self] in
                 let m = try fetchManagedObject(id: id, in: context)
                 let oldParentID = m.parent?.id
                 let newParent: LillistTask?
@@ -353,7 +347,6 @@ public final class TaskStore: @unchecked Sendable {
                 m.position = assigned
                 m.modifiedAt = Date()
                 m.stampCurrentSchemaVersion()
-                try context.save()
                 return (oldParentID: oldParentID, assigned: assigned)
             }
             await recordCrumb("task.move", success: true)
@@ -365,7 +358,6 @@ public final class TaskStore: @unchecked Sendable {
                 "threwError": .bool(false),
             ])
         } catch {
-            await context.perform { [self] in context.rollback() }
             await recordCrumb("task.move", success: false)
             await emitDiag("task.reparent", [
                 "taskID": .string(id.uuidString),
@@ -405,7 +397,7 @@ public final class TaskStore: @unchecked Sendable {
         // tie that throws) still logs the equal anchors that caused it.
         let cap = ReorderCapture()
         do {
-            try await context.perform { [self] in
+            try await withMutationRollback(context: context) { [self] in
                 let m = try fetchManagedObject(id: id, in: context)
                 let afterTask = try afterID.map { try fetchManagedObject(id: $0, in: context) }
                 let beforeTask = try beforeID.map { try fetchManagedObject(id: $0, in: context) }
@@ -548,11 +540,9 @@ public final class TaskStore: @unchecked Sendable {
                 m.position = computed
                 m.modifiedAt = Date()
                 m.stampCurrentSchemaVersion()
-                try context.save()
             }
             await emitReorderDiag(id: id, afterID: afterID, beforeID: beforeID, capture: cap, threwError: false)
         } catch {
-            await context.perform { [self] in context.rollback() }
             await emitReorderDiag(id: id, afterID: afterID, beforeID: beforeID, capture: cap, threwError: true)
             throw error
         }
@@ -587,7 +577,7 @@ public final class TaskStore: @unchecked Sendable {
     public func transition(id: UUID, to newStatus: Status) async throws {
         let cap = TransitionCapture()
         do {
-            let spawnedID: UUID? = try await context.perform { [self] in
+            let spawnedID: UUID? = try await withMutationRollback(context: context) { [self] in
                 let m = try fetchManagedObject(id: id, in: context)
                 let oldStatus = m.status
                 cap.from = oldStatus
@@ -626,7 +616,6 @@ public final class TaskStore: @unchecked Sendable {
                     spawnedID = try RecurrenceSpawner.spawnIfNeeded(forClosedTask: m, in: context)
                 }
 
-                try context.save()
                 return spawnedID
             }
             // Reconcile *after* the save so the persistent store reflects the
@@ -642,7 +631,6 @@ public final class TaskStore: @unchecked Sendable {
             await emitTransitionDiag(id: id, to: newStatus, capture: cap, threwError: false)
             await recordCrumb("task.status.change", success: true)
         } catch {
-            await context.perform { [self] in context.rollback() }
             await emitTransitionDiag(id: id, to: newStatus, capture: cap, threwError: true)
             await recordCrumb("task.status.change", success: false)
             throw error
@@ -686,7 +674,7 @@ public final class TaskStore: @unchecked Sendable {
     @discardableResult
     public func archive(ids: [UUID]) async throws -> [UUID] {
         do {
-            let affected: [UUID] = try await context.perform { [self] in
+            let affected: [UUID] = try await withMutationRollback(context: context) { [self] in
                 var flipped: [UUID] = []
                 let now = Date()
                 for id in ids {
@@ -697,13 +685,11 @@ public final class TaskStore: @unchecked Sendable {
                     m.stampCurrentSchemaVersion()
                     flipped.append(id)
                 }
-                try context.save()
                 return flipped
             }
             await recordCrumb("task.archive", success: true)
             return affected
         } catch {
-            await context.perform { [self] in context.rollback() }
             await recordCrumb("task.archive", success: false)
             throw error
         }
@@ -713,7 +699,7 @@ public final class TaskStore: @unchecked Sendable {
     /// at `archivedAt == nil` are left untouched.
     public func unarchive(ids: [UUID]) async throws {
         do {
-            try await context.perform { [self] in
+            try await withMutationRollback(context: context) { [self] in
                 for id in ids {
                     let m = try fetchManagedObject(id: id, in: context)
                     guard m.archivedAt != nil else { continue }
@@ -721,11 +707,9 @@ public final class TaskStore: @unchecked Sendable {
                     m.modifiedAt = Date()
                     m.stampCurrentSchemaVersion()
                 }
-                try context.save()
             }
             await recordCrumb("task.unarchive", success: true)
         } catch {
-            await context.perform { [self] in context.rollback() }
             await recordCrumb("task.unarchive", success: false)
             throw error
         }
@@ -739,12 +723,10 @@ public final class TaskStore: @unchecked Sendable {
             // (see 1a's H7 cycle-guard fix), so notification reconcile must
             // cover the whole subtree it touched — not just the root id — or a
             // cascaded descendant's reminder keeps firing for a trashed task.
-            let affectedIDs: [UUID] = try await context.perform { [self] in
+            let affectedIDs: [UUID] = try await withMutationRollback(context: context) { [self] in
                 let m = try fetchManagedObject(id: id, in: context)
                 let now = Date()
-                let affected = applySoftDelete(to: m, at: now)
-                try context.save()
-                return affected
+                return applySoftDelete(to: m, at: now)
             }
             if let scheduler = notificationScheduler {
                 // Every affected task's desired notification set is
@@ -756,7 +738,6 @@ public final class TaskStore: @unchecked Sendable {
             }
             await recordCrumb("task.delete", success: true)
         } catch {
-            await context.perform { [self] in context.rollback() }
             await recordCrumb("task.delete", success: false)
             throw error
         }
@@ -769,7 +750,7 @@ public final class TaskStore: @unchecked Sendable {
             // fix), so every one of them needs a real reconcile — a
             // descendant's specs may now resolve to a future fire date again,
             // which cancelPending's cancel-only shape can't re-install.
-            let affectedIDs: [UUID] = try await context.perform { [self] in
+            let affectedIDs: [UUID] = try await withMutationRollback(context: context) { [self] in
                 let m = try fetchManagedObject(id: id, in: context)
                 guard let deletedAt = m.deletedAt else { return [] }
                 let affected = clearSoftDelete(from: m, matchingDeletedAt: deletedAt)
@@ -789,7 +770,6 @@ public final class TaskStore: @unchecked Sendable {
                 // uses, now that `nextPositionDetail` itself ignores trashed
                 // siblings when computing the edge.
                 m.position = try nextPositionDetail(forParent: m.parent, placement: .bottom).assigned
-                try context.save()
                 return affected
             }
             if let scheduler = notificationScheduler {
@@ -799,7 +779,6 @@ public final class TaskStore: @unchecked Sendable {
             }
             await recordCrumb("task.restore", success: true)
         } catch {
-            await context.perform { [self] in context.rollback() }
             await recordCrumb("task.restore", success: false)
             throw error
         }
@@ -975,36 +954,29 @@ public final class TaskStore: @unchecked Sendable {
     // MARK: - Tags
 
     public func assignTag(taskID: UUID, tagID: UUID) async throws {
-        do {
-            try await context.perform { [self] in
-                let task = try fetchManagedObject(id: taskID, in: context)
-                let tag = try fetchTag(id: tagID, in: context)
-                let existing = task.tags as? Set<Tag> ?? []
-                if existing.contains(tag) { return }
-                task.addToTags(tag)
-                task.modifiedAt = Date()
-                task.stampCurrentSchemaVersion()
-                try context.save()
-            }
-        } catch {
-            await context.perform { [self] in context.rollback() }
-            throw error
+        try await withMutationRollback(context: context) { [self] in
+            let task = try fetchManagedObject(id: taskID, in: context)
+            let tag = try fetchTag(id: tagID, in: context)
+            let existing = task.tags as? Set<Tag> ?? []
+            if existing.contains(tag) { return }
+            task.addToTags(tag)
+            task.modifiedAt = Date()
+            task.stampCurrentSchemaVersion()
         }
     }
 
+    /// L4: mirrors `assignTag`'s no-op guard — unassigning a tag the task
+    /// doesn't currently carry must not write (no spurious `modifiedAt`
+    /// bump, no meaningless CloudKit export).
     public func unassignTag(taskID: UUID, tagID: UUID) async throws {
-        do {
-            try await context.perform { [self] in
-                let task = try fetchManagedObject(id: taskID, in: context)
-                let tag = try fetchTag(id: tagID, in: context)
-                task.removeFromTags(tag)
-                task.modifiedAt = Date()
-                task.stampCurrentSchemaVersion()
-                try context.save()
-            }
-        } catch {
-            await context.perform { [self] in context.rollback() }
-            throw error
+        try await withMutationRollback(context: context) { [self] in
+            let task = try fetchManagedObject(id: taskID, in: context)
+            let tag = try fetchTag(id: tagID, in: context)
+            let existing = task.tags as? Set<Tag> ?? []
+            guard existing.contains(tag) else { return }
+            task.removeFromTags(tag)
+            task.modifiedAt = Date()
+            task.stampCurrentSchemaVersion()
         }
     }
 
@@ -1103,7 +1075,7 @@ public final class TaskStore: @unchecked Sendable {
     /// healthy sibling sets produce zero writes. Called at load-seams so data
     /// is clean before the first reorder attempt.
     public func normalizeSiblingsIfDegenerate(ofParent parentID: UUID?) async throws {
-        try await context.perform { [self] in
+        try await withMutationRollback(context: context) { [self] in
             let req = NSFetchRequest<LillistTask>(entityName: "LillistTask")
             if let parentID {
                 let parent = try fetchManagedObject(id: parentID, in: context)
@@ -1129,7 +1101,6 @@ public final class TaskStore: @unchecked Sendable {
             for (sibling, newPosition) in zip(sorted, respaced) {
                 sibling.position = newPosition
             }
-            try context.save()
         }
     }
 
