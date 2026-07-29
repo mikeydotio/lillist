@@ -86,6 +86,13 @@ public final class MigrationCoordinator {
     /// real seconds.
     private let quiesceMinQuietWindow: TimeInterval
     private let quiesceHardTimeout: TimeInterval
+    /// `S21`: clears `SyncStatusMonitor`'s stall counters/forensics after a
+    /// successful reconfigure or restore — nothing previously told the
+    /// monitor "the store just changed, whatever streak it was tracking no
+    /// longer applies." Called only on success (never on failure — a
+    /// failed op hasn't actually changed the store's sync health). `nil`
+    /// preserves prior behavior for every existing test/legacy caller.
+    private let syncStatusReset: (@Sendable () async -> Void)?
 
     private var progressContinuations: [UUID: AsyncStream<MigrationPhase>.Continuation] = [:]
 
@@ -104,7 +111,8 @@ public final class MigrationCoordinator {
         accountStateProvider: AccountStateProviding? = nil,
         destructiveOpGate: DestructiveOpGate = DestructiveOpGate(),
         quiesceMinQuietWindow: TimeInterval = 5,
-        quiesceHardTimeout: TimeInterval = 300
+        quiesceHardTimeout: TimeInterval = 300,
+        syncStatusReset: (@Sendable () async -> Void)? = nil
     ) {
         self.host = host
         self.journal = journal
@@ -121,6 +129,7 @@ public final class MigrationCoordinator {
         self.destructiveOpGate = destructiveOpGate
         self.quiesceMinQuietWindow = quiesceMinQuietWindow
         self.quiesceHardTimeout = quiesceHardTimeout
+        self.syncStatusReset = syncStatusReset
     }
 
     /// Breadcrumb emit, awaited inline so phase crumbs land in
@@ -248,6 +257,7 @@ public final class MigrationCoordinator {
         // the same method rewrite.)
         await syncModeStore.setMode(prev)
         try journal.clear()
+        await syncStatusReset?()
         emit(.completed)
         LillistLog.sync.notice("restoreFromBackup completed mode=\(prev.rawValue, privacy: .public)")
     }
@@ -524,6 +534,7 @@ public final class MigrationCoordinator {
             }
 
             try journal.clear()
+            await syncStatusReset?()
             emit(.completed)
             LillistLog.sync.notice("migration completed op=\(op.rawValue, privacy: .public)")
             await breadcrumb("sync mode change completed \(op.rawValue)")

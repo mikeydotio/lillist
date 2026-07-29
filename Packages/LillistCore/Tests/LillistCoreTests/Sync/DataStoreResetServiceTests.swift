@@ -27,7 +27,8 @@ struct DataStoreResetServiceTests {
         propagator: ResetPropagator? = nil,
         exporter: Exporter? = nil,
         importer: Importer? = nil,
-        backupReconciler: (any BackupPackageReconciling)? = nil
+        backupReconciler: (any BackupPackageReconciling)? = nil,
+        syncStatusReset: (@Sendable () async -> Void)? = nil
     ) -> DataStoreResetService {
         DataStoreResetService(
             host: host,
@@ -40,7 +41,8 @@ struct DataStoreResetServiceTests {
             propagator: propagator,
             exporter: exporter,
             importer: importer,
-            backupReconciler: backupReconciler
+            backupReconciler: backupReconciler,
+            syncStatusReset: syncStatusReset
         )
     }
 
@@ -713,6 +715,48 @@ struct DataStoreResetServiceTests {
             try await service.resetAndRedownload()
         }
         #expect(await host.resetSteps == [])
+    }
+
+    // MARK: - S21: sync-status stall-state reset on successful reset
+
+    private actor CallCounter {
+        private(set) var count = 0
+        func bump() { count += 1 }
+    }
+
+    @Test("test_S21_successfulResetResetsSyncStallState")
+    @MainActor
+    func successfulResetResetsSyncStallState() async throws {
+        let host = FakePersistenceReconfigurer(initialMode: .localOnly)
+        let eraser = FakeCloudKitZoneEraser()
+        let counter = CallCounter()
+        let service = makeService(
+            startMode: .localOnly, host: host, eraser: eraser,
+            syncStatusReset: { await counter.bump() }
+        )
+
+        try await service.resetAllData()
+
+        #expect(await counter.count == 1)
+    }
+
+    @Test("test_S21_failedResetDoesNotResetSyncStallState")
+    @MainActor
+    func failedResetDoesNotResetSyncStallState() async throws {
+        let host = FakePersistenceReconfigurer(initialMode: .localOnly)
+        await host.failOnRebuild()
+        let eraser = FakeCloudKitZoneEraser()
+        let counter = CallCounter()
+        let service = makeService(
+            startMode: .localOnly, host: host, eraser: eraser,
+            syncStatusReset: { await counter.bump() }
+        )
+
+        await #expect(throws: LillistError.self) {
+            try await service.resetAllData()
+        }
+
+        #expect(await counter.count == 0)
     }
 
     @Test("test_S3_failedResolutionReattachDoesNotRearmMirroring")

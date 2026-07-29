@@ -17,7 +17,8 @@ struct MigrationRecoveryTests {
         startMode: SyncMode,
         journal: MigrationJournalStore,
         quarantineRoot: URL,
-        quarantineClock: @escaping @Sendable () -> Date = Date.init
+        quarantineClock: @escaping @Sendable () -> Date = Date.init,
+        syncStatusReset: (@Sendable () async -> Void)? = nil
     ) -> (MigrationCoordinator, FakePersistenceReconfigurer, FakeCloudKitZoneEraser) {
         let recon = FakePersistenceReconfigurer(initialMode: startMode)
         let eraser = FakeCloudKitZoneEraser()
@@ -31,7 +32,8 @@ struct MigrationRecoveryTests {
             quiesceMonitor: SyncQuiesceMonitor(bridge: CloudKitEventBridge()),
             notificationScheduler: nil,
             syncModeStore: modeStore,
-            localStoreRowCount: { 1 }
+            localStoreRowCount: { 1 },
+            syncStatusReset: syncStatusReset
         )
         return (coordinator, recon, eraser)
     }
@@ -60,6 +62,37 @@ struct MigrationRecoveryTests {
         #expect(try String(contentsOf: liveURL, encoding: .utf8) == "backup-content")
         #expect(await recon.mode == .iCloudSync)   // reverted to previousMode
         #expect(try journal.read() == .idle)        // cleared
+    }
+
+    private actor CallCounter {
+        private(set) var count = 0
+        func bump() { count += 1 }
+    }
+
+    @Test("test_S21_successfulRestoreFromBackupResetsSyncStallState")
+    @MainActor
+    func restoreFromBackupResetsSyncStallState() async throws {
+        let dir = tempDir()
+        let liveURL = dir.appendingPathComponent("Lillist.sqlite")
+        try Data("backup-content".utf8).write(to: liveURL)
+        let quarantine = QuarantineManager(rootDirectory: dir)
+        _ = try quarantine.copyStore(at: liveURL)
+        try FileManager.default.removeItem(at: liveURL)
+
+        let journal = InMemoryMigrationJournalStore(initial: MigrationJournal(
+            state: .reconfiguringStore,
+            operation: .replaceICloudWithLocal,
+            previousMode: .iCloudSync
+        ))
+        let counter = CallCounter()
+        let (coordinator, _, _) = makeCoordinator(
+            startMode: .localOnly, journal: journal, quarantineRoot: dir,
+            syncStatusReset: { await counter.bump() }
+        )
+
+        try await coordinator.restoreFromBackup(filename: "Lillist.sqlite", targetURL: liveURL)
+
+        #expect(await counter.count == 1)
     }
 
     @Test("restoreFromBackup with no backup throws storeUnavailable")

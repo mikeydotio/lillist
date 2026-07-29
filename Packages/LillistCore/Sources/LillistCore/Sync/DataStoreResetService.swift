@@ -137,6 +137,11 @@ public final class DataStoreResetService {
     /// branch (S14) in milliseconds instead of waiting 300 real seconds.
     private let quiesceMinQuietWindow: TimeInterval
     private let quiesceHardTimeout: TimeInterval
+    /// `S21`: clears `SyncStatusMonitor`'s stall counters/forensics after a
+    /// successful reset — see `MigrationCoordinator`'s identical property
+    /// for the full rationale. Called only on success, alongside
+    /// `backupReconciler?.reconcileFull()`.
+    private let syncStatusReset: (@Sendable () async -> Void)?
 
     public init(
         host: any PersistenceResetting,
@@ -154,7 +159,8 @@ public final class DataStoreResetService {
         reseedJournal: any ReseedJournalStore = InMemoryReseedJournalStore(),
         backupReconciler: (any BackupPackageReconciling)? = nil,
         quiesceMinQuietWindow: TimeInterval = 5,
-        quiesceHardTimeout: TimeInterval = 300
+        quiesceHardTimeout: TimeInterval = 300,
+        syncStatusReset: (@Sendable () async -> Void)? = nil
     ) {
         self.host = host
         self.quarantine = quarantine
@@ -172,6 +178,7 @@ public final class DataStoreResetService {
         self.backupReconciler = backupReconciler
         self.quiesceMinQuietWindow = quiesceMinQuietWindow
         self.quiesceHardTimeout = quiesceHardTimeout
+        self.syncStatusReset = syncStatusReset
     }
 
     /// What a reset should do with the CloudKit side of the store.
@@ -561,6 +568,11 @@ public final class DataStoreResetService {
             // resetAndRedownload/resetEverywhereToEmpty/the wipe half of
             // resetAndReseedFromThisDevice.
             await backupReconciler?.reconcileFull()
+            // S21: same chokepoint clears SyncStatusMonitor's stall
+            // counters — the store's connection just changed (destroy +
+            // rebuild, or a fresh reattach), so any streak tracked against
+            // the previous connection no longer applies.
+            await syncStatusReset?()
 
             LillistLog.sync.notice("data store reset completed")
             await breadcrumb("data store reset completed")

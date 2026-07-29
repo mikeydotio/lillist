@@ -18,7 +18,8 @@ struct MigrationRunnerExecutingTests {
         startMode: SyncMode,
         rowCount: @escaping @Sendable () async -> Int = { 1 },
         journal: InMemoryMigrationJournalStore = InMemoryMigrationJournalStore(),
-        eraser: FakeCloudKitZoneEraser = FakeCloudKitZoneEraser()
+        eraser: FakeCloudKitZoneEraser = FakeCloudKitZoneEraser(),
+        syncStatusReset: (@Sendable () async -> Void)? = nil
     ) -> (MigrationCoordinator, FakePersistenceReconfigurer, InMemoryMigrationJournalStore, FakeCloudKitZoneEraser, URL) {
         let dir = tempDir()
         let recon = FakePersistenceReconfigurer(initialMode: startMode)
@@ -32,9 +33,52 @@ struct MigrationRunnerExecutingTests {
             quiesceMonitor: SyncQuiesceMonitor(bridge: CloudKitEventBridge()),
             notificationScheduler: nil,
             syncModeStore: modeStore,
-            localStoreRowCount: rowCount
+            localStoreRowCount: rowCount,
+            syncStatusReset: syncStatusReset
         )
         return (coordinator, recon, journal, eraser, dir)
+    }
+
+    /// Test-only call counter for `syncStatusReset` (S21) — an actor so
+    /// the closure can safely bump it from the coordinator's `@MainActor`
+    /// isolation.
+    private actor CallCounter {
+        private(set) var count = 0
+        func bump() { count += 1 }
+    }
+
+    @Test("test_S21_successfulMigrationResetsSyncStallState")
+    @MainActor
+    func successfulMigrationResetsSyncStallState() async throws {
+        let counter = CallCounter()
+        let (coordinator, _, _, _, dir) = makeCoordinator(
+            startMode: .iCloudSync,
+            syncStatusReset: { await counter.bump() }
+        )
+        let storeURL = dir.appendingPathComponent("Lillist.sqlite")
+        try Data("x".utf8).write(to: storeURL)
+
+        try await coordinator.beginDisable(strategy: .now, storeURL: storeURL)
+
+        #expect(await counter.count == 1)
+    }
+
+    @Test("test_S21_failedMigrationDoesNotResetSyncStallState")
+    @MainActor
+    func failedMigrationDoesNotResetSyncStallState() async throws {
+        let counter = CallCounter()
+        let (coordinator, _, _, _, dir) = makeCoordinator(
+            startMode: .localOnly, rowCount: { 0 },
+            syncStatusReset: { await counter.bump() }
+        )
+        let storeURL = dir.appendingPathComponent("Lillist.sqlite")
+        try Data("x".utf8).write(to: storeURL)
+
+        await #expect(throws: LillistError.self) {
+            try await coordinator.beginEnable(direction: .replaceICloud, storeURL: storeURL)
+        }
+
+        #expect(await counter.count == 0)
     }
 
     @Test("replaceICloudWithLocal on an empty local store throws before erasing")
