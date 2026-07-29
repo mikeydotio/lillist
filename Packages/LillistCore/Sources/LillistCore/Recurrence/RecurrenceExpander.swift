@@ -34,11 +34,16 @@ public enum RecurrenceExpander {
 
     /// Computes the next occurrence after `completedAt` for an
     /// `.afterCompletion` rule.
+    ///
+    /// X16: re-clamps `rule.interval` here too (not just at construction),
+    /// mirroring `CalendarRule`'s `effectiveInterval` defense-in-depth — a
+    /// rule whose mutable `interval` was forced out of range after
+    /// construction must still yield a strictly-future, finite date.
     public static func nextAfterCompletion(
         completedAt: Date,
         rule: RecurrenceRule.AfterCompletionRule
     ) -> Date {
-        completedAt.addingTimeInterval(rule.interval)
+        completedAt.addingTimeInterval(RecurrenceRule.AfterCompletionRule.clampedInterval(rule.interval))
     }
 
     // MARK: - Frequency dispatch

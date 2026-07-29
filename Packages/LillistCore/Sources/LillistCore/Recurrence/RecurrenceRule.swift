@@ -103,8 +103,65 @@ public enum RecurrenceRule: Codable, Sendable, Equatable {
 
     public struct AfterCompletionRule: Codable, Sendable, Equatable {
         public var interval: TimeInterval
+
         public init(interval: TimeInterval) {
-            self.interval = interval
+            self.interval = Self.normalizedInterval(interval)
+        }
+
+        private enum CodingKeys: String, CodingKey {
+            case interval
+        }
+
+        /// Hand-written decoder so untrusted JSON (CloudKit / Importer / CLI)
+        /// funnels through the same interval normalization as the memberwise
+        /// `init` — the sibling of `CalendarRule`'s identically-shaped
+        /// decoder (X16: this rule was the one sibling missing the clamp).
+        public init(from decoder: Decoder) throws {
+            let c = try decoder.container(keyedBy: CodingKeys.self)
+            self.interval = Self.normalizedInterval(try c.decode(TimeInterval.self, forKey: .interval))
+        }
+
+        /// The smallest interval the engine will honor. Must be strictly
+        /// positive: `0` sets the spawned task's due date to the exact
+        /// completion instant, and a negative value sets it *before* —
+        /// both read as "permanently overdue" the moment the spawn is
+        /// created (X16). `1` second is the minimal floor that eliminates
+        /// that class without inventing a new UX floor the review never
+        /// asked for — the first-party editor's own minimum (1 day) is a UI
+        /// choice, not a validity boundary.
+        static let minInterval: TimeInterval = 1
+
+        /// The largest interval the engine will honor. Unlike
+        /// `CalendarRule.interval`, this field has no looping/month-scan
+        /// consumer — `nextAfterCompletion` is a single `addingTimeInterval`
+        /// call, so there's no algorithmic hang/overflow hazard here. The
+        /// bound exists so the clamp *shape* matches `CalendarRule`'s
+        /// two-sided design and so `Date` arithmetic never approaches
+        /// `Date.distantFuture`/overflow territory from an absurd raw value.
+        static let maxInterval: TimeInterval = 86_400 * 365 * 10 // 10 years
+
+        /// Clamps a raw interval into the honored `minInterval...maxInterval`
+        /// range, **without** logging. `RecurrenceExpander.nextAfterCompletion`
+        /// calls this as silent defense-in-depth, so even a rule whose
+        /// `interval` field is forced out of range *after* construction
+        /// (bypassing the boundary normalization) still yields a valid,
+        /// strictly-future spawn date.
+        static func clampedInterval(_ raw: TimeInterval) -> TimeInterval {
+            min(maxInterval, max(minInterval, raw))
+        }
+
+        /// Clamps an interval to the honored range, logging a warning when
+        /// it has to change the value. We normalize rather than throw so a
+        /// single corrupt sync record can't strip recurrence off the series
+        /// entirely (same rationale as `CalendarRule`'s `normalizedInterval`).
+        private static func normalizedInterval(_ raw: TimeInterval) -> TimeInterval {
+            let clamped = clampedInterval(raw)
+            if clamped != raw {
+                RecurrenceLog.normalization.warning(
+                    "AfterCompletionRule interval \(raw, privacy: .public) out of range; clamped to \(clamped, privacy: .public)"
+                )
+            }
+            return clamped
         }
     }
 
