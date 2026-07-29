@@ -374,15 +374,78 @@ first plan `4a` `history-consumer-discipline` COMPLETE. Wave 4's second plan,
   *Wave 3b closing report* below for the council-vote outcome (180-day
   expiry, unanimous 3/3 round 1) and what `4a` needs to know.
 
-**Next action for whoever picks this up:** start Wave 4's second plan, `4b`
-(`notification-truthfulness`) — findings `H2 X8 X9 X10`. Its hotspot is the
-same `RemoteChangeReconciler.swift` `4a` just hardened (chain 4 in
-*Shared-file serial chains* below) — `4b` widens the diffing to spec
-inserts/deletes and task soft-deletes, and per `X8`/`X9` will likely give
-macOS its first `RemoteChangeReconciler` instance too. Read the *Resume
-protocol* section first, then the *Wave 4a closing report* below for the
-exact shape `4b` must build on (the `drainOnce()` split, the
-`persistence.transactionAuthor` fix, the new `diagnosticLog` property).
+- ✅ **Plan `4b` closed all 4 findings** (`H2 X8 X9 X10` /
+  `LIL-20 LIL-39 LIL-40 LIL-41`) — `TaskStore.softDelete`/`restore` now
+  collect the full cascaded subtree's task ids (widening `applySoftDelete`/
+  `clearSoftDelete`'s existing H7 visited-set walk to also accumulate ids)
+  and reconcile all of them, not just the root: `softDelete` batch-cancels
+  via `cancelPending(forTaskIDs:)` (H3's shape — a trashed subtree's
+  desired set is unconditionally empty), `restore` runs a full
+  `reconcile(taskID:)` per id (H2). `RemoteChangeReconciler.affectedTaskIDs`
+  widened inside `drainOnce()` (4a's hardened base, preserved) to also
+  catch foreign `NotificationSpec` INSERTs and `LillistTask` UPDATEs
+  touching `deletedAt` — both resolve a live row directly, no tombstone
+  needed; `NotificationSpec` DELETEs are handled by a new, taskID-free
+  mechanism instead (`hasForeignSpecDeletions` → `onOrphanedSpecDeletions`
+  → `NotificationScheduler.reconcileOrphanedPendingRequests()`, a
+  set-difference sweep mirroring `LocalBackupCoordinator`'s own
+  tombstone-free deletion handling — verified directly against this
+  model's `.xcdatamodeld` that no attribute is flagged
+  `preservesValueInHistoryOnDeletion`, so a deleted spec's task link is
+  genuinely unrecoverable from history) (X9). macOS gained its first
+  `RemoteChangeReconciler` instance, using the `defaultKey` watermark
+  `3b`'s `historyWatermarks` had already reserved for this (X9). Widget/
+  Shortcuts/Share Extension processes now construct a wired
+  `NotificationScheduler` via new `IntentSupport.makeTaskStore()`/
+  `makeNotificationScheduler()` (Shortcuts) and the mirrored
+  `WidgetIntentSupport` (widget) factories — verified `UNUserNotification
+  Center`'s pending-request namespace is scoped to the containing app,
+  shared automatically by every extension in its App Group, so no new
+  entitlement was needed; `CLIBridge.StatusHandler.run` gained an optional
+  `notificationScheduler` parameter (default `nil`, preserving the CLI's
+  own deliberate scheduler-free design) that `CompleteTaskIntent`/
+  `ToggleStatusIntent` now pass (X8). Both apps' `bootstrap()` now hydrate
+  the scheduler's all-day default from `PreferencesStore` via
+  `updateDefaultAllDayTime` before any reconcile can run, closing the
+  "reconcile rewrites correct triggers back to 09:00" symptom at its root
+  (the wrong in-memory default, not the diffing logic); that method's
+  intentional-rewrite-on-explicit-change semantics are now documented on
+  the method itself (X10). **Council vote** (unanimous after one
+  deliberation round) on X10's per-device-timezone dedup defeat: long-term
+  fix is a new synced "home time zone" field on `AppPreferences` — a real
+  CloudKit-schema-implicated data-model change, explicitly **not**
+  implemented here per the binding no-data-model-changes-without-
+  messaging-the-orchestrator-first constraint (flagged to `team-lead`
+  before the plan doc was committed); landed only the council's required
+  interim discipline instead — a design-doc note, `TODO(LIL-83)` markers
+  at both `timeZone: .current` construction sites, and a KNOWN LIMITATION
+  regression suite (same-timezone dedup still works; differing-timezone
+  devices legitimately diverge, pinned and named so it reads as tracked
+  debt, not accepted-forever behavior). `LIL-83` filed for the deferred
+  schema change. Plan doc:
+  `docs/superpowers/plans/2026-07-28-plan-4b-notification-truthfulness.md`.
+  Commit range `03575539..6ef9d7d1` (7 commits: 1 docs, 1 fix (H2), 2 fix/
+  feat (X9 core + macOS wiring), 1 feat (X8), 1 fix (X10, all three parts —
+  see the plan doc's own commit-plan deviation note for why parts 1-3
+  landed together against the plan doc's sketched 2-commit split), 1
+  `chore(stories)`). Full `LillistCore` suite green **twice in a row** with
+  unmasked exit codes and a clean grep for the failure markers (1354 tests,
+  237 suites — up from `4a`'s 1324/233 baseline; no flakes hit either run);
+  both apps verified with unsigned `xcodebuild` builds after every
+  app-touching commit (BUILD SUCCEEDED, including `LillistWidget`/
+  `ShortcutsActions`/`ShareExtension-iOS` on iOS and `LillistWidget-macOS`
+  on macOS — the shared `Extensions/LillistWidget/` source compiles into
+  both). See *Wave 4b closing report* below for the per-finding breakdown,
+  the X8 process-capability investigation, the X9 tombstone-availability
+  investigation, and what `4c` needs to know.
+
+**Next action for whoever picks this up:** start Wave 4's third and final
+plan, `4c` (`recurrence-correctness`) — findings `H1 X7 X16 X17`. Read the
+*Resume protocol* section first, then the *Wave 4b closing report* below
+for the notification-scheduling seam `4c`'s recurrence-spawn work needs to
+know about (spawning a recurring task's next instance should schedule its
+notifications too, via the same extension-safe construction pattern `4b`
+established).
 
 ---
 
@@ -1386,6 +1449,130 @@ sweep.
 
 ---
 
+## Wave 4b closing report (`notification-truthfulness`)
+
+Plan doc: `docs/superpowers/plans/2026-07-28-plan-4b-notification-truthfulness.md`
+— contains the full per-finding design, the X8 process-capability
+investigation, the X9 tombstone-availability investigation, and the X10
+council decision writeup.
+
+| Finding | Story | Fix commit(s) | Regression test(s) |
+|---|---|---|---|
+| `H2` | `LIL-20` | `3d76911e` | `H2CascadeNotificationReconcileTests.swift` (7 tests) — softDelete/restore cascade reconcile, multi-level subtrees, unrelated-sibling isolation, no-scheduler no-op. |
+| `X9` (core diffing) | `LIL-40` | `cf867f8c` | `RemoteChangeReconcilerTests.swift` (+12: spec insert/self-authored-ignored/delete-yields-nothing, `hasForeignSpecDeletions` ×3, task soft-delete/restore/unrelated-update, end-to-end `processPendingHistory` wiring ×3) + `X9OrphanedSpecReconcileTests.swift` (5 tests — the scheduler-level sweep mechanism itself: cancels the orphan, preserves a live sibling, cancels only the orphan among multiple, never touches another device's requests, no-op when empty). |
+| `X9` (macOS wiring) | `LIL-40` | `b45005e5` | App-level — no host-side unit test target reaches `AppEnvironment`'s private init/bootstrap (same as every prior per-app composition-root change in this program); verified by unsigned `xcodebuild` build for `Lillist-macOS` (BUILD SUCCEEDED). |
+| `X8` | `LIL-39` | `56c0bcd0` | `StatusHandlerTests.swift` (+2: the `notificationScheduler` parameter is wired through and actually reconciles on transition; the `nil` default preserves the CLI's own unchanged behavior). The three extension targets themselves have no host-side unit test target — verified by unsigned `xcodebuild` builds for both `Lillist-iOS` (widget + Shortcuts + Share Extension all build within its scheme) and `Lillist-macOS` (the shared `Extensions/LillistWidget/` source also compiles into `LillistWidget-macOS`) — both BUILD SUCCEEDED. |
+| `X10` (all 3 parts) | `LIL-41` | `f1883ef1` | `X10AllDayDefaultHydrationTests.swift` (2 tests — hydration preserves an already-correct pending trigger; re-hydrating with a matching value is a true no-op) + `X10TimezoneDedupKnownLimitationTests.swift` (2 tests — same-timezone dedup regression guard; differing-timezone KNOWN LIMITATION, named and commented for deletion/inversion once `LIL-83` ships). App-level bootstrap wiring verified by unsigned `xcodebuild` builds for both apps. |
+
+**Commit range:** `03575539..6ef9d7d1` — 1 docs (`03575539`), 1 fix (`3d76911e`
+H2), 1 fix (`cf867f8c` X9 core), 1 feat (`b45005e5` X9 macOS wiring), 1
+feat (`56c0bcd0` X8), 1 fix (`f1883ef1` X10, all three parts — see the
+plan doc's own commit-plan deviation note), 1 `chore(stories)`
+(`6ef9d7d1`). Full `LillistCore` suite green **twice in a row** with
+unmasked exit codes and a clean grep for the failure markers (1354 tests,
+237 suites — up from `4a`'s 1324/233 baseline; no flakes hit either run);
+both apps verified with unsigned `xcodebuild` builds (BUILD SUCCEEDED)
+after every app-touching commit.
+
+**X8's process-capability investigation — verified, not assumed:**
+`UNUserNotificationCenter`'s pending-request namespace (both scheduling
+and authorization status) is scoped to the top-level containing app's
+bundle, shared automatically by every extension in its App Group — no new
+entitlement or authorization request is needed for the widget/Shortcuts/
+Share Extension processes to schedule/cancel requests once the main app
+has been granted notification permission. `X15`'s "~30MB widget memory
+budget" concern (cited by `4a`'s handoff as worth double-checking) does
+**not** apply: that finding is specifically about a second, mirroring
+`NSPersistentCloudKitContainer` — `1c` already ensures the widget's
+`PersistenceController` never arms mirroring — and `NotificationScheduler`
+needs only the already-open, non-mirroring store plus a handful of
+lightweight structs, no incremental CloudKit memory cost. No fallback/
+reconcile-on-next-app-foreground design was needed; the direct approach
+(each process constructs its own scheduler) is unconditionally available.
+The CLI (`lillist-cli`) was deliberately left out of scope — `NudgeHandler`'s
+pre-existing doc comment documents that prior, deliberate decision (a
+genuinely short-lived, one-shot process differs from an interactive
+extension the user directly triggered), and `X8`'s finding text names
+widget/Shortcuts/ShareExt specifically, not the CLI.
+
+**X9's tombstone-availability investigation — verified against this
+codebase's own established pattern, not assumed:** grepped
+`LillistModel.xcdatamodel/contents` for `preservesValueInHistoryOnDeletion`
+— zero matches on any entity. Confirmed by two independent existing code
+comments (`LocalBackupCoordinator.processRemoteChange`,
+`DiagnosticHistoryObserver.flatten`) that already document the identical
+finding: a deleted row's tombstone carries no attribute values without
+that per-attribute flag, and relationships are never tombstoned regardless
+of any flag (a hard Core Data limitation, not a configuration gap) — so
+even flagging `NotificationSpec.id` for preservation would not recover the
+deleted spec's `task` link. Decided directly, no council needed: the fix
+is a set-difference "orphan sweep"
+(`NotificationScheduler.reconcileOrphanedPendingRequests()`), the exact
+mechanism `LocalBackupCoordinator` already uses for its own tombstone-free
+deletion case — no data-model change, no CloudKit schema implication.
+
+**X10's council decision:** unanimous after one deliberation round (round 1
+was a 2-1 split — all three panelists converged on the same core answer,
+option (a)/canonical-timezone-anchoring, disagreeing only on WHERE to
+anchor it; deliberation resolved that to a single synced `AppPreferences`
+field, not a per-spec/task field, after `software-architect` pointed out
+`AppPreferences` already holds a synced `defaultAllDayNotificationHour`/
+`Minute` pair). Full audit trail:
+`.council/x10-all-day-timezone-dedup-posture/DECISION.md`. The recommended
+schema change was flagged to `team-lead` (not implemented — binding
+no-data-model-changes-without-messaging-first constraint) before the plan
+doc was committed; `LIL-83` tracks it as tech debt with the flaw, the
+interim patch's limits, and the redesign trigger named per CLAUDE.md's
+deliberate-tech-debt-logging rule.
+
+**Deviation from the plan doc's commit plan:** the plan doc sketched a
+2-commit split for X10 (a `fix` commit for parts 1/2, a `docs+test` commit
+for part 3). Landed as one commit instead — part 3 is documentation/
+test-only (no production behavior change; the timezone gap already
+existed and this only pins/documents it), so it doesn't create the
+behavior-vs-refactor conflation the two-hats rule exists to prevent, and
+splitting a single finding's tightly-interleaved `AppEnvironment.swift`
+edits into two commits would have added no real bisectability — matches
+the `1c` precedent for documented, reasoned commit-plan deviations. No
+scope changed, only the commit breakdown.
+
+**What `4c` (`recurrence-correctness`) needs to know:**
+- `RemoteChangeReconciler.SyntheticChange` now carries a `changeType:
+  NSPersistentHistoryChangeType` field (defaults to `.update`). Any new
+  `SyntheticChange` construction (test or production) should pass the real
+  `changeType` explicitly rather than relying on the default, which exists
+  only for pre-X9 test-call-site compatibility.
+- `affectedTaskIDs`'s switch is keyed on `change.entityName`
+  (`"NotificationSpec"` / `"LillistTask"`) — if `4c`'s recurrence-spawn
+  work introduces a new entity that needs remote-change-driven
+  notification reconcile (unlikely, but the `Series`/`RecurrenceLog`
+  machinery is adjacent), extend this switch, not a parallel diffing path.
+- **Recurrence spawn does not yet schedule notifications for the spawned
+  task.** `RecurrenceSpawner.spawnIfNeeded` (called from
+  `TaskStore.transition` on transition-to-closed) creates the new instance
+  but the spawn path itself has no notification-scheduler awareness beyond
+  whatever `TaskStore.transition`'s own post-save
+  `scheduler.reconcile(taskID: spawnedID)` call already does (which DOES
+  exist — see `transition`'s body) for the two apps. If `4c`'s work
+  touches the widget/Shortcuts/ShareExt paths that can also trigger a
+  status transition (`AdvanceTaskStatusFromWidget`, `CompleteTaskIntent`/
+  `ToggleStatusIntent`), the spawned instance's own reminders (if the
+  series carries any inherited from the seed) now correctly reconcile too,
+  since `4b`'s X8 fix wired those call sites with a real scheduler — this
+  wasn't true before `4b` landed.
+- `IntentSupport.makeTaskStore()`/`WidgetIntentSupport.makeTaskStore()`
+  are the standardized, scheduler-wired construction sites for any new
+  extension mutation `4c` adds — follow this pattern rather than
+  constructing a bare `TaskStore(persistence:)`.
+- Extension-constructed schedulers (X8) and both apps' bootstrap-time
+  hydration (X10) both read `PreferencesStore.defaultAllDayHour`/`Minute`
+  — if `4c` needs to touch `defaultAllDayHour`/`Minute` semantics (e.g. for
+  a recurrence rule's own default time), re-read
+  `NotificationScheduler.updateDefaultAllDayTime`'s doc comment first (its
+  two-legitimate-callers semantics are now explicit and load-bearing).
+
+---
+
 ## Execution model (per Mikey's directives, 2026-07-28)
 
 - **One dedicated worktree** on a long-running branch:
@@ -1442,12 +1629,12 @@ Wave 6 closeout. **Status** starts `pending` for everything except Wave 0.
 | 3 | **3a** `account-identity-and-status` | `S3 S13 S21 S24` | ✅ complete |
 | 3 | **3b** `reset-propagation-safety` | `S10 S18 S19 S20 S22 X11 S9c` | ✅ complete |
 | 4 | **4a** `history-consumer-discipline` | `H6 M3` | ✅ complete |
-| 4 | **4b** `notification-truthfulness` | `H2 X8 X9 X10` | ⬜ pending |
+| 4 | **4b** `notification-truthfulness` | `H2 X8 X9 X10` | ✅ complete |
 | 4 | **4c** `recurrence-correctness` | `H1 X7 X16 X17` | ⬜ pending |
 | 5 | **5a** `mutation-scope-discipline` | `H5 M4 M6 M7 L3 L4 L5 X19 X20` | ⬜ pending |
 | 5 | **5b** `widget-snapshot-correctness` | `X5 X6` | ⬜ pending |
 | 5 | **5c** `watermark-registry-pruning` | `X12 L7` | ⬜ pending |
-| 6 | **6a** `completeness-and-lows` + closeout | `L1 L2 L6` + export round-trip equality suite + `X20` flip-flop stress (builds atop 5a's fix, not a new finding) + any residuals from Waves 1-5, incl. `LIL-77` (discovered during `1d`, not one of the 70 findings) | ⬜ pending |
+| 6 | **6a** `completeness-and-lows` + closeout | `L1 L2 L6` + export round-trip equality suite + `X20` flip-flop stress (builds atop 5a's fix, not a new finding) + any residuals from Waves 1-5, incl. `LIL-77` (discovered during `1d`, not one of the 70 findings). **Not included:** `LIL-83` (discovered during `4b`) — orchestrator-approval-gated data-model change, not simply deferred work; do not pick it up in `6a` without an explicit go-ahead from Mikey. | ⬜ pending |
 
 **Finding-count check:** 70 unique findings (`C1`-`C4`, `H1`-`H7`, `M1`-`M7`,
 `L1`-`L7` from the stores sweep = 25; `S1`-`S4`, `S5`-`S13` with `S9` split
@@ -1485,9 +1672,17 @@ structure — each earlier plan in the chain will have moved line numbers.
 1. **`TaskStore.swift`** — `1a` (trash/restore state machine) → `1b` ✅ done
    (purge logic extracted into `TrashPurger`; `batchPurge` is now a thin
    wrapper; `hardDelete` collects a notification-cancellation closure via
-   `CascadeReaper.objectIDs(forDeleting:)`) → `4b` (descendant notification
-   reconcile — next link) → `5a` (mutation-rollback helper adopted across
-   its mutators). Four plans, one file — serialize strictly in this order.
+   `CascadeReaper.objectIDs(forDeleting:)`) → `4b` ✅ done (`applySoftDelete`/
+   `clearSoftDelete` are now four-arity — the existing `visited: inout
+   Set<NSManagedObjectID>` cycle guard plus a new `affected: inout [UUID]`
+   accumulator — and both return the collected ids; `softDelete`/`restore`
+   reconcile the whole returned set, not just the root id, via
+   `cancelPending(forTaskIDs:)`/`reconcile(taskID:)` respectively — see the
+   *Wave 4b closing report* for the exact shape) → `5a` (mutation-rollback
+   helper adopted across its mutators — re-Read the softDelete/restore
+   bodies before touching them, they now do more than a bare `context
+   .perform` + save). Four plans, one file — serialize strictly in this
+   order.
 2. **`MigrationCoordinator.swift`** — `2a` ✅ done (`host` widened to
    `PersistenceReconfiguring & PersistenceResetting`; per-op step sequence
    redesigned — see the plan doc's state-machine table; `destructiveOpGate`
@@ -1529,10 +1724,19 @@ structure — each earlier plan in the chain will have moved line numbers.
    AND `onAffectedTasks` have both completed; `localAuthor` is now
    `persistence.transactionAuthor`, not the hardcoded
    `PersistenceController.localTransactionAuthor`; new `public var
-   diagnosticLog: DiagnosticSink?`) → `4b` (spec insert/delete + soft-delete
-   reconcile added on top of `4a`'s corrected watermark discipline, inside
-   `drainOnce()` — see the *Wave 4a closing report* for the exact shape and
-   what `4b` needs to preserve).
+   diagnosticLog: DiagnosticSink?`) → `4b` ✅ done (`SyntheticChange` gained
+   a `changeType: NSPersistentHistoryChangeType` field, defaulting to
+   `.update`; `affectedTaskIDs` widened inside `drainOnce()` to also catch
+   foreign `NotificationSpec` INSERTs and `LillistTask` UPDATEs touching
+   `deletedAt` — `NotificationSpec` DELETEs are deliberately excluded and
+   handled by a new taskID-free mechanism instead, a pure static
+   `hasForeignSpecDeletions(in:localAuthor:)` driving a new
+   `onOrphanedSpecDeletions: @Sendable () async -> Void` constructor
+   parameter (default no-op, so every pre-4b call site compiles unchanged)
+   — see the *Wave 4b closing report* for the tombstone-unavailability
+   investigation this design is grounded in). No further `4b`-shaped work
+   remains on this chain — a future plan touching remote-change diffing
+   should re-Read `affectedTaskIDs`'s current `switch` before extending it.
 5. **`AppEnvironment.swift`** (both iOS and macOS copies — distinct regions,
    serialize per-platform) — `1c` ✅ done (canonical `StoreLocation` wiring;
    macOS App-Group migration; macOS's `AppEnvironment` gained a new
@@ -1567,8 +1771,21 @@ structure — each earlier plan in the chain will have moved line numbers.
    from a new `HistoryWatermarks` instance + `WidgetRefreshCoordinator
    .resetAfterDestructiveOp()` — see the *Wave 3b closing report* for the
    exact diff shape and the definite-initialization gotcha it hit) → `4b`
-   (notification scheduler reaching extension/widget/CLI paths via 1c's
-   standardized construction).
+   ✅ done — macOS gained a `remoteChangeReconciler` stored property + its
+   full construction (mirroring iOS, using the `defaultKey` watermark `3b`
+   had already reserved) and a bootstrap catch-up/start pair, inserted
+   right after `diagnosticHistoryObserver.start()`; both platforms'
+   `bootstrap()` gained an all-day-default hydration call
+   (`notificationScheduler.updateDefaultAllDayTime(...)` from
+   `preferencesStore.read()`) inserted BEFORE `remoteChangeReconciler`'s
+   own catch-up (iOS: right after `normalizeSingletons()`; macOS: right
+   after `preferencesPartitionMigrator.runIfNeeded()`, since macOS has no
+   `normalizeSingletons()` call in `bootstrap()`) — any future plan
+   inserting its own bootstrap step relative to notification/remote-change
+   wiring must re-Read this ordering, it's now load-bearing (X10). Three
+   stale doc comments on macOS asserting "macOS has no
+   RemoteChangeReconciler" were corrected. No `4b`-shaped work remains on
+   this chain.
 6. **`HistoryPruner.swift` + the three history-token `UserDefaults` keys** —
    `3b` ✅ done, landed AHEAD of `5c` (the reverse of the originally-planned
    order — see below) — new `HistoryWatermarks`
