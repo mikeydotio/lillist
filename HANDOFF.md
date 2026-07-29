@@ -1,135 +1,112 @@
-# HANDOFF — Data & Sync Hardening, Wave 5a complete → Wave 5b
+# HANDOFF — Data & Sync Hardening, Wave 5b complete → Wave 5c
 
 **Worktree:** `/Volumes/Code/mikeyward/Lillist/.claude/worktrees/data-sync-hardening`
 **Branch:** `hardening/data-sync-2026-07`
 **State:** Wave 0, all of Wave 1 (`1a`-`1d`), all of Wave 2 (`2a`, `2b`), all
-of Wave 3 (`3a`, `3b`), all of Wave 4 (`4a`, `4b`, `4c`), and now **Wave 5's
-first plan, `5a` `mutation-scope-discipline`**, are **COMPLETE**. Wave 5's
-second plan, `5b` `widget-snapshot-correctness` (findings `X5 X6`), is next;
-`5c`/Wave 6 not started.
+of Wave 3 (`3a`, `3b`), all of Wave 4 (`4a`, `4b`, `4c`), and now all of Wave
+5's first two plans, `5a` `mutation-scope-discipline` and `5b`
+`widget-snapshot-correctness`, are **COMPLETE**. Wave 5's third and final
+plan, `5c` `watermark-registry-pruning` (findings `X12 L7`), is next;
+Wave 6 not started.
 
-## What landed this wave (plan `5a`)
+## What landed this wave (plan `5b`)
 
-All nine findings closed (`H5 M4 M6 M7 L3 L4 L5 X19 X20` / stories `LIL-23
-LIL-48 LIL-50 LIL-51 LIL-68 LIL-69 LIL-72 LIL-73 LIL-74`). Full details, the
-per-finding test/commit table, the class-kill demonstration, and both
-in-place plan-doc corrections are in the ledger's *Wave 5a closing report*
+Both findings closed (`X5 X6` / stories `LIL-18 LIL-37`). Full details, the
+per-finding test/commit table, and both in-place plan-doc corrections are in
+the ledger's *Wave 5b closing report*
 (`docs/superpowers/plans/2026-07-28-data-sync-hardening-index.md`) and the
 plan doc
-(`docs/superpowers/plans/2026-07-28-plan-5a-mutation-scope-discipline.md`).
+(`docs/superpowers/plans/2026-07-28-plan-5b-widget-snapshot-correctness.md`).
 
-- **`H5`**: new shared `withMutationRollback` helper
-  (`Persistence/MutationRollback.swift`) generalizes `TaskStore`'s
-  mutate-then-save-or-rollback pattern; adopted across every public
-  mutating method of all eight `LillistCore` stores plus
-  `TaskDuplicateReconciler.reconcileDuplicates`. Five stores
-  (`Tag`/`SmartFilter`/`Journal`/`Attachment`/`Series`) had zero rollback
-  discipline before this. `TaskStore.create`'s own wart (validation outside
-  `context.perform`, unconditional rollback in catch) is fixed structurally
-  by moving validation inside the helper's atomic body. **Class-killer:**
-  `MutationRollbackConformanceTests` — a source-text scan (no runtime
-  `Mirror` enumeration exists for plain Swift classes) proving zero raw
-  `context.save()`/`.rollback()` calls outside the helper, plus a
-  whole-tree walker catching any undocumented future bypass; demonstrated
-  locally (bypassed the helper in one method, watched the walker fail
-  pinpointing the exact line, reverted).
-- **`M4`**: `PreferencesStore.read()` no longer creates the singleton row
-  as a side effect — genuinely read-only now, falling back to in-memory
-  defaults on an empty store. Creation moved to `normalizeSingletons()`
-  (now handling the empty-store case) and `update(_:)`'s own
-  `ensureSingleton`. **Found while implementing:** macOS's `bootstrap()`
-  had no `normalizeSingletons()` call at all (only iOS did) — fixed by
-  adding it in the same relative position iOS already had.
-- **`X20`**: `normalizeSingletons`'s tie-break no longer sorts by raw `id`
-  bytes — canonical-id-first, then a content-key built from every settings
-  field. **Found while implementing:** the plan doc's original
-  `createdAt`-based design assumed a field that doesn't exist on
-  `AppPreferences` — adding one is a real CloudKit schema change out of
-  scope (same constraint `4b` hit for `LIL-83`); the content-key design
-  needs no schema change.
-- **`M6`**: `TaskStore.reorder`'s both-anchors parent-mismatch guard now
-  also covers the single-anchor `.explicit(parent)` case.
-- **`M7`**: `AttachmentStore.delete` now also deletes its auto-created
-  `JournalEntry` (`Nullify` relationship) instead of orphaning it.
-- **`L3`**: `TaskStore.syncCounts()` moved off the main-queue `viewContext`
-  onto a background context.
-- **`L4`**: `unassignTag` now mirrors `assignTag`'s no-op guard.
-- **`L5`**: `archive`/`unarchive` return a new `TaskStore.BatchIDOutcome
-  {flipped, skipped}` instead of failing the whole batch on one missing id;
-  both app call sites (iOS `TasksView`, macOS `MacTasksView`) updated.
-- **`X19`**: `NotificationSpecStore.add`'s dedup branch dropped its
-  redundant manual `if hasChanges { save() }`;
-  `TaskDuplicateReconciler.reconcileDuplicates` gained rollback-on-failure
-  it never had (a second, previously-unnamed `H5` instance).
+- **`X5`**: `WidgetSnapshotBuilder.regenerate(filterIDs:)` treated an
+  empty/incomplete `smartFilterStore.list()` read as ground truth and
+  pruned every snapshot not in it — but a same-device cross-process reader
+  (widget extension, Share extension, Shortcuts action) can legitimately
+  lag another process's very recent write, and Core Data surfaces no error
+  for "not caught up yet." Split into two methods: `regenerate(filterIDs:)`
+  is now additive-only (never writes the picker index, never prunes — safe
+  from any process, unchanged call syntax everywhere it's already called),
+  and a new `regenerateAuthoritatively()` is the sole entry point trusted
+  with deletion authority, reserved for the app's own process (the one
+  place a read is guaranteed current relative to its own writes).
+- **`X6`**: both apps registered only `.NSPersistentStoreRemoteChange`,
+  which doesn't fire for the app's own local `viewContext` saves — a task
+  completed in-app never refreshed the widget until a remote CloudKit
+  change happened to land, which never happens at all in `.localOnly`
+  mode. New `WidgetRefreshController` (LillistCore, `@MainActor final
+  class`) self-registers both `.NSManagedObjectContextDidSave` on
+  `viewContext` (the fix — mirrors `LocalBackupCoordinator`'s proven
+  mechanism) and `.NSPersistentStoreRemoteChange` (unchanged), debouncing
+  either into one `regenerateAuthoritatively()` + one reload behind a new
+  `WidgetTimelineReloading` protocol seam (`LillistCore` still never
+  imports WidgetKit). Replaces the per-app `WidgetRefreshCoordinator`
+  (byte-identical in both targets) this consolidates; each app now owns
+  only a four-line `SystemWidgetTimelineReloader` conformance.
 
-Commit range `84dd7a39..9c5aecef` (23 commits). Full `LillistCore` suite
+Commit range `a4f1b832..4a7502e4` (9 commits). Full `LillistCore` suite
 green **twice in a row** with unmasked exit codes and a clean grep for the
-failure markers, running the **complete suite with zero skips** — 1408
-tests, 254 suites (up from `4c`'s 1376/241 baseline). LillistUI
-non-snapshot suite green (83/17, unchanged); `lillist-cli` builds; both
-apps verified with unsigned `xcodebuild` builds after the one app-touching
-commit (`L5`'s call-site updates) and after the `M4`/`X20` commit (macOS
-`AppEnvironment.swift` wiring).
+failure markers (1419 tests, 257 suites — up from `5a`'s 1408/254
+baseline). LillistUI non-snapshot suite green (83/17, unchanged);
+`lillist-cli` builds; both apps verified with unsigned `xcodebuild` builds
+(BUILD SUCCEEDED, including `LillistWidget`/`ShareExtension-iOS`/
+`ShortcutsActions` on iOS and `LillistWidget-macOS` on macOS).
 
-**Discovered-during-verification defect — `LIL-86`, filed AND fixed as a
-final plan item:** `X10TimezoneDedupKnownLimitationTests
-.differingTimeZoneDevicesBothFire` (a `4b`-owned test) failed
-deterministically during verification. Two independent bisections — a
-temporary `git worktree` at `6cc5fa4c` (tip of `4c`, before any `5a` work)
-reproducing it identically, and a targeted revert of just the `M4`/`X20`
-commit keeping every other `5a` commit intact, also reproducing it
-identically — ruled out every `5a` fix as the cause (including a
-teammate's independently-raised M4 hypothesis; the test doesn't reference
-`PreferencesStore` at all). Root cause:
-`NotificationScheduler.computeDesiredRequests`'s cross-device dedup check
-compares absolute instants, and whether Tokyo's or LA's "9am on the
-calendar day of a shared deadline" lands later in UTC flips depending on
-which side of a UTC time boundary the test's un-injected `Date()` anchor
-falls on — a real day-alignment race against the wall clock. Fixed
-test-only (`Closes LIL-86`, `79fc1f68`): both tests now anchor to a fixed
-UTC instant chosen so Tokyo's calendar day is deterministically one day
-ahead of LA's, matching `NotificationSchedulerDSTTests`'s own
-far-future-fixed-date convention. Verified deterministic across 5
-consecutive isolated runs. No `6a` follow-up needed.
+**Two in-place plan-doc corrections, discovered while implementing (full
+reasoning in the plan doc's §4/§6 and the ledger's closing report):**
+- `WidgetRefreshController`'s sketch changed from an `actor` to a
+  `@MainActor final class` — an actor's `deinit` is nonisolated by default
+  and can't touch its own non-`Sendable` `NSObjectProtocol` observer
+  tokens without `isolated deinit` (SE-0371), which a `@MainActor` class
+  can use identically, matching `LocalBackupCoordinator`'s shape more
+  closely.
+- The `X5` cross-process test's mechanism changed from simulating genuine
+  same-device staleness (withholding `refreshAllObjects()` on a second
+  `PersistenceController`) to proving the stronger prune-authority
+  invariant directly — three throwaway probes showed this harness's
+  same-machine SQLite visibility has no reproducible propagation lag for a
+  first-time row-existence fetch, confirmed by replaying an existing `1c`
+  harness test with its own `refreshAllObjects()` call removed (still
+  passed).
 
-## What `5b` needs to know
+**Discovered-during-verification test flakes — both fixed within this
+plan:** the new `WidgetRefreshControllerTests` flaked twice under
+`swift test --parallel --num-workers 2`'s full-suite contention (isolated
+runs were always green) — first from fixed `Task.sleep` margins (the
+documented CPU-contention flake class, a new instance of it), fixed with a
+bounded polling helper; then from polling on the wrong signal (the
+snapshot file's existence, which can be observed mid-`regenerateAuthoritatively()`
+before the reload actually runs), fixed by polling on `reloadCount`
+instead. See the ledger's closing report for the full mechanism.
 
-`5b` (`widget-snapshot-correctness`, findings `X5 X6`) is **not** on the
-`TaskStore.swift` serial chain — that chain closed permanently with `5a`
-(four plans: `1a` → `1b` → `4b` → `5a`, no more scheduled touches). Still
-relevant:
+## What `5c` needs to know
 
-- Any new `LillistCore` store or maintenance-path mutation must route
-  through `withMutationRollback` (`Persistence/MutationRollback.swift`) —
-  `MutationRollbackConformanceTests`'s whole-tree walker fails the build
-  immediately on a raw `context.save()`/`.rollback()` call anywhere under
-  `Stores/`, `Notifications/`, or
-  `Persistence/TaskDuplicateReconciler.swift` not already in its
-  `migratedFiles` list.
-- `TaskStore.archive`/`unarchive` now return `TaskStore.BatchIDOutcome
-  {flipped, skipped}`, not `[UUID]`/`Void`.
-- `PreferencesStore.read()` is genuinely read-only now — don't add a call
-  site expecting it to create the singleton row.
-- `TaskStore.syncCounts()` opens its own `persistence
-  .makeBackgroundContext()` rather than using the injected `context`
-  property — the pattern to copy for any widget-snapshot aggregate that
-  needs the same off-`viewContext` treatment.
+`5c` (`watermark-registry-pruning`, findings `X12 L7`) is not on any
+shared-file chain `5b` touched — its own scope (`HistoryPruner` ordering,
+`WatermarkRegistry`) lives in `Persistence/` alongside but separate from the
+widget files. Two things worth knowing anyway:
 
-**Discovered, out-of-scope residuals — not fixed, all still open** (carried
-forward from the `4c` handoff, plus one new item this wave):
+- `WidgetSnapshotBuilder` now has two public regenerate methods with
+  different authority levels — if `5c`'s work ever needs to trigger a
+  widget-cache refresh as a side effect, route it through
+  `WidgetRefreshController` (the app's own instance), never call
+  `regenerateAuthoritatively()` from a new call site directly.
+- The `waitUntil`-style bounded-polling pattern
+  (`Packages/LillistCore/Tests/LillistCoreTests/Widgets/WidgetRefreshControllerTests.swift`)
+  is the one to copy for any new wall-clock-sensitive test `5c` writes,
+  rather than a fixed `Task.sleep` margin.
+
+**Discovered, out-of-scope residuals — not fixed, all still open**
+(carried forward from the `5a` handoff, unchanged this wave):
 - `TaskDuplicateReconciler.diagnosticLog` unwired in both apps (`1a`'s M5,
   flagged in `4a`) — `6a` completeness sweep.
 - `recoverInterruptedReseed()`'s crash-recovery path never broadcasts
   (`3b`); `LIL-81` (`3a`); `LIL-77` (`1d`) — all still open.
 - A remote `NotificationSpec.snoozedUntil`/`.offsetMinutes` in-place edit is
   still invisible to `RemoteChangeReconciler`'s diff (X9's scope note) —
-  latent, not reachable today; flagged for whichever future plan touches
-  `NotificationSpecStore.update`'s callers.
-- `LIL-83` (X10's timezone-posture schema change) — **explicitly deferred
-  out of this program** (orchestrator decision, 2026-07-29). Not
+  latent, not reachable today.
+- `LIL-83` (X10's timezone-posture schema change) — explicitly deferred out
+  of this program (orchestrator decision, 2026-07-29). Not
   program-scheduled work; don't pick it up in `6a`.
-- `LIL-86` (this wave's discovery) — fixed within `5a` itself (see above),
-  no longer a residual.
 
 ## Standing worktree rules (unchanged)
 

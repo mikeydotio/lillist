@@ -29,9 +29,93 @@ CloudKit, XCTest + Swift Testing, xcodegen, storyhook (prefix `LIL`).
 `2b` `backup-restore-correctness`), all of Wave 3 (`3a`
 `account-identity-and-status`, `3b` `reset-propagation-safety`), all of
 Wave 4 (`4a` `history-consumer-discipline`, `4b`
-`notification-truthfulness`, `4c` `recurrence-correctness`), and now Wave
-5's first plan, `5a` `mutation-scope-discipline`, are COMPLETE. Wave 5's
-next plan, `5b` `widget-snapshot-correctness`, next.**
+`notification-truthfulness`, `4c` `recurrence-correctness`), and now all of
+Wave 5's first two plans, `5a` `mutation-scope-discipline` and `5b`
+`widget-snapshot-correctness`, are COMPLETE. Wave 5's last plan, `5c`
+`watermark-registry-pruning`, next.**
+
+- ✅ **Plan `5b` closed both findings** (`X5 X6` / `LIL-18 LIL-37`) —
+  `WidgetSnapshotBuilder.regenerate(filterIDs:)` is now additive-only:
+  never writes the picker index, never prunes, safe to call from any
+  process. A new `regenerateAuthoritatively()` is the sole entry point
+  trusted with deletion authority (index write + prune), reserved for the
+  app's own process — see the plan doc's §2/§3 for the empty-vs-failed
+  read semantics and the prune-authority argument (a same-process reader
+  is guaranteed current relative to its own writes; no cross-process
+  reader is). `X5`: the widget's cold-cache-miss rebuild
+  (`FilterTimelineProvider`) and every extension call site
+  (`ShortcutsActions/WidgetRefresh.swift`, `ShareExtension-iOS/ShareRootView.swift`,
+  `LillistWidget/AdvanceTaskStatusFromWidget.swift`) keep their unchanged
+  `regenerate(filterIDs:)` call syntax — the fix is entirely in what that
+  method is now forbidden from doing, not in any call site. `X6`: new
+  `Widgets/WidgetRefreshController.swift` (`@MainActor final class`, not
+  the `actor` the plan doc originally sketched — see below) self-registers
+  **both** `.NSManagedObjectContextDidSave` on `viewContext` (the fix —
+  every `LillistCore` store mutation saves through `viewContext`, so this
+  catches local writes the old remote-change-only design missed entirely)
+  **and** `.NSPersistentStoreRemoteChange` (unchanged), debouncing either
+  into one `regenerateAuthoritatively()` + one reload behind a new
+  `WidgetTimelineReloading` protocol seam — `LillistCore` still never
+  imports WidgetKit (`docs/engineering-notes.md`, 2026-07-01). Replaces the
+  per-app `WidgetRefreshCoordinator` (byte-identical in both app targets,
+  confirmed via `diff`) this consolidates; each app now owns only a
+  four-line `SystemWidgetTimelineReloader` conformance. Both apps' old
+  `.NSPersistentStoreRemoteChange`-only bootstrap comment — "fires for
+  local writes and CloudKit imports alike" — was flatly wrong for this
+  codebase and is corrected in the type's own doc comment instead of
+  repeated per app. Plan doc:
+  `docs/superpowers/plans/2026-07-28-plan-5b-widget-snapshot-correctness.md`
+  — contains the empty-vs-failed semantics table, the prune-authority
+  argument, the local-save observation design, and two in-place
+  corrections written directly into the sections they correct (matching
+  `5a`'s precedent): (1) the `WidgetRefreshController` type sketch changed
+  from an `actor` to a `@MainActor final class` — an actor's `deinit` is
+  nonisolated by default and can't touch its own actor-isolated,
+  non-`Sendable` `NSObjectProtocol` observer tokens without `isolated
+  deinit` (SE-0371), which a `@MainActor` class can use identically,
+  matching `LocalBackupCoordinator`'s proven shape more closely anyway;
+  (2) the cross-process `X5` test's mechanism changed from simulating
+  genuine same-device staleness (withholding `refreshAllObjects()`,
+  mirroring `MultiProcessStoreHarnessTests`) to proving the stronger,
+  mechanism-independent prune-authority invariant instead, after three
+  throwaway probe tests (not committed) empirically showed a first-time
+  row-existence fetch always reflects another controller's already-
+  committed write immediately in this harness — confirmed by replaying
+  `MultiProcessStoreHarnessTests.writeFromA_visibleToB` itself with its
+  own `refreshAllObjects()` call removed, which still passed unmodified.
+  Commit range `a4f1b832..4a7502e4` (9 commits: 1 docs, 1 `chore(stories)`
+  in-progress, 5 fix/feat/test, 2 test-only flake fixes discovered during
+  this plan's own verification, 1 `chore(stories)` done). Full
+  `LillistCore` suite green **twice in a row** with unmasked exit codes
+  and a clean grep for the failure markers (1419 tests, 257 suites — up
+  from `5a`'s 1408/254 baseline); zero flakes hit either final run (one
+  parallel-contention flake was hit and fixed, twice, in this plan's own
+  new `WidgetRefreshControllerTests` during verification — see below, not
+  a pre-existing class). LillistUI non-snapshot suite green (83/17,
+  unchanged); `lillist-cli` builds; both apps verified with unsigned
+  `xcodebuild` builds (BUILD SUCCEEDED, including `LillistWidget`/
+  `ShareExtension-iOS`/`ShortcutsActions` on iOS and `LillistWidget-macOS`
+  on macOS) after the app-wiring commit.
+  **Discovered-during-verification test flakes — both fixed within this
+  plan, not carried forward:** the plan's own new
+  `WidgetRefreshControllerTests` (added for `X6`) used fixed
+  `Task.sleep` margins (200-500ms) after `refreshNow()`/
+  `resetAfterDestructiveOp()` calls, which flaked under
+  `swift test --parallel --num-workers 2`'s full 257-suite contention
+  (isolated runs of just that file were consistently green) — the
+  documented parallel-test-flake class (`CLAUDE.md`), but a **new**
+  instance of it (a test this plan wrote, not one of the pre-existing
+  named ones). Fixed in two passes: first, replaced fixed margins with a
+  bounded polling helper (`waitUntil`); the full-suite run still flaked
+  once more afterward because the poll condition (the snapshot file
+  existing on disk) can observe an intermediate state — `regenerateAuthoritatively()`
+  writes the snapshot partway through its own body, strictly before it
+  returns and `reloadAllTimelines()` runs — so under contention the poll
+  could return in the gap between those two events and race the
+  `reloadCount` assertion immediately after. Second pass polls on
+  `reloadCount` instead (strictly later in every code path, since the
+  reload always happens after the write completes), verified 3/3 isolated
+  runs plus the two final full-suite green runs above.
 
 - ✅ **Plan `5a` closed all 9 findings** (`H5 M4 M6 M7 L3 L4 L5 X19 X20` /
   `LIL-23 LIL-48 LIL-50 LIL-51 LIL-72 LIL-73 LIL-74 LIL-68 LIL-69`) — new
@@ -627,14 +711,18 @@ next plan, `5b` `widget-snapshot-correctness`, next.**
   the X8 process-capability investigation, the X9 tombstone-availability
   investigation, and what `4c` needs to know.
 
-**Next action for whoever picks this up:** start Wave 5's second plan, `5b`
-(`widget-snapshot-correctness`) — findings `X5 X6`. Read the *Resume
-protocol* section first, then the *Wave 5a closing report* below for the
-new `withMutationRollback`/`MutationRollbackConformanceTests` shape (any
-future store mutation must route through it, per the class-killer) and
-`TaskStore.swift`'s final state — `5a` was the fourth and last plan in that
-file's serial chain, so it's now closed for good, but `5b`/`5c`/`6a` may
-still touch other shared files this ledger tracks.
+**Next action for whoever picks this up:** start Wave 5's third and final
+plan, `5c` (`watermark-registry-pruning`) — findings `X12 L7`. Read the
+*Resume protocol* section first, then the *Wave 5b closing report* below
+for the `WidgetSnapshotBuilder`/`WidgetRefreshController` shape (`5c`'s own
+scope is history-watermark pruning, not widgets, but `X12`'s `HistoryPruner`
+ordering concern lives in the same `Persistence/` neighborhood
+`DrainGate`/`RemoteChangeReconciler` do — see the *Class-killer verdicts*
+table's `WatermarkRegistry` row, split from `4a`'s `DrainGate` extraction
+and reserved for `5c`) and the *Wave 5a closing report* further below for
+`withMutationRollback`/`MutationRollbackConformanceTests` (any future store
+mutation must still route through it) — `TaskStore.swift`'s serial chain
+closed for good with `5a`.
 
 ---
 
@@ -1986,6 +2074,154 @@ chain — that chain is now permanently closed) needs to know:**
 
 ---
 
+## Wave 5b closing report (`widget-snapshot-correctness`)
+
+Plan doc: `docs/superpowers/plans/2026-07-28-plan-5b-widget-snapshot-correctness.md`
+— contains the full empty-vs-failed semantics table, the prune-authority
+argument, the local-save observation design, and both in-place corrections
+(the `actor` → `@MainActor final class` shape, the cross-process test
+mechanism) written directly into the sections they correct.
+
+| Finding | Story | Fix commit(s) | Regression test(s) |
+|---|---|---|---|
+| `X5` (builder split) | `LIL-18` | `a0963538` | `WidgetSnapshotBuilderTests.swift` (1 test split into 2), `WidgetSnapshotBuilderX5Tests.swift` (4), `WidgetSnapshotBuilderX5CrossProcessTests.swift` (1, built on the `1c` Keystone harness) |
+| `X6` (`WidgetRefreshController`) | `LIL-37` | `7a9f90e5` (LillistCore type), `59809ee3` (app wiring, both apps) | `WidgetRefreshControllerTests.swift` (5) |
+| Test-flake hardening (discovered during this plan's own verification, not a separate finding) | — | `93d0de1f`, `a8b83770` | same file, two corrective passes |
+
+**Commit range:** `a4f1b832..4a7502e4` — 1 docs (`a4f1b832`), 1
+`chore(stories)` in-progress (`9345962a`), 5 fix/feat/test commits, 2
+test-only flake fixes (`93d0de1f`, `a8b83770`), 1 `chore(stories)` done
+(`4a7502e4`). Full `LillistCore` suite green **twice in a row** with
+unmasked exit codes and a clean grep for the failure markers (1419 tests,
+257 suites — up from `5a`'s 1408/254 baseline); LillistUI non-snapshot
+suite green (83/17, unchanged); `lillist-cli` builds; both apps verified
+with unsigned `xcodebuild` builds (BUILD SUCCEEDED, including
+`LillistWidget`/`ShareExtension-iOS`/`ShortcutsActions` on iOS and
+`LillistWidget-macOS` on macOS) after the app-wiring commit.
+
+**`X5` — prune-authority split, in detail:**
+`WidgetSnapshotBuilder.regenerate(filterIDs:)`'s existing
+`guard let filters = try? await smartFilterStore.list() else { return }`
+already handled a *throwing* read correctly (early return, nothing
+written). The defect was Core Data surfacing no error at all for a
+*successful-but-incomplete* read — a same-device cross-process reader
+(widget extension, Share extension, Shortcuts action) can legitimately lag
+another process's very recent write, and that state is indistinguishable
+from "this filter genuinely doesn't exist" at the call site. No amount of
+exception-handling closes that gap; the fix is an authority boundary, not
+a freshness check. `regenerate(filterIDs:)` is now additive-only (never
+writes the index, never prunes) and safe from any process; the new
+`regenerateAuthoritatively()` is the one method allowed to write the index
+and prune, reserved for `WidgetRefreshController` — the app's own process,
+where a fetch issued after that same process's own save is guaranteed to
+observe it (Core Data serializes `context.perform` on one queue), so an
+empty/incomplete read there really does mean "gone."
+
+**`X5` cross-process test — what the empirical probe found:** the plan
+doc's original sketch assumed genuine same-device staleness would be
+reproducible by withholding `refreshAllObjects()` on a second
+`PersistenceController` sharing one on-disk file with the first (the `1c`
+Keystone harness's own mechanism). Three throwaway probe tests (not
+committed) showed this is false for a **first-time** row-existence fetch:
+`SmartFilterStore.list()` on either controller always reflects the other's
+already-committed writes immediately, with or without
+`refreshAllObjects()` — confirmed decisively by replaying
+`MultiProcessStoreHarnessTests.writeFromA_visibleToB` itself with its own
+`refreshAllObjects()` call removed, which still passed unmodified.
+`refreshAllObjects()` re-syncs an *already-fetched, registered* object's
+stale property values; it has no bearing on row-existence visibility for
+data a context has never touched, and SQLite's WAL visibility has no
+meaningful propagation delay between two independently-constructed
+containers sharing one file on one machine. The committed test
+(`WidgetSnapshotBuilderX5CrossProcessTests`) instead proves the
+mechanism-independent invariant the fix actually provides: prune authority
+belongs only to `regenerateAuthoritatively()`, even when a non-authoritative
+caller's own (unstale, cross-controller) read is fully correct about a
+filter being gone — the stronger claim, and one that doesn't depend on a
+timing window this harness turned out not to have.
+
+**`X6` — `WidgetRefreshController`, in detail:** both apps' bootstrap code
+registered only `.NSPersistentStoreRemoteChange` and asserted in a comment
+that it "fires for local writes and CloudKit imports alike" — false for
+this codebase (`.NSPersistentStoreRemoteChange` reflects changes this
+process didn't just make on its own `viewContext`). Every `LillistCore`
+store's mutating methods save through `context = persistence.container.viewContext`
+(`TaskStore.context`, confirmed, and every other store built the same
+way), so observing `.NSManagedObjectContextDidSave` on `viewContext` —
+the identical mechanism `LocalBackupCoordinator` already uses for the same
+two entities (`LillistTask`, `SmartFilter`) these snapshots are built from
+— catches every local mutation with nothing to keep in sync as new
+mutation methods are added. `WidgetRefreshController` self-registers both
+observers and debounces either into one `regenerateAuthoritatively()` +
+one `WidgetTimelineReloading.reloadAllTimelines()` call — the one seam
+that crosses into WidgetKit, implemented per-app as a four-line
+`SystemWidgetTimelineReloader`. Replaces the per-app `WidgetRefreshCoordinator`
+(byte-identical in both targets, confirmed via `diff`) and the duplicated
+inline observer + wrong comment each `AppEnvironment.swift` carried.
+
+**Discovered-during-implementation correction — `actor` → `@MainActor final
+class` (written in place in the plan doc's §4, not a separate addendum):**
+the plan doc's own sketch specified an `actor` for `WidgetRefreshController`,
+reasoning that self-registering `NotificationCenter` observers (rather than
+requiring a caller to hop onto `@MainActor` first, as the predecessor
+type's callers did manually) needed real serialization for the mutable
+debounce `Task`. That doesn't compile under this toolchain's strict
+concurrency: an actor's `deinit` is nonisolated by default and can't touch
+its own actor-isolated `NSObjectProtocol` observer tokens (not `Sendable`)
+without `isolated deinit` (SE-0371) — which a `@MainActor` **class** can
+use identically, with the same serialization guarantee for `pending` and
+no actor-hop overhead on every call, and which matches
+`LocalBackupCoordinator`'s already-proven shape more closely. Landed as
+`@MainActor final class WidgetRefreshController` with `isolated deinit`
+instead.
+
+**Discovered-during-verification test flakes — both fixed within this
+plan, not carried forward as residuals:** the plan's own new
+`WidgetRefreshControllerTests` used fixed `Task.sleep` margins (200-500ms)
+after `refreshNow()`/`resetAfterDestructiveOp()` calls. Isolated runs of
+just that file were consistently green, but the full `LillistCore` suite
+under `swift test --parallel --num-workers 2` (257 suites of contention)
+flaked on it twice, in two different ways:
+1. First full-suite run: 3 issues in `WidgetRefreshControllerTests` — the
+   documented CPU-contention flake class (`CLAUDE.md`), but a genuinely
+   **new** instance of it (a test this plan wrote), not one of the
+   pre-existing named ones (`SyncQuiesceMonitor`'s 2 issues in the same run
+   *were* the pre-existing documented class, confirmed unrelated). Fixed by
+   replacing every fixed margin with a bounded polling helper
+   (`waitUntil(timeout:interval:_:)`), committed in `93d0de1f`.
+2. Second full-suite run: still flaked, on a *different* mechanism the
+   first fix didn't anticipate — the poll condition (the snapshot file
+   existing on disk) can observe an intermediate state, since
+   `regenerateAuthoritatively()` writes the snapshot partway through its
+   own body, strictly before it returns and `reloadAllTimelines()` runs at
+   the very end of the same `Task`. Under contention, the poll could
+   return in the gap between those two events, letting the test check
+   `reloadCount` before the reload had actually happened. Fixed by polling
+   on `reloadCount` instead — strictly later than the write in every code
+   path, since the reload only ever happens after the write completes —
+   committed in `a8b83770`, verified 3/3 isolated runs plus the two final
+   full-suite green runs reported above.
+
+**What `5c` (`watermark-registry-pruning`, findings `X12 L7`) needs to
+know:** `5c` is not on any shared-file chain `5b` touched — its own scope
+(`HistoryPruner` ordering, `WatermarkRegistry`) lives in `Persistence/`
+alongside but separate from the widget files. Two things worth knowing
+anyway:
+- `WidgetSnapshotBuilder` now has two public regenerate methods with
+  different authority levels (§3 above) — if `5c`'s `HistoryPruner`
+  ordering fix ever needs to trigger a widget-cache refresh as a side
+  effect (unlikely, but the ordering-trap finding does touch cross-consumer
+  sequencing), route it through `WidgetRefreshController` (the app's own
+  instance), never call `regenerateAuthoritatively()` from a new call site
+  directly — that authority is deliberately scoped to one type.
+- The `waitUntil`-style bounded-polling pattern
+  (`WidgetRefreshControllerTests.swift`) is the one to copy for any new
+  wall-clock-sensitive test `5c` writes, rather than a fixed `Task.sleep`
+  margin — this plan's own verification run is a fresh, concrete
+  demonstration of exactly the flake class `CLAUDE.md` already documents.
+
+---
+
 ## Execution model (per Mikey's directives, 2026-07-28)
 
 - **One dedicated worktree** on a long-running branch:
@@ -2045,7 +2281,7 @@ Wave 6 closeout. **Status** starts `pending` for everything except Wave 0.
 | 4 | **4b** `notification-truthfulness` | `H2 X8 X9 X10` | ✅ complete |
 | 4 | **4c** `recurrence-correctness` | `H1 X7 X16 X17` | ✅ complete |
 | 5 | **5a** `mutation-scope-discipline` | `H5 M4 M6 M7 L3 L4 L5 X19 X20` | ✅ complete |
-| 5 | **5b** `widget-snapshot-correctness` | `X5 X6` | ⬜ pending |
+| 5 | **5b** `widget-snapshot-correctness` | `X5 X6` | ✅ complete |
 | 5 | **5c** `watermark-registry-pruning` | `X12 L7` | ⬜ pending |
 | 6 | **6a** `completeness-and-lows` + closeout | `L1 L2 L6` + export round-trip equality suite + `X20` flip-flop stress (builds atop 5a's fix, not a new finding) + any residuals from Waves 1-5, incl. `LIL-77` (discovered during `1d`, not one of the 70 findings). `LIL-86` (discovered during `5a`) was fixed within `5a` itself (test-only, `Closes LIL-86`) rather than carried forward — no `6a` action needed. **Not included:** `LIL-83` (discovered during `4b`) — the underlying data-model change was explicitly **deferred out of this program** (orchestrator decision, 2026-07-29 — see *Decisions awaiting Mikey* below); do not pick it up in `6a`, it isn't program-scheduled work. | ⬜ pending |
 
@@ -2074,6 +2310,8 @@ landing wave's plan doc (house rule) before implementation:
 | `AccountIdentityStore` (persisted `ubiquityIdentityToken`-based identity comparison, gates launch-time CloudKit mirroring) | Adopt — delivered | 3a |
 | `LiveNetworkReachability` (`NWPathMonitor`-backed actor, canonical single implementation vs. one-per-app-target) | Adopt — delivered | 3a |
 | `ResetSignalMonitor` actor conversion (always-prompt state machine — `apply` is structurally unreachable except via explicit `confirmApply()`, replacing the prior class of "an automatic peer-triggered apply can run without confirmation" bugs) | Adopt — delivered | 3b |
+| `WidgetSnapshotBuilder.regenerate(filterIDs:)` / `regenerateAuthoritatively()` split (additive-only vs. the one prune-authorized path) | Adopt — delivered | 5b |
+| `WidgetRefreshController` (`@MainActor final class`, self-registering `NotificationCenter` observers; replaces the per-app `WidgetRefreshCoordinator` duplication + inline observer wiring) | Adopt — delivered | 5b |
 
 ---
 
@@ -2682,8 +2920,33 @@ are tracked here so nothing is silently dropped.
          silent dismiss back to Settings) and either completes or leaves a
          fresh, accurate failure state — not the old silently-cleared-
          journal-with-nothing-retried behavior.
-- [ ] Real-widget verification: completing a task cancels its reminder; a
-      local edit refreshes the widget (Waves 4-5).
+- [ ] Real-widget verification (Waves 4-5, `5b` specifics added below):
+      1. Completing a task from the app cancels its pending reminder
+         (Wave 4, `X8`/`H2`).
+      2. **`X6`, the headline case:** with a home-screen or Lock Screen
+         widget already showing a filter's tasks, complete/create/edit a
+         task **in the app** (not via the widget) and confirm the widget
+         updates within a couple seconds — no force-quit, no backgrounding,
+         no waiting for the 30-minute backstop. Repeat with the device in
+         Airplane Mode / Settings → iCloud Sync set to Local Only: this is
+         the case that was **permanently** broken before this fix (no
+         CloudKit import ever arrives to trigger the old remote-change-only
+         observer), so it's the one that most needs a real-device check,
+         not just the automated `WidgetRefreshControllerTests` proof.
+      3. **`X5`:** delete a saved smart filter (or its last remaining
+         filter) from the app while a widget configured to a *different*
+         filter is visible; confirm the other widget's content is
+         undisturbed (the specific over-pruning failure this finding
+         describes — the automated cross-controller test proves the
+         mechanism, not real widget-extension timing).
+      4. Advancing a task's status from the widget itself (tap-to-complete)
+         still refreshes correctly (unchanged behavior, but shares the
+         `regenerate(filterIDs:)` code path — worth a quick confirm).
+- [x] `5b` does **not** add any new CloudKit record types/fields either —
+      verified (every change is to the widget snapshot cache's JSON files
+      in the App Group container and in-process observer/regeneration
+      logic; the Core Data model is unchanged). No schema deploy needed for
+      this plan.
 - [x] `1d` does **not** add any new CloudKit record types/fields — verified
       (its changes are to the export/backup file format and in-process
       logic only; the Core Data model is unchanged). No schema deploy
