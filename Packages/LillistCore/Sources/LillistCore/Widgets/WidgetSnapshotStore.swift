@@ -86,6 +86,19 @@ public struct WidgetSnapshotStore: Sendable {
         }
     }
 
+    /// Delete every persisted snapshot (the index and every per-filter
+    /// file) — data-sync-hardening `X11`. Call immediately before the next
+    /// `regenerate()` after a destructive store reset/rebuild, as defense
+    /// in depth against `WidgetSnapshotBuilder.regenerate()`'s own
+    /// per-filter-failure-is-silently-skipped design (a per-filter write
+    /// that throws mid-regenerate could otherwise leave a stale, now-
+    /// erased snapshot behind even after an overall "successful"
+    /// regenerate). Best-effort; failures are ignored — a stale cache
+    /// degrades gracefully in the widget, it isn't fatal.
+    public func clearAll() {
+        try? FileManager.default.removeItem(at: root)
+    }
+
     // MARK: - Coders
 
     // Fresh coders per call: a `static let JSONEncoder` would trip strict

@@ -142,6 +142,23 @@ public final class DataStoreResetService {
     /// for the full rationale. Called only on success, alongside
     /// `backupReconciler?.reconcileFull()`.
     private let syncStatusReset: (@Sendable () async -> Void)?
+    /// Data-sync-hardening `X11`: clears every `PersistentHistoryTokenStore`
+    /// watermark after a destroy/rebuild — see `HistoryWatermarks`' own doc
+    /// comment. Called unconditionally on every successful `performReset`
+    /// (every flavor destroys/rebuilds the local store). Not `@Sendable`:
+    /// this type is already `@MainActor`-isolated, so the stored closure
+    /// needs no Sendable-capture gymnastics. `nil` preserves prior behavior
+    /// for tests/legacy callers.
+    private let historyWatermarksReset: (() async -> Void)?
+    /// Data-sync-hardening `X11`: clears + regenerates the widget snapshot
+    /// cache and reloads timelines after a destroy/rebuild. Lives in the
+    /// app layer (imports WidgetKit, which `LillistCore` never does) —
+    /// this is the injection seam. Called at the same points as
+    /// `historyWatermarksReset`, plus once more after
+    /// `resetAndReseedFromThisDevice()`'s reimport (mirroring `S23`'s
+    /// deterministic-not-incidental-timing reasoning for
+    /// `backupReconciler`).
+    private let widgetCacheReset: (() async -> Void)?
 
     public init(
         host: any PersistenceResetting,
@@ -160,7 +177,9 @@ public final class DataStoreResetService {
         backupReconciler: (any BackupPackageReconciling)? = nil,
         quiesceMinQuietWindow: TimeInterval = 5,
         quiesceHardTimeout: TimeInterval = 300,
-        syncStatusReset: (@Sendable () async -> Void)? = nil
+        syncStatusReset: (@Sendable () async -> Void)? = nil,
+        historyWatermarksReset: (() async -> Void)? = nil,
+        widgetCacheReset: (() async -> Void)? = nil
     ) {
         self.host = host
         self.quarantine = quarantine
@@ -179,6 +198,8 @@ public final class DataStoreResetService {
         self.quiesceMinQuietWindow = quiesceMinQuietWindow
         self.quiesceHardTimeout = quiesceHardTimeout
         self.syncStatusReset = syncStatusReset
+        self.historyWatermarksReset = historyWatermarksReset
+        self.widgetCacheReset = widgetCacheReset
     }
 
     /// What a reset should do with the CloudKit side of the store.
@@ -267,13 +288,15 @@ public final class DataStoreResetService {
     /// "Erase data from all devices and start over" (issue #71). Wipes
     /// local + iCloud to empty via `resetAllData()`'s exact steps, then
     /// propagates over `ResetPropagator` so every other known device
-    /// converges on empty too the next time it's open and online. A no-op
-    /// propagation (besides refreshing this device's roster entry) when no
-    /// `propagator` was injected or no peers are known yet.
-    public func resetEverywhereToEmpty() async throws {
+    /// converges on empty too the next time it's open and online. Returns
+    /// whether anybody was actually notified (data-sync-hardening `S20`) —
+    /// `.rosterEmpty` when no `propagator` was injected or no peers are
+    /// known yet, never silently treated as success.
+    @discardableResult
+    public func resetEverywhereToEmpty() async throws -> BroadcastOutcome {
         try await withReentrancyGuard(label: "resetEverywhereToEmpty") {
             try await performReset(.everywhere)
-            propagator?.broadcast(.resetToEmpty)
+            return propagator?.broadcast(.resetToEmpty) ?? .notConfigured
         }
     }
 
@@ -301,13 +324,24 @@ public final class DataStoreResetService {
     /// Throws `storeUnavailable` if constructed without an `exporter`/
     /// `importer` (both required for this flow only — every other method
     /// works without them).
-    public func resetAndReseedFromThisDevice() async throws {
+    ///
+    /// Data-sync-hardening `S9c`: broadcasting used to fire immediately
+    /// after the reimport, with no wait for the reimported data's own
+    /// re-export to CloudKit to settle — a peer that redownloaded right
+    /// away could pull a **partial** zone, mid-upload. This now waits for
+    /// `quiesceMonitor` (only while syncing; nothing to wait for in
+    /// `.localOnly`) before broadcasting, and skips the broadcast entirely
+    /// on a timeout (`.skippedQuiesceTimedOut`) rather than telling a peer
+    /// to redownload a knowably-incomplete zone — the reset/reseed itself
+    /// still completed successfully either way.
+    @discardableResult
+    public func resetAndReseedFromThisDevice() async throws -> BroadcastOutcome {
         guard let exporter, let importer else {
             throw LillistError.storeUnavailable(
                 reason: "Reset & Re-seed needs the export/import subsystem, which wasn't configured."
             )
         }
-        try await withReentrancyGuard(label: "resetAndReseedFromThisDevice") {
+        return try await withReentrancyGuard(label: "resetAndReseedFromThisDevice") {
             let stagingRoot = quarantine.rootDirectory.appendingPathComponent("Reseed", isDirectory: true)
             let stageDir = stagingRoot.appendingPathComponent(UUID().uuidString, isDirectory: true)
             try FileManager.default.createDirectory(at: stageDir, withIntermediateDirectories: true)
@@ -360,10 +394,34 @@ public final class DataStoreResetService {
                 // the local-save observer's incidental timing for
                 // something this important.
                 await backupReconciler?.reconcileFull()
+                // X11: same reasoning as S23's re-reconcile above — widgets
+                // should reflect the reseeded content deterministically,
+                // not "eventually" once the local-save observer notices.
+                await widgetCacheReset?()
 
-                // 4. propagate, so peers know to discard their own state
-                //    and re-download rather than resurrecting it.
-                propagator?.broadcast(.resetAndReseed)
+                // 4. S9c: wait for the just-reimported data's own
+                //    re-export to CloudKit to settle BEFORE telling peers
+                //    to redownload — only meaningful while syncing (a
+                //    localOnly reseed has nothing to export or announce
+                //    beyond this point). Skip the broadcast entirely on a
+                //    timeout rather than pointing a peer at a knowably-
+                //    partial zone; the reseed itself already succeeded
+                //    locally either way.
+                let outcome: BroadcastOutcome
+                if await host.currentMode == .iCloudSync {
+                    let result = await quiesceMonitor.waitForQuiesce(
+                        minQuietWindow: quiesceMinQuietWindow, hardTimeout: quiesceHardTimeout
+                    )
+                    if result == .timedOut {
+                        LillistLog.sync.notice("resetAndReseedFromThisDevice re-export quiesce timed out — skipping broadcast, a peer would otherwise pull a partial zone")
+                        await breadcrumb("resetAndReseedFromThisDevice re-export quiesce timed out; broadcast skipped", success: false)
+                        outcome = .skippedQuiesceTimedOut
+                    } else {
+                        outcome = propagator?.broadcast(.resetAndReseed) ?? .notConfigured
+                    }
+                } else {
+                    outcome = propagator?.broadcast(.resetAndReseed) ?? .notConfigured
+                }
 
                 // 5. success: the staged bundle and journal entry have
                 //    served their purpose — clean both up so a future
@@ -371,6 +429,7 @@ public final class DataStoreResetService {
                 //    directory for a crashed reseed.
                 try? reseedJournal.clear()
                 try? FileManager.default.removeItem(at: stageDir)
+                return outcome
             } catch {
                 entry.phase = .failed
                 entry.failureReason = "\(error)"
@@ -435,6 +494,9 @@ public final class DataStoreResetService {
         // S23: resync the backup package to the just-recovered content —
         // same reasoning as the primary (non-crashed) reseed path.
         await backupReconciler?.reconcileFull()
+        // X11: same reasoning — the crash-recovered reimport needs to
+        // reach widgets deterministically too.
+        await widgetCacheReset?()
         try? reseedJournal.clear()
         try? FileManager.default.removeItem(at: stageDir)
         return .resumed
@@ -573,6 +635,11 @@ public final class DataStoreResetService {
             // rebuild, or a fresh reattach), so any streak tracked against
             // the previous connection no longer applies.
             await syncStatusReset?()
+            // X11: every performReset call destroys + rebuilds the local
+            // store (step 5, above) — every watermark and the widget cache
+            // are now stale, unconditionally.
+            await historyWatermarksReset?()
+            await widgetCacheReset?()
 
             LillistLog.sync.notice("data store reset completed")
             await breadcrumb("data store reset completed")

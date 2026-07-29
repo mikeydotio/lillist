@@ -217,4 +217,24 @@ struct WidgetSnapshotBuilderTests {
         #expect(snap.tasks.map(\.title) == ["Apple", "Banana", "Cherry"])
         #expect(snap.openCount == 3)
     }
+
+    @Test("X11: clearCache forwards to the snapshot store, wiping every cached snapshot")
+    func clearCacheForwardsToSnapshotStore() async throws {
+        let controller = try await TestStore.make()
+        let tasks = TaskStore(persistence: controller)
+        let filters = SmartFilterStore(persistence: controller)
+        _ = try await tasks.create(title: "Submit feedback")
+        let filterID = try await filters.create(name: "Todayish", group: todoGroup())
+
+        let (snapStore, dir) = tempSnapshotStore()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let builder = WidgetSnapshotBuilder(smartFilterStore: filters, snapshotStore: snapStore)
+        await builder.regenerate()
+        #expect(snapStore.read(filterID: filterID) != nil)
+
+        builder.clearCache()
+
+        #expect(snapStore.read(filterID: filterID) == nil)
+        #expect(snapStore.readIndex() == nil)
+    }
 }

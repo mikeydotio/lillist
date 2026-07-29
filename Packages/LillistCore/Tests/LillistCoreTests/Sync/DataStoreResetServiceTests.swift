@@ -28,7 +28,11 @@ struct DataStoreResetServiceTests {
         exporter: Exporter? = nil,
         importer: Importer? = nil,
         backupReconciler: (any BackupPackageReconciling)? = nil,
-        syncStatusReset: (@Sendable () async -> Void)? = nil
+        syncStatusReset: (@Sendable () async -> Void)? = nil,
+        historyWatermarksReset: (() async -> Void)? = nil,
+        widgetCacheReset: (() async -> Void)? = nil,
+        quiesceMinQuietWindow: TimeInterval = 5,
+        quiesceHardTimeout: TimeInterval = 300
     ) -> DataStoreResetService {
         DataStoreResetService(
             host: host,
@@ -42,7 +46,11 @@ struct DataStoreResetServiceTests {
             exporter: exporter,
             importer: importer,
             backupReconciler: backupReconciler,
-            syncStatusReset: syncStatusReset
+            quiesceMinQuietWindow: quiesceMinQuietWindow,
+            quiesceHardTimeout: quiesceHardTimeout,
+            syncStatusReset: syncStatusReset,
+            historyWatermarksReset: historyWatermarksReset,
+            widgetCacheReset: widgetCacheReset
         )
     }
 
@@ -211,7 +219,7 @@ struct DataStoreResetServiceTests {
             startMode: .iCloudSync, host: host, eraser: eraser, propagator: propagator
         )
 
-        try await service.resetEverywhereToEmpty()
+        let outcome = try await service.resetEverywhereToEmpty()
 
         // Exactly the same wipe steps resetAllData() runs.
         #expect(await host.resetSteps == ["tearDown", "rebuild"])
@@ -220,19 +228,43 @@ struct DataStoreResetServiceTests {
         let pending = inbox.pendingEvents(for: "device-B")
         #expect(pending.count == 1)
         #expect(pending.first?.kind == .resetToEmpty)
+        #expect(outcome == .notified(peerCount: 1))
     }
 
-    @Test("resetEverywhereToEmpty: with no propagator configured, still wipes correctly")
+    @Test("resetEverywhereToEmpty: with no propagator configured, still wipes correctly and reports notConfigured")
     @MainActor
     func resetEverywhereToEmptyWithoutPropagatorStillWipes() async throws {
         let host = FakePersistenceReconfigurer(initialMode: .iCloudSync)
         let eraser = FakeCloudKitZoneEraser()
         let service = makeService(startMode: .iCloudSync, host: host, eraser: eraser)
 
-        try await service.resetEverywhereToEmpty()
+        let outcome = try await service.resetEverywhereToEmpty()
 
         #expect(await host.resetSteps == ["tearDown", "rebuild"])
         #expect(await eraser.callCount == 1)
+        #expect(outcome == .notConfigured)
+    }
+
+    @Test("S20: resetEverywhereToEmpty with a propagator but no known peers still wipes correctly and reports rosterEmpty, not silent success")
+    @MainActor
+    func resetEverywhereToEmptyWithNoKnownPeersReportsRosterEmpty() async throws {
+        let host = FakePersistenceReconfigurer(initialMode: .iCloudSync)
+        let eraser = FakeCloudKitZoneEraser()
+        let kv = InMemoryKeyValueSyncStore()
+        let roster = DeviceRoster(kv: kv)
+        let inbox = ControlInbox(kv: kv)
+        // No peers ever registered — e.g. a fresh install.
+        let propagator = ResetPropagator(
+            roster: roster, inbox: inbox, deviceID: "device-A", deviceDisplayName: "Nephele"
+        )
+        let service = makeService(
+            startMode: .iCloudSync, host: host, eraser: eraser, propagator: propagator
+        )
+
+        let outcome = try await service.resetEverywhereToEmpty()
+
+        #expect(await host.resetSteps == ["tearDown", "rebuild"])
+        #expect(outcome == .rosterEmpty)
     }
 
     @Test("resetEverywhereToEmpty: a failed wipe never reaches the broadcast step")
@@ -303,10 +335,14 @@ struct DataStoreResetServiceTests {
             startMode: .iCloudSync, host: host, eraser: eraser,
             propagator: propagator,
             exporter: Exporter(persistence: persistence, preferences: preferences),
-            importer: Importer(persistence: persistence)
+            importer: Importer(persistence: persistence),
+            // S9c added a SECOND post-reimport quiesce wait beyond the
+            // wipe's own — fast windows keep this test from doubling its
+            // wall-clock time against the real 5s default.
+            quiesceMinQuietWindow: 0.05, quiesceHardTimeout: 1
         )
 
-        try await service.resetAndReseedFromThisDevice()
+        let outcome = try await service.resetAndReseedFromThisDevice()
 
         // The (faked) local+iCloud wipe ran exactly like resetAllData()'s.
         #expect(await host.resetSteps == ["tearDown", "rebuild"])
@@ -319,6 +355,7 @@ struct DataStoreResetServiceTests {
         let pending = inbox.pendingEvents(for: "device-B")
         #expect(pending.count == 1)
         #expect(pending.first?.kind == .resetAndReseed)
+        #expect(outcome == .notified(peerCount: 1))
     }
 
     @Test("resetAndReseedFromThisDevice: an attachment's bytes survive the reseed round trip (S9a)")
@@ -357,7 +394,10 @@ struct DataStoreResetServiceTests {
             notificationScheduler: nil,
             cloudKitContainerIdentifier: "iCloud.test",
             exporter: Exporter(persistence: persistence, preferences: preferences),
-            importer: Importer(persistence: persistence)
+            importer: Importer(persistence: persistence),
+            // S9c's post-reimport quiesce wait — fast windows, see the
+            // identical rationale in resetAndReseedRoundTripsRealData.
+            quiesceMinQuietWindow: 0.05, quiesceHardTimeout: 1
         )
 
         try await service.resetAndReseedFromThisDevice()
@@ -370,6 +410,82 @@ struct DataStoreResetServiceTests {
         // was real (not merely a no-op the never-cleared original satisfied).
         let survivingTask = try await tasks.fetch(id: seededID)
         #expect(survivingTask.title == "Buy milk")
+    }
+
+    // MARK: - S9c: reseed broadcast waits for the re-export quiesce
+
+    @Test("resetAndReseedFromThisDevice: a re-export quiesce timeout skips the broadcast (peers would otherwise pull a partial zone), but the reseed itself still reports success locally (S9c)")
+    @MainActor
+    func resetAndReseedQuiesceTimeoutSkipsBroadcast() async throws {
+        let persistence = try await TestStore.make()
+        let preferences = PreferencesStore(persistence: persistence)
+        _ = try await preferences.read()
+        let tasks = TaskStore(persistence: persistence)
+        let seededID = try await tasks.create(title: "Buy milk")
+
+        let host = FakePersistenceReconfigurer(initialMode: .iCloudSync)
+        let eraser = FakeCloudKitZoneEraser()
+        let kv = InMemoryKeyValueSyncStore()
+        let roster = DeviceRoster(kv: kv)
+        let inbox = ControlInbox(kv: kv)
+        roster.register(id: "device-B", displayName: "Vertumnus")
+        let propagator = ResetPropagator(
+            roster: roster, inbox: inbox, deviceID: "device-A", deviceDisplayName: "Nephele"
+        )
+        // hardTimeout below minQuietWindow: no events ever fire, so the
+        // wait can only ever time out — mirrors
+        // postRebuildQuiesceTimeoutStillCompletes's identical setup.
+        let service = DataStoreResetService(
+            host: host,
+            quarantine: QuarantineManager(rootDirectory: tempDir()),
+            zoneEraser: eraser,
+            quiesceMonitor: SyncQuiesceMonitor(bridge: CloudKitEventBridge()),
+            notificationScheduler: nil,
+            cloudKitContainerIdentifier: "iCloud.test",
+            propagator: propagator,
+            exporter: Exporter(persistence: persistence, preferences: preferences),
+            importer: Importer(persistence: persistence),
+            quiesceMinQuietWindow: 1.0, quiesceHardTimeout: 0.05
+        )
+
+        let outcome = try await service.resetAndReseedFromThisDevice()
+
+        #expect(outcome == .skippedQuiesceTimedOut)
+        // Nobody was told to redownload a possibly-partial zone.
+        #expect(inbox.pendingEvents(for: "device-B").isEmpty)
+        // The reseed itself still succeeded locally — this is a
+        // propagation-only skip, not a failure.
+        let survivor = try await tasks.fetch(id: seededID)
+        #expect(survivor.title == "Buy milk")
+    }
+
+    @Test("resetAndReseedFromThisDevice: a localOnly reseed broadcasts without waiting for the re-export quiesce (S9c) — nothing to export or wait for")
+    @MainActor
+    func resetAndReseedLocalOnlyBroadcastsWithoutWaiting() async throws {
+        let persistence = try await TestStore.make()
+        let preferences = PreferencesStore(persistence: persistence)
+        _ = try await preferences.read()
+
+        let host = FakePersistenceReconfigurer(initialMode: .localOnly)
+        let eraser = FakeCloudKitZoneEraser()
+        let kv = InMemoryKeyValueSyncStore()
+        let roster = DeviceRoster(kv: kv)
+        let inbox = ControlInbox(kv: kv)
+        roster.register(id: "device-B", displayName: "Vertumnus")
+        let propagator = ResetPropagator(
+            roster: roster, inbox: inbox, deviceID: "device-A", deviceDisplayName: "Nephele"
+        )
+        let service = makeService(
+            startMode: .localOnly, host: host, eraser: eraser,
+            propagator: propagator,
+            exporter: Exporter(persistence: persistence, preferences: preferences),
+            importer: Importer(persistence: persistence)
+        )
+
+        let outcome = try await service.resetAndReseedFromThisDevice()
+
+        #expect(outcome == .notified(peerCount: 1))
+        #expect(inbox.pendingEvents(for: "device-B").count == 1)
     }
 
     @Test("resetAndReseedFromThisDevice: cleans up its durable staging directory and journal on success (S9b)")
@@ -397,7 +513,10 @@ struct DataStoreResetServiceTests {
             cloudKitContainerIdentifier: "iCloud.test",
             exporter: Exporter(persistence: persistence, preferences: preferences),
             importer: Importer(persistence: persistence),
-            reseedJournal: reseedJournal
+            reseedJournal: reseedJournal,
+            // S9c's post-reimport quiesce wait — fast windows, see the
+            // identical rationale in resetAndReseedRoundTripsRealData.
+            quiesceMinQuietWindow: 0.05, quiesceHardTimeout: 1
         )
         try await service.resetAndReseedFromThisDevice()
 
@@ -626,7 +745,10 @@ struct DataStoreResetServiceTests {
             startMode: .iCloudSync, host: host, eraser: eraser,
             exporter: Exporter(persistence: persistence, preferences: preferences),
             importer: Importer(persistence: persistence),
-            backupReconciler: reconciler
+            backupReconciler: reconciler,
+            // S9c's post-reimport quiesce wait — fast windows, see the
+            // identical rationale in resetAndReseedRoundTripsRealData.
+            quiesceMinQuietWindow: 0.05, quiesceHardTimeout: 1
         )
 
         try await service.resetAndReseedFromThisDevice()
@@ -635,6 +757,80 @@ struct DataStoreResetServiceTests {
         // more explicitly after the reimport — deliberate, not relying
         // on the local-save observer's incidental timing.
         #expect(await reconciler.callCount == 2)
+    }
+
+    // MARK: - X11: history-watermark + widget-cache clearing after a destructive reset
+
+    @Test("X11: every reset flavor destroys/rebuilds the store, so every flavor clears history watermarks and the widget cache on success")
+    @MainActor
+    func everyResetFlavorClearsWatermarksAndWidgetCache() async throws {
+        let host = FakePersistenceReconfigurer(initialMode: .localOnly)
+        let eraser = FakeCloudKitZoneEraser()
+        let watermarks = CallCounter()
+        let widgets = CallCounter()
+        let service = makeService(
+            startMode: .localOnly, host: host, eraser: eraser,
+            historyWatermarksReset: { await watermarks.bump() },
+            widgetCacheReset: { await widgets.bump() }
+        )
+
+        try await service.resetAllData()
+
+        #expect(await watermarks.count == 1)
+        #expect(await widgets.count == 1)
+    }
+
+    @Test("X11: a failed reset never clears history watermarks or the widget cache — the store was never actually rebuilt")
+    @MainActor
+    func failedResetDoesNotClearWatermarks() async throws {
+        let host = FakePersistenceReconfigurer(initialMode: .localOnly)
+        await host.failOnRebuild()
+        let eraser = FakeCloudKitZoneEraser()
+        let watermarks = CallCounter()
+        let widgets = CallCounter()
+        let service = makeService(
+            startMode: .localOnly, host: host, eraser: eraser,
+            historyWatermarksReset: { await watermarks.bump() },
+            widgetCacheReset: { await widgets.bump() }
+        )
+
+        await #expect(throws: LillistError.self) {
+            try await service.resetAllData()
+        }
+
+        #expect(await watermarks.count == 0)
+        #expect(await widgets.count == 0)
+    }
+
+    @Test("X11: resetAndReseedFromThisDevice clears the widget cache twice — once from the wipe, once more deterministically after the reimport (mirrors S23's backupReconciler double-call) — but the watermarks only once")
+    @MainActor
+    func resetAndReseedClearsWidgetCacheTwiceWatermarksOnce() async throws {
+        let persistence = try await TestStore.make()
+        let preferences = PreferencesStore(persistence: persistence)
+        _ = try await preferences.read()
+        let host = FakePersistenceReconfigurer(initialMode: .iCloudSync)
+        let eraser = FakeCloudKitZoneEraser()
+        let watermarks = CallCounter()
+        let widgets = CallCounter()
+        let service = makeService(
+            startMode: .iCloudSync, host: host, eraser: eraser,
+            exporter: Exporter(persistence: persistence, preferences: preferences),
+            importer: Importer(persistence: persistence),
+            historyWatermarksReset: { await watermarks.bump() },
+            widgetCacheReset: { await widgets.bump() },
+            quiesceMinQuietWindow: 0.05, quiesceHardTimeout: 1
+        )
+
+        try await service.resetAndReseedFromThisDevice()
+
+        // historyWatermarksReset only fires from performReset's single
+        // destroy/rebuild chokepoint — no second call after the reimport
+        // (nothing about the reimport needs the watermarks cleared again).
+        #expect(await watermarks.count == 1)
+        // widgetCacheReset fires from performReset AND explicitly again
+        // after the reimport, deterministically reflecting the reseeded
+        // content rather than waiting on the local-save observer.
+        #expect(await widgets.count == 2)
     }
 
     // MARK: - S3: account-mismatch resolution (narrow, re-validating entry point)

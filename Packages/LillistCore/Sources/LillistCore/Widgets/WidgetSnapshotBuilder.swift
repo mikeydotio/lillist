@@ -34,6 +34,14 @@ public struct WidgetSnapshotBuilder: Sendable {
         self.rowCap = rowCap
     }
 
+    /// Forwards to `WidgetSnapshotStore.clearAll()` — data-sync-hardening
+    /// `X11`. Call before `regenerate()` after a destructive store
+    /// reset/rebuild so a stale, now-erased task can never render with a
+    /// dangling deep link in the gap before the next regenerate.
+    public func clearCache() {
+        snapshotStore.clearAll()
+    }
+
     /// Regenerate widget snapshots.
     ///
     /// - Parameter filterIDs: the filters to refresh, or `nil` to refresh every
