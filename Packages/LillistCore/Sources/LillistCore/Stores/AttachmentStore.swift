@@ -111,7 +111,7 @@ public final class AttachmentStore: @unchecked Sendable {
         metadata: LinkPreviewMetadata,
         thumbnailData: Data? = nil
     ) async throws {
-        try await context.perform { [self] in
+        try await withMutationRollback(context: context) { [self] in
             let m = try fetchManagedObject(id: id, in: context)
             guard m.kindRaw == Int16(AttachmentKind.linkPreview.rawValue) else {
                 throw LillistError.validationFailed([
@@ -137,7 +137,6 @@ public final class AttachmentStore: @unchecked Sendable {
                 m.data = bytes
                 m.byteSize = Int64(bytes.count)
             }
-            try context.save()
         }
     }
 
@@ -186,10 +185,9 @@ public final class AttachmentStore: @unchecked Sendable {
     // MARK: - Delete
 
     public func delete(id: UUID) async throws {
-        try await context.perform { [self] in
+        try await withMutationRollback(context: context) { [self] in
             let m = try fetchManagedObject(id: id, in: context)
             context.delete(m)
-            try context.save()
         }
     }
 
@@ -210,7 +208,7 @@ public final class AttachmentStore: @unchecked Sendable {
         linkPreviewJSON: String?
     ) async throws -> UUID {
         do {
-            let id: UUID = try await context.perform { [self] in
+            let id: UUID = try await withMutationRollback(context: context) { [self] in
                 let task = try fetchTask(id: taskID, in: context)
                 let journal = JournalEntry(context: context)
                 journal.id = UUID()
@@ -231,7 +229,6 @@ public final class AttachmentStore: @unchecked Sendable {
                 att.linkPreviewJSON = linkPreviewJSON
                 att.createdAt = journal.createdAt
 
-                try context.save()
                 return att.id!
             }
             await recordCrumb("attachment.attach", success: true)
