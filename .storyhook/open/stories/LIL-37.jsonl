@@ -2,3 +2,4 @@
 {"kind":"StoryPrioritySet","at":"2026-07-28T16:32:21Z","priority":"high"}
 {"kind":"StoryLabelsSet","at":"2026-07-28T16:32:21Z","labels":["plan-5b","sev-high","sweep-crossproc"]}
 {"kind":"StoryDescriptionSet","at":"2026-07-28T16:32:21Z","description":"Registration is on NSPersistentStoreRemoteChange only, which does not fire for same-coordinator saves (a macOS source comment asserts the opposite - it's wrong). The widget is permanently stale in localOnly mode; the 30-minute backstop just re-reads the same stale JSON. Severity: High. Wave/Plan: Wave 5, plan 5b widget-snapshot-correctness. Sweep: cross-process."}
+{"kind":"StoryStateChanged","at":"2026-07-29T08:12:10Z","state":"in-progress"}
