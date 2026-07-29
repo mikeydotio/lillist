@@ -2,3 +2,4 @@
 {"kind":"StoryPrioritySet","at":"2026-07-28T16:32:21Z","priority":"high"}
 {"kind":"StoryLabelsSet","at":"2026-07-28T16:32:21Z","labels":["plan-5c","sev-high","sweep-crossproc"]}
 {"kind":"StoryDescriptionSet","at":"2026-07-28T16:32:21Z","description":"It runs after autoPurge on the design premise that 'nothing consumes history in localOnly mode' - false: the backup coordinator only catches up via history observers, so share-extension writes made while the main app is closed can be pruned before the backup consumer ever sees them. Corroborates L7 - upgrades its severity from latent to real. Severity: High. Wave/Plan: Wave 5, plan 5c watermark-registry-pruning. Sweep: cross-process. Class-killer: WatermarkRegistry formalizing the three existing token keys; HistoryPruner deletes before min(consumer watermarks); registry doubles as Wave 3's reset-clear enumeration."}
+{"kind":"StoryStateChanged","at":"2026-07-29T09:03:34Z","state":"in-progress"}
