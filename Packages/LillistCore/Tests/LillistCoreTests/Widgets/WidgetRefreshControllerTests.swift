@@ -27,6 +27,26 @@ final class RecordingReloader: WidgetTimelineReloading, @unchecked Sendable {
     }
 }
 
+/// Polls `condition` until it's true or `timeout` elapses, instead of a
+/// single fixed `Task.sleep` margin — a fixed margin is exactly the
+/// documented parallel-test-flake shape (`CLAUDE.md`'s `--parallel`
+/// CPU-contention note): under `swift test --parallel --num-workers 2` with
+/// 250+ suites running concurrently, scheduling delay alone can exceed a
+/// margin that's comfortable in isolation. Polling only ever waits as long
+/// as actually needed, and stays correct (just slower) under contention
+/// rather than flaking.
+private func waitUntil(
+    timeout: Duration = .seconds(5),
+    interval: Duration = .milliseconds(10),
+    _ condition: () -> Bool
+) async {
+    let deadline = ContinuousClock.now + timeout
+    while ContinuousClock.now < deadline {
+        if condition() { return }
+        try? await Task.sleep(for: interval)
+    }
+}
+
 @Suite("WidgetRefreshController — X6 local-save observation")
 struct WidgetRefreshControllerTests {
     private func todoGroup() -> PredicateGroup {
@@ -66,8 +86,7 @@ struct WidgetRefreshControllerTests {
         // A genuine local save on the SAME viewContext the mutation stores use.
         _ = try await tasks.create(title: "Submit feedback")
 
-        // Wait comfortably past the debounce window.
-        try await Task.sleep(for: .milliseconds(500))
+        await waitUntil { snapStore.read(filterID: filterID) != nil }
 
         let snap = try #require(snapStore.read(filterID: filterID))
         #expect(snap.totalCount == 1, "the rebuild must reflect the task the local save just created")
@@ -102,7 +121,9 @@ struct WidgetRefreshControllerTests {
             try await Task.sleep(for: .milliseconds(20))
         }
 
-        try await Task.sleep(for: .milliseconds(500))
+        // Poll for the settled state (all 5 tasks reflected) rather than a
+        // fixed post-burst margin.
+        await waitUntil { snapStore.read(filterID: filterID)?.totalCount == 5 }
 
         let snap = try #require(snapStore.read(filterID: filterID))
         #expect(snap.totalCount == 5)
@@ -132,7 +153,11 @@ struct WidgetRefreshControllerTests {
         await refresh.stop()
 
         _ = try await tasks.create(title: "Submit feedback")
-        try await Task.sleep(for: .milliseconds(300))
+        // Asserting an absence has no positive signal to poll for — waiting
+        // longer only ever strengthens this claim (a stopped controller
+        // can't un-stop itself under contention), so a generous fixed
+        // margin is safe here, unlike the positive-signal tests above.
+        try await Task.sleep(for: .milliseconds(500))
 
         #expect(snapStore.read(filterID: filterID) == nil)
         #expect(reloader.reloadCount == 0)
@@ -157,7 +182,7 @@ struct WidgetRefreshControllerTests {
             debounce: .seconds(30) // long enough that a debounced call would never land in this test
         )
         await refresh.refreshNow()
-        try await Task.sleep(for: .milliseconds(200))
+        await waitUntil { snapStore.read(filterID: filterID) != nil }
 
         #expect(snapStore.read(filterID: filterID) != nil)
         #expect(reloader.reloadCount == 1)
@@ -182,13 +207,13 @@ struct WidgetRefreshControllerTests {
             debounce: .milliseconds(50)
         )
         await refresh.refreshNow()
-        try await Task.sleep(for: .milliseconds(200))
+        await waitUntil { snapStore.read(filterID: filterID) != nil }
         #expect(snapStore.read(filterID: filterID) != nil)
 
         await refresh.resetAfterDestructiveOp()
 
         // Awaited synchronously — the rebuild has already happened by the
-        // time this returns, no extra sleep needed.
+        // time this returns, no extra wait needed.
         #expect(snapStore.read(filterID: filterID) != nil)
         #expect(reloader.reloadCount == 2)
     }
