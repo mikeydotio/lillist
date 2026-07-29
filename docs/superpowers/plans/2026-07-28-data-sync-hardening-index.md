@@ -1634,7 +1634,7 @@ Wave 6 closeout. **Status** starts `pending` for everything except Wave 0.
 | 5 | **5a** `mutation-scope-discipline` | `H5 M4 M6 M7 L3 L4 L5 X19 X20` | ⬜ pending |
 | 5 | **5b** `widget-snapshot-correctness` | `X5 X6` | ⬜ pending |
 | 5 | **5c** `watermark-registry-pruning` | `X12 L7` | ⬜ pending |
-| 6 | **6a** `completeness-and-lows` + closeout | `L1 L2 L6` + export round-trip equality suite + `X20` flip-flop stress (builds atop 5a's fix, not a new finding) + any residuals from Waves 1-5, incl. `LIL-77` (discovered during `1d`, not one of the 70 findings). **Not included:** `LIL-83` (discovered during `4b`) — orchestrator-approval-gated data-model change, not simply deferred work; do not pick it up in `6a` without an explicit go-ahead from Mikey. | ⬜ pending |
+| 6 | **6a** `completeness-and-lows` + closeout | `L1 L2 L6` + export round-trip equality suite + `X20` flip-flop stress (builds atop 5a's fix, not a new finding) + any residuals from Waves 1-5, incl. `LIL-77` (discovered during `1d`, not one of the 70 findings). **Not included:** `LIL-83` (discovered during `4b`) — the underlying data-model change was explicitly **deferred out of this program** (orchestrator decision, 2026-07-29 — see *Decisions awaiting Mikey* below); do not pick it up in `6a`, it isn't program-scheduled work. | ⬜ pending |
 
 **Finding-count check:** 70 unique findings (`C1`-`C4`, `H1`-`H7`, `M1`-`M7`,
 `L1`-`L7` from the stores sweep = 25; `S1`-`S4`, `S5`-`S13` with `S9` split
@@ -2093,6 +2093,32 @@ defensible alternatives, Mikey unavailable). Full audit trails live under
    tested by `ResetSignalMonitorTests.swift`'s `exactBoundaryIsExpired`/
    `justUnderBoundaryIsStillActionable` (inclusive-boundary proof) — see
    the *Wave 3b closing report* above for the full implementation shape.
+
+---
+
+## Decisions awaiting Mikey
+
+Product/architecture calls this program surfaced but deliberately did not
+resolve — each needs Mikey's judgment, not another council vote, because
+they trade off against product priorities or CloudKit-schema cost outside
+this program's mandate.
+
+- **X10's timezone-dedup posture** (Wave `4b`): council unanimously
+  recommended anchoring all-day fire times to a new synced "home time zone"
+  field on `AppPreferences` — full audit trail
+  `.council/x10-all-day-timezone-dedup-posture/DECISION.md`. **Deferred out
+  of this program** (orchestrator decision, 2026-07-29): a new synced field
+  requires a Development-exercise-then-Console-Dev→Production schema
+  deploy added to Mikey's manual workflow, and this program's stated
+  posture (verified clean through `1d`) is zero CloudKit-visible schema
+  changes — not worth expanding that blast radius near the program's end
+  for a limitation with a bounded, documented cost. Interim discipline
+  (design-doc note, `TODO(LIL-83)` markers, KNOWN LIMITATION regression
+  test) landed as the full `4b` deliverable instead. Tracked as `LIL-83`
+  (labels `postprogram-schema` + `tech-debt` + `discovered-during-4b`),
+  left in `todo`, explicit redesign trigger: **either** a real user report
+  of a cross-timezone duplicate notification, **or** Mikey decides to
+  schedule the home-timezone field work directly — whichever comes first.
 
 ---
 

@@ -106,9 +106,13 @@ hotspots per the finding descriptions), but touches adjacent territory:
   create-or-delete, never edited in place), so it's latent, not reachable —
   flagged for whichever future plan touches `NotificationSpecStore.update`'s
   callers.
-- `LIL-83` (X10's timezone-posture schema change) — **blocked on Mikey's
-  orchestrator approval**, not simply deferred. Do not pick up in `6a`
-  without an explicit go-ahead.
+- `LIL-83` (X10's timezone-posture schema change) — **explicitly deferred
+  out of this program** (orchestrator decision, 2026-07-29: not worth the
+  Development→Production CloudKit schema-deploy cost for a bounded, already-
+  documented limitation). Redesign trigger: a real cross-timezone duplicate
+  report, or Mikey scheduling it directly — see the ledger's *Decisions
+  awaiting Mikey* section. Not program-scheduled work; don't pick it up in
+  `6a`.
 
 ## Standing worktree rules (unchanged)
 
