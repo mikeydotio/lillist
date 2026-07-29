@@ -1,10 +1,7 @@
 import Foundation
 
 /// Testable seam over reachability so the classifier doesn't depend
-/// on Network.framework directly. The real implementation lives in
-/// the app target (NWPathMonitor doesn't compile cleanly into a
-/// strict-concurrency LillistCore source target without extra work,
-/// and the classifier only needs a yes/no answer).
+/// on Network.framework directly.
 public protocol NetworkReachabilityProviding: Sendable {
     /// `true` when a usable internet path is available.
     func isReachable() async -> Bool
@@ -32,25 +29,27 @@ public struct ConstantNetworkReachability: NetworkReachabilityProviding {
 public actor PauseReasonClassifier {
     private let accountMonitor: AccountStateMonitor
     private let networkMonitor: any NetworkReachabilityProviding
-    /// Set by the app when it detects the user has disabled iCloud
-    /// Drive for Lillist via Settings. `nil` means "we don't know"
-    /// (treated as enabled for classification purposes).
-    private var iCloudDriveDisabled: Bool = false
+    /// Data-sync-hardening `S24`: pull-based replacement for the old
+    /// `setICloudDriveDisabled(_:)` push API, which no production call
+    /// site ever actually called — `.iCloudDriveDisabled` was unreachable
+    /// dead code. Reuses `AccountIdentityStore`'s own probe seam
+    /// (`FileManager.ubiquityIdentityToken`): when the base account state
+    /// is `.available` (a real CloudKit account is signed in) but the
+    /// ubiquity token is `nil`, that's precisely Apple's documented
+    /// distinction between "an iCloud account is signed in" and "this app
+    /// has iCloud Drive/ubiquity access" — no separately-tracked mutable
+    /// bit is needed, and there's no "forgot to call the setter" failure
+    /// mode to reintroduce.
+    private let identityProbe: any AccountIdentityProbing
 
     public init(
         accountMonitor: AccountStateMonitor,
-        networkMonitor: any NetworkReachabilityProviding
+        networkMonitor: any NetworkReachabilityProviding,
+        identityProbe: any AccountIdentityProbing = UbiquityIdentityProbe()
     ) {
         self.accountMonitor = accountMonitor
         self.networkMonitor = networkMonitor
-    }
-
-    /// Mark iCloud Drive as disabled for Lillist. The app probes this
-    /// from `FileManager.default.ubiquityIdentityToken == nil` plus
-    /// a follow-up settings-link offer; the classifier uses the
-    /// stored bit on next `currentReason()`.
-    public func setICloudDriveDisabled(_ value: Bool) {
-        self.iCloudDriveDisabled = value
+        self.identityProbe = identityProbe
     }
 
     /// Compute the current pause reason, or `nil` when sync is
@@ -67,7 +66,7 @@ public actor PauseReasonClassifier {
         case .available:
             break
         }
-        if iCloudDriveDisabled { return .iCloudDriveDisabled }
+        if identityProbe.currentIdentity() == nil { return .iCloudDriveDisabled }
         if await !networkMonitor.isReachable() { return .noNetwork }
         return nil
     }
