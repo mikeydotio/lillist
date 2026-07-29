@@ -735,14 +735,24 @@ public final class TaskStore: @unchecked Sendable {
 
     public func softDelete(id: UUID) async throws {
         do {
-            try await context.perform { [self] in
+            // H2: applySoftDelete cascades deletedAt onto every live descendant
+            // (see 1a's H7 cycle-guard fix), so notification reconcile must
+            // cover the whole subtree it touched — not just the root id — or a
+            // cascaded descendant's reminder keeps firing for a trashed task.
+            let affectedIDs: [UUID] = try await context.perform { [self] in
                 let m = try fetchManagedObject(id: id, in: context)
                 let now = Date()
-                applySoftDelete(to: m, at: now)
+                let affected = applySoftDelete(to: m, at: now)
                 try context.save()
+                return affected
             }
             if let scheduler = notificationScheduler {
-                await scheduler.reconcile(taskID: id)
+                // Every affected task's desired notification set is
+                // unconditionally empty now (computeDesiredRequests excludes
+                // deletedAt != nil) — cancelling is a batched OS round trip
+                // for the whole subtree, the same H3 primitive purge uses,
+                // rather than one reconcile() fetch-and-diff per descendant.
+                await scheduler.cancelPending(forTaskIDs: affectedIDs)
             }
             await recordCrumb("task.delete", success: true)
         } catch {
@@ -754,10 +764,15 @@ public final class TaskStore: @unchecked Sendable {
 
     public func restore(id: UUID) async throws {
         do {
-            try await context.perform { [self] in
+            // H2: clearSoftDelete cascades the restore onto every descendant
+            // whose deletedAt matches the root's (see 1a's H7 cycle-guard
+            // fix), so every one of them needs a real reconcile — a
+            // descendant's specs may now resolve to a future fire date again,
+            // which cancelPending's cancel-only shape can't re-install.
+            let affectedIDs: [UUID] = try await context.perform { [self] in
                 let m = try fetchManagedObject(id: id, in: context)
-                guard let deletedAt = m.deletedAt else { return }
-                clearSoftDelete(from: m, matchingDeletedAt: deletedAt)
+                guard let deletedAt = m.deletedAt else { return [] }
+                let affected = clearSoftDelete(from: m, matchingDeletedAt: deletedAt)
                 // C2 (binding product decision, 2026-07-28): a child restored
                 // while its own parent is still trashed is promoted to root,
                 // severing the link — left alone it lands in an unreachable
@@ -775,9 +790,12 @@ public final class TaskStore: @unchecked Sendable {
                 // siblings when computing the edge.
                 m.position = try nextPositionDetail(forParent: m.parent, placement: .bottom).assigned
                 try context.save()
+                return affected
             }
             if let scheduler = notificationScheduler {
-                await scheduler.reconcile(taskID: id)
+                for taskID in affectedIDs {
+                    await scheduler.reconcile(taskID: taskID)
+                }
             }
             await recordCrumb("task.restore", success: true)
         } catch {
@@ -889,31 +907,52 @@ public final class TaskStore: @unchecked Sendable {
     /// `where` clause excludes it). The explicit `visited` set is defense in
     /// depth against that guarantee ever being weakened by a future change
     /// to this recursion's shape — see `TreeCycleGuardTests`.
-    private func applySoftDelete(to m: LillistTask, at now: Date) {
+    ///
+    /// H2: returns every task id this pass actually touched (root +
+    /// cascaded descendants) so the caller can reconcile notifications for
+    /// the whole affected subtree, not just the root.
+    @discardableResult
+    private func applySoftDelete(to m: LillistTask, at now: Date) -> [UUID] {
         var visited: Set<NSManagedObjectID> = []
-        applySoftDelete(to: m, at: now, visited: &visited)
+        var affected: [UUID] = []
+        applySoftDelete(to: m, at: now, visited: &visited, affected: &affected)
+        return affected
     }
 
-    private func applySoftDelete(to m: LillistTask, at now: Date, visited: inout Set<NSManagedObjectID>) {
+    private func applySoftDelete(
+        to m: LillistTask,
+        at now: Date,
+        visited: inout Set<NSManagedObjectID>,
+        affected: inout [UUID]
+    ) {
         guard visited.insert(m.objectID).inserted else { return }
         m.deletedAt = now
         m.modifiedAt = now
         m.stampCurrentSchemaVersion()
+        if let id = m.id { affected.append(id) }
         if let children = m.children as? Set<LillistTask> {
             for child in children where child.deletedAt == nil {
-                applySoftDelete(to: child, at: now, visited: &visited)
+                applySoftDelete(to: child, at: now, visited: &visited, affected: &affected)
             }
         }
     }
 
     /// H7: same self-limiting shape and same defense-in-depth rationale as
-    /// `applySoftDelete` above.
-    private func clearSoftDelete(from m: LillistTask, matchingDeletedAt: Date) {
+    /// `applySoftDelete` above. H2: same affected-id-collection shape too.
+    @discardableResult
+    private func clearSoftDelete(from m: LillistTask, matchingDeletedAt: Date) -> [UUID] {
         var visited: Set<NSManagedObjectID> = []
-        clearSoftDelete(from: m, matchingDeletedAt: matchingDeletedAt, visited: &visited)
+        var affected: [UUID] = []
+        clearSoftDelete(from: m, matchingDeletedAt: matchingDeletedAt, visited: &visited, affected: &affected)
+        return affected
     }
 
-    private func clearSoftDelete(from m: LillistTask, matchingDeletedAt: Date, visited: inout Set<NSManagedObjectID>) {
+    private func clearSoftDelete(
+        from m: LillistTask,
+        matchingDeletedAt: Date,
+        visited: inout Set<NSManagedObjectID>,
+        affected: inout [UUID]
+    ) {
         guard visited.insert(m.objectID).inserted else { return }
         m.deletedAt = nil
         // M2: a restored task must be unconditionally visible. Clearing
@@ -925,9 +964,10 @@ public final class TaskStore: @unchecked Sendable {
         m.archivedAt = nil
         m.modifiedAt = Date()
         m.stampCurrentSchemaVersion()
+        if let id = m.id { affected.append(id) }
         if let children = m.children as? Set<LillistTask> {
             for child in children where child.deletedAt == matchingDeletedAt {
-                clearSoftDelete(from: child, matchingDeletedAt: matchingDeletedAt, visited: &visited)
+                clearSoftDelete(from: child, matchingDeletedAt: matchingDeletedAt, visited: &visited, affected: &affected)
             }
         }
     }
