@@ -141,13 +141,14 @@ public final class TaskDuplicateReconciler: @unchecked Sendable {
             _ = try await Self.reconcileDuplicates(in: ctx, mirrorIdentifier: mirrorIdentifier)
         } catch {
             // M5: this used to be `_ = try? await ...` — a reconcile
-            // failure vanished silently, and the underlying save can also
-            // commit unrelated pending work staged on the shared
-            // `viewContext` by whatever else was mid-mutation (H5/X19,
-            // Wave 5a's broader shared-context save-discipline finding —
-            // out of scope to fix generally here, but this call site must
-            // not additionally hide its own failure). Fail loud: always
-            // log, and emit a diagnostic when a sink is wired.
+            // failure vanished silently. X19 (5a): `reconcileDuplicates`
+            // itself now rolls back on a failed save via
+            // `withMutationRollback`, so a failed merge no longer leaves
+            // re-pointed relationships and pending deletes dirty on the
+            // shared `viewContext` for the next unrelated save to commit —
+            // this call site's own job is now only to fail loud, not also
+            // to guard against a still-dirty context. Always log, and emit
+            // a diagnostic when a sink is wired.
             LillistLog.store.error("TaskDuplicateReconciler.reconcileNow failed: \(String(describing: error), privacy: .public)")
             if let sink = diagnosticLog {
                 await sink.log(DiagnosticEvent(
@@ -169,13 +170,19 @@ public final class TaskDuplicateReconciler: @unchecked Sendable {
     ///
     /// `nonisolated static` so tests can drive it directly against an
     /// in-memory context with an injected `MirroredObjectIdentifying` fake,
-    /// without a live CloudKit container.
+    /// without a live CloudKit container. Routes through the same
+    /// `withMutationRollback` helper every store mutator uses (X19/H5):
+    /// before this fix, a failed `ctx.save()` here left every re-pointed
+    /// relationship and pending `ctx.delete(loser)` dirty on the shared
+    /// `viewContext` with no rollback at all — a second instance of H5's
+    /// failure mode, not previously named because this type isn't one of
+    /// the five "stores."
     @discardableResult
     public nonisolated static func reconcileDuplicates(
         in ctx: NSManagedObjectContext,
         mirrorIdentifier: (any MirroredObjectIdentifying)?
     ) async throws -> Int {
-        try await ctx.perform {
+        try await withMutationRollback(context: ctx) {
             guard let mirrorIdentifier else { return 0 }
 
             let request = NSFetchRequest<LillistTask>(entityName: "LillistTask")
@@ -200,9 +207,6 @@ public final class TaskDuplicateReconciler: @unchecked Sendable {
                     ctx.delete(loser)
                     deletedCount += 1
                 }
-            }
-            if deletedCount > 0 {
-                try ctx.save()
             }
             return deletedCount
         }

@@ -35,6 +35,7 @@ struct MutationRollbackConformanceTests {
         "Stores/AttachmentStore.swift",
         "Stores/PreferencesStore.swift",
         "Notifications/NotificationSpecStore.swift",
+        "Persistence/TaskDuplicateReconciler.swift",
     ]
 
     @Test("Every enumerated migrated file exists on disk", arguments: migratedFiles)
@@ -52,15 +53,14 @@ struct MutationRollbackConformanceTests {
     }
 
     /// The completeness half of the class-kill: walk every `.swift` file
-    /// under the directories that legitimately mutate the shared context
-    /// and confirm each one is either (a) one of the enumerated
-    /// `migratedFiles` above, verified clean by the test above, (b) a known,
-    /// documented composition-only exemption (calls no raw save/rollback of
-    /// its own — verified here, not just asserted), or (c) not yet migrated,
-    /// in which case its raw calls are expected for now and tracked by this
-    /// plan's remaining commits. This test only fails when a file OUTSIDE
-    /// both the migrated list and the exemption list is found to contain a
-    /// raw call — i.e. a genuinely new, undocumented bypass.
+    /// under the directories that legitimately mutate the shared context and
+    /// confirm each one is either (a) one of the enumerated `migratedFiles`
+    /// above, verified clean by the test above, or (b) a known, documented
+    /// composition-only exemption (calls no raw save/rollback of its own —
+    /// verified here, not just asserted). This is what catches a **future**
+    /// bypass: a new file added to `Stores/`/`Notifications/` with its own
+    /// raw `context.save()` fails here immediately, without anyone needing
+    /// to remember to add it to an allowlist first.
     @Test("No undocumented file outside the migrated/exempt lists bypasses the helper")
     func noUndocumentedBypass() throws {
         let root = try Self.sourcesRoot()
@@ -102,14 +102,7 @@ struct MutationRollbackConformanceTests {
             }
         }
 
-        // Files not yet migrated are expected to appear here until their own
-        // commit lands — this list is the plan's remaining scope, not a
-        // failure. Update as each store migrates.
-        let stillPending: Set<String> = [
-            "Persistence/TaskDuplicateReconciler.swift",
-        ]
-        let trulyUnexpected = Set(unexpectedOffenders).subtracting(stillPending)
-        #expect(trulyUnexpected.isEmpty, "Undocumented bypass(es) found: \(trulyUnexpected.sorted().joined(separator: ", "))")
+        #expect(unexpectedOffenders.isEmpty, "Undocumented bypass(es) found: \(unexpectedOffenders.sorted().joined(separator: ", "))")
     }
 
     // MARK: - Helpers
