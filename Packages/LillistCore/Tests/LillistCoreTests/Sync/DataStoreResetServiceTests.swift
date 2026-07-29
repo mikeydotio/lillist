@@ -673,6 +673,113 @@ struct DataStoreResetServiceTests {
         #expect(recovered.title == "Buy milk")
     }
 
+    @Test("recoverInterruptedReseed: a successful resume also broadcasts to peers, matching the primary reseed path (6a)")
+    @MainActor
+    func recoverInterruptedReseedBroadcastsOnSuccess() async throws {
+        let persistence = try await TestStore.make()
+        let preferences = PreferencesStore(persistence: persistence)
+        _ = try await preferences.read()
+        let tasks = TaskStore(persistence: persistence)
+        let seededID = try await tasks.create(title: "Buy milk")
+
+        let stageDir = tempDir()
+        try FileManager.default.createDirectory(at: stageDir, withIntermediateDirectories: true)
+        try await Exporter(persistence: persistence, preferences: preferences).export(to: stageDir)
+
+        let host = RealWipingResetHost(persistence: persistence, initialMode: .iCloudSync)
+        _ = try await host.tearDownStore(backupVia: nil)
+
+        let reseedJournal = InMemoryReseedJournalStore(initial: ReseedJournal(
+            phase: .importing,
+            startedAt: Date(),
+            lastHeartbeatAt: Date(),
+            stagedBundlePath: stageDir.path,
+            localDataWiped: true
+        ))
+        let kv = InMemoryKeyValueSyncStore()
+        let roster = DeviceRoster(kv: kv)
+        let inbox = ControlInbox(kv: kv)
+        roster.register(id: "device-B", displayName: "Vertumnus")
+        let propagator = ResetPropagator(
+            roster: roster, inbox: inbox, deviceID: "device-A", deviceDisplayName: "Nephele"
+        )
+        let service = DataStoreResetService(
+            host: host,
+            quarantine: QuarantineManager(rootDirectory: tempDir()),
+            zoneEraser: FakeCloudKitZoneEraser(),
+            quiesceMonitor: SyncQuiesceMonitor(bridge: CloudKitEventBridge()),
+            notificationScheduler: nil,
+            cloudKitContainerIdentifier: "iCloud.test",
+            propagator: propagator,
+            importer: Importer(persistence: persistence),
+            reseedJournal: reseedJournal,
+            // Fast quiesce window — no CloudKit events ever fire in this
+            // fake, so a real quiet window elapses almost immediately.
+            quiesceMinQuietWindow: 0.05, quiesceHardTimeout: 1
+        )
+
+        let outcome = try await service.recoverInterruptedReseed()
+
+        #expect(outcome == .resumed)
+        #expect(inbox.pendingEvents(for: "device-B").count == 1, "a crash-recovered reseed must notify peers exactly like the primary (non-crashed) path does")
+        let recovered = try await tasks.fetch(id: seededID)
+        #expect(recovered.title == "Buy milk")
+    }
+
+    @Test("recoverInterruptedReseed: a re-export quiesce timeout skips the broadcast, mirroring resetAndReseedFromThisDevice's S9c behavior (6a)")
+    @MainActor
+    func recoverInterruptedReseedQuiesceTimeoutSkipsBroadcast() async throws {
+        let persistence = try await TestStore.make()
+        let preferences = PreferencesStore(persistence: persistence)
+        _ = try await preferences.read()
+        let tasks = TaskStore(persistence: persistence)
+        let seededID = try await tasks.create(title: "Buy milk")
+
+        let stageDir = tempDir()
+        try FileManager.default.createDirectory(at: stageDir, withIntermediateDirectories: true)
+        try await Exporter(persistence: persistence, preferences: preferences).export(to: stageDir)
+
+        let host = RealWipingResetHost(persistence: persistence, initialMode: .iCloudSync)
+        _ = try await host.tearDownStore(backupVia: nil)
+
+        let reseedJournal = InMemoryReseedJournalStore(initial: ReseedJournal(
+            phase: .importing,
+            startedAt: Date(),
+            lastHeartbeatAt: Date(),
+            stagedBundlePath: stageDir.path,
+            localDataWiped: true
+        ))
+        let kv = InMemoryKeyValueSyncStore()
+        let roster = DeviceRoster(kv: kv)
+        let inbox = ControlInbox(kv: kv)
+        roster.register(id: "device-B", displayName: "Vertumnus")
+        let propagator = ResetPropagator(
+            roster: roster, inbox: inbox, deviceID: "device-A", deviceDisplayName: "Nephele"
+        )
+        // hardTimeout below minQuietWindow: no events ever fire, so the
+        // wait can only ever time out — mirrors
+        // resetAndReseedQuiesceTimeoutSkipsBroadcast's identical setup.
+        let service = DataStoreResetService(
+            host: host,
+            quarantine: QuarantineManager(rootDirectory: tempDir()),
+            zoneEraser: FakeCloudKitZoneEraser(),
+            quiesceMonitor: SyncQuiesceMonitor(bridge: CloudKitEventBridge()),
+            notificationScheduler: nil,
+            cloudKitContainerIdentifier: "iCloud.test",
+            propagator: propagator,
+            importer: Importer(persistence: persistence),
+            reseedJournal: reseedJournal,
+            quiesceMinQuietWindow: 1.0, quiesceHardTimeout: 0.05
+        )
+
+        let outcome = try await service.recoverInterruptedReseed()
+
+        #expect(outcome == .resumed, "the recovery itself still succeeds locally — this is a propagation-only skip")
+        #expect(inbox.pendingEvents(for: "device-B").isEmpty, "nobody should be told to redownload a possibly-partial zone")
+        let recovered = try await tasks.fetch(id: seededID)
+        #expect(recovered.title == "Buy milk")
+    }
+
     @Test("recoverInterruptedReseed: a wiped journal with no staged path throws instead of silently losing data (S9b)")
     @MainActor
     func recoverInterruptedReseedThrowsWhenPathMissing() async throws {

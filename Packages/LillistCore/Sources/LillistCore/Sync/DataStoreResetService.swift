@@ -497,6 +497,28 @@ public final class DataStoreResetService {
         // X11: same reasoning — the crash-recovered reimport needs to
         // reach widgets deterministically too.
         await widgetCacheReset?()
+        // 6a: mirrors resetAndReseedFromThisDevice()'s own S9c step —
+        // flagged as a residual in 3b's closing report ("a crash-recovered
+        // reseed never notifies peers even after this plan's S9c fix to
+        // the primary (non-crashed) path"). Same quiesce-then-broadcast
+        // shape as the primary path; the outcome isn't surfaced anywhere
+        // new (this method's return type stays ReseedRecoveryOutcome,
+        // matching its existing "best-effort launch catch-up, no UI is
+        // watching" contract per this method's own doc comment) — only the
+        // broadcast SIDE EFFECT itself was missing.
+        if await host.currentMode == .iCloudSync {
+            let result = await quiesceMonitor.waitForQuiesce(
+                minQuietWindow: quiesceMinQuietWindow, hardTimeout: quiesceHardTimeout
+            )
+            if result == .timedOut {
+                LillistLog.sync.notice("recoverInterruptedReseed re-export quiesce timed out — skipping broadcast, a peer would otherwise pull a partial zone")
+                await breadcrumb("recoverInterruptedReseed re-export quiesce timed out; broadcast skipped", success: false)
+            } else {
+                _ = propagator?.broadcast(.resetAndReseed)
+            }
+        } else {
+            _ = propagator?.broadcast(.resetAndReseed)
+        }
         try? reseedJournal.clear()
         try? FileManager.default.removeItem(at: stageDir)
         return .resumed
