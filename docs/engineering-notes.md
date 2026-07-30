@@ -4912,3 +4912,61 @@ debounce-coalescing test.
   itself rather than only re-running; if it flakes a fourth time, that's
   the signal this specific test needs shape (1) or (2) above instead of
   more headroom.
+
+## 2026-07-29 — v0.19.0 shipped without Sparkle: a version-pinned `sign_update` path, a quarantined replacement, and best-effort signing that swallowed all three
+
+Sequel to the 2026-07-20 issue #55 entry. That one fixed an updater that could
+never *deliver* an update; this one is about a release that shipped with no
+appcast at all — and looked successful while doing it.
+
+- **The whole failure was one dead path in a per-machine config.**
+  `~/Library/Application Support/deployit/config.toml` pinned
+  `[macos.sparkle] sign_update_path` to
+  `/opt/homebrew/Caskroom/sparkle/2.9.3/bin/sign_update` — a **version-stamped**
+  Caskroom path. `brew upgrade` moved the cask to `2.9.4` on 2026-07-24 and
+  deleted `2.9.3`, so the pin silently became a dangling reference. deployit's
+  resolution ladder (env → config → `PATH` → glob) treats a non-existent
+  configured path as *absent*, not as an error, so it fell through to its
+  `/opt/homebrew/Caskroom/sparkle/*/bin/sign_update` glob and picked up 2.9.4.
+- **The replacement it found was quarantined, and `sign_update` is adhoc-signed.**
+  A freshly-installed cask binary carries `com.apple.quarantine` (Homebrew
+  applies it deliberately), and Sparkle's `sign_update` has
+  `Signature=adhoc`, `TeamIdentifier=not set`. Gatekeeper's first-run check on
+  that combination kills the process and shows *"sign_update is damaged and
+  needs to be moved to the Trash."* Homebrew has since **deprecated the whole
+  sparkle cask for exactly this reason** ("does not pass the macOS Gatekeeper
+  check"); it is disabled 2026-09-01. Do not "fix" this by de-quarantining the
+  cask — that tool is going away.
+- **Gatekeeper kills produce a non-zero exit with *empty stderr*,** so
+  deployit's best-effort handler logged the bare
+  `deployit: sign_update failed; skipping Sparkle for this build:` with nothing
+  after the colon. Nothing in the message named Gatekeeper, quarantine, or which
+  binary it had resolved to — the one-line warning scrolled past in an otherwise
+  green deploy and a Developer-ID release went out with no EdDSA signature and no
+  appcast entry. **A Sparkle skip is a failed release, not a warning.** Treat any
+  `skipping Sparkle` line as a hard stop and retract the build.
+- **Fix: stop sourcing the tool from Homebrew entirely.** The app already
+  depends on Sparkle via SPM, and SwiftPM's extracted artifact bundle carries a
+  byte-identical `sign_update` (verified: same SHA-256 across all 28 DerivedData
+  copies) with **no quarantine xattr** — SwiftPM extraction doesn't set one. A
+  stable copy now lives at `~/Enderchest/deployit/bin/sign_update`, beside the
+  private key, so it syncs to every Mac that deploys and is immune to both
+  `brew upgrade` churn and the cask's retirement. Refresh it from
+  `<DerivedData>/SourcePackages/artifacts/sparkle/Sparkle/bin/sign_update`
+  whenever the app's Sparkle dependency is upgraded, so the signer always
+  matches the Sparkle the app links.
+- **Verify the key pair cryptographically, not by eyeballing config.** The
+  private key's public half must equal the `SUPublicEDKey` in
+  `Apps/Lillist-macOS/Info.plist`, or the app rejects every update it is
+  offered. LibreSSL (what `/usr/bin/openssl` is on macOS) **cannot** do this —
+  it reports `unsupported algorithm TYPE=Ed25519` for ed25519 keys. Derive the
+  public key directly from the 32-byte seed instead (ed25519 basepoint scalar
+  multiply, ~15 lines of pure Python) and compare against the plist value.
+- **deployit's config parser silently degrades on old Pythons.** `_read_config`
+  uses `tomllib` when present and otherwise falls back to **regex over the raw
+  file text, comments included**. Xcode's bundled `python3` is 3.9 (no
+  `tomllib`), so the fallback is the live path here. A comment containing
+  something like `key = "value"` — or a stray `[` between a table header and its
+  keys, which truncates the `[^\[]*?` section-scoped matches — will be parsed as
+  config. Any comment added to that file must be re-verified by calling
+  `_read_config` directly, not assumed inert.
