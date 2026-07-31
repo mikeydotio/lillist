@@ -260,6 +260,15 @@ jobs:
       - name: Sparkle appcast feed + build-number guard
         run: ./Tools/CI/check-macos-sparkle-feed.sh
 
+      # LIL-92: a macOS app extension shipping without App Sandbox is silently
+      # never registered by the system — no build error, no crash, the widget
+      # just never runs. Second instance of the cross-platform
+      # entitlements-sharing mistake in this repo (see CLAUDE.md, "macOS push
+      # entitlement"). Inspects the xcodegen specs, so no build or signing
+      # is required.
+      - name: macOS app-extension sandbox guard
+        run: ./Tools/CI/check-macos-extension-sandbox.sh
+
   release-archive-smoke:
     name: Release archive smoke build
     runs-on: macos-15
