@@ -3,6 +3,32 @@
 All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [v0.20.0] - 2026-07-31
+
+### Fixed
+- give the widget extension its own sandboxed entitlements (LIL-92) (c75564ad)
+- stop persisting a failed read as an authoritative empty snapshot (04136f2f)
+- bound and short-circuit configuration-intent resolution (LIL-91) (6917c20f)
+
+### Changed
+- Merge pull request #82 from mikeydotio/fix/lil-92-macos-widget-sandbox (8badd3ab)
+- Merge pull request #81 from mikeydotio/rca-fix/ios-widget-shows-redacted-content (5f0a6b6f)
+- Merge pull request #80 from mikeydotio/chore/storyhook-store-migration (93a042ab)
+- Merge pull request #79 from mikeydotio/chore/v0.19.0-deploy-bookkeeping (2ac50cb5)
+- Merge pull request #78 from mikeydotio/chore/post-hardening-tidy-and-release (bb68168d)
+
+### Documentation
+- why v0.19.0 shipped without Sparkle (88574102)
+
+### Testing
+- guard macOS app extensions against shipping unsandboxed (1b5e3cf8)
+
+### Maintenance
+- migrate the tracker to the store and retire .storyhook (907e6a11)
+- bump iOS and macOS build numbers for v0.19.0 (e2ec3eca)
+
+_[force]_
+
 ## [v0.19.0] - 2026-07-29
 
 ### Added
