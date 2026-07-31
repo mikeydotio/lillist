@@ -124,11 +124,16 @@ public struct WidgetSnapshotBuilder: Sendable {
         // The grace set: tasks closed *today*, most-recent first. Computed once
         // and shared across every target, since a just-completed task should
         // sink to the bottom of whichever widget surfaced it.
-        let closedToday = (try? await smartFilterStore.evaluate(
+        //
+        // A failure here aborts the whole pass rather than degrading to an empty
+        // grace set: this list feeds `ordered` in every `writeSnapshot` call, so
+        // swallowing the error would under-report `totalCount` on *each* snapshot
+        // written this pass — wrong data, silently, everywhere.
+        guard let closedToday = try? await smartFilterStore.evaluate(
             group: Self.closedTodayGroup,
             sort: .closedAt,
             ascending: false
-        )) ?? []
+        ) else { return nil }
 
         // Saved filters to refresh this pass.
         let wantedSaved: [SmartFilterStore.SmartFilterRecord]
@@ -154,12 +159,21 @@ public struct WidgetSnapshotBuilder: Sendable {
         // The "No Filter" (all tasks) sentinel: open tasks (its base query
         // excludes closed so historical done tasks don't pile up), plus today's
         // grace set at the bottom.
+        //
+        // `guard let … else { return filters }`, NOT `(try?) ?? []`: a thrown
+        // read and a genuinely empty task list are different facts, and only one
+        // of them may be written. The previous `?? []` conflated them and
+        // persisted a *failure* as an authoritative empty snapshot — the widget
+        // then rendered a card with no rows and no way to tell it was wrong.
+        // Failing to write leaves the prior snapshot intact, which is stale at
+        // worst; writing zeros is wrong. This matches the saved-filter loop
+        // above, which already fails safe via `continue`.
         if filterIDs == nil || filterIDs?.contains(WidgetSnapshot.unfilteredID) == true {
-            let openMatches = (try? await smartFilterStore.evaluate(
+            guard let openMatches = try? await smartFilterStore.evaluate(
                 group: Self.unfilteredOpenGroup,
                 sort: .manualPosition,
                 ascending: true
-            )) ?? []
+            ) else { return filters }
             writeSnapshot(
                 filterID: WidgetSnapshot.unfilteredID,
                 filterName: "",
