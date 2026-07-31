@@ -55,6 +55,13 @@ struct FilterTimelineProvider: AppIntentTimelineProvider {
         return Timeline(entries: [entry], policy: .after(next))
     }
 
+    /// Ceiling on the cold-cache rebuild. `LIL-91`: this call opens a Core Data
+    /// stack inside the widget process, which is not cancellable and — before
+    /// this bound existed — could block the timeline indefinitely. Overshooting
+    /// costs one render of the "Open Lillist to sync" fallback; blocking costs
+    /// the timeline entirely, which is the failure this fixes.
+    private static let rebuildBudget: Duration = .seconds(3)
+
     /// Normal path: read the cached JSON. Cold cache: rebuild just this filter
     /// once (the only place the timeline touches Core Data), then re-read.
     ///
@@ -64,12 +71,16 @@ struct FilterTimelineProvider: AppIntentTimelineProvider {
         guard let store = WidgetSnapshotStore(appGroupID: WidgetIntentSupport.appGroupID) else { return nil }
         let id = filterID ?? WidgetSnapshot.unfilteredID
         if let cached = store.read(filterID: id) { return cached }
-        guard let persistence = try? await WidgetIntentSupport.makePersistence() else { return nil }
-        let builder = WidgetSnapshotBuilder(
-            smartFilterStore: SmartFilterStore(persistence: persistence),
-            snapshotStore: store
-        )
-        await builder.regenerate(filterIDs: [id])
+        // Bounded: a hung store open must degrade to `nil` (which renders
+        // `WidgetUnavailableView`) rather than stall the whole timeline.
+        _ = await withBudget(Self.rebuildBudget) {
+            guard let persistence = try? await WidgetIntentSupport.makePersistence() else { return }
+            let builder = WidgetSnapshotBuilder(
+                smartFilterStore: SmartFilterStore(persistence: persistence),
+                snapshotStore: store
+            )
+            await builder.regenerate(filterIDs: [id])
+        }
         return store.read(filterID: id)
     }
 }
