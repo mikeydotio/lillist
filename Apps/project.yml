@@ -108,6 +108,7 @@ targets:
         excludes:
           - "Info.plist"
           - "Lillist.entitlements"
+          - "Lillist-macOS.entitlements"
     dependencies:
       - package: LillistCore
         product: LillistCore
@@ -120,7 +121,7 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: app.lillist.Widget
         MACOSX_DEPLOYMENT_TARGET: "15.0"
-        CODE_SIGN_ENTITLEMENTS: ../Extensions/LillistWidget/Lillist.entitlements
+        CODE_SIGN_ENTITLEMENTS: ../Extensions/LillistWidget/Lillist-macOS.entitlements
         CODE_SIGN_STYLE: Automatic
         INFOPLIST_FILE: ../Extensions/LillistWidget/Info.plist
         # The shared widget Info.plist reads CFBundleVersion from
