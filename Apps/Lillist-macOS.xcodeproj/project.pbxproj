@@ -973,7 +973,7 @@
 		BD6B230E44867FD119968284 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				CODE_SIGN_ENTITLEMENTS = ../Extensions/LillistWidget/Lillist.entitlements;
+				CODE_SIGN_ENTITLEMENTS = "../Extensions/LillistWidget/Lillist-macOS.entitlements";
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				INFOPLIST_FILE = ../Extensions/LillistWidget/Info.plist;
@@ -1080,7 +1080,7 @@
 		FFE8682DD251D0554663FC64 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				CODE_SIGN_ENTITLEMENTS = ../Extensions/LillistWidget/Lillist.entitlements;
+				CODE_SIGN_ENTITLEMENTS = "../Extensions/LillistWidget/Lillist-macOS.entitlements";
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				INFOPLIST_FILE = ../Extensions/LillistWidget/Info.plist;

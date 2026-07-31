@@ -182,6 +182,7 @@ targets:
         excludes:
           - "Info.plist"
           - "Lillist.entitlements"
+          - "Lillist-macOS.entitlements"
     dependencies:
       - package: LillistCore
         product: LillistCore

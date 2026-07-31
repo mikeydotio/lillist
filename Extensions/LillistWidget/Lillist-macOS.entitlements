@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  macOS entitlements for the LillistWidget-macOS app extension.
+
+  LIL-92: this target previously shared the iOS widget's `Lillist.entitlements`,
+  which declares no sandbox. **macOS app extensions must be sandboxed**, and an
+  unsandboxed extension inside a sandboxed host app is not a valid
+  configuration — the system declines to register it, so `pluginkit` never lists
+  `app.lillist.Widget`, WidgetKit never launches it, and the widget never
+  renders. The key has never existed in the shared file since the widget landed
+  (`ae004da5`, 2026-07-01), so the macOS widget has never worked.
+
+  The shared file also declares the *iOS* `aps-environment` key. macOS requires
+  the prefixed `com.apple.developer.aps-environment`, so that key was silently
+  stripped here — the identical mistake CLAUDE.md records under "macOS push
+  entitlement — FIXED (2026-06-24)" for the main app. It is deliberately NOT
+  carried over: the widget does not need push. `X15` (73c2fbf8) suppresses
+  CloudKit mirroring for the widget role, and the `app.lillist.Widget` App ID
+  was provisioned for App Group + CloudKit only (LIL-1), so declaring push here
+  would fail provisioning for a capability nothing uses.
+
+  `com.apple.developer.icloud-container-environment` is Development to match the
+  macOS app's source entitlements; `xcodebuild -exportArchive` re-stamps it from
+  the export profile, so distribution builds still get Production. Verify the
+  signed binary, never this file — see CLAUDE.md, "CloudKit / iCloud sync
+  environment".
+-->
+<plist version="1.0">
+<dict>
+	<key>com.apple.developer.icloud-container-environment</key>
+	<string>Development</string>
+	<key>com.apple.developer.icloud-container-identifiers</key>
+	<array>
+		<string>iCloud.app.lillist</string>
+	</array>
+	<key>com.apple.developer.icloud-services</key>
+	<array>
+		<string>CloudKit</string>
+		<string>CloudDocuments</string>
+	</array>
+	<key>com.apple.developer.ubiquity-container-identifiers</key>
+	<array>
+		<string>iCloud.app.lillist</string>
+	</array>
+	<key>com.apple.developer.ubiquity-kvstore-identifier</key>
+	<string>$(TeamIdentifierPrefix)$(CFBundleIdentifier)</string>
+	<key>com.apple.security.app-sandbox</key>
+	<true/>
+	<key>com.apple.security.application-groups</key>
+	<array>
+		<string>group.app.lillist</string>
+	</array>
+</dict>
+</plist>
