@@ -4970,3 +4970,58 @@ appcast at all — and looked successful while doing it.
   keys, which truncates the `[^\[]*?` section-scoped matches — will be parsed as
   config. Any comment added to that file must be re-verified by calling
   `_read_config` directly, not assumed inert.
+
+## 2026-07-31 — LIL-92: a macOS app extension without App Sandbox is silently never registered — and sharing an iOS target's entitlements file is how you get there
+
+The macOS widget never worked. Not "regressed" — **never**, from the day it
+landed (`ae004da5`, 2026-07-01) to the day it was fixed. `LillistWidget-macOS`
+signed with the *iOS* widget's `Extensions/LillistWidget/Lillist.entitlements`,
+which declares no sandbox, and **macOS app extensions must be sandboxed**. An
+unsandboxed appex inside a sandboxed host app is not a valid configuration, so
+the system declines to register it: `pluginkit` never lists it, WidgetKit never
+launches it, the widget never renders.
+
+- **The failure mode is total silence.** No build error, no signing error, no
+  crash, no log line. The extension builds, signs, embeds, installs, and then
+  simply does not exist as far as WidgetKit is concerned. That silence is the
+  whole reason this survived a month and a shipped release.
+- **LaunchServices and PlugInKit disagreeing is the tell.** `lsregister -dump`
+  held a complete, link-enabled record for the installed appex while
+  `pluginkit -m -v -i app.lillist.Widget` printed `(no matches)`. That
+  combination means *registration was refused*, not that a record went stale or
+  got shadowed — don't waste time on `pluginkit -r` / LS-database rebuilds. For
+  the negative control, confirm the class works on the same Mac:
+  `pluginkit -m -p com.apple.widgetkit-extension | wc -l` returned 78.
+- **Diagnose on the signed binary, never the source `.entitlements`.** Same rule
+  the CloudKit-environment section of CLAUDE.md already insists on, and it cuts
+  both ways here — `xcodebuild -exportArchive` *re-stamps* some keys from the
+  export profile, but it will never *add* App Sandbox:
+  `codesign -d --entitlements :- <path>.appex | plutil -p -`.
+- **This was the SECOND instance of one defect class: an entitlement key that is
+  wrong for the platform produces no diagnostic, only a missing capability.**
+  The first is CLAUDE.md's "macOS push entitlement — FIXED (2026-06-24)", where
+  the main macOS app declared iOS's bare `aps-environment` instead of the
+  prefixed `com.apple.developer.aps-environment` and had it silently stripped.
+  The shared widget file still carried that same bare key. Fixing at the origin
+  meant killing the *sharing*, not adding the missing key: macOS got its own
+  `Lillist-macOS.entitlements`. Both `project.yml` specs must also **exclude**
+  the new file from their `sources:` lists, or xcodegen bundles it as a resource.
+- **Guard: `Tools/CI/check-macos-extension-sandbox.sh`** (wired into CI's `macos`
+  job) fails the build if any macOS app-extension target has no
+  `CODE_SIGN_ENTITLEMENTS`, points at a file an iOS target also uses, omits
+  `com.apple.security.app-sandbox = true`, or declares the bare
+  `aps-environment`. It parses the **xcodegen specs**, not the generated
+  pbxproj, so a drifted-but-uncommitted project can't mask a bad spec — and it
+  needs no build, no signing, and no device.
+- **A plain Debug build is sufficient red→green proof; a deploy is not
+  required.** PlugInKit registers extensions out of DerivedData, so
+  `pluginkit -m -v -i app.lillist.Widget` flipping from `(no matches)` to a live
+  record pointing at
+  `…/DerivedData/…/Debug/Lillist.app/Contents/PlugIns/LillistWidget-macOS.appex`
+  closes the loop in one local build.
+- **The sharpest lesson: a "verified" story can be silently platform-partial.**
+  LIL-4, *On-device widget verification*, was closed `done` on 2026-07-21 while
+  the macOS widget was incapable of running. It was an iOS-only verification
+  that nobody labelled as such. When a story spans platforms, record **which
+  platform the evidence came from** — an unqualified "verified" reads as "both"
+  forever after.
