@@ -1,0 +1,12 @@
+{
+  "ok": true,
+  "runs": 1,
+  "failures": 1,
+  "failure_rate": 1,
+  "deterministic": true,
+  "exit_codes": [
+    1
+  ],
+  "last_failure_tail": "Building for debugging...\n[Using on-disk description]\n[1\u2009/\u20095]\nBuild complete! (0.53 sec)\nTest Suite 'Selected tests' started at 2026-07-30 16:05:51.194.\nTest Suite 'LillistCoreTests.xctest' started at 2026-07-30 16:05:51.195.\nTest Suite 'WidgetExtensionRegistrationReproTests' started at 2026-07-30 16:05:51.195.\nTest Case '-[LillistCoreTests.WidgetExtensionRegistrationReproTests testInstalledMacWidgetExtensionIsRegisteredWithPluginKit]' started.\n/Volumes/Code/mikeyward/Lillist/Packages/LillistCore/Tests/LillistCoreTests/Widgets/WidgetExtensionRegistrationReproTests.swift:73: error: -[LillistCoreTests.WidgetExtensionRegistrationReproTests testInstalledMacWidgetExtensionIsRegisteredWithPluginKit] : XCTAssertFalse failed - The installed Lillist macOS widget extension is NOT registered with the system.\n\n  queried:  pluginkit -m -A -D -i app.lillist.Widget   \u2192 no matches\n  on disk:  /Applications/Lillist.app/Contents/PlugIns/LillistWidget-macOS.appex (present, signature valid)\n  registry: 78 other com.apple.widgetkit-extension extensions ARE registered\n\nWidgetKit only launches extensions present in this registry, so the widget's\ntimeline provider is never invoked \u2014 which is the on-device signature recorded\nin GRID.md: the placeholder entry stays on screen under placeholder redaction\nand WidgetUnavailableView (\"Open Lillist to sync\") is never reached, because\ntimeline(for:in:) never runs at all.\nTest Case '-[LillistCoreTests.WidgetExtensionRegistrationReproTests testInstalledMacWidgetExtensionIsRegisteredWithPluginKit]' failed (0.248 seconds).\nTest Suite 'WidgetExtensionRegistrationReproTests' failed at 2026-07-30 16:05:51.443.\n\t Executed 1 test, with 1 failure (0 unexpected) in 0.248 (0.248) seconds\nTest Suite 'LillistCoreTests.xctest' failed at 2026-07-30 16:05:51.443.\n\t Executed 1 test, with 1 failure (0 unexpected) in 0.248 (0.248) seconds\nTest Suite 'Selected tests' failed at 2026-07-30 16:05:51.443.\n\t Executed 1 test, with 1 failure (0 unexpected) in 0.248 (0.249) seconds\nNote: Some test targets reported failures:\n  - LillistCoreTests (XCTest)",
+  "display": "[rca] 1/1 runs failed (deterministic)"
+}

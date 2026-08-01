@@ -1,0 +1,17 @@
+{
+  "slug": "ios-widget-shows-redacted-content",
+  "created_at": "2026-07-30T20:44:07Z",
+  "description": "iOS widget renders the redacted/placeholder content view instead of real task content in recent builds; breaking build unknown",
+  "tier": "light",
+  "tier_directive": "",
+  "issue": {
+    "provider": "storyhook",
+    "ref": "LIL-91",
+    "url": null
+  },
+  "stack": {
+    "id": "xcode",
+    "test_cmd": "xcodebuild test -workspace Lillist.xcworkspace -scheme Lillist-iOS -destination 'platform=iOS Simulator,name=iPhone 17,OS=26.2'",
+    "single_test_cmd_template": "xcodebuild test -workspace Lillist.xcworkspace -scheme Lillist-iOS -destination 'platform=iOS Simulator,name=iPhone 17,OS=26.2' -only-testing:{test}"
+  }
+}

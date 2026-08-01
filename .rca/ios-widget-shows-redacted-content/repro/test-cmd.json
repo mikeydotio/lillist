@@ -1,0 +1,10 @@
+{
+  "stack": "swiftpm (LillistCore test target)",
+  "single_test_cmd": "DEVELOPER_DIR=/Applications/Xcode-beta.app/Contents/Developer swift test --package-path Packages/LillistCore --filter WidgetExtensionRegistrationReproTests",
+  "full_suite_cmd": "DEVELOPER_DIR=/Applications/Xcode-beta.app/Contents/Developer swift test --package-path Packages/LillistCore --parallel --num-workers 2",
+  "test_file": "Packages/LillistCore/Tests/LillistCoreTests/Widgets/WidgetExtensionRegistrationReproTests.swift",
+  "test_id": "LillistCoreTests.WidgetExtensionRegistrationReproTests/testInstalledMacWidgetExtensionIsRegisteredWithPluginKit",
+  "developer_dir_required": true,
+  "developer_dir_note": "MANDATORY. Under the xcode-select default (/Applications/Xcode.app 26.6) the LillistCore compile dies with 'error: fatalError' before any test runs, producing a FALSE RED (exit 1, zero tests executed). Always set DEVELOPER_DIR to the Xcode 27 beta for this repro.",
+  "host_dependency": "Observes /Applications/Lillist.app on this Mac. Not hermetic; skips (never false-fails) when the app or pluginkit is unavailable."
+}
