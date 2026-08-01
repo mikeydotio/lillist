@@ -20,12 +20,15 @@ public struct WidgetSnapshotBuilder: Sendable {
     /// this down per family.
     public static let defaultRowCap = 16
 
-    private let smartFilterStore: SmartFilterStore
+    private let smartFilterStore: any WidgetSnapshotSource
     private let snapshotStore: WidgetSnapshotStore
     private let rowCap: Int
 
+    /// - Parameter smartFilterStore: the read seam. `SmartFilterStore` conforms,
+    ///   so production call sites pass one directly; tests inject a failing
+    ///   double to reach the error branches (`LIL-93`).
     public init(
-        smartFilterStore: SmartFilterStore,
+        smartFilterStore: any WidgetSnapshotSource,
         snapshotStore: WidgetSnapshotStore,
         rowCap: Int = WidgetSnapshotBuilder.defaultRowCap
     ) {
@@ -119,7 +122,7 @@ public struct WidgetSnapshotBuilder: Sendable {
     /// the underlying read itself failed (store unavailable, fetch error),
     /// which already means neither caller should write anything further.
     private func performRegenerate(filterIDs: [UUID]?) async -> [SmartFilterStore.SmartFilterRecord]? {
-        guard let filters = try? await smartFilterStore.list() else { return nil }
+        guard let filters = try? await smartFilterStore.listFilters() else { return nil }
 
         // The grace set: tasks closed *today*, most-recent first. Computed once
         // and shared across every target, since a just-completed task should
@@ -129,8 +132,8 @@ public struct WidgetSnapshotBuilder: Sendable {
         // grace set: this list feeds `ordered` in every `writeSnapshot` call, so
         // swallowing the error would under-report `totalCount` on *each* snapshot
         // written this pass — wrong data, silently, everywhere.
-        guard let closedToday = try? await smartFilterStore.evaluate(
-            group: Self.closedTodayGroup,
+        guard let closedToday = try? await smartFilterStore.evaluateGroup(
+            Self.closedTodayGroup,
             sort: .closedAt,
             ascending: false
         ) else { return nil }
@@ -145,7 +148,7 @@ public struct WidgetSnapshotBuilder: Sendable {
         }
 
         for filter in wantedSaved {
-            guard let matches = try? await smartFilterStore.evaluate(id: filter.id) else { continue }
+            guard let matches = try? await smartFilterStore.evaluateFilter(id: filter.id) else { continue }
             writeSnapshot(
                 filterID: filter.id,
                 filterName: filter.name,
@@ -169,8 +172,8 @@ public struct WidgetSnapshotBuilder: Sendable {
         // worst; writing zeros is wrong. This matches the saved-filter loop
         // above, which already fails safe via `continue`.
         if filterIDs == nil || filterIDs?.contains(WidgetSnapshot.unfilteredID) == true {
-            guard let openMatches = try? await smartFilterStore.evaluate(
-                group: Self.unfilteredOpenGroup,
+            guard let openMatches = try? await smartFilterStore.evaluateGroup(
+                Self.unfilteredOpenGroup,
                 sort: .manualPosition,
                 ascending: true
             ) else { return filters }
