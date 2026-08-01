@@ -1,0 +1,15 @@
+{
+  "provider": "storyhook",
+  "ref": "LIL-91",
+  "url": null,
+  "snapshot": {
+    "title": "Bug: widget stuck on redacted placeholder on both platforms; config picker mislabeled \"No Tags\" and dismisses empty",
+    "state": "in-progress",
+    "priority": "high",
+    "labels": ["bug", "rca", "widget"],
+    "body_digest": "Both widgets render WidgetKit's placeholder entry under placeholder redaction instead of real tasks; iOS chrome draws but all Text is redaction pills matching WidgetSnapshotSamples.placeholder exactly; macOS renders an empty grey rect. WidgetUnavailableView never appears, so timeline(for:in:) is not completing usably rather than returning nil. Config picker labeled \"No Tags\" (a label no widget-target symbol can produce; the repo's only \"Tags\" parameter is AddTaskIntent.tags in ShortcutsActions) and self-dismisses. Regression, exact introducing build unknown; boundary window 2026-07-21 (LIL-4 verified good) to 2026-07-29 (build 92 / v0.19.0 observed bad).",
+    "fetched_at": "2026-07-30T20:44:07Z"
+  },
+  "created_by_rca": true,
+  "comments_posted": []
+}

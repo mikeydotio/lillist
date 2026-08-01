@@ -1,0 +1,167 @@
+import XCTest
+
+/// Reproduction gate for the RCA investigation `ios-widget-shows-redacted-content`
+/// (see `.rca/ios-widget-shows-redacted-content/GRID.md`).
+///
+/// **What the grid says.** Both widgets render WidgetKit's *placeholder* entry
+/// under placeholder redaction and never render real tasks. The decisive
+/// WHAT-IS reading (distinction 2) is that the app's own cold-cache fallback
+/// `WidgetUnavailableView` — the view a `snapshot: nil` entry produces — is
+/// **never** shown. So `timeline(for:in:)` is not returning nil; it "is not
+/// completing usably at all." On macOS the surface is even barer: an empty
+/// light-grey rounded rect with no content whatsoever.
+///
+/// **What this test asserts.** The most literal explanation of "never
+/// completes" is that the widget extension is never *run* — and on macOS that
+/// is directly observable. `pluginkit` is the system registry of installed app
+/// extensions; `chronod`/WidgetKit will only launch a widget that appears in
+/// it. This test asserts that the installed Lillist macOS app's widget
+/// extension is registered under the `com.apple.widgetkit-extension` point.
+///
+/// At the time this gate was written it **fails**: `/Applications/Lillist.app`
+/// is present, notarized, Gatekeeper-accepted, and physically contains
+/// `Contents/PlugIns/LillistWidget-macOS.appex` with a valid signature — yet
+/// `pluginkit -m -A -D -i app.lillist.Widget` returns no matches, while 78
+/// other WidgetKit extensions from other vendors register normally on the same
+/// Mac.
+///
+/// **Why this is the right assertion.** An unregistered extension explains
+/// every IS cell at once without requiring the build artifact to be wrong
+/// (it is not — the shipped `LillistWidget.appex`'s `Metadata.appintents`,
+/// entitlements, `Info.plist`, `minos`, and Swift type metadata were all
+/// verified correct and semantically identical to the last known-good build):
+///
+///   - the timeline never completes, because the extension is never launched;
+///   - macOS shows an empty rect, because there is nothing to draw;
+///   - the configuration picker cannot list the widget's own
+///     `SelectFilterIntent`, so it resolves against the app's *other*
+///     registered AppIntents surface — whose unset `AddTaskIntent.tags`
+///     (`Extensions/ShortcutsActions/AddTaskIntent.swift:17`) is exactly how
+///     AppIntents renders the observed **"No Tags"** label (distinction 1).
+///
+/// **What it does NOT prove.** It observes the *installed* macOS app (v0.18.0
+/// / build 52 — not the v0.19.0 the report is framed around), so it cannot
+/// attribute the failure to a specific commit, and it says nothing directly
+/// about the iOS device. It is a reproduction gate, not a diagnosis: it
+/// converts the reported symptom into a deterministic red/green signal. It
+/// passes once the widget extension registers.
+///
+/// **Running it honestly — the exit code is not sufficient.** This suite MUST
+/// run under `DEVELOPER_DIR=/Applications/Xcode-beta.app/Contents/Developer`.
+/// Under the `xcode-select` default (Xcode 26.6) `LillistCore` does not
+/// compile (`WatermarkRegistry.swift:56`, non-`Sendable`
+/// `NSPersistentHistoryToken`) and `swift test` exits **1 with zero tests
+/// executed** — indistinguishable from a real failure if you only check `$?`.
+/// Confirm a genuine RED by grepping the output for BOTH
+/// `Executed 1 test, with 1 failure` and `is NOT registered with the system`.
+///
+/// **Scope note.** The macOS app ships exactly one extension, so "no Lillist
+/// extension is registered" and "the widget is not registered" are the same
+/// fact, not two. `ShareExtension-iOS` and `ShortcutsActions` are iOS-only
+/// targets with no macOS product. See `.rca/…/MINIMAL.md` §1.
+///
+/// Every precondition below **skips** rather than fails, so a machine without
+/// the app installed (or without a working `pluginkit`) reports "inconclusive"
+/// instead of a false red.
+final class WidgetExtensionRegistrationReproTests: XCTestCase {
+    #if os(macOS)
+
+    /// Bundle identifier of the macOS widget extension, per
+    /// `Apps/project.yml`'s `LillistWidget-macOS` target.
+    private static let widgetBundleID = "app.lillist.Widget"
+    private static let installedAppPath = "/Applications/Lillist.app"
+    private static let widgetExtensionPoint = "com.apple.widgetkit-extension"
+
+    /// A healthy Mac registers dozens of widget extensions (78 when this gate
+    /// was written). Requiring a handful proves `pluginkit` is answering
+    /// properly, so "Lillist is absent" means absent — not "the query failed".
+    private static let minimumHealthyRegistryCount = 5
+
+    func testInstalledMacWidgetExtensionIsRegisteredWithPluginKit() throws {
+        try requireInstalledAppContainingWidget()
+        let registry = try requireHealthyWidgetRegistry()
+
+        let matches = try pluginKit(["-m", "-A", "-D", "-i", Self.widgetBundleID])
+            .split(separator: "\n")
+            .filter { !$0.trimmingCharacters(in: .whitespaces).isEmpty }
+
+        XCTAssertFalse(
+            matches.isEmpty,
+            """
+            The installed Lillist macOS widget extension is NOT registered with the system.
+
+              queried:  pluginkit -m -A -D -i \(Self.widgetBundleID)   → no matches
+              on disk:  \(Self.installedAppPath)/Contents/PlugIns/LillistWidget-macOS.appex (present, signature valid)
+              registry: \(registry.count) other \(Self.widgetExtensionPoint) extensions ARE registered
+
+            WidgetKit only launches extensions present in this registry, so the widget's
+            timeline provider is never invoked — which is the on-device signature recorded
+            in GRID.md: the placeholder entry stays on screen under placeholder redaction
+            and WidgetUnavailableView ("Open Lillist to sync") is never reached, because
+            timeline(for:in:) never runs at all.
+            """
+        )
+    }
+
+    // MARK: - Preconditions (skip, never fail)
+
+    /// Skips unless the macOS app is installed *and* physically carries the
+    /// widget extension. A missing app is "nothing to observe"; a missing
+    /// appex inside a present app would be a packaging defect, which is a
+    /// different failure than the one under investigation.
+    private func requireInstalledAppContainingWidget() throws {
+        let fileManager = FileManager.default
+        try XCTSkipUnless(
+            fileManager.fileExists(atPath: Self.installedAppPath),
+            "\(Self.installedAppPath) is not installed — nothing to observe on this host."
+        )
+        let appexPath = Self.installedAppPath + "/Contents/PlugIns/LillistWidget-macOS.appex"
+        try XCTSkipUnless(
+            fileManager.fileExists(atPath: appexPath),
+            "\(appexPath) is absent. That is a packaging defect, not the registration "
+            + "failure this gate probes — investigate separately rather than reading it as this bug."
+        )
+    }
+
+    /// Skips unless `pluginkit` returns a plausible registry, so tooling
+    /// failure can never masquerade as the defect.
+    private func requireHealthyWidgetRegistry() throws -> [String] {
+        let output: String
+        do {
+            output = try pluginKit(["-m", "-p", Self.widgetExtensionPoint])
+        } catch {
+            throw XCTSkip("pluginkit could not be run (\(error)) — tooling problem, not the defect.")
+        }
+        let entries = output
+            .split(separator: "\n")
+            .map { $0.trimmingCharacters(in: .whitespaces) }
+            .filter { !$0.isEmpty }
+        try XCTSkipUnless(
+            entries.count >= Self.minimumHealthyRegistryCount,
+            "pluginkit reported only \(entries.count) registered \(Self.widgetExtensionPoint) "
+            + "extensions (expected ≥ \(Self.minimumHealthyRegistryCount)) — the registry query "
+            + "is not answering usefully, so absence of Lillist proves nothing."
+        )
+        return entries
+    }
+
+    // MARK: - Harness
+
+    /// Runs `pluginkit` and returns stdout. Throws only when the tool cannot
+    /// be launched; a non-zero exit with empty output is a legitimate
+    /// "no matches" answer, which is precisely the signal under test.
+    private func pluginKit(_ arguments: [String]) throws -> String {
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/usr/bin/pluginkit")
+        process.arguments = arguments
+        let stdout = Pipe()
+        process.standardOutput = stdout
+        process.standardError = Pipe()
+        try process.run()
+        let data = stdout.fileHandleForReading.readDataToEndOfFile()
+        process.waitUntilExit()
+        return String(decoding: data, as: UTF8.self)
+    }
+
+    #endif
+}
