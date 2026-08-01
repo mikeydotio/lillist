@@ -636,7 +636,16 @@ place; "+" opens Quick Capture; whole-widget tap opens the filter.
 
 - **Target:** `Extensions/LillistWidget/` — one shared source dir compiled into
   both the `LillistWidget` (iOS) and `LillistWidget-macOS` app-extension targets
-  (macOS's *first* extension). Bundle id `app.lillist.Widget`.
+  (macOS's *first* extension). Bundle id `app.lillist.Widget`. **Sources are
+  shared; entitlements are NOT** — iOS signs with `Lillist.entitlements`, macOS
+  with `Lillist-macOS.entitlements` (LIL-92, below).
+- **macOS app extensions must be sandboxed.** `Lillist-macOS.entitlements`
+  carries `com.apple.security.app-sandbox = true`; without it the system
+  silently refuses to register the appex — no build error, no crash, `pluginkit`
+  just never lists it and the widget never renders. Never point a macOS target
+  at an iOS target's entitlements file (App Sandbox is required on macOS and
+  meaningless on iOS; push uses a different key spelling). Guarded by
+  `Tools/CI/check-macos-extension-sandbox.sh` in CI's `macos` job.
 - **Data:** snapshot-cache (`LillistCore/Widgets/` — `WidgetSnapshot`,
   `WidgetSnapshotStore`, `WidgetSnapshotBuilder`, pure Foundation). The app +
   writing extensions regenerate `<AppGroup>/Widget/**` on store changes and call
@@ -645,13 +654,17 @@ place; "+" opens Quick Capture; whole-widget tap opens the filter.
   host harness — `WidgetFilterCardSnapshotTests`).
 - **Deep links:** `lillist://` (`quickcapture` / `filter/<id>` / `task/<id>`),
   parsed by `LillistCore` `DeepLink`.
-- **Gotchas** (see engineering-notes 2026-07-01): never `import WidgetKit` in
-  LillistCore (CLI link); fonts are process-scoped (`registerIfNeeded()` in the
-  bundle init); glass doesn't render in widgets (solid fills + rainbow stroke +
-  `.contentMarginsDisabled()`); the macOS widget overrides
-  `CURRENT_PROJECT_VERSION` to match the app's hardcoded CFBundleVersion; the new
-  `app.lillist.Widget` App ID needs a provisioning profile before any *signed*
-  device/desktop build (simulator + unsigned are fine).
+- **Gotchas** (see engineering-notes 2026-07-01 and 2026-07-31): never `import
+  WidgetKit` in LillistCore (CLI link); fonts are process-scoped
+  (`registerIfNeeded()` in the bundle init); glass doesn't render in widgets
+  (solid fills + rainbow stroke + `.contentMarginsDisabled()`); the macOS widget
+  overrides `CURRENT_PROJECT_VERSION` to match the app's hardcoded
+  CFBundleVersion; the new `app.lillist.Widget` App ID needs a provisioning
+  profile before any *signed* device/desktop build (simulator + unsigned are
+  fine). **The macOS widget never worked before 2026-07-31** — LIL-4's
+  "on-device widget verification" was iOS-only despite its unqualified wording,
+  so treat any cross-platform verification claim as platform-partial unless the
+  evidence names its platform.
 
 ## When in doubt
 
