@@ -38,11 +38,44 @@ public enum CloudKitSchemaInitializer {
         do {
             try ckContainer.initializeCloudKitSchema(options: [])
         } catch {
-            throw Error.schemaInitializationFailed((error as NSError).localizedDescription)
+            throw Error.schemaInitializationFailed(Self.describe(error))
         }
         #else
         // Release builds rely on the manually-promoted production schema.
         return
         #endif
+    }
+
+    /// Flatten an `NSError` into something a human can act on.
+    ///
+    /// `localizedDescription` for a Core Data failure is the notoriously
+    /// content-free "A Core Data error occurred." Everything that identifies
+    /// *which* rule the model broke lives in `userInfo` — `NSUnderlyingError`,
+    /// and for validation failures a `NSDetailedErrors` array with one entry
+    /// per offending entity/property. Reporting only the localized string
+    /// discards exactly the part worth reading.
+    static func describe(_ error: Swift.Error) -> String {
+        let ns = error as NSError
+        var parts = ["\(ns.domain) \(ns.code): \(ns.localizedDescription)"]
+
+        if let detailed = ns.userInfo[NSDetailedErrorsKey] as? [NSError] {
+            for sub in detailed.prefix(20) {
+                parts.append("  ↳ \(sub.domain) \(sub.code): \(sub.localizedDescription)")
+                for (key, value) in sub.userInfo where key != NSUnderlyingErrorKey {
+                    parts.append("      \(key) = \(value)")
+                }
+            }
+        }
+        if let underlying = ns.userInfo[NSUnderlyingErrorKey] as? NSError {
+            parts.append("  ↳ underlying: \(underlying.domain) \(underlying.code): \(underlying.localizedDescription)")
+            for (key, value) in underlying.userInfo where key != NSUnderlyingErrorKey {
+                parts.append("      \(key) = \(value)")
+            }
+        }
+        for (key, value) in ns.userInfo
+        where key != NSDetailedErrorsKey && key != NSUnderlyingErrorKey {
+            parts.append("  \(key) = \(value)")
+        }
+        return parts.joined(separator: "\n")
     }
 }
