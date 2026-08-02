@@ -95,6 +95,14 @@ struct LillistApp: App {
                 RootShell()
                     .environment(environment)
                     .modifier(OnboardingPresentationModifier(environment: environment))
+                    .timeZoneChangeAlert(
+                        offer: Binding(
+                            get: { environment.pendingTimeZoneOffer },
+                            set: { environment.pendingTimeZoneOffer = $0 }
+                        ),
+                        onReschedule: { _ in Task { await environment.acceptTimeZoneChange() } },
+                        onKeep: { _ in Task { await environment.declineTimeZoneChange() } }
+                    )
             }
         } else if let loadError {
             VStack(spacing: 12) {

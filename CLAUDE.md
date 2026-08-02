@@ -95,12 +95,10 @@ in-house crash reporter.
   checklist* — real-device/account checks that gate nothing);
   `docs/superpowers/handoffs/2026-07-28-data-sync-hardening-closeout.md` is
   the closing handoff. Now **archaeology**, not an active to-do list.
-  **Two items stand open by design**, both with redesign triggers in the
-  ledger's *Decisions awaiting Mikey*: `LIL-83` (`X10`'s all-day-
-  notification timezone-dedup posture — needs a synced home-timezone
-  field, hence a Development→Production CloudKit schema deploy Mikey must
-  run) and `LIL-90` (a latent `NotificationSpec` in-place-edit reconcile
-  gap, unreachable in production today).
+  The two items that stood open by design under the ledger's *Decisions
+  awaiting Mikey* — `LIL-83` (all-day timezone dedup) and `LIL-90` (the
+  `NotificationSpec` in-place-edit reconcile gap) — **were resolved together
+  on 2026-08-01**; see *Reminder time zones* below.
 
 ## Build & test
 
@@ -493,6 +491,39 @@ Developer-ID exports.
   as `mikeydotio/agentics#111`. Until that lands, `SU_FEED_URL` is correct
   but 404s; full end-to-end update verification needs both halves shipped
   together from `main`.
+
+## Reminder time zones (LIL-83 + LIL-90) — SCHEMA DEPLOY PENDING
+
+**Spec:** `docs/spec/reminder-timezones.md`. Supersedes
+`.council/x10-all-day-timezone-dedup-posture/DECISION.md` (which proposed a
+synced *home time zone* on `AppPreferences` — not what shipped).
+
+The model: **sync the user's intent, keep the machinery on the device.**
+
+- **Synced:** `NotificationSpec.scheduledTimeZoneID` — the IANA zone the user
+  was in when they scheduled the reminder. Every device resolves through *it*,
+  so all devices derive the same instant and the existing `lastFiredAt` dedup
+  guard works unchanged. No home-timezone setting exists, by design.
+- **Device-local:** snooze (`SnoozeStateStore`, App Group `UserDefaults`) and
+  the last-known zone (`DevicePreferencesStore`). Snooze leaving the synced
+  entity is what makes `LIL-90`'s remote in-place-edit gap *unrepresentable*
+  rather than merely unreachable.
+- **Travel:** `TimeZoneChangeDetector` + `TimeZoneChangeAlert` offer to
+  re-anchor future, unfired reminders on foreground. Offer, never act unasked —
+  dismissing means *keep*.
+- **Legacy rows are NOT backfilled.** A zone the user never chose is invented
+  intent, and backfilling on two devices in two zones manufactures the exact
+  disagreement this removes. They keep pre-LIL-83 behavior until rewritten;
+  `X10TimezoneDedupKnownLimitationTests` now pins only that residual.
+
+> ⚠️ **`scheduledTimeZoneID` is a new CloudKit field and the schema is NOT yet
+> deployed to Production.** `NSPersistentCloudKitContainer` auto-creates schema
+> only in *Development*. Before any distribution build ships: run a
+> Development-signed build, create/edit a reminder to exercise the field, then
+> deploy Development→Production in the CloudKit Console. Shipping first means
+> the field silently never syncs and reminders diverge exactly as they did
+> before. `snoozedUntil` stays in the deployed schema forever as a vestigial,
+> never-written column — CloudKit cannot delete a field.
 
 ## Deploy (iOS test builds)
 

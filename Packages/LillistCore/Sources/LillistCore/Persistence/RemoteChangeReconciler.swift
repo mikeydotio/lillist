@@ -250,15 +250,21 @@ public final class RemoteChangeReconciler: @unchecked Sendable {
     /// ids that need a notification reconcile because of a foreign-author
     /// change to either a `NotificationSpec` or a `LillistTask`.
     ///
+    /// `LIL-90` widened the UPDATE gate from `lastFiredAt` alone to
+    /// ``scheduleAffectingSpecProperties``. The residual was filed as latent —
+    /// nothing could edit an existing spec in place from another device — but
+    /// `LIL-83`'s time-zone-change prompt is exactly that caller, so leaving the
+    /// gate narrow would mean a user who accepts "reschedule to the new zone" on
+    /// one device keeps firing on the old zone everywhere else.
+    ///
     /// X9 widened this beyond the original `lastFiredAt`-only filter:
     /// - `NotificationSpec` INSERT (a reminder added on another device) —
     ///   the row still exists, so `spec.task?.id` resolves directly.
     /// - `NotificationSpec` UPDATE — narrowly still gated on
-    ///   `changedProperties.contains("lastFiredAt")`, matching the original,
-    ///   verified scope (X9's finding text names inserts/deletes/task
-    ///   soft-deletes, not arbitrary spec property edits — see the plan
-    ///   doc's scope note for why a remote `snoozedUntil`/`offsetMinutes`
-    ///   edit is a distinct, unreachable-today residual, not widened here).
+    ///   ``scheduleAffectingSpecProperties`` — widened from `lastFiredAt` alone
+    ///   by `LIL-90` (see above). Note `snoozedUntil` is deliberately **absent**
+    ///   from that set: snooze is device-local now
+    ///   (``SnoozeStateStore``), so a remote snooze edit cannot exist.
     /// - `NotificationSpec` DELETE — deliberately **excluded**: the row is
     ///   gone and (per the plan doc's tombstone investigation) unresolvable
     ///   to a taskID from history alone. Handled by `hasForeignSpecDeletions`/
@@ -270,6 +276,24 @@ public final class RemoteChangeReconciler: @unchecked Sendable {
     ///
     /// `nonisolated static` so XCTest / background callers can use it without
     /// crossing an actor boundary (CLAUDE.md UI-layer note generalizes here).
+    /// The `NotificationSpec` properties whose remote change can move *when* a
+    /// notification fires — and therefore the only ones worth a reconcile.
+    ///
+    /// A named allow-list rather than "any property" on purpose: this set is a
+    /// claim about scheduling semantics, so a future non-scheduling attribute
+    /// must not silently start triggering reconciles. Adding an attribute here
+    /// is a deliberate act.
+    ///
+    /// `snoozedUntil` is absent by design — it is device-local (`LIL-90`), so a
+    /// remote edit to it is not merely ignored but impossible.
+    public nonisolated static let scheduleAffectingSpecProperties: Set<String> = [
+        "lastFiredAt",
+        "scheduledTimeZoneID",
+        "offsetMinutes",
+        "fireDate",
+        "kindRaw"
+    ]
+
     public nonisolated static func affectedTaskIDs(
         from changes: [SyntheticChange],
         localAuthor: String,
@@ -285,7 +309,9 @@ public final class RemoteChangeReconciler: @unchecked Sendable {
                 case "NotificationSpec":
                     guard change.changeType != .delete else { continue }
                     if change.changeType == .update {
-                        guard change.changedProperties.contains("lastFiredAt") else { continue }
+                        guard change.changedProperties
+                            .isDisjoint(with: Self.scheduleAffectingSpecProperties) == false
+                        else { continue }
                     }
                     guard let spec = try? ctx.existingObject(with: change.changedObjectID) as? NotificationSpec
                     else { continue }

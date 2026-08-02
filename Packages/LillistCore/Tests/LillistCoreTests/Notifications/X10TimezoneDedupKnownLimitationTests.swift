@@ -3,22 +3,34 @@ import Foundation
 import UserNotifications
 @testable import LillistCore
 
-/// X10 (council-decided, `.council/x10-all-day-timezone-dedup-posture/DECISION.md`)
-/// — **KNOWN LIMITATION, tracked as `LIL-83`**: all-day fire times resolve
-/// the configured default hour/minute in each device's OWN `TimeZone.current`
-/// (see both `AppEnvironment.swift`s' `TODO(LIL-83)` markers), so two
-/// devices in different time zones compute genuinely different absolute
-/// instants for "the same" all-day reminder and the `lastFiredAt` cross-
-/// device dedup guard does not suppress the second one. This pins that
-/// behavior deliberately — same-timezone dedup (the common case) still
-/// works and must keep working; cross-timezone divergence is a real,
-/// tracked gap, not a silent regression risk hiding under "seems fine."
+/// X10 — **RESOLVED by `LIL-83` for zone-stamped reminders; this suite now
+/// pins the residual LEGACY behaviour only.**
 ///
-/// **Delete/invert this suite's `differingTimeZoneDevicesBothFire`
-/// assertion once `LIL-83` ships** (a synced "home time zone" field on
-/// `AppPreferences`, replacing per-device `.current`) — at that point two
-/// devices in different zones should dedup exactly like the same-timezone
-/// case below.
+/// The original limitation: all-day fire times resolved the default
+/// hour/minute in each device's OWN `TimeZone.current`, so two devices in
+/// different zones computed different absolute instants for "the same"
+/// reminder and the `lastFiredAt` dedup guard could not suppress the second.
+///
+/// `LIL-83` fixed that at the origin — a reminder now stores the zone it was
+/// scheduled in (`NotificationSpec.scheduledTimeZoneID`) and every device
+/// resolves through *that*, so all devices agree. See
+/// `ReminderTimeZoneTests.crossZoneDevicesAgree`, which asserts the inverse of
+/// `differingTimeZoneDevicesBothFire` below.
+///
+/// What survives, and why this suite survives with it: reminders created
+/// **before** `LIL-83` carry no zone and are deliberately **not** backfilled —
+/// writing a zone the user never chose would invent intent, and backfilling on
+/// two devices in two zones would manufacture the very disagreement the change
+/// removes. Those legacy rows keep resolving through the device zone and can
+/// still double-fire. `TimeZoneChangeDetector`'s prompt is how a user resolves
+/// it; until then, this is the behaviour, and it is pinned here so it stays
+/// *known* rather than rediscovered.
+///
+/// The council decision this originally cited
+/// (`.council/x10-all-day-timezone-dedup-posture/DECISION.md`, a synced
+/// "home time zone" field on `AppPreferences`) was **superseded** — see
+/// `docs/spec/reminder-timezones.md` for why storing the zone per reminder
+/// beat a global setting.
 ///
 /// **`LIL-86` fix (discovered during `5a`'s verification):** both tests
 /// used to anchor their simulated deadline at `Date().addingTimeInterval
@@ -39,7 +51,7 @@ import UserNotifications
 /// comfortably in the future relative to any real "now" this suite could
 /// ever run at, sidestepping `computeDesiredRequests`'s separate
 /// past-due-fire-date filter too.
-@Suite("X10 — KNOWN LIMITATION: all-day dedup is timezone-scoped (LIL-83)")
+@Suite("X10 — LEGACY (zone-less) all-day dedup is still timezone-scoped")
 struct X10TimezoneDedupKnownLimitationTests {
     /// A fixed, explicit UTC instant standing in for "the task's deadline,"
     /// replacing the old `Date().addingTimeInterval(86_400)` (the source of
@@ -119,7 +131,7 @@ struct X10TimezoneDedupKnownLimitationTests {
         #expect(await centerB.pendingNotificationRequests().isEmpty, "same-timezone dedup must still work — this is NOT part of the known limitation")
     }
 
-    @Test("KNOWN LIMITATION (LIL-83): differing-timezone devices legitimately diverge, not deduped")
+    @Test("LEGACY (zone-less) specs: differing-timezone devices still diverge, not deduped")
     func differingTimeZoneDevicesBothFire() async throws {
         let p = try await TestStore.make()
         let tasks = TaskStore(persistence: p)

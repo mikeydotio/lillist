@@ -624,7 +624,10 @@ public actor Importer {
         // comment for why resetting this to nil on import would be wrong,
         // not merely unproven.
         row.lastFiredAt = dto.lastFiredAt
+        // Written to the vestigial column so an old archive round-trips
+        // losslessly; nothing reads it (`LIL-90`).
         row.snoozedUntil = dto.snoozedUntil
+        row.scheduledTimeZoneID = dto.scheduledTimeZoneID
         row.createdAt = dto.createdAt
     }
 

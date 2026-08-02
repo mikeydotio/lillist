@@ -122,6 +122,10 @@ final class AppEnvironment {
     let widgetRefresh: WidgetRefreshController?
     let notificationSpecStore: NotificationSpecStore
     let snoozeRegistry: SnoozeRegistry
+    /// Device-local snooze state (`LIL-90`) — deliberately not synced.
+    let snoozeStateStore: SnoozeStateStore
+    /// Offers to re-anchor reminders after the user travels (`LIL-83`).
+    let timeZoneChangeDetector: TimeZoneChangeDetector
     let notificationScheduler: NotificationScheduler
     /// Drives notification reconciliation from CloudKit imports (review
     /// notif-2). Retained for the app's lifetime; deinit removes its observer.
@@ -233,21 +237,20 @@ final class AppEnvironment {
         let specStore = NotificationSpecStore(persistence: persistence)
         self.notificationSpecStore = specStore
 
-        // TODO(LIL-83): timeZone: .current defeats cross-device all-day
-        // notification dedup when a user's devices are in different time
-        // zones — each device resolves the same all-day anchor to a
-        // different absolute instant. Known, tracked limitation (interim:
-        // documented in the design doc + pinned by a KNOWN LIMITATION
-        // regression test); the real fix needs a new synced "home time
-        // zone" field on AppPreferences (orchestrator-gated schema change —
-        // see .council/x10-all-day-timezone-dedup-posture/DECISION.md).
-        // Delete this TODO and both `.current` args once LIL-83 ships.
+        // LIL-83: `.current` is now the *capture and fallback* zone, not the
+        // resolution zone. A reminder resolves through its own stored
+        // `scheduledTimeZoneID`; this device's zone is what gets stamped onto
+        // newly scheduled reminders and what legacy (pre-LIL-83) rows fall back
+        // to. See docs/spec/reminder-timezones.md.
         let registry = SnoozeRegistry(
             defaultAllDayHour: 9,
             defaultAllDayMinute: 0,
             timeZone: .current
         )
         self.snoozeRegistry = registry
+
+        let snoozeState = SnoozeStateStore(appGroupID: Self.appGroupID)
+        self.snoozeStateStore = snoozeState
 
         let scheduler = NotificationScheduler(
             persistence: persistence,
@@ -257,7 +260,13 @@ final class AppEnvironment {
             deviceFingerprint: DeviceFingerprint.current(),
             defaultAllDayHour: 9,
             defaultAllDayMinute: 0,
-            timeZone: .current
+            timeZone: .current,
+            snoozeState: snoozeState
+        )
+        self.timeZoneChangeDetector = TimeZoneChangeDetector(
+            persistence: persistence,
+            specStore: specStore,
+            devicePreferences: devicePreferences
         )
         self.notificationScheduler = scheduler
         self.notificationPermissions = NotificationPermissions()
@@ -594,6 +603,57 @@ final class AppEnvironment {
     /// App Group identifier shared between the main app, Share Extension,
     /// and Shortcuts (App Intents) extension. Matches the entitlement on
     /// every target.
+
+    // MARK: - Time zone changes (LIL-83)
+
+    /// The pending travel offer, or `nil`. Observed by the root view via
+    /// `.timeZoneChangeAlert(...)`.
+    var pendingTimeZoneOffer: TimeZoneChangeAlert.Offer?
+
+    /// Ask the detector whether the user has arrived somewhere new, and surface
+    /// the offer if so. Silent when there is nothing to ask about.
+    func checkForTimeZoneChange() async {
+        // `try?` flattens the optional: a thrown error and "nothing to ask"
+        // both land here as nil, and both mean the same thing — stay silent.
+        guard let change = try? await timeZoneChangeDetector.check() else { return }
+        pendingTimeZoneOffer = TimeZoneChangeAlert.Offer(
+            fromName: Self.zoneDisplayName(change.from),
+            toName: Self.zoneDisplayName(change.to),
+            count: change.affectedSpecIDs.count
+        )
+        pendingTimeZoneChange = change
+    }
+
+    /// The detector's own value for the offer currently on screen. Held so the
+    /// answer applies to exactly the change the user was shown, not to whatever
+    /// a later re-check might compute.
+    var pendingTimeZoneChange: TimeZoneChangeDetector.Change?
+
+    /// Re-anchor the affected reminders to the new zone.
+    func acceptTimeZoneChange() async {
+        guard let change = pendingTimeZoneChange else { return }
+        pendingTimeZoneChange = nil
+        pendingTimeZoneOffer = nil
+        _ = try? await timeZoneChangeDetector.accept(change, reconciler: notificationScheduler)
+    }
+
+    /// Leave every reminder on its original zone, and stop asking about this move.
+    func declineTimeZoneChange() async {
+        guard let change = pendingTimeZoneChange else { return }
+        pendingTimeZoneChange = nil
+        pendingTimeZoneOffer = nil
+        await timeZoneChangeDetector.decline(change)
+    }
+
+    /// `TimeZone.identifier` is an IANA path ("America/New_York"). Users think
+    /// in city names, so show the localized one and fall back to the raw
+    /// identifier only if the OS has no name for it.
+    nonisolated static func zoneDisplayName(_ zone: TimeZone) -> String {
+        zone.localizedName(for: .generic, locale: .current)
+            ?? zone.identifier.split(separator: "/").last.map(String.init)?.replacingOccurrences(of: "_", with: " ")
+            ?? zone.identifier
+    }
+
     static let appGroupID = "group.app.lillist"
 
     /// Async-friendly constructor. Loads the Core Data store inside the
@@ -695,6 +755,14 @@ final class AppEnvironment {
         // device-local consumer (OnboardingState, hotkey monitor, etc.)
         // reads from `DevicePreferencesStore`.
         _ = try? await preferencesPartitionMigrator.runIfNeeded()
+        // LIL-90: carry any live snooze out of the retired synced column
+        // into the device-local store, once. Without this an upgrade
+        // silently drops an in-flight snooze and the reminder fires at once.
+        _ = try? await SnoozeStatePartitionMigrator(
+            persistence: persistence,
+            snoozeState: snoozeStateStore,
+            devicePreferences: devicePreferences
+        ).runIfNeeded()
         // One-shot CloudKit singleton convergence + catch-up reconcile for any
         // imports that arrived while the app wasn't running, then start
         // observing live remote changes.
@@ -893,6 +961,12 @@ final class AppEnvironment {
                     self.pendingQuickCaptureSeed = seed
                 }
                 await self.remindersImporter.drainIfNeeded()
+                // LIL-83: foreground is the signal that the user has *arrived*
+                // in a new zone. Checking here rather than on
+                // NSSystemTimeZoneDidChange keeps a mid-flight change (or a
+                // short layover the user never opens the app in) from
+                // prompting about a zone they are about to leave.
+                await self.checkForTimeZoneChange()
             }
         }
         NotificationCenter.default.addObserver(

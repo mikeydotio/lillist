@@ -19,7 +19,16 @@ public actor NotificationScheduler: NotificationReconciling {
     private let deviceFingerprint: String
     private(set) public var defaultAllDayHour: Int
     private(set) public var defaultAllDayMinute: Int
+    /// The zone this device is in. `LIL-83` demoted it from *the* resolution
+    /// zone to two narrower jobs: the zone stamped onto newly scheduled
+    /// reminders, and the fallback for legacy specs that carry none. A spec
+    /// with a `scheduledTimeZoneID` resolves through that instead — which is
+    /// what makes two devices in two zones compute the same instant.
     private let timeZone: TimeZone
+    /// Device-local snooze (`LIL-90`). `nil` leaves snooze unsupported, which
+    /// is correct for read-only consumers (the CLI, previews) that never
+    /// present a notification.
+    private let snoozeState: SnoozeStateStore?
 
     public init(
         persistence: PersistenceController,
@@ -29,7 +38,8 @@ public actor NotificationScheduler: NotificationReconciling {
         deviceFingerprint: String,
         defaultAllDayHour: Int,
         defaultAllDayMinute: Int,
-        timeZone: TimeZone
+        timeZone: TimeZone,
+        snoozeState: SnoozeStateStore? = nil
     ) {
         self.persistence = persistence
         self.specStore = specs
@@ -39,6 +49,33 @@ public actor NotificationScheduler: NotificationReconciling {
         self.defaultAllDayHour = defaultAllDayHour
         self.defaultAllDayMinute = defaultAllDayMinute
         self.timeZone = timeZone
+        self.snoozeState = snoozeState
+    }
+
+    /// The zone a spec resolves through: its own if it carries one, else this
+    /// device's. An unparseable identifier falls back rather than throwing — a
+    /// corrupt zone string must not silently drop a reminder.
+    func zone(for spec: NotificationSpecStore.SpecRecord) -> TimeZone {
+        guard let id = spec.scheduledTimeZoneID, let tz = TimeZone(identifier: id) else {
+            return timeZone
+        }
+        return tz
+    }
+
+    /// Fill in each spec's device-local snooze (`LIL-90`).
+    ///
+    /// `NotificationSpecStore` deliberately projects `snoozedUntil` as `nil` —
+    /// the Core Data column is dead. This is the one place the live value is
+    /// attached, immediately before scheduling decisions are made.
+    private func hydrateSnooze(
+        _ specs: [NotificationSpecStore.SpecRecord]
+    ) async -> [NotificationSpecStore.SpecRecord] {
+        guard let snoozeState else { return specs }
+        var out = specs
+        for i in out.indices {
+            out[i].snoozedUntil = await snoozeState.snoozedUntil(specID: out[i].id)
+        }
+        return out
     }
 
     // MARK: - Public reconciliation entry point
@@ -50,7 +87,7 @@ public actor NotificationScheduler: NotificationReconciling {
             // defaultStart/defaultDeadline specs so they stop firing.
             try await purgeDefaultSpecs(for: snapshot)
 
-            let specs = try await specStore.specs(forTask: taskID)
+            let specs = try await hydrateSnooze(specStore.specs(forTask: taskID))
             let desired = computeDesiredRequests(task: snapshot, specs: specs)
 
             let pending = await center.pendingNotificationRequests()
@@ -202,7 +239,7 @@ public actor NotificationScheduler: NotificationReconciling {
                 "kind": spec.kind.rawValue
             ]
 
-            let trigger = makeCalendarTrigger(for: fireDate)
+            let trigger = makeCalendarTrigger(for: fireDate, zone: zone(for: spec))
             let identifier = identifier(for: spec.id)
             out.append(UNNotificationRequest(identifier: identifier, content: content, trigger: trigger))
         }
@@ -213,22 +250,24 @@ public actor NotificationScheduler: NotificationReconciling {
         for spec: NotificationSpecStore.SpecRecord,
         task: TaskSnapshot
     ) -> Date? {
-        // Snooze: if `snoozedUntil` is in the future, that wins.
+        // Snooze: if `snoozedUntil` is in the future, that wins. Hydrated from
+        // the device-local store by the caller (`LIL-90`), never from Core Data.
         if let snoozed = spec.snoozedUntil, snoozed > Date() {
             return snoozed
         }
 
+        let zone = zone(for: spec)
         switch spec.kind {
         case .defaultStart:
-            return resolvedAnchorDate(date: task.start, hasTime: task.startHasTime)
+            return resolvedAnchorDate(date: task.start, hasTime: task.startHasTime, zone: zone)
         case .defaultDeadline:
-            return resolvedAnchorDate(date: task.deadline, hasTime: task.deadlineHasTime)
+            return resolvedAnchorDate(date: task.deadline, hasTime: task.deadlineHasTime, zone: zone)
         case .offsetStart:
-            guard let anchor = resolvedAnchorDate(date: task.start, hasTime: task.startHasTime),
+            guard let anchor = resolvedAnchorDate(date: task.start, hasTime: task.startHasTime, zone: zone),
                   let offset = spec.offsetMinutes else { return nil }
             return anchor.addingTimeInterval(TimeInterval(offset) * 60)
         case .offsetDeadline:
-            guard let anchor = resolvedAnchorDate(date: task.deadline, hasTime: task.deadlineHasTime),
+            guard let anchor = resolvedAnchorDate(date: task.deadline, hasTime: task.deadlineHasTime, zone: zone),
                   let offset = spec.offsetMinutes else { return nil }
             return anchor.addingTimeInterval(TimeInterval(offset) * 60)
         case .nudge:
@@ -237,13 +276,18 @@ public actor NotificationScheduler: NotificationReconciling {
     }
 
     /// Resolves an anchor date: time-bearing returns the raw date; all-day
-    /// returns the date with the default all-day hour:minute applied in the
-    /// configured time zone (design Section 4 Layer 2).
-    func resolvedAnchorDate(date: Date?, hasTime: Bool) -> Date? {
+    /// returns the date with the default all-day hour:minute applied in `zone`
+    /// (design Section 4 Layer 2).
+    ///
+    /// `LIL-83`: `zone` is the *spec's* zone, not the device's. That is the
+    /// whole fix — two devices in two zones now derive the same instant from
+    /// the same stored inputs, so the `lastFiredAt` dedup guard (which compares
+    /// instants) can finally suppress the second one.
+    func resolvedAnchorDate(date: Date?, hasTime: Bool, zone: TimeZone) -> Date? {
         guard let date else { return nil }
         if hasTime { return date }
         var cal = Calendar(identifier: .gregorian)
-        cal.timeZone = timeZone
+        cal.timeZone = zone
         var components = cal.dateComponents([.year, .month, .day], from: date)
         components.hour = defaultAllDayHour
         components.minute = defaultAllDayMinute
@@ -254,14 +298,18 @@ public actor NotificationScheduler: NotificationReconciling {
     /// `UNCalendarNotificationTrigger` is DST-safe: it stores the components,
     /// not an absolute interval (design Section 8 — "DST: wall-clock time
     /// preserved across transitions via DateComponents-based triggers").
-    func makeCalendarTrigger(for fireDate: Date) -> UNCalendarNotificationTrigger {
+    ///
+    /// The components are derived in `zone` *and* stamped with it, so the OS
+    /// reproduces the intended wall-clock moment even if the device's own zone
+    /// differs from the reminder's.
+    func makeCalendarTrigger(for fireDate: Date, zone: TimeZone) -> UNCalendarNotificationTrigger {
         var cal = Calendar(identifier: .gregorian)
-        cal.timeZone = timeZone
+        cal.timeZone = zone
         var components = cal.dateComponents(
             [.year, .month, .day, .hour, .minute, .second],
             from: fireDate
         )
-        components.timeZone = timeZone
+        components.timeZone = zone
         return UNCalendarNotificationTrigger(dateMatching: components, repeats: false)
     }
 
@@ -475,7 +523,8 @@ public actor NotificationScheduler: NotificationReconciling {
             taskID: taskID,
             kind: kind,
             offsetMinutes: offsetMinutes,
-            fireDate: nil
+            fireDate: nil,
+            scheduledTimeZoneID: timeZone.identifier
         )
         await reconcile(taskID: taskID)
         return id
@@ -545,7 +594,8 @@ public actor NotificationScheduler: NotificationReconciling {
             taskID: taskID,
             kind: .nudge,
             offsetMinutes: nil,
-            fireDate: fireDate
+            fireDate: fireDate,
+            scheduledTimeZoneID: timeZone.identifier
         )
         await reconcile(taskID: taskID)
         return id
@@ -567,9 +617,15 @@ public actor NotificationScheduler: NotificationReconciling {
         }
         let spec = try await specStore.fetch(id: specID)
         let until = action.compute(spec, deliveredAt)
-        try await specStore.update(id: specID) { d in
-            d.snoozedUntil = until
+        // `LIL-90`: device-local. This used to write the synced spec row, which
+        // is what made a remote in-place spec edit reachable at all — the exact
+        // change `RemoteChangeReconciler` could not see.
+        guard let snoozeState else {
+            throw LillistError.validationFailed([
+                .init(field: "snoozeState", message: "this scheduler was built without a SnoozeStateStore and cannot snooze")
+            ])
         }
+        await snoozeState.setSnoozedUntil(until, specID: specID)
         await reconcile(taskID: spec.taskID)
     }
 

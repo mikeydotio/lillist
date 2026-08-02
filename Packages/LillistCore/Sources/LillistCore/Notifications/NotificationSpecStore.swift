@@ -19,7 +19,12 @@ public final class NotificationSpecStore: @unchecked Sendable {
         public var offsetMinutes: Int32?
         public var fireDate: Date?
         public var lastFiredAt: Date?
+        /// Device-local snooze, hydrated from ``SnoozeStateStore`` — **not**
+        /// from Core Data (`LIL-90`). Always `nil` as projected by this store;
+        /// the scheduler fills it in before computing a fire date.
         public var snoozedUntil: Date?
+        /// IANA zone captured at scheduling time; `nil` for pre-`LIL-83` rows.
+        public var scheduledTimeZoneID: String?
         public var createdAt: Date?
 
         public init(
@@ -30,6 +35,7 @@ public final class NotificationSpecStore: @unchecked Sendable {
             fireDate: Date?,
             lastFiredAt: Date?,
             snoozedUntil: Date?,
+            scheduledTimeZoneID: String? = nil,
             createdAt: Date?
         ) {
             self.id = id
@@ -39,6 +45,7 @@ public final class NotificationSpecStore: @unchecked Sendable {
             self.fireDate = fireDate
             self.lastFiredAt = lastFiredAt
             self.snoozedUntil = snoozedUntil
+            self.scheduledTimeZoneID = scheduledTimeZoneID
             self.createdAt = createdAt
         }
     }
@@ -47,15 +54,24 @@ public final class NotificationSpecStore: @unchecked Sendable {
         public var kind: NotificationKind
         public var offsetMinutes: Int32?
         public var fireDate: Date?
+        /// - Warning: **Deprecated (`LIL-90`)** and ignored by ``update(id:_:)``.
+        ///   Snooze is device-local; write it through ``SnoozeStateStore``.
+        ///   Kept on the draft only so existing callers still compile.
         public var snoozedUntil: Date?
+        /// Set to re-anchor this reminder to a different zone (`LIL-83`).
+        public var scheduledTimeZoneID: String?
     }
 
     @discardableResult
+    /// - Parameter scheduledTimeZoneID: IANA zone to anchor this reminder to
+    ///   (`LIL-83`). Callers pass the zone the user is in *now*; `nil` leaves
+    ///   the reminder legacy-resolved through each device's current zone.
     public func add(
         taskID: UUID,
         kind: NotificationKind,
         offsetMinutes: Int32?,
-        fireDate: Date?
+        fireDate: Date?,
+        scheduledTimeZoneID: String? = nil
     ) async throws -> UUID {
         try await withMutationRollback(context: context) { [self] in
             let task = try fetchTask(id: taskID, in: context)
@@ -103,6 +119,7 @@ public final class NotificationSpecStore: @unchecked Sendable {
                 spec.offsetMinutes = nil
             }
             spec.fireDate = fireDate
+            spec.scheduledTimeZoneID = scheduledTimeZoneID
             spec.createdAt = Date()
             return id
         }
@@ -131,7 +148,8 @@ public final class NotificationSpecStore: @unchecked Sendable {
                 kind: m.kind,
                 offsetMinutes: m.offsetMinutes?.int32Value,
                 fireDate: m.fireDate,
-                snoozedUntil: m.snoozedUntil
+                snoozedUntil: nil,
+                scheduledTimeZoneID: m.scheduledTimeZoneID
             )
             block(&draft)
             m.kind = draft.kind
@@ -141,7 +159,10 @@ public final class NotificationSpecStore: @unchecked Sendable {
                 m.offsetMinutes = nil
             }
             m.fireDate = draft.fireDate
-            m.snoozedUntil = draft.snoozedUntil
+            m.scheduledTimeZoneID = draft.scheduledTimeZoneID
+            // `draft.snoozedUntil` is deliberately NOT written back (`LIL-90`).
+            // Snooze is device-local; a synced snooze is what made a remote
+            // in-place spec edit reachable in the first place.
         }
     }
 
@@ -190,6 +211,10 @@ public final class NotificationSpecStore: @unchecked Sendable {
         return m
     }
 
+    /// - Note: `snoozedUntil` is projected as `nil`, never from the Core Data
+    ///   column (`LIL-90`). Snooze is device-local; the scheduler hydrates it
+    ///   from ``SnoozeStateStore``. Reading the column here would resurrect the
+    ///   synced-snooze behaviour this change exists to remove.
     static func record(from m: NotificationSpec) -> SpecRecord {
         SpecRecord(
             id: m.id ?? UUID(),
@@ -198,7 +223,8 @@ public final class NotificationSpecStore: @unchecked Sendable {
             offsetMinutes: m.offsetMinutes?.int32Value,
             fireDate: m.fireDate,
             lastFiredAt: m.lastFiredAt,
-            snoozedUntil: m.snoozedUntil,
+            snoozedUntil: nil,
+            scheduledTimeZoneID: m.scheduledTimeZoneID,
             createdAt: m.createdAt
         )
     }
