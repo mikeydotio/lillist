@@ -65,6 +65,7 @@ enum BackupRecordProjector {
             fireDate: m.fireDate,
             lastFiredAt: m.lastFiredAt,
             snoozedUntil: m.snoozedUntil,
+            scheduledTimeZoneID: m.scheduledTimeZoneID,
             createdAt: m.createdAt
         )
     }

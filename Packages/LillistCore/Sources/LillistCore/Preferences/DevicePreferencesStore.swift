@@ -190,7 +190,35 @@ public actor DevicePreferencesStore {
         }
     }
 
-    // MARK: One-time migration marker
+    // MARK: Time zone (LIL-83)
+
+    private static let lastKnownTimeZoneKey = "lillist.devicePrefs.lastKnownTimeZoneID"
+    /// The IANA zone this device was last seen in, as recorded by
+    /// ``TimeZoneChangeDetector``. Device-local by necessity: syncing it would
+    /// have two travelling devices overwrite each other's idea of "changed".
+    /// `nil` before the first observation.
+    public func lastKnownTimeZoneID() -> String? {
+        defaults.string(forKey: Self.lastKnownTimeZoneKey)
+    }
+    public func setLastKnownTimeZoneID(_ value: String?) {
+        if let value {
+            defaults.set(value, forKey: Self.lastKnownTimeZoneKey)
+        } else {
+            defaults.removeObject(forKey: Self.lastKnownTimeZoneKey)
+        }
+    }
+
+    // MARK: One-time migration markers
+
+    private static let snoozeMigrationFlagKey = "lillist.devicePrefs.snoozePartitionMigrationCompleted"
+    /// `true` once ``SnoozeStatePartitionMigrator`` has copied live snoozes out
+    /// of Core Data into ``SnoozeStateStore`` (`LIL-90`).
+    public var snoozeMigrationCompleted: Bool {
+        defaults.bool(forKey: Self.snoozeMigrationFlagKey)
+    }
+    public func markSnoozeMigrationCompleted() {
+        defaults.set(true, forKey: Self.snoozeMigrationFlagKey)
+    }
 
     private static let migrationFlagKey = "lillist.devicePrefs.cdPartitionMigrationCompleted"
     /// `true` once `AppPreferencesPartitionMigrator` has copied the

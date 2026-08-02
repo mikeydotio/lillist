@@ -45,7 +45,11 @@ struct NotificationSpecStoreTests {
         }
         let record = try await specs.fetch(id: id)
         #expect(record.fireDate == newDate)
-        #expect(record.snoozedUntil == Date(timeIntervalSince1970: 3_000_000))
+        // `LIL-90`: snooze is device-local now, so setting it on the draft is a
+        // deliberate no-op. Asserted rather than deleted — a future change that
+        // quietly starts persisting it again would resurrect the remote
+        // in-place-edit gap. See `SnoozeStatePartitionTests`.
+        #expect(record.snoozedUntil == nil)
     }
 
     @Test("delete removes the spec")

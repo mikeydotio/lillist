@@ -99,6 +99,7 @@
         <attribute name="fireDate" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
         <attribute name="lastFiredAt" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
         <attribute name="snoozedUntil" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="scheduledTimeZoneID" optional="YES" attributeType="String"/>
         <attribute name="createdAt" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
         <relationship name="task" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="LillistTask" inverseName="notificationSpecs" inverseEntity="LillistTask"/>
     </entity>

@@ -213,7 +213,18 @@ public enum ExportSchema {
         public var offsetMinutes: Int32?
         public var fireDate: Date?
         public var lastFiredAt: Date?
+        /// - Warning: **Deprecated (`LIL-90`).** Snooze is device-local and no
+        ///   longer written to Core Data. Retained so an archive written by an
+        ///   older build still decodes, and so a round-trip of such an archive
+        ///   is lossless; import writes it to the vestigial column, where it is
+        ///   inert. Not worth carrying into ``SnoozeStateStore`` — a snooze is
+        ///   transient device state, and by restore time it has almost always
+        ///   elapsed.
         public var snoozedUntil: Date?
+        /// The zone this reminder was scheduled in (`LIL-83`) — user intent, so
+        /// it must survive export/import. Absent in archives written before the
+        /// field existed, which correctly restores as a legacy reminder.
+        public var scheduledTimeZoneID: String?
         public var createdAt: Date?
 
         public init(
@@ -224,6 +235,7 @@ public enum ExportSchema {
             fireDate: Date?,
             lastFiredAt: Date?,
             snoozedUntil: Date?,
+            scheduledTimeZoneID: String? = nil,
             createdAt: Date?
         ) {
             self.id = id
@@ -233,6 +245,7 @@ public enum ExportSchema {
             self.fireDate = fireDate
             self.lastFiredAt = lastFiredAt
             self.snoozedUntil = snoozedUntil
+            self.scheduledTimeZoneID = scheduledTimeZoneID
             self.createdAt = createdAt
         }
     }
