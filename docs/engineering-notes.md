@@ -4913,6 +4913,45 @@ debounce-coalescing test.
   the signal this specific test needs shape (1) or (2) above instead of
   more headroom.
 
+**Correction (2026-08-02, `LIL-94`) — shape (2)'s premise for the `X16`
+boundary was factually wrong, and the "flake" it was applied to was a real
+product defect wearing contention as a disguise.** The paragraph above
+states `spawn.start` is "derived from" the task's persisted `closedAt`. It
+is not, as written at the time: `RecurrenceSpawner.spawnIfNeeded` set
+`spawn.start = series.nextOccurrenceAfter`, a token computed once at
+series-creation time from `seed.start ?? seed.createdAt` and never touched
+by `closedAt` for the instance it produces (`closedAt` only fed the
+*following* occurrence's token). So `6a`'s "fix" swapped one
+independently-sampled clock (`beforeClose`) for another
+(`seed.createdAt`, one hop removed through `nextOccurrenceAfter`) and left
+the actual race intact — with the test's clamped `interval: -3600 → 1s`
+minimum, the assertion needed `tasks.create` → `series.create` →
+`transition` to complete in under one second, which parallel contention can
+and did exceed. LIL-94 caught the repeat flake and traced it to source
+instead of re-hardening the timing.
+
+Worse, the bug the flaky assertion happened to be *checking for* was real:
+an `.afterCompletion` series measures its interval from **series
+creation**, not from **completion**, so a task left open longer than its
+own interval spawns a successor that is already overdue the moment it
+exists — precisely the "permanently overdue on creation" symptom `X16` was
+written to guard against. `TaskStoreRecurrenceSpawnTests.afterCompletionSpawn`
+encoded the same correct intent and was masked the same way, by a 2.0s
+tolerance around the same wrong anchor. Fixed at the origin:
+`RecurrenceSpawner.spawnIfNeeded` now recomputes an `.afterCompletion`
+spawn's `start` from `closed.closedAt` via
+`RecurrenceExpander.nextAfterCompletion` (the same clamp-carrying helper
+`SeriesStore` already used), instead of reusing the stale stored token.
+`.calendar` rules are unaffected — their schedule is absolute and
+`nextOccurrenceAfter` remains correct for them.
+
+**The durable lesson:** before hardening a timing-sensitive assertion by
+comparing against "the value it's derived from," verify that causal chain
+in the actual production code, not from what the assertion's own author
+assumed. A test whose failure rate tracks contention can still be reporting
+a true positive — contention was only widening the window in which a
+pre-existing defect became observable, not creating one out of nothing.
+
 ## 2026-07-29 — v0.19.0 shipped without Sparkle: a version-pinned `sign_update` path, a quarantined replacement, and best-effort signing that swallowed all three
 
 Sequel to the 2026-07-20 issue #55 entry. That one fixed an updater that could

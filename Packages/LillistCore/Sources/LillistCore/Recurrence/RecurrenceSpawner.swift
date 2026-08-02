@@ -73,12 +73,32 @@ enum RecurrenceSpawner {
         spawn.series = series
         spawn.tags = seed.tags
 
+        // LIL-94: `nextDate` (== `series.nextOccurrenceAfter`, read above) is
+        // the right start for a `.calendar` rule — its schedule is absolute,
+        // fixed at series-creation/advance time regardless of when any given
+        // instance actually closes. It is the WRONG start for
+        // `.afterCompletion`: that rule is defined relative to completion,
+        // so its stored token only ever reflects when the series was
+        // created or last advanced, not this closure. Recomputing here from
+        // `closed.closedAt` is what keeps a completion-driven spawn from
+        // landing in the past when the previous instance sat open longer
+        // than its own interval.
+        let scheduledStart: Date
+        switch rule {
+        case .calendar:
+            scheduledStart = nextDate
+        case .afterCompletion(let after):
+            scheduledStart = RecurrenceExpander.nextAfterCompletion(
+                completedAt: closed.closedAt ?? Date(), rule: after
+            )
+        }
+
         if let seedStart = seed.start {
-            let delta = nextDate.timeIntervalSince(seedStart)
-            spawn.start = nextDate
+            let delta = scheduledStart.timeIntervalSince(seedStart)
+            spawn.start = scheduledStart
             spawn.deadline = seed.deadline.map { $0.addingTimeInterval(delta) }
         } else {
-            spawn.start = nextDate
+            spawn.start = scheduledStart
             spawn.deadline = seed.deadline
         }
 
