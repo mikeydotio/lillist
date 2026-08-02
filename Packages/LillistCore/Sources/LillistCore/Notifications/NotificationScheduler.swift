@@ -523,7 +523,8 @@ public actor NotificationScheduler: NotificationReconciling {
             taskID: taskID,
             kind: kind,
             offsetMinutes: offsetMinutes,
-            fireDate: nil
+            fireDate: nil,
+            scheduledTimeZoneID: timeZone.identifier
         )
         await reconcile(taskID: taskID)
         return id
@@ -593,7 +594,8 @@ public actor NotificationScheduler: NotificationReconciling {
             taskID: taskID,
             kind: .nudge,
             offsetMinutes: nil,
-            fireDate: fireDate
+            fireDate: fireDate,
+            scheduledTimeZoneID: timeZone.identifier
         )
         await reconcile(taskID: taskID)
         return id
