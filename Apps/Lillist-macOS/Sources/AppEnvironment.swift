@@ -615,6 +615,22 @@ final class AppEnvironment {
             ?? zone.identifier
     }
 
+
+#if DEBUG
+    /// Unbuffered diagnostic for the opt-in CloudKit schema bootstrap.
+    ///
+    /// `print` writes to stdout, which is **block-buffered** when it is not a
+    /// TTY — so launching the app from a shell with output redirected to a file
+    /// swallows a short line indefinitely. `stderr` is unbuffered, and the
+    /// marker file makes the outcome observable even without a terminal.
+    nonisolated static func emitSchemaDiagnostic(_ message: String) {
+        FileHandle.standardError.write(Data((message + "\n").utf8))
+        let marker = FileManager.default.temporaryDirectory
+            .appendingPathComponent("lillist-schema-init.log")
+        try? message.appending("\n").write(to: marker, atomically: true, encoding: .utf8)
+    }
+#endif
+
     static let appGroupID = "group.app.lillist"
 
     /// Async-friendly constructor. Loads the Core Data store and wires up
@@ -736,6 +752,30 @@ final class AppEnvironment {
         // assumes the store reflects steady state. Best-effort, matching
         // every other step here.
         _ = try? await dataStoreReset.recoverInterruptedReseed()
+#if DEBUG
+        // One-shot CloudKit **Development** schema bootstrap, opt in with
+        // `LILLIST_INIT_CLOUDKIT_SCHEMA=1` in the environment.
+        //
+        // `initializeCloudKitSchema` derives every record type and field from
+        // the Core Data model, so a newly added attribute (e.g. `LIL-83`'s
+        // `scheduledTimeZoneID`) exists in Development *deterministically* —
+        // rather than depending on someone exercising the right UI and hoping
+        // mirroring exported it. Run this, then deploy Development→Production
+        // in the CloudKit Console. See CLAUDE.md, "CloudKit / iCloud sync
+        // environment".
+        //
+        // Deliberately opt-in rather than unconditional: it writes and then
+        // deletes a dummy record for every entity, which is slow and pointless
+        // on an ordinary launch, and it is meaningless outside Development.
+        if ProcessInfo.processInfo.environment["LILLIST_INIT_CLOUDKIT_SCHEMA"] == "1" {
+            do {
+                try CloudKitSchemaInitializer.initializeIfNeeded(persistence: persistence)
+                Self.emitSchemaDiagnostic("[lillist-schema] CloudKit Development schema initialized OK")
+            } catch {
+                Self.emitSchemaDiagnostic("[lillist-schema] FAILED: \(error)")
+            }
+        }
+#endif
         // Data-sync-hardening X1: record the store-migration outcome
         // computed in make() (before breadcrumbs existed) now that the
         // buffer is available — so a both-stores-populated conflict or a
