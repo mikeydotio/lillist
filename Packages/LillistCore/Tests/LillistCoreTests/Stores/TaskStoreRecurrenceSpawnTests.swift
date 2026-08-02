@@ -174,13 +174,24 @@ struct TaskStoreRecurrenceSpawnTests {
         let rule = RecurrenceRule.afterCompletion(.init(interval: 86_400 * 3))
         _ = try await series.create(fromSeedTask: id, rule: rule)
 
-        let beforeClose = Date()
         try await tasks.transition(id: id, to: .closed)
+
+        // LIL-94: compare against the seed's own PERSISTED closedAt rather
+        // than an independently-sampled `beforeClose` — spawn.start is
+        // derived from closedAt (RecurrenceSpawner.swift), so the two
+        // values are now causally related and the comparison can be exact
+        // instead of tolerance-masked. The previous 2.0s tolerance is what
+        // let this test keep passing while the spawn was actually anchored
+        // on series-creation time rather than completion time (see the
+        // sibling X16 end-to-end tests for the defect this masked).
+        let seed = try await tasks.fetch(id: id)
+        let closedAt = try #require(seed.closedAt)
 
         let roots = try await tasks.children(of: nil).filter { $0.title == "Three days after" }
         #expect(roots.count == 2)
-        let spawn = roots.first { $0.status == .todo }!
-        let expected = beforeClose.addingTimeInterval(86_400 * 3)
-        #expect(abs(spawn.start!.timeIntervalSince(expected)) < 2.0)
+        let spawn = try #require(roots.first { $0.status == .todo })
+        let start = try #require(spawn.start)
+        let expected = closedAt.addingTimeInterval(86_400 * 3)
+        #expect(abs(start.timeIntervalSince(expected)) < 0.001)
     }
 }
