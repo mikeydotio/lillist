@@ -5069,3 +5069,66 @@ once the question was asked of the **build artifact** instead of the source.
   declares zero residue, re-read the intake's own list of observations against
   it — an unexplained clue is either a second defect or a misread, and both are
   worth knowing before shipping.
+
+## 2026-08-01 — Sync the intent, keep the machinery: reminders carry their zone, snooze goes device-local (LIL-83 + LIL-90)
+
+Two long-parked residuals turned out to be one change, and the reason is worth
+remembering: **the fix for one activated the other.**
+
+- **LIL-83's prompt is LIL-90's trigger.** LIL-90 (a remote in-place
+  `NotificationSpec` edit is invisible to `RemoteChangeReconciler`, which gated
+  `UPDATE` on `lastFiredAt` alone) was filed as *latent* — correctly, since
+  nothing could edit an existing spec from another device. LIL-83's fix
+  introduces exactly that caller: a "you've changed zones, reschedule?" prompt
+  that rewrites `scheduledTimeZoneID` on existing rows. Ship LIL-83 alone and a
+  user who accepts on their iPhone keeps firing on the old zone everywhere else.
+  **When closing a defect as "unreachable", write down what would make it
+  reachable — then re-read that list before starting any adjacent feature.**
+  LIL-90's own trigger line ("any new caller of `NotificationSpecStore.update`
+  reachable from a different device") is what caught this.
+- **Storing the zone *with the reminder* beat a global "home time zone."** The
+  council had recommended a synced `AppPreferences.homeTimeZone`. Per-reminder
+  won on three counts: there is no global value to keep correct, no question of
+  what a device that disagrees with it should do, and the per-task zones we may
+  want later become a pure UI change with no second migration. The general
+  shape: when a value describes *an event*, attach it to the event, not to the
+  account.
+- **Partitioning state by "intent vs machinery" is the reusable rule.** Synced:
+  what the user asked for (anchor, offset, the zone they asked in). Device-local:
+  how this device is currently honouring it (snooze, last-known zone). Snooze
+  was only ever synced by accident of living on the same row, and that accident
+  *was* the LIL-90 bug. Moving it made the failure **unrepresentable** rather
+  than merely unreachable — strictly better than widening the reconciler to
+  cover it, which is what we would have done on autopilot.
+- **Do not backfill a value the user never supplied.** The tempting move was to
+  stamp every pre-existing reminder with the device's current zone. That invents
+  intent, and worse, running the backfill on two devices in two zones would have
+  manufactured the exact cross-device disagreement the change exists to remove.
+  Legacy rows keep the old behaviour until something rewrites them.
+- **CloudKit cannot delete a field, so "stop using it" is the only retirement.**
+  `snoozedUntil` stays in the deployed schema forever. It is never written and
+  never projected (`NotificationSpecStore.record(from:)` hard-codes `nil`), so a
+  peer on an older build writing it is inert rather than harmful. The
+  `SpecDraft.snoozedUntil` property survives too, ignored by `update` — with a
+  test asserting the ignore, because a future change that quietly starts
+  persisting it again would silently resurrect the gap.
+- **The reconciler allow-list is named, not "any property."**
+  `scheduleAffectingSpecProperties` is a claim about scheduling semantics, so
+  adding to it must be deliberate; "reconcile on any change" would make unrelated
+  attribute churn trigger notification work.
+- **The export completeness gate earned its keep.** Adding a model attribute
+  without threading it through export/import failed
+  `ExportSchemaCompletenessTests` immediately. That test exists because X3 found
+  `NotificationSpec` had *zero* export mapping; it is now also a design nudge —
+  a new synced field is user data until proven otherwise.
+- **Foreground, not `NSSystemTimeZoneDidChange`, is the arrival signal.** The
+  raw notification fires mid-flight with the phone in a pocket, and a layover
+  would prompt about a zone the user is about to leave. Foregrounding *in* the
+  new zone means they got there. Also: `TimeZone.current` needs no permission —
+  unlike location, there is nothing to request.
+- **An alert's dismiss path is a real answer.** Swipe-away/Escape routes to
+  *keep*, not to nothing; otherwise the prompt returns on every foreground until
+  the user happens to tap a button. And both buttons name their outcome ("Use
+  Los Angeles Times" / "Keep Original Times") because both choices are
+  legitimate — a generic "Reschedule" would make one of them the default by
+  wording alone.
