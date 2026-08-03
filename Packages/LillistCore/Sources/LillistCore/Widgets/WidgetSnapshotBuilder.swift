@@ -17,8 +17,11 @@ import Foundation
 public struct WidgetSnapshotBuilder: Sendable {
     /// Default number of rows persisted per filter. Enough for the largest
     /// widget family (systemExtraLarge / macOS) with margin; the widget slices
-    /// this down per family.
-    public static let defaultRowCap = 16
+    /// this down per family. `LIL-95`: raised from 16 to 24 so dimmed context
+    /// rows (which consume this budget too — otherwise a deep tree could
+    /// silently overflow a family's visible area) can't crowd out real
+    /// matches on `extraLarge` (`WidgetLayout.maxRows == 15`).
+    public static let defaultRowCap = 24
 
     private let smartFilterStore: any WidgetSnapshotSource
     private let taskLookup: any WidgetTaskLookup
@@ -33,8 +36,7 @@ public struct WidgetSnapshotBuilder: Sendable {
     ///   Required, not defaulted: a caller that forgot to wire this would
     ///   otherwise silently ship a widget that can never render context rows,
     ///   which is exactly the kind of footgun a compiler-enforced parameter
-    ///   prevents. Unused by this commit — `LIL-95`'s tree-shaping consumer
-    ///   lands next.
+    ///   prevents.
     public init(
         smartFilterStore: any WidgetSnapshotSource,
         taskLookup: any WidgetTaskLookup,
@@ -125,6 +127,18 @@ public struct WidgetSnapshotBuilder: Sendable {
         snapshotStore.pruneFilters(keeping: Set(filters.map(\.id)).union([WidgetSnapshot.unfilteredID]))
     }
 
+    /// One target's fully-ordered match list, collected but not yet
+    /// tree-shaped or written — computed ahead of the (single, batched)
+    /// parent lookup so every target's missing-parent ids can be unioned
+    /// into one read.
+    private struct PendingTarget {
+        let filterID: UUID
+        let filterName: String
+        let tintHex: String?
+        let ordered: [TaskStore.TaskRecord]
+        let openCount: Int
+    }
+
     /// Shared body: write per-filter snapshots for `filterIDs` (or every
     /// filter this read sees, when `nil`) plus the sentinel when in scope.
     /// Returns the full filter list this read produced (for
@@ -139,9 +153,9 @@ public struct WidgetSnapshotBuilder: Sendable {
         // sink to the bottom of whichever widget surfaced it.
         //
         // A failure here aborts the whole pass rather than degrading to an empty
-        // grace set: this list feeds `ordered` in every `writeSnapshot` call, so
-        // swallowing the error would under-report `totalCount` on *each* snapshot
-        // written this pass — wrong data, silently, everywhere.
+        // grace set: this list feeds `ordered` in every target, so swallowing
+        // the error would under-report `totalCount` on *each* snapshot written
+        // this pass — wrong data, silently, everywhere.
         guard let closedToday = try? await smartFilterStore.evaluateGroup(
             Self.closedTodayGroup,
             sort: .closedAt,
@@ -157,52 +171,102 @@ public struct WidgetSnapshotBuilder: Sendable {
             wantedSaved = filters
         }
 
+        // Collect every target's ordered band BEFORE writing anything, so the
+        // missing-parent ids across ALL of them can be resolved in one batched
+        // lookup rather than one per filter.
+        var pending: [PendingTarget] = []
         for filter in wantedSaved {
             guard let matches = try? await smartFilterStore.evaluateFilter(id: filter.id) else { continue }
-            writeSnapshot(
+            let (ordered, openCount) = Self.orderedBands(
+                matches: matches,
+                closedToday: closedToday,
+                sortField: filter.sortField
+            )
+            pending.append(PendingTarget(
                 filterID: filter.id,
                 filterName: filter.name,
                 tintHex: filter.tintColor,
-                sortField: filter.sortField,
-                matches: matches,
-                closedToday: closedToday
-            )
+                ordered: ordered,
+                openCount: openCount
+            ))
         }
 
         // The "No Filter" (all tasks) sentinel: open tasks (its base query
         // excludes closed so historical done tasks don't pile up), plus today's
         // grace set at the bottom.
         //
-        // `guard let … else { return filters }`, NOT `(try?) ?? []`: a thrown
-        // read and a genuinely empty task list are different facts, and only one
-        // of them may be written. The previous `?? []` conflated them and
-        // persisted a *failure* as an authoritative empty snapshot — the widget
-        // then rendered a card with no rows and no way to tell it was wrong.
-        // Failing to write leaves the prior snapshot intact, which is stale at
-        // worst; writing zeros is wrong. This matches the saved-filter loop
-        // above, which already fails safe via `continue`.
-        if filterIDs == nil || filterIDs?.contains(WidgetSnapshot.unfilteredID) == true {
-            guard let openMatches = try? await smartFilterStore.evaluateGroup(
-                Self.unfilteredOpenGroup,
-                sort: .manualPosition,
-                ascending: true
-            ) else { return filters }
-            writeSnapshot(
+        // A thrown read and a genuinely empty task list are different facts,
+        // and only one of them may be written: the previous `?? []` conflated
+        // them and persisted a *failure* as an authoritative empty snapshot —
+        // the widget then rendered a card with no rows and no way to tell it
+        // was wrong. So on failure the sentinel is simply left out of `pending`
+        // — every saved-filter target collected above still gets written below;
+        // only the sentinel's own write is skipped, matching the saved-filter
+        // loop's per-filter `continue`.
+        if filterIDs == nil || filterIDs?.contains(WidgetSnapshot.unfilteredID) == true,
+           let openMatches = try? await smartFilterStore.evaluateGroup(
+               Self.unfilteredOpenGroup,
+               sort: .manualPosition,
+               ascending: true
+           ) {
+            let (ordered, openCount) = Self.orderedBands(
+                matches: openMatches,
+                closedToday: closedToday,
+                sortField: .manualPosition
+            )
+            pending.append(PendingTarget(
                 filterID: WidgetSnapshot.unfilteredID,
                 filterName: "",
                 tintHex: nil,
-                sortField: .manualPosition,
-                matches: openMatches,
-                closedToday: closedToday
+                ordered: ordered,
+                openCount: openCount
+            ))
+        }
+
+        // Union the missing parent ids across every collected target and
+        // resolve them in ONE batched read. `LIL-95`: unlike the grace-set
+        // read above, a failure here does NOT abort the pass — a missing
+        // context lookup can't corrupt `totalCount`/`openCount` (computed from
+        // `ordered` alone, untouched by tree-shaping), so it degrades to "no
+        // context available": every orphan flattens to root and takes
+        // `WidgetRowPlan`'s "parent not shown" marker, i.e. the pre-`LIL-95`
+        // flat behavior, rather than losing the whole pass over it.
+        var missingIDs: Set<UUID> = []
+        for target in pending {
+            let memberIDs = Set(target.ordered.map(\.id))
+            for task in target.ordered {
+                if let parentID = task.parentID, !memberIDs.contains(parentID) {
+                    missingIDs.insert(parentID)
+                }
+            }
+        }
+        let contextByID: [UUID: TaskStore.TaskRecord]
+        if missingIDs.isEmpty {
+            contextByID = [:]
+        } else if let found = try? await taskLookup.lookupTasks(ids: Array(missingIDs)) {
+            contextByID = Dictionary(uniqueKeysWithValues: found.map { ($0.id, $0) })
+        } else {
+            contextByID = [:]
+        }
+
+        for target in pending {
+            writeSnapshot(
+                filterID: target.filterID,
+                filterName: target.filterName,
+                tintHex: target.tintHex,
+                ordered: target.ordered,
+                openCount: target.openCount,
+                contextByID: contextByID
             )
         }
 
         return filters
     }
 
-    /// Order a target's tasks (open first, closed-today grace set last) and
-    /// persist the snapshot. `matches` is already in the target's sort order;
-    /// `closedToday` is the shared grace set.
+    /// Split a target's matches into the open/closed-in-match/grace bands and
+    /// concatenate them into one ranked list — the flat order that fed
+    /// `writeSnapshot` before `LIL-95`, now the RANK TABLE `shapeRows` groups
+    /// into a tree rather than the literal output.
     ///
     /// - Open tasks keep the target's sort *when it is stable under a status
     ///   transition*; a volatile sort (`.modifiedAt`/`.status`, or the No-Filter
@@ -213,14 +277,11 @@ public struct WidgetSnapshotBuilder: Sendable {
     ///   Closed" filter) are kept in the target's sort, sunk below the open rows.
     /// - Tasks closed today that the target filtered out (the just-completed
     ///   ones) are appended at the very bottom.
-    private func writeSnapshot(
-        filterID: UUID,
-        filterName: String,
-        tintHex: String?,
-        sortField: SortField,
+    private static func orderedBands(
         matches: [TaskStore.TaskRecord],
-        closedToday: [TaskStore.TaskRecord]
-    ) {
+        closedToday: [TaskStore.TaskRecord],
+        sortField: SortField
+    ) -> (ordered: [TaskStore.TaskRecord], openCount: Int) {
         let matchIDs = Set(matches.map(\.id))
         let openRaw = matches.filter { $0.status.isClosed == false }
         let open = sortField.isStableUnderStatusTransition
@@ -233,21 +294,142 @@ public struct WidgetSnapshotBuilder: Sendable {
             }
         let closedInMatches = matches.filter { $0.status.isClosed }
         let grace = closedToday.filter { matchIDs.contains($0.id) == false }
-        let ordered = open + closedInMatches + grace
+        return (open + closedInMatches + grace, open.count)
+    }
 
-        let rows = ordered.prefix(rowCap).map {
-            WidgetSnapshot.Row(id: $0.id, title: $0.title, status: $0.status)
-        }
+    /// Tree-shapes `ordered` (a target's flat rank table — see
+    /// `orderedBands`) into a depth-clamped outline and persists it, capped at
+    /// `rowCap` via the shared ``WidgetRowPlan`` (so a truncation here obeys
+    /// the same stranded-context-row rule as the card view's own re-cap).
+    private func writeSnapshot(
+        filterID: UUID,
+        filterName: String,
+        tintHex: String?,
+        ordered: [TaskStore.TaskRecord],
+        openCount: Int,
+        contextByID: [UUID: TaskStore.TaskRecord]
+    ) {
+        let shaped = Self.shapeRows(ordered: ordered, contextByID: contextByID)
+        let capped = WidgetRowPlan.plan(rows: shaped, limit: rowCap, allowsContextRows: true).map(\.row)
+
         let snapshot = WidgetSnapshot(
             filterID: filterID,
             filterName: filterName,
             tintHex: tintHex,
             generatedAt: Date(),
             totalCount: ordered.count,
-            openCount: open.count,
-            tasks: Array(rows)
+            openCount: openCount,
+            tasks: capped
         )
         try? snapshotStore.write(snapshot)
+    }
+
+    /// Groups a target's flat rank table (`ordered`) into a depth-clamped
+    /// outline: a task nests under its true parent whenever that parent is
+    /// rendered — either a fellow member of `ordered` (wherever its own band
+    /// landed it), or a non-matching parent resolved via `contextByID` and
+    /// rendered as a dimmed context row. A parent that's neither promotes its
+    /// child to the root level.
+    ///
+    /// Context resolution is **one level only**: a context row's own parent is
+    /// never additionally looked up (`contextByID` holds direct parents of
+    /// `ordered` members, nothing deeper), so a context row is itself a root
+    /// unless its parent happens to already be a member — matching the
+    /// decision that a subtask's non-matching ancestor chain nests at most one
+    /// synthetic row deep.
+    ///
+    /// A node's sort key is its own rank in `ordered` when it's a member, or
+    /// (recursively) its best-ranked descendant's when it's a context row —
+    /// so a group sorts by its most prominent member, which is what lets a
+    /// closed parent with an open child stay grouped with that child instead
+    /// of sinking into the closed band alone. `internal`, not `private`: unit
+    /// tested directly (`WidgetSnapshotNestingTests`) without going through
+    /// the async store plumbing.
+    static func shapeRows(
+        ordered: [TaskStore.TaskRecord],
+        contextByID: [UUID: TaskStore.TaskRecord]
+    ) -> [WidgetSnapshot.Row] {
+        struct Node {
+            let task: TaskStore.TaskRecord
+            let isContext: Bool
+            let memberIndex: Int?
+        }
+
+        let memberIDs = Set(ordered.map(\.id))
+        var nodes: [UUID: Node] = [:]
+        for (index, task) in ordered.enumerated() {
+            nodes[task.id] = Node(task: task, isContext: false, memberIndex: index)
+        }
+        for task in ordered {
+            guard let parentID = task.parentID,
+                  !memberIDs.contains(parentID),
+                  nodes[parentID] == nil,
+                  let contextTask = contextByID[parentID]
+            else { continue }
+            nodes[parentID] = Node(task: contextTask, isContext: true, memberIndex: nil)
+        }
+
+        func displayParentID(of id: UUID) -> UUID? {
+            guard let parentID = nodes[id]?.task.parentID, nodes[parentID] != nil else { return nil }
+            return parentID
+        }
+
+        var childrenOf: [UUID: [UUID]] = [:]
+        var rootIDs: [UUID] = []
+        for id in nodes.keys {
+            if let parentID = displayParentID(of: id) {
+                childrenOf[parentID, default: []].append(id)
+            } else {
+                rootIDs.append(id)
+            }
+        }
+
+        // Cycle guard: writing the cache slot BEFORE recursing means a
+        // pathological/corrupt cyclic parent chain (which `TaskStore` itself
+        // prevents at mutation time, but a stale or externally-written
+        // snapshot source cannot be assumed to uphold) resolves to `Int.max`
+        // on re-entry instead of recursing forever.
+        var sortKeyCache: [UUID: Int] = [:]
+        func sortKey(_ id: UUID) -> Int {
+            if let cached = sortKeyCache[id] { return cached }
+            sortKeyCache[id] = Int.max
+            var best = nodes[id]?.memberIndex ?? Int.max
+            for child in childrenOf[id] ?? [] {
+                best = min(best, sortKey(child))
+            }
+            sortKeyCache[id] = best
+            return best
+        }
+        for id in nodes.keys { _ = sortKey(id) }
+
+        func sorted(_ ids: [UUID]) -> [UUID] {
+            ids.sorted { a, b in
+                let ka = sortKey(a), kb = sortKey(b)
+                return ka != kb ? ka < kb : a.uuidString < b.uuidString
+            }
+        }
+
+        var rows: [WidgetSnapshot.Row] = []
+        rows.reserveCapacity(nodes.count)
+        func walk(_ id: UUID, depth: Int) {
+            guard let node = nodes[id] else { return }
+            rows.append(WidgetSnapshot.Row(
+                id: node.task.id,
+                title: node.task.title,
+                status: node.task.status,
+                parentID: node.task.parentID,
+                depth: depth,
+                isContext: node.isContext
+            ))
+            let childDepth = min(depth + 1, 2)
+            for child in sorted(childrenOf[id] ?? []) {
+                walk(child, depth: childDepth)
+            }
+        }
+        for rootID in sorted(rootIDs) {
+            walk(rootID, depth: 0)
+        }
+        return rows
     }
 
     // MARK: - Ad-hoc predicate groups

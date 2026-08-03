@@ -45,16 +45,25 @@ public struct WidgetAccessoryRectangularView: View {
     public var snapshot: WidgetSnapshot
     public init(snapshot: WidgetSnapshot) { self.snapshot = snapshot }
 
+    /// `LIL-95`: this accessory renders bare titles with no chip, no indent,
+    /// and no marker — nesting isn't meaningful at this size, but a dimmed
+    /// **context** row (a non-match shown only for the card families' tree)
+    /// would otherwise render here indistinguishable from a real match. Filter
+    /// it out rather than teach this view about `WidgetRowPlan`.
+    private var matchedTasks: [WidgetSnapshot.Row] {
+        snapshot.tasks.filter { !$0.isContext }
+    }
+
     public var body: some View {
         VStack(alignment: .leading, spacing: 2) {
             Text(snapshot.filterName)
                 .font(.headline)
                 .lineLimit(1)
-            if snapshot.tasks.isEmpty {
+            if matchedTasks.isEmpty {
                 Text("All clear", bundle: .module)
                     .font(.caption)
             } else {
-                ForEach(snapshot.tasks.prefix(2)) { row in
+                ForEach(matchedTasks.prefix(2)) { row in
                     Text(row.title)
                         .font(.caption)
                         .lineLimit(1)

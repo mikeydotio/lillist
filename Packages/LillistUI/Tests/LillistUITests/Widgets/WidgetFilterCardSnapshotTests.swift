@@ -37,6 +37,41 @@ final class WidgetFilterCardSnapshotTests: RecordableSnapshotTestCase {
         )
     }
 
+    // MARK: - LIL-95: nesting fixtures
+
+    /// Builds a snapshot directly from pre-shaped `Row`s (depth/isContext/
+    /// parentID already set — the shape ``WidgetSnapshotBuilder/shapeRows``
+    /// would produce) rather than the flat `(title, status)` tuples `fixture`
+    /// takes, since nesting needs those three extra fields.
+    private func nestedFixture(
+        name: String = "Todayish",
+        rows: [WidgetSnapshot.Row],
+        total: Int? = nil
+    ) -> WidgetSnapshot {
+        let matched = rows.filter { !$0.isContext }
+        let open = matched.filter { $0.status.isClosed == false }.count
+        return WidgetSnapshot(
+            filterID: UUID(),
+            filterName: name,
+            tintHex: "#8B45E8",
+            generatedAt: Date(timeIntervalSince1970: 1_700_000_000),
+            totalCount: total ?? matched.count,
+            openCount: open,
+            tasks: rows
+        )
+    }
+
+    private func row(
+        _ title: String,
+        status: Status = .todo,
+        parentID: UUID? = nil,
+        depth: Int = 0,
+        isContext: Bool = false,
+        id: UUID = UUID()
+    ) -> WidgetSnapshot.Row {
+        .init(id: id, title: title, status: status, parentID: parentID, depth: depth, isContext: isContext)
+    }
+
     private var referenceRows: [(String, Status)] {
         [
             ("Submit feedback", .todo),
@@ -126,6 +161,81 @@ final class WidgetFilterCardSnapshotTests: RecordableSnapshotTestCase {
             ("Schedule dentist visit", .todo),
         ]
         assertCard(fixture(rows: rows, total: 14), layout: .large, scheme: .dark, size: largeSize, named: "large-full-dark")
+    }
+
+    // MARK: - LIL-95: nesting
+
+    /// A matching parent with two matching children nests normally — no
+    /// context row needed, since the parent itself is on the card.
+    func testNested_large_dark() {
+        let parent = row("Ship v0.21")
+        let snapshot = nestedFixture(rows: [
+            parent,
+            row("Write release notes", parentID: parent.id, depth: 1),
+            row("Tag the build", status: .started, parentID: parent.id, depth: 1),
+            row("Buy milk"),
+        ])
+        assertCard(snapshot, layout: .large, scheme: .dark, size: largeSize, named: "nested-large-dark")
+    }
+
+    func testNested_medium_dark() {
+        let parent = row("Ship v0.21")
+        let snapshot = nestedFixture(rows: [
+            parent,
+            row("Write release notes", parentID: parent.id, depth: 1),
+            row("Buy milk"),
+        ])
+        assertCard(snapshot, layout: .medium, scheme: .dark, size: mediumSize, named: "nested-medium-dark")
+    }
+
+    /// A subtask whose parent doesn't match the filter renders WITH the
+    /// parent shown as a dimmed, non-interactive context row above it.
+    func testContextRow_dark() {
+        let parent = row("Ship v0.21", isContext: true)
+        let snapshot = nestedFixture(rows: [
+            parent,
+            row("Write release notes", parentID: parent.id, depth: 1),
+            row("Tag the build", status: .started, parentID: parent.id, depth: 1),
+            row("Buy milk"),
+        ], total: 3)
+        assertCard(snapshot, layout: .large, scheme: .dark, size: largeSize, named: "context-row-dark")
+    }
+
+    /// A subtask whose parent isn't shown at all (context lookup couldn't
+    /// resolve it) flattens to the root level and shows the "parent not
+    /// shown here" triangle marker instead of nesting.
+    func testOrphanMarker_dark() {
+        let unresolvedParentID = UUID()
+        let snapshot = nestedFixture(rows: [
+            row("Orphaned subtask", parentID: unresolvedParentID),
+            row("Buy milk"),
+        ])
+        assertCard(snapshot, layout: .large, scheme: .dark, size: largeSize, named: "orphan-marker-dark")
+    }
+
+    /// Depth clamps at tier 2 — a 4-generation chain stops indenting further
+    /// after the second tier rather than continuing to march right.
+    func testDepthClamp_dark() {
+        let root = row("Root")
+        let child = row("Child", parentID: root.id, depth: 1)
+        let grandchild = row("Grandchild", parentID: child.id, depth: 2)
+        let greatGrandchild = row("Great-grandchild", parentID: grandchild.id, depth: 2)
+        let snapshot = nestedFixture(rows: [root, child, grandchild, greatGrandchild])
+        assertCard(snapshot, layout: .large, scheme: .dark, size: largeSize, named: "depth-clamp-dark")
+    }
+
+    /// `.small` never emits context rows (`WidgetLayout.allowsContextRows ==
+    /// false`): the orphan flattens to root and gets the triangle marker
+    /// instead of displacing a real match with a dimmed non-match.
+    func testSmallNested_dark() {
+        let unresolvedParentID = UUID()
+        let visibleParent = row("Ship v0.21")
+        let snapshot = nestedFixture(rows: [
+            row("Orphaned subtask", parentID: unresolvedParentID),
+            visibleParent,
+            row("Write release notes", parentID: visibleParent.id, depth: 1),
+        ])
+        assertCard(snapshot, layout: .small, scheme: .dark, size: smallSize, named: "small-nested-dark")
     }
 }
 #endif

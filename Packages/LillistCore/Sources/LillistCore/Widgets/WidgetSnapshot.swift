@@ -9,16 +9,61 @@ import Foundation
 /// the headless `lillist-cli`, which cannot link WidgetKit. See the
 /// WidgetKit-not-in-Core rule in `CLAUDE.md` / `docs/engineering-notes.md`.
 public struct WidgetSnapshot: Codable, Sendable, Equatable {
-    /// One task row. Minimal on purpose — title + status drive the glyph.
+    /// One task row. `LIL-95` added the three trailing fields so the widget can
+    /// render a correct outline instead of a flat peer list.
     public struct Row: Codable, Sendable, Equatable, Identifiable {
         public var id: UUID
         public var title: String
         public var status: Status
+        /// This task's true parent, regardless of whether that parent is
+        /// itself on the card. `nil` for a root task. Drives whether a row
+        /// needs the "parent not shown here" marker (``WidgetRowPlan``).
+        public var parentID: UUID?
+        /// Display indent tier, already clamped to `0...2` by
+        /// ``WidgetSnapshotBuilder`` — a depth-3+ descendant renders at tier 2
+        /// rather than continuing to indent.
+        public var depth: Int
+        /// `true` when this row is a non-matching parent rendered only so its
+        /// matching descendants have somewhere to nest — dimmed and
+        /// non-interactive. Never counted in `totalCount`/`openCount`.
+        public var isContext: Bool
 
-        public init(id: UUID, title: String, status: Status) {
+        public init(
+            id: UUID,
+            title: String,
+            status: Status,
+            parentID: UUID? = nil,
+            depth: Int = 0,
+            isContext: Bool = false
+        ) {
             self.id = id
             self.title = title
             self.status = status
+            self.parentID = parentID
+            self.depth = depth
+            self.isContext = isContext
+        }
+
+        // Hand-written `init(from:)` so a pre-`LIL-95` cache file — written
+        // before `parentID`/`depth`/`isContext` existed — decodes cleanly
+        // instead of throwing `keyNotFound` (which `WidgetSnapshotStore.read`
+        // would otherwise swallow into an indistinguishable-from-missing
+        // `nil`). Swift's synthesized `init(from:)` does NOT fall back to a
+        // property's default when a key is absent, so this must be explicit.
+        // `encode(to:)` stays synthesized — every field always exists on
+        // write, so a matching `CodingKeys` here just documents that.
+        public init(from decoder: Decoder) throws {
+            let c = try decoder.container(keyedBy: CodingKeys.self)
+            id = try c.decode(UUID.self, forKey: .id)
+            title = try c.decode(String.self, forKey: .title)
+            status = try c.decode(Status.self, forKey: .status)
+            parentID = try c.decodeIfPresent(UUID.self, forKey: .parentID)
+            depth = try c.decodeIfPresent(Int.self, forKey: .depth) ?? 0
+            isContext = try c.decodeIfPresent(Bool.self, forKey: .isContext) ?? false
+        }
+
+        private enum CodingKeys: String, CodingKey {
+            case id, title, status, parentID, depth, isContext
         }
     }
 

@@ -46,6 +46,48 @@ public struct WidgetQuickAddButton: View {
     }
 }
 
+/// `LIL-95`: a non-matching parent, rendered only so its matching
+/// descendants have somewhere to nest. Deliberately **not**
+/// `WidgetTaskRowView` — it never receives a `rowLeading`/`rowURL` closure, so
+/// it structurally cannot become a `Button(intent:)` or a `Link`: tapping a
+/// task that didn't match the filter would be surprising, so the tap falls
+/// through to the whole-widget `.widgetURL` (opens the filter) instead.
+private struct WidgetContextRowView: View {
+    let row: WidgetSnapshot.Row
+    let depth: Int
+    let indentPerLevel: CGFloat
+
+    var body: some View {
+        HStack(spacing: LillistSpacing.m) {
+            if depth > 0 {
+                // See `WidgetTaskRowView`'s identical gutter: `height: 0`
+                // stops this `Color.clear` from greedily filling the row's
+                // vertical space in this plain-`VStack` card.
+                Color.clear.frame(width: CGFloat(depth) * indentPerLevel, height: 0)
+            }
+            WidgetStatusChip(status: row.status)
+            Text(row.title)
+                .font(LillistTypography.body)
+                .foregroundStyle(LillistColor.textStrong)
+                .lineLimit(1)
+                .truncationMode(.tail)
+            Spacer(minLength: 0)
+        }
+        // The app's one canonical "recede" opacity (`RainbowCard`'s done-row
+        // fade) — reused here so a context row reads as present-but-inert by
+        // the same visual language the app already uses for de-emphasis.
+        .opacity(0.62)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(accessibilityLabel)
+    }
+
+    private var accessibilityLabel: String {
+        let status = StatusGlyph.accessibilityLabel(for: row.status)
+        let suffix = String(localized: "not part of this filter", bundle: .module)
+        return "\(row.title), \(status), \(suffix)"
+    }
+}
+
 /// The signature widget surface: a rainbow-bordered dark card holding a filter's
 /// header + task rows + quick-add button. Drives the `systemSmall/Medium/Large/
 /// ExtraLarge` families (Lock Screen accessories use separate views).
@@ -87,8 +129,12 @@ public struct WidgetFilterCardView<RowLeading: View>: View {
         )
     }
 
-    private var visibleRows: [WidgetSnapshot.Row] {
-        Array(snapshot.tasks.prefix(layout.maxRows))
+    /// `LIL-95`: re-caps the (already tree-shaped) snapshot at this family's
+    /// `maxRows` via the same shared planner ``WidgetSnapshotBuilder`` used to
+    /// cap the persisted snapshot at `rowCap` — one implementation of the
+    /// stranded-context-row and re-leveling rules for both cap points.
+    private var visibleItems: [WidgetRowPlan.Item] {
+        WidgetRowPlan.plan(rows: snapshot.tasks, limit: layout.maxRows, allowsContextRows: layout.allowsContextRows)
     }
 
     public var body: some View {
@@ -97,12 +143,12 @@ public struct WidgetFilterCardView<RowLeading: View>: View {
             if snapshot.tasks.isEmpty {
                 emptyState
             } else {
-                ForEach(Array(visibleRows.enumerated()), id: \.element.id) { index, row in
-                    WidgetTaskRowView(row: row, titleURL: rowURL(row)) { rowLeading(row) }
+                ForEach(Array(visibleItems.enumerated()), id: \.element.id) { index, item in
+                    rowView(for: item)
                         // Only the bottom row shares the "+"'s horizontal band, so
                         // inset just its trailing edge to keep the title clear of
                         // the overlaid glyph; every row above spans full width.
-                        .padding(.trailing, trailingInset(isLast: index == visibleRows.count - 1))
+                        .padding(.trailing, trailingInset(isLast: index == visibleItems.count - 1))
                 }
             }
             // Top-anchor the rows when there are fewer than fill height; the
@@ -133,6 +179,26 @@ public struct WidgetFilterCardView<RowLeading: View>: View {
     private func trailingInset(isLast: Bool) -> CGFloat {
         guard isLast, layout.showsQuickAdd else { return 0 }
         return 30 + LillistSpacing.m
+    }
+
+    /// A context row renders itself — dimmed, no `rowLeading`/`rowURL` call —
+    /// so `AdvanceTaskStatusFromWidget` can never be handed a row it didn't
+    /// match. Every other row is unchanged from before `LIL-95`: at `depth: 0`
+    /// with no marker, `WidgetTaskRowView` renders byte-identically to the
+    /// pre-nesting layout.
+    @ViewBuilder
+    private func rowView(for item: WidgetRowPlan.Item) -> some View {
+        if item.row.isContext {
+            WidgetContextRowView(row: item.row, depth: item.depth, indentPerLevel: layout.indentPerLevel)
+        } else {
+            WidgetTaskRowView(
+                row: item.row,
+                titleURL: rowURL(item.row),
+                depth: item.depth,
+                showsParentMarker: item.showsParentMarker,
+                indentPerLevel: layout.indentPerLevel
+            ) { rowLeading(item.row) }
+        }
     }
 
     @ViewBuilder

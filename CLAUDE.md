@@ -660,10 +660,14 @@ All waves landed, including the Wave 6 snapshot reconciliation.
 ## Widgets — COMPLETE (2026-07-01)
 
 Configurable WidgetKit widget (iOS + macOS) showing a saved smart filter's
-tasks: rainbow-bordered dark card, header (filter name + done-progress ring +
-remaining count), status-glyph rows, "+" quick-add; all system families +
-iOS Lock Screen accessories. Interactive: tap a row's circle to complete it in
-place; "+" opens Quick Capture; whole-widget tap opens the filter.
+tasks: rainbow-bordered dark card, header (filter name + remaining count, no
+ring — `ef98d041` removed it), status-glyph rows, "+" quick-add; all system
+families + iOS Lock Screen accessories. Interactive: tap a row's circle to
+complete it in place; "+" opens Quick Capture; whole-widget tap opens the
+filter. Since LIL-95 (2026-08-03), a matched subtask nests under its parent
+(indented up to 2 tiers) and an orphaned match whose parent doesn't match
+renders that parent as a dimmed context row — see the LIL-95 entry in
+`docs/engineering-notes.md`.
 
 - **Target:** `Extensions/LillistWidget/` — one shared source dir compiled into
   both the `LillistWidget` (iOS) and `LillistWidget-macOS` app-extension targets
