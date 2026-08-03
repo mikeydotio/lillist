@@ -163,6 +163,7 @@ struct ShareRootView: View {
             if let snapshotStore = WidgetSnapshotStore(appGroupID: appGroupID) {
                 await WidgetSnapshotBuilder(
                     smartFilterStore: SmartFilterStore(persistence: persistence),
+                    taskLookup: taskStore,
                     snapshotStore: snapshotStore
                 ).regenerate()
                 WidgetCenter.shared.reloadAllTimelines()

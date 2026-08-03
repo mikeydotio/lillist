@@ -15,6 +15,7 @@ enum WidgetRefresh {
         guard let snapshotStore = WidgetSnapshotStore(appGroupID: IntentSupport.appGroupID) else { return }
         let builder = WidgetSnapshotBuilder(
             smartFilterStore: SmartFilterStore(persistence: persistence),
+            taskLookup: TaskStore(persistence: persistence),
             snapshotStore: snapshotStore
         )
         await builder.regenerate()

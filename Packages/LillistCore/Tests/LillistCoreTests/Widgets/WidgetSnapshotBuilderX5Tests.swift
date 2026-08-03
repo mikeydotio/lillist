@@ -34,7 +34,7 @@ struct WidgetSnapshotBuilderX5Tests {
 
         let (snapStore, dir) = tempSnapshotStore()
         defer { try? FileManager.default.removeItem(at: dir) }
-        let builder = WidgetSnapshotBuilder(smartFilterStore: filters, snapshotStore: snapStore)
+        let builder = WidgetSnapshotBuilder(smartFilterStore: filters, taskLookup: tasks, snapshotStore: snapStore)
         await builder.regenerate()
         #expect(snapStore.read(filterID: filterID) != nil)
 
@@ -62,7 +62,7 @@ struct WidgetSnapshotBuilderX5Tests {
 
         let (snapStore, dir) = tempSnapshotStore()
         defer { try? FileManager.default.removeItem(at: dir) }
-        let builder = WidgetSnapshotBuilder(smartFilterStore: filters, snapshotStore: snapStore)
+        let builder = WidgetSnapshotBuilder(smartFilterStore: filters, taskLookup: tasks, snapshotStore: snapStore)
         await builder.regenerateAuthoritatively()
         #expect(snapStore.read(filterID: filterID) != nil)
 
@@ -75,12 +75,13 @@ struct WidgetSnapshotBuilderX5Tests {
     @Test("regenerateAuthoritatively writes the picker index; additive regenerate does not")
     func onlyAuthoritativeWritesIndex() async throws {
         let controller = try await TestStore.make()
+        let tasks = TaskStore(persistence: controller)
         let filters = SmartFilterStore(persistence: controller)
         let filterID = try await filters.create(name: "Todayish", group: todoGroup())
 
         let (snapStore, dir) = tempSnapshotStore()
         defer { try? FileManager.default.removeItem(at: dir) }
-        let builder = WidgetSnapshotBuilder(smartFilterStore: filters, snapshotStore: snapStore)
+        let builder = WidgetSnapshotBuilder(smartFilterStore: filters, taskLookup: tasks, snapshotStore: snapStore)
 
         await builder.regenerate()
         #expect(snapStore.readIndex() == nil)
@@ -93,12 +94,13 @@ struct WidgetSnapshotBuilderX5Tests {
     @Test("regenerateAuthoritatively against a genuinely empty store prunes every saved-filter snapshot")
     func authoritativeRegenerateOnEmptyStorePrunesEverything() async throws {
         let controller = try await TestStore.make()
+        let tasks = TaskStore(persistence: controller)
         let filters = SmartFilterStore(persistence: controller)
         let filterID = try await filters.create(name: "Todayish", group: todoGroup())
 
         let (snapStore, dir) = tempSnapshotStore()
         defer { try? FileManager.default.removeItem(at: dir) }
-        let builder = WidgetSnapshotBuilder(smartFilterStore: filters, snapshotStore: snapStore)
+        let builder = WidgetSnapshotBuilder(smartFilterStore: filters, taskLookup: tasks, snapshotStore: snapStore)
         await builder.regenerateAuthoritatively()
         #expect(snapStore.read(filterID: filterID) != nil)
 

@@ -204,7 +204,11 @@ final class AppEnvironment {
         if let widgetSnapshotStore = WidgetSnapshotStore(appGroupID: Self.appGroupID) {
             self.widgetRefresh = WidgetRefreshController(
                 persistence: persistence,
-                builder: WidgetSnapshotBuilder(smartFilterStore: smartFilterStore, snapshotStore: widgetSnapshotStore),
+                builder: WidgetSnapshotBuilder(
+                    smartFilterStore: smartFilterStore,
+                    taskLookup: taskStore,
+                    snapshotStore: widgetSnapshotStore
+                ),
                 reloader: SystemWidgetTimelineReloader()
             )
         } else {

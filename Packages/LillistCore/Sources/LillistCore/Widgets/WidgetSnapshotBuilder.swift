@@ -21,18 +21,28 @@ public struct WidgetSnapshotBuilder: Sendable {
     public static let defaultRowCap = 16
 
     private let smartFilterStore: any WidgetSnapshotSource
+    private let taskLookup: any WidgetTaskLookup
     private let snapshotStore: WidgetSnapshotStore
     private let rowCap: Int
 
     /// - Parameter smartFilterStore: the read seam. `SmartFilterStore` conforms,
     ///   so production call sites pass one directly; tests inject a failing
     ///   double to reach the error branches (`LIL-93`).
+    /// - Parameter taskLookup: `LIL-95`'s parent-resolution seam. `TaskStore`
+    ///   conforms, so production call sites pass their existing `TaskStore`.
+    ///   Required, not defaulted: a caller that forgot to wire this would
+    ///   otherwise silently ship a widget that can never render context rows,
+    ///   which is exactly the kind of footgun a compiler-enforced parameter
+    ///   prevents. Unused by this commit — `LIL-95`'s tree-shaping consumer
+    ///   lands next.
     public init(
         smartFilterStore: any WidgetSnapshotSource,
+        taskLookup: any WidgetTaskLookup,
         snapshotStore: WidgetSnapshotStore,
         rowCap: Int = WidgetSnapshotBuilder.defaultRowCap
     ) {
         self.smartFilterStore = smartFilterStore
+        self.taskLookup = taskLookup
         self.snapshotStore = snapshotStore
         self.rowCap = rowCap
     }

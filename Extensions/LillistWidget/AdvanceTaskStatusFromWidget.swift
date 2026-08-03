@@ -45,6 +45,7 @@ struct AdvanceTaskStatusFromWidget: AppIntent {
         if let store = WidgetSnapshotStore(appGroupID: WidgetIntentSupport.appGroupID) {
             await WidgetSnapshotBuilder(
                 smartFilterStore: SmartFilterStore(persistence: persistence),
+                taskLookup: taskStore,
                 snapshotStore: store
             ).regenerate()
         }
