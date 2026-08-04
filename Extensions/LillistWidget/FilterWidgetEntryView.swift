@@ -40,6 +40,10 @@ struct FilterWidgetEntryView: View {
             case .accessoryInline:
                 WidgetAccessoryInlineView(snapshot: snapshot)
             #endif
+            case .systemSmall:
+                // `LIL-96`: too little room (3 rows, ~94pt of title width) for
+                // a task list to read well — a status-composition donut instead.
+                WidgetStatusDonutView(snapshot: snapshot)
             default:
                 WidgetFilterCardView(
                     snapshot: snapshot,

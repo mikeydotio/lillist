@@ -950,6 +950,15 @@
     },
     "not part of this filter" : {
 
+    },
+    "All done" : {
+
+    },
+    "left" : {
+
+    },
+    "%lld left" : {
+
     }
   },
   "version" : "1.0"
