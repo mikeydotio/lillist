@@ -17,6 +17,9 @@ struct TasksView: View {
     @State private var records: [TaskStore.TaskRecord] = []
     @State private var savedFilters: [SmartFilterStore.SmartFilterRecord] = []
     @State private var loadError: String?
+    /// LIL-97: ancestor-title path for every orphaned row currently in
+    /// `tree` — see `loadBreadcrumbs()`.
+    @State private var breadcrumbsByTaskID: [UUID: [String]] = [:]
 
     @State private var collapsedNodeIDs: Set<UUID> = []
     @State private var isFilterHeaderExpanded: Bool = false
@@ -91,6 +94,7 @@ struct TasksView: View {
             collapsedNodeIDs: collapsedNodeIDs,
             archivedCount: lastArchivedCount,
             cascadeCompleteCount: lastCascadeCount,
+            breadcrumbsByTaskID: breadcrumbsByTaskID,
             dragController: dragController,
             onToggleCollapsed: { id in
                 if collapsedNodeIDs.contains(id) {
@@ -286,10 +290,25 @@ struct TasksView: View {
                 loadError = nil
             }
             hasLoadedOnce = true
+            await loadBreadcrumbs()
         } catch {
             loadError = "\(error)"
             records = []
+            breadcrumbsByTaskID = [:]
         }
+    }
+
+    /// LIL-97: fetch the ancestor path for every orphaned row in the
+    /// current tree (a row `TaskTree.build` promoted to top level because
+    /// its true parent isn't in the result set) — nothing to fetch, and no
+    /// store round trip, when there are none.
+    private func loadBreadcrumbs() async {
+        let orphanIDs = TreeFlattener.flatten(tree).filter(\.isOrphan).map(\.node.record.id)
+        guard !orphanIDs.isEmpty else {
+            breadcrumbsByTaskID = [:]
+            return
+        }
+        breadcrumbsByTaskID = (try? await env.taskStore.breadcrumbs(for: orphanIDs)) ?? [:]
     }
 
     // MARK: - Predicate composition

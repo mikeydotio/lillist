@@ -29,6 +29,8 @@ struct MacTasksView: View {
     @State private var records: [TaskStore.TaskRecord] = []
     @State private var savedFilters: [SmartFilterStore.SmartFilterRecord] = []
     @State private var loadError: String?
+    /// LIL-97: mirrors the iOS container — see `TasksView.loadBreadcrumbs`.
+    @State private var breadcrumbsByTaskID: [UUID: [String]] = [:]
 
     @State private var collapsedNodeIDs: Set<UUID> = []
     @State private var isFilterHeaderExpanded: Bool = false
@@ -98,6 +100,7 @@ struct MacTasksView: View {
             collapsedNodeIDs: collapsedNodeIDs,
             archivedCount: lastArchivedCount,
             cascadeCompleteCount: lastCascadeCount,
+            breadcrumbsByTaskID: breadcrumbsByTaskID,
             dragController: dragController,
             onToggleCollapsed: { id in
                 if collapsedNodeIDs.contains(id) {
@@ -296,10 +299,22 @@ struct MacTasksView: View {
                 loadError = nil
             }
             hasLoadedOnce = true
+            await loadBreadcrumbs()
         } catch {
             loadError = "\(error)"
             records = []
+            breadcrumbsByTaskID = [:]
         }
+    }
+
+    /// LIL-97: mirrors the iOS container — see `TasksView.loadBreadcrumbs`.
+    private func loadBreadcrumbs() async {
+        let orphanIDs = TreeFlattener.flatten(tree).filter(\.isOrphan).map(\.node.record.id)
+        guard !orphanIDs.isEmpty else {
+            breadcrumbsByTaskID = [:]
+            return
+        }
+        breadcrumbsByTaskID = (try? await env.taskStore.breadcrumbs(for: orphanIDs)) ?? [:]
     }
 
     // MARK: - Predicate composition
