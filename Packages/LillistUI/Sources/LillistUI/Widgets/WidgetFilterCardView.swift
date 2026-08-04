@@ -89,8 +89,9 @@ private struct WidgetContextRowView: View {
 }
 
 /// The signature widget surface: a rainbow-bordered dark card holding a filter's
-/// header + task rows + quick-add button. Drives the `systemSmall/Medium/Large/
-/// ExtraLarge` families (Lock Screen accessories use separate views).
+/// header + task rows + quick-add button. Drives the `systemMedium/Large/
+/// ExtraLarge` families — `.systemSmall` renders `WidgetStatusDonutView`
+/// instead (`LIL-96`); Lock Screen accessories use separate views.
 ///
 /// `RowLeading` is injected so the widget extension can supply an interactive
 /// `Button(intent:)`-wrapped status glyph; the convenience initializer renders
@@ -123,9 +124,9 @@ public struct WidgetFilterCardView<RowLeading: View>: View {
     /// `LIL-95`: re-caps the (already tree-shaped) snapshot at this family's
     /// `maxRows` via the same shared planner ``WidgetSnapshotBuilder`` used to
     /// cap the persisted snapshot at `rowCap` — one implementation of the
-    /// stranded-context-row and re-leveling rules for both cap points.
+    /// stranded-context-row rule for both cap points.
     private var visibleItems: [WidgetRowPlan.Item] {
-        WidgetRowPlan.plan(rows: snapshot.tasks, limit: layout.maxRows, allowsContextRows: layout.allowsContextRows)
+        WidgetRowPlan.plan(rows: snapshot.tasks, limit: layout.maxRows)
     }
 
     public var body: some View {
@@ -149,18 +150,16 @@ public struct WidgetFilterCardView<RowLeading: View>: View {
         .padding(layout.contentPadding)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .overlay(alignment: .bottomTrailing) {
-            if layout.showsQuickAdd {
-                quickAdd.padding(layout.contentPadding)
-            }
+            quickAdd.padding(layout.contentPadding)
         }
         .widgetCardChrome()
     }
 
     /// Trailing inset for the bottom-most visible row so its tail-truncated
-    /// title clears the bottom-trailing "+" overlay (30pt glyph + a gap). Rows
-    /// above the last one, and every row when the "+" is hidden, get no inset.
+    /// title clears the bottom-trailing "+" overlay (30pt glyph + a gap). Every
+    /// remaining family (medium/large/extraLarge) shows the "+".
     private func trailingInset(isLast: Bool) -> CGFloat {
-        guard isLast, layout.showsQuickAdd else { return 0 }
+        guard isLast else { return 0 }
         return 30 + LillistSpacing.m
     }
 

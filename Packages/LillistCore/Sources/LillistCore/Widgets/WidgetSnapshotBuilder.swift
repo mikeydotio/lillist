@@ -310,7 +310,7 @@ public struct WidgetSnapshotBuilder: Sendable {
         contextByID: [UUID: TaskStore.TaskRecord]
     ) {
         let shaped = Self.shapeRows(ordered: ordered, contextByID: contextByID)
-        let capped = WidgetRowPlan.plan(rows: shaped, limit: rowCap, allowsContextRows: true).map(\.row)
+        let capped = WidgetRowPlan.plan(rows: shaped, limit: rowCap).map(\.row)
 
         let snapshot = WidgetSnapshot(
             filterID: filterID,

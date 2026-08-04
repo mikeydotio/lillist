@@ -67,7 +67,6 @@ struct FilterWidgetEntryView: View {
 
     private static func layout(for family: WidgetFamily) -> WidgetLayout {
         switch family {
-        case .systemSmall: .small
         case .systemMedium: .medium
         case .systemLarge: .large
         case .systemExtraLarge: .extraLarge
