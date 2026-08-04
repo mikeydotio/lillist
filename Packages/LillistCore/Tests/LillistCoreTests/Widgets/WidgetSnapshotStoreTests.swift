@@ -145,4 +145,57 @@ struct WidgetSnapshotStoreTests {
         #expect(row.depth == 0)
         #expect(row.isContext == false)
     }
+
+    // MARK: - LIL-96: legacy (pre-status-counts) payload decode
+
+    /// A pre-`LIL-96` on-disk snapshot has no `statusCounts` key at all. Every
+    /// other field must still decode intact, and `statusCounts` must come back
+    /// `nil` — not throw, which `WidgetSnapshotStore.read`'s `try?` would
+    /// otherwise swallow into an indistinguishable-from-missing `nil` for the
+    /// *whole snapshot*, forcing an unnecessary cold-cache rebuild.
+    @Test("LIL-96: a legacy snapshot JSON missing statusCounts decodes with every other field intact")
+    func legacySnapshotPayloadDecodesWithNilStatusCounts() throws {
+        let (store, dir) = tempStore()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let filterID = UUID()
+        let rowID = UUID()
+
+        let legacyJSON = """
+        {
+          "filterID": "\(filterID.uuidString)",
+          "filterName": "Todayish",
+          "tintHex": "#8B45E8",
+          "generatedAt": "2023-11-14T22:13:20Z",
+          "totalCount": 1,
+          "openCount": 1,
+          "tasks": [
+            { "id": "\(rowID.uuidString)", "title": "Legacy task", "status": 0 }
+          ]
+        }
+        """
+        let filtersDir = dir.appendingPathComponent("filters", isDirectory: true)
+        try FileManager.default.createDirectory(at: filtersDir, withIntermediateDirectories: true)
+        try legacyJSON.data(using: .utf8)!.write(
+            to: filtersDir.appendingPathComponent(filterID.uuidString).appendingPathExtension("json")
+        )
+
+        let decoded = try #require(store.read(filterID: filterID))
+        #expect(decoded.filterName == "Todayish")
+        #expect(decoded.totalCount == 1)
+        #expect(decoded.openCount == 1)
+        #expect(decoded.statusCounts == nil)
+        #expect(decoded.tasks.count == 1)
+    }
+
+    @Test("LIL-96: a snapshot with statusCounts round-trips it exactly")
+    func statusCountsRoundTrips() throws {
+        let (store, dir) = tempStore()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        var snap = sampleSnapshot()
+        snap.statusCounts = .init(todo: 2, started: 1, blocked: 0, closed: 3)
+        try store.write(snap)
+
+        let decoded = try #require(store.read(filterID: snap.filterID))
+        #expect(decoded.statusCounts == snap.statusCounts)
+    }
 }

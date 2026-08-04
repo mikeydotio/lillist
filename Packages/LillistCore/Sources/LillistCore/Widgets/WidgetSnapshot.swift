@@ -67,6 +67,65 @@ public struct WidgetSnapshot: Codable, Sendable, Equatable {
         }
     }
 
+    /// Per-status tally of the matching set, computed by
+    /// ``WidgetSnapshotBuilder`` from the same rank table that produces
+    /// `totalCount`/`openCount` — `total == totalCount` and `open == openCount`
+    /// always hold. Backs the `systemSmall` status donut (`LIL-96`).
+    ///
+    /// `LIL-96` added this field; a cache written before this field existed
+    /// decodes with `statusCounts == nil` (see the hand-written `init(from:)`
+    /// below), never a thrown error. The Optional keeps `WidgetSnapshot`'s
+    /// outer `Codable` conformance synthesized, since Swift's synthesized
+    /// decoder already treats a missing key on an `Optional` property as
+    /// `nil` rather than throwing.
+    public struct StatusCounts: Codable, Sendable, Equatable {
+        public var todo: Int
+        public var started: Int
+        public var blocked: Int
+        public var closed: Int
+
+        public init(todo: Int, started: Int, blocked: Int, closed: Int) {
+            self.todo = todo
+            self.started = started
+            self.blocked = blocked
+            self.closed = closed
+        }
+
+        /// Tallies a sequence of statuses (typically `ordered.map(\.status)`,
+        /// the pre-tree rank table `WidgetSnapshotBuilder.writeSnapshot` also
+        /// uses for `totalCount`/`openCount` — never a post-tree-shaping list,
+        /// which would double-count a synthesized context row's status).
+        public init(tallying statuses: some Sequence<Status>) {
+            var todo = 0, started = 0, blocked = 0, closed = 0
+            for status in statuses {
+                switch status {
+                case .todo: todo += 1
+                case .started: started += 1
+                case .blocked: blocked += 1
+                case .closed: closed += 1
+                }
+            }
+            self.init(todo: todo, started: started, blocked: blocked, closed: closed)
+        }
+
+        /// Every task, regardless of status. Always equal to the enclosing
+        /// snapshot's `totalCount`.
+        public var total: Int { todo + started + blocked + closed }
+
+        /// Every not-yet-closed task. Always equal to the enclosing snapshot's
+        /// `openCount`.
+        public var open: Int { todo + started + blocked }
+
+        public subscript(status: Status) -> Int {
+            switch status {
+            case .todo: todo
+            case .started: started
+            case .blocked: blocked
+            case .closed: closed
+            }
+        }
+    }
+
     /// Reserved id for the "No Filter" (unfiltered — all tasks) state. A fresh
     /// widget defaults to this; it is never a real `SmartFilter.id` (Core Data
     /// mints v4 UUIDs, never the all-zero one). Shared source of truth for the
@@ -90,6 +149,10 @@ public struct WidgetSnapshot: Codable, Sendable, Equatable {
     public var totalCount: Int
     /// Number of matching tasks that are not yet closed ("remaining").
     public var openCount: Int
+    /// Per-status breakdown of the matching set (`LIL-96`). `nil` only for a
+    /// snapshot written before this field existed, or read back from such a
+    /// cache file — every snapshot this package itself writes sets it.
+    public var statusCounts: StatusCounts?
     /// The (capped) task rows to render, in the filter's sort order.
     public var tasks: [Row]
 
@@ -100,6 +163,7 @@ public struct WidgetSnapshot: Codable, Sendable, Equatable {
         generatedAt: Date,
         totalCount: Int,
         openCount: Int,
+        statusCounts: StatusCounts? = nil,
         tasks: [Row]
     ) {
         self.filterID = filterID
@@ -108,6 +172,7 @@ public struct WidgetSnapshot: Codable, Sendable, Equatable {
         self.generatedAt = generatedAt
         self.totalCount = totalCount
         self.openCount = openCount
+        self.statusCounts = statusCounts
         self.tasks = tasks
     }
 }

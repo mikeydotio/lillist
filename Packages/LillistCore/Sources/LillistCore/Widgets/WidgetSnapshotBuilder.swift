@@ -319,6 +319,12 @@ public struct WidgetSnapshotBuilder: Sendable {
             generatedAt: Date(),
             totalCount: ordered.count,
             openCount: openCount,
+            // Tallied from `ordered` — the pre-tree-shaping rank table — so a
+            // synthesized context row (added by `shapeRows` below) can never
+            // inflate a count, and `rowCap` truncation (applied after this)
+            // can never shrink one. Same invariant `totalCount`/`openCount`
+            // already rely on.
+            statusCounts: WidgetSnapshot.StatusCounts(tallying: ordered.map(\.status)),
             tasks: capped
         )
         try? snapshotStore.write(snapshot)

@@ -240,6 +240,101 @@ struct WidgetSnapshotBuilderTests {
         #expect(snap.openCount == 3)
     }
 
+    // MARK: - LIL-96: per-status counts
+
+    @Test("statusCounts tallies each status and satisfies the total/open invariants against totalCount/openCount")
+    func statusCountsSatisfiesTotalAndOpenInvariants() async throws {
+        let controller = try await TestStore.make()
+        let tasks = TaskStore(persistence: controller)
+        let filters = SmartFilterStore(persistence: controller)
+        let a = try await tasks.create(title: "A")
+        _ = try await tasks.create(title: "B")
+        let c = try await tasks.create(title: "C")
+        let d = try await tasks.create(title: "D")
+        try await tasks.transition(id: a, to: .started)
+        try await tasks.transition(id: c, to: .blocked)
+        try await tasks.transition(id: d, to: .closed)
+        let filterID = try await filters.create(name: "All", group: allTasksGroup())
+
+        let (snapStore, dir) = tempSnapshotStore()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let builder = WidgetSnapshotBuilder(smartFilterStore: filters, taskLookup: tasks, snapshotStore: snapStore)
+        await builder.regenerate()
+
+        let snap = try #require(snapStore.read(filterID: filterID))
+        let counts = try #require(snap.statusCounts)
+        #expect(counts.todo == 1)
+        #expect(counts.started == 1)
+        #expect(counts.blocked == 1)
+        #expect(counts.closed == 1)
+        #expect(counts.total == snap.totalCount)
+        #expect(counts.open == snap.openCount)
+    }
+
+    @Test("a task closed today (the grace band) is tallied as closed, same as any other closed task")
+    func closedTodayGraceRowsTallyAsClosed() async throws {
+        let controller = try await TestStore.make()
+        let tasks = TaskStore(persistence: controller)
+        let filters = SmartFilterStore(persistence: controller)
+        _ = try await tasks.create(title: "X")
+        let y = try await tasks.create(title: "Y")
+        _ = try await tasks.create(title: "Z")
+        try await tasks.transition(id: y, to: .closed)   // completed today, grace band
+        let filterID = try await filters.create(name: "Open", group: openOnlyGroup())
+
+        let (snapStore, dir) = tempSnapshotStore()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let builder = WidgetSnapshotBuilder(smartFilterStore: filters, taskLookup: tasks, snapshotStore: snapStore)
+        await builder.regenerate()
+
+        let snap = try #require(snapStore.read(filterID: filterID))
+        let counts = try #require(snap.statusCounts)
+        #expect(counts.closed == 1, "the grace-band task is in `ordered`, so it must be tallied")
+        #expect(counts.todo == 2)
+        #expect(counts.total == 3)
+    }
+
+    @Test("rowCap truncation shrinks the persisted rows but never the status counts")
+    func rowCapDoesNotShrinkStatusCounts() async throws {
+        let controller = try await TestStore.make()
+        let tasks = TaskStore(persistence: controller)
+        let filters = SmartFilterStore(persistence: controller)
+        for i in 0..<5 { _ = try await tasks.create(title: "Task \(i)") }
+        let filterID = try await filters.create(name: "Many", group: allTasksGroup())
+
+        let (snapStore, dir) = tempSnapshotStore()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let builder = WidgetSnapshotBuilder(
+            smartFilterStore: filters,
+            taskLookup: tasks,
+            snapshotStore: snapStore,
+            rowCap: 3
+        )
+        await builder.regenerate()
+
+        let snap = try #require(snapStore.read(filterID: filterID))
+        #expect(snap.tasks.count == 3, "rows are capped")
+        #expect(snap.statusCounts?.todo == 5, "counts are tallied from the pre-cap rank table, not the persisted rows")
+        #expect(snap.statusCounts?.total == 5)
+    }
+
+    @Test("every snapshot regenerate() writes has a non-nil statusCounts, including the No-Filter sentinel")
+    func everyWrittenSnapshotHasStatusCounts() async throws {
+        let controller = try await TestStore.make()
+        let tasks = TaskStore(persistence: controller)
+        let filters = SmartFilterStore(persistence: controller)
+        _ = try await tasks.create(title: "Submit feedback")
+        let filterID = try await filters.create(name: "Todayish", group: todoGroup())
+
+        let (snapStore, dir) = tempSnapshotStore()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let builder = WidgetSnapshotBuilder(smartFilterStore: filters, taskLookup: tasks, snapshotStore: snapStore)
+        await builder.regenerate()
+
+        #expect(snapStore.read(filterID: filterID)?.statusCounts != nil)
+        #expect(snapStore.read(filterID: WidgetSnapshot.unfilteredID)?.statusCounts != nil)
+    }
+
     @Test("X11: clearCache forwards to the snapshot store, wiping every cached snapshot")
     func clearCacheForwardsToSnapshotStore() async throws {
         let controller = try await TestStore.make()
