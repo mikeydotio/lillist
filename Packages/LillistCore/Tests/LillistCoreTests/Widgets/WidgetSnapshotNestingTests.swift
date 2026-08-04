@@ -249,6 +249,10 @@ struct WidgetSnapshotNestingTests {
         // it didn't match the filter.
         #expect(snap.totalCount == 1)
         #expect(snap.openCount == 1)
+        // LIL-96: nor toward statusCounts — the synthesized context row is not
+        // in `ordered`, the rank table `statusCounts` is tallied from.
+        #expect(snap.statusCounts?.total == 1)
+        #expect(snap.statusCounts?.open == 1)
     }
 
     @Test("a throwing parent lookup degrades gracefully: the pass still writes, orphans flatten instead of aborting")

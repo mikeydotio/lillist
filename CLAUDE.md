@@ -661,13 +661,19 @@ All waves landed, including the Wave 6 snapshot reconciliation.
 
 Configurable WidgetKit widget (iOS + macOS) showing a saved smart filter's
 tasks: rainbow-bordered dark card, header (filter name + remaining count, no
-ring — `ef98d041` removed it), status-glyph rows, "+" quick-add; all system
-families + iOS Lock Screen accessories. Interactive: tap a row's circle to
-complete it in place; "+" opens Quick Capture; whole-widget tap opens the
-filter. Since LIL-95 (2026-08-03), a matched subtask nests under its parent
-(indented up to 2 tiers) and an orphaned match whose parent doesn't match
-renders that parent as a dimmed context row — see the LIL-95 entry in
-`docs/engineering-notes.md`.
+ring — `ef98d041` removed it), status-glyph rows, "+" quick-add; systemMedium/
+Large/ExtraLarge + iOS Lock Screen accessories. Interactive: tap a row's
+circle to complete it in place; "+" opens Quick Capture; whole-widget tap
+opens the filter. Since LIL-95 (2026-08-03), a matched subtask nests under its
+parent (indented up to 2 tiers) and an orphaned match whose parent doesn't
+match renders that parent as a dimmed context row — see the LIL-95 entry in
+`docs/engineering-notes.md`. **`systemSmall` no longer renders a task list**
+(LIL-96, 2026-08-04): at 170×170 with only 3 rows of ~94pt titles, a list read
+poorly, so it renders `WidgetStatusDonutView` instead — a status-composition
+ring (todo/started/blocked/closed) with the remaining count at its center and
+a glyph legend below, tap-only (same as `.small` always was — it never got
+the "+"). Backed by a new `WidgetSnapshot.statusCounts` field, tallied
+alongside `totalCount`/`openCount`.
 
 - **Target:** `Extensions/LillistWidget/` — one shared source dir compiled into
   both the `LillistWidget` (iOS) and `LillistWidget-macOS` app-extension targets
@@ -686,7 +692,9 @@ renders that parent as a dimmed context row — see the LIL-95 entry in
   writing extensions regenerate `<AppGroup>/Widget/**` on store changes and call
   `WidgetCenter.reloadAllTimelines()`; the timeline provider only reads the JSON.
 - **Views:** `LillistUI/Widgets/` (WidgetKit-free, snapshot-tested via the macOS
-  host harness — `WidgetFilterCardSnapshotTests`).
+  host harness — `WidgetFilterCardSnapshotTests`, `WidgetStatusDonutSnapshotTests`).
+  `WidgetSurfaceChrome` (the rainbow card frame + "All clear" state) is shared
+  by both surfaces.
 - **Deep links:** `lillist://` (`quickcapture` / `filter/<id>` / `task/<id>`),
   parsed by `LillistCore` `DeepLink`.
 - **Gotchas** (see engineering-notes 2026-07-01 and 2026-07-31): never `import

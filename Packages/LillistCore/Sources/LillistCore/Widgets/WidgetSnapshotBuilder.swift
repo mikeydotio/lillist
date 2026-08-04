@@ -310,7 +310,7 @@ public struct WidgetSnapshotBuilder: Sendable {
         contextByID: [UUID: TaskStore.TaskRecord]
     ) {
         let shaped = Self.shapeRows(ordered: ordered, contextByID: contextByID)
-        let capped = WidgetRowPlan.plan(rows: shaped, limit: rowCap, allowsContextRows: true).map(\.row)
+        let capped = WidgetRowPlan.plan(rows: shaped, limit: rowCap).map(\.row)
 
         let snapshot = WidgetSnapshot(
             filterID: filterID,
@@ -319,6 +319,12 @@ public struct WidgetSnapshotBuilder: Sendable {
             generatedAt: Date(),
             totalCount: ordered.count,
             openCount: openCount,
+            // Tallied from `ordered` — the pre-tree-shaping rank table — so a
+            // synthesized context row (added by `shapeRows` below) can never
+            // inflate a count, and `rowCap` truncation (applied after this)
+            // can never shrink one. Same invariant `totalCount`/`openCount`
+            // already rely on.
+            statusCounts: WidgetSnapshot.StatusCounts(tallying: ordered.map(\.status)),
             tasks: capped
         )
         try? snapshotStore.write(snapshot)

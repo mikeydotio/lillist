@@ -14,7 +14,6 @@ import LillistCore
 @MainActor
 final class WidgetFilterCardSnapshotTests: RecordableSnapshotTestCase {
     // Approximate iPhone widget point sizes.
-    private let smallSize = CGSize(width: 170, height: 170)
     private let mediumSize = CGSize(width: 364, height: 170)
     private let largeSize = CGSize(width: 364, height: 382)
 
@@ -119,10 +118,6 @@ final class WidgetFilterCardSnapshotTests: RecordableSnapshotTestCase {
         assertCard(fixture(rows: Array(referenceRows.prefix(3)), total: 8), layout: .medium, scheme: .dark, size: mediumSize, named: "medium-dark")
     }
 
-    func testSmall_dark() {
-        assertCard(fixture(rows: Array(referenceRows.prefix(3)), total: 8), layout: .small, scheme: .dark, size: smallSize, named: "small-dark")
-    }
-
     func testEmpty_dark() {
         assertCard(fixture(rows: [], total: 0), layout: .large, scheme: .dark, size: largeSize, named: "empty-dark")
     }
@@ -224,18 +219,5 @@ final class WidgetFilterCardSnapshotTests: RecordableSnapshotTestCase {
         assertCard(snapshot, layout: .large, scheme: .dark, size: largeSize, named: "depth-clamp-dark")
     }
 
-    /// `.small` never emits context rows (`WidgetLayout.allowsContextRows ==
-    /// false`): the orphan flattens to root and gets the triangle marker
-    /// instead of displacing a real match with a dimmed non-match.
-    func testSmallNested_dark() {
-        let unresolvedParentID = UUID()
-        let visibleParent = row("Ship v0.21")
-        let snapshot = nestedFixture(rows: [
-            row("Orphaned subtask", parentID: unresolvedParentID),
-            visibleParent,
-            row("Write release notes", parentID: visibleParent.id, depth: 1),
-        ])
-        assertCard(snapshot, layout: .small, scheme: .dark, size: smallSize, named: "small-nested-dark")
-    }
 }
 #endif
