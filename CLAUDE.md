@@ -667,13 +667,15 @@ circle to complete it in place; "+" opens Quick Capture; whole-widget tap
 opens the filter. Since LIL-95 (2026-08-03), a matched subtask nests under its
 parent (indented up to 2 tiers) and an orphaned match whose parent doesn't
 match renders that parent as a dimmed context row — see the LIL-95 entry in
-`docs/engineering-notes.md`. **`systemSmall` no longer renders a task list**
-(LIL-96, 2026-08-04): at 170×170 with only 3 rows of ~94pt titles, a list read
-poorly, so it renders `WidgetStatusDonutView` instead — a status-composition
-ring (todo/started/blocked/closed) with the remaining count at its center and
-a glyph legend below, tap-only (same as `.small` always was — it never got
-the "+"). Backed by a new `WidgetSnapshot.statusCounts` field, tallied
-alongside `totalCount`/`openCount`.
+`docs/engineering-notes.md`. The app's own task list handles the same
+scenario differently, by design — see *Orphan subtasks* below.
+**`systemSmall` no longer renders a task list** (LIL-96, 2026-08-04): at
+170×170 with only 3 rows of ~94pt titles, a list read poorly, so it renders
+`WidgetStatusDonutView` instead — a status-composition ring
+(todo/started/blocked/closed) with the remaining count at its center and a
+glyph legend below, tap-only (same as `.small` always was — it never got the
+"+"). Backed by a new `WidgetSnapshot.statusCounts` field, tallied alongside
+`totalCount`/`openCount`.
 
 - **Target:** `Extensions/LillistWidget/` — one shared source dir compiled into
   both the `LillistWidget` (iOS) and `LillistWidget-macOS` app-extension targets
@@ -708,6 +710,37 @@ alongside `totalCount`/`openCount`.
   "on-device widget verification" was iOS-only despite its unqualified wording,
   so treat any cross-platform verification claim as platform-partial unless the
   evidence names its platform.
+
+## Orphan subtasks — COMPLETE (2026-08-04)
+
+LIL-97. The app's task outline (`TaskTree` → `TasksScreen`, shared verbatim
+by iOS and macOS) handles a matched-but-parentless subtask *differently*
+from the widget's LIL-95 context row — a deliberate divergence, not an
+inconsistency: the widget is a static, non-scrolling home-screen surface
+that has to read correctly in one glance; the app scrolls and can afford
+words.
+
+- **Promotion stays; add a breadcrumb instead of a context row.** `TaskTree`
+  still promotes an orphan to top level unchanged. `FlatTaskRow.isOrphan`
+  (`true` parent present, *display* parent `nil`) flags exactly those rows;
+  `TasksScreen`/`TaskOutlineRowView` render `BreadcrumbView` beneath the
+  title for them only, resolved via `TaskStore.breadcrumbs(for:)` — both
+  pieces existed, tested, and unused before this story (see the LIL-97 entry
+  in `docs/engineering-notes.md`). No inert non-task rows enter the list, so
+  drag-reorder/swipe/disclosure are untouched.
+- **Completing a parent cascades onto its open descendants**
+  (`TaskStore.transition`), closing the other common source of the same
+  orphan symptom — a subtask left open under a done, later-archived parent.
+  Reopening the parent reopens exactly the descendants the cascade closed
+  (`closedAt`-matched, mirroring `clearSoftDelete`'s `matchingDeletedAt`),
+  restoring each one's own prior status from its `statusChange` journal
+  entry — never a blanket `.todo`. Only the explicitly-transitioned task can
+  spawn a recurrence instance; a cascaded close never does (spawning is
+  one-way, design Section 8). `TasksView`/`MacTasksView` surface an undo
+  toast (`CascadeCompleteToast`) when a completion cascades.
+- **The macOS menu-bar Today popover** (`TodayPopoverView`) is the one
+  surface that's *always* flat — no `TaskTree` at all — so its orphan check
+  is membership in its own task set, not `TaskTree` promotion.
 
 ## When in doubt
 

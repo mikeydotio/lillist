@@ -9,9 +9,15 @@ import LillistCore
 /// Each node carries its `TaskRecord`, the tag names to render in its
 /// row, and any children whose parent is also present in the input
 /// records. Children whose parent is *not* in the input set are
-/// promoted to the top level — matching the design rule that an
-/// orphan-matched subtask renders flat when its parent isn't in the
-/// current view.
+/// promoted to the top level, matching the design doc's §7 rule:
+/// "Outline view when source has children; flat list *with breadcrumb*
+/// when results span multiple parents." `TaskTree` implements the flat
+/// half of that rule — this promotion stays deliberate and unchanged by
+/// LIL-97. The breadcrumb half is a separate concern layered on top:
+/// `FlatTaskRow.isOrphan` flags exactly these promoted rows, and
+/// `TasksScreen`/`TaskOutlineRowView` render `BreadcrumbView` on them
+/// (`TaskStore.breadcrumbs(for:)` resolves the ancestor titles). `TaskTree`
+/// itself carries no ancestry data — it only decides shape.
 public struct TaskNode: Identifiable, Hashable, Sendable {
     public let record: TaskStore.TaskRecord
     public let tagNames: [String]

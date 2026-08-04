@@ -5210,3 +5210,53 @@ Don't port a spacer/gutter pattern across container types without asking what
 made the greedy dimension harmless in the original — here it was the
 container, not the view. `TaskOutlineRowView`'s own copy is unchanged (still
 correct in its own `List` context) and wasn't touched.
+
+## 2026-08-04 — Orphan-subtask breadcrumb (LIL-97): a feature designed, half-built, and never wired together
+
+LIL-95 gave the *widget* a rule for a matched subtask whose parent doesn't
+match: render the parent as a dimmed, inert context row. `TaskTree` (the
+app's outline builder) does the opposite for the same case — an orphan
+promotes to top level, indistinguishable from a real root. LIL-97 asked
+whether the app should adopt the widget's treatment. Investigating turned up
+three surprises worth recording, because each one reads as "surely someone
+already solved this" and none of them had actually shipped:
+
+1. **The design doc already specified the answer, in one clause, three
+   months before LIL-95 existed.** §7: "Outline view when source has
+   children; flat list **with breadcrumb** when results span multiple
+   parents." `TaskTree`'s own doc comment cited "the design rule" while
+   quietly dropping the "with breadcrumb" half — it had been implementing
+   only the flat part since `a2a1efda` (2026-05-25).
+2. **The data half was already built and tested.**
+   `TaskStore.breadcrumbs(for:)` (`TaskStore+Queries.swift`) — public,
+   batched, H7 cycle-guarded, returns the top-down ancestor title path — with
+   a doc comment reading *"Plan 7 renders this above each row in flat
+   smart-filter / tag results."* Its only callers, before this story, were
+   tests.
+3. **The view half was already built and tested too.** `BreadcrumbView`
+   (`Components/BreadcrumbView.swift`) — `A › B › C`, localized,
+   accessibility-composed, three snapshot-test call sites. Zero production
+   call sites.
+
+Nobody shipped a bug; three correct, tested pieces just never got connected,
+across two components (LillistCore, LillistUI) and — per the story
+comments — at least one earlier planning pass ("Plan 7") that evidently
+scoped this and then moved on before the wiring commit landed. The lesson
+isn't the feature (an ancestry breadcrumb on a promoted-orphan row); it's the
+discovery method: when a piece of behavior seems "obviously not built yet,"
+grep for its own downstream API and its own UI component before assuming
+neither exists — `TaskStore.breadcrumbs(for:)` and `BreadcrumbView` would
+both have surfaced in the first five minutes of that search, and did here
+only because the investigation happened to look for TEST-only callers as a
+signal, not because the feature was hard to find.
+
+Landed alongside it: completing a parent task now cascades onto its open
+descendants (`TaskStore.transition`), closing the other common source of the
+same orphan symptom — a subtask left open under a done, later-archived
+parent. Reopening the parent reopens exactly the descendants that cascade
+closed (matched by `closedAt`, the same precision `clearSoftDelete` already
+uses for `deletedAt`), restoring each one's own prior status from the
+`statusChange` journal entry the cascade wrote for it — not a blanket
+`.todo`. See `TaskStoreCascadeCompleteTests.swift` for the edge cases
+(already-closed children, trashed descendants, cycles, recurrence
+non-spawn).
