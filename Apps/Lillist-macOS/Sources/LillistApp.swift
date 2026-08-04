@@ -310,9 +310,13 @@ struct LillistApp: App {
             let dentist = try await env.taskStore.create(title: "Book dentist appointment")
             try await env.taskStore.assignTag(taskID: dentist, tagID: home)
 
+            // Close the parent BEFORE adding its subtask (LIL-97: completing
+            // a parent now cascades onto its open children) — otherwise the
+            // subtask this seed exists to showcase would be silently closed
+            // right along with it, defeating the point of seeding one.
             let passport = try await env.taskStore.create(title: "Renew passport")
-            _ = try await env.taskStore.create(title: "Gather supporting documents", parent: passport)
             try await env.taskStore.transition(id: passport, to: .closed)
+            _ = try await env.taskStore.create(title: "Gather supporting documents", parent: passport)
         } catch {
             // Best-effort seed; never block launch on a seeding failure.
         }

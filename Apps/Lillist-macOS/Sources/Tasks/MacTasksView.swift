@@ -66,6 +66,13 @@ struct MacTasksView: View {
     @State private var isReorderToastPresented = false
     @State private var isStatusToastPresented = false
 
+    // Cascade-complete undo state (LIL-97). Mirrors the iOS container
+    // verbatim — see `TasksView.setStatus`/`undoCascadeComplete`.
+    @State private var isCascadeCompleteToastPresented = false
+    @State private var lastCascadeCount: Int = 0
+    @State private var lastCascadeRootID: UUID?
+    @State private var lastCascadeRootPriorStatus: Status = .todo
+
     /// Set by a row tap to open the unified editor for that task (observed
     /// by `MacTaskEditorHost`).
     @State private var openTaskID: UUID?
@@ -86,9 +93,11 @@ struct MacTasksView: View {
             isArchiveToastPresented: $isArchiveToastPresented,
             isReorderToastPresented: $isReorderToastPresented,
             isStatusToastPresented: $isStatusToastPresented,
+            isCascadeCompleteToastPresented: $isCascadeCompleteToastPresented,
             savedFilters: savedFilterSpecs,
             collapsedNodeIDs: collapsedNodeIDs,
             archivedCount: lastArchivedCount,
+            cascadeCompleteCount: lastCascadeCount,
             dragController: dragController,
             onToggleCollapsed: { id in
                 if collapsedNodeIDs.contains(id) {
@@ -117,6 +126,7 @@ struct MacTasksView: View {
                 openSettings()
             },
             onUndoArchive: { Task { await undoArchive() } },
+            onUndoCascadeComplete: { Task { await undoCascadeComplete() } },
             onOpenTask: { id in openTaskID = id },
             onSubmitSearch: { submitSearch() },
             onSaveSmartFilter: {
@@ -478,12 +488,31 @@ struct MacTasksView: View {
 
     /// A failed transition surfaces the transient status toast — never
     /// swallow it silently (dead-status-tap RCA, 2026-06-12).
+    ///
+    /// LIL-97: mirrors the iOS container's cascade-complete undo wiring —
+    /// see `TasksView.setStatus`.
     private func setStatus(_ record: TaskStore.TaskRecord, to newStatus: Status) async {
         do {
-            try await env.taskStore.transition(id: record.id, to: newStatus)
+            let outcome = try await env.taskStore.transition(id: record.id, to: newStatus)
+            if newStatus == .closed, !outcome.cascadedIDs.isEmpty {
+                lastCascadeRootID = record.id
+                lastCascadeRootPriorStatus = record.status
+                lastCascadeCount = outcome.cascadedIDs.count
+                isCascadeCompleteToastPresented = true
+            }
         } catch {
             isStatusToastPresented = true
         }
+        await reload()
+    }
+
+    private func undoCascadeComplete() async {
+        guard let rootID = lastCascadeRootID else { return }
+        _ = try? await env.taskStore.transition(id: rootID, to: lastCascadeRootPriorStatus)
+        lastCascadeRootID = nil
+        lastCascadeRootPriorStatus = .todo
+        lastCascadeCount = 0
+        isCascadeCompleteToastPresented = false
         await reload()
     }
 }

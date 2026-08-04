@@ -50,7 +50,7 @@ struct TodayPopoverView: View {
     }
 
     private func setStatus(_ rec: TaskStore.TaskRecord, to newStatus: Status) async {
-        try? await env.taskStore.transition(id: rec.id, to: newStatus)
+        _ = try? await env.taskStore.transition(id: rec.id, to: newStatus)
         await load()
     }
 }

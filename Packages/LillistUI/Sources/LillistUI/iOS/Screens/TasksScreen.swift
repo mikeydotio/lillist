@@ -31,9 +31,12 @@ public struct TasksScreen: View {
     @Binding public var isArchiveToastPresented: Bool
     @Binding public var isReorderToastPresented: Bool
     @Binding public var isStatusToastPresented: Bool
+    /// LIL-97: shown when completing a task cascaded onto open subtasks.
+    @Binding public var isCascadeCompleteToastPresented: Bool
     public var savedFilters: [SavedFilterChipSpec]
     public var collapsedNodeIDs: Set<UUID>
     public var archivedCount: Int
+    public var cascadeCompleteCount: Int
 
     @ObservedObject public var dragController: DragController
 
@@ -49,6 +52,9 @@ public struct TasksScreen: View {
     public var onClearFilter: @MainActor () -> Void
     public var onOpenSettings: @MainActor () -> Void
     public var onUndoArchive: @MainActor () -> Void
+    /// LIL-97: reopens the parent (and, via its own reopen-cascade, exactly
+    /// the subtasks the completion closed).
+    public var onUndoCascadeComplete: @MainActor () -> Void
     /// Open the unified task editor for the tapped row. Replaces the former
     /// `NavigationLink`-to-detail push.
     public var onOpenTask: @MainActor (UUID) -> Void
@@ -72,9 +78,11 @@ public struct TasksScreen: View {
         isArchiveToastPresented: Binding<Bool> = .constant(false),
         isReorderToastPresented: Binding<Bool> = .constant(false),
         isStatusToastPresented: Binding<Bool> = .constant(false),
+        isCascadeCompleteToastPresented: Binding<Bool> = .constant(false),
         savedFilters: [SavedFilterChipSpec] = [],
         collapsedNodeIDs: Set<UUID> = [],
         archivedCount: Int = 0,
+        cascadeCompleteCount: Int = 0,
         dragController: DragController,
         onToggleCollapsed: @escaping (UUID) -> Void = { _ in },
         onRefresh: @escaping @MainActor () async -> Void = {},
@@ -84,6 +92,7 @@ public struct TasksScreen: View {
         onClearFilter: @escaping @MainActor () -> Void = {},
         onOpenSettings: @escaping @MainActor () -> Void = {},
         onUndoArchive: @escaping @MainActor () -> Void = {},
+        onUndoCascadeComplete: @escaping @MainActor () -> Void = {},
         onOpenTask: @escaping @MainActor (UUID) -> Void = { _ in },
         onSubmitSearch: @escaping @MainActor () -> Void = {},
         onSaveSmartFilter: @escaping @MainActor () -> Void = {}
@@ -102,9 +111,11 @@ public struct TasksScreen: View {
         self._isArchiveToastPresented = isArchiveToastPresented
         self._isReorderToastPresented = isReorderToastPresented
         self._isStatusToastPresented = isStatusToastPresented
+        self._isCascadeCompleteToastPresented = isCascadeCompleteToastPresented
         self.savedFilters = savedFilters
         self.collapsedNodeIDs = collapsedNodeIDs
         self.archivedCount = archivedCount
+        self.cascadeCompleteCount = cascadeCompleteCount
         self.dragController = dragController
         self.onToggleCollapsed = onToggleCollapsed
         self.onRefresh = onRefresh
@@ -114,6 +125,7 @@ public struct TasksScreen: View {
         self.onClearFilter = onClearFilter
         self.onOpenSettings = onOpenSettings
         self.onUndoArchive = onUndoArchive
+        self.onUndoCascadeComplete = onUndoCascadeComplete
         self.onOpenTask = onOpenTask
         self.onSubmitSearch = onSubmitSearch
         self.onSaveSmartFilter = onSaveSmartFilter
@@ -187,6 +199,11 @@ public struct TasksScreen: View {
                     count: archivedCount,
                     isPresented: $isArchiveToastPresented,
                     onUndo: onUndoArchive
+                )
+                CascadeCompleteToast(
+                    count: cascadeCompleteCount,
+                    isPresented: $isCascadeCompleteToastPresented,
+                    onUndo: onUndoCascadeComplete
                 )
                 ReorderFailureToast(isPresented: $isReorderToastPresented)
                 StatusChangeFailureToast(isPresented: $isStatusToastPresented)

@@ -109,6 +109,9 @@
     "%lld tasks archived. Tap to undo." : {
 
     },
+    "%lld subtasks completed. Tap to undo." : {
+
+    },
     "%lld of %lld tasks on this device haven't reached iCloud. Back up your data first (Settings → Backups), then use the Reset tools: reload this device from iCloud if your other devices already have your tasks, or start fresh everywhere only if this device holds tasks that exist nowhere else." : {
 
     },
@@ -125,6 +128,9 @@
 
     },
     "1 task archived. Tap to undo." : {
+
+    },
+    "1 subtask completed. Tap to undo." : {
 
     },
     "1 week" : {
@@ -691,6 +697,9 @@
 
     },
     "Replace This Device with iCloud?" : {
+
+    },
+    "Reopens the subtasks that were completed along with their parent." : {
 
     },
     "Reports go directly to Mikey ([%@](mailto:%@)). No third-party telemetry." : {
