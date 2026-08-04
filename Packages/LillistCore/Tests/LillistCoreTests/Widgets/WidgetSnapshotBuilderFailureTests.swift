@@ -35,35 +35,41 @@ struct WidgetSnapshotBuilderFailureTests {
         case graceSet
         /// The "No Filter" sentinel's open-task read.
         case sentinel
+        /// `LIL-95`: the parent-resolution `lookupTasks(ids:)` read.
+        case lookup
     }
 
     private struct SourceError: Error {}
 
-    /// A ``WidgetSnapshotSource`` that answers from fixed data and throws at one
-    /// chosen point. Counts writes-worth of reads so a test can assert a path
-    /// was *not* taken.
-    private actor FakeSource: WidgetSnapshotSource {
+    /// A ``WidgetSnapshotSource``/``WidgetTaskLookup`` double that answers from
+    /// fixed data and throws at one chosen point. Counts reads so a test can
+    /// assert a path was *not* taken.
+    private actor FakeSource: WidgetSnapshotSource, WidgetTaskLookup {
         private let filters: [SmartFilterStore.SmartFilterRecord]
         private let tasksByFilter: [UUID: [TaskStore.TaskRecord]]
         private let closedToday: [TaskStore.TaskRecord]
         private let openTasks: [TaskStore.TaskRecord]
+        private let lookupTable: [UUID: TaskStore.TaskRecord]
         private let failAt: FailurePoint
 
         private(set) var listCalls = 0
         private(set) var filterCalls = 0
         private(set) var groupCalls = 0
+        private(set) var lookupCalls = 0
 
         init(
             filters: [SmartFilterStore.SmartFilterRecord] = [],
             tasksByFilter: [UUID: [TaskStore.TaskRecord]] = [:],
             closedToday: [TaskStore.TaskRecord] = [],
             openTasks: [TaskStore.TaskRecord] = [],
+            lookupTable: [UUID: TaskStore.TaskRecord] = [:],
             failAt: FailurePoint = .none
         ) {
             self.filters = filters
             self.tasksByFilter = tasksByFilter
             self.closedToday = closedToday
             self.openTasks = openTasks
+            self.lookupTable = lookupTable
             self.failAt = failAt
         }
 
@@ -95,6 +101,12 @@ struct WidgetSnapshotBuilderFailureTests {
             default: return isGraceSet ? closedToday : openTasks
             }
         }
+
+        func lookupTasks(ids: [UUID]) async throws -> [TaskStore.TaskRecord] {
+            lookupCalls += 1
+            if case .lookup = failAt { throw SourceError() }
+            return ids.compactMap { lookupTable[$0] }
+        }
     }
 
     private func filter(_ name: String, id: UUID = UUID()) -> SmartFilterStore.SmartFilterRecord {
@@ -109,7 +121,12 @@ struct WidgetSnapshotBuilderFailureTests {
         )
     }
 
-    private func task(_ title: String, status: Status = .todo, position: Double = 0) -> TaskStore.TaskRecord {
+    private func task(
+        _ title: String,
+        status: Status = .todo,
+        position: Double = 0,
+        parentID: UUID? = nil
+    ) -> TaskStore.TaskRecord {
         .init(
             id: UUID(),
             title: title,
@@ -121,7 +138,7 @@ struct WidgetSnapshotBuilderFailureTests {
             deadlineHasTime: false,
             position: position,
             isPinned: false,
-            parentID: nil,
+            parentID: parentID,
             createdAt: Date(),
             modifiedAt: Date(),
             closedAt: status.isClosed ? Date() : nil,
@@ -166,7 +183,7 @@ struct WidgetSnapshotBuilderFailureTests {
             tasksByFilter: [healthy.id: [task("Fresh")]],
             failAt: .savedFilter(doomed.id)
         )
-        await WidgetSnapshotBuilder(smartFilterStore: source, snapshotStore: snapStore).regenerate()
+        await WidgetSnapshotBuilder(smartFilterStore: source, taskLookup: source, snapshotStore: snapStore).regenerate()
 
         let kept = try #require(snapStore.read(filterID: doomed.id))
         #expect(kept.tasks.map(\.title) == ["PRIOR"], "a failed read must not overwrite the prior snapshot")
@@ -189,7 +206,7 @@ struct WidgetSnapshotBuilderFailureTests {
             tasksByFilter: [saved.id: [task("Real")]],
             failAt: .sentinel
         )
-        await WidgetSnapshotBuilder(smartFilterStore: source, snapshotStore: snapStore).regenerate()
+        await WidgetSnapshotBuilder(smartFilterStore: source, taskLookup: source, snapshotStore: snapStore).regenerate()
 
         #expect(
             snapStore.read(filterID: WidgetSnapshot.unfilteredID) == nil,
@@ -205,7 +222,7 @@ struct WidgetSnapshotBuilderFailureTests {
         try seedSnapshot(snapStore, filterID: WidgetSnapshot.unfilteredID, title: "PRIOR")
 
         let source = FakeSource(failAt: .sentinel)
-        await WidgetSnapshotBuilder(smartFilterStore: source, snapshotStore: snapStore).regenerate()
+        await WidgetSnapshotBuilder(smartFilterStore: source, taskLookup: source, snapshotStore: snapStore).regenerate()
 
         let kept = try #require(snapStore.read(filterID: WidgetSnapshot.unfilteredID))
         #expect(kept.tasks.map(\.title) == ["PRIOR"])
@@ -224,7 +241,7 @@ struct WidgetSnapshotBuilderFailureTests {
             tasksByFilter: [saved.id: [task("Never written")]],
             failAt: .graceSet
         )
-        await WidgetSnapshotBuilder(smartFilterStore: source, snapshotStore: snapStore).regenerate()
+        await WidgetSnapshotBuilder(smartFilterStore: source, taskLookup: source, snapshotStore: snapStore).regenerate()
 
         // The grace set feeds `ordered` in EVERY writeSnapshot call, so degrading
         // it to empty would under-report totalCount on every snapshot this pass —
@@ -240,7 +257,7 @@ struct WidgetSnapshotBuilderFailureTests {
         defer { try? FileManager.default.removeItem(at: dir) }
 
         let source = FakeSource(failAt: .list)
-        await WidgetSnapshotBuilder(smartFilterStore: source, snapshotStore: snapStore).regenerate()
+        await WidgetSnapshotBuilder(smartFilterStore: source, taskLookup: source, snapshotStore: snapStore).regenerate()
 
         #expect(snapStore.read(filterID: WidgetSnapshot.unfilteredID) == nil)
         #expect(await source.groupCalls == 0)
@@ -257,7 +274,7 @@ struct WidgetSnapshotBuilderFailureTests {
 
         // Everything succeeds; there is simply nothing to show.
         let source = FakeSource(filters: [saved], tasksByFilter: [saved.id: []])
-        await WidgetSnapshotBuilder(smartFilterStore: source, snapshotStore: snapStore).regenerate()
+        await WidgetSnapshotBuilder(smartFilterStore: source, taskLookup: source, snapshotStore: snapStore).regenerate()
 
         // This is the counterweight to every test above. "Never write on empty"
         // would satisfy them all and be wrong: an emptied filter must be able to
@@ -282,7 +299,7 @@ struct WidgetSnapshotBuilderFailureTests {
         try seedSnapshot(snapStore, filterID: saved.id, title: "STALE")
 
         let source = FakeSource(filters: [saved], tasksByFilter: [saved.id: []])
-        await WidgetSnapshotBuilder(smartFilterStore: source, snapshotStore: snapStore).regenerate()
+        await WidgetSnapshotBuilder(smartFilterStore: source, taskLookup: source, snapshotStore: snapStore).regenerate()
 
         let snap = try #require(snapStore.read(filterID: saved.id))
         #expect(snap.tasks.isEmpty, "clearing a filter must clear its snapshot — the failure paths must not over-generalize")
@@ -301,7 +318,7 @@ struct WidgetSnapshotBuilderFailureTests {
         // The roster read fails, so `performRegenerate` returns nil. Pruning on
         // that would delete live snapshots on the strength of a failed read.
         let source = FakeSource(failAt: .list)
-        await WidgetSnapshotBuilder(smartFilterStore: source, snapshotStore: snapStore)
+        await WidgetSnapshotBuilder(smartFilterStore: source, taskLookup: source, snapshotStore: snapStore)
             .regenerateAuthoritatively()
 
         #expect(snapStore.read(filterID: survivor.id) != nil, "a failed read must never be grounds for deletion")

@@ -5171,3 +5171,42 @@ remembering: **the fix for one activated the other.**
   Los Angeles Times" / "Keep Original Times") because both choices are
   legitimate — a generic "Reschedule" would make one of them the default by
   wording alone.
+
+## 2026-08-03 — Widget subtask nesting (LIL-95): a bare `Color.clear.frame(width:)` indent gutter is only safe inside a `List`
+
+Adding depth-indented rows to the widget card copied the app's own indent
+idiom verbatim — `TaskOutlineRowView.swift`'s `if row.depth > 0 { Color.clear
+.frame(width: CGFloat(row.depth) * indentPerLevel) }` — and it silently broke:
+every indented row rendered with ~100pt of extra vertical space around it,
+each depth-0 row stayed correctly sized.
+
+**Root cause: `Color.clear.frame(width:)` with no `height:` has no intrinsic
+height, so it greedily expands to fill whatever vertical space its container
+offers.** Inside a `List` (the app's context — `TaskOutlineRowView` renders as
+one cell of many), that's invisible: each row sizes independently to its
+content regardless of what any one child *wants*, so a greedy child's appetite
+goes unfed and nothing changes. The widget card is a plain `VStack(alignment:
+.leading, spacing: layout.rowSpacing) { ForEach(rows) { ... }; Spacer(minLength:
+0) }` — no `List`, no independent row sizing. Give any one row's `HStack` a
+child that wants infinite height, and that row's own bounding box inflates to
+fill the VStack's available space, shoving every row below it down and
+centering its actual content inside the new, oversized box. With three
+indented rows all making the same claim, the *look* was "huge gaps between
+rows" — it was actually "each indented row occupying way more height than its
+neighbors," with `HStack`'s default center cross-axis alignment hiding the
+real box size.
+
+**Fix:** pin the gutter's height explicitly — `Color.clear.frame(width: ...,
+height: 0)`. Zero doesn't collapse the row; the HStack's height is still the
+*max* over all children, so the status chip / text still drive it exactly as
+before. Applied to both `WidgetTaskRowView`'s and the card's own
+`WidgetContextRowView`'s indent gutter (`Packages/LillistUI/Sources/LillistUI/
+Widgets/`).
+
+**Lesson: a layout idiom that's provably safe in one container shape (`List`,
+`LazyVStack`, anything with independent per-row sizing) is not provably safe
+in another (a plain `VStack` competing for space with a trailing `Spacer`).**
+Don't port a spacer/gutter pattern across container types without asking what
+made the greedy dimension harmless in the original — here it was the
+container, not the view. `TaskOutlineRowView`'s own copy is unchanged (still
+correct in its own `List` context) and wasn't touched.

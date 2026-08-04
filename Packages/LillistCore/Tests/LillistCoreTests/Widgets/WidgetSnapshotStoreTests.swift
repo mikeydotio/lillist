@@ -102,4 +102,47 @@ struct WidgetSnapshotStoreTests {
 
         #expect(store.read(filterID: snap.filterID) == snap)
     }
+
+    // MARK: - LIL-95: legacy (pre-nesting) payload decode
+
+    /// A pre-LIL-95 on-disk snapshot: `Row` had only `id`/`title`/`status`. A
+    /// stale cache file from before this upgrade must decode cleanly rather
+    /// than fail and force the widget through its cold-cache rebuild path.
+    @Test("LIL-95: a legacy Row JSON missing parentID/depth/isContext decodes with safe defaults")
+    func legacyRowPayloadDecodesWithDefaults() throws {
+        let (store, dir) = tempStore()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let filterID = UUID()
+        let rowID = UUID()
+
+        // Hand-authored legacy shape — no parentID/depth/isContext keys at all.
+        let legacyJSON = """
+        {
+          "filterID": "\(filterID.uuidString)",
+          "filterName": "Todayish",
+          "tintHex": "#8B45E8",
+          "generatedAt": "2023-11-14T22:13:20Z",
+          "totalCount": 1,
+          "openCount": 1,
+          "tasks": [
+            { "id": "\(rowID.uuidString)", "title": "Legacy task", "status": 0 }
+          ]
+        }
+        """
+        let filtersDir = dir.appendingPathComponent("filters", isDirectory: true)
+        try FileManager.default.createDirectory(at: filtersDir, withIntermediateDirectories: true)
+        try legacyJSON.data(using: .utf8)!.write(
+            to: filtersDir.appendingPathComponent(filterID.uuidString).appendingPathExtension("json")
+        )
+
+        let decoded = try #require(store.read(filterID: filterID))
+        #expect(decoded.tasks.count == 1)
+        let row = decoded.tasks[0]
+        #expect(row.id == rowID)
+        #expect(row.title == "Legacy task")
+        #expect(row.status == .todo)
+        #expect(row.parentID == nil)
+        #expect(row.depth == 0)
+        #expect(row.isContext == false)
+    }
 }

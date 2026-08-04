@@ -77,6 +77,7 @@ struct FilterTimelineProvider: AppIntentTimelineProvider {
             guard let persistence = try? await WidgetIntentSupport.makePersistence() else { return }
             let builder = WidgetSnapshotBuilder(
                 smartFilterStore: SmartFilterStore(persistence: persistence),
+                taskLookup: TaskStore(persistence: persistence),
                 snapshotStore: store
             )
             await builder.regenerate(filterIDs: [id])

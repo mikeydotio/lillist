@@ -79,7 +79,7 @@ struct WidgetSnapshotBuilderX5CrossProcessTests {
 
         let (snapStore, dir) = tempSnapshotStore()
         defer { try? FileManager.default.removeItem(at: dir) }
-        let builderA = WidgetSnapshotBuilder(smartFilterStore: filtersA, snapshotStore: snapStore)
+        let builderA = WidgetSnapshotBuilder(smartFilterStore: filtersA, taskLookup: tasksA, snapshotStore: snapStore)
         await builderA.regenerateAuthoritatively()
         #expect(snapStore.read(filterID: filterID) != nil)
 
@@ -93,10 +93,11 @@ struct WidgetSnapshotBuilderX5CrossProcessTests {
         // (confirmed, not assumed — see the suite doc comment on why this
         // harness can't force B to be *wrong*).
         let filtersB = SmartFilterStore(persistence: controllerB)
+        let tasksB = TaskStore(persistence: controllerB)
         let listAsSeenByB = try await filtersB.list()
         #expect(listAsSeenByB.contains { $0.id == filterID } == false)
 
-        let builderB = WidgetSnapshotBuilder(smartFilterStore: filtersB, snapshotStore: snapStore)
+        let builderB = WidgetSnapshotBuilder(smartFilterStore: filtersB, taskLookup: tasksB, snapshotStore: snapStore)
         await builderB.regenerate(filterIDs: [filterID])
 
         #expect(

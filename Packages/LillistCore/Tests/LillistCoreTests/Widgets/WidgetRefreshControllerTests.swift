@@ -70,7 +70,7 @@ struct WidgetRefreshControllerTests {
 
         let (snapStore, dir) = tempSnapshotStore()
         defer { try? FileManager.default.removeItem(at: dir) }
-        let builder = WidgetSnapshotBuilder(smartFilterStore: filters, snapshotStore: snapStore)
+        let builder = WidgetSnapshotBuilder(smartFilterStore: filters, taskLookup: tasks, snapshotStore: snapStore)
         let reloader = RecordingReloader()
         let refresh = await WidgetRefreshController(
             persistence: controller,
@@ -110,7 +110,7 @@ struct WidgetRefreshControllerTests {
 
         let (snapStore, dir) = tempSnapshotStore()
         defer { try? FileManager.default.removeItem(at: dir) }
-        let builder = WidgetSnapshotBuilder(smartFilterStore: filters, snapshotStore: snapStore)
+        let builder = WidgetSnapshotBuilder(smartFilterStore: filters, taskLookup: tasks, snapshotStore: snapStore)
         let reloader = RecordingReloader()
         let refresh = await WidgetRefreshController(
             persistence: controller,
@@ -156,7 +156,7 @@ struct WidgetRefreshControllerTests {
 
         let (snapStore, dir) = tempSnapshotStore()
         defer { try? FileManager.default.removeItem(at: dir) }
-        let builder = WidgetSnapshotBuilder(smartFilterStore: filters, snapshotStore: snapStore)
+        let builder = WidgetSnapshotBuilder(smartFilterStore: filters, taskLookup: tasks, snapshotStore: snapStore)
         let reloader = RecordingReloader()
         let refresh = await WidgetRefreshController(
             persistence: controller,
@@ -188,7 +188,7 @@ struct WidgetRefreshControllerTests {
 
         let (snapStore, dir) = tempSnapshotStore()
         defer { try? FileManager.default.removeItem(at: dir) }
-        let builder = WidgetSnapshotBuilder(smartFilterStore: filters, snapshotStore: snapStore)
+        let builder = WidgetSnapshotBuilder(smartFilterStore: filters, taskLookup: tasks, snapshotStore: snapStore)
         let reloader = RecordingReloader()
         let refresh = await WidgetRefreshController(
             persistence: controller,
@@ -213,7 +213,7 @@ struct WidgetRefreshControllerTests {
 
         let (snapStore, dir) = tempSnapshotStore()
         defer { try? FileManager.default.removeItem(at: dir) }
-        let builder = WidgetSnapshotBuilder(smartFilterStore: filters, snapshotStore: snapStore)
+        let builder = WidgetSnapshotBuilder(smartFilterStore: filters, taskLookup: tasks, snapshotStore: snapStore)
         let reloader = RecordingReloader()
         let refresh = await WidgetRefreshController(
             persistence: controller,

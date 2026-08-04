@@ -34,7 +34,7 @@ struct WidgetSnapshotBuilderTests {
 
         let (snapStore, dir) = tempSnapshotStore()
         defer { try? FileManager.default.removeItem(at: dir) }
-        let builder = WidgetSnapshotBuilder(smartFilterStore: filters, snapshotStore: snapStore)
+        let builder = WidgetSnapshotBuilder(smartFilterStore: filters, taskLookup: tasks, snapshotStore: snapStore)
         await builder.regenerate()
 
         let snap = try #require(snapStore.read(filterID: filterID))
@@ -53,12 +53,13 @@ struct WidgetSnapshotBuilderTests {
     @Test("regenerate (additive) does not write the picker index")
     func regenerateDoesNotWriteIndex() async throws {
         let controller = try await TestStore.make()
+        let tasks = TaskStore(persistence: controller)
         let filters = SmartFilterStore(persistence: controller)
         _ = try await filters.create(name: "Todayish", group: todoGroup())
 
         let (snapStore, dir) = tempSnapshotStore()
         defer { try? FileManager.default.removeItem(at: dir) }
-        let builder = WidgetSnapshotBuilder(smartFilterStore: filters, snapshotStore: snapStore)
+        let builder = WidgetSnapshotBuilder(smartFilterStore: filters, taskLookup: tasks, snapshotStore: snapStore)
         await builder.regenerate()
 
         #expect(snapStore.readIndex() == nil)
@@ -78,7 +79,7 @@ struct WidgetSnapshotBuilderTests {
 
         let (snapStore, dir) = tempSnapshotStore()
         defer { try? FileManager.default.removeItem(at: dir) }
-        let builder = WidgetSnapshotBuilder(smartFilterStore: filters, snapshotStore: snapStore)
+        let builder = WidgetSnapshotBuilder(smartFilterStore: filters, taskLookup: tasks, snapshotStore: snapStore)
         await builder.regenerate()
 
         let snap = try #require(snapStore.read(filterID: filterID))
@@ -105,7 +106,7 @@ struct WidgetSnapshotBuilderTests {
 
         let (snapStore, dir) = tempSnapshotStore()
         defer { try? FileManager.default.removeItem(at: dir) }
-        let builder = WidgetSnapshotBuilder(smartFilterStore: filters, snapshotStore: snapStore)
+        let builder = WidgetSnapshotBuilder(smartFilterStore: filters, taskLookup: tasks, snapshotStore: snapStore)
         await builder.regenerate()
 
         let snap = try #require(snapStore.read(filterID: filterID))
@@ -128,7 +129,7 @@ struct WidgetSnapshotBuilderTests {
 
         let (snapStore, dir) = tempSnapshotStore()
         defer { try? FileManager.default.removeItem(at: dir) }
-        let builder = WidgetSnapshotBuilder(smartFilterStore: filters, snapshotStore: snapStore)
+        let builder = WidgetSnapshotBuilder(smartFilterStore: filters, taskLookup: tasks, snapshotStore: snapStore)
         await builder.regenerate()
 
         let snap = try #require(snapStore.read(filterID: WidgetSnapshot.unfilteredID))
@@ -149,7 +150,12 @@ struct WidgetSnapshotBuilderTests {
 
         let (snapStore, dir) = tempSnapshotStore()
         defer { try? FileManager.default.removeItem(at: dir) }
-        let builder = WidgetSnapshotBuilder(smartFilterStore: filters, snapshotStore: snapStore, rowCap: 3)
+        let builder = WidgetSnapshotBuilder(
+            smartFilterStore: filters,
+            taskLookup: tasks,
+            snapshotStore: snapStore,
+            rowCap: 3
+        )
         await builder.regenerate()
 
         let snap = try #require(snapStore.read(filterID: filterID))
@@ -169,7 +175,7 @@ struct WidgetSnapshotBuilderTests {
 
         let (snapStore, dir) = tempSnapshotStore()
         defer { try? FileManager.default.removeItem(at: dir) }
-        let builder = WidgetSnapshotBuilder(smartFilterStore: filters, snapshotStore: snapStore)
+        let builder = WidgetSnapshotBuilder(smartFilterStore: filters, taskLookup: tasks, snapshotStore: snapStore)
         await builder.regenerate()
 
         let snap = try #require(snapStore.read(filterID: WidgetSnapshot.unfilteredID))
@@ -195,7 +201,7 @@ struct WidgetSnapshotBuilderTests {
 
         let (snapStore, dir) = tempSnapshotStore()
         defer { try? FileManager.default.removeItem(at: dir) }
-        let builder = WidgetSnapshotBuilder(smartFilterStore: filters, snapshotStore: snapStore)
+        let builder = WidgetSnapshotBuilder(smartFilterStore: filters, taskLookup: tasks, snapshotStore: snapStore)
         await builder.regenerate()
 
         let snap = try #require(snapStore.read(filterID: filterID))
@@ -224,7 +230,7 @@ struct WidgetSnapshotBuilderTests {
 
         let (snapStore, dir) = tempSnapshotStore()
         defer { try? FileManager.default.removeItem(at: dir) }
-        let builder = WidgetSnapshotBuilder(smartFilterStore: filters, snapshotStore: snapStore)
+        let builder = WidgetSnapshotBuilder(smartFilterStore: filters, taskLookup: tasks, snapshotStore: snapStore)
         await builder.regenerate()
 
         let snap = try #require(snapStore.read(filterID: filterID))
@@ -244,7 +250,7 @@ struct WidgetSnapshotBuilderTests {
 
         let (snapStore, dir) = tempSnapshotStore()
         defer { try? FileManager.default.removeItem(at: dir) }
-        let builder = WidgetSnapshotBuilder(smartFilterStore: filters, snapshotStore: snapStore)
+        let builder = WidgetSnapshotBuilder(smartFilterStore: filters, taskLookup: tasks, snapshotStore: snapStore)
         await builder.regenerate()
         #expect(snapStore.read(filterID: filterID) != nil)
 
