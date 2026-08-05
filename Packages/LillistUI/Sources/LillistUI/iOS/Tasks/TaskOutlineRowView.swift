@@ -25,10 +25,29 @@ import LillistCore
 public struct TaskOutlineRowLabel: View {
     let task: TaskStore.TaskRecord
     let tagNames: [String]
+    /// LIL-97: the ancestor-title path (root → immediate parent) for a row
+    /// promoted to top level because its true parent isn't in the current
+    /// result set. Empty for a real root or a row nested under a visible
+    /// parent — the common case, unchanged.
+    let breadcrumbPath: [String]
+
+    /// Internal, not public — this type is constructed exclusively by
+    /// `TaskOutlineRowView` below, matching the doc comment above ("the
+    /// closure only ever receives the inert text label").
+    init(task: TaskStore.TaskRecord, tagNames: [String], breadcrumbPath: [String] = []) {
+        self.task = task
+        self.tagNames = tagNames
+        self.breadcrumbPath = breadcrumbPath
+    }
 
     public var body: some View {
         HStack(spacing: 0) {
-            TaskRowLabel(task: task, tagNames: tagNames)
+            VStack(alignment: .leading, spacing: 2) {
+                TaskRowLabel(task: task, tagNames: tagNames)
+                if !breadcrumbPath.isEmpty {
+                    BreadcrumbView(path: breadcrumbPath)
+                }
+            }
             Spacer(minLength: 0)
         }
         .contentShape(Rectangle())
@@ -44,6 +63,10 @@ public struct TaskOutlineRowView<LinkContent: View>: View {
     public let onToggleDisclosure: () -> Void
     public let onStatusClick: () -> Void
     public let onStatusSet: (Status) -> Void
+    /// LIL-97: the ancestor-title path for an orphaned row (`row.isOrphan`)
+    /// — empty otherwise. Forwarded verbatim to `TaskOutlineRowLabel`; the
+    /// caller decides what counts as orphaned and resolves the path.
+    public let breadcrumbPath: [String]
     private let linkContent: (TaskOutlineRowLabel) -> LinkContent
 
     /// Leading swipe action, revealed on a right-swipe of the card.
@@ -65,6 +88,7 @@ public struct TaskOutlineRowView<LinkContent: View>: View {
         leading: SwipeActionSpec? = nil,
         trailing: SwipeActionSpec? = nil,
         isReorderActive: Bool = false,
+        breadcrumbPath: [String] = [],
         openRowID: Binding<UUID?>,
         onToggleDisclosure: @escaping () -> Void,
         onStatusClick: @escaping () -> Void,
@@ -77,6 +101,7 @@ public struct TaskOutlineRowView<LinkContent: View>: View {
         self.leading = leading
         self.trailing = trailing
         self.isReorderActive = isReorderActive
+        self.breadcrumbPath = breadcrumbPath
         self._openRowID = openRowID
         self.onToggleDisclosure = onToggleDisclosure
         self.onStatusClick = onStatusClick
@@ -117,7 +142,8 @@ public struct TaskOutlineRowView<LinkContent: View>: View {
                     )
                     linkContent(TaskOutlineRowLabel(
                         task: row.node.record,
-                        tagNames: row.node.tagNames
+                        tagNames: row.node.tagNames,
+                        breadcrumbPath: breadcrumbPath
                     ))
                 }
                 .padding(.vertical, 1)

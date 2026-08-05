@@ -394,7 +394,7 @@ public final class TaskEditorModel {
     public func setStatus(_ newStatus: Status) async {
         status = newStatus
         guard case .live(let id) = phase else { return }
-        try? await stores.tasks.transition(id: id, to: newStatus)
+        _ = try? await stores.tasks.transition(id: id, to: newStatus)
         await reloadJournal(id: id) // a transition writes a journal entry
     }
 

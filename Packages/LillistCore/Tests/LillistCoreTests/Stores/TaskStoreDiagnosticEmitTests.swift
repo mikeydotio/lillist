@@ -127,7 +127,7 @@ final class TaskStoreDiagnosticEmitTests: XCTestCase {
 
     func test_throwing_transition_still_emits_threwError_true() async throws {
         let (store, spy, _) = try await makeStore()
-        await XCTAssertThrowsErrorAsync(try await store.transition(id: UUID(), to: .closed))
+        await XCTAssertThrowsErrorAsync(_ = try await store.transition(id: UUID(), to: .closed))
         let events = await spy.events
         let transition = try XCTUnwrap(events.last { $0.name == "task.transition" })
         XCTAssertEqual(transition.payload["threwError"], .bool(true))

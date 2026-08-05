@@ -17,6 +17,9 @@ struct TasksView: View {
     @State private var records: [TaskStore.TaskRecord] = []
     @State private var savedFilters: [SmartFilterStore.SmartFilterRecord] = []
     @State private var loadError: String?
+    /// LIL-97: ancestor-title path for every orphaned row currently in
+    /// `tree` — see `loadBreadcrumbs()`.
+    @State private var breadcrumbsByTaskID: [UUID: [String]] = [:]
 
     @State private var collapsedNodeIDs: Set<UUID> = []
     @State private var isFilterHeaderExpanded: Bool = false
@@ -56,6 +59,16 @@ struct TasksView: View {
     @State private var isReorderToastPresented = false
     @State private var isStatusToastPresented = false
 
+    // Cascade-complete undo state (LIL-97). `lastCascadeRootPriorStatus` is
+    // the ROOT's own status immediately before the close that triggered the
+    // cascade — undoing just re-transitions the root back to it, and its
+    // own reopen-cascade (TaskStore.transition) restores exactly the
+    // descendants this cascade closed, matched by `closedAt`.
+    @State private var isCascadeCompleteToastPresented = false
+    @State private var lastCascadeCount: Int = 0
+    @State private var lastCascadeRootID: UUID?
+    @State private var lastCascadeRootPriorStatus: Status = .todo
+
     /// Set by a row tap to open the unified editor for that task (observed by
     /// `TaskEditorHost`).
     @State private var openTaskID: UUID?
@@ -76,9 +89,12 @@ struct TasksView: View {
             isArchiveToastPresented: $isArchiveToastPresented,
             isReorderToastPresented: $isReorderToastPresented,
             isStatusToastPresented: $isStatusToastPresented,
+            isCascadeCompleteToastPresented: $isCascadeCompleteToastPresented,
             savedFilters: savedFilterSpecs,
             collapsedNodeIDs: collapsedNodeIDs,
             archivedCount: lastArchivedCount,
+            cascadeCompleteCount: lastCascadeCount,
+            breadcrumbsByTaskID: breadcrumbsByTaskID,
             dragController: dragController,
             onToggleCollapsed: { id in
                 if collapsedNodeIDs.contains(id) {
@@ -107,6 +123,7 @@ struct TasksView: View {
                 isSettingsPresented = true
             },
             onUndoArchive: { Task { await undoArchive() } },
+            onUndoCascadeComplete: { Task { await undoCascadeComplete() } },
             onOpenTask: { id in openTaskID = id },
             onSubmitSearch: { submitSearch() },
             onSaveSmartFilter: {
@@ -273,10 +290,25 @@ struct TasksView: View {
                 loadError = nil
             }
             hasLoadedOnce = true
+            await loadBreadcrumbs()
         } catch {
             loadError = "\(error)"
             records = []
+            breadcrumbsByTaskID = [:]
         }
+    }
+
+    /// LIL-97: fetch the ancestor path for every orphaned row in the
+    /// current tree (a row `TaskTree.build` promoted to top level because
+    /// its true parent isn't in the result set) — nothing to fetch, and no
+    /// store round trip, when there are none.
+    private func loadBreadcrumbs() async {
+        let orphanIDs = TreeFlattener.flatten(tree).filter(\.isOrphan).map(\.node.record.id)
+        guard !orphanIDs.isEmpty else {
+            breadcrumbsByTaskID = [:]
+            return
+        }
+        breadcrumbsByTaskID = (try? await env.taskStore.breadcrumbs(for: orphanIDs)) ?? [:]
     }
 
     // MARK: - Predicate composition
@@ -475,12 +507,34 @@ struct TasksView: View {
     /// swallow it silently (dead-status-tap RCA, 2026-06-12): a tap
     /// whose write fails must be distinguishable from a tap that never
     /// fired.
+    ///
+    /// LIL-97: completing a task with open subtasks cascades onto them
+    /// (`TaskStore.transition`) — when that happens, offer an undo toast
+    /// scoped to exactly this cascade. `record.status` is captured as the
+    /// PRIOR status before the write, since undo needs to reopen the root
+    /// to what it was, not to `.todo` unconditionally.
     private func setStatus(_ record: TaskStore.TaskRecord, to newStatus: Status) async {
         do {
-            try await env.taskStore.transition(id: record.id, to: newStatus)
+            let outcome = try await env.taskStore.transition(id: record.id, to: newStatus)
+            if newStatus == .closed, !outcome.cascadedIDs.isEmpty {
+                lastCascadeRootID = record.id
+                lastCascadeRootPriorStatus = record.status
+                lastCascadeCount = outcome.cascadedIDs.count
+                isCascadeCompleteToastPresented = true
+            }
         } catch {
             isStatusToastPresented = true
         }
+        await reload()
+    }
+
+    private func undoCascadeComplete() async {
+        guard let rootID = lastCascadeRootID else { return }
+        _ = try? await env.taskStore.transition(id: rootID, to: lastCascadeRootPriorStatus)
+        lastCascadeRootID = nil
+        lastCascadeRootPriorStatus = .todo
+        lastCascadeCount = 0
+        isCascadeCompleteToastPresented = false
         await reload()
     }
 

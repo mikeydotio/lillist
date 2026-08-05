@@ -17,6 +17,12 @@ import CoreData
 /// property-level merge would (no local mutation path can construct these
 /// once M1/H7 land, but a remote merge writes each row's relationships
 /// independently and is not bound by local validation).
+///
+/// LIL-97's cascade-close/cascade-reopen walks (also via `TaskStore
+/// .transition`) get their own dedicated cycle-guard tests in
+/// `TaskStoreCascadeCompleteTests` rather than duplicating them here, since
+/// they need richer fixtures (mixed statuses, journal entries) than this
+/// file's minimal two-node cycles.
 @Suite("H7 tree/tag cycle guards")
 struct TreeCycleGuardTests {
     @Test("wouldCreateCycle terminates and conservatively blocks when it encounters a pre-existing ancestor cycle")

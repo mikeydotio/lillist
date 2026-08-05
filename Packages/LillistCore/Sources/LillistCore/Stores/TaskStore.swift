@@ -599,31 +599,59 @@ public final class TaskStore: @unchecked Sendable {
 
     // MARK: - Status transitions
 
-    public func transition(id: UUID, to newStatus: Status) async throws {
+    /// What a `transition` call did to descendants of the transitioned
+    /// task, beyond the task itself (LIL-97). `cascadedIDs` is empty for a
+    /// leaf task, a no-op self-transition, or a plain status change that
+    /// neither closes nor reopens.
+    public struct CascadeOutcome: Sendable, Equatable {
+        public let cascadedIDs: [UUID]
+        public init(cascadedIDs: [UUID]) {
+            self.cascadedIDs = cascadedIDs
+        }
+    }
+
+    /// LIL-97: completing a task cascades to its open descendants (mirrors
+    /// `applySoftDelete`'s H2/H7 shape — a subtask left dangling under a
+    /// done parent is the exact "orphan" this story exists to reduce).
+    /// Re-opening the root reopens exactly the descendants THIS cascade
+    /// closed, matched by `closedAt` (mirrors `clearSoftDelete`'s
+    /// `matchingDeletedAt` precedent) — a child completed independently,
+    /// before or after, is left alone. Returns which descendants (if any)
+    /// were cascaded, so a caller that closed a parent with open subtasks
+    /// can offer a precise undo (see `TasksView.setStatus`).
+    @discardableResult
+    public func transition(id: UUID, to newStatus: Status) async throws -> CascadeOutcome {
         let cap = TransitionCapture()
         do {
-            let spawnedID: UUID? = try await withMutationRollback(context: context) { [self] in
+            let result: (spawnedID: UUID?, cascadedIDs: [UUID]) = try await withMutationRollback(context: context) { [self] in
                 let m = try fetchManagedObject(id: id, in: context)
                 let oldStatus = m.status
                 cap.from = oldStatus
                 guard oldStatus != newStatus else {
                     cap.noop = true
-                    return nil
+                    return (nil, [])
                 }
+                let previousClosedAt = m.closedAt
+                let now = Date()
                 m.status = newStatus
-                m.modifiedAt = Date()
+                m.modifiedAt = now
                 m.stampCurrentSchemaVersion()
+                var cascadedIDs: [UUID] = []
                 if newStatus == .closed {
-                    m.closedAt = m.modifiedAt
+                    m.closedAt = now
+                    cascadedIDs = try applyCascadeClose(toChildrenOf: m, at: now)
                 } else if oldStatus == .closed {
                     m.closedAt = nil
                     // Reopening a previously archived task resurfaces it —
                     // a user explicitly un-completing is the signal that
                     // they want it back in the active view.
                     m.archivedAt = nil
+                    if let previousClosedAt {
+                        cascadedIDs = applyCascadeReopen(fromChildrenOf: m, matchingClosedAt: previousClosedAt)
+                    }
                 }
 
-                // System journal entry for the transition.
+                // System journal entry for the root's own transition.
                 let entry = JournalEntry(context: context)
                 entry.id = UUID()
                 entry.task = m
@@ -633,28 +661,50 @@ public final class TaskStore: @unchecked Sendable {
                 let payload: [String: Int] = ["from": oldStatus.rawValue, "to": newStatus.rawValue]
                 entry.payload = try JSONSerialization.data(withJSONObject: payload)
 
-                // Recurrence: spawn next instance ONLY on transition-to-closed.
-                // Re-opening (oldStatus == .closed) does NOT undo the spawn,
-                // per design Section 8.
+                // Recurrence: spawn next instance ONLY on transition-to-closed,
+                // and ONLY for the explicitly transitioned task — never for a
+                // descendant closed implicitly by the cascade above. Spawning
+                // is a one-way operation (re-opening does NOT undo it, design
+                // Section 8), so an implicit close must never trigger one:
+                // cascade-closing five recurring subtasks must not silently
+                // create five new ones that the cascade's own undo can't
+                // remove.
                 var spawnedID: UUID? = nil
                 if newStatus == .closed {
                     spawnedID = try RecurrenceSpawner.spawnIfNeeded(forClosedTask: m, in: context)
                 }
 
-                return spawnedID
+                return (spawnedID, cascadedIDs)
             }
             // Reconcile *after* the save so the persistent store reflects the
             // new state. The scheduler is property-injected; absent in tests
             // that don't care about notifications.
             if let scheduler = notificationScheduler {
                 await scheduler.reconcile(taskID: id)
-                if let spawnedID {
+                if newStatus == .closed {
+                    // Every cascaded descendant's desired notification set is
+                    // now unconditionally empty (`computeDesiredRequests`
+                    // excludes closed tasks) — a single batched OS round trip
+                    // for the whole subtree, same reasoning `softDelete` uses
+                    // for `cancelPending` over a per-descendant `reconcile`.
+                    await scheduler.cancelPending(forTaskIDs: result.cascadedIDs)
+                } else {
+                    // Reopened descendants may now resolve to a future fire
+                    // date again — cancel-only can't re-install that, so each
+                    // needs a real reconcile (mirrors `restore`).
+                    for cascadedID in result.cascadedIDs {
+                        await scheduler.reconcile(taskID: cascadedID)
+                    }
+                }
+                if let spawnedID = result.spawnedID {
                     await scheduler.reconcile(taskID: spawnedID)
                 }
             }
-            cap.spawned = spawnedID != nil
+            cap.spawned = result.spawnedID != nil
+            cap.cascadedCount = result.cascadedIDs.count
             await emitTransitionDiag(id: id, to: newStatus, capture: cap, threwError: false)
             await recordCrumb("task.status.change", success: true)
+            return CascadeOutcome(cascadedIDs: result.cascadedIDs)
         } catch {
             await emitTransitionDiag(id: id, to: newStatus, capture: cap, threwError: true)
             await recordCrumb("task.status.change", success: false)
@@ -668,6 +718,9 @@ public final class TaskStore: @unchecked Sendable {
         var from: Status?
         var noop = false
         var spawned = false
+        /// LIL-97: descendants closed/reopened alongside the root by the
+        /// cascade — 0 for a leaf task or a plain (non-closing) transition.
+        var cascadedCount = 0
     }
 
     private func emitTransitionDiag(id: UUID, to newStatus: Status, capture cap: TransitionCapture, threwError: Bool) async {
@@ -681,6 +734,7 @@ public final class TaskStore: @unchecked Sendable {
             "to": .string("\(newStatus)"),
             "noop": .bool(cap.noop),
             "spawned": .bool(cap.spawned),
+            "cascaded": .int(cap.cascadedCount),
             "threwError": .bool(threwError),
         ])
     }
@@ -1045,6 +1099,120 @@ public final class TaskStore: @unchecked Sendable {
                 clearSoftDelete(from: child, matchingDeletedAt: matchingDeletedAt, visited: &visited, affected: &affected)
             }
         }
+    }
+
+    // MARK: - Cascade complete (LIL-97)
+
+    /// Recurse into `m`'s open, non-trashed children — closing each and
+    /// writing its own `statusChange` journal entry — so a subtask never
+    /// dangles open under a done parent (the "orphan" this story exists to
+    /// reduce). Deliberately does **not** touch `m` itself: `transition`
+    /// already owns the explicitly-transitioned root's status/closedAt/
+    /// journal entry, whose "from" is the root's real prior status; this
+    /// only cascades the implication onto descendants, each recording its
+    /// *own* prior status (which can differ node to node — a `.started`
+    /// child and a `.blocked` child closed by the same cascade each need
+    /// their own "from").
+    ///
+    /// H7: only recurses into a child that this pass just closed (`status
+    /// != .closed`), so a child already closed independently is left
+    /// alone — and critically, recursion does NOT continue past it. An
+    /// already-done intermediate node is the user's own prior, separate
+    /// decision; cascading through it to close ITS open children as a
+    /// side effect of a much later, higher-level completion would be a
+    /// surprise, not a convenience. `visited` seeded with `m`'s own id is
+    /// defense in depth against a parent-cycle looping back through the
+    /// root (same rationale as `applySoftDelete`'s H7 guard).
+    ///
+    /// H2: returns every descendant id this pass actually touched, so the
+    /// caller can reconcile notifications for the whole cascaded set.
+    @discardableResult
+    private func applyCascadeClose(toChildrenOf m: LillistTask, at now: Date) throws -> [UUID] {
+        var visited: Set<NSManagedObjectID> = [m.objectID]
+        var affected: [UUID] = []
+        try applyCascadeClose(toChildrenOf: m, at: now, visited: &visited, affected: &affected)
+        return affected
+    }
+
+    private func applyCascadeClose(
+        toChildrenOf m: LillistTask,
+        at now: Date,
+        visited: inout Set<NSManagedObjectID>,
+        affected: inout [UUID]
+    ) throws {
+        guard let children = m.children as? Set<LillistTask> else { return }
+        for child in children where child.deletedAt == nil && child.status != .closed {
+            guard visited.insert(child.objectID).inserted else { continue }
+            let priorStatus = child.status
+            child.status = .closed
+            child.closedAt = now
+            child.modifiedAt = now
+            child.stampCurrentSchemaVersion()
+            if let cid = child.id { affected.append(cid) }
+
+            let entry = JournalEntry(context: context)
+            entry.id = UUID()
+            entry.task = child
+            entry.kind = .statusChange
+            entry.createdAt = now
+            entry.body = "\(priorStatus) → closed"
+            let payload: [String: Int] = ["from": priorStatus.rawValue, "to": Status.closed.rawValue]
+            entry.payload = try JSONSerialization.data(withJSONObject: payload)
+
+            try applyCascadeClose(toChildrenOf: child, at: now, visited: &visited, affected: &affected)
+        }
+    }
+
+    /// The mirror image of `applyCascadeClose`: recurse into `m`'s
+    /// non-trashed children whose `closedAt` matches `matchingClosedAt` —
+    /// i.e. exactly the descendants THIS cascade closed alongside the
+    /// root, never a child completed independently before or after (same
+    /// `matchingDeletedAt`-style precision as `clearSoftDelete`). Each
+    /// descendant's prior status is read back from the `statusChange`
+    /// journal entry the close cascade wrote for it
+    /// (`createdAt == matchingClosedAt`) — no column persists "status
+    /// before this closedAt", so the journal is the only record. Falls
+    /// back to `.todo` when that entry can't be found (a missing entry
+    /// must never block the reopen).
+    @discardableResult
+    private func applyCascadeReopen(fromChildrenOf m: LillistTask, matchingClosedAt: Date) -> [UUID] {
+        var visited: Set<NSManagedObjectID> = [m.objectID]
+        var affected: [UUID] = []
+        applyCascadeReopen(fromChildrenOf: m, matchingClosedAt: matchingClosedAt, visited: &visited, affected: &affected)
+        return affected
+    }
+
+    private func applyCascadeReopen(
+        fromChildrenOf m: LillistTask,
+        matchingClosedAt: Date,
+        visited: inout Set<NSManagedObjectID>,
+        affected: inout [UUID]
+    ) {
+        guard let children = m.children as? Set<LillistTask> else { return }
+        for child in children where child.deletedAt == nil && child.closedAt == matchingClosedAt {
+            guard visited.insert(child.objectID).inserted else { continue }
+            child.status = priorStatus(before: matchingClosedAt, for: child) ?? .todo
+            child.closedAt = nil
+            child.modifiedAt = Date()
+            child.stampCurrentSchemaVersion()
+            if let cid = child.id { affected.append(cid) }
+            applyCascadeReopen(fromChildrenOf: child, matchingClosedAt: matchingClosedAt, visited: &visited, affected: &affected)
+        }
+    }
+
+    /// The status `applyCascadeClose` recorded as `child`'s "from" at
+    /// `closedAt`, read back from its own `statusChange` journal entry
+    /// (the entry this same cascade pass wrote — see `applyCascadeClose`).
+    /// `nil` when no matching entry exists (journal cleared, or a legacy
+    /// row that predates this feature).
+    private func priorStatus(before closedAt: Date, for child: LillistTask) -> Status? {
+        guard let entries = child.journalEntries as? Set<JournalEntry> else { return nil }
+        guard let entry = entries.first(where: { $0.kind == .statusChange && $0.createdAt == closedAt }),
+              let data = entry.payload,
+              let payload = try? JSONSerialization.jsonObject(with: data) as? [String: Int],
+              let rawFrom = payload["from"]
+        else { return nil }
+        return Status(rawValue: rawFrom)
     }
 
     // MARK: - Tags

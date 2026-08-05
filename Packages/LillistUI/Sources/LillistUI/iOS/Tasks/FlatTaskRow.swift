@@ -17,6 +17,17 @@ public struct FlatTaskRow: Identifiable, Hashable, Sendable {
         self.parentID = parentID
         self.hasChildren = hasChildren
     }
+
+    /// True when this row's true parent (`node.record.parentID`) exists but
+    /// isn't this row's DISPLAY parent (`parentID`) — i.e. `TaskTree.build`
+    /// promoted it to root because its real parent isn't in the current
+    /// result set (LIL-97: a filter/search match whose parent doesn't also
+    /// match, or a parent excluded by the active view). The app-side twin
+    /// of the widget's orphan detection (`WidgetSnapshotBuilder`'s missing-
+    /// parent collection feeding `showsParentMarker`, `WidgetRowPlan.swift`).
+    public var isOrphan: Bool {
+        parentID == nil && node.record.parentID != nil
+    }
 }
 
 public enum TreeFlattener {
